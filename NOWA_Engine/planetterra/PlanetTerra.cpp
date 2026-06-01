@@ -362,7 +362,7 @@ namespace NOWA
 
         // Keep CPU blendData in sync with staging data
         blendData.resize(static_cast<size_t>(blendTexSize) * blendTexSize * 4u, 0u);
-        memcpy(blendData.data(), texBox.data, blendStagingTex->_getSizeBytes());
+        memcpy(blendData.data(), texBox.data, texBox.bytesPerImage);
 
         blendStagingTex->stopMapRegion();
         blendStagingTex->upload(texBox, blendWeightTex, 0u);

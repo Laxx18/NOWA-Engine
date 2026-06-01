@@ -351,6 +351,7 @@
     <ClInclude Include="ocean\OgreHlmsOceanDatablock.h" />
     <ClInclude Include="ocean\OgreHlmsOceanPrerequisites.h" />
     <ClInclude Include="planetocean\PlanetOcean.h" />
+    <ClInclude Include="planetsun\PlanetSun.h" />
     <ClInclude Include="planetterra\PlanetTerra.h" />
     <ClInclude Include="res\resource.h" />
     <ClInclude Include="shader\HlmsBaseListenerContainer.h" />
@@ -566,6 +567,7 @@
     <ClCompile Include="ocean\OgreHlmsOcean.cpp" />
     <ClCompile Include="ocean\OgreHlmsOceanDatablock.cpp" />
     <ClCompile Include="planetocean\PlanetOcean.cpp" />
+    <ClCompile Include="planetsun\PlanetSun.cpp" />
     <ClCompile Include="planetterra\PlanetTerra.cpp" />
     <ClCompile Include="shader\HlmsBaseListenerContainer.cpp" />
     <ClCompile Include="shader\HlmsFog.cpp" />

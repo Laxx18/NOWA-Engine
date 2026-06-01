@@ -941,6 +941,12 @@ namespace NOWA
 
     bool ProceduralDungeonComponent::canStaticAddComponent(GameObject* gameObject)
     {
+        auto thisCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<ProceduralDungeonComponent>());
+        // only once
+        if (nullptr == thisCompPtr)
+        {
+            return true;
+        }
         return false;
     }
 

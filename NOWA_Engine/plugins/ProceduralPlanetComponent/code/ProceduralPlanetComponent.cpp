@@ -404,7 +404,13 @@ namespace NOWA
 
     bool ProceduralPlanetComponent::canStaticAddComponent(GameObject* gameObject)
     {
-        return true;
+        auto thisCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<ProceduralPlanetComponent>());
+        auto dependantCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PlanetTerraComponentBase>());
+        if (nullptr != dependantCompPtr && nullptr == thisCompPtr)
+        {
+            return true;
+        }
+        return false;
     }
 
     std::optional<NOWA::GameObjectTypeDescriptor> ProceduralPlanetComponent::getStaticTypeDescriptor()

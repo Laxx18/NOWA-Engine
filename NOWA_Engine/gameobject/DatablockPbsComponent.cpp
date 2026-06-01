@@ -1657,7 +1657,7 @@ namespace NOWA
             // ------------------------------------------------------------
             if (Ogre::PBSM_REFLECTION != pbsTextureType)
             {
-                if (true == newlyCreated && nullptr != this->datablock)
+                if (true == newlyCreated && nullptr != this->datablock && true == textureName.empty())
                 {
                     tempTextureName = this->getPbsTextureName(this->datablock, pbsTextureType);
                 }

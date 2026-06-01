@@ -2211,659 +2211,548 @@ namespace NOWA
 	}
 
 	void WalkingStateJumpNRun::update(GameObject* player, Ogre::Real dt)
-	{
-		if (false == this->hasInputDevice)
-		{
-			return;
-		}
-
-		if (true == this->playerController->getIsFallen())
-		{
-			return;
-		}
-
-		this->playerController->getAnimationBlender()->beginFrame();
-
-		Ogre::Real yawAtSpeed = 0.0f;
-
-		// auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
-
-		if (this->noMoveTimer > 0.1f)
-		{
-			this->playerController->setMoveWeight(0.0f);
-			this->playerController->setJumpWeight(0.0f);
-			this->noMoveTimer -= dt;
-		}
-		else if (this->noMoveTimer < 0.1f)
-		{
-			// Call this only once, hence noMoveTimer = 0.1f
-			this->playerController->setMoveWeight(1.0f);
-			this->playerController->setJumpWeight(1.0f);
-			this->noMoveTimer = 0.1f;
-		}
-
-		
-		// if (widget) widget->setCaption("");
-
-		Ogre::Real tempSpeed = 0.0f;
-		Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();
-		Ogre::Radian heading = this->playerController->getOrientation().getYaw();
-		
-
-		// Idle stop movement at the beginning
-		if (true == this->hasPhysicsPlayerControllerComponent)
-		{
-			static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, 0.0f, heading);
-		}
-
-		Ogre::Real height = this->playerController->getHeight();
-		this->keyDirection = Ogre::Vector3::ZERO;
-
-		auto b = this->playerController->getOwner()->getBottomOffset().y;
-
-		this->inAir = height - this->playerController->getOwner()->getBottomOffset().y > 0.4f;
-
-		///if (widget) widget->setCaption("In air: " + Ogre::StringConverter::toString(this->inAir));
-
-		// Get current velocities
-		Ogre::Vector3 currentVelocity = this->playerController->getPhysicsComponent()->getVelocity();
-
-		// Store the old direction, the check later whether a direction changed or not
-		this->oldDirection = this->direction;
-		// Set omega by default directly to zero, else there is an ugly small rotation...
-		// this->playerController->getPhysicsComponent()->getBody()->setOmega(Ogre::Vector3::ZERO);
-
-		InputDeviceModule* inputDeviceModule = this->playerController->getInputDeviceComponent()->getInputDeviceModule();
-		if (nullptr == inputDeviceModule)
-		{
-			return;
-		}
-
-		// if no key is pressed, go to idle state
-		if (!inputDeviceModule->isActionDown(NOWA_A_UP) && !inputDeviceModule->isActionDown(NOWA_A_DOWN)
-			&& !inputDeviceModule->isActionDown(NOWA_A_LEFT) && !inputDeviceModule->isActionDown(NOWA_A_RIGHT)
-			&& !inputDeviceModule->isActionDown(NOWA_A_UP) && !this->jumpKeyPressed && !this->isJumping)
-		{
-			this->walkCount = 0.0f;
-			this->keyDirection = Ogre::Vector3::ZERO;
-			if (!this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) /*&& this->playerController->getAnimationBlender()->isComplete()*/ && false == this->inAir)
-			{
-				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
-			}
-
-			tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.5f;
-			this->direction = Direction::NONE;
-
-			// No acceleration, move with usual constant speed
-			if (0.0f == this->playerController->getAcceleration())
-				this->acceleration = 1.0f;
-			else
-			{
-				this->acceleration -= this->playerController->getAcceleration() * dt;
-				if (this->acceleration <= 0.5f)
-					this->acceleration = 0.5f;
-			}
-
-			this->boringTimer += dt;
-
-			if (true == this->inAir)
-				this->boringTimer = 0;
-			// if the user does nothing for 10 seconds, choose a random boring animation state
-			if (this->boringTimer >= 10.0f)
-			{
-				this->boringTimer = 0.0f;
-				int id = MathHelper::getInstance()->getRandomNumber<int>(0, 3);
-				NOWA::AnimationBlenderV2::AnimID animID;
-				if (0 == id)
-				{
-					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_1;
-				}
-				else if (1 == id)
-				{
-					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_2;
-				}
-				else
-				{
-					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_3;
-				}
-				if (this->playerController->getAnimationBlender()->hasAnimation(animID) && this->playerController->getAnimationBlender()->isComplete())
-				{
-					tempAnimationSpeed = this->playerController->getAnimationSpeed();
-					this->playerController->getAnimationBlender()->blend(animID, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
-				}
-			}
-
-			//if (this->playerController->isIdle() /*&& !this->playerController->getPhysicsComponent()->getHasBuoyancy()*/)
-			//{
-			//	this->playerController->getPhysicsComponent()->setVelocity(this->playerController->getPhysicsComponent()->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f));
-			//}
-		}
-		else if (inputDeviceModule->isActionDown(NOWA_A_UP) || inputDeviceModule->isActionDown(NOWA_A_DOWN)
-			|| inputDeviceModule->isActionDown(NOWA_A_LEFT) || inputDeviceModule->isActionDown(NOWA_A_RIGHT))
-		{
-			this->boringTimer = 0;
-
-			// No acceleration, move with usual constant speed
-			if (0.0f == this->playerController->getAcceleration())
-				this->acceleration = 1.0f;
-			else
-			{
-				this->acceleration += this->playerController->getAcceleration() * dt;
-				if (this->acceleration >= 1.0f)
-					this->acceleration = 1.0f;
-				else
-				{
-					Ogre::Real weight = this->acceleration + 0.5f;
-					if (weight > 1.0f)
-						weight = 1.0f;
-					// this->playerController->getAnimationBlender()->setWeight(weight);
-				}
-			}
-			
-			tempAnimationSpeed = this->playerController->getAnimationSpeed();
-			// walk if left or right is being pressed
-			this->boringTimer = 0.0f;
-
-			NOWA::AnimationBlenderV2::AnimID animId = NOWA::AnimationBlenderV2::AnimID::ANIM_NONE;
-
-			// 3D movement
-			if (false == this->playerController->getIsFor2D())
-			{
-				// Forward/backward movement
-				if (inputDeviceModule->isActionDown(NOWA_A_UP))
-				{
-					tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
-					animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
-					this->direction = Direction::UP;
-
-					// Move along the forward direction (tangent to planet surface)
-					this->keyDirection = this->playerController->getPhysicsComponent()->getForward();
-				}
-				else if (inputDeviceModule->isActionDown(NOWA_A_DOWN))
-				{
-					tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.75f;
-					this->playerController->setMoveWeight(1.0f);
-					tempSpeed = -this->playerController->getPhysicsComponent()->getSpeed() * 0.5f * this->playerController->getMoveWeight();
-					animId = NOWA::AnimationBlenderV2::ANIM_WALK_SOUTH;
-					this->direction = Direction::DOWN;
-
-					// Move along the forward direction (but backward since tempSpeed is negative)
-					this->keyDirection = this->playerController->getPhysicsComponent()->getForward();
-				}
-
-				// Rotation handling using angular forces around the up vector
-				if (inputDeviceModule->isActionDown(NOWA_A_LEFT))
-				{
-					animId = NOWA::AnimationBlenderV2::ANIM_WALK_WEST;
-					this->direction = Direction::LEFT;
-
-					// Apply rotation force around the up vector (which is perpendicular to planet surface)
-					yawAtSpeed = this->playerController->getRotationSpeed();
-
-					heading = heading + Ogre::Radian(this->playerController->getRotationSpeed()) * 0.1f;
-				}
-				else if (inputDeviceModule->isActionDown(NOWA_A_RIGHT))
-				{
-					animId = NOWA::AnimationBlenderV2::ANIM_WALK_EAST;
-					this->direction = Direction::RIGHT;
-
-					// Apply negative rotation force around the up vector
-					yawAtSpeed = -this->playerController->getRotationSpeed();
-					heading = heading - Ogre::Radian(this->playerController->getRotationSpeed()) * 0.1f;
-				}
-			}
-			else
-			{
-				// JumpNRun 2D treatement: Rotate til 90 degree at once
-
-				if (true == this->directionChanged)
-				{
-					// if the player changes the direction, set the weight to 0, so that the player does not move will turning
-					// this->playerController->setMoveWeight(0.0f);
-				}
-
-				if (inputDeviceModule->isActionDown(NOWA_A_LEFT))
-				{
-					if (this->playerController->getRunAfterWalkTime() > 0.0f)
-						this->walkCount += dt;
-					// Walked long enough without pause -> run
-					if (this->walkCount >= this->playerController->getRunAfterWalkTime())
-					{
-						animId = NOWA::AnimationBlenderV2::ANIM_RUN;
-						tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
-						tempAnimationSpeed *= 0.5f;
-					}
-					else
-					{
-						tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
-						animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
-					}
-					this->direction = Direction::LEFT;
-					this->keyDirection = Ogre::Vector3(-1.0f, 0.0f, 0.0f);
-				}
-				else if (inputDeviceModule->isActionDown(NOWA_A_RIGHT))
-				{
-					if (this->playerController->getRunAfterWalkTime() > 0.0f)
-						this->walkCount += dt;
-					// Walked long enough without pause -> run
-					if (this->walkCount >= this->playerController->getRunAfterWalkTime())
-					{
-						animId = NOWA::AnimationBlenderV2::ANIM_RUN;
-						tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
-						tempAnimationSpeed *= 0.5f;
-					}
-					else
-					{
-						tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
-						animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
-					}
-					this->direction = Direction::RIGHT;
-					this->keyDirection = Ogre::Vector3(1.0f, 0.0f, 0.0f);
-				}
-
-				// If the old direction does not match the current direction
-				// the player changed direction, but this only set the direction change to true, never to false, which is done, after a 90 degree turn has been accomplished
-				if (this->oldDirection != this->direction)
-				{
-					this->directionChanged = true;
-					this->walkCount = 0.0f;
-				}
-
-				// if the player changed direction, rotate the player from x to -x and vice version (+- 180 degree), after that directionChanged is set to false
-				if (true == this->directionChanged)
-				{
-					this->boringTimer = 0.0f;
-
-					Ogre::Real currentDegree = this->playerController->getPhysicsComponent()->getOrientation().getYaw().valueDegrees();
-					if (Direction::RIGHT == this->direction)
-					{
-						yawAtSpeed = this->playerController->getRotationSpeed();
-						if (currentDegree >= 90.0f)
-						{
-							this->directionChanged = false;
-							yawAtSpeed = 0.0f;
-							this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
-						}
-					}
-					else if (Direction::LEFT == this->direction)
-					{
-						yawAtSpeed = -this->playerController->getRotationSpeed();
-						if (currentDegree <= -90.0f)
-						{
-							this->directionChanged = false;
-							yawAtSpeed = 0.0f;
-							this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
-						}
-					}
-
-					this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3(0.0f, yawAtSpeed, 0.0f));
-				}
-				else
-				{
-					// player should not rotate without intention
-					if (this->direction == Direction::LEFT)
-					{
-						this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
-					}
-
-					else
-					{
-						this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
-					}
-				}
-			}
-
-			// Run or sneak (only possible when moving forward)
-			if (false == this->playerController->getIsFor2D())
-			{
-				if (inputDeviceModule->isActionDown(NOWA_A_RUN) /*&& NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_UP)*/)
-				{
-					this->direction = Direction::UP;
-					tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
-					tempAnimationSpeed *= 0.8f;
-					animId = NOWA::AnimationBlenderV2::ANIM_RUN;
-				}
-				else if (inputDeviceModule->isActionDown(NOWA_A_SNEAK) && inputDeviceModule->isActionDown(NOWA_A_UP))
-				{
-					this->direction = Direction::UP;
-					tempSpeed = this->playerController->getPhysicsComponent()->getMinSpeed() * this->playerController->getMoveWeight();
-					tempAnimationSpeed *= 0.5f;
-					animId = NOWA::AnimationBlenderV2::ANIM_SNEAK;
-				}
-			}
-
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ActionsStates] --->data: inAir" + Ogre::StringConverter::toString(this->inAir)
-			// + " ");
-
-			if (false == this->playerController->getAnimationBlender()->isAnimationActive(animId)
-				&& (this->playerController->getAnimationBlender()->isComplete() || this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1)
-					|| this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_2)
-					|| this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_3))
-					/*&& false == this->playerController->getPhysicsComponent()->getHasBuoyancy()*/
-				&& false == this->inAir && !this->jumpKeyPressed && !this->isJumping)
-			{
-				tempAnimationSpeed = this->playerController->getAnimationSpeed();
-				// 0.02f: Immediately blend to walk
-				this->playerController->getAnimationBlender()->blend(animId, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
-			}
-		}
-// Attention: Does not work at the moment, some condition is wrong
-		else if (inputDeviceModule->isActionDown(NOWA_A_DUCK))
-		{
-			this->boringTimer = 0;
-		
-			if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_DUCK) && false == this->duckedOnce)
-			{
-				this->duckedOnce = true;
-				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_DUCK, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.1f, false);
-				// this->playerController->getPhysicsComponent()->getBody()->scaleCollision(Ogre::Vector3(1.0f, 0.5f, 1.0f));
-			}
-			if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
-			{
-				this->playerController->getAnimationBlender()->setTimePosition(0.7f);
-			}
-		}
-		else if (false == inputDeviceModule->isActionDown(NOWA_A_DUCK) && true == this->duckedOnce)
-		{
-			this->boringTimer = 0;
-			this->playerController->getPhysicsComponent()->getBody()->scaleCollision(Ogre::Vector3(1.0f, 1.0f, 1.0f));
-			this->duckedOnce = false;
-		}
-
-		this->jumpKeyPressed = false;
-
-		if (inputDeviceModule->isActionDown(NOWA_A_JUMP))
-		{
-			if (true == this->canDoubleJump)
-			{
-				this->jumpCount += 1;
-				this->canDoubleJump = false;
-				if (this->jumpCount > 2)
-					this->jumpCount = 0;
-			}
-
-			if (false == this->tryJump)
-				this->jumpKeyPressed = true;
-		}
-
-		if (false == inAir && this->jumpKeyPressed && false == this->isJumping)
-		{
-			this->boringTimer = 0;
-
-			// Jump at place, back or sidewards
-#if 0
-			if ((Direction::NONE == this->direction || Direction::DOWN == this->direction || Direction::LEFT == this->direction || Direction::RIGHT == this->direction)
-				/*&& false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START)*/
-				/*&& this->playerController->getAnimationBlender()->isComplete()*/ /*&& this->playerController->getPhysicsComponent()->getVelocity().squaredLength() <= 2.0f*/)
-#endif
-			{
-				// tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.5f;
-				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
-		
-				if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
-				{
-					this->playerController->getAnimationBlender()->setTimePosition(0.7f);
-				}
-				this->jumpSound->play();
-			}
-			// Jump forward
-			//else if (Direction::UP == this->direction)
-			//{
-			//	// start jumping animation directly and not waiting until complete
-			//	// if the player is running and jumping, choose the jump walk animation if it does exist
-			//	if (this->playerController->getAnimationBlender()->hasAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_WALK)
-			//		&& false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_WALK))
-			//	{
-			//		// tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.75f;
-			//		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_WALK, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
-			//		this->jumpSound->play();
-			//	}
-			//}
-		}
-
-		// When just falling, do and keep jump start animation (does not work yet)
-#if 1
-		else if (true == inAir && !this->jumpKeyPressed && this->playerController->getPhysicsComponent()->getVelocity().y < -1.0f)
-			// if (false == inAir && !this->jumpKeyPressed && this->playerController->getPhysicsComponent()->getVelocity().y < -1.0f)
-		{
-			this->jumpCount = 0;
-			//if (widget) widget->setCaption("Falling");
-			if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START))
-			{
-				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
-			}
-			else if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
-			{
-				this->playerController->getAnimationBlender()->setTimePosition(this->playerController->getAnimationBlender()->getTimePosition());
-			}
-		}
-
-		if (this->playerController->getPhysicsComponent()->getVelocity().y < -1.0f)
-		{
-			//if (widget) widget->setCaption("Falling");
-		}
-#endif
-
-#if 0
-// Attention: HighFalling false, because when jumping from one platform to another, there is a gab between the plattforms that is more than 4 in any case
-		// so the player will always play the ANIM_JUMP_END, even the player started at the same y position! So take y position into account!
-		// Signal that player is high falling for jump end animation
-		if (height > 5.0f + this->playerController->getMiddleOfPlayer().y)
-		{
-			this->highFalling = true;
-		}
-
-		// Player was high falling and is now at the floor
-		if (true == this->highFalling && false == this->inAir && this->playerController->getPhysicsComponent()->getVelocity().y < -1.0f)
-		{
-			this->boringTimer = 0;
-			this->acceleration = 0.0f;
-			tempAnimationSpeed = this->playerController->getAnimationSpeed() * 3.0f;
-			if (!this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_HIGH_JUMP_END)
-				/*&& this->playerController->getAnimationBlender()->isComplete()*/)
-			{
-				// this->noMoveTimer = 1.0f;
-				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_HIGH_JUMP_END, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
-
-				///////////////if (widget) widget->setCaption("Land");
-				this->playerController->getPhysicsComponent()->setVelocity(this->playerController->getPhysicsComponent()->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f));
-
-				this->highFalling = false;
-				// if (widget) widget->setCaption("Jump End");
-			}
-		}
-#endif
-
-		if (false == this->inAir && this->playerController->getPhysicsComponent()->getVelocity().y < -1.0f && false == this->groundedOnce)
-		{
-			if (!this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_END))
-			{
-				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_END, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
-			}
-			this->boringTimer = 0;
-			// Play only once!
-			this->walkSound->setPitch(0.35f);
-			this->walkSound->setGain(0.55f);
-			this->walkSound->play();
-			this->groundedOnce = true;
-		}
-
-		if (height > 2.0f)
-		{
-			this->groundedOnce = false;
-		}
-
-		Ogre::Vector3 jumpVelocity = Ogre::Vector3::ZERO;
-
-		if (1.0f == this->playerController->getJumpWeight() && (this->jumpKeyPressed && (false == this->isJumping && false == this->inAir) || (this->playerController->getDoubleJump() && this->jumpCount == 2)))
-		{
-			this->boringTimer = 0.0f;
-
-			if (this->playerController->getPhysicsComponent()->getVelocity().y <= this->jumpForce * this->jumpCount)
-			{
-				if (false == this->hasPhysicsPlayerControllerComponent)
-				{
-					jumpVelocity = this->playerController->getPhysicsComponent()->getUp() * this->jumpForce * this->playerController->getJumpWeight();
-					this->playerController->getPhysicsComponent()->applyRequiredForceForJumpVelocity(jumpVelocity);
-				}
-				else
-				{
-					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
-					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->setJumpSpeed(this->jumpForce * this->playerController->getJumpWeight());
-					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->jump();
-				}
-				if (this->jumpCount >= 2)
-				{
-					jumpCount = 0;
-				}
-			}
-			else
-			{
-				this->isJumping = true;
-				// this->playerController->setJumpWeight(0.0f);
-				// if (widget) widget->setCaption("Plop");
-			}
-		}
-
-		/*if (widget) widget->setCaption("Jump Forward: " + Ogre::StringConverter::toString(tempSpeed));*/
-
-		// if the player is on ground and not jumping and the jump key pressed 
-		if (true == this->jumpKeyPressed && (false == this->inAir && false == this->isJumping) /*|| this->playerController->getPhysicsComponent()->getHasBuoyancy()*/)
-		{
-			this->tryJump = true;
-		}
-
-
-		// if (widget) widget->setCaption("jumpCount: " + Ogre::StringConverter::toString(this->jumpCount));
-
-		// if (widget) widget->setCaption("In Air: " + Ogre::StringConverter::toString(this->inAir));
-
-		// this->playerController->getPhysicsComponent()->applyForce(playerForce);
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ActionsStates] force: " + Ogre::StringConverter::toString(playerForce));
-		// 0.9
-		if (/*height >= 0.6f && height <= 0.7f*/ true == inAir && true == this->isJumping)
-		{
-			// this->walkSound->play();
-			// this->walkSound->setPitch(0.5f);
-			// if (widget) widget->setCaption("Plop");
-		}
-
-		//if (NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isKeyDown(NOWA_K_ACTION_1) && !this->isAttacking)
-		//{
-		//	this->playerController->getStateMaschine()->setChildState(AttackingState2D::getName());
-		//	this->isAttacking = true;
-		//}
-
-		//if (!NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isKeyDown(NOWA_K_ACTION_1))
-		//{
-		//	this->isAttacking = false;
-		//}
-
-		//if (NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isKeyDown(NOWA_K_UP) && !this->isOnRope)
-		//{
-		//	for (auto& getcontactDataFront : this->playerController->getcontactDataFront())
-		//	{
-		//		if (nullptr != getcontactDataFront && getcontactDataFront->getCategory() == "Rope")
-		//		{
-		//			this->playerController->getStateMaschine()->changeState(RopeState2D::getName());
-		//		}
-		//	}
-		//}
-		//if (!NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isKeyDown(NOWA_K_UP))
-		//{
-		//	this->isOnRope = false;
-		//}
-
-		// Get player's current up vector
-		Ogre::Vector3 playerUp = this->playerController->getPhysicsComponent()->getUp();
-
-		// Get the player's current up vector based on the current orientation
-		Ogre::Vector3 currentPlayerUp = this->playerController->getPhysicsComponent()->getOrientation() * Ogre::Vector3::UNIT_Y;
-
-		// Get gravity direction (stable reference for "up")
-		Ogre::Vector3 gravityDir = this->playerController->getPhysicsComponent()->getGravityDirection();
-
-		// Compute desired yaw rotation (normal movement)
-		Ogre::Vector3 desiredAngularVelocity = -gravityDir * yawAtSpeed;
-
-		if (false == this->hasPhysicsPlayerControllerComponent)
-		{
-			if (yawAtSpeed != 0.0f)
-			{
-				// Apply yaw rotation
-				this->playerController->getPhysicsComponent()->applyOmegaForce(desiredAngularVelocity);
-			}
-			else
-			{
-				this->playerController->getPhysicsComponent()->applyOmegaForceRotateToDirection(this->playerController->getPhysicsComponent()->getForward(), 10.0f);
-			}
-		}
-
-#if 0
-		if (true == hasPhysicsKinematicComponent)
-		{
-			// Compute angle deviation between player's up and gravity up
-			Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(-gravityDir)).valueDegrees();
-
-			// Set the threshold for when to apply correction
-			const Ogre::Real tiltThresholdAngle = Ogre::Degree(20.0f).valueDegrees(); // Adjust the threshold as needed
-
-			// Only trigger correction if the angle deviation is significant and not near 180 degrees
-			if (angleDeviation > tiltThresholdAngle && false == this->inAir)
-			{
-				// Apply corrective force to upright the player
-				Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-gravityDir);
-
-				// Only correct pitch & roll, not yaw
-				Ogre::Vector3 correctionAxes(1.0f, 0.0f, 1.0f);
-				this->playerController->getPhysicsComponent()->setOmegaVelocityRotateTo(uprightRotation, correctionAxes, 5.0f);
-			}
-		}
-#endif
-
-
-		// Split current velocity into vertical and horizontal components
-		// Vertical component (along gravity direction)
-		Ogre::Vector3 verticalVelocity = gravityDir * currentVelocity.dotProduct(gravityDir);
-
-		// Calculate movement vector in world space (X/Z movement only)
-		Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
-
-		// Combine vertical velocity with movement
-		Ogre::Vector3 newVelocity = verticalVelocity + directionMove;
-
-		if (false == this->hasPhysicsPlayerControllerComponent)
-		{
-			this->playerController->getPhysicsComponent()->applyRequiredForceForVelocity(newVelocity);
-		}
-		else
-		{
-			static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
-		}
-		if (/*!this->walkSound->isPlaying() &&*/ !this->inAir && this->direction != Direction::NONE)
-		{
-			this->walkSound->play();
-			this->walkSound->setVelocity(newVelocity);
-			this->walkSound->setPitch(0.65f);
-			this->walkSound->setGain(0.35f);
-		}
-
-		// in order that the player does not jump again and again if the jump key is hold, only set isJumping to false if the player released the jump key
-		// so that he can jump if jump key is pressed again
-		if (false == inputDeviceModule->isActionDown(NOWA_A_JUMP))
-		{
-			this->tryJump = false;
-			this->isJumping = false;
-			this->canDoubleJump = true;
-		}
-
-		/*if (widget) widget->setCaption("inAir: " + Ogre::StringConverter::toString(this->inAir) 
-			+ " height: " + Ogre::StringConverter::toString(height));*/
-		
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "height: " + Ogre::StringConverter::toString(height) + " In Air: " + Ogre::StringConverter::toString(this->inAir));
-
-		this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed / this->playerController->getAnimationBlender()->getLength(), this->playerController->getClassName());
-	}
+    {
+        // -------------------------------------------------------------------------
+        // Early returns BEFORE beginFrame -- if we skip beginFrame we must also
+        // skip addTime, which is fine (animation stays frozen during these states).
+        // -------------------------------------------------------------------------
+        if (false == this->hasInputDevice)
+        {
+            return;
+        }
+
+        if (true == this->playerController->getIsFallen())
+        {
+            return;
+        }
+
+        InputDeviceModule* inputDeviceModule = this->playerController->getInputDeviceComponent()->getInputDeviceModule();
+        if (nullptr == inputDeviceModule)
+        {
+            return;
+        }
+
+        // beginFrame is now after all early returns -- it is always paired with addTime below.
+        this->playerController->getAnimationBlender()->beginFrame();
+
+        // -------------------------------------------------------------------------
+        // Physics state -- gravity direction computed early because it is needed
+        // for fall detection AND for jump / yaw logic later.
+        // -------------------------------------------------------------------------
+        Ogre::Vector3 gravityDir = this->playerController->getPhysicsComponent()->getGravityDirection();
+
+        // Upward direction on any planet surface = opposite of gravity.
+        Ogre::Vector3 upDir = -gravityDir;
+
+        Ogre::Vector3 currentVelocity = this->playerController->getPhysicsComponent()->getVelocity();
+
+        // Falling = velocity has a positive component ALONG gravity (toward planet).
+        // This replaces all hardcoded "velocity.y < -1.0f" checks which only work
+        // on flat Y-up worlds and break on spherical planet surfaces.
+        const bool isFalling = currentVelocity.dotProduct(gravityDir) > 1.0f;
+
+        Ogre::Real yawAtSpeed = 0.0f;
+        Ogre::Real tempSpeed = 0.0f;
+        Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();
+        Ogre::Radian heading = this->playerController->getOrientation().getYaw();
+
+        // -------------------------------------------------------------------------
+        // noMoveTimer -- countdown-based movement inhibit (e.g. after landing).
+        // Fixed: old "else if (< 0.1f)" fired every frame when timer was 0.
+        // New: simple countdown, restore weights only when timer expires.
+        // -------------------------------------------------------------------------
+        if (this->noMoveTimer > 0.0f)
+        {
+            this->playerController->setMoveWeight(0.0f);
+            this->playerController->setJumpWeight(0.0f);
+            this->noMoveTimer -= dt;
+            if (this->noMoveTimer <= 0.0f)
+            {
+                this->noMoveTimer = 0.0f;
+                this->playerController->setMoveWeight(1.0f);
+                this->playerController->setJumpWeight(1.0f);
+            }
+        }
+
+        // Stop translation at frame start (PhysicsPlayerController path).
+        if (true == this->hasPhysicsPlayerControllerComponent)
+        {
+            static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, 0.0f, heading);
+        }
+
+        Ogre::Real height = this->playerController->getHeight();
+        this->keyDirection = Ogre::Vector3::ZERO;
+
+        this->inAir = height - this->playerController->getOwner()->getBottomOffset().y > 0.4f;
+
+        // Store previous direction for 2D direction-change detection.
+        this->oldDirection = this->direction;
+
+        // -------------------------------------------------------------------------
+        // Input handling
+        // -------------------------------------------------------------------------
+        const bool movingUp = inputDeviceModule->isActionDown(NOWA_A_UP);
+        const bool movingDown = inputDeviceModule->isActionDown(NOWA_A_DOWN);
+        const bool movingLeft = inputDeviceModule->isActionDown(NOWA_A_LEFT);
+        const bool movingRight = inputDeviceModule->isActionDown(NOWA_A_RIGHT);
+        const bool anyMove = movingUp || movingDown || movingLeft || movingRight;
+
+        if (false == anyMove && false == this->jumpKeyPressed && false == this->isJumping)
+        {
+            // ------------------------------------------------------------------
+            // IDLE
+            // ------------------------------------------------------------------
+            this->walkCount = 0.0f;
+            this->keyDirection = Ogre::Vector3::ZERO;
+
+            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) && false == this->inAir)
+            {
+                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
+            }
+
+            tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.5f;
+            this->direction = Direction::NONE;
+
+            if (0.0f == this->playerController->getAcceleration())
+            {
+                this->acceleration = 1.0f;
+            }
+            else
+            {
+                this->acceleration -= this->playerController->getAcceleration() * dt;
+                if (this->acceleration <= 0.5f)
+                {
+                    this->acceleration = 0.5f;
+                }
+            }
+
+            this->boringTimer += dt;
+            if (true == this->inAir)
+            {
+                this->boringTimer = 0.0f;
+            }
+
+            // Random boring animation after 10 seconds of no input.
+            if (this->boringTimer >= 10.0f)
+            {
+                this->boringTimer = 0.0f;
+                int id = MathHelper::getInstance()->getRandomNumber<int>(0, 3);
+                NOWA::AnimationBlenderV2::AnimID animID;
+                if (0 == id)
+                {
+                    animID = NOWA::AnimationBlenderV2::ANIM_IDLE_1;
+                }
+                else if (1 == id)
+                {
+                    animID = NOWA::AnimationBlenderV2::ANIM_IDLE_2;
+                }
+                else
+                {
+                    animID = NOWA::AnimationBlenderV2::ANIM_IDLE_3;
+                }
+
+                if (true == this->playerController->getAnimationBlender()->hasAnimation(animID) && true == this->playerController->getAnimationBlender()->isComplete() &&
+                    false == this->playerController->getAnimationBlender()->isAnimationActive(animID))
+                {
+                    tempAnimationSpeed = this->playerController->getAnimationSpeed();
+                    this->playerController->getAnimationBlender()->blend(animID, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
+                }
+            }
+        }
+        else if (true == anyMove)
+        {
+            // ------------------------------------------------------------------
+            // MOVING
+            // ------------------------------------------------------------------
+            this->boringTimer = 0.0f;
+
+            if (0.0f == this->playerController->getAcceleration())
+            {
+                this->acceleration = 1.0f;
+            }
+            else
+            {
+                this->acceleration += this->playerController->getAcceleration() * dt;
+                if (this->acceleration >= 1.0f)
+                {
+                    this->acceleration = 1.0f;
+                }
+            }
+
+            tempAnimationSpeed = this->playerController->getAnimationSpeed();
+
+            NOWA::AnimationBlenderV2::AnimID animId = NOWA::AnimationBlenderV2::AnimID::ANIM_NONE;
+
+            if (false == this->playerController->getIsFor2D())
+            {
+                // ---- 3D movement ------------------------------------------------
+                if (true == movingUp)
+                {
+                    tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
+                    animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
+                    this->direction = Direction::UP;
+                    this->keyDirection = this->playerController->getPhysicsComponent()->getForward();
+                }
+                else if (true == movingDown)
+                {
+                    tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.75f;
+                    this->playerController->setMoveWeight(1.0f);
+                    tempSpeed = -this->playerController->getPhysicsComponent()->getSpeed() * 0.5f * this->playerController->getMoveWeight();
+                    animId = NOWA::AnimationBlenderV2::ANIM_WALK_SOUTH;
+                    this->direction = Direction::DOWN;
+                    this->keyDirection = this->playerController->getPhysicsComponent()->getForward();
+                }
+
+                if (true == movingLeft)
+                {
+                    animId = NOWA::AnimationBlenderV2::ANIM_WALK_WEST;
+                    this->direction = Direction::LEFT;
+                    yawAtSpeed = this->playerController->getRotationSpeed();
+                    heading = heading + Ogre::Radian(this->playerController->getRotationSpeed()) * 0.1f;
+                }
+                else if (true == movingRight)
+                {
+                    animId = NOWA::AnimationBlenderV2::ANIM_WALK_EAST;
+                    this->direction = Direction::RIGHT;
+                    yawAtSpeed = -this->playerController->getRotationSpeed();
+                    heading = heading - Ogre::Radian(this->playerController->getRotationSpeed()) * 0.1f;
+                }
+
+                // Run or sneak -- only when a forward direction is active.
+                if (inputDeviceModule->isActionDown(NOWA_A_RUN))
+                {
+                    this->direction = Direction::UP;
+                    tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
+                    tempAnimationSpeed *= 0.8f;
+                    animId = NOWA::AnimationBlenderV2::ANIM_RUN;
+                }
+                else if (inputDeviceModule->isActionDown(NOWA_A_SNEAK) && true == movingUp)
+                {
+                    this->direction = Direction::UP;
+                    tempSpeed = this->playerController->getPhysicsComponent()->getMinSpeed() * this->playerController->getMoveWeight();
+                    tempAnimationSpeed *= 0.5f;
+                    animId = NOWA::AnimationBlenderV2::ANIM_SNEAK;
+                }
+            }
+            else
+            {
+                // ---- 2D JumpNRun ------------------------------------------------
+                if (true == this->directionChanged)
+                {
+                    // Direction just reversed -- movement weight could be zeroed here
+                    // while the 90-degree turn completes.
+                }
+
+                if (true == movingLeft)
+                {
+                    if (this->playerController->getRunAfterWalkTime() > 0.0f)
+                    {
+                        this->walkCount += dt;
+                    }
+                    if (this->walkCount >= this->playerController->getRunAfterWalkTime())
+                    {
+                        animId = NOWA::AnimationBlenderV2::ANIM_RUN;
+                        tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
+                        tempAnimationSpeed *= 0.5f;
+                    }
+                    else
+                    {
+                        tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
+                        animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
+                    }
+                    this->direction = Direction::LEFT;
+                    this->keyDirection = Ogre::Vector3(-1.0f, 0.0f, 0.0f);
+                }
+                else if (true == movingRight)
+                {
+                    if (this->playerController->getRunAfterWalkTime() > 0.0f)
+                    {
+                        this->walkCount += dt;
+                    }
+                    if (this->walkCount >= this->playerController->getRunAfterWalkTime())
+                    {
+                        animId = NOWA::AnimationBlenderV2::ANIM_RUN;
+                        tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
+                        tempAnimationSpeed *= 0.5f;
+                    }
+                    else
+                    {
+                        tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
+                        animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
+                    }
+                    this->direction = Direction::RIGHT;
+                    this->keyDirection = Ogre::Vector3(1.0f, 0.0f, 0.0f);
+                }
+
+                if (this->oldDirection != this->direction)
+                {
+                    this->directionChanged = true;
+                    this->walkCount = 0.0f;
+                }
+
+                if (true == this->directionChanged)
+                {
+                    this->boringTimer = 0.0f;
+
+                    Ogre::Real currentDegree = this->playerController->getPhysicsComponent()->getOrientation().getYaw().valueDegrees();
+                    if (Direction::RIGHT == this->direction)
+                    {
+                        yawAtSpeed = this->playerController->getRotationSpeed();
+                        if (currentDegree >= 90.0f)
+                        {
+                            this->directionChanged = false;
+                            yawAtSpeed = 0.0f;
+                            this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
+                        }
+                    }
+                    else if (Direction::LEFT == this->direction)
+                    {
+                        yawAtSpeed = -this->playerController->getRotationSpeed();
+                        if (currentDegree <= -90.0f)
+                        {
+                            this->directionChanged = false;
+                            yawAtSpeed = 0.0f;
+                            this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
+                        }
+                    }
+                    this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3(0.0f, yawAtSpeed, 0.0f));
+                }
+                else
+                {
+                    if (Direction::LEFT == this->direction)
+                    {
+                        this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
+                    }
+                    else
+                    {
+                        this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
+                    }
+                }
+            }
+
+            // Blend to the movement animation -- only if not already active and
+            // the player is on the ground and not in a jump transition.
+            if (animId != NOWA::AnimationBlenderV2::AnimID::ANIM_NONE && false == this->playerController->getAnimationBlender()->isAnimationActive(animId) && false == this->inAir && false == this->jumpKeyPressed && false == this->isJumping &&
+                (true == this->playerController->getAnimationBlender()->isComplete() || this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) ||
+                    this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_2) || this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_3)))
+            {
+                tempAnimationSpeed = this->playerController->getAnimationSpeed();
+                this->playerController->getAnimationBlender()->blend(animId, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
+            }
+        }
+        else if (inputDeviceModule->isActionDown(NOWA_A_DUCK))
+        {
+            // ------------------------------------------------------------------
+            // DUCK
+            // ------------------------------------------------------------------
+            this->boringTimer = 0;
+
+            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_DUCK) && false == this->duckedOnce)
+            {
+                this->duckedOnce = true;
+                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_DUCK, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.1f, false);
+
+                // Scale collision hull down while ducking.
+                this->playerController->getPhysicsComponent()->getBody()->scaleCollision(Ogre::Vector3(1.0f, 0.5f, 1.0f));
+            }
+            if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
+            {
+                this->playerController->getAnimationBlender()->setTimePosition(0.7f);
+            }
+        }
+        else if (false == inputDeviceModule->isActionDown(NOWA_A_DUCK) && true == this->duckedOnce)
+        {
+            // ------------------------------------------------------------------
+            // UNDUCK
+            // ------------------------------------------------------------------
+            this->boringTimer = 0;
+            // Restore full collision hull when standing up.
+            this->playerController->getPhysicsComponent()->getBody()->scaleCollision(Ogre::Vector3(1.0f, 1.0f, 1.0f));
+            this->duckedOnce = false;
+        }
+
+        // -------------------------------------------------------------------------
+        // Jump key -- single-press edge detection via tryJump flag.
+        // tryJump is set true when a jump attempt failed (inAir / isJumping),
+        // and cleared when the key is released. This prevents auto-repeat jumping.
+        // -------------------------------------------------------------------------
+        this->jumpKeyPressed = false;
+        if (inputDeviceModule->isActionDown(NOWA_A_JUMP))
+        {
+            if (true == this->canDoubleJump)
+            {
+                this->jumpCount += 1;
+                this->canDoubleJump = false;
+                if (this->jumpCount > 2)
+                {
+                    this->jumpCount = 0;
+                }
+            }
+            if (false == this->tryJump)
+            {
+                this->jumpKeyPressed = true;
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // Jump / fall / land animations
+        // -------------------------------------------------------------------------
+
+        // Jump start: player on ground, key just pressed, not already mid-jump.
+        if (false == this->inAir && this->jumpKeyPressed && false == this->isJumping)
+        {
+            this->boringTimer = 0;
+
+            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START))
+            {
+                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
+            }
+            if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
+            {
+                this->playerController->getAnimationBlender()->setTimePosition(0.7f);
+            }
+            this->jumpSound->play();
+        }
+        // Falling: in air, no jump key, moving with gravity.
+        // Fixed: was "velocity.y < -1.0f" which breaks on tilted planet surfaces.
+        else if (true == this->inAir && false == this->jumpKeyPressed && true == isFalling)
+        {
+            this->jumpCount = 0;
+            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START))
+            {
+                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
+            }
+            else if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
+            {
+                // Hold last frame of jump_start while airborne.
+                this->playerController->getAnimationBlender()->setTimePosition(this->playerController->getAnimationBlender()->getTimePosition());
+            }
+        }
+
+        // Landing: just touched ground while moving with gravity.
+        // groundedOnce prevents the landing animation from retriggering every frame.
+        if (false == this->inAir && true == isFalling && false == this->groundedOnce)
+        {
+            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_END))
+            {
+                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_END, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
+            }
+            this->boringTimer = 0;
+            this->walkSound->setPitch(0.35f);
+            this->walkSound->setGain(0.55f);
+            this->walkSound->play();
+            this->groundedOnce = true;
+        }
+
+        // Reset groundedOnce once the player has risen above the landing threshold.
+        if (height > 2.0f)
+        {
+            this->groundedOnce = false;
+        }
+
+        // -------------------------------------------------------------------------
+        // Jump force application
+        // -------------------------------------------------------------------------
+        Ogre::Vector3 jumpVelocity = Ogre::Vector3::ZERO;
+
+        const bool doNormalJump = this->jumpKeyPressed && false == this->isJumping && false == this->inAir;
+        const bool doDoubleJump = this->playerController->getDoubleJump() && this->jumpCount == 2;
+
+        if (1.0f == this->playerController->getJumpWeight() && (true == doNormalJump || true == doDoubleJump))
+        {
+            this->boringTimer = 0.0f;
+
+            // Use gravity-relative vertical speed for the jump threshold check.
+            // Fixed: was "getVelocity().y" which breaks on tilted planet surfaces.
+            const Ogre::Real verticalSpeed = currentVelocity.dotProduct(upDir);
+
+            if (verticalSpeed <= this->jumpForce * static_cast<Ogre::Real>(this->jumpCount))
+            {
+                if (false == this->hasPhysicsPlayerControllerComponent)
+                {
+                    // Jump along the actual up direction relative to the planet surface.
+                    jumpVelocity = upDir * this->jumpForce * this->playerController->getJumpWeight();
+                    this->playerController->getPhysicsComponent()->applyRequiredForceForJumpVelocity(jumpVelocity);
+                }
+                else
+                {
+                    static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
+                    static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->setJumpSpeed(this->jumpForce * this->playerController->getJumpWeight());
+                    static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->jump();
+                }
+                if (this->jumpCount >= 2)
+                {
+                    this->jumpCount = 0;
+                }
+            }
+            else
+            {
+                this->isJumping = true;
+            }
+        }
+
+        // Consume jump attempt if player was airborne or already jumping.
+        if (true == this->jumpKeyPressed && (true == this->inAir || true == this->isJumping))
+        {
+            this->tryJump = true;
+        }
+
+        // -------------------------------------------------------------------------
+        // Angular velocity (yaw) -- gravity-relative axis, already correct.
+        // -------------------------------------------------------------------------
+        Ogre::Vector3 desiredAngularVelocity = -gravityDir * yawAtSpeed;
+
+        if (false == this->hasPhysicsPlayerControllerComponent)
+        {
+            if (yawAtSpeed != 0.0f)
+            {
+                this->playerController->getPhysicsComponent()->applyOmegaForce(desiredAngularVelocity);
+            }
+            else
+            {
+                this->playerController->getPhysicsComponent()->applyOmegaForceRotateToDirection(this->playerController->getPhysicsComponent()->getForward(), 10.0f);
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // Velocity decomposition -- preserve vertical (gravity) component, apply
+        // horizontal movement in the key direction.
+        // -------------------------------------------------------------------------
+        Ogre::Vector3 verticalVelocity = gravityDir * currentVelocity.dotProduct(gravityDir);
+        Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
+        Ogre::Vector3 newVelocity = verticalVelocity + directionMove;
+
+        if (false == this->hasPhysicsPlayerControllerComponent)
+        {
+            this->playerController->getPhysicsComponent()->applyRequiredForceForVelocity(newVelocity);
+        }
+        else
+        {
+            static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
+        }
+
+        // Walk sound -- only when grounded and actually moving.
+        if (false == this->inAir && this->direction != Direction::NONE)
+        {
+            this->walkSound->play();
+            this->walkSound->setVelocity(newVelocity);
+            this->walkSound->setPitch(0.65f);
+            this->walkSound->setGain(0.35f);
+        }
+
+        // Jump key release resets all jump state so the next press can trigger again.
+        if (false == inputDeviceModule->isActionDown(NOWA_A_JUMP))
+        {
+            this->tryJump = false;
+            this->isJumping = false;
+            this->canDoubleJump = true;
+        }
+
+        // -------------------------------------------------------------------------
+        // Single addTime call at the end -- always. Mirrors the click2point pattern.
+        // -------------------------------------------------------------------------
+        this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed / this->playerController->getAnimationBlender()->getLength(), this->playerController->getClassName());
+    }
 
 	void WalkingStateJumpNRun::exit(GameObject* player)
 	{

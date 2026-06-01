@@ -1,3 +1,9 @@
+/*
+Copyright (c) 2025 Lukas Kalinowski
+
+GPL v3
+*/
+
 #ifndef PLANET_OCEAN_COMPONENT_H
 #define PLANET_OCEAN_COMPONENT_H
 
@@ -107,6 +113,14 @@ namespace NOWA
          * @see GameObjectComponent::writeXML
          */
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see GameObjectComponent::isProcedural
+         */
+        virtual bool isProcedural(void) const override
+        {
+            return true;
+        }
 
         /**
          * @brief Sets whether the component is activated.

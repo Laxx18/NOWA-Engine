@@ -1,3 +1,9 @@
+/*
+Copyright (c) 2025 Lukas Kalinowski
+
+GPL v3
+*/
+
 #ifndef PROCEDURAL_TERRAIN_CREATION_COMPONENT_H
 #define PROCEDURAL_TERRAIN_CREATION_COMPONENT_H
 

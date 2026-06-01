@@ -1186,7 +1186,12 @@ namespace NOWA
 
     bool PlanetOceanComponent::canStaticAddComponent(GameObject* gameObject)
     {
-        return true;
+        auto thisCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PlanetOceanComponent>());
+        if (nullptr == thisCompPtr)
+        {
+            return true;
+        }
+        return false;
     }
 
 } // namespace NOWA

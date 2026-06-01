@@ -263,17 +263,16 @@ namespace NOWA
 
 		OgreNewt::CollisionPtr collisionPtr;
 
+		NOWA::GraphicsModule::RenderCommand command = [this, &inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin]()
+        {
+             collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::createDynamicCollision", _4(&inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin),
-		{
-			collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, 
-				calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
-
-			if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
-			{
-				calculatedMassOrigin = this->massOrigin->getVector3();
-			}
-		});
+            if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
+            {
+                calculatedMassOrigin = this->massOrigin->getVector3();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "PhysicsComponent::createDynamicCollision");
 
 		this->physicsBody = new OgreNewt::KinematicBody(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr);
 

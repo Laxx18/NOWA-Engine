@@ -984,6 +984,33 @@ void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
 		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Feedback", MyGUI::LanguageManager::getInstancePtr()->replaceTags(castEventData->getFeedbackMessage()),
 			MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
 	}
+
+	Ogre::String feedbackMessage = castEventData->getFeedbackMessage();
+
+	// In your feedback event handler in DesignState:
+    if (Ogre::StringUtil::startsWith(feedbackMessage, "[UNIVERSUM_CAMSPEED:"))
+    {
+        // Extract the speed value between ':' and ']'
+        size_t colonPos = feedbackMessage.find(':');
+        size_t bracketPos = feedbackMessage.find(']');
+        if (colonPos != Ogre::String::npos && bracketPos != Ogre::String::npos)
+        {
+            Ogre::String speedStr = feedbackMessage.substr(colonPos + 1, bracketPos - colonPos - 1);
+            float suggestedSpeed = Ogre::StringConverter::parseReal(speedStr);
+
+            // Remove the hardcoded 52 cap -- apply suggested speed directly.
+            this->cameraMoveSpeed = suggestedSpeed;
+            auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != cameraBehavior)
+            {
+                cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+            }
+            // Re-enable both speed buttons since we've reset to a new baseline.
+            this->cameraSpeedUpButton->setEnabled(true);
+            this->cameraSpeedDownButton->setEnabled(true);
+        }
+        return; // Don't display this in the status bar
+    }
 }
 
 void DesignState::handlePlayerInControl(NOWA::EventDataPtr eventData)

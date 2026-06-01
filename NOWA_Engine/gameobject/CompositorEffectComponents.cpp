@@ -19,10 +19,10 @@ namespace NOWA
 		workspaceBaseComponent(nullptr),
         camera(nullptr),
 		activated(new Variant(CompositorEffectBaseComponent::AttrActivated(), true, this->attributes)),
-		workspaceGameObjectId(new Variant(CompositorEffectBaseComponent::AttrWorkspaceGameObjectId(), static_cast<unsigned long>(0), this->attributes, true))
+        workspaceGameObjectId(new Variant(CompositorEffectBaseComponent::AttrWorkspaceGameObjectId(), static_cast<unsigned long>(GameObjectController::MAIN_CAMERA_ID), this->attributes, true))
 	{
 		this->activated->setDescription("Activates the effect.");
-		// "Bloom, Glass, Old TV, B&W, Embossed, Sharpen Edges, Invert, Posterize, Laplace, Tiling, Old Movie, Radial Blur, ASCII, Halftone, Night Vision, Dither"
+		// "Bloom, Glass, Old TV, B&W, Embossed, Sharpen Edges, Invert, Posterize, Laplace, Tiling, Old Movie, Radial Blur, ASCII, Halftone, Night Vision, Dither "
 	}
 
 	CompositorEffectBaseComponent::~CompositorEffectBaseComponent()

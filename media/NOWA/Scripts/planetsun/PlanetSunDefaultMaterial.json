@@ -1,0 +1,96 @@
+{
+    "comment" :
+    [
+        "PlanetSun default PBS material.",
+        "Uses specular_fresnel workflow with high roughness for a matte gaseous surface.",
+        "The animated plasma texture is bound to PBSM_EMISSIVE programmatically",
+        "in PlanetSun::initPlasmaTexture() — it is NOT listed here.",
+        "The base diffuse texture (sun_1_d.jpg) provides the static surface detail",
+        "that shows through when the emissive animation is at low intensity.",
+        "EmissiveColour tint is set programmatically via PlanetSunComponent::setEmissiveColour."
+    ],
+
+    "samplers" :
+    {
+        "Sun_Sampler" :
+        {
+            "min"              : "anisotropic",
+            "mag"              : "anisotropic",
+            "mip"              : "anisotropic",
+            "u"                : "wrap",
+            "v"                : "wrap",
+            "w"                : "wrap",
+            "miplodbias"       : 0,
+            "max_anisotropic"  : 8,
+            "compare_function" : "disabled",
+            "border"           : [1, 1, 1, 1],
+            "min_lod"          : -3.40282e+38,
+            "max_lod"          : 3.40282e+38
+        }
+    },
+
+    "macroblocks" :
+    {
+        "Sun_Macroblock" :
+        {
+            "scissor_test"           : false,
+            "depth_check"            : true,
+            "depth_write"            : true,
+            "depth_function"         : "less_equal",
+            "depth_bias_constant"    : 0,
+            "depth_bias_slope_scale" : 0,
+            "cull_mode"              : "none",
+            "polygon_mode"           : "solid"
+        }
+    },
+
+    "blendblocks" :
+    {
+        "Sun_Blendblock" :
+        {
+            "alpha_to_coverage"  : false,
+            "blendmask"          : "rgba",
+            "separate_blend"     : false,
+            "src_blend_factor"   : "one",
+            "dst_blend_factor"   : "zero",
+            "blend_operation"    : "add"
+        }
+    },
+
+    "pbs" :
+    {
+        "PlanetSunDefaultMaterial" :
+        {
+            "macroblock"        : "Sun_Macroblock",
+            "blendblock"        : "Sun_Blendblock",
+            "shadow_const_bias" : 0.001,
+
+            "workflow" : "specular_fresnel",
+
+            "roughness" : 0.9,
+
+            "fresnel" :
+            {
+                "value" : 0.01,
+                "mode"  : "coeff"
+            },
+
+            "specular" :
+            {
+                "value" : [0.1, 0.06, 0.01]
+            },
+
+            "diffuse" :
+			{
+				"value"   : [1.0, 1.0, 1.0],
+				"texture" : "sun_1_d.jpg",
+				"sampler" : "Sun_Sampler"
+			},
+
+			"emissive" :
+			{
+				"value" : [0.4, 0.2, 0.02]
+			}
+        }
+    }
+}

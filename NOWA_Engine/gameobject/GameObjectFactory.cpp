@@ -285,7 +285,7 @@ namespace NOWA
 		
 	}
 
-	GameObjectFactory* GameObjectFactory::getInstance()
+    GameObjectFactory* GameObjectFactory::getInstance()
 	{
 		static GameObjectFactory instance;
 
@@ -723,6 +723,33 @@ namespace NOWA
 			return nullptr;
 		}
 	}
+
+    GameObjectCompPtr GameObjectFactory::createComponentDeferred(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName)
+    {
+        GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(componentClassName)));
+
+        if (nullptr != componentPtr)
+        {
+            componentPtr->setOwner(gameObjectPtr);
+
+            // Adds bi-directional association in order, that a component can call the owner gameobject and over that, another component to use its functionality
+
+            // First adds (because occurence index will be increased, if x-times the same components has been added and can be used in post init, if post init failes, remove the component again
+            gameObjectPtr->addComponent(componentPtr);
+            componentPtr->onAddComponent();
+
+            // Sends event, that component has been created
+            boost::shared_ptr<EventDataNewComponent> eventDataNewComponent(new EventDataNewComponent(gameObjectPtr->getId(), componentClassName));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNewComponent);
+
+            return componentPtr;
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create deffered component: " + componentClassName + " for GameObject '" + gameObjectPtr->getName() + "'.");
+            return nullptr;
+        }
+    }
 
 	GameObjectCompPtr GameObjectFactory::createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr)
 	{

@@ -64,6 +64,13 @@ namespace NOWA
 		 */
 		GameObjectCompPtr createComponent(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName, bool newComponent = false);
 
+		/**
+         * @brief		Creates a new component for this game object but does not post init etc. so this component can be configured with other values and then you must call postInit yourself.
+         * @param[in]	gameObjectPtr		The game object the create the component for
+         * @param[in]	componentClassName	The component class name for creation
+         */
+		GameObjectCompPtr createComponentDeferred(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName);
+
 	public:
 		static GameObjectFactory* getInstance();
 	private:

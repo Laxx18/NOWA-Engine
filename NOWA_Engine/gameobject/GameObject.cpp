@@ -2355,24 +2355,36 @@ namespace NOWA
 		this->renderDistance->setValue(renderDistance);
 
 		if (0 != renderDistance)
-		{
-			if (static_cast<unsigned int>(this->lodDistance->getReal()) > this->renderDistance->getUInt())
-			{
-				this->setLodDistance(static_cast<Ogre::Real>(this->renderDistance->getUInt()));
-			}
+        {
+            const unsigned int currentLod = static_cast<unsigned int>(this->lodDistance->getReal());
 
-			if (this->shadowRenderingDistance->getUInt() > this->renderDistance->getUInt())
-			{
-				this->setShadowRenderingDistance(this->renderDistance->getUInt());
-			}
-		}
+            if (0u == currentLod)
+            {
+                // LOD never configured yet -- initialize it to the render distance.
+                // For file-based meshes this auto-generates LOD levels.
+                // For procedural meshes (PlanetTerra) this fails silently -- fine,
+                // render distance culling still works via setRenderingDistance below.
+                this->setLodDistance(static_cast<Ogre::Real>(renderDistance));
+            }
+            else if (currentLod > this->renderDistance->getUInt())
+            {
+                // Clamp: LOD distance must not exceed render distance.
+                this->setLodDistance(static_cast<Ogre::Real>(this->renderDistance->getUInt()));
+            }
+
+            if (this->shadowRenderingDistance->getUInt() > this->renderDistance->getUInt())
+            {
+                this->setShadowRenderingDistance(this->renderDistance->getUInt());
+            }
+        }
 
 		if (nullptr != this->movableObject && renderDistance > 0)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setRenderDistance", _1(renderDistance),
-			{
-				this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, renderDistance]()
+            {
+                this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setRenderDistance");
 		}
 	}
 
@@ -2405,10 +2417,11 @@ namespace NOWA
 
 		if (Ogre::Item* item = this->getMovableObject<Ogre::Item>())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setLodDistance1", _2(item, lodDistance),
-			{
-				this->applyLodDistanceToItem(item, lodDistance);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, lodDistance]()
+            {
+                this->applyLodDistanceToItem(item, lodDistance);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setLodDistance");
 		}
 	}
 

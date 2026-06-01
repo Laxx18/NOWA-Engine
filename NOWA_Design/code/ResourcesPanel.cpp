@@ -375,11 +375,27 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
                 parent->add(child);
             }
         }
-        // Add TerraPlanet
+        // Add Planet Terra
         {
             if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("PlanetTerraComponent"))
             {
                 child = new MyGUI::TreeControl::Node("Planet Terra", "Data");
+                parent->add(child);
+            }
+        }
+        // Add Planet Sun
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("PlanetSunComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Planet Sun", "Data");
+                parent->add(child);
+            }
+        }
+        // Add Universum
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("UniversumComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Universum", "Data");
                 parent->add(child);
             }
         }

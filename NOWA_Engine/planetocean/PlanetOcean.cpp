@@ -252,36 +252,6 @@ namespace NOWA
         }
     }
 
-    /*void PlanetOcean::setRoughnessTextureName(const Ogre::String& textureName)
-    {
-        if (nullptr == this->oceanItem)
-        {
-            return;
-        }
-        Ogre::HlmsPbsDatablock* db = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->oceanItem->getSubItem(0)->getDatablock());
-        if (nullptr == db)
-        {
-            return;
-        }
-        if (textureName.empty())
-        {
-            db->setTexture(Ogre::PBSM_ROUGHNESS, static_cast<Ogre::TextureGpu*>(nullptr));
-            return;
-        }
-
-        Ogre::TextureGpuManager* texMgr = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-        Ogre::TextureGpu* tex = texMgr->createOrRetrieveTexture(textureName, Ogre::GpuPageOutStrategy::SaveToSystemRam, 0u, Ogre::TextureTypes::Unknown, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-        if (nullptr != tex)
-        {
-            tex->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-            Ogre::HlmsSamplerblock samplerRef;
-            samplerRef.mU = Ogre::TAM_WRAP;
-            samplerRef.mV = Ogre::TAM_WRAP;
-            samplerRef.mW = Ogre::TAM_WRAP;
-            db->setTexture(Ogre::PBSM_ROUGHNESS, tex, &samplerRef);
-        }
-    }*/
-
     // =========================================================================
     //  initNormalMapTexture -- called ONCE from create()
     //  Creates the 64x64 GPU texture, sets it on PBSM_NORMAL, and does the first fill.

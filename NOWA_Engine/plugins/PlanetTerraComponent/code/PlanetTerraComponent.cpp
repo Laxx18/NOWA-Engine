@@ -362,8 +362,13 @@ namespace NOWA
         // PlanetTerra has no per-frame GPU update (unlike Terra's shadow mapper).
     }
 
-    bool PlanetTerraComponent::canStaticAddComponent(GameObject*)
+    bool PlanetTerraComponent::canStaticAddComponent(GameObject* gameObject)
     {
+        auto thisCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PlanetTerraComponent>());
+        if (nullptr == thisCompPtr)
+        {
+            return true;
+        }
         return false;
     }
 
@@ -1368,9 +1373,9 @@ namespace NOWA
         return activated->getBool();
     }
 
-    void PlanetTerraComponent::setRadius(float r)
+    void PlanetTerraComponent::setRadius(Ogre::Real radius)
     {
-        radius->setValue(r);
+        this->radius->setValue(radius);
         destroyPlanet();
         createPlanet();
         // Re-wire the new blend texture and NM textures after rebuild.
@@ -1537,6 +1542,7 @@ namespace NOWA
 
             this->wireBlendTextureToPbsDatablockInternal();
         };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetTerraComponent::setBaseUVScale");
     }
 
     float PlanetTerraComponent::getBaseUVScale(void) const

@@ -42,7 +42,7 @@ namespace NOWA
      * Serialization: scalar properties in scene XML; heavy geometry in a binary
      * sidecar "<goName>_PlanetTerra_<id>.ptd" next to the scene file.
      */
-    class PlanetTerraComponent : public PlanetTerraComponentBase, public Ogre::Plugin, public OIS::MouseListener, public OIS::KeyListener
+    class EXPORTED PlanetTerraComponent : public PlanetTerraComponentBase, public Ogre::Plugin, public OIS::MouseListener, public OIS::KeyListener
     {
     public:
         PlanetTerraComponent();
@@ -102,6 +102,14 @@ namespace NOWA
          */
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
+        /**
+         * @see GameObjectComponent::isProcedural
+         */
+        virtual bool isProcedural(void) const override
+        {
+            return true;
+        }
+
         virtual Ogre::String getClassName(void) const override;
 
         virtual Ogre::String getParentClassName(void) const override;
@@ -118,59 +126,24 @@ namespace NOWA
             return "PlanetTerraComponent";
         }
 
-        // ── OIS input (active only in editor mesh-modify mode while selected) ───
-    protected:
-        /** @brief Left-click begins a brush stroke; captures pre-stroke snapshot for undo. */
-        virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
-
-        /** @brief Left-release finalises the stroke and queues the undo event. */
-        virtual bool mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
-
-        /** @brief Continues the active brush stroke while the mouse moves. */
-        virtual bool mouseMoved(const OIS::MouseEvent& evt) override;
-
-        /** @brief Tracks Shift for brush inversion. */
-        virtual bool keyPressed(const OIS::KeyEvent& evt) override;
-
-        virtual bool keyReleased(const OIS::KeyEvent& evt) override;
-
-        /**
-         * @brief Handles action buttons defined by Variant::AttrActionExec().
-         *        Currently handles ActionBakeMesh().
-         */
-        virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
-
-        // ── Attribute setters / getters ─────────────────────────────────────────
-
-        /** @brief Enables or disables the sculpt/paint edit mode. */
         void setActivated(bool activated);
+
         bool isActivated(void) const;
 
-        /** @brief Sets the planet radius and fully recreates the mesh. */
         void setRadius(Ogre::Real radius);
+
         virtual Ogre::Real getRadius(void) const override;
 
         virtual const std::vector<Ogre::Vector2>& getUvCoords(void) const override;
 
-        /** @brief Sets horizontal (longitude) tessellation and recreates the mesh. */
         void setSegmentsH(unsigned int segs);
         unsigned int getSegmentsH(void) const;
 
-        /** @brief Sets vertical (latitude) tessellation and recreates the mesh. */
         void setSegmentsV(unsigned int segs);
         unsigned int getSegmentsV(void) const;
 
-        /** @brief Sets the blend-weight texture resolution and recreates it. */
         void setBlendTexSize(unsigned int size);
         unsigned int getBlendTexSize(void) const;
-
-        /**
-         * @brief Sets the PBS datablock name applied to the planet surface.
-         *        Applied directly via HlmsManager (same pattern as ProceduralWallComponent).
-         *        Default is PlanetTerraDefaultMaterial on first placement.
-         */
-        void setDatablock(const Ogre::String& datablockName);
-        Ogre::String getDatablock(void) const;
 
         /** @brief Sets edit mode: "Sculpt" or "Paint". */
         void setEditMode(const Ogre::String& mode);
@@ -236,6 +209,28 @@ namespace NOWA
          *        Called by the EditorManager on undo/redo.
          */
         void setPlanetData(const std::vector<unsigned char>& data);
+
+        // ── OIS input (active only in editor mesh-modify mode while selected) ───
+    protected:
+        /** @brief Left-click begins a brush stroke; captures pre-stroke snapshot for undo. */
+        virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
+
+        /** @brief Left-release finalises the stroke and queues the undo event. */
+        virtual bool mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
+
+        /** @brief Continues the active brush stroke while the mouse moves. */
+        virtual bool mouseMoved(const OIS::MouseEvent& evt) override;
+
+        /** @brief Tracks Shift for brush inversion. */
+        virtual bool keyPressed(const OIS::KeyEvent& evt) override;
+
+        virtual bool keyReleased(const OIS::KeyEvent& evt) override;
+
+        /**
+         * @brief Handles action buttons defined by Variant::AttrActionExec().
+         *        Currently handles ActionBakeMesh().
+         */
+        virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
 
     public:
         static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);

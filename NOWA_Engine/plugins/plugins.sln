@@ -120,6 +120,15 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralPlanetComponent",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetOceanComponent", "PlanetOceanComponent\PlanetOceanComponent.vcxproj", "{62AD74CD-E722-4429-A187-F19D3D87625D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UniversumComponent", "UniversumComponent\UniversumComponent.vcxproj", "{0F68CB4C-4382-462F-808C-6C0B587FA2C3}"
+	ProjectSection(ProjectDependencies) = postProject
+		{345BF13C-3CB4-4ABA-95C4-901CC1577514} = {345BF13C-3CB4-4ABA-95C4-901CC1577514}
+		{62AD74CD-E722-4429-A187-F19D3D87625D} = {62AD74CD-E722-4429-A187-F19D3D87625D}
+		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF} = {DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetSunComponent", "PlanetSunComponent\PlanetSunComponent.vcxproj", "{C9835873-3C67-42BF-9D99-D41CEA9B294A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -354,6 +363,14 @@ Global
 		{62AD74CD-E722-4429-A187-F19D3D87625D}.Debug|x64.Build.0 = Debug|x64
 		{62AD74CD-E722-4429-A187-F19D3D87625D}.Release|x64.ActiveCfg = Release|x64
 		{62AD74CD-E722-4429-A187-F19D3D87625D}.Release|x64.Build.0 = Release|x64
+		{0F68CB4C-4382-462F-808C-6C0B587FA2C3}.Debug|x64.ActiveCfg = Debug|x64
+		{0F68CB4C-4382-462F-808C-6C0B587FA2C3}.Debug|x64.Build.0 = Debug|x64
+		{0F68CB4C-4382-462F-808C-6C0B587FA2C3}.Release|x64.ActiveCfg = Release|x64
+		{0F68CB4C-4382-462F-808C-6C0B587FA2C3}.Release|x64.Build.0 = Release|x64
+		{C9835873-3C67-42BF-9D99-D41CEA9B294A}.Debug|x64.ActiveCfg = Debug|x64
+		{C9835873-3C67-42BF-9D99-D41CEA9B294A}.Debug|x64.Build.0 = Debug|x64
+		{C9835873-3C67-42BF-9D99-D41CEA9B294A}.Release|x64.ActiveCfg = Release|x64
+		{C9835873-3C67-42BF-9D99-D41CEA9B294A}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

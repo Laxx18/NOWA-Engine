@@ -1013,8 +1013,11 @@ namespace OgreNewt
             return;
         }
 
-        m_lastPosit = m_node->getPosition();
-        m_lastOrientation = m_node->getOrientation();
+        // Do NOT read from the SceneNode here -- the render thread may be writing
+        // to the SceneNode's SIMD transform data simultaneously (from a previous
+        // frame's render callback dispatch). Use Newton's own cached values instead.
+        m_lastPosit = m_prevPosit;
+        m_lastOrientation = m_prevRotation;
 
         const Ogre::Vector3 velocity = m_curPosit - m_prevPosit;
         m_nodePosit = m_prevPosit + velocity * interpolatParam;
