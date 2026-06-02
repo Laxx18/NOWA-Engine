@@ -27,25 +27,19 @@ namespace NOWA
     //  Constructor / Destructor
     // =========================================================================
 
-    PlanetTerraComponent::PlanetTerraComponent() : PlanetTerraComponentBase(), name("PlanetTerraComponent")
+    PlanetTerraComponent::PlanetTerraComponent()
+        : PlanetTerraComponentBase(),
+        name("PlanetTerraComponent"),
+        hasModifiedData(false)
     {
-        // ── Activation ────────────────────────────────────────────────────────
         activated = new Variant(PlanetTerraComponent::AttrActivated(), true, this->attributes);
-
-        // ── Sphere parameters ─────────────────────────────────────────────────
         radius = new Variant(PlanetTerraComponent::AttrRadius(), 50.0f, this->attributes);
         segmentsH = new Variant(PlanetTerraComponent::AttrSegmentsH(), static_cast<unsigned int>(64), this->attributes);
         segmentsV = new Variant(PlanetTerraComponent::AttrSegmentsV(), static_cast<unsigned int>(64), this->attributes);
         blendTexSize = new Variant(PlanetTerraComponent::AttrBlendTexSize(), static_cast<unsigned int>(1024), this->attributes);
         datablock = new Variant(PlanetTerraComponent::AttrDatablock(), PlanetTerraComponent::DefaultMaterialName(), this->attributes);
-
-        // ── Edit mode ─────────────────────────────────────────────────────────
         editMode = new Variant(PlanetTerraComponent::AttrEditMode(), std::vector<Ogre::String>{"Sculpt", "Paint"}, this->attributes);
-
-        // ── Brush mode ────────────────────────────────────────────────────────
         brushMode = new Variant(PlanetTerraComponent::AttrBrushMode(), std::vector<Ogre::String>{"Pull", "Push", "Smooth", "Flatten", "Inflate"}, this->attributes);
-
-        // ── Paint layer ───────────────────────────────────────────────────────
         paintLayer = new Variant(PlanetTerraComponent::AttrPaintLayer(), std::vector<Ogre::String>{"0", "1", "2", "3"}, this->attributes);
         // Default to layer 1: layer 0 is the base texture (always active via blend R=1).
         // User paints layer 1 (G channel) onto the base.
@@ -54,11 +48,7 @@ namespace NOWA
         brushSize = new Variant(PlanetTerraComponent::AttrBrushSize(), 30.0f, this->attributes);
         brushIntensity = new Variant(PlanetTerraComponent::AttrBrushIntensity(), 0.5f, this->attributes);
         brushFalloff = new Variant(PlanetTerraComponent::AttrBrushFalloff(), 2.0f, this->attributes);
-
-        // ── Bake action ───────────────────────────────────────────────────────
         bakeMesh = new Variant(PlanetTerraComponent::AttrBakeMesh(), Ogre::String("Bake Mesh"), this->attributes);
-
-        // ── Descriptions ──────────────────────────────────────────────────────
         activated->setDescription("Enable / disable planet edit mode.");
         radius->setDescription("Planet radius in world units.");
         segmentsH->setDescription("Horizontal (longitude) tessellation. Higher = more detail. Must be >= 4.");
@@ -850,17 +840,18 @@ namespace NOWA
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetTerraComponent::sculptUpload");
 
-        brushStrokeActive = true;
+        this->brushStrokeActive = true;
+        this->hasModifiedData = true;
     }
 
     void PlanetTerraComponent::doApplyPaintBrush(const Ogre::Vector2& hitUV)
     {
         const bool invert = this->isShiftPressed;
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Paint UV=(" + Ogre::StringConverter::toString(hitUV.x) + ", " + Ogre::StringConverter::toString(hitUV.y) +
+        /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Paint UV=(" + Ogre::StringConverter::toString(hitUV.x) + ", " + Ogre::StringConverter::toString(hitUV.y) +
                                                                                ") layer=" + Ogre::StringConverter::toString(this->getPaintLayerId()) + " brushSize=" + Ogre::StringConverter::toString(this->brushSize->getReal()) +
                                                                                " blendTexSize=" + Ogre::StringConverter::toString(this->blendTexSize->getUInt()) +
-                                                                               " blendDataSize=" + Ogre::StringConverter::toString(static_cast<unsigned int>(this->planet->getBlendDataCopy().size())));
+                                                                               " blendDataSize=" + Ogre::StringConverter::toString(static_cast<unsigned int>(this->planet->getBlendDataCopy().size())));*/
 
         this->planet->applyPaintBrush(hitUV, invert, this->getPaintLayerId(), this->brushData, this->brushImageW, this->brushImageH, this->brushSize->getReal(), this->brushIntensity->getReal(), this->brushFalloff->getReal());
 
@@ -871,6 +862,7 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetTerraComponent::paintUpload");
 
         this->brushStrokeActive = true;
+        this->hasModifiedData = true;
     }
 
     void PlanetTerraComponent::updateModificationState(void)
@@ -926,104 +918,6 @@ namespace NOWA
         return success;
     }
 
-    // =========================================================================
-    //  Serialization  —  binary sidecar file
-    // =========================================================================
-
-#if 0
-    void PlanetTerraComponent::wireBlendTextureToPbsDatablockInternal(void)
-    {
-        if (!this->planet || !this->planet->getBlendTex())
-        {
-            return;
-        }
-
-        auto datablockComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
-        if (!datablockComp)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetTerraComponent] wireBlend: no DatablockPbsComponent on '" + this->gameObjectPtr->getName() + "'.");
-            return;
-        }
-
-        // Wire the runtime blend texture directly, bypassing resourceExistsInAnyGroup.
-        datablockComp->setTextureDirectly(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
-
-        // Detail NM textures are NOT in the material JSON — putting them there causes
-        // the PBS HLMS template processor to emit @piece(SampleDetailMapNm1-3) blocks
-        // as literal HLSL code, leaving @value/@insertpiece directives unresolved → crash.
-        // Names come from our own Variants (configurable in NOWA-Design).
-        // Load with Discard + AutomaticBatching + TypePrepareForNormalMapping and
-        // transition to Resident BEFORE setTexture so the datablock is not yet a
-        // listener when notifyTextureChanged fires during streaming.
-        Ogre::HlmsPbsDatablock* pbsDb = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->planet->getItem()->getSubItem(0)->getDatablock());
-
-        if (nullptr == pbsDb)
-        {
-            return;
-        }
-
-        Ogre::TextureGpuManager* texMgr = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-
-        const Ogre::uint32 nmFilters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps | Ogre::TextureFilter::TypePrepareForNormalMapping;
-
-        struct NmSlot
-        {
-            Ogre::String name;
-            Ogre::PbsTextureTypes slot;
-        };
-
-        const NmSlot slots[4] = {
-            {this->detail0NMTextureName->getString(), Ogre::PBSM_DETAIL0_NM},
-            {this->detail1NMTextureName->getString(), Ogre::PBSM_DETAIL1_NM},
-            {this->detail2NMTextureName->getString(), Ogre::PBSM_DETAIL2_NM},
-            {this->detail3NMTextureName->getString(), Ogre::PBSM_DETAIL3_NM},
-        };
-
-        // Phase A: create + schedule ALL four Resident before touching the datablock.
-        Ogre::TextureGpu* nmTex[4] = {};
-        for (int i = 0; i < 4; ++i)
-        {
-            if (slots[i].name.empty())
-            {
-                continue;
-            }
-            if (!Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(slots[i].name))
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetTerraComponent] NM texture not found: '" + slots[i].name + "'.");
-                continue;
-            }
-            nmTex[i] = texMgr->createOrRetrieveTexture(slots[i].name, Ogre::GpuPageOutStrategy::Discard, Ogre::TextureFlags::AutomaticBatching, Ogre::TextureTypes::Type2D, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, nmFilters, 0u);
-            if (nullptr != nmTex[i])
-            {
-                nmTex[i]->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-            }
-        }
-
-        // Single wait covers all four — datablock is not yet a listener for any of them.
-        texMgr->waitForStreamingCompletion();
-
-        // Phase B: bind all four in one block → single HLMS hash change → one PSO compile.
-        Ogre::HlmsSamplerblock samplerNM;
-        samplerNM.mU = Ogre::TAM_WRAP;
-        samplerNM.mV = Ogre::TAM_WRAP;
-        samplerNM.mW = Ogre::TAM_WRAP;
-        samplerNM.mMinFilter = Ogre::FO_ANISOTROPIC;
-        samplerNM.mMagFilter = Ogre::FO_ANISOTROPIC;
-        samplerNM.mMipFilter = Ogre::FO_ANISOTROPIC;
-        samplerNM.mMaxAnisotropy = 8;
-
-        for (int i = 0; i < 4; ++i)
-        {
-            if (nullptr != nmTex[i])
-            {
-                pbsDb->setTexture(slots[i].slot, nmTex[i], &samplerNM);
-            }
-        }
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Blend + NM textures wired on '" + this->gameObjectPtr->getName() + "'.");
-    }
-#endif
-    
     void PlanetTerraComponent::wireBlendTextureToPbsDatablockInternal(void)
     {
         if (!this->planet || !this->planet->getBlendTex())
@@ -1084,6 +978,15 @@ namespace NOWA
         {
             return;
         }
+
+         // Only persist data that was actually modified or previously loaded.
+        // Fresh flat procedural planets (never sculpted/painted) produce no useful
+        // sidecar -- skipping keeps the scene folder clean, especially when
+        // UniversumComponent generates dozens of planets.
+        /*if (false == this->hasModifiedData)
+        {
+            return;
+        }*/
 
         const std::vector<float>& heights = this->planet->getHeightDataCopy();
         const std::vector<uint8_t>& blend = this->planet->getBlendDataCopy();
@@ -1147,7 +1050,13 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Loaded planet data (" + Ogre::StringConverter::toString(vc) + " verts) from: " + path);
 
-        return in.good() || in.eof();
+        const bool success = in.good() || in.eof();
+        if (true == success)
+        {
+            // Mark dirty so the next scene save re-persists the loaded data.
+            this->hasModifiedData = true;
+        }
+        return success;
     }
 
     void PlanetTerraComponent::deletePlanetDataFile()

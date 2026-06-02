@@ -364,18 +364,30 @@ namespace NOWA
 
 				this->setRenderQueueIndex(this->movableObject->getRenderQueueGroup());
 				// Note: Ogre runs in kilometers where as NOWA in meters as newton does
-				unsigned int renderDistance = static_cast<unsigned int>(this->movableObject->getRenderingDistance());
-				// Movable Object has infinite render distance, get global one. Is by default infinite too!
-				if (0 == renderDistance)
-				{
-					renderDistance = Core::getSingletonPtr()->getGlobalRenderDistance();
-					if (0 == renderDistance)
-					{
-						renderDistance = 1000;
-					}
-				}
-				this->renderDistance->setValue(renderDistance);
-				this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
+                unsigned int renderDistance = static_cast<unsigned int>(this->movableObject->getRenderingDistance());
+
+                // Movable Object has infinite render distance (0) — determine the correct value.
+                if (0 == renderDistance)
+                {
+                    // Prefer the already-stored value if it is valid (non-zero).
+                    unsigned int storedDistance = static_cast<unsigned int>(this->renderDistance->getReal());
+                    if (storedDistance > 0)
+                    {
+                        renderDistance = storedDistance;
+                    }
+                    else
+                    {
+                        // Fall back to global, then hard minimum.
+                        renderDistance = Core::getSingletonPtr()->getGlobalRenderDistance();
+                        if (0 == renderDistance)
+                        {
+                            renderDistance = 1000;
+                        }
+                    }
+                    this->renderDistance->setValue(renderDistance);
+                }
+
+                this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
 			}
 			this->sceneNode->getUserObjectBindings().setUserAny(Ogre::Any(this));
 

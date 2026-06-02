@@ -432,18 +432,17 @@ void World::recoverInternal()
 
 void World::recover()
 {
-    enqueuePhysicsAndWait(
-        [](World& w)
-        {
-            w.recoverInternal();
-        });
+    enqueuePhysicsAndWait([](World& w)
+    {
+        w.recoverInternal();
+    });
 }
 
 void World::PreUpdate(ndFloat32 /*timestep*/)
 {
 }
 
-void World::OnSubStepPreUpdate(ndFloat32 /*timestep*/)
+void World::OnSubStepPreUpdate(ndFloat32 timestep)
 {
 }
 

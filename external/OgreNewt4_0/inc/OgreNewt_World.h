@@ -222,7 +222,7 @@ namespace OgreNewt
 		std::atomic<unsigned int> m_nextSelfCollisionGroup{ 1 };
 
 		bool outerLoopActive;
-	private:
+
 		// non-template, defined in .cpp
 		void enqueueCommandInternal(ICommand* cmd);
 

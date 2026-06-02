@@ -38,14 +38,6 @@ copy /Y "%SRC_LIB_DEBUG%\OgreAtmosphere_d.lib" "%DST_LIB_DEBUG%\"
 copy /Y "%SRC_LIB_DEBUG%\OgreSceneFormat_d.lib" "%DST_LIB_DEBUG%\"
 
 REM =========================
-REM DEBUG BIN
-REM =========================
-
-copy /Y "%SRC_BIN_DEBUG%\*.dll" "%DST_BIN_DEBUG%\"
-copy /Y "%SRC_BIN_DEBUG%\*.pdb" "%DST_BIN_DEBUG%\"
-copy /Y "%SRC_BIN_DEBUG%\*.exe" "%DST_BIN_DEBUG%\"
-
-REM =========================
 REM RELEASE LIBS
 REM =========================
 
@@ -71,13 +63,6 @@ copy /Y "%SRC_LIB_RELEASE%\RenderSystem_NULL.exp" "%DST_LIB_RELEASE%\"
 copy /Y "%SRC_LIB_RELEASE%\RenderSystem_NULL.lib" "%DST_LIB_RELEASE%\"
 copy /Y "%SRC_LIB_RELEASE%\OgreAtmosphere.lib" "%DST_LIB_RELEASE%\"
 copy /Y "%SRC_LIB_RELEASE%\OgreSceneFormat.lib" "%DST_LIB_RELEASE%\"
-
-REM =========================
-REM RELEASE BIN
-REM =========================
-
-copy /Y "%SRC_BIN_RELEASE%\*.dll" "%DST_BIN_RELEASE%\"
-copy /Y "%SRC_BIN_RELEASE%\*.exe" "%DST_BIN_RELEASE%\"
 
 REM =========================
 REM SDK MIRROR (directory copy still needs xcopy)

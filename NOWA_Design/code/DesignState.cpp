@@ -1542,12 +1542,19 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->cameraResetButton == sender)
 	{
-		if (!GetAsyncKeyState(VK_LSHIFT))
-		{
-			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(0.0f, 1.0f, 0.0f));
-		}
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            if (!GetAsyncKeyState(VK_LSHIFT))
+            {
+                Ogre::Vector3 position = this->camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f));
+                this->camera->setPosition(position);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::resetCameraTransform");
 
-		NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY);
+		// NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(0.0f, 1.0f, 0.0f), true);
+        // NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY, true);
+
 		this->cameraMoveSpeed = 10.0f;
 		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
 		if (nullptr != cameraBehavior)
@@ -1557,74 +1564,75 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		}
 	}
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::buttonHit17", _1(sender),
-	{
-		// Check if some place mode has been pressed
-		for (size_t i = 0; i < this->placeModePopupMenu->getChildCount(); i++)
-		{
-			MyGUI::MenuItem* placeModeItem = this->placeModePopupMenu->getChildAt(i)->castType<MyGUI::MenuItem>();
-			placeModeItem->setStateSelected(false);
-			placeModeItem->setStateCheck(false);
-			if (placeModeItem == sender)
-			{
-				this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
-				size_t index = placeModeItem->getItemIndex();
-				if (0 == index)
-				{
-					this->editorManager->setPlaceMode(NOWA::EditorManager::EDITOR_PLACE_MODE_NORMAL);
-					placeModeItem->setStateSelected(true);
-					placeModeItem->setStateCheck(true);
-				}
-				else if (1 == index)
-				{
-					this->editorManager->setPlaceMode(NOWA::EditorManager::EDITOR_PLACE_MODE_STACK);
-					placeModeItem->setStateSelected(true);
-					placeModeItem->setStateCheck(true);
-				}
-				else if (2 == index)
-				{
-					this->editorManager->setPlaceMode(NOWA::EditorManager::EDITOR_PLACE_MODE_STACK_ORIENTATED);
-					placeModeItem->setStateSelected(true);
-					placeModeItem->setStateCheck(true);
-				}
-				placeModeItem->hideItemChild();
-				break;
-			}
-		}
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
+    {
+        // Check if some place mode has been pressed
+        for (size_t i = 0; i < this->placeModePopupMenu->getChildCount(); i++)
+        {
+            MyGUI::MenuItem* placeModeItem = this->placeModePopupMenu->getChildAt(i)->castType<MyGUI::MenuItem>();
+            placeModeItem->setStateSelected(false);
+            placeModeItem->setStateCheck(false);
+            if (placeModeItem == sender)
+            {
+                this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
+                size_t index = placeModeItem->getItemIndex();
+                if (0 == index)
+                {
+                    this->editorManager->setPlaceMode(NOWA::EditorManager::EDITOR_PLACE_MODE_NORMAL);
+                    placeModeItem->setStateSelected(true);
+                    placeModeItem->setStateCheck(true);
+                }
+                else if (1 == index)
+                {
+                    this->editorManager->setPlaceMode(NOWA::EditorManager::EDITOR_PLACE_MODE_STACK);
+                    placeModeItem->setStateSelected(true);
+                    placeModeItem->setStateCheck(true);
+                }
+                else if (2 == index)
+                {
+                    this->editorManager->setPlaceMode(NOWA::EditorManager::EDITOR_PLACE_MODE_STACK_ORIENTATED);
+                    placeModeItem->setStateSelected(true);
+                    placeModeItem->setStateCheck(true);
+                }
+                placeModeItem->hideItemChild();
+                break;
+            }
+        }
 
-		// Check if some translate mode has been pressed
-		for (size_t i = 0; i < this->translateModePopupMenu->getChildCount(); i++)
-		{
-			MyGUI::MenuItem* translateModeItem = this->translateModePopupMenu->getChildAt(i)->castType<MyGUI::MenuItem>();
-			translateModeItem->setStateSelected(false);
-			translateModeItem->setStateCheck(false);
-			if (translateModeItem == sender)
-			{
-				this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
-				size_t index = translateModeItem->getItemIndex();
-				if (0 == index)
-				{
-					this->editorManager->setTranslateMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE_NORMAL);
-					translateModeItem->setStateSelected(true);
-					translateModeItem->setStateCheck(true);
-				}
-				else if (1 == index)
-				{
-					this->editorManager->setTranslateMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE_STACK);
-					translateModeItem->setStateSelected(true);
-					translateModeItem->setStateCheck(true);
-				}
-				else if (2 == index)
-				{
-					this->editorManager->setTranslateMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE_STACK_ORIENTATED);
-					translateModeItem->setStateSelected(true);
-					translateModeItem->setStateCheck(true);
-				}
-				translateModeItem->hideItemChild();
-				break;
-			}
-		}
-	});
+        // Check if some translate mode has been pressed
+        for (size_t i = 0; i < this->translateModePopupMenu->getChildCount(); i++)
+        {
+            MyGUI::MenuItem* translateModeItem = this->translateModePopupMenu->getChildAt(i)->castType<MyGUI::MenuItem>();
+            translateModeItem->setStateSelected(false);
+            translateModeItem->setStateCheck(false);
+            if (translateModeItem == sender)
+            {
+                this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
+                size_t index = translateModeItem->getItemIndex();
+                if (0 == index)
+                {
+                    this->editorManager->setTranslateMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE_NORMAL);
+                    translateModeItem->setStateSelected(true);
+                    translateModeItem->setStateCheck(true);
+                }
+                else if (1 == index)
+                {
+                    this->editorManager->setTranslateMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE_STACK);
+                    translateModeItem->setStateSelected(true);
+                    translateModeItem->setStateCheck(true);
+                }
+                else if (2 == index)
+                {
+                    this->editorManager->setTranslateMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE_STACK_ORIENTATED);
+                    translateModeItem->setStateSelected(true);
+                    translateModeItem->setStateCheck(true);
+                }
+                translateModeItem->hideItemChild();
+                break;
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit17");
 }
 
 void DesignState::mouseClicked(MyGUI::Widget* sender)

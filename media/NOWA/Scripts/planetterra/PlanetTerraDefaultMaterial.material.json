@@ -1,4 +1,15 @@
 {
+    "comment" :
+    [
+        "PlanetTerra default PBS material - INITIAL TEMPLATE ONLY.",
+        "DatablockPbsComponent clones this on first use and stores its own per-instance data.",
+        "",
+        "Normal maps: all detail NMs must be BC5_SNORM DDS.",
+        "UV scale: adjust via PlanetTerraComponent AttrDetailUVScale (default 128).",
+        "Base diffuse + normal use UV1 (baked baseUVScale) set programmatically",
+        "in wireBlendTextureToPbsDatablockInternal via setTextureUvSource."
+    ],
+
     "samplers" :
     {
         "PlanetTerra_Sampler" :
@@ -74,23 +85,20 @@
                 "value"      : [1, 1, 1],
                 "background" : [1, 1, 1, 1],
                 "texture"    : "ground_dirt_gardenD.png",
-                "sampler"    : "PlanetTerra_Sampler",
-                "uv"         : 0
+                "sampler"    : "PlanetTerra_Sampler"
             },
 
             "normal" :
             {
                 "value"   : 1.0,
                 "texture" : "ground_dirt_gardenN.dds",
-                "sampler" : "PlanetTerra_Sampler",
-                "uv"      : 0
+                "sampler" : "PlanetTerra_Sampler"
             },
 
             "detail_weight" :
             {
                 "texture" : "PlanetTerraBlendDefault.png",
-                "sampler" : "PlanetTerra_Sampler",
-                "uv"      : 0
+                "sampler" : "PlanetTerra_Sampler"
             },
 
             "detail_diffuse0" :
@@ -100,8 +108,16 @@
                 "scale"   : [128, 128],
                 "value"   : 1.0,
                 "texture" : "adesert_cracks_d.jpg",
-                "sampler" : "PlanetTerra_Sampler",
-                "uv"      : 0
+                "sampler" : "PlanetTerra_Sampler"
+            },
+
+            "detail_normal0" :
+            {
+                "value"   : 1.0,
+                "offset"  : [0, 0],
+                "scale"   : [128, 128],
+                "texture" : "adesert_cracks_n.dds",
+                "sampler" : "PlanetTerra_Sampler"
             },
 
             "detail_diffuse1" :
@@ -111,8 +127,16 @@
                 "scale"   : [128, 128],
                 "value"   : 1.0,
                 "texture" : "grass_green_d.jpg",
-                "sampler" : "PlanetTerra_Sampler",
-                "uv"      : 0
+                "sampler" : "PlanetTerra_Sampler"
+            },
+
+            "detail_normal1" :
+            {
+                "value"   : 1.0,
+                "offset"  : [0, 0],
+                "scale"   : [128, 128],
+                "texture" : "grass_green_n.dds",
+                "sampler" : "PlanetTerra_Sampler"
             },
 
             "detail_diffuse2" :
@@ -122,8 +146,16 @@
                 "scale"   : [128, 128],
                 "value"   : 1.0,
                 "texture" : "island_sand_d.jpg",
-                "sampler" : "PlanetTerra_Sampler",
-                "uv"      : 0
+                "sampler" : "PlanetTerra_Sampler"
+            },
+
+            "detail_normal2" :
+            {
+                "value"   : 1.0,
+                "offset"  : [0, 0],
+                "scale"   : [128, 128],
+                "texture" : "island_sand_n.dds",
+                "sampler" : "PlanetTerra_Sampler"
             },
 
             "detail_diffuse3" :
@@ -133,8 +165,16 @@
                 "scale"   : [128, 128],
                 "value"   : 1.0,
                 "texture" : "mntn_black_d.jpg",
-                "sampler" : "PlanetTerra_Sampler",
-                "uv"      : 0
+                "sampler" : "PlanetTerra_Sampler"
+            },
+
+            "detail_normal3" :
+            {
+                "value"   : 1.0,
+                "offset"  : [0, 0],
+                "scale"   : [128, 128],
+                "texture" : "mntn_black_n.dds",
+                "sampler" : "PlanetTerra_Sampler"
             }
         }
     }

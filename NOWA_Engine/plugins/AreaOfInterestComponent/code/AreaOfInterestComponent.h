@@ -186,6 +186,13 @@ namespace NOWA
 		void setTriggerPermanentely(bool triggerPermanentely);
 
 		bool getTriggerPermanentely(void) const;
+
+		/**
+         * @brief		Attaches an observer, that is called when a game object enters the area or leaves the area
+         * @param[in]	triggerSphereQueryObserver		The trigger sphere query observer to get notified when a game object is in range or get called when a game object leaves the range.
+         * @Note											The trigger sphere query observer must be created on a heap, but not destroyed, since it will be destroyed automatically.
+         */
+        void attachTriggerObserver(ITriggerSphereQueryObserver* triggerSphereQueryObserver);
 	public:
 		/**
 		* @see		GameObjectComponent::canStaticAddComponent
@@ -214,13 +221,6 @@ namespace NOWA
 		static const Ogre::String AttrCategories(void) { return "Categories"; }
 		static const Ogre::String AttrTriggerPermanentely(void) { return "Trigger Permanentely"; }
 	private:
-
-		/**
-		* @brief		Attaches an observer, that is called when a game object enters the area or leaves the area
-		* @param[in]	triggerSphereQueryObserver		The trigger sphere query observer to get notified when a game object is in range or get called when a game object leaves the range.
-		* @Note											The trigger sphere query observer must be created on a heap, but not destroyed, since it will be destroyed automatically.
-		*/
-		void attachTriggerObserver(ITriggerSphereQueryObserver* triggerSphereQueryObserver);
 
 		/**
 		* @brief		Checks via sphere scene query active game objects in range

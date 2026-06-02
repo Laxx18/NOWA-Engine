@@ -21,8 +21,8 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    PhysicsComponent::PhysicsComponent() :
-        GameObjectComponent(),
+    PhysicsComponent::PhysicsComponent()
+        : GameObjectComponent(),
         ogreNewt(nullptr), // really important line of code, ogrenewt must be not null, when using it
         physicsBody(nullptr),
         initialPosition(Ogre::Vector3::ZERO),
@@ -33,6 +33,7 @@ namespace NOWA
         mass(new Variant(PhysicsComponent::AttrMass(), Ogre::Real(10.0f), this->attributes)),
         collidable(new Variant(PhysicsComponent::AttrCollidable(), true, this->attributes))
     {
+
     }
 
     bool PhysicsComponent::postInit(void)
@@ -66,6 +67,8 @@ namespace NOWA
     bool PhysicsComponent::connect(void)
     {
         GameObjectComponent::connect();
+
+        
         return true;
     }
 
@@ -79,6 +82,7 @@ namespace NOWA
             this->physicsBody->setForce(Ogre::Vector3::ZERO);
             this->physicsBody->setTorque(Ogre::Vector3::ZERO);
         }
+
         return true;
     }
 

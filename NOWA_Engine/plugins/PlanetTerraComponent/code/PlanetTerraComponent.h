@@ -210,7 +210,7 @@ namespace NOWA
          */
         void setPlanetData(const std::vector<unsigned char>& data);
 
-        // ── OIS input (active only in editor mesh-modify mode while selected) ───
+        void deletePlanetDataFile(void);
     protected:
         /** @brief Left-click begins a brush stroke; captures pre-stroke snapshot for undo. */
         virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
@@ -371,7 +371,6 @@ namespace NOWA
         Ogre::String getPlanetDataFilePath(void) const;
         void savePlanetDataToFile(void);
         bool loadPlanetDataFromFile(void);
-        void deletePlanetDataFile(void);
 
         // Queues TransactionBegin + EventDataPlanetTerraModifyEnd(old, new) + TransactionEnd.
         // The EditorManager is the sole listener; it stores old/new and calls
@@ -415,6 +414,8 @@ namespace NOWA
         // Data loaded from sidecar file; applied in createPlanet() then cleared
         std::vector<float> loadedHeightData;
         std::vector<uint8_t> loadedBlendData;
+
+        bool hasModifiedData;
 
         // Attributes
         Variant* activated = nullptr;

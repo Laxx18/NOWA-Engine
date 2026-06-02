@@ -205,7 +205,7 @@ namespace NOWA
 
 		bool getCollidable(void) const;
 
-		Ogre::Vector3 getLastPosition(void) const;
+        Ogre::Vector3 getLastPosition(void) const;
 
 		Ogre::Quaternion getLastOrientation(void) const;
 	public:
@@ -300,17 +300,19 @@ namespace NOWA
         void extractVerticesFromVAO(const Ogre::VertexArrayObject* vao, size_t targetBoneIndex, Ogre::Real minWeight, const Ogre::Matrix4& invMatrix, std::vector<Ogre::Vector3>& vertexVector);
 
 		OgreNewt::CollisionPtr createHeightFieldCollision(Ogre::Terra* terra);
+
 	protected:
 		OgreNewt::World* ogreNewt;
 		OgreNewt::Body* physicsBody;
+        Ogre::Vector3 initialPosition;
+        Ogre::Vector3 initialScale;
+        Ogre::Quaternion initialOrientation;
+        Ogre::Real volume;
+        OgreNewt::CollisionPtr collisionPtr;
+
 		Variant* collisionType;
 		Variant* mass;
 		Variant* collidable;
-		Ogre::Vector3 initialPosition;
-		Ogre::Vector3 initialScale;
-		Ogre::Quaternion initialOrientation;
-		Ogre::Real volume;
-		OgreNewt::CollisionPtr collisionPtr;
 	};
 
 }; //namespace end

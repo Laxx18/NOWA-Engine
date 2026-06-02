@@ -1753,7 +1753,8 @@ namespace NOWA
 		}
 
 		// Reload PBS with the complete library
-		hlmsPbs->reloadFrom(archivePbs, &library);
+		// Causes afterwards crashes if detail normal maps are used!
+		// hlmsPbs->reloadFrom(archivePbs, &library);
 	}
 
 	void Core::initMyGui(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, const Ogre::String& logName)
