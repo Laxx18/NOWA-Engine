@@ -305,6 +305,11 @@ namespace NOWA
             this->cameraGameObjectId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrSunLightGameObjectId())
+        {
+            this->sunLightGameObjectId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrFarClipSpace())
         {
             this->farClipSpace->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
@@ -582,13 +587,23 @@ namespace NOWA
         if (false == this->solarSystems.empty())
         {
             this->registerAndHideSurfaceObjects();
+        }
 
+        // All orbiting planets/moons must be SCENE_DYNAMIC so that setPositionOrientation()
+        // updates their visual position each frame. SCENE_STATIC nodes require
+        // sceneManager->notifyStaticDirty(node) after every move -- the OgreNewt render callback
+        // does not call this, so static planets silently never move in the scene.
+        // The earlier stutter was from the AreaOfInterest observer firing for all bodies
+        // (not just the player) -- that is now fixed by the player-ID filter. setDynamic(true)
+        // itself is safe for orbital motion.
+        if (false == this->solarSystems.empty())
+        {
             for (SolarSystem& system : this->solarSystems)
             {
                 for (OrbitalBody& planet : system.planets)
                 {
                     GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planet.gameObjectId);
-                    if (nullptr != planetGo)
+                    if (nullptr != planetGo && false == planet.orbitalPaused)
                     {
                         this->setPlanetDynamic(planetGo, true);
                     }
@@ -596,7 +611,7 @@ namespace NOWA
                 for (auto& moonPair : system.moons)
                 {
                     GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
-                    if (nullptr != moonGo)
+                    if (nullptr != moonGo && false == moonPair.second.orbitalPaused)
                     {
                         this->setPlanetDynamic(moonGo, true);
                     }
@@ -612,6 +627,26 @@ namespace NOWA
         GameObjectComponent::disconnect();
 
         // Planets/moons were always SCENE_STATIC -- nothing to reset.
+        // They were set to SCENE_DYNAMIC in connect() for orbital motion.
+        for (SolarSystem& system : this->solarSystems)
+        {
+            for (OrbitalBody& planet : system.planets)
+            {
+                GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planet.gameObjectId);
+                if (nullptr != planetGo)
+                {
+                    this->setPlanetDynamic(planetGo, false);
+                }
+            }
+            for (auto& moonPair : system.moons)
+            {
+                GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
+                if (nullptr != moonGo)
+                {
+                    this->setPlanetDynamic(moonGo, false);
+                }
+            }
+        }
 
         // Restore all surface objects to original world positions and make visible.
         this->restoreAllSurfaceObjects();
@@ -734,9 +769,7 @@ namespace NOWA
                             // Single atomic call: sets both pos+rot, sets m_validToUpdateStatic=true,
                             // and calls updateNode(1.0f) inline -- SceneNode updated immediately
                             // on the main thread without waiting for interalPostUpdate().
-                            // physComp->getBody()->setPositionOrientation(newPos, axialRot);
-                            physComp->setPosition(newPos);
-                            physComp->setOrientation(axialRot);
+                            physComp->getBody()->setPositionOrientation(newPos, axialRot);
                         }
                         // else: planet is fully frozen -- neither position nor orientation
                         // changes. Buildings (TreeCollision) stay valid. Day/night is
@@ -775,9 +808,7 @@ namespace NOWA
                     {
                         Ogre::Radian axialAngle(moon.axialElapsed * moon.axialSpeed);
                         Ogre::Quaternion axialRot(axialAngle, Ogre::Vector3::UNIT_Y);
-                        // physComp->getBody()->setPositionOrientation(newPos, axialRot);
-                        physComp->setPosition(newPos);
-                        physComp->setOrientation(axialRot);
+                        physComp->getBody()->setPositionOrientation(newPos, axialRot);
                     }
                 }
             }
@@ -1152,9 +1183,12 @@ namespace NOWA
         writeAttr("6", "Axial Speed Max", XMLConverter::ConvertString(doc, this->axialSpeedMax->getReal()));
         writeAttr("2", "Player GameObject Id", XMLConverter::ConvertString(doc, this->playerGameObjectId->getULong()));
         writeAttr("2", "Camera GameObject Id", XMLConverter::ConvertString(doc, this->cameraGameObjectId->getULong()));
+        writeAttr("2", "Sun Light GameObject Id", XMLConverter::ConvertString(doc, this->sunLightGameObjectId->getULong()));
         writeAttr("6", "Far Clip Space", XMLConverter::ConvertString(doc, this->farClipSpace->getReal()));
         writeAttr("6", "Far Clip Surface", XMLConverter::ConvertString(doc, this->farClipSurface->getReal()));
         writeAttr("6", "Far Clip Transition Speed", XMLConverter::ConvertString(doc, this->farClipTransitionSpeed->getReal()));
+        writeAttr("6", "Scale", XMLConverter::ConvertString(doc, this->scale->getReal()));
+        writeAttr("12", "Auto Pause Orbit On Surface", XMLConverter::ConvertString(doc, this->autoPauseOrbit->getBool()));
 
         // ---- Save solar systems so scene reload restores orbital motion --------
         writeAttr("2", "Saved System Count", XMLConverter::ConvertString(doc, static_cast<unsigned int>(this->solarSystems.size())));
@@ -1311,7 +1345,6 @@ namespace NOWA
         auto physComp = NOWA::makeStrongPtr(goPtr->getComponent<PhysicsArtifactComponent>());
         if (nullptr != physComp)
         {
-            physComp->getOwner()->setDynamic(isDynamic);
             physComp->getBody()->setSleep(!isDynamic);
         }
     }
@@ -1514,11 +1547,10 @@ namespace NOWA
                     this->hideSurfaceObjects(moonPair.second);
                     this->callPlanetLeftFunction(planetGameObjectId);
 
-                    // Re-enable dynamic so setPositionOrientation() moves the SceneNode again.
-                    GameObjectPtr resumedGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
-                    if (nullptr != resumedGo)
+                    GameObjectPtr resumedMoonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
+                    if (nullptr != resumedMoonGo)
                     {
-                        this->setPlanetDynamic(resumedGo, true);
+                        this->setPlanetDynamic(resumedMoonGo, true);
                     }
 
                     bool anyPaused = false;

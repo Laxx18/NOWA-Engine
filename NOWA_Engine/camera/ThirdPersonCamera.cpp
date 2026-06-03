@@ -101,48 +101,50 @@ namespace NOWA
         // Apply lookAt offset to get visual center of the player
         playerPosition += this->lookAtOffset;
 
+        // Offset in player-local space → world space.
+        // This is the only correct way to express "7 m behind, 5 m above the player":
+        // rotating the local offset vector by the player's orientation gives the
+        // world-space displacement that always points behind/above regardless of
+        // which way the player is facing.
+        Ogre::Vector3 localOffset = playerOrientation * this->offsetPosition;
+
         // ----------------------
-        // Hooks-style Camera Spring
-
-        // Angle in world-space horizontal plane — player-rotation-independent.
-        // Project camera-to-player direction onto gravity-perpendicular plane, then
-        // take world-space XZ angle. This is equivalent to the original ATan2(dir.z, dir.x)
-        // but also works for non-standard gravity.
-        Ogre::Vector3 direction = cameraPosition - playerPosition;
-        Ogre::Vector3 directionH = direction - direction.dotProduct(localUp) * localUp;
-        Ogre::Radian angle = Ogre::Math::ATan2(directionH.z, directionH.x);
-
         // Stable horizontal frame from gravity only (never from player orientation)
         Ogre::Vector3 worldRef = (Ogre::Math::Abs(localUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
         Ogre::Vector3 stableRight = localUp.crossProduct(worldRef).normalisedCopy();
         Ogre::Vector3 stableForward = stableRight.crossProduct(localUp).normalisedCopy();
+
+        // ----------------------
+        // Hooks-style Camera Spring
+
+        // Angle in world-space horizontal plane — player-rotation-independent.
+        Ogre::Vector3 direction = cameraPosition - playerPosition;
+        Ogre::Vector3 directionH = direction - direction.dotProduct(localUp) * localUp;
+        Ogre::Radian angle = Ogre::Math::ATan2(directionH.z, directionH.x);
+
         Ogre::Vector3 offsetXZ = Ogre::Math::Cos(angle) * stableRight + Ogre::Math::Sin(angle) * stableForward;
 
-        // Target camera direction from player + cameraSpringLength
-        Ogre::Vector3 targetDirection = playerPosition + offsetXZ * this->cameraSpringLength;
+        // Target position: player + spring orbit + player-local offset
+        Ogre::Vector3 targetPosition = playerPosition + offsetXZ * this->cameraSpringLength + localOffset;
 
-        // Velocity vector (primary spring movement)
-        Ogre::Vector3 velocityVector = (targetDirection - cameraPosition) * this->cameraSpring;
+        // Velocity vector (primary spring movement toward target)
+        Ogre::Vector3 velocityVector = (targetPosition - cameraPosition) * this->cameraSpring;
         velocityVector *= this->cameraFriction;
 
         // Support force — pulls camera toward player's back.
-        // Player orientation is intentional here: this is what makes the camera
-        // lazily follow behind the player when they turn.
+        // playerOrientation is intentional: makes camera lazily follow when player turns.
         Ogre::Vector3 tVector = playerOrientation * this->defaultDirection * -1.0f;
         tVector = tVector - (tVector.dotProduct(localUp) * localUp);
         tVector.normalise();
         tVector *= this->cameraSpringLength;
-        Ogre::Vector3 supportTarget = playerPosition + tVector;
-        supportTarget += localUp * this->offsetPosition.y;
+
+        Ogre::Vector3 supportTarget = playerPosition + tVector + localOffset;
+
         Ogre::Vector3 vVector = (supportTarget - cameraPosition) * this->cameraSpring * this->moveCameraWeight;
         vVector *= this->cameraFriction * 0.4f;
 
-        // Clamp total displacement to half the spring length per frame.
-        // Without this, when the player turns 180 degrees, vVector can be strong enough
-        // (especially with high springForce values like 4.0) to yank the camera all the way
-        // past the player to the opposite side in a single frame. The next frame the angle
-        // is now 180 degrees wrong and velocityVector locks it there — the classic flip.
-        // Clamping to springLength * 0.5 makes it physically impossible to cross the player.
+        // Clamp total displacement to half the spring length per frame to
+        // prevent the 180-degree flip when the player turns sharply.
         Ogre::Vector3 totalDisplacement = velocityVector + vVector;
         Ogre::Real dispLen = totalDisplacement.length();
         Ogre::Real maxDisp = this->cameraSpringLength * 0.5f;
@@ -151,16 +153,13 @@ namespace NOWA
             totalDisplacement *= maxDisp / dispLen;
         }
 
-        // Final camera position (projected onto local plane)
+        // Final camera position
         Ogre::Vector3 positionVector = cameraPosition + totalDisplacement;
-        Ogre::Real height = playerPosition.dotProduct(localUp) + this->offsetPosition.y;
-        Ogre::Real currentHeight = positionVector.dotProduct(localUp);
-        positionVector += (height - currentHeight) * localUp;
 
         // Final look-at orientation
         Ogre::Quaternion resultOrientation = MathHelper::getInstance()->computeLookAtQuaternion(positionVector, playerPosition, localUp);
 
-        // Apply to camera (keeps interpolation system intact)
+        // Apply to camera
         this->camera->setFixedYawAxis(true, localUp);
         NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, resultOrientation);
         NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, positionVector);

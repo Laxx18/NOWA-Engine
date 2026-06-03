@@ -515,7 +515,7 @@ namespace NOWA
                 this->id = NOWA::makeUniqueID();
             }
 
-            Ogre::String meshName;
+            Ogre::String meshName = this->meshData[0];
             Ogre::MovableObject* newMovableObject = nullptr;
 
             // desc == nullptr -> ITEM: mesh file chosen by the user in the asset browser.
@@ -524,8 +524,6 @@ namespace NOWA
             // desc with needsMeshItem=false -> no Ogre::Item; displayName drives naming.
             if (nullptr == desc || desc->needsMeshItem)
             {
-                meshName = this->meshData[0];
-
                 Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
 
                 this->objectNode->attachObject(newItem);
@@ -535,9 +533,20 @@ namespace NOWA
                 {
                     newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
                 }
+
+                size_t dotPos = meshName.find('.');
+                if (Ogre::String::npos != dotPos)
+                {
+                    meshName = meshName.substr(0, dotPos);
+                }
             }
 
-            Ogre::String gameObjectName = desc->displayName + "_0";
+            if (nullptr != desc)
+            {
+                meshName = desc->displayName;
+            }
+
+            Ogre::String gameObjectName = meshName + "_0";
             AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
 
             if (nullptr != newMovableObject)
@@ -3439,7 +3448,7 @@ namespace NOWA
             {
                 if (true == success)
                 {
-                    physicsComponent->setPosition(selectedGameObject.second.gameObject->getPosition().x, height, selectedGameObject.second.gameObject->getPosition().z);
+                    physicsComponent->getBody()->setPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition().x, height, selectedGameObject.second.gameObject->getPosition().z), physicsComponent->getBody()->getOrientation());
                 }
 
                 if (GetAsyncKeyState(VK_LMENU))
@@ -3464,7 +3473,8 @@ namespace NOWA
                 }
                 else
                 {
-                    physicsComponent->setPosition(selectedGameObject.second.gameObject->getPosition() + offset);
+                    // physicsComponent->setPosition(selectedGameObject.second.gameObject->getPosition() + offset);
+                    physicsComponent->getBody()->setPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition() + offset), physicsComponent->getBody()->getOrientation());
                 }
                 if (Ogre::Vector3::ZERO != normal)
                 {

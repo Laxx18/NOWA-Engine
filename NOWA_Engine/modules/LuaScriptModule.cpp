@@ -379,29 +379,68 @@ namespace NOWA
 	}
 
 	bool LuaScriptModule::checkLuaFunctionAvailable(const Ogre::String& scriptName, const Ogre::String& functionName)
-	{
-		LuaScript* luaScript = this->getScript(scriptName);
-		if (nullptr != luaScript)
-		{
-			const Ogre::String& scriptContent = luaScript->getScriptContent();
-			size_t functionNameStart = scriptContent.find(functionName);
-			if (Ogre::String::npos != functionNameStart)
-			{
-				Ogre::String strBefore = scriptContent.substr(functionNameStart - 2, 2);
-				Ogre::String strAfter = scriptContent.substr(functionNameStart + functionName.length(), 2);
-				if (functionNameStart > 2 && strBefore == "[\"" && strAfter == "\"]")
-				{
-					return true;
-				}
-				Ogre::String strBefore2 = scriptContent.substr(functionNameStart - 9, 9);
-				if (functionNameStart > 9 && strBefore2 == "function ")
-				{
-					return true;
-				}
-			}
-		}
-		return false;
-	}
+    {
+        LuaScript* luaScript = this->getScript(scriptName);
+        if (nullptr == luaScript)
+        {
+            return false;
+        }
+
+        const Ogre::String& c = luaScript->getScriptContent();
+        const size_t flen = functionName.size();
+        size_t searchPos = 0u;
+
+        while (true)
+        {
+            const size_t pos = c.find(functionName, searchPos);
+            if (Ogre::String::npos == pos)
+            {
+                break;
+            }
+
+            // ---- Is this occurrence on a comment line? ----
+            // Find the start of the line that contains pos.
+            const size_t lastNL = c.rfind('\n', pos);
+            const size_t lineStart = (lastNL == Ogre::String::npos) ? 0u : lastNL + 1u;
+
+            // Skip leading whitespace (spaces and tabs) on this line.
+            size_t lineCheck = lineStart;
+            while (lineCheck < pos && (c[lineCheck] == ' ' || c[lineCheck] == '\t'))
+            {
+                ++lineCheck;
+            }
+
+            // If the first two non-whitespace characters on the line are "--"
+            // the whole line is a Lua comment -- skip this occurrence.
+            const bool isCommentLine = (lineCheck + 1u < c.size() && c[lineCheck] == '-' && c[lineCheck + 1u] == '-');
+
+            if (!isCommentLine)
+            {
+                // Pattern 1 : SomeTable["functionName"] = function(...)
+                if (pos >= 2u)
+                {
+                    const bool beforeOk = (c[pos - 2u] == '[' && c[pos - 1u] == '"');
+                    const size_t endPos = pos + flen;
+                    const bool afterOk = (endPos + 1u < c.size() && c[endPos] == '"' && c[endPos + 1u] == ']');
+                    if (beforeOk && afterOk)
+                    {
+                        return true;
+                    }
+                }
+
+                // Pattern 2 : function functionName(...)
+                if (pos >= 9u && c.substr(pos - 9u, 9u) == "function ")
+                {
+                    return true;
+                }
+            }
+
+            // Advance past this occurrence and continue scanning.
+            searchPos = pos + flen;
+        }
+
+        return false;
+    }
 
 	bool LuaScriptModule::checkLuaStateAvailable(const Ogre::String& scriptName, const Ogre::String& stateName)
 	{

@@ -1281,6 +1281,16 @@ namespace NOWA
         }
     }
 
+    void PhysicsComponent::setPositionOrientation(const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        this->gameObjectPtr->setAttributePosition(position);
+        this->gameObjectPtr->setAttributeOrientation(orientation);
+        if (nullptr != this->physicsBody)
+        {
+            this->physicsBody->setPositionOrientation(position, orientation);
+        }
+    }
+
     Ogre::Vector3 PhysicsComponent::getPosition(void) const
     {
         if (nullptr != this->physicsBody)

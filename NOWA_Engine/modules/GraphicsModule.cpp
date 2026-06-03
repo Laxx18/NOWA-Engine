@@ -985,7 +985,7 @@ namespace NOWA
                 nodeTransforms->transforms[i].position = position;
             }
 
-            nodeTransforms->active = false;
+            nodeTransforms->active = true;
             nodeTransforms->stableFrames = 0;
             nodeTransforms->updatedThisFrame = false;
         }
@@ -1021,7 +1021,7 @@ namespace NOWA
                 nodeTransforms->transforms[i].orientation = orientation;
             }
 
-            nodeTransforms->active = false;
+            nodeTransforms->active = true;
             nodeTransforms->stableFrames = 0;
             nodeTransforms->updatedThisFrame = false;
         }
@@ -1057,7 +1057,7 @@ namespace NOWA
                 nodeTransforms->transforms[i].scale = scale;
             }
 
-            nodeTransforms->active = false;
+            nodeTransforms->active = true;
             nodeTransforms->stableFrames = 0;
             nodeTransforms->updatedThisFrame = false;
         }
@@ -1098,25 +1098,9 @@ namespace NOWA
                 nodeTransforms->transforms[i].scale = scale;
             }
 
-            // Apply immediately to the scene node right now, on this thread,
-            // bypassing updateAllTransforms entirely. This is the authoritative
-            // write — no interpolation, no deferral, no possibility of being
-            // overwritten by a stale pending update.
-            if (!useDerived)
-            {
-                node->setPosition(position);
-                node->setOrientation(orientation);
-                node->setScale(scale);
-            }
-            else
-            {
-                node->_setDerivedPosition(position);
-                node->_setDerivedOrientation(orientation);
-            }
-
             // Deactivate: updateAllTransforms must not touch this node again
             // until new physics data arrives via a non-fireAndForget write.
-            nodeTransforms->active = false;
+            nodeTransforms->active = true;
             nodeTransforms->stableFrames = 0;
             nodeTransforms->updatedThisFrame = false;
         }
@@ -1208,7 +1192,7 @@ namespace NOWA
                 cameraTransforms->transforms[i].position = position;
             }
 
-            cameraTransforms->active = false;
+            cameraTransforms->active = true;
             cameraTransforms->stableFrames = 0;
             cameraTransforms->updatedThisFrame = false;
         }
@@ -1236,7 +1220,7 @@ namespace NOWA
                 cameraTransforms->transforms[i].orientation = orientation;
             }
 
-            cameraTransforms->active = false;
+            cameraTransforms->active = true;
             cameraTransforms->stableFrames = 0;
             cameraTransforms->updatedThisFrame = false;
         }
@@ -1265,7 +1249,7 @@ namespace NOWA
                 cameraTransforms->transforms[i].orientation = orientation;
             }
 
-            cameraTransforms->active = false;
+            cameraTransforms->active = true;
             cameraTransforms->stableFrames = 0;
             cameraTransforms->updatedThisFrame = false;
         }
@@ -1354,7 +1338,7 @@ namespace NOWA
                 oldBoneTransforms->transforms[i].position = position;
             }
 
-            oldBoneTransforms->active = false;
+            oldBoneTransforms->active = true;
             oldBoneTransforms->stableFrames = 0;
             oldBoneTransforms->updatedThisFrame = false;
         }
@@ -1382,7 +1366,7 @@ namespace NOWA
                 oldBoneTransforms->transforms[i].orientation = orientation;
             }
 
-            oldBoneTransforms->active = false;
+            oldBoneTransforms->active = true;
             oldBoneTransforms->stableFrames = 0;
             oldBoneTransforms->updatedThisFrame = false;
         }
@@ -1411,7 +1395,7 @@ namespace NOWA
                 oldBoneTransforms->transforms[i].orientation = orientation;
             }
 
-            oldBoneTransforms->active = false;
+            oldBoneTransforms->active = true;
             oldBoneTransforms->stableFrames = 0;
             oldBoneTransforms->updatedThisFrame = false;
         }
@@ -1490,7 +1474,7 @@ namespace NOWA
                 boneTransforms->transforms[i].position = position;
             }
 
-            boneTransforms->active = false;
+            boneTransforms->active = true;
             boneTransforms->stableFrames = 0;
             boneTransforms->updatedThisFrame = false;
         }
@@ -1518,7 +1502,7 @@ namespace NOWA
                 boneTransforms->transforms[i].orientation = orientation;
             }
 
-            boneTransforms->active = false;
+            boneTransforms->active = true;
             boneTransforms->stableFrames = 0;
             boneTransforms->updatedThisFrame = false;
         }
@@ -1547,7 +1531,7 @@ namespace NOWA
                 boneTransforms->transforms[i].orientation = orientation;
             }
 
-            boneTransforms->active = false;
+            boneTransforms->active = true;
             boneTransforms->stableFrames = 0;
             boneTransforms->updatedThisFrame = false;
         }

@@ -34,8 +34,8 @@ FutureFighterJet_0["connect"] = function(gameObject)
     flySound:setVolume(80);
     flySound:setActivated(true);
     
-    thisGameObject:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(false);
-    thisGameObject:getParticleUniverseComponentFromName("SmokeParticle"):setActivated(false);
+    thisGameObject:getParticleFxComponent("ExplosionParticle"):setActivated(false);
+    thisGameObject:getParticleFxComponent("SmokeParticle"):setActivated(false);
     laserSpawnComponent:reactOnSpawn(function(spawnedGameObject, originGameObject)
             spawnedGameObject:getPhysicsComponent():setCollidable(true);
             local laserBillboard = spawnedGameObject:getBillboardComponent();

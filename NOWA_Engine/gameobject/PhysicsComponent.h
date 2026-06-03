@@ -159,6 +159,15 @@ namespace NOWA
 		 */
 		virtual void rotate(const Ogre::Quaternion& relativeRotation);
 
+		/**
+         * @brief		Sets the position for this game object
+         * @param[in]	x	The x-value to set
+         * @param[in]	y	The y-value to set
+         * @param[in]	z	The z-value to set
+         * @note		Attention: Never ever use this function in an update function for physics, as it will mess up parts of physics like ragdolls etc. Only use it for initialization!
+         */
+        virtual void setPositionOrientation(const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+
 		virtual Ogre::Vector3 getPosition(void) const;
 
 		virtual void setScale(const Ogre::Vector3& scale);
