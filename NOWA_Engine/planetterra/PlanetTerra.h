@@ -187,6 +187,7 @@ namespace NOWA
 
         const std::vector<Ogre::Vector2>& getUvCoords(void) const;
 
+        void setDynamic(bool dynamic);
     private:
         // Internal CPU helpers (MAIN THREAD)
         void generateBaseSphere();

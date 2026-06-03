@@ -535,20 +535,9 @@ namespace NOWA
                 {
                     newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
                 }
-
-                size_t dotPos = meshName.find('.');
-                if (Ogre::String::npos != dotPos)
-                {
-                    meshName = meshName.substr(0, dotPos);
-                }
-            }
-            else
-            {
-                // needsMeshItem=false — desc is guaranteed non-null here.
-                meshName = desc->displayName;
             }
 
-            Ogre::String gameObjectName = meshName + "_0";
+            Ogre::String gameObjectName = desc->displayName + "_0";
             AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
 
             if (nullptr != newMovableObject)

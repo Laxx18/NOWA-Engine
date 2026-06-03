@@ -1100,7 +1100,7 @@ namespace NOWA
 
     void PlanetTerraComponent::setPlanetData(const std::vector<unsigned char>& data)
     {
-        if (!planet || data.size() < 8u)
+        if (!this->planet || data.size() < 8u)
         {
             return;
         }
@@ -1124,15 +1124,23 @@ namespace NOWA
         off += vc * sizeof(float);
         memcpy(blend.data(), &data[off], bsz);
 
-        planet->restoreHeightData(heights);
-        planet->restoreBlendData(blend);
+        this->planet->restoreHeightData(heights);
+        this->planet->restoreBlendData(blend);
 
         NOWA::GraphicsModule::RenderCommand cmd = [this]()
         {
-            planet->uploadVertexData();
-            planet->uploadBlendData();
+            this->planet->uploadVertexData();
+            this->planet->uploadBlendData();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetTerraComponent::setPlanetData");
+    }
+
+    void PlanetTerraComponent::setDynamic(bool dynamic)
+    {
+        if (nullptr != this->planet)
+        {
+            this->planet->setDynamic(dynamic);
+        }
     }
 
     void PlanetTerraComponent::fireUndoEvent(const std::vector<unsigned char>& oldData)

@@ -209,6 +209,8 @@ namespace NOWA
 
         PlanetOcean* getOcean(void) const;
 
+        void setDynamic(bool dynamic);
+
     public:
         /**
          * @see GameObjectComponent::getStaticClassId

@@ -64,12 +64,13 @@ namespace NOWA
 		this->lightDirectionalComponent = nullptr;
 		if (nullptr != this->atmosphereNpr)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("AtmosphereComponent::~AtmosphereComponent",
-			{
-				this->atmosphereNpr->setLight(nullptr);
-				delete this->atmosphereNpr;
-				this->atmosphereNpr = nullptr;
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                this->atmosphereNpr->setLight(nullptr);
+                delete this->atmosphereNpr;
+                this->atmosphereNpr = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::~AtmosphereComponent");
 		}
 	}
 
@@ -799,30 +800,31 @@ namespace NOWA
 			return false;
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("AtmosphereComponent::postInit",
-		{
-			if (nullptr != this->atmosphereNpr)
-			{
-				this->atmosphereNpr->setLight(nullptr);
-				delete this->atmosphereNpr;
-				this->atmosphereNpr = nullptr;
-			}
+		NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            if (nullptr != this->atmosphereNpr)
+            {
+                this->atmosphereNpr->setLight(nullptr);
+                delete this->atmosphereNpr;
+                this->atmosphereNpr = nullptr;
+            }
 
-			this->atmosphereNpr = new Ogre::AtmosphereNpr(this->gameObjectPtr->getSceneManager()->getDestinationRenderSystem()->getVaoManager());
+            this->atmosphereNpr = new Ogre::AtmosphereNpr(this->gameObjectPtr->getSceneManager()->getDestinationRenderSystem()->getVaoManager());
 
-			this->oldLightDirection = this->lightDirectionalComponent->getDirection();
-			// Todo: If terra is set, update for terra, see sample
-			this->atmosphereNpr->setLight(this->lightDirectionalComponent->getOgreLight());
+            this->oldLightDirection = this->lightDirectionalComponent->getDirection();
+            // Todo: If terra is set, update for terra, see sample
+            this->atmosphereNpr->setLight(this->lightDirectionalComponent->getOgreLight());
 
-			{
-				// Preserve the Power Scale explicitly set by the sample
-				Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-				preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
-				this->atmosphereNpr->setPreset(preset);
-			}
+            {
+                // Preserve the Power Scale explicitly set by the sample
+                Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+                preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
+                this->atmosphereNpr->setPreset(preset);
+            }
 
-			this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), this->enableSky->getBool());
-		});
+            this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), this->enableSky->getBool());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::postInit");
 
 		return true;
 	}
@@ -847,14 +849,15 @@ namespace NOWA
 		// Clear pointers on *this* immediately
 		this->atmosphereNpr = nullptr;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::destroyTerra", _1(&atmosphereNpr),
-		{
-			if (atmosphereNpr)
-			{
-				delete atmosphereNpr;
-				atmosphereNpr = nullptr;
-			}
-		});
+		NOWA::GraphicsModule::RenderCommand cmd = [this, &atmosphereNpr]()
+        {
+            if (atmosphereNpr)
+            {
+                delete atmosphereNpr;
+                atmosphereNpr = nullptr;
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::destroyTerra");
 	}
 
 	bool AtmosphereComponent::connect(void)
@@ -885,10 +888,11 @@ namespace NOWA
 			presets.back().envmapScale = this->envmapScales[i]->getReal();
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AtmosphereComponent::connect", _1(presets),
-		{
-			this->atmosphereNpr->setPresets(presets);
-		});
+		NOWA::GraphicsModule::RenderCommand cmd = [this, presets]()
+        {
+            this->atmosphereNpr->setPresets(presets);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::connect");
 
 		// this->lightDirectionalComponent->setPowerScale(presets.front().sunPower);
 
@@ -911,10 +915,11 @@ namespace NOWA
 			this->update(0.016, false);
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("AtmosphereComponent::disconnect",
-		{
-			this->lightDirectionalComponent->getOgreLight()->setDirection(this->oldLightDirection);
-		});
+		NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->lightDirectionalComponent->getOgreLight()->setDirection(this->oldLightDirection);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::disconnect");
 
 		return true;
 	}
@@ -987,15 +992,18 @@ namespace NOWA
 					float atmosphereTime01 = (this->timeOfDay + 1.0f) * 0.5f;
 
 					// Clamp defensively (important!)
-					atmosphereTime01 = Ogre::Math::Clamp(atmosphereTime01, 0.0f, 0.999999f);
+                atmosphereTime01 = Ogre::Math::Clamp(atmosphereTime01, 0.0f, 0.999999f);
 
-					this->atmosphereNpr->updatePreset(sunDir, atmosphereTime01);
+                this->atmosphereNpr->updatePreset(sunDir, atmosphereTime01);
 
-					this->atmosphereNpr->_update(this->gameObjectPtr->getSceneManager(),
-						NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera());
-				};
-			id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
-			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction2, false);
+                Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+                if (nullptr != camera)
+                {
+                    this->atmosphereNpr->_update(this->gameObjectPtr->getSceneManager(), NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera());
+                }
+            };
+            id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction2, false);
 
 			if (true == this->bShowDebugData)
 			{
@@ -1369,10 +1377,12 @@ namespace NOWA
 	void AtmosphereComponent::setEnableSky(bool enableSky)
 	{
 		this->enableSky->setValue(enableSky);
-		ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setEnableSky", _1(enableSky),
-		{
-			this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), enableSky);
-		});
+
+		NOWA::GraphicsModule::RenderCommand cmd = [this, enableSky]()
+        {
+            this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), enableSky);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setEnableSky");
 	}
 
 	bool AtmosphereComponent::getEnableSky(void) const
@@ -1485,10 +1495,11 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.time = normalizedTime;
 
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setTime", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setTime");
 		}
 	}
 
@@ -1514,10 +1525,11 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.densityCoeff = densityCoefficient;
 
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setDensityCoefficient", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setDensityCoefficient");
 		}
 	}
 
@@ -1543,10 +1555,11 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.densityDiffusion = densityDiffusion;
 
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setDensityDiffusion", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setDensityDiffusion");
 		}
 	}
 
@@ -1572,10 +1585,12 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.horizonLimit = horizonLimit;
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setHorizonLimit", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setHorizonLimit");
 		}
 	}
 
@@ -1602,10 +1617,11 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.sunPower = sunPower;
 
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setSunPower", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSunPower");
 		}
 	}
 
@@ -1633,10 +1649,12 @@ namespace NOWA
 			{
 				Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 				preset.skyPower = skyPower;
-				ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setSunPower", _1(preset),
-				{
-					this->atmosphereNpr->setPreset(preset);
-				});
+
+				NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+                {
+                    this->atmosphereNpr->setPreset(preset);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSkyPower");
 			}
 		}
 	}
@@ -1689,10 +1707,12 @@ namespace NOWA
 			{
 				Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 				preset.skyColour = tempSkyColor;
-				ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setSkyColor", _1(preset),
-				{
-					this->atmosphereNpr->setPreset(preset);
-				});
+
+				NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+                {
+                    this->atmosphereNpr->setPreset(preset);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSkyColor");
 			}
 		}
 	}
@@ -1724,10 +1744,12 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.fogDensity = fogDensity;
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setFogDensity", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setFogDensity");
 		}
 	}
 
@@ -1753,10 +1775,12 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.fogBreakMinBrightness = fogBreakMinBrightness;
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setFogBreakMinBrightness", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setFogBreakMinBrightness");
 		}
 	}
 
@@ -1783,10 +1807,11 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.fogBreakFalloff = fogBreakFalloff;
 
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setFogBreakMinBrightness", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setFogBreakFalloff");
 		}
 	}
 
@@ -1814,10 +1839,11 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.linkedLightPower = linkedLightPower;
 
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setLinkedLightPower", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setLinkedLightPower");
 		}
 	}
 
@@ -1843,10 +1869,12 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.linkedSceneAmbientUpperPower = linkedAmbientUpperPower;
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setLinkedAmbientUpperPower", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setLinkedAmbientUpperPower");
 		}
 	}
 
@@ -1872,10 +1900,12 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.linkedSceneAmbientLowerPower = linkedAmbientLowerPower;
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setLinkedAmbientLowerPower", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setLinkedAmbientLowerPower");
 		}
 	}
 
@@ -1906,10 +1936,11 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.envmapScale = envmapScale;
 
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setEnvmapScale", _1(preset),
-			{
-				this->atmosphereNpr->setPreset(preset);
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            {
+                this->atmosphereNpr->setPreset(preset);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setEnvmapScale");
 		}
 	}
 
@@ -1927,20 +1958,24 @@ namespace NOWA
 	{
 		// Avoids possible issues if this is changed/destroyed.
 		auto atmosphereNpr = this->atmosphereNpr; // Capture pointer explicitly
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("AtmosphereComponent::setSunDir1", _3(atmosphereNpr, sunAltitude, azimuth),
-		{
-			atmosphereNpr->setSunDir(sunAltitude, azimuth);
-		});
+
+		NOWA::GraphicsModule::RenderCommand cmd = [this, atmosphereNpr, sunAltitude, azimuth]()
+        {
+            atmosphereNpr->setSunDir(sunAltitude, azimuth);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSunDir");
 	}
 
 	void AtmosphereComponent::setSunDir(const Ogre::Vector3& sunDir, const Ogre::Real normalizedTimeOfDay)
 	{
 		// Avoids possible issues if this is changed/destroyed.
 		auto atmosphereNpr = this->atmosphereNpr; // Capture pointer explicitly
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("AtmosphereComponent::setSunDir2", _3(atmosphereNpr, sunDir, normalizedTimeOfDay),
-		{
-			atmosphereNpr->setSunDir(sunDir, normalizedTimeOfDay);
-		});
+
+		NOWA::GraphicsModule::RenderCommand cmd = [this, atmosphereNpr, sunDir, normalizedTimeOfDay]()
+        {
+            atmosphereNpr->setSunDir(sunDir, normalizedTimeOfDay);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSunDir2");
 	}
 
 	Ogre::Vector3 AtmosphereComponent::getAtmosphereAt(const Ogre::Vector3& cameraDir, bool bSkipSun)

@@ -61,8 +61,8 @@ namespace NOWA
         }
 
         const Ogre::String meshName = objectName + "_PlanetMesh";
-        planetItem = buildItemFromCPUArrays(meshName);
-        if (!planetItem)
+        this->planetItem = buildItemFromCPUArrays(meshName);
+        if (nullptr == this->planetItem)
         {
             return false;
         }
@@ -70,7 +70,12 @@ namespace NOWA
         setDatablockByName(datablockName);
         createBlendWeightTexture();
         uploadBlendData();
-        attachedNode->attachObject(planetItem); 
+        // Match the item's static state to the node before re-attaching.
+        if (this->planetItem->isStatic() != attachedNode->isStatic())
+        {
+            this->planetItem->setStatic(attachedNode->isStatic());
+        }
+        attachedNode->attachObject(this->planetItem); 
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerra] Created planet '" + objectName + "' radius=" + Ogre::StringConverter::toString(radius) + " segH=" + Ogre::StringConverter::toString(segmentsH) +
                                                                                " segV=" + Ogre::StringConverter::toString(segmentsV) + " verts=" + Ogre::StringConverter::toString(static_cast<unsigned int>(vertexCount)));
@@ -349,7 +354,7 @@ namespace NOWA
             }
         }*/
 
-        // Default: NO detail layer active -> base diffuse (ground_dirt_gardenD) shows
+        //// Default: NO detail layer active -> base diffuse (ground_dirt_gardenD) shows
         for (Ogre::uint32 y = 0u; y < static_cast<Ogre::uint32>(blendTexSize); ++y)
         {
             Ogre::uint8* RESTRICT_ALIAS pix = reinterpret_cast<Ogre::uint8 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
@@ -360,9 +365,22 @@ namespace NOWA
             }
         }
 
+        // Keep CPU blendData in sync with staging data.
+        // Do NOT use texBox.bytesPerImage -- getStagingTexture() may return a pooled staging
+        // texture larger than requested, making bytesPerImage > blendTexSize*blendTexSize*4.
+        // Copy row-by-row using the actual pixel dimensions to handle row-pitch alignment.
+        const size_t rowBytes = static_cast<size_t>(blendTexSize) * 4u;
+        const size_t totalBytes = rowBytes * static_cast<size_t>(blendTexSize);
+        blendData.resize(totalBytes, 0u);
+        for (Ogre::uint32 row = 0u; row < static_cast<Ogre::uint32>(blendTexSize); ++row)
+        {
+            const Ogre::uint8* srcRow = reinterpret_cast<const Ogre::uint8*>(texBox.at(0, row, 0));
+            memcpy(&blendData[row * rowBytes], srcRow, rowBytes);
+        }
+
         // Keep CPU blendData in sync with staging data
-        blendData.resize(static_cast<size_t>(blendTexSize) * blendTexSize * 4u, 0u);
-        memcpy(blendData.data(), texBox.data, texBox.bytesPerImage);
+        // blendData.resize(static_cast<size_t>(blendTexSize) * blendTexSize * 4u, 0u);
+        // memcpy(blendData.data(), texBox.data, texBox.bytesPerImage);
 
         blendStagingTex->stopMapRegion();
         blendStagingTex->upload(texBox, blendWeightTex, 0u);
@@ -484,6 +502,14 @@ namespace NOWA
     const std::vector<Ogre::Vector2>& PlanetTerra::getUvCoords(void) const
     {
         return this->uvCoords;
+    }
+
+    void PlanetTerra::setDynamic(bool dynamic)
+    {
+        if (nullptr != planetItem)
+        {
+            this->planetItem->setStatic(!dynamic);
+        }
     }
 
     void PlanetTerra::generateBaseSphere()

@@ -76,6 +76,12 @@ namespace NOWA
 
         this->setDatablockByName(datablockName);
         this->initPlasmaTexture();
+        // Match the item's static state to the node before re-attaching.
+        if (sunItem->isStatic() != attachedNode->isStatic())
+        {
+            sunItem->setStatic(attachedNode->isStatic());
+        }
+
         this->attachedNode->attachObject(this->sunItem);
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetSun] Created sun '" + this->objectName + "' radius=" + Ogre::StringConverter::toString(this->radius) + " segH=" + Ogre::StringConverter::toString(this->segmentsH) +
@@ -216,6 +222,14 @@ namespace NOWA
     float PlanetSun::getRadius() const
     {
         return this->radius;
+    }
+
+    void PlanetSun::setDynamic(bool dynamic)
+    {
+        if (nullptr != this->sunItem)
+        {
+            this->sunItem->setStatic(!dynamic);
+        }
     }
 
     // =========================================================================

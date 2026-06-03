@@ -11,7 +11,7 @@
 #include "gameobject/DatablockPbsComponent.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/LightDirectionalComponent.h"
-#include "gameobject/PhysicsActiveKinematicComponent.h"
+#include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/PhysicsComponent.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
@@ -98,7 +98,9 @@ namespace NOWA
         this->useMoons->setDescription("Whether planets can have moons.");
         this->moonsPerPlanetMin->setDescription("Minimum moons per planet (when Use Moons is checked).");
         this->moonsPerPlanetMax->setDescription("Maximum moons per planet.");
-        this->useMotion->setDescription("Enable kinematic orbital motion. Planets and moons orbit their parents via PhysicsActiveKinematicComponent.");
+        this->useMotion->setDescription("Enable orbital motion. Planets and moons orbit their parents. "
+                                        "PhysicsArtifactComponent is used for collision; setDynamic(true/false) "
+                                        "switches between moving and static modes.");
         this->useOcean->setDescription("Allow planets to receive a PlanetOceanComponent based on Ocean Probability.");
         this->oceanProbability->setDescription("Probability [0,1] that a planet gets an ocean.");
         this->sunRadius->setDescription("Radius of the sun sphere in world units.");
@@ -370,6 +372,21 @@ namespace NOWA
                 };
 
                 readUL(sp + "SunId", system.sunId);
+                // Restore per-system star color and intensity saved at generation time.
+                Ogre::Vector3 lightColor(1.0f, 0.95f, 0.80f);
+                float lightPower = 3.14159f;
+                if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == sp + "LightColor")
+                {
+                    lightColor = XMLConverter::getAttribVector3(propertyElement, "data");
+                    propertyElement = propertyElement->next_sibling("property");
+                }
+                if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == sp + "LightPower")
+                {
+                    lightPower = XMLConverter::getAttribReal(propertyElement, "data");
+                    propertyElement = propertyElement->next_sibling("property");
+                }
+                system.sunLightColor = lightColor;
+                system.sunLightPower = lightPower;
 
                 unsigned int planetCount = 0u;
                 readUInt(sp + "PlanetCount", planetCount);
@@ -473,6 +490,15 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
                 "[UniversumComponent] Restored from scene -- re-attaching observers for " + Ogre::StringConverter::toString(static_cast<unsigned int>(this->solarSystems.size())) + " solar system(s).");
 
+            // Fire camera speed event so DesignState sets the editor camera speed correctly,
+            // matching what generateUniverse() would have posted.
+            // Formula mirrors generateUniverse: max orbital dist * 0.1 / 10s.
+            const float scaleFactor = std::pow(10.0f, this->scale->getReal());
+            const float approxMaxDist = this->orbitalDistanceMax->getReal() * scaleFactor;
+            const float suggestedSpeed = std::max(10.0f, approxMaxDist * 0.1f);
+            boost::shared_ptr<EventDataFeedback> speedEvent(boost::make_shared<EventDataFeedback>(true, "[UNIVERSUM_CAMSPEED:" + Ogre::StringConverter::toString(suggestedSpeed) + "]"));
+            AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(speedEvent);
+
             for (SolarSystem& system : this->solarSystems)
             {
                 for (OrbitalBody& planet : system.planets)
@@ -542,17 +568,40 @@ namespace NOWA
         if (nullptr != this->cachedSunLight && false == this->playerOnSurface)
         {
             Ogre::Light* light = this->cachedSunLight;
-            NOWA::GraphicsModule::RenderCommand shadowCmd = [light]()
+            NOWA::GraphicsModule::RenderCommand shadowCmd = [light]
             {
                 light->setCastShadows(false);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(shadowCmd), "UniversumComponent::connect::disableShadows");
         }
 
-        // Register GOs with PlanetSurfaceComponent, compute local offsets, hide them all.
+        // Ensure all planet/moon GOs and their sub-component items (PlanetTerra, PlanetOcean,
+        // PlanetSun) are consistently SCENE_STATIC at simulation start. On scene load,
+        // sub-component items may default to SCENE_DYNAMIC while the SceneNode is already
+        // SCENE_STATIC (saved state), causing "movableobject is static while node is not" crash.
         if (false == this->solarSystems.empty())
         {
             this->registerAndHideSurfaceObjects();
+
+            for (SolarSystem& system : this->solarSystems)
+            {
+                for (OrbitalBody& planet : system.planets)
+                {
+                    GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planet.gameObjectId);
+                    if (nullptr != planetGo)
+                    {
+                        this->setPlanetDynamic(planetGo, true);
+                    }
+                }
+                for (auto& moonPair : system.moons)
+                {
+                    GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
+                    if (nullptr != moonGo)
+                    {
+                        this->setPlanetDynamic(moonGo, true);
+                    }
+                }
+            }
         }
 
         return true;
@@ -562,18 +611,24 @@ namespace NOWA
     {
         GameObjectComponent::disconnect();
 
+        // Planets/moons were always SCENE_STATIC -- nothing to reset.
+
         // Restore all surface objects to original world positions and make visible.
         this->restoreAllSurfaceObjects();
 
         // Restore shadow casting -- editor and next simulation start from a clean state.
         if (nullptr != this->cachedSunLight)
         {
-            Ogre::Light* light = this->cachedSunLight;
-            NOWA::GraphicsModule::RenderCommand shadowCmd = [light]()
+            if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
             {
-                light->setCastShadows(true);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(shadowCmd), "UniversumComponent::disconnect::restoreShadows");
+                Ogre::Light* light = this->cachedSunLight;
+
+                NOWA::GraphicsModule::RenderCommand shadowCmd = [light]
+                {
+                    light->setCastShadows(true);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(shadowCmd), "UniversumComponent::disconnect::restoreShadows");
+            }
         }
 
         this->fakeLightElapsed = 0.0f;
@@ -660,7 +715,7 @@ namespace NOWA
                         continue;
                     }
 
-                    auto physComp = NOWA::makeStrongPtr(planetGo->getComponent<PhysicsActiveKinematicComponent>());
+                    auto physComp = NOWA::makeStrongPtr(planetGo->getComponent<PhysicsArtifactComponent>());
                     if (nullptr != physComp)
                     {
                         if (false == planet.orbitalPaused)
@@ -672,10 +727,16 @@ namespace NOWA
                             float angle = planet.orbitalElapsed * planet.orbitalSpeed + planet.phaseOffset;
                             Ogre::Vector3 newPos(sunPos.x + std::cos(angle) * planet.orbitalRadius, sunPos.y + std::sin(angle * planet.orbitalTilt) * planet.orbitalRadius * 0.1f, sunPos.z + std::sin(angle) * planet.orbitalRadius);
                             planet.currentPosition = newPos;
-                            physComp->setPosition(newPos);
 
                             Ogre::Radian axialAngle(planet.axialElapsed * planet.axialSpeed);
-                            physComp->setOrientation(Ogre::Quaternion(axialAngle, Ogre::Vector3::UNIT_Y));
+                            Ogre::Quaternion axialRot(axialAngle, Ogre::Vector3::UNIT_Y);
+
+                            // Single atomic call: sets both pos+rot, sets m_validToUpdateStatic=true,
+                            // and calls updateNode(1.0f) inline -- SceneNode updated immediately
+                            // on the main thread without waiting for interalPostUpdate().
+                            // physComp->getBody()->setPositionOrientation(newPos, axialRot);
+                            physComp->setPosition(newPos);
+                            physComp->setOrientation(axialRot);
                         }
                         // else: planet is fully frozen -- neither position nor orientation
                         // changes. Buildings (TreeCollision) stay valid. Day/night is
@@ -709,12 +770,14 @@ namespace NOWA
                         continue;
                     }
 
-                    auto physComp = NOWA::makeStrongPtr(moonGo->getComponent<PhysicsActiveKinematicComponent>());
+                    auto physComp = NOWA::makeStrongPtr(moonGo->getComponent<PhysicsArtifactComponent>());
                     if (nullptr != physComp)
                     {
-                        physComp->setPosition(newPos);
                         Ogre::Radian axialAngle(moon.axialElapsed * moon.axialSpeed);
-                        physComp->setOrientation(Ogre::Quaternion(axialAngle, Ogre::Vector3::UNIT_Y));
+                        Ogre::Quaternion axialRot(axialAngle, Ogre::Vector3::UNIT_Y);
+                        // physComp->getBody()->setPositionOrientation(newPos, axialRot);
+                        physComp->setPosition(newPos);
+                        physComp->setOrientation(axialRot);
                     }
                 }
             }
@@ -1092,6 +1155,61 @@ namespace NOWA
         writeAttr("6", "Far Clip Space", XMLConverter::ConvertString(doc, this->farClipSpace->getReal()));
         writeAttr("6", "Far Clip Surface", XMLConverter::ConvertString(doc, this->farClipSurface->getReal()));
         writeAttr("6", "Far Clip Transition Speed", XMLConverter::ConvertString(doc, this->farClipTransitionSpeed->getReal()));
+
+        // ---- Save solar systems so scene reload restores orbital motion --------
+        writeAttr("2", "Saved System Count", XMLConverter::ConvertString(doc, static_cast<unsigned int>(this->solarSystems.size())));
+
+        for (size_t si = 0u; si < this->solarSystems.size(); ++si)
+        {
+            const SolarSystem& sys = this->solarSystems[si];
+            const Ogre::String sp = "Sys" + Ogre::StringConverter::toString(static_cast<unsigned int>(si)) + "_";
+
+            writeAttr("2", doc.allocate_string((sp + "SunId").c_str()), XMLConverter::ConvertString(doc, sys.sunId));
+            writeAttr("9", doc.allocate_string((sp + "LightColor").c_str()), XMLConverter::ConvertString(doc, sys.sunLightColor));
+            writeAttr("6", doc.allocate_string((sp + "LightPower").c_str()), XMLConverter::ConvertString(doc, sys.sunLightPower));
+            writeAttr("2", doc.allocate_string((sp + "PlanetCount").c_str()), XMLConverter::ConvertString(doc, static_cast<unsigned int>(sys.planets.size())));
+
+            for (size_t pi = 0u; pi < sys.planets.size(); ++pi)
+            {
+                const OrbitalBody& p = sys.planets[pi];
+                const Ogre::String pp = sp + "P" + Ogre::StringConverter::toString(static_cast<unsigned int>(pi)) + "_";
+                writeAttr("2", doc.allocate_string((pp + "Id").c_str()), XMLConverter::ConvertString(doc, p.gameObjectId));
+                writeAttr("6", doc.allocate_string((pp + "OrbR").c_str()), XMLConverter::ConvertString(doc, p.orbitalRadius));
+                writeAttr("6", doc.allocate_string((pp + "OrbS").c_str()), XMLConverter::ConvertString(doc, p.orbitalSpeed));
+                writeAttr("6", doc.allocate_string((pp + "OrbT").c_str()), XMLConverter::ConvertString(doc, p.orbitalTilt));
+                writeAttr("6", doc.allocate_string((pp + "Phase").c_str()), XMLConverter::ConvertString(doc, p.phaseOffset));
+                writeAttr("6", doc.allocate_string((pp + "AxS").c_str()), XMLConverter::ConvertString(doc, p.axialSpeed));
+                writeAttr("6", doc.allocate_string((pp + "Grav").c_str()), XMLConverter::ConvertString(doc, p.gravityStrength));
+            }
+
+            writeAttr("2", doc.allocate_string((sp + "MoonCount").c_str()), XMLConverter::ConvertString(doc, static_cast<unsigned int>(sys.moons.size())));
+
+            for (size_t mi = 0u; mi < sys.moons.size(); ++mi)
+            {
+                const Ogre::String mp = sp + "M" + Ogre::StringConverter::toString(static_cast<unsigned int>(mi)) + "_";
+                writeAttr("2", doc.allocate_string((mp + "Parent").c_str()), XMLConverter::ConvertString(doc, static_cast<unsigned int>(sys.moons[mi].first)));
+                const OrbitalBody& m = sys.moons[mi].second;
+                writeAttr("2", doc.allocate_string((mp + "Id").c_str()), XMLConverter::ConvertString(doc, m.gameObjectId));
+                writeAttr("6", doc.allocate_string((mp + "OrbR").c_str()), XMLConverter::ConvertString(doc, m.orbitalRadius));
+                writeAttr("6", doc.allocate_string((mp + "OrbS").c_str()), XMLConverter::ConvertString(doc, m.orbitalSpeed));
+                writeAttr("6", doc.allocate_string((mp + "OrbT").c_str()), XMLConverter::ConvertString(doc, m.orbitalTilt));
+                writeAttr("6", doc.allocate_string((mp + "Phase").c_str()), XMLConverter::ConvertString(doc, m.phaseOffset));
+                writeAttr("6", doc.allocate_string((mp + "AxS").c_str()), XMLConverter::ConvertString(doc, m.axialSpeed));
+                writeAttr("6", doc.allocate_string((mp + "Grav").c_str()), XMLConverter::ConvertString(doc, m.gravityStrength));
+            }
+        }
+
+        // Save owned GO ids so destroyUniverse can find them for .ptd file management.
+        Ogre::String ownedIds;
+        for (size_t i = 0u; i < this->ownedGameObjectIds.size(); ++i)
+        {
+            if (i > 0u)
+            {
+                ownedIds += ",";
+            }
+            ownedIds += Ogre::StringConverter::toString(this->ownedGameObjectIds[i]);
+        }
+        writeAttr("7", "Owned GO Ids", ownedIds);
     }
 
     // =========================================================================
@@ -1100,46 +1218,10 @@ namespace NOWA
 
     GameObjectCompPtr UniversumComponent::clone(GameObjectPtr clonedGameObjectPtr)
     {
-        UniversumCompPtr clonedCompPtr(boost::make_shared<UniversumComponent>());
-
-        clonedCompPtr->randomSeed->setValue(this->randomSeed->getUInt());
-        clonedCompPtr->solarSystemCount->setValue(this->solarSystemCount->getUInt());
-        clonedCompPtr->solarSystemDistanceMin->setValue(this->solarSystemDistanceMin->getReal());
-        clonedCompPtr->solarSystemDistanceMax->setValue(this->solarSystemDistanceMax->getReal());
-        clonedCompPtr->planetsPerSystemMin->setValue(this->planetsPerSystemMin->getUInt());
-        clonedCompPtr->planetsPerSystemMax->setValue(this->planetsPerSystemMax->getUInt());
-        clonedCompPtr->useMoons->setValue(this->useMoons->getBool());
-        clonedCompPtr->moonsPerPlanetMin->setValue(this->moonsPerPlanetMin->getUInt());
-        clonedCompPtr->moonsPerPlanetMax->setValue(this->moonsPerPlanetMax->getUInt());
-        clonedCompPtr->useMotion->setValue(this->useMotion->getBool());
-        clonedCompPtr->useOcean->setValue(this->useOcean->getBool());
-        clonedCompPtr->oceanProbability->setValue(this->oceanProbability->getReal());
-        clonedCompPtr->sunRadius->setValue(this->sunRadius->getReal());
-        clonedCompPtr->planetRadiusMin->setValue(this->planetRadiusMin->getReal());
-        clonedCompPtr->planetRadiusMax->setValue(this->planetRadiusMax->getReal());
-        clonedCompPtr->moonRadius->setValue(this->moonRadius->getReal());
-        clonedCompPtr->orbitalDistanceMin->setValue(this->orbitalDistanceMin->getReal());
-        clonedCompPtr->orbitalDistanceMax->setValue(this->orbitalDistanceMax->getReal());
-        clonedCompPtr->moonOrbitalDistanceMin->setValue(this->moonOrbitalDistanceMin->getReal());
-        clonedCompPtr->moonOrbitalDistanceMax->setValue(this->moonOrbitalDistanceMax->getReal());
-        clonedCompPtr->orbitalSpeedMin->setValue(this->orbitalSpeedMin->getReal());
-        clonedCompPtr->orbitalSpeedMax->setValue(this->orbitalSpeedMax->getReal());
-        clonedCompPtr->axialSpeedMin->setValue(this->axialSpeedMin->getReal());
-        clonedCompPtr->axialSpeedMax->setValue(this->axialSpeedMax->getReal());
-        clonedCompPtr->playerGameObjectId->setValue(this->playerGameObjectId->getULong());
-        clonedCompPtr->cameraGameObjectId->setValue(this->cameraGameObjectId->getULong());
-        clonedCompPtr->sunLightGameObjectId->setValue(this->sunLightGameObjectId->getULong());
-        clonedCompPtr->farClipSpace->setValue(this->farClipSpace->getReal());
-        clonedCompPtr->farClipSurface->setValue(this->farClipSurface->getReal());
-        clonedCompPtr->farClipTransitionSpeed->setValue(this->farClipTransitionSpeed->getReal());
-        clonedCompPtr->scale->setValue(this->scale->getReal());
-        clonedCompPtr->autoPauseOrbit->setValue(this->autoPauseOrbit->getBool());
-
-        clonedGameObjectPtr->addComponent(clonedCompPtr);
-        clonedCompPtr->setOwner(clonedGameObjectPtr);
-
-        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-        return clonedCompPtr;
+        // UniversumComponent owns a procedural solar system with dozens of generated
+        // GameObjects, observers, and runtime state. Cloning it would duplicate all of
+        // that into the same scene which makes no sense. Return nullptr to prevent it.
+        return nullptr;
     }
 
     // =========================================================================
@@ -1196,6 +1278,44 @@ namespace NOWA
     //  Called by AreaOfInterestComponent Lua callbacks.
     // =========================================================================
 
+    void UniversumComponent::setPlanetDynamic(GameObjectPtr goPtr, bool isDynamic)
+    {
+        if (nullptr == goPtr)
+        {
+            return;
+        }
+        // Primary GO setDynamic updates only the primary movableObject (the GO's own item).
+        goPtr->setDynamic(isDynamic);
+
+        // PlanetTerraComponent, PlanetOceanComponent, and PlanetSunComponent each own a
+        // separate Ogre::Item. All items on a SceneNode MUST share the same static state
+        // or Ogre asserts. Call setDynamic() on each sub-component explicitly.
+        auto terraComp = NOWA::makeStrongPtr(goPtr->getComponent<PlanetTerraComponent>());
+        if (nullptr != terraComp)
+        {
+            terraComp->setDynamic(isDynamic);
+        }
+
+        auto oceanComp = NOWA::makeStrongPtr(goPtr->getComponent<PlanetOceanComponent>());
+        if (nullptr != oceanComp)
+        {
+            oceanComp->setDynamic(isDynamic);
+        }
+
+        auto sunComp = NOWA::makeStrongPtr(goPtr->getComponent<PlanetSunComponent>());
+        if (nullptr != sunComp)
+        {
+            sunComp->setDynamic(isDynamic);
+        }
+
+        auto physComp = NOWA::makeStrongPtr(goPtr->getComponent<PhysicsArtifactComponent>());
+        if (nullptr != physComp)
+        {
+            physComp->getOwner()->setDynamic(isDynamic);
+            physComp->getBody()->setSleep(!isDynamic);
+        }
+    }
+
     void UniversumComponent::pausePlanetOrbit(unsigned long planetGameObjectId)
     {
         for (SolarSystem& system : this->solarSystems)
@@ -1208,6 +1328,14 @@ namespace NOWA
                     this->playerOnSurface = true;
                     this->fakeLightAxialSpeed = planet.axialSpeed;
                     this->fakeLightElapsed = planet.axialElapsed;
+                    // Planet was already SCENE_STATIC (we never called setDynamic(true)).
+                    // setDynamic(false) is a no-op here but kept for clarity -- planet is
+                    // confirmed static and collision is fully active.
+                    GameObjectPtr frozenGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
+                    if (nullptr != frozenGo)
+                    {
+                        this->setPlanetDynamic(frozenGo, false);
+                    }
                     // Snap far clip immediately -- PSSM split points recalculate from
                     // the camera near/far each frame. Skipping the lerp prevents a
                     // several-second window of broken shadow resolution while the lerp
@@ -1217,7 +1345,7 @@ namespace NOWA
                     if (nullptr != this->cachedSunLight)
                     {
                         Ogre::Light* light = this->cachedSunLight;
-                        NOWA::GraphicsModule::RenderCommand shadowCmd = [light]()
+                        NOWA::GraphicsModule::RenderCommand shadowCmd = [light]
                         {
                             light->setCastShadows(true);
                         };
@@ -1258,11 +1386,16 @@ namespace NOWA
                     this->playerOnSurface = true;
                     this->fakeLightAxialSpeed = moonPair.second.axialSpeed;
                     this->fakeLightElapsed = moonPair.second.axialElapsed;
+                    GameObjectPtr frozenMoonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
+                    if (nullptr != frozenMoonGo)
+                    {
+                        this->setPlanetDynamic(frozenMoonGo, false);
+                    }
                     this->currentFarClip = this->farClipSurface->getReal();
                     if (nullptr != this->cachedSunLight)
                     {
                         Ogre::Light* light = this->cachedSunLight;
-                        NOWA::GraphicsModule::RenderCommand shadowCmd = [light]()
+                        NOWA::GraphicsModule::RenderCommand shadowCmd = [light]
                         {
                             light->setCastShadows(true);
                         };
@@ -1307,8 +1440,14 @@ namespace NOWA
                     this->hideSurfaceObjects(planet);
                     this->callPlanetLeftFunction(planetGameObjectId);
 
+                    // Re-enable dynamic so setPositionOrientation() moves the SceneNode again.
+                    GameObjectPtr resumedGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
+                    if (nullptr != resumedGo)
+                    {
+                        this->setPlanetDynamic(resumedGo, true);
+                    }
+
                     // Check if any other body is still paused before clearing playerOnSurface.
-                    // If truly leaving all planets, snap far clip back and disable shadows.
                     bool anyPaused = false;
                     for (const OrbitalBody& p : system.planets)
                     {
@@ -1338,7 +1477,7 @@ namespace NOWA
                         if (nullptr != this->cachedSunLight)
                         {
                             Ogre::Light* light = this->cachedSunLight;
-                            NOWA::GraphicsModule::RenderCommand shadowCmd = [light]()
+                            NOWA::GraphicsModule::RenderCommand shadowCmd = [light]
                             {
                                 light->setCastShadows(false);
                             };
@@ -1346,7 +1485,6 @@ namespace NOWA
                         }
 
                         // Restore PSSM lambda to compositor defaults when back in space (shadows off).
-                        // Next time a surface is entered the tighten block above re-applies 0.95.
                         {
                             const Ogre::String& shadowNodeName = WorkspaceModule::getInstance()->shadowNodeName;
                             Ogre::CompositorShadowNodeDef* shadowDef = Ogre::Root::getSingleton().getCompositorManager2()->getShadowNodeDefinitionNonConst(shadowNodeName);
@@ -1375,6 +1513,14 @@ namespace NOWA
                     moonPair.second.orbitalPaused = false;
                     this->hideSurfaceObjects(moonPair.second);
                     this->callPlanetLeftFunction(planetGameObjectId);
+
+                    // Re-enable dynamic so setPositionOrientation() moves the SceneNode again.
+                    GameObjectPtr resumedGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
+                    if (nullptr != resumedGo)
+                    {
+                        this->setPlanetDynamic(resumedGo, true);
+                    }
+
                     bool anyPaused = false;
                     for (const OrbitalBody& p : system.planets)
                     {
@@ -1402,7 +1548,7 @@ namespace NOWA
                         if (nullptr != this->cachedSunLight)
                         {
                             Ogre::Light* light = this->cachedSunLight;
-                            NOWA::GraphicsModule::RenderCommand shadowCmd = [light]()
+                            NOWA::GraphicsModule::RenderCommand shadowCmd = [light]
                             {
                                 light->setCastShadows(false);
                             };
@@ -1787,18 +1933,6 @@ namespace NOWA
             delete obs;
         }
         this->planetObservers.clear();
-        for (const unsigned long id : this->ownedGameObjectIds)
-        {
-            GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
-            if (nullptr != go)
-            {
-                auto terraComp = NOWA::makeStrongPtr(go->getComponent<PlanetTerraComponent>());
-                if (nullptr != terraComp)
-                {
-                    terraComp->deletePlanetDataFile();
-                }
-            }
-        }
 
         // Now destroy all owned game objects.
         for (const unsigned long id : this->ownedGameObjectIds)
@@ -2046,7 +2180,7 @@ namespace NOWA
 
         if (true == this->useMotion->getBool())
         {
-            GameObjectFactory::getInstance()->createComponent(goPtr, PhysicsActiveKinematicComponent::getStaticClassName(), false);
+            GameObjectFactory::getInstance()->createComponent(goPtr, PhysicsArtifactComponent::getStaticClassName(), false);
         }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Created sun '" + goName + "' at " + Ogre::StringConverter::toString(position));
@@ -2195,7 +2329,7 @@ namespace NOWA
                     auto oceanComp = NOWA::makeStrongPtr(goPtr->getComponent<PlanetOceanComponent>());
                     if (nullptr != oceanComp && nullptr != oceanComp->getOcean() && nullptr != oceanComp->getOcean()->getItem())
                     {
-                        NOWA::GraphicsModule::RenderCommand oceanRdCmd = [oceanComp]()
+                        NOWA::GraphicsModule::RenderCommand oceanRdCmd = [oceanComp]
                         {
                             oceanComp->getOcean()->getItem()->setRenderingDistance(std::numeric_limits<float>::max());
                         };
@@ -2207,7 +2341,7 @@ namespace NOWA
 
         if (true == this->useMotion->getBool())
         {
-            GameObjectFactory::getInstance()->createComponent(goPtr, PhysicsActiveKinematicComponent::getStaticClassName(), false);
+            GameObjectFactory::getInstance()->createComponent(goPtr, PhysicsArtifactComponent::getStaticClassName(), false);
         }
 
         // Assign planet category so dynamic bodies (player, spacecraft) can reference it
@@ -2348,7 +2482,7 @@ namespace NOWA
 
         if (true == this->useMotion->getBool())
         {
-            GameObjectFactory::getInstance()->createComponent(goPtr, PhysicsActiveKinematicComponent::getStaticClassName(), false);
+            GameObjectFactory::getInstance()->createComponent(goPtr, PhysicsArtifactComponent::getStaticClassName(), false);
         }
 
         // Moons are also gravity sources -- player can land on them.
@@ -2906,7 +3040,7 @@ namespace NOWA
         desc.type = eType::CUSTOM;
         desc.displayName = "Universum";
         desc.meshToDisplay = "Node.mesh";
-        desc.needsMeshItem = false;
+        desc.needsMeshItem = true;
         desc.forceZeroTransform = false;
         desc.autoComponents = {UniversumComponent::getStaticClassName()};
         return desc;

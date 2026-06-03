@@ -210,7 +210,7 @@ namespace NOWA
          */
         void setPlanetData(const std::vector<unsigned char>& data);
 
-        void deletePlanetDataFile(void);
+        void setDynamic(bool dynamic);
     protected:
         /** @brief Left-click begins a brush stroke; captures pre-stroke snapshot for undo. */
         virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
@@ -346,6 +346,8 @@ namespace NOWA
         // Planet lifecycle
         void createPlanet(void);
         void destroyPlanet(void);
+
+        void deletePlanetDataFile(void);
 
         // Wires the runtime blend TextureGpu* into PBSM_DETAIL_WEIGHT on the
         // HlmsPbsDatablock that is currently active on the planet Item's SubItem.

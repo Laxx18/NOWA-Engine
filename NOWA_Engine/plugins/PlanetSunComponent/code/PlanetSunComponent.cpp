@@ -377,6 +377,14 @@ namespace NOWA
     //  createSun / destroySun
     // =========================================================================
 
+    void PlanetSunComponent::setDynamic(bool dynamic)
+    {
+        if (nullptr != this->sun)
+        {
+            this->sun->setDynamic(dynamic);
+        }
+    }
+
     void PlanetSunComponent::createSun()
     {
         if (nullptr != this->sun)

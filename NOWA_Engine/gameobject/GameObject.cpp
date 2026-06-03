@@ -2008,28 +2008,29 @@ namespace NOWA
 	{
 		this->dynamic->setValue(dynamic);
 
-		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setDynamic", _1(dynamic),
-		{
-			if (nullptr != this->sceneNode)
-			{
-				if (false == dynamic && false == this->sceneNode->isStatic())
-				{
-					this->sceneNode->setStatic(true);
-					if (nullptr != this->movableObject)
-					{
-						this->movableObject->setStatic(true);
-					}
-				}
-				else if (true == dynamic && true == this->sceneNode->isStatic())
-				{
-					this->sceneNode->setStatic(false);
-					if (nullptr != this->movableObject)
-					{
-						this->movableObject->setStatic(false);
-					}
-				}
-			}
-		});
+		NOWA::GraphicsModule::RenderCommand cmd = [this, dynamic]()
+        {
+            if (nullptr != this->sceneNode)
+            {
+                if (false == dynamic && false == this->sceneNode->isStatic())
+                {
+                    this->sceneNode->setStatic(true);
+                    if (nullptr != this->movableObject)
+                    {
+                        this->movableObject->setStatic(true);
+                    }
+                }
+                else if (true == dynamic && true == this->sceneNode->isStatic())
+                {
+                    this->sceneNode->setStatic(false);
+                    if (nullptr != this->movableObject)
+                    {
+                        this->movableObject->setStatic(false);
+                    }
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setDynamic");
 	}
 
 	const Ogre::Vector3 GameObject::getSize(void) const

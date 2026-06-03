@@ -88,6 +88,7 @@ namespace NOWA
         float getRadius() const;
         float getOceanTime() const;
 
+        void setDynamic(bool dynamic);
     private:
         void generateBaseSphere();
         Ogre::Item* buildItem(const Ogre::String& meshName);

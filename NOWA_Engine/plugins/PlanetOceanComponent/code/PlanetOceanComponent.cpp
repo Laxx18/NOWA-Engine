@@ -922,6 +922,14 @@ namespace NOWA
         return this->ocean;
     }
 
+    void PlanetOceanComponent::setDynamic(bool dynamic)
+    {
+        if (nullptr != this->ocean)
+        {
+            this->ocean->setDynamic(dynamic);
+        }
+    }
+
     // =========================================================================
     //  Private helpers
     // =========================================================================

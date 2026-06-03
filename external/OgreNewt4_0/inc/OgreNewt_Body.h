@@ -130,6 +130,10 @@ namespace OgreNewt
 		void setAutoSleep(int flag);
 		int getAutoSleep();
 
+		void setSleep(bool sleep);
+
+		bool getSleep(void) const;
+
 		void scaleCollision(const Ogre::Vector3& scale);
 
 		const OgreNewt::MaterialID* getMaterialGroupID() const;

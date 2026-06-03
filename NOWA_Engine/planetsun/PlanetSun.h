@@ -60,6 +60,8 @@ namespace NOWA
         Ogre::SceneManager* getSceneManager() const;
         float               getRadius() const;
 
+        void setDynamic(bool dynamic);
+
     private:
         void generateBaseSphere();
         Ogre::Item* buildItem(const Ogre::String& meshName);

@@ -369,18 +369,39 @@ namespace NOWA
 
             virtual void onEnter(GameObject* gameObject) override
             {
-                if (nullptr != this->owner && true == this->owner->getAutoPauseOrbit())
+                if (nullptr == this->owner || false == this->owner->getAutoPauseOrbit())
                 {
-                    this->owner->pausePlanetOrbit(this->planetId);
+                    return;
                 }
+                // Only react when the PLAYER enters this planet's atmosphere sphere.
+                // Without this guard, every orbiting planet/moon that sweeps through another
+                // planet's AOI sphere fires this callback, causing rapid pause/resume spam.
+                if (nullptr == gameObject)
+                {
+                    return;
+                }
+                if (gameObject->getId() != this->owner->getPlayerGameObjectId())
+                {
+                    return;
+                }
+                this->owner->pausePlanetOrbit(this->planetId);
             }
 
             virtual void onLeave(GameObject* gameObject) override
             {
-                if (nullptr != this->owner && true == this->owner->getAutoPauseOrbit())
+                if (nullptr == this->owner || false == this->owner->getAutoPauseOrbit())
                 {
-                    this->owner->resumePlanetOrbit(this->planetId);
+                    return;
                 }
+                if (nullptr == gameObject)
+                {
+                    return;
+                }
+                if (gameObject->getId() != this->owner->getPlayerGameObjectId())
+                {
+                    return;
+                }
+                this->owner->resumePlanetOrbit(this->planetId);
             }
 
         private:
@@ -526,6 +547,17 @@ namespace NOWA
          */
         void pausePlanetOrbit(unsigned long planetGameObjectId);
         void resumePlanetOrbit(unsigned long planetGameObjectId);
+
+        /**
+         * @brief Sets dynamic state on a planet/moon GO and all its sub-component items.
+         *        GameObject::setDynamic only updates the primary movableObject.
+         *        PlanetTerraComponent, PlanetOceanComponent, and PlanetSunComponent each
+         *        own a separate Ogre::Item -- all must match the SceneNode static state
+         *        or Ogre asserts "movableobject is static, while node is not".
+         * @param goPtr     The planet or moon GameObject.
+         * @param isDynamic Whether to make it dynamic (true) or static (false).
+         */
+        void setPlanetDynamic(GameObjectPtr goPtr, bool isDynamic);
 
         /**
          * @brief Computes surface gravity from planet radius.

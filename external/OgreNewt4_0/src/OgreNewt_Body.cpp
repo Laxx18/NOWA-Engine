@@ -412,6 +412,26 @@ namespace OgreNewt
         return getNewtonBody()->GetAutoSleep() ? 1 : 0;
     }
 
+    void Body::setSleep(bool sleep)
+    {
+        if (!getNewtonBody())
+        {
+            return;
+        }
+
+        getNewtonBody()->SetSleepState(sleep);
+    }
+
+    bool Body::getSleep(void) const
+    {
+        if (!getNewtonBody())
+        {
+            return 0;
+        }
+
+        return getNewtonBody()->GetSleepState();
+    }
+
     void Body::scaleCollision(const Ogre::Vector3& scale)
     {
         ndShapeInstance& collision = getNewtonBody()->GetCollisionShape();
@@ -432,7 +452,7 @@ namespace OgreNewt
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, matrix);
             getNewtonBody()->SetMatrix(matrix);
 
-            updateNode(1.0f, false);
+            updateNode(1.0f, true);
         }
     }
 

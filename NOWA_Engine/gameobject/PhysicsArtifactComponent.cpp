@@ -177,10 +177,11 @@ namespace NOWA
 		GameObjectComponent::showDebugData();
 		if (nullptr != this->physicsBody)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("PhysicsArtifactComponent::showDebugData",
-			{
-				this->physicsBody->showDebugCollision(!this->gameObjectPtr->isDynamic(), this->bShowDebugData);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->physicsBody->showDebugCollision(!this->gameObjectPtr->isDynamic(), this->bShowDebugData);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::showDebugData");
 		}
 	}
 
@@ -197,14 +198,16 @@ namespace NOWA
 	bool PhysicsArtifactComponent::createStaticBody(void)
 	{
         Ogre::String name = this->gameObjectPtr->getName();
-		// Body has already been created, do not do it twice!
-		if (nullptr != this->physicsBody)
-			return true;
+        // Body has already been created, do not do it twice!
+        if (nullptr != this->physicsBody)
+        {
+            return true;
+        }
 
-		if (nullptr == this->ogreNewt)
-		{
+        if (nullptr == this->ogreNewt)
+        {
             this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
-		}
+        }
 
 		this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
 		this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
@@ -242,11 +245,12 @@ namespace NOWA
 		}
 		else
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::serializeTreeCollision", _1(&staticCollision),
-			{
-				Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
-				staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId()));
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, &staticCollision]()
+            {
+                Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+                staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId()));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::serializeTreeCollision");
 		}
 
 		if (nullptr == staticCollision)
@@ -275,7 +279,6 @@ namespace NOWA
 		// Object will not be moved frequently
 		// this->gameObjectPtr->setDynamic(false); // Am I shit? Let the designer choose, because else an object with artifact collision can be no more moved!
 
-		// Component must be dynamic, because it will be moved
 		this->gameObjectPtr->setDynamic(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
@@ -341,7 +344,7 @@ namespace NOWA
         this->setPosition(this->initialPosition);
         this->setOrientation(this->initialOrientation);
 
-        this->physicsBody->setAutoSleep(1);
+        // this->physicsBody->setAutoSleep(1);
         this->gameObjectPtr->setDynamic(false);
         this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 

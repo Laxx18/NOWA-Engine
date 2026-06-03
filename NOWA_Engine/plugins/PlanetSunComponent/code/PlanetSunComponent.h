@@ -149,6 +149,8 @@ namespace NOWA
             return this->sun;
         }
 
+        void setDynamic(bool dynamic);
+
     private:
         void createSun();
         void destroySun();

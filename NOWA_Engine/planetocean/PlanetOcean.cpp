@@ -104,6 +104,11 @@ namespace NOWA
 
         this->setDatablockByName(datablockName);
         this->initNormalMapTexture();
+
+        if (this->oceanItem->isStatic() != attachedNode->isStatic())
+        {
+            this->oceanItem->setStatic(attachedNode->isStatic());
+        }
         this->attachedNode->attachObject(this->oceanItem);
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetOcean] Created ocean '" + this->objectName + "' radius=" + Ogre::StringConverter::toString(this->radius) +
@@ -312,6 +317,14 @@ namespace NOWA
         this->updateNormalMap();
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetOcean] Water normal map texture created: " + texName + " (" + Ogre::StringConverter::toString(texSize) + "x" + Ogre::StringConverter::toString(texSize) + ").");
+    }
+
+    void PlanetOcean::setDynamic(bool dynamic)
+    {
+        if (nullptr != oceanItem)
+        {
+            this->oceanItem->setStatic(!dynamic);
+        }
     }
 
     // =========================================================================

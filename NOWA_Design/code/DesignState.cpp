@@ -148,66 +148,67 @@ void DesignState::exit(void)
 		this->editorManager->stopSimulation();
 	}
 
-	ENQUEUE_RENDER_COMMAND_WAIT("DesignState::exit",
-	{
-		this->sceneManager->destroyQuery(this->selectQuery);
-		this->selectQuery = nullptr;
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->sceneManager->destroyQuery(this->selectQuery);
+        this->selectQuery = nullptr;
 
-		MyGUI::FactoryManager & factory = MyGUI::FactoryManager::getInstance();
-		std::string widgetCategory = MyGUI::WidgetManager::getInstance().getCategoryName();
-		factory.unregisterFactory<MyGUI::TreeControl>(widgetCategory);
-		factory.unregisterFactory<MyGUI::TreeControlItem>(widgetCategory);
-		factory.unregisterFactory<MyGUI::Slider>(widgetCategory);
-		factory.unregisterFactory<MyGUI::HyperTextBox>(widgetCategory);
-		factory.unregisterFactory<MyGUI::WrapPanel>(widgetCategory);
-		factory.unregisterFactory<MyGUI::StackPanel>(widgetCategory);
-		factory.unregisterFactory<MyGUI::ScrollViewPanel>(widgetCategory);
+        MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
+        std::string widgetCategory = MyGUI::WidgetManager::getInstance().getCategoryName();
+        factory.unregisterFactory<MyGUI::TreeControl>(widgetCategory);
+        factory.unregisterFactory<MyGUI::TreeControlItem>(widgetCategory);
+        factory.unregisterFactory<MyGUI::Slider>(widgetCategory);
+        factory.unregisterFactory<MyGUI::HyperTextBox>(widgetCategory);
+        factory.unregisterFactory<MyGUI::WrapPanel>(widgetCategory);
+        factory.unregisterFactory<MyGUI::StackPanel>(widgetCategory);
+        factory.unregisterFactory<MyGUI::ScrollViewPanel>(widgetCategory);
 
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsSimulation);
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsManipulation);
-		ColourPanelManager::getInstance()->destroyContent();
+        MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsSimulation);
+        MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsManipulation);
+        ColourPanelManager::getInstance()->destroyContent();
 
-		if (this->editorManager)
-		{
-			delete this->editorManager;
-			this->editorManager = nullptr;
-		}
+        if (this->editorManager)
+        {
+            delete this->editorManager;
+            this->editorManager = nullptr;
+        }
 
-		if (this->propertiesPanel)
-		{
-			this->propertiesPanel->destroyContent();
-			delete this->propertiesPanel;
-			this->propertiesPanel = nullptr;
-		}
+        if (this->propertiesPanel)
+        {
+            this->propertiesPanel->destroyContent();
+            delete this->propertiesPanel;
+            this->propertiesPanel = nullptr;
+        }
 
-		if (this->resourcesPanel)
-		{
-			this->resourcesPanel->destroyContent();
-			delete this->resourcesPanel;
-			this->resourcesPanel = nullptr;
-		}
+        if (this->resourcesPanel)
+        {
+            this->resourcesPanel->destroyContent();
+            delete this->resourcesPanel;
+            this->resourcesPanel = nullptr;
+        }
 
-		if (this->componentsPanel)
-		{
-			this->componentsPanel->destroyContent();
-			delete this->componentsPanel;
-			this->componentsPanel = nullptr;
-		}
+        if (this->componentsPanel)
+        {
+            this->componentsPanel->destroyContent();
+            delete this->componentsPanel;
+            this->componentsPanel = nullptr;
+        }
 
-		if (this->mainMenuBar)
-		{
-			delete this->mainMenuBar;
-			this->mainMenuBar = nullptr;
-		}
+        if (this->mainMenuBar)
+        {
+            delete this->mainMenuBar;
+            this->mainMenuBar = nullptr;
+        }
 
-		if (this->projectManager)
-		{
-			delete this->projectManager;
-			this->projectManager = nullptr;
-		}
+        if (this->projectManager)
+        {
+            delete this->projectManager;
+            this->projectManager = nullptr;
+        }
 
-		AppState::destroyModules();
-	});
+        AppState::destroyModules();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::exit");
 }
 
 void DesignState::createScene(void)
@@ -977,6 +978,11 @@ void DesignState::handleSceneValid(NOWA::EventDataPtr eventData)
 
 void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
 {
+	if (nullptr == this->sceneManager)
+	{
+        return;
+	}
+
 	boost::shared_ptr<NOWA::EventDataFeedback> castEventData = boost::static_pointer_cast<NOWA::EventDataFeedback>(eventData);
 
 	if (false == castEventData->isPositive())
