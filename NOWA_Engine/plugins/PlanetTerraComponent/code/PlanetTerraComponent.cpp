@@ -32,57 +32,57 @@ namespace NOWA
         name("PlanetTerraComponent"),
         hasModifiedData(false)
     {
-        activated = new Variant(PlanetTerraComponent::AttrActivated(), true, this->attributes);
-        radius = new Variant(PlanetTerraComponent::AttrRadius(), 50.0f, this->attributes);
-        segmentsH = new Variant(PlanetTerraComponent::AttrSegmentsH(), static_cast<unsigned int>(64), this->attributes);
-        segmentsV = new Variant(PlanetTerraComponent::AttrSegmentsV(), static_cast<unsigned int>(64), this->attributes);
-        blendTexSize = new Variant(PlanetTerraComponent::AttrBlendTexSize(), static_cast<unsigned int>(1024), this->attributes);
-        datablock = new Variant(PlanetTerraComponent::AttrDatablock(), PlanetTerraComponent::DefaultMaterialName(), this->attributes);
-        editMode = new Variant(PlanetTerraComponent::AttrEditMode(), std::vector<Ogre::String>{"Sculpt", "Paint"}, this->attributes);
-        brushMode = new Variant(PlanetTerraComponent::AttrBrushMode(), std::vector<Ogre::String>{"Pull", "Push", "Smooth", "Flatten", "Inflate"}, this->attributes);
-        paintLayer = new Variant(PlanetTerraComponent::AttrPaintLayer(), std::vector<Ogre::String>{"0", "1", "2", "3"}, this->attributes);
+        this->activated = new Variant(PlanetTerraComponent::AttrActivated(), true, this->attributes);
+        this->radius = new Variant(PlanetTerraComponent::AttrRadius(), 50.0f, this->attributes);
+        this->segmentsH = new Variant(PlanetTerraComponent::AttrSegmentsH(), static_cast<unsigned int>(64), this->attributes);
+        this->segmentsV = new Variant(PlanetTerraComponent::AttrSegmentsV(), static_cast<unsigned int>(64), this->attributes);
+        this->blendTexSize = new Variant(PlanetTerraComponent::AttrBlendTexSize(), static_cast<unsigned int>(1024), this->attributes);
+        this->datablock = new Variant(PlanetTerraComponent::AttrDatablock(), PlanetTerraComponent::DefaultMaterialName(), this->attributes);
+        this->editMode = new Variant(PlanetTerraComponent::AttrEditMode(), std::vector<Ogre::String>{"Sculpt", "Paint"}, this->attributes);
+        this->brushMode = new Variant(PlanetTerraComponent::AttrBrushMode(), std::vector<Ogre::String>{"Pull", "Push", "Smooth", "Flatten", "Inflate"}, this->attributes);
+        this->paintLayer = new Variant(PlanetTerraComponent::AttrPaintLayer(), std::vector<Ogre::String>{"0", "1", "2", "3"}, this->attributes);
         // Default to layer 1: layer 0 is the base texture (always active via blend R=1).
         // User paints layer 1 (G channel) onto the base.
-        paintLayer->setListSelectedValue("1");
-        brushName = new Variant(PlanetTerraComponent::AttrBrushName(), this->attributes);
-        brushSize = new Variant(PlanetTerraComponent::AttrBrushSize(), 30.0f, this->attributes);
-        brushIntensity = new Variant(PlanetTerraComponent::AttrBrushIntensity(), 0.5f, this->attributes);
-        brushFalloff = new Variant(PlanetTerraComponent::AttrBrushFalloff(), 2.0f, this->attributes);
-        bakeMesh = new Variant(PlanetTerraComponent::AttrBakeMesh(), Ogre::String("Bake Mesh"), this->attributes);
-        activated->setDescription("Enable / disable planet edit mode.");
-        radius->setDescription("Planet radius in world units.");
-        segmentsH->setDescription("Horizontal (longitude) tessellation. Higher = more detail. Must be >= 4.");
-        segmentsV->setDescription("Vertical (latitude) tessellation. Higher = more detail. Must be >= 4.");
-        blendTexSize->setDescription("Blend-weight texture resolution (square, RGBA8).\n"
+        this->paintLayer->setListSelectedValue("1");
+        this->brushName = new Variant(PlanetTerraComponent::AttrBrushName(), this->attributes);
+        this->brushSize = new Variant(PlanetTerraComponent::AttrBrushSize(), 30.0f, this->attributes);
+        this->brushIntensity = new Variant(PlanetTerraComponent::AttrBrushIntensity(), 0.5f, this->attributes);
+        this->brushFalloff = new Variant(PlanetTerraComponent::AttrBrushFalloff(), 2.0f, this->attributes);
+        this->bakeMesh = new Variant(PlanetTerraComponent::AttrBakeMesh(), Ogre::String("Bake Mesh"), this->attributes);
+        this->activated->setDescription("Enable / disable planet edit mode.");
+        this->radius->setDescription("Planet radius in world units.");
+        this->segmentsH->setDescription("Horizontal (longitude) tessellation. Higher = more detail. Must be >= 4.");
+        this->segmentsV->setDescription("Vertical (latitude) tessellation. Higher = more detail. Must be >= 4.");
+        this->blendTexSize->setDescription("Blend-weight texture resolution (square, RGBA8).\n"
                                      "R = detail layer 0 weight, G = layer 1, B = layer 2, A = layer 3.\n"
                                      "Wired automatically to PBSM_DETAIL_WEIGHT on the sibling DatablockPbsComponent.\n"
                                      "DatablockPbsComponent starts with PlanetTerraDefaultMaterial (4 terrain layers). "
                                      "Change detail0..3 textures there to customize terrain appearance.");
-        editMode->setDescription("Sculpt: move vertices with the brush. Paint: paint terrain layer blend weights.");
-        brushMode->setDescription("Pull=raise, Push=lower, Smooth=average, Flatten=level, Inflate=puff outward.");
-        paintLayer->setDescription("Which blend texture channel the paint brush writes to:\n"
+        this->editMode->setDescription("Sculpt: move vertices with the brush. Paint: paint terrain layer blend weights.");
+        this->brushMode->setDescription("Pull=raise, Push=lower, Smooth=average, Flatten=level, Inflate=puff outward.");
+        this->paintLayer->setDescription("Which blend texture channel the paint brush writes to:\n"
                                    "  0 = R → detail0 (base terrain, active everywhere by default)\n"
                                    "  1 = G → detail1\n"
                                    "  2 = B → detail2\n"
                                    "  3 = A → detail3");
-        brushName->setDescription("Brush mask image. White = full strength, black = no effect.");
-        brushSize->setDescription("Brush radius:\n  Sculpt mode: world units.\n  Paint mode: blend-texture pixels.");
-        brushIntensity->setDescription("Brush strength per stroke application (0..1).");
-        brushFalloff->setDescription("Falloff exponent. Higher = sharper edge.");
-        bakeMesh->setDescription("Exports the current planet to a static .mesh file in the scene folder "
+        this->brushName->setDescription("Brush mask image. White = full strength, black = no effect.");
+        this->brushSize->setDescription("Brush radius:\n  Sculpt mode: world units.\n  Paint mode: blend-texture pixels.");
+        this->brushIntensity->setDescription("Brush strength per stroke application (0..1).");
+        this->brushFalloff->setDescription("Falloff exponent. Higher = sharper edge.");
+        this->bakeMesh->setDescription("Exports the current planet to a static .mesh file in the scene folder "
                                  "and generates LOD levels. Baking does NOT remove this component.");
-        bakeMesh->addUserData(GameObject::AttrActionExec());
-        bakeMesh->addUserData(GameObject::AttrActionNeedRefresh());
-        bakeMesh->addUserData(GameObject::AttrActionExecId(), PlanetTerraComponent::ActionBakeMesh());
+        this->bakeMesh->addUserData(GameObject::AttrActionExec());
+        this->bakeMesh->addUserData(GameObject::AttrActionNeedRefresh());
+        this->bakeMesh->addUserData(GameObject::AttrActionExecId(), PlanetTerraComponent::ActionBakeMesh());
 
-        detailUVScale = new Variant(PlanetTerraComponent::AttrDetailUVScale(), 128.0f, this->attributes);
-        detailUVScale->setDescription("UV tiling scale for all detail texture layers (diffuse + normal maps). "
+        this->detailUVScale = new Variant(PlanetTerraComponent::AttrDetailUVScale(), 128.0f, this->attributes);
+        this->detailUVScale->setDescription("UV tiling scale for all detail texture layers (diffuse + normal maps). "
                                       "Higher = more tiling = smaller apparent texture on the sphere. "
                                       "Formula: sphere_circumference / desired_tile_size_in_metres. "
                                       "Radius 50 (circumference ~314m): 128 = ~2.5m per tile, 64 = ~5m per tile.");
 
-        baseUVScale = new Variant(PlanetTerraComponent::AttrBaseUVScale(), 128.0f, this->attributes);
-        baseUVScale->setDescription("UV tiling scale for the main diffuse and normal texture (UV set 1). "
+        this->baseUVScale = new Variant(PlanetTerraComponent::AttrBaseUVScale(), 128.0f, this->attributes);
+        this->baseUVScale->setDescription("UV tiling scale for the main diffuse and normal texture (UV set 1). "
                                     "1 = tiles once across the whole sphere (good from-orbit look). "
                                     "Set 64 for a radius-50 planet to tile every ~5m for close-up base terrain. "
                                     "Changing this triggers a mesh rebuild.");
@@ -91,32 +91,32 @@ namespace NOWA
         // These are NOT loaded via the material JSON (doing so causes @piece blocks
         // to be emitted literally as HLSL code → shader crash). They are set here
         // as configurable Variants and applied programmatically in wireBlend.
-        detail0NMTextureName = new Variant(PlanetTerraComponent::AttrDetail0NMTextureName(), Ogre::String("adesert_cracks_n.dds"), this->attributes);
-        detail0NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 0.");
+        this->detail0NMTextureName = new Variant(PlanetTerraComponent::AttrDetail0NMTextureName(), Ogre::String("adesert_cracks_n.dds"), this->attributes);
+        this->detail0NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 0.");
         this->addAttributeFilePathData(detail0NMTextureName);
 
-        detail1NMTextureName = new Variant(PlanetTerraComponent::AttrDetail1NMTextureName(), Ogre::String("grass_green_n.dds"), this->attributes);
-        detail1NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 1.");
+        this->detail1NMTextureName = new Variant(PlanetTerraComponent::AttrDetail1NMTextureName(), Ogre::String("grass_green_n.dds"), this->attributes);
+        this->detail1NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 1.");
         this->addAttributeFilePathData(detail1NMTextureName);
 
-        detail2NMTextureName = new Variant(PlanetTerraComponent::AttrDetail2NMTextureName(), Ogre::String("island_sand_n.dds"), this->attributes);
-        detail2NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 2.");
+        this->detail2NMTextureName = new Variant(PlanetTerraComponent::AttrDetail2NMTextureName(), Ogre::String("island_sand_n.dds"), this->attributes);
+        this->detail2NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 2.");
         this->addAttributeFilePathData(detail2NMTextureName);
 
-        detail3NMTextureName = new Variant(PlanetTerraComponent::AttrDetail3NMTextureName(), Ogre::String("mntn_black_n.dds"), this->attributes);
-        detail3NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 3.");
+        this->detail3NMTextureName = new Variant(PlanetTerraComponent::AttrDetail3NMTextureName(), Ogre::String("mntn_black_n.dds"), this->attributes);
+        this->detail3NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 3.");
         this->addAttributeFilePathData(detail3NMTextureName);
 
         // ── Constraints ───────────────────────────────────────────────────────
-        radius->setConstraints(10.0f, 50000.0f);
-        segmentsH->setConstraints(4u, 512u);
-        segmentsV->setConstraints(4u, 512u);
-        blendTexSize->setConstraints(64u, 4096u);
-        detailUVScale->setConstraints(1.0f, 1024.0f);
-        baseUVScale->setConstraints(0.1f, 512.0f);
-        brushSize->setConstraints(1.0f, 2000.0f);
-        brushIntensity->setConstraints(0.001f, 1.0f);
-        brushFalloff->setConstraints(0.1f, 10.0f);
+        this->radius->setConstraints(10.0f, 50000.0f);
+        this->segmentsH->setConstraints(4u, 512u);
+        this->segmentsV->setConstraints(4u, 512u);
+        this->blendTexSize->setConstraints(0u, 4096u);
+        this->detailUVScale->setConstraints(1.0f, 1024.0f);
+        this->baseUVScale->setConstraints(0.1f, 512.0f);
+        this->brushSize->setConstraints(1.0f, 2000.0f);
+        this->brushIntensity->setConstraints(0.001f, 1.0f);
+        this->brushFalloff->setConstraints(0.1f, 10.0f);
     }
 
     PlanetTerraComponent::~PlanetTerraComponent()
@@ -488,12 +488,12 @@ namespace NOWA
 
     void PlanetTerraComponent::createPlanet(void)
     {
-        if (planet || !postInitDone)
+        if (this->planet || !this->postInitDone)
         {
             return;
         }
 
-        planet = new PlanetTerra(this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager());
+        this->planet = new PlanetTerra(this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager());
 
         // Apply baseUVScale before create() so UV1 is baked correctly into vertex data
         this->planet->setBaseUVScale(this->baseUVScale->getReal());
@@ -505,7 +505,8 @@ namespace NOWA
             const int segV = static_cast<int>(this->segmentsV->getUInt());
             const int bts = static_cast<int>(this->blendTexSize->getUInt());
 
-            if (!planet->create(r, segH, segV, bts, this->gameObjectPtr->getSceneNode(), PlanetTerraComponent::DefaultMaterialName()))
+            // useBlendWeight: true if 0u != this->blendTexSize->getUInt()
+            if (!this->planet->create(r, segH, segV, bts, this->gameObjectPtr->getSceneNode(), PlanetTerraComponent::DefaultMaterialName(), 0u != this->blendTexSize->getUInt()))
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetTerraComponent] Planet creation failed for: " + this->gameObjectPtr->getName());
                 return;
@@ -520,33 +521,33 @@ namespace NOWA
             // this->planet->getItem()->setQueryFlags(0u);
 
             // Restore sculpt / paint data if loaded from file
-            if (!loadedHeightData.empty())
+            if (false == this->loadedHeightData.empty())
             {
-                planet->restoreHeightData(loadedHeightData);
-                planet->restoreBlendData(loadedBlendData.empty() ? std::vector<uint8_t>() : loadedBlendData);
-                loadedHeightData.clear();
-                loadedBlendData.clear();
+                this->planet->restoreHeightData(this->loadedHeightData);
+                this->planet->restoreBlendData(this->loadedBlendData.empty() ? std::vector<uint8_t>() : this->loadedBlendData);
+                this->loadedHeightData.clear();
+                this->loadedBlendData.clear();
 
-                planet->recalculateNormals();
-                planet->recalculateTangents();
-                planet->uploadVertexData();
-                planet->uploadBlendData();
+                this->planet->recalculateNormals();
+                this->planet->recalculateTangents();
+                this->planet->uploadVertexData();
+                this->planet->uploadBlendData();
             }
 
             this->gameObjectPtr->setDoNotDestroyMovableObject(true);
-            this->gameObjectPtr->init(planet->getItem());
+            this->gameObjectPtr->init(this->planet->getItem());
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetTerraComponent::createPlanet");
     }
 
     void PlanetTerraComponent::destroyPlanet(void)
     {
-        if (!planet)
+        if (nullptr == this->planet)
         {
             return;
         }
 
-        auto* p = planet;
+        auto* p = this->planet;
         planet = nullptr;
 
         NOWA::GraphicsModule::RenderCommand cmd = [p, this]()
@@ -932,8 +933,11 @@ namespace NOWA
             return;
         }
 
-        // Wire the runtime blend texture into the cloned datablock
-        datablockComp->setTextureDirectly(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
+        if (0u != this->blendTexSize->getUInt())
+        {
+            // Wire the runtime blend texture into the cloned datablock
+            datablockComp->setTextureDirectly(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
+        }
 
         // Get the cloned datablock from DatablockPbsComponent — NOT from
         // planet->getItem(), which may still point to the original template

@@ -541,13 +541,16 @@ namespace NOWA
                     hitfound = true;
 
                     GameObject* go = nullptr;
-                    try
+                    if (!movable->getUserObjectBindings().getUserAny().isEmpty())
                     {
-                        go = Ogre::any_cast<GameObject*>(movable->getUserObjectBindings().getUserAny());
-                    }
-                    catch (...)
-                    {
-                        go = nullptr;
+                        try
+                        {
+                            go = Ogre::any_cast<GameObject*>(movable->getUserObjectBindings().getUserAny());
+                        }
+                        catch (Ogre::Exception&)
+                        {
+                            go = nullptr;
+                        }
                     }
 
                     if (go)

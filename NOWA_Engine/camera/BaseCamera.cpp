@@ -16,6 +16,8 @@ namespace NOWA
         smoothValue(smoothValue),
         defaultDirection(defaultDirection),
         camera(nullptr),
+        cameraNode(nullptr),
+        physicsBody(nullptr),
         lastValue(Ogre::Vector2::ZERO),
         lastMoveValue(Ogre::Vector3::ZERO),
         firstTimeValueSet(true),
@@ -40,6 +42,7 @@ namespace NOWA
 
     void BaseCamera::onClearData(void)
     {
+        this->physicsBody = nullptr;
         NOWA::GraphicsModule::getInstance()->removeTrackedCamera(this->camera);
     }
 
@@ -56,11 +59,17 @@ namespace NOWA
         this->lastMoveValue = Ogre::Vector3::ZERO;
         this->firstTimeValueSet = true;
         this->gravityDirection = Ogre::Vector3::ZERO;
+        this->physicsBody = nullptr;
     }
 
     void BaseCamera::setDefaultDirection(const Ogre::Vector3& defaultDirection)
     {
         this->defaultDirection = defaultDirection;
+    }
+
+    void BaseCamera::setPhysicsBody(OgreNewt::Body* body)
+    {
+        this->physicsBody = body;
     }
 
     void BaseCamera::applyGravityDirection(const Ogre::Vector3& gravityDirection)

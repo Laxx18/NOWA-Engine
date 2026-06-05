@@ -213,99 +213,107 @@ namespace NOWA
 	}
 
 	void AreaOfInterestComponent::checkAreaForActiveObjects(Ogre::Real dt)
-	{
-		if (this->updateThreshold->getReal() > 0.0f)
-		{
-			this->triggerUpdateTimer += dt;
-		}
+    {
+        if (this->updateThreshold->getReal() > 0.0f)
+        {
+            this->triggerUpdateTimer += dt;
+        }
+        // Check area at regular intervals
+        if (this->triggerUpdateTimer >= this->updateThreshold->getReal())
+        {
+            this->triggerUpdateTimer = 0.0f;
+            Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), this->radius->getReal());
+            this->sphereSceneQuery->setSphere(updateSphere);
 
-		// Check area at regular intervals
-		if (this->triggerUpdateTimer >= this->updateThreshold->getReal())
-		{
-			this->triggerUpdateTimer = 0.0f;
+            // Always track objects currently within range.
+            // This set MUST be populated unconditionally -- it drives leave detection.
+            // Bug: the old code wrapped the insert in:
+            //   if (false == this->triggerPermanentely->getBool())
+            // so with triggerPermanentely=true the set was always empty.
+            // The leave-detection loop then found every tracked object "not in range"
+            // and fired callLeaveFunction in the SAME tick as callEnterFunction --
+            // producing the rapid enter/leave flicker visible in the log.
+            // triggerPermanentely only controls whether objects are erased from
+            // triggeredGameObjects on leave, nothing else.
+            std::unordered_set<unsigned long> currentObjectsInRange;
 
-			Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), this->radius->getReal());
-			this->sphereSceneQuery->setSphere(updateSphere);
+            // Check objects in range
+            Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
+            for (auto it = result.cbegin(); it != result.cend(); ++it)
+            {
+                Ogre::MovableObject* movableObject = *it;
+                GameObject* gameObject = nullptr;
+                if ("Camera" != movableObject->getMovableType())
+                {
+                    const Ogre::Any& userAny = movableObject->getUserObjectBindings().getUserAny();
+                    if (!userAny.isEmpty())
+                    {
+                        try
+                        {
+                            gameObject = Ogre::any_cast<GameObject*>(userAny);
+                        }
+                        catch (Ogre::Exception&)
+                        {
+                            // Any holds something other than GameObject* -- skip silently.
+                        }
+                    }
+                }
 
-			// Track objects currently within range
-			std::unordered_set<unsigned long> currentObjectsInRange;
+                if (nullptr != gameObject && gameObject != this->gameObjectPtr.get())
+                {
+                    // Always insert -- required for leave detection regardless of triggerPermanentely.
+                    currentObjectsInRange.insert(gameObject->getId());
 
-			// Check objects in range
-			Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
-			for (auto it = result.cbegin(); it != result.cend(); ++it)
-			{
-				Ogre::MovableObject* movableObject = *it;
+                    auto otherIt = this->triggeredGameObjects.find(gameObject->getId());
+                    if (otherIt == this->triggeredGameObjects.end())
+                    {
+                        // First time entering
+                        this->callEnterFunction(gameObject);
+                        this->triggeredGameObjects.emplace(gameObject->getId(), std::make_pair(gameObject, true));
+                    }
+                    else if (!otherIt->second.second) // Enter only if previously left
+                    {
+                        this->callEnterFunction(gameObject);
+                        otherIt->second.second = true; // Mark as entered
+                    }
+                }
+            }
 
-				GameObject* gameObject = nullptr;
-				try
-				{
-					if ("Camera" != movableObject->getMovableType())
-					{
-						gameObject = Ogre::any_cast<GameObject*>(movableObject->getUserObjectBindings().getUserAny());
-					}
-				}
-				catch (Ogre::Exception&)
-				{
-				}
+            // Check for objects that have left the range
+            for (auto it = this->triggeredGameObjects.begin(); it != this->triggeredGameObjects.end();)
+            {
+                unsigned long objectId = it->first;
+                GameObject* gameObject = it->second.first;
+                if (currentObjectsInRange.find(objectId) == currentObjectsInRange.end()) // Not in range
+                {
+                    if (it->second.second) // Leave only if previously entered
+                    {
+                        this->callLeaveFunction(gameObject);
+                        it->second.second = false; // Mark as left
+                    }
+                    // triggerPermanentely=false: erase so re-entry fires enter again immediately.
+                    // triggerPermanentely=true:  keep in map so the entered/left flag is preserved.
+                    if (!this->triggerPermanentely->getBool())
+                    {
+                        it = this->triggeredGameObjects.erase(it);
+                    }
+                    else
+                    {
+                        ++it;
+                    }
+                }
+                else
+                {
+                    ++it;
+                }
+            }
 
-				if (nullptr != gameObject && gameObject != this->gameObjectPtr.get())
-				{
-					if (false == this->triggerPermanentely->getBool())
-					{
-						currentObjectsInRange.insert(gameObject->getId());
-					}
-
-					auto otherIt = this->triggeredGameObjects.find(gameObject->getId());
-					if (otherIt == this->triggeredGameObjects.end())
-					{
-						// First time entering
-						this->callEnterFunction(gameObject);
-						this->triggeredGameObjects.emplace(gameObject->getId(), std::make_pair(gameObject, true));
-					}
-					else if (!otherIt->second.second) // Enter only if previously left
-					{
-						this->callEnterFunction(gameObject);
-						otherIt->second.second = true; // Mark as entered
-					}
-				}
-			}
-
-			// Check for objects that have left the range
-			for (auto it = this->triggeredGameObjects.begin(); it != this->triggeredGameObjects.end();)
-			{
-				unsigned long objectId = it->first;
-				GameObject* gameObject = it->second.first;
-
-				if (currentObjectsInRange.find(objectId) == currentObjectsInRange.end()) // Not in range
-				{
-					if (it->second.second) // Leave only if previously entered
-					{
-						this->callLeaveFunction(gameObject);
-						it->second.second = false; // Mark as left
-					}
-
-					// Optionally remove the object from the map
-					if (!this->triggerPermanentely->getBool())
-					{
-						it = this->triggeredGameObjects.erase(it);
-					}
-					else
-					{
-						++it;
-					}
-				}
-				else
-				{
-					++it;
-				}
-			}
-
-			if (this->shortTimeActivation->getBool())
-			{
-				this->setActivated(false);
-			}
-		}
-	}
+            if (this->shortTimeActivation->getBool())
+            {
+                this->setActivated(false);
+            }
+        }
+    }
 
 	void AreaOfInterestComponent::logLuaError(const Ogre::String& context, const luabind::error& error)
 	{

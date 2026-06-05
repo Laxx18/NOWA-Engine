@@ -170,6 +170,7 @@ namespace OgreNewt
 		void addTorque(const Ogre::Vector3& torque);
 		void setForce(const Ogre::Vector3& force);
 		void setTorque(const Ogre::Vector3& torque);
+        void setTorqueFromOmega(const Ogre::Vector3& desiredOmega, Ogre::Real timeStep);
 		void setBodyAngularVelocity(const Ogre::Vector3& desiredOmega, Ogre::Real timestep);
 
 		Body* getNext() const;

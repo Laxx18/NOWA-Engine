@@ -406,8 +406,11 @@ namespace NOWA
         this->markCurrentThreadAsLogicThread();
 
         const double fixedDt = 1.0 / static_cast<double>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
-        const double maxDeltaTime = 0.25;
-        const int maxStepsPerFrame = 5;
+        // const double maxDeltaTime = 0.25;
+        // const int maxStepsPerFrame = 5;
+
+		const double maxDeltaTime = fixedDt * 2.0; // was 0.25, now ~0.014s
+        const int maxStepsPerFrame = 1;            // was 5
 
         Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
         this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());

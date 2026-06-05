@@ -790,6 +790,26 @@ namespace OgreNewt
         }
     }
 
+    void Body::setTorqueFromOmega(const Ogre::Vector3& desiredOmega, Ogre::Real timeStep)
+    {
+        if (!getNewtonBody())
+        {
+            return;
+        }
+
+        if (auto* dyn = getNewtonBody()->GetAsBodyDynamic())
+        {
+            ndVector currentOmega = dyn->GetOmega();
+            ndMatrix inertia = dyn->CalculateInertiaMatrix();
+
+            ndVector desired((ndFloat32)desiredOmega.x, (ndFloat32)desiredOmega.y, (ndFloat32)desiredOmega.z, ndFloat32(0.0f));
+            ndVector omegaError = desired - currentOmega;
+            ndVector torque = inertia.RotateVector(omegaError) * (ndFloat32(1.0f) / (ndFloat32)timeStep);
+
+            dyn->SetTorque(torque);
+        }
+    }
+
     void Body::addForce(const Ogre::Vector3& force)
     {
         if (!getNewtonBody())

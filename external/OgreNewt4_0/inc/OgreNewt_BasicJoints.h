@@ -396,64 +396,34 @@ namespace OgreNewt
 	};
 
 	class ndOgreHingeActuator : public ndJointHinge
-	{
-	public:
-		D_CLASS_REFLECTION(ndOgreHingeActuator, ndJointHinge)
+    {
+    public:
+        ndOgreHingeActuator(const ndMatrix& pinAndPivotFrame, ndBodyKinematic* const child, ndBodyKinematic* const parent, ndFloat32 angularRate, ndFloat32 minAngle, ndFloat32 maxAngle);
 
-			ndOgreHingeActuator(
-				const ndMatrix& pinAndPivotFrame,
-				ndBodyKinematic* const child,
-				ndBodyKinematic* const parent,
-				ndFloat32 angularRate,
-				ndFloat32 minAngle,
-				ndFloat32 maxAngle);
+        void UpdateParameters() override;
 
-		virtual ~ndOgreHingeActuator() {}
+        ndFloat32 GetActuatorAngle() const;
+        ndFloat32 GetAngularRate() const;
+        ndFloat32 GetMaxTorque() const;
 
-		// API equivalent to old dCustomHingeActuator,
-		// but in radians for Newton4 side.
-		ndFloat32 GetActuatorAngle() const;
+        void SetTargetAngle(ndFloat32 angle);
+        void SetMinAngularLimit(ndFloat32 limit);
+        void SetMaxAngularLimit(ndFloat32 limit);
+        void SetAngularRate(ndFloat32 rate);
+        void SetMaxTorque(ndFloat32 torque);
+        void WakeBodies();
+        void SetSpringAndDamping(bool enable, bool massIndependent, ndFloat32 springDamperRelaxation, ndFloat32 spring, ndFloat32 damper);
 
-		ndFloat32 GetTargetAngle() const;
-		void      SetTargetAngle(ndFloat32 angle);
+    protected:
+        void JacobianDerivative(ndConstraintDescritor& desc) override;
 
-		ndFloat32 GetMinAngularLimit() const;
-		ndFloat32 GetMaxAngularLimit() const;
-		void      SetMinAngularLimit(ndFloat32 limit);
-		void      SetMaxAngularLimit(ndFloat32 limit);
-
-		ndFloat32 GetAngularRate() const;
-		void      SetAngularRate(ndFloat32 rate);
-
-		ndFloat32 GetMaxTorque() const;
-		void      SetMaxTorque(ndFloat32 torque);
-
-		// massIndependent is ignored in ND4 (hinge spring is already mass-independent),
-		// but we keep the signature for OgreNewt compatibility.
-		void SetSpringAndDamping(
-			bool enable,
-			bool massIndependent,
-			ndFloat32 springDamperRelaxation,
-			ndFloat32 spring,
-			ndFloat32 damper);
-
-		// main constraint builder (ND3 SubmitAngularRow equivalent + hinge base rows)
-		void JacobianDerivative(ndConstraintDescritor& desc) override;
-
-	protected:
-		// we do NOT override UpdateParameters; we reuse ndJointHinge::UpdateParameters
-		// which fills m_angle and m_omega for us.
-
-		void WakeBodies();
-
-		void UpdateParameters() override;
-
-		ndFloat32 m_motorSpeed;   // like m_motorSpeed in ND3 actuator
-		ndFloat32 m_maxTorque;    // like m_maxTorque in ND3 actuator
-
-		// we reuse ndJointHinge protected fields:
-		//   m_angle, m_omega, m_minLimit, m_maxLimit, m_targetAngle, ...
-	};
+    private:
+        ndFloat32 m_motorSpeed;
+        ndFloat32 m_maxTorque;
+        ndFloat32 m_minAngle;
+        ndFloat32 m_maxAngle;
+        ndFloat32 m_targetAngle;
+    };
 
 	/*!
 		Hinge actuator joint (ND4 port).

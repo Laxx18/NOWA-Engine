@@ -657,6 +657,11 @@ namespace NOWA
 
 		if (true == activated)
 		{
+            if (nullptr != this->physicsActiveComponent)
+            {
+                this->baseCamera->setPhysicsBody(this->physicsActiveComponent->getBody());
+            }
+
 			Ogre::Real smoothValue = this->smoothValue->getReal();
 			if (0.0f == smoothValue)
 			{
@@ -924,8 +929,15 @@ namespace NOWA
 
 			this->baseCamera = new ThirdPersonCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(),
 				this->offsetPosition->getVector3(), this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
+
+			auto physComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
 		}
 		CameraBehaviorComponent::setActivated(activated);
+
+		if (true == activated && nullptr != this->physicsActiveComponent)
+        {
+            this->baseCamera->setPhysicsBody(this->physicsActiveComponent->getBody());
+        }
 	}
 
 	void CameraBehaviorThirdPersonComponent::setOffsetPosition(const Ogre::Vector3& offsetPosition)
@@ -1191,6 +1203,11 @@ namespace NOWA
 
 		if (true == activated)
 		{
+            if (nullptr != this->physicsActiveComponent)
+            {
+                this->baseCamera->setPhysicsBody(this->physicsActiveComponent->getBody());
+            }
+
 			Ogre::Real smoothValue = this->smoothValue->getReal();
 			if (0.0f == smoothValue)
 			{
@@ -1450,6 +1467,11 @@ namespace NOWA
 
 		if (true == activated)
 		{
+            if (nullptr != this->physicsActiveComponent)
+            {
+                this->baseCamera->setPhysicsBody(this->physicsActiveComponent->getBody());
+            }
+
 			Ogre::Real smoothValue = this->smoothValue->getReal();
 			if (0.0f == smoothValue)
 			{

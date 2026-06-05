@@ -150,7 +150,7 @@ namespace NOWA
     {
         this->oceanTime += deltaTime;
         this->updateAndUpload();
-        this->updateNormalMap();
+        // this->updateNormalMap();
     }
 
     // =========================================================================

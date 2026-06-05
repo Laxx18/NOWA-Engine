@@ -181,6 +181,8 @@ namespace NOWA
 				this->ogreRecastModule->update(dt);
 				// PlayerControllerComponents are using this directly for smoke effect etc.
 				this->particleFxModule->update(dt);
+
+				this->cameraManager->moveCamera(dt);
 			}
 		}
 

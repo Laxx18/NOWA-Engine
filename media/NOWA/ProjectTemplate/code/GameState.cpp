@@ -50,9 +50,9 @@ void GameState::renderUpdate(Ogre::Real dt)
 	this->processUnbufferedKeyInput(dt);
 	this->processUnbufferedMouseInput(dt);
 	
+	NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->update(dt);
+	
 	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-		
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
 	
 	if (ms.buttonDown(OIS::MB_Right))
 	{

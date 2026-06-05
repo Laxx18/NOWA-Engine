@@ -29,13 +29,13 @@ namespace NOWA
         transparency(new Variant(PlanetOceanComponent::AttrTransparency(), 0.95f, this->attributes)),
         reflectionMap(new Variant(PlanetOceanComponent::AttrReflectionMap(), Ogre::String(""), this->attributes)),
         waveAmplitudeScale(new Variant(PlanetOceanComponent::AttrWaveAmplitudeScale(), 1.0f, this->attributes)),
-        wave0Amplitude(new Variant(PlanetOceanComponent::AttrWave0Amplitude(), 0.08f, this->attributes)),
+        wave0Amplitude(new Variant(PlanetOceanComponent::AttrWave0Amplitude(), 0.2f, this->attributes)),
         wave0Frequency(new Variant(PlanetOceanComponent::AttrWave0Frequency(), 2.0f, this->attributes)),
-        wave0Speed(new Variant(PlanetOceanComponent::AttrWave0Speed(), 0.3f, this->attributes)),
+        wave0Speed(new Variant(PlanetOceanComponent::AttrWave0Speed(), 0.8f, this->attributes)),
         wave0Direction(new Variant(PlanetOceanComponent::AttrWave0Direction(), 0.0f, this->attributes)),
         wave1Amplitude(new Variant(PlanetOceanComponent::AttrWave1Amplitude(), 0.05f, this->attributes)),
         wave1Frequency(new Variant(PlanetOceanComponent::AttrWave1Frequency(), 3.0f, this->attributes)),
-        wave1Speed(new Variant(PlanetOceanComponent::AttrWave1Speed(), 0.2f, this->attributes)),
+        wave1Speed(new Variant(PlanetOceanComponent::AttrWave1Speed(), 0.3f, this->attributes)),
         wave1Direction(new Variant(PlanetOceanComponent::AttrWave1Direction(), 1.2f, this->attributes)),
         wave2Amplitude(new Variant(PlanetOceanComponent::AttrWave2Amplitude(), 0.03f, this->attributes)),
         wave2Frequency(new Variant(PlanetOceanComponent::AttrWave2Frequency(), 5.0f, this->attributes)),
@@ -302,16 +302,13 @@ namespace NOWA
     {
         if (false == notSimulating && true == this->activated->getBool())
         {
-            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(
-                this->oceanUpdateClosureId,
-                [this](Ogre::Real renderDt)
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(this->oceanUpdateClosureId, [this](Ogre::Real renderDt)
+            {
+                if (nullptr != this->ocean && true == this->activated->getBool())
                 {
-                    if (nullptr != this->ocean && true == this->activated->getBool())
-                    {
-                        this->ocean->update(static_cast<float>(renderDt));
-                    }
-                },
-                false);
+                    this->ocean->update(static_cast<float>(renderDt));
+                }
+            }, false);
         }
     }
 
@@ -975,11 +972,12 @@ namespace NOWA
                 this->ocean->setReflectionTextureName(ref);
             }
 
-            // Register ocean item with game object so movableObject is valid.
-            // doNotDestroyMovableObject=true so init() won't destroy the planet item.
-            // It only updates movableObject pointer + flags.
-            this->gameObjectPtr->setDoNotDestroyMovableObject(true);
-            this->gameObjectPtr->init(this->ocean->getItem());
+            // Must not be done: PlanetOcean is no own mesh, its belongs to PlanetTerraComponent, so the lines below, would overwrite the item for PlanetTerra and wrong collision hull would be created.
+            //// Register ocean item with game object so movableObject is valid.
+            //// doNotDestroyMovableObject=true so init() won't destroy the planet item.
+            //// It only updates movableObject pointer + flags.
+            //this->gameObjectPtr->setDoNotDestroyMovableObject(true);
+            //this->gameObjectPtr->init(this->ocean->getItem());
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCmd), "PlanetOceanComponent::createOcean");
 
@@ -1010,8 +1008,6 @@ namespace NOWA
 
         NOWA::GraphicsModule::RenderCommand renderCmd = [this]()
         {
-            // Null before destroy — prevents dangling ptr if GUI reads movableObject
-            this->gameObjectPtr->nullMovableObject();
             this->ocean->destroy();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCmd), "PlanetOceanComponent::destroyOcean");

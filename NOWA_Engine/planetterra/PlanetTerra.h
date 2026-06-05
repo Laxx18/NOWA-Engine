@@ -54,7 +54,7 @@ namespace NOWA
         ~PlanetTerra();
 
         // ── Creation / destruction (RENDER THREAD) ─────────────────────────────
-        bool create(float radius, int segH, int segV, int blendTexSize, Ogre::SceneNode* attachNode, const Ogre::String& datablockName);
+        bool create(float radius, int segH, int segV, int blendTexSize, Ogre::SceneNode* attachNode, const Ogre::String& datablockName, bool useWeightTexture = true);
         void destroy();
 
         // ── Full topology rebuild when seg-count changes (RENDER THREAD) ───────
@@ -244,6 +244,7 @@ namespace NOWA
         // UV scale applied to UV set 1 (main diffuse + normal).
         // UV1 = UV0 * baseUVScale. Stored so rebuildDynamicBuffers can reapply it.
         float baseUVScale = 1.0f;
+        bool useWeightTexture = true;
     };
 
 } // namespace NOWA

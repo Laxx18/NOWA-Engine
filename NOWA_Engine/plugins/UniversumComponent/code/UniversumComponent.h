@@ -363,46 +363,11 @@ namespace NOWA
         class PlanetOrbitObserver : public AreaOfInterestComponent::ITriggerSphereQueryObserver
         {
         public:
-            PlanetOrbitObserver(UniversumComponent* owner, unsigned long planetId) : owner(owner), planetId(planetId)
-            {
-            }
+            PlanetOrbitObserver(UniversumComponent* owner, unsigned long planetId);
 
-            virtual void onEnter(GameObject* gameObject) override
-            {
-                if (nullptr == this->owner || false == this->owner->getAutoPauseOrbit())
-                {
-                    return;
-                }
-                // Only react when the PLAYER enters this planet's atmosphere sphere.
-                // Without this guard, every orbiting planet/moon that sweeps through another
-                // planet's AOI sphere fires this callback, causing rapid pause/resume spam.
-                if (nullptr == gameObject)
-                {
-                    return;
-                }
-                if (gameObject->getId() != this->owner->getPlayerGameObjectId())
-                {
-                    return;
-                }
-                this->owner->pausePlanetOrbit(this->planetId);
-            }
-
-            virtual void onLeave(GameObject* gameObject) override
-            {
-                if (nullptr == this->owner || false == this->owner->getAutoPauseOrbit())
-                {
-                    return;
-                }
-                if (nullptr == gameObject)
-                {
-                    return;
-                }
-                if (gameObject->getId() != this->owner->getPlayerGameObjectId())
-                {
-                    return;
-                }
-                this->owner->resumePlanetOrbit(this->planetId);
-            }
+            virtual void onEnter(GameObject* gameObject) override;
+            
+            virtual void onLeave(GameObject* gameObject) override;
 
         private:
             UniversumComponent* owner;
@@ -536,8 +501,8 @@ namespace NOWA
          */
         void restoreAllSurfaceObjects(void);
 
-        void callPlanetEnteredFunction(unsigned long planetId);
-        void callPlanetLeftFunction(unsigned long planetId);
+        void callPlanetEnteredFunction(unsigned long planetId, unsigned long enteringGoId);
+        void callPlanetLeftFunction(unsigned long planetId, unsigned long enteringGoId);
         void callUniverseGeneratedFunction(void);
 
         /**
@@ -545,8 +510,8 @@ namespace NOWA
          *        or leaves a planet's atmosphere zone. Pauses/resumes orbital translation
          *        while keeping axial rotation running for the day/night cycle.
          */
-        void pausePlanetOrbit(unsigned long planetGameObjectId);
-        void resumePlanetOrbit(unsigned long planetGameObjectId);
+        void pausePlanetOrbit(unsigned long planetGameObjectId, unsigned long gameObjectId);
+        void resumePlanetOrbit(unsigned long planetGameObjectId, unsigned long gameObjectId);
 
         /**
          * @brief Sets dynamic state on a planet/moon GO and all its sub-component items.
@@ -572,6 +537,8 @@ namespace NOWA
         /** Returns a uniform int in [lo, hi] from rng. */
         int randInt(std::mt19937& rng, int lo, int hi);
 
+    private:
+        void handleSceneParsed(EventDataPtr eventData);
     private:
         Ogre::String name;
 

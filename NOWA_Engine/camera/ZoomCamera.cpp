@@ -2,6 +2,7 @@
 #include "ZoomCamera.h"
 #include "utilities/MathHelper.h"
 #include "gameobject/GameObject.h"
+#include "gameobject/PhysicsActiveComponent.h"
 #include "main/Core.h"
 #include "main/AppStateManager.h"
 #include "modules/GraphicsModule.h"
@@ -92,78 +93,87 @@ namespace NOWA
 	}
 
 	void ZoomCamera::calcAveragePosition(void)
-	{
-		Ogre::Vector3 averagePosition = Ogre::Vector3::ZERO;
-		unsigned int numTargets = 0;
+    {
+        Ogre::Vector3 averagePosition = Ogre::Vector3::ZERO;
+        unsigned int numTargets = 0;
 
-		// What is with several categories, e.g. Player + Enemy, check it here
-		std::vector<GameObjectPtr> gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategoryId(this->categoryId);
-		
-		for (size_t i = 0; i < gameObjects.size(); i++)
-		{
-			GameObject* gameObject = gameObjects[i].get();
+        std::vector<GameObjectPtr> gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategoryId(this->categoryId);
 
-			averagePosition += gameObject->getPosition();
-			numTargets++;
-		}
+        for (size_t i = 0; i < gameObjects.size(); i++)
+        {
+            GameObject* gameObject = gameObjects[i].get();
 
-		if (numTargets > 0)
-		{
-			averagePosition /= numTargets;
-		}
+            // Read from physics body if available — SceneNode is one frame behind.
+            Ogre::Vector3 pos;
+            auto physComp = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsComponent>());
+            if (nullptr != this->physicsBody)
+            {
+                pos = this->physicsBody->getPosition();
+            }
+            else
+            {
+                pos = gameObject->getPosition();
+            }
 
-		// Keep the same y value as camera.
-		averagePosition.y = this->camera->getPosition().y;
+            averagePosition += pos;
+            numTargets++;
+        }
 
-		// The desired position is the average position
-		this->desiredPosition = averagePosition;
-	}
+        if (numTargets > 0)
+        {
+            averagePosition /= numTargets;
+        }
+
+        averagePosition.y = this->camera->getPosition().y;
+        this->desiredPosition = averagePosition;
+    }
 
 	Ogre::Real ZoomCamera::calcRequiredSize(void)
-	{
-		// Find the position the camera rig is moving towards in its local space.
-		Ogre::Quaternion localOrientation = Ogre::Quaternion::IDENTITY;
-		Ogre::Vector3 desiredLocalPosition = Ogre::Vector3::ZERO;
-		MathHelper::getInstance()->globalToLocal(this->camera->getParentSceneNode(), Ogre::Quaternion::IDENTITY, this->desiredPosition, localOrientation, desiredLocalPosition);
+    {
+        Ogre::Quaternion localOrientation = Ogre::Quaternion::IDENTITY;
+        Ogre::Vector3 desiredLocalPosition = Ogre::Vector3::ZERO;
+        MathHelper::getInstance()->globalToLocal(this->camera->getParentSceneNode(), Ogre::Quaternion::IDENTITY, this->desiredPosition, localOrientation, desiredLocalPosition);
 
-		// Start the camera's size calculation at zero.
-		Ogre::Real size = 0.0f;
+        Ogre::Real size = 0.0f;
 
-		// Go through all the targets...
-		std::vector<GameObjectPtr> gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategoryId(this->categoryId);
+        std::vector<GameObjectPtr> gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategoryId(this->categoryId);
 
-		for (size_t i = 0; i < gameObjects.size(); i++)
-		{
-			GameObject* gameObject = gameObjects[i].get();
-			
-			Ogre::Quaternion localOrientation = Ogre::Quaternion::IDENTITY;
-			Ogre::Vector3 targetLocalPosition = Ogre::Vector3::ZERO;
-			MathHelper::getInstance()->globalToLocal(this->camera->getParentSceneNode(), gameObject->getOrientation(), gameObject->getPosition(), localOrientation, desiredLocalPosition);
+        for (size_t i = 0; i < gameObjects.size(); i++)
+        {
+            GameObject* gameObject = gameObjects[i].get();
 
-			// Find the position of the target from the desired position of the camera's local space.
-			Ogre::Vector3 desiredPosToTarget = targetLocalPosition - desiredLocalPosition;
+            // Read from physics body if available
+            Ogre::Vector3 pos;
+            Ogre::Quaternion orient;
+            auto physComp = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsComponent>());
+            if (nullptr != this->physicsBody)
+            {
+                pos = this->physicsBody->getPosition();
+                orient = this->physicsBody->getOrientation();
+            }
+            else
+            {
+                pos = gameObject->getPosition();
+                orient = gameObject->getOrientation();
+            }
 
-			// Let the camera window size grow a little bit faster as the character does move
-			desiredPosToTarget *= this->growMultiplicator;
+            Ogre::Quaternion localOrient = Ogre::Quaternion::IDENTITY;
+            Ogre::Vector3 targetLocalPosition = Ogre::Vector3::ZERO;
+            MathHelper::getInstance()->globalToLocal(this->camera->getParentSceneNode(), orient, pos, localOrient, desiredLocalPosition);
 
-			// Choose the largest out of the current size and the distance of the tank 'up' or 'down' from the camera.
-			size = std::fmaxf(size, Ogre::Math::Abs(desiredPosToTarget.y));
-			size = std::fmaxf(size, Ogre::Math::Abs(desiredPosToTarget.z));
+            Ogre::Vector3 desiredPosToTarget = targetLocalPosition - desiredLocalPosition;
+            desiredPosToTarget *= this->growMultiplicator;
 
-			// Choose the largest out of the current size and the calculated size based on the tank being to the left or right of the camera.
-			size = std::fmaxf(size, Ogre::Math::Abs(desiredPosToTarget.x) /*/ this->camera->getAspectRatio()*/);
-		}
+            size = std::fmaxf(size, Ogre::Math::Abs(desiredPosToTarget.y));
+            size = std::fmaxf(size, Ogre::Math::Abs(desiredPosToTarget.z));
+            size = std::fmaxf(size, Ogre::Math::Abs(desiredPosToTarget.x));
+        }
 
-		// Add the edge buffer to the size.
-		// Space between the top/bottom most target and the screen edge. TODO: value to set from outside?
-		size += 8.0f;
+        size += 8.0f;
+        size = std::fmaxf(size, 13.0f);
 
-		// Make sure the camera's size isn't below the minimum.
-		// The smallest orthographic size the camera can be. TODO: value to set from outside?
-		size = std::fmaxf(size, 13.0f);
-
-		return size;
-	}
+        return size;
+    }
 
 	void ZoomCamera::zoomCamera(void)
 	{

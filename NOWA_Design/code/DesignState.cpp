@@ -978,7 +978,7 @@ void DesignState::handleSceneValid(NOWA::EventDataPtr eventData)
 
 void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
 {
-	if (nullptr == this->sceneManager)
+	if (nullptr == this->editorManager)
 	{
         return;
 	}
@@ -987,8 +987,12 @@ void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
 
 	if (false == castEventData->isPositive())
 	{
-		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Feedback", MyGUI::LanguageManager::getInstancePtr()->replaceTags(castEventData->getFeedbackMessage()),
-			MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData]()
+        {
+			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Feedback", MyGUI::LanguageManager::getInstancePtr()->replaceTags(castEventData->getFeedbackMessage()),
+				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleFeedback::createMessageBox");
 	}
 
 	Ogre::String feedbackMessage = castEventData->getFeedbackMessage();
@@ -1006,14 +1010,19 @@ void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
 
             // Remove the hardcoded 52 cap -- apply suggested speed directly.
             this->cameraMoveSpeed = suggestedSpeed;
-            auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-            if (nullptr != cameraBehavior)
+
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
-                cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
-            }
-            // Re-enable both speed buttons since we've reset to a new baseline.
-            this->cameraSpeedUpButton->setEnabled(true);
-            this->cameraSpeedDownButton->setEnabled(true);
+				auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+				if (nullptr != cameraBehavior)
+				{
+					cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+				}
+				// Re-enable both speed buttons since we've reset to a new baseline.
+				this->cameraSpeedUpButton->setEnabled(true);
+				this->cameraSpeedDownButton->setEnabled(true);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleFeedback");
         }
         return; // Don't display this in the status bar
     }
@@ -1848,63 +1857,77 @@ void DesignState::cloneGameObjects(void)
 
 void DesignState::update(Ogre::Real dt)
 {
-    if (true == this->simulating)
+    if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->bSceneLoading)
     {
-        // update(dt) fires exactly one Newton step with the given dt.
-        // The outer fixed-step loop in AppStateManager already manages
-        // the time accumulator, so dt here is always exactly fixedDt.
-        // (e.g. from a single-threaded loop without an outer accumulator).
-        this->ogreNewt->update(dt);
+        if (true == this->simulating)
+        {
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->update(dt);
+            NOWA::AppStateManager::getSingletonPtr()->getParticleFxModule()->update(dt);
+        }
+
+        // Update GameObjects (includes Lua scripts) FIRST.
+        // Lua reads m_curRotation via physComp:getOrientation() here.
+        // At this point m_curRotation reflects the result of the PREVIOUS
+        // Newton step — one frame behind, but consistent.
+        NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->update(dt, false == this->simulating);
+
+        if (true == this->simulating)
+        {
+            // Run Newton AFTER Lua so that the force/velocity commands written
+            // by Lua this frame are consumed by Newton in the same frame.
+            // OnTransform fires here and writes the NEW m_curRotation —
+            // Lua will read it next frame, which is the correct order.
+            this->ogreNewt->update(dt);
+        }
+
+		// Newton has stepped, interalPostUpdate has set m_nodePosit.
+        // Camera reads the correct interpolated position and writes
+        // into the transform buffer. Render thread lerps it at 400fps.
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
+
+        if (nullptr != this->editorManager)
+        {
+            this->editorManager->update(dt);
+        }
     }
-	// NOWA::LuaScriptApi::getInstance()->update(dt);
 
-	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->bSceneLoading)
-	{
-		if (true == this->simulating)
-		{
-			// this->ogreNewt->update(dt);
-			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->update(dt);
-			NOWA::AppStateManager::getSingletonPtr()->getParticleFxModule()->update(dt);
-		}
+    if (true == this->bQuit)
+    {
+        this->shutdown();
+    }
 
-		// Update the GameObjects
-		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->update(dt, false == this->simulating);
-		
-		if (nullptr != this->editorManager)
-		{
-			this->editorManager->update(dt);
-		}
-	}
+    if (true == this->isMouseAtTop)
+    {
+        this->mouseTopTimer += dt;
+        if (this->mouseTopTimer >= MOUSE_TOP_DELAY)
+        {
+            this->mouseTopTimer = 0.0f;
+            this->guiVisible = !this->guiVisible;
+            this->toggleGuiVisibility(this->guiVisible);
+            this->isMouseAtTop = false;
+        }
+    }
 
-	if (true == this->bQuit)
-	{
-		this->shutdown();
-	}
-
-	// Update mouse top timer if mouse is at top
-	if (true == this->isMouseAtTop)
-	{
-		this->mouseTopTimer += dt;
-
-		// If timer exceeds the delay, toggle GUI visibility
-		if (this->mouseTopTimer >= MOUSE_TOP_DELAY)
-		{
-			this->mouseTopTimer = 0.0f; // Reset timer
-			this->guiVisible = !this->guiVisible; // Toggle visibility
-
-			// Toggle visibility of all your MyGUI widgets
-			this->toggleGuiVisibility(this->guiVisible);
-
-			// Reset flag to prevent repeated toggling
-			this->isMouseAtTop = false;
-		}
-	}
-
-	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->bSceneLoading)
-	{
-		this->updateInfo(dt);
-	}
+    if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->bSceneLoading)
+    {
+        this->updateInfo(dt);
+    }
 }
+
+/*
+renderUpdate (render frequency, ~400fps)
+├── Free-fly editor camera (no physics, mouse-driven)
+├── Input capture (OIS mouse/keyboard state)
+├── MyGUI / UI updates
+└── Editor orbit camera
+
+update (fixed frequency, 144hz)
+├── Lua scripts
+├── Physics (Newton)
+├── Physics-attached cameras  ← AttachCamera, follow cam, etc.
+├── Game logic
+└── Animations driven by physics state
+*/
 
 void DesignState::renderUpdate(Ogre::Real dt)
 {
@@ -1950,8 +1973,6 @@ void DesignState::renderUpdate(Ogre::Real dt)
 			this->firstTimeValueSet = true;
 			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->rotateCamera(dt, true);
 		}
-
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
 
 		if (GetAsyncKeyState(VK_LSHIFT))
 		{

@@ -2,251 +2,288 @@
 #define ATTRIBUTES_COMPONENT_H
 
 #include "GameObjectComponent.h"
+#include "modules/LuaScriptApi.h"
 #include <map>
 
 namespace NOWA
 {
-	class EXPORTED AttributesComponent : public GameObjectComponent
-	{
-	public:
-		typedef boost::shared_ptr<AttributesComponent> AttributesCompPtr;
-		friend class AppStateManager;
-		friend class GameProgressModule;
-		
-	public:
-	
-		AttributesComponent();
+    class EXPORTED AttributesComponent : public GameObjectComponent
+    {
+    public:
+        typedef boost::shared_ptr<AttributesComponent> AttributesCompPtr;
+        friend class AppStateManager;
+        friend class GameProgressModule;
 
-		virtual ~AttributesComponent();
+    public:
+        AttributesComponent();
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+        virtual ~AttributesComponent();
 
-		virtual bool postInit(void) override;
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
-		virtual Ogre::String getClassName(void) const override;
+        virtual bool postInit(void) override;
 
-		virtual Ogre::String getParentClassName(void) const override;
+        virtual Ogre::String getClassName(void) const override;
 
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+        virtual Ogre::String getParentClassName(void) const override;
 
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("AttributesComponent");
-		}
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
-		static Ogre::String getStaticClassName(void)
-		{
-			return "AttributesComponent";
-		}
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("AttributesComponent");
+        }
 
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
+        static Ogre::String getStaticClassName(void)
+        {
+            return "AttributesComponent";
+        }
 
-		virtual void update(Ogre::Real dt, bool notSimulating = false) { };
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
-		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		/**
-		 * @see	GameObjectComponent::getStaticInfoText
-		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: A GameObject may have custom attributes like energy, coins etc. These attributes can also be used in lua scripts. They can also be saved and loaded.";
-		}
-		
-		void setAttributesCount(unsigned int attributesCount);
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: A GameObject may have custom attributes like energy, coins etc. These attributes can also be used in lua scripts. They can also be saved and loaded.";
+        }
 
-		unsigned int getAttributesCount(void) const;
+        void setAttributesCount(unsigned int attributesCount);
 
-		Variant* getAttributeValueByIndex(unsigned int index) const;
-		
-		Variant* getAttributeValueByName(const Ogre::String& attributeName);
+        unsigned int getAttributesCount(void) const;
 
-		void setAttributeName(const Ogre::String& attributeName, unsigned int index);
+        Variant* getAttributeValueByIndex(unsigned int index) const;
 
-		Ogre::String getAttributeName(unsigned int index);
-		
-		void setAttributeType(const Ogre::String& attributeType, unsigned int index);
+        Variant* getAttributeValueByName(const Ogre::String& attributeName);
 
-		Ogre::String getAttributeType(unsigned int index);
+        void setAttributeName(const Ogre::String& attributeName, unsigned int index);
 
-		template <typename T>
-		void setAttributeValue(T attributeValue, unsigned int index)
-		{
-			if (index >= this->attributeValues.size())
-				return;
-			this->attributeValues[index]->setValue(attributeValue);
-		}
+        Ogre::String getAttributeName(unsigned int index);
 
-		bool getAttributeValueBool(unsigned int index);
+        void setAttributeType(const Ogre::String& attributeType, unsigned int index);
 
-		int getAttributeValueInt(unsigned int index);
+        Ogre::String getAttributeType(unsigned int index);
 
-		unsigned int getAttributeValueUInt(unsigned int index);
+        template <typename T> void setAttributeValue(T attributeValue, unsigned int index)
+        {
+            if (index >= this->attributeValues.size())
+            {
+                return;
+            }
+            this->attributeValues[index]->setValue(attributeValue);
+        }
 
-		unsigned long getAttributeValueULong(unsigned int index);
+        bool getAttributeValueBool(unsigned int index);
 
-		Ogre::String getAttributeValueString(unsigned int index);
+        int getAttributeValueInt(unsigned int index);
 
-		Ogre::Real getAttributeValueReal(unsigned int index);
+        unsigned int getAttributeValueUInt(unsigned int index);
 
-		Ogre::Vector2 getAttributeValueVector2(unsigned int index);
+        unsigned long getAttributeValueULong(unsigned int index);
 
-		Ogre::Vector3 getAttributeValueVector3(unsigned int index);
+        Ogre::String getAttributeValueString(unsigned int index);
 
-		Ogre::Vector4 getAttributeValueVector4(unsigned int index);
+        Ogre::Real getAttributeValueReal(unsigned int index);
 
-		bool getAttributeValueBool(const Ogre::String& name);
+        Ogre::Vector2 getAttributeValueVector2(unsigned int index);
 
-		int getAttributeValueInt(const Ogre::String& name);
+        Ogre::Vector3 getAttributeValueVector3(unsigned int index);
 
-		unsigned int getAttributeValueUInt(const Ogre::String& name);
+        Ogre::Vector4 getAttributeValueVector4(unsigned int index);
 
-		unsigned long getAttributeValueULong(const Ogre::String& name);
+        bool getAttributeValueBool(const Ogre::String& name);
 
-		Ogre::String getAttributeValueString(const Ogre::String& name);
+        int getAttributeValueInt(const Ogre::String& name);
 
-		Ogre::Real getAttributeValueReal(const Ogre::String& name);
+        unsigned int getAttributeValueUInt(const Ogre::String& name);
 
-		Ogre::Vector2 getAttributeValueVector2(const Ogre::String& name);
+        unsigned long getAttributeValueULong(const Ogre::String& name);
 
-		Ogre::Vector3 getAttributeValueVector3(const Ogre::String& name);
+        Ogre::String getAttributeValueString(const Ogre::String& name);
 
-		Ogre::Vector4 getAttributeValueVector4(const Ogre::String& name);
+        Ogre::Real getAttributeValueReal(const Ogre::String& name);
 
-		void setCloneWithInitValues(bool cloneWithInitValues);
+        Ogre::Vector2 getAttributeValueVector2(const Ogre::String& name);
 
-		bool getCloneWithInitValues(void) const;
-		
-		void changeName(const Ogre::String& oldName, const Ogre::String& newName);
+        Ogre::Vector3 getAttributeValueVector3(const Ogre::String& name);
 
-		template <typename T>
-		bool addAttribute(const Ogre::String& attributeName, const T& newAttributeValue, Variant::Types attributeType)
-		{
-			if (attributeName.empty())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributesComponent] Could not add attribute, because the attribute name is empty for game object: " 
-					+ this->gameObjectPtr->getName());
-				return false;
-			}
-			for (auto& attribute : this->attributes)
-			{
-				if (attribute.first == attributeName)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributesComponent] Could not add attribute, because the attribute name: '" 
-						+ attributeName + "' does already exist for game object: " + this->gameObjectPtr->getName());
-					return false;
-				}
-			}
-			this->setAttributesCount(this->attributesCount->getUInt() + 1);
-			this->attributeNames[this->attributesCount->getUInt() - 1]->setValue(attributeName);
+        Ogre::Vector4 getAttributeValueVector4(const Ogre::String& name);
 
-			Ogre::String strType;
-			if (Variant::VAR_BOOL == attributeType)
-			{
-				strType = "Bool";
-			}
-			else if (Variant::VAR_INT == attributeType)
-			{
-				strType = "Int";
-			}
-			else if (Variant::VAR_UINT == attributeType)
-			{
-				strType = "UInt";
-			}
-			else if (Variant::VAR_ULONG == attributeType)
-			{
-				strType = "ULong";
-			}
-			else if (Variant::VAR_REAL == attributeType)
-			{
-				strType = "Float";
-			}
-			else if (Variant::VAR_STRING == attributeType)
-			{
-				strType = "String";
-			}
-			else if (Variant::VAR_VEC2 == attributeType)
-			{
-				strType = "Vector2";
-			}
-			else if (Variant::VAR_VEC3 == attributeType)
-			{
-				strType = "Vector3";
-			}
-			else if (Variant::VAR_VEC4 == attributeType)
-			{
-				strType = "Vector4";
-			}
-			this->attributeTypes[this->attributesCount->getUInt() - 1]->setListSelectedValue(strType);
-			return true;
-		}
+        void setCloneWithInitValues(bool cloneWithInitValues);
 
-		bool removeAttribute(const Ogre::String& attributeName);
+        bool getCloneWithInitValues(void) const;
 
-		template <typename T>
-		bool changeValue(const Ogre::String& attributeName, const T& newAttributeValue)
-		{
-			if (attributeName.empty())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributesComponent] Could not change Value, because the attribute name is empty for game object: " 
-					+ this->gameObjectPtr->getName());
-				return false;
-			}
-			for (auto& attribute : this->attributes)
-			{
-				if (attribute.first == attributeName)
-				{
-					attribute.second->setValue(newAttributeValue);
-					return true;
-				}
-			}
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributesComponent] Could not change Value, because the attribute value name: '" 
-				+ attributeName + "' does not exist for game object: " + this->gameObjectPtr->getName());
-			return false;
-		}
-		
-		void changeType(const Ogre::String& attributeName, const Ogre::String& attributeType);
+        void changeName(const Ogre::String& oldName, const Ogre::String& newName);
 
-		void saveValues(const Ogre::String& saveName, bool crypted);
+        template <typename T> bool addAttribute(const Ogre::String& attributeName, const T& newAttributeValue, Variant::Types attributeType)
+        {
+            if (attributeName.empty())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributesComponent] Could not add attribute, because the attribute name is empty for game object: " + this->gameObjectPtr->getName());
+                return false;
+            }
+            for (auto& attribute : this->attributes)
+            {
+                if (attribute.first == attributeName)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                        "[AttributesComponent] Could not add attribute, because the attribute name: '" + attributeName + "' does already exist for game object: " + this->gameObjectPtr->getName());
+                    return false;
+                }
+            }
+            this->setAttributesCount(this->attributesCount->getUInt() + 1);
+            unsigned int newIndex = this->attributesCount->getUInt() - 1;
+            this->attributeNames[newIndex]->setValue(attributeName);
 
-		void saveValue(const Ogre::String& saveName, unsigned int index, bool crypted);
-		
-		void saveValue(const Ogre::String& saveName, Variant* attribute, bool crypted);
+            Ogre::String strType;
+            if (Variant::VAR_BOOL == attributeType)
+            {
+                strType = "Bool";
+            }
+            else if (Variant::VAR_INT == attributeType)
+            {
+                strType = "Int";
+            }
+            else if (Variant::VAR_UINT == attributeType)
+            {
+                strType = "UInt";
+            }
+            else if (Variant::VAR_ULONG == attributeType)
+            {
+                strType = "ULong";
+            }
+            else if (Variant::VAR_REAL == attributeType)
+            {
+                strType = "Float";
+            }
+            else if (Variant::VAR_STRING == attributeType)
+            {
+                strType = "String";
+            }
+            else if (Variant::VAR_VEC2 == attributeType)
+            {
+                strType = "Vector2";
+            }
+            else if (Variant::VAR_VEC3 == attributeType)
+            {
+                strType = "Vector3";
+            }
+            else if (Variant::VAR_VEC4 == attributeType)
+            {
+                strType = "Vector4";
+            }
+            this->attributeTypes[newIndex]->setListSelectedValue(strType);
+            // Bug fix: actually store the initial value, not just the type
+            this->attributeValues[newIndex]->setValue(newAttributeValue);
+            return true;
+        }
 
-		bool loadValues(const Ogre::String& saveName);
+        bool removeAttribute(const Ogre::String& attributeName);
 
-		bool loadValue(const Ogre::String& saveName, unsigned int index);
-		
-		bool loadValue(const Ogre::String& saveName, Variant* attribute);
-	public:
-		static const Ogre::String AttrAttributesCount(void) { return "Attributes Count"; }
-		static const Ogre::String AttrAttributeName(void) { return "Attribute Name "; }
-		static const Ogre::String AttrAttributeType(void) { return "Attribute Type "; }
-		static const Ogre::String AttrAttributeValue(void) { return "Attribute Value "; }
-	private:
-		void internalSave(std::ostringstream& outFile);
-		void internalSave(Ogre::String& content, unsigned int index);
-		bool internalRead(std::istringstream& inFile);
-		bool internalRead(std::istringstream& inFile, unsigned int index);
-	protected:
-		bool cloneWithInitValues;
-	private:
-		Variant* attributesCount;
-		std::vector<Variant*> attributeNames;
-		std::vector<Variant*> attributeTypes;
-		std::vector<Variant*> attributeValues;
-		
-		// std::vector<std::pair<Ogre::String, Variant*>> userAttributes;
-	};
+        template <typename T> bool changeValue(const Ogre::String& attributeName, const T& newAttributeValue)
+        {
+            if (attributeName.empty())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributesComponent] Could not change Value, because the attribute name is empty for game object: " + this->gameObjectPtr->getName());
+                return false;
+            }
+            for (size_t i = 0; i < this->attributeNames.size(); i++)
+            {
+                if (attributeName == this->attributeNames[i]->getString())
+                {
+                    this->attributeValues[i]->setValue(newAttributeValue);
+                    return true;
+                }
+            }
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[AttributesComponent] Could not change Value, because the attribute value name: '" + attributeName + "' does not exist for game object: " + this->gameObjectPtr->getName());
+            return false;
+        }
 
-}; //namespace end
+        void changeType(const Ogre::String& attributeName, const Ogre::String& attributeType);
+
+        void saveValues(const Ogre::String& saveName, bool crypted);
+
+        void saveValue(const Ogre::String& saveName, unsigned int index, bool crypted);
+
+        void saveValue(const Ogre::String& saveName, Variant* attribute, bool crypted);
+
+        bool loadValues(const Ogre::String& saveName);
+
+        bool loadValue(const Ogre::String& saveName, unsigned int index);
+
+        bool loadValue(const Ogre::String& saveName, Variant* attribute);
+
+        /**
+         * @brief Registers a Lua closure that is called whenever any attribute value changes via actualizeValue.
+         *        The closure receives the changed attribute name (String) and the Variant* so the script can
+         *        read the new value with the usual getValueXxx helpers.
+         *
+         *        Lua usage example:
+         * @code
+         *   attributesComponent:reactOnAttributeChanged(function(attributeName, attribute)
+         *       if attributeName == "energy" then
+         *           local v = attribute:getValueNumber()
+         *           -- react ...
+         *       end
+         *   end)
+         * @endcode
+         */
+        void reactOnAttributeChanged(luabind::object closureFunction);
+
+    public:
+        static const Ogre::String AttrAttributesCount(void)
+        {
+            return "Attributes Count";
+        }
+        static const Ogre::String AttrAttributeName(void)
+        {
+            return "Attribute Name ";
+        }
+        static const Ogre::String AttrAttributeType(void)
+        {
+            return "Attribute Type ";
+        }
+        static const Ogre::String AttrAttributeValue(void)
+        {
+            return "Attribute Value ";
+        }
+
+    private:
+        void internalSave(std::ostringstream& outFile);
+        void internalSave(Ogre::String& content, unsigned int index);
+        bool internalRead(std::istringstream& inFile);
+        bool internalRead(std::istringstream& inFile, unsigned int index);
+
+        /**
+         * @brief Fires the onAttributeChanged Lua closure (if registered) for the given user attribute name
+         *        and the corresponding Variant. Must only be called from the main/logic thread.
+         */
+        void fireAttributeChanged(const Ogre::String& userAttributeName, Variant* attributeVariant);
+
+    protected:
+        bool cloneWithInitValues;
+
+    private:
+        Variant* attributesCount;
+        std::vector<Variant*> attributeNames;
+        std::vector<Variant*> attributeTypes;
+        std::vector<Variant*> attributeValues;
+
+        luabind::object attributeChangedClosureFunction;
+    };
+
+}; // namespace end
 
 #endif

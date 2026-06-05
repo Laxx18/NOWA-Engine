@@ -709,6 +709,12 @@ namespace NOWA
          * @param texture         Runtime TextureGpu pointer. Pass nullptr to clear the slot.
          */
         void setTextureDirectly(Ogre::PbsTextureTypes pbsTextureType, Ogre::TextureGpu* texture);
+
+		/**
+         * @brief Clears the given texture
+         * @param pbsTextureType		   Target slot, e.g. Ogre::PBSM_DETAIL_WEIGHT
+         */
+		void clearTexture(Ogre::PbsTextureTypes pbsTextureType);
 	public:
 		static const Ogre::String AttrSubItemIndex(void) { return "Sub-Item Index"; }
 		static const Ogre::String AttrWorkflow(void) { return "Workflow"; }

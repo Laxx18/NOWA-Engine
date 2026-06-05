@@ -956,61 +956,63 @@ namespace NOWA
 
 		// Attention: Is this correct?
 
-		Ogre::Vector3 scaledOffset = this->partPosition * shapeSizeFactor;
-		Ogre::Vector3 collisionOffset = this->partPosition - scaledOffset;
-
 		Ogre::Vector3 inertia = Ogre::Vector3::ZERO;
-		Ogre::Vector3 massOrigin = Ogre::Vector3::ZERO;
-		// how to do with volume for buoyancy, since when the object will be split in parts, what is with volume?
+        Ogre::Vector3 massOrigin = Ogre::Vector3::ZERO;
 
-		if (boundingBoxHalfSize.x > 0.005f && boundingBoxHalfSize.y > 0.005f && boundingBoxHalfSize.z > 0.005f)
-		{
-			// square scale the collision, e.g. when scene node is scaled to 2, 2, 2 the collision scale will be 4, 4, 4
-			// when scene node is scaled to 0.5, 0.5, 0.5 the collision scale will be 0.25, 0.25, 0.25
-			// This works because the collision is made of peaces and each peace has an offset position, so scaling will also more offsetting the position in all directions
-			OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
-			if (NOWA::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
-			{
-				col = new OgreNewt::CollisionPrimitives::ConvexHull(
-					this->physicsActiveDestructableComponent->getOgreNewt(), item, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, 0.001f, scale * scale);
-			}
-			OgreNewt::CollisionPtr collisionPtr = OgreNewt::CollisionPtr(col);
-			// calculate interia and mass center of the body
-			col->calculateInertialMatrix(inertia, massOrigin);
+        if (boundingBoxHalfSize.x > 0.005f && boundingBoxHalfSize.y > 0.005f && boundingBoxHalfSize.z > 0.005f)
+        {
+            OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
+            OgreNewt::CollisionPtr collisionPtr;
 
-			this->splitPartBody = new OgreNewt::Body(this->physicsActiveDestructableComponent->getOgreNewt(), this->physicsActiveDestructableComponent->gameObjectPtr->getSceneManager(), collisionPtr);
-			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->splitPartBody);
-		}
-		else
-		{
-			// is boundingBoxHalfSize correct? Breakpoint if ever this case does occur
-			this->splitPartBody = new OgreNewt::Body(this->physicsActiveDestructableComponent->getOgreNewt(), this->physicsActiveDestructableComponent->gameObjectPtr->getSceneManager(),
-				this->physicsActiveDestructableComponent->createCollisionPrimitive("Box", Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY, boundingBoxHalfSize * scale, inertia, massOrigin, this->physicsActiveDestructableComponent->getOwner()->getCategoryId()));
-			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->splitPartBody);
-		}
+            if (NOWA::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+            {
+                // ConvexHull reads vertex data via mapAsyncTickets -- render thread required.
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, scale, &col, &collisionPtr]()
+                {
+                    col = new OgreNewt::CollisionPrimitives::ConvexHull(this->physicsActiveDestructableComponent->getOgreNewt(), this->item, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, 0.001f, scale * scale);
+                    collisionPtr = OgreNewt::CollisionPtr(col);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveDestructableComponent::createConvexHull");
+            }
 
-		// this->splitPartBody->setJointRecursiveCollision(0);
+            if (nullptr != col)
+            {
+                // calculateInertialMatrix is pure CPU math on the built shape.
+                col->calculateInertialMatrix(inertia, massOrigin);
 
-		this->splitPartBody->setGravity(this->physicsActiveDestructableComponent->gravity->getVector3());
+                this->splitPartBody = new OgreNewt::Body(this->physicsActiveDestructableComponent->getOgreNewt(), this->physicsActiveDestructableComponent->gameObjectPtr->getSceneManager(), collisionPtr);
+                NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->splitPartBody);
+            }
+        }
+        else
+        {
+            // Box is analytical -- pure CPU, no GPU reads, no render thread needed.
+            this->splitPartBody = new OgreNewt::Body(this->physicsActiveDestructableComponent->getOgreNewt(), this->physicsActiveDestructableComponent->gameObjectPtr->getSceneManager(),
+                this->physicsActiveDestructableComponent->createCollisionPrimitive("Box", Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY, boundingBoxHalfSize * scale, inertia, massOrigin,
+                    this->physicsActiveDestructableComponent->getOwner()->getCategoryId()));
+            NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->splitPartBody);
+        }
 
-		// calculate mass for each part
-// Attention: Is this correct?
-		Ogre::Item* ownerItem = nullptr;
-		Ogre::Vector3 splitPartBoundingBoxSize = Ogre::Vector3::ZERO;
-		Ogre::Vector3 originalBoundingBoxSize = Ogre::Vector3::ZERO;
+        this->splitPartBody->setGravity(this->physicsActiveDestructableComponent->gravity->getVector3());
 
-		if (NOWA::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
-		{
-			ownerItem = this->physicsActiveDestructableComponent->getOwner()->getMovableObjectUnsafe<Ogre::Item>();
-			splitPartBoundingBoxSize = ownerItem->getMesh()->getAabb().getSize() * scale;
-			originalBoundingBoxSize = item->getMesh()->getAabb().getSize() * scale;
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveDestructableComponent::SplitPart] Error cannot create split part, because the game object has no entity with mesh for game object: " + this->physicsActiveDestructableComponent->getOwner()->getName());
-			return;
-			// throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsActiveDestructableComponent::SplitPart] Error cannot create split part, because the game object has no entity with mesh for game object: " + this->physicsActiveDestructableComponent->getOwner()->getName() + ".\n", "NOWA");
-		}
+        // getAabb() reads CPU-side mesh metadata -- no GPU access, safe on main thread.
+        Ogre::Item* ownerItem = nullptr;
+        Ogre::Vector3 splitPartBoundingBoxSize = Ogre::Vector3::ZERO;
+        Ogre::Vector3 originalBoundingBoxSize = Ogre::Vector3::ZERO;
+
+        if (NOWA::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+        {
+            ownerItem = this->physicsActiveDestructableComponent->getOwner()->getMovableObjectUnsafe<Ogre::Item>();
+            splitPartBoundingBoxSize = ownerItem->getMesh()->getAabb().getSize() * scale;
+            originalBoundingBoxSize = item->getMesh()->getAabb().getSize() * scale;
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveDestructableComponent::SplitPart] Error cannot create split part, "
+                                                                                "because the game object has no entity with mesh for game object: " +
+                                                                                    this->physicsActiveDestructableComponent->getOwner()->getName());
+            return;
+        }
 
 		Ogre::Vector3 splitPartFractionVolume = splitPartBoundingBoxSize / originalBoundingBoxSize;
 

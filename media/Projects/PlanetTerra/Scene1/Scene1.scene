@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.57735" y="0.57735" z="0.57735"/>
+			<hemisphereDir x="0.535788" y="-0.143223" z="-0.832117"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -23,7 +23,7 @@
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-5884.92 -2592.58 -28864.1" mostRightFarPosition="6806.04 2670.61 10762.7"/>
+		<bounds mostLeftNearPosition="-2360.93 -2574.43 -2502" mostRightFarPosition="19751.9 2854.88 24828.8"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -31,8 +31,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="1263.18" y="153.803" z="1249.93"/>
-			<rotation qw="0.936006" qx="-0.152983" qy="-0.312852" qz="-0.0511082"/>
+			<position x="-2360" y="1176.28" z="6607.42"/>
+			<rotation qw="0.886454" qx="-0.154824" qy="-0.429648" qz="-0.0750409"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -61,10 +61,10 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-5904.58 163.359 10790.5"/>
-					<property type="9" name="CameraOrientation" data="-24.7791 -39.0087 0.00285491"/>
+					<property type="9" name="CameraPosition" data="-2360 1176.28 6607.42"/>
+					<property type="9" name="CameraOrientation" data="-19.8142 -51.7172 -7.16925e-05"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
-					<property type="6" name="FarClipDistance" data="1e+08"/>
+					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
@@ -100,7 +100,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
-			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115917"/>
+			<rotation qw="0.0243155" qx="0.942125" qy="-0.168696" qz="0.288705"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -166,18 +166,157 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="SoundName" data="Void Runner.ogg"/>
+					<property type="6" name="Volume" data="60"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="12" name="Stream" data="true"/>
+					<property type="12" name="RelativeToListener" data="false"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+				</userData>
+			</item>
+		</node>
+		<node name="FutureFighterJet_0" id="1171646049">
+			<position x="-2320.73" y="1148.43" z="6566.68"/>
+			<rotation qw="0.34208" qx="0.000333648" qy="0.93967" qz="0.000968856"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="FutureFighterJet_0" meshFile="FutureFighterJet.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="FutureFighterJet"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2599276278"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="1000"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="DataBlock0" data="FutureFighterJet"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="50"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.3"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 0 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="1000"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="FutureFighterJet_0.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="2" name="OrderIndex" data="0"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="TemplateName" data="Nucleus_Outer"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="6" name="PlayTime" data="0"/>
+					<property type="6" name="PlaySpeed" data="1"/>
+					<property type="9" name="OffsetPosition" data="0 0 -5"/>
+					<property type="9" name="OffsetOrientation" data="0 90 0"/>
+					<property type="8" name="Scale" data="3 3"/>
+					<property type="7" name="BlendingMethod" data="Transparent Colour"/>
+					<property type="12" name="FadeIn" data="false"/>
+					<property type="6" name="FadeInTime" data="1000"/>
+					<property type="12" name="FadeOut" data="false"/>
+					<property type="6" name="FadeOutTime" data="1000"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="turbine1_22khz_16bit_mono_golgotha.wav"/>
+					<property type="6" name="Volume" data="70"/>
+					<property type="12" name="Loop" data="true"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="false"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="DeviceName" data="Win32InputManager"/>
+					<property type="12" name="IsExclusive" data="true"/>
+					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="6" name="GoalRadius" data="0.5"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="6" name="Acceleration" data="0"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="12" name="UseStandUp" data="false"/>
+					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="AttributesCount" data="1"/>
+					<property type="7" name="AttributeName0" data="isOnPlanet"/>
+					<property type="7" name="AttributeType0" data="Bool"/>
+					<property type="7" name="AttributeValue0" data="false"/>
+					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="CameraGameObjectId" data="0"/>
+					<property type="9" name="YOffset" data="0 3 -5"/>
+					<property type="9" name="LookAtOffset" data="0 1 0"/>
+					<property type="6" name="SpringForce" data="0.2"/>
+					<property type="6" name="Friction" data="0.4"/>
+					<property type="6" name="SpringLength" data="20"/>
 				</userData>
 			</item>
 		</node>
 		<node name="Universum_0" id="766287662">
-			<position x="1489.98" y="0.1615" z="1027.66"/>
+			<position x="-1623.76" y="0.1615" z="5614.71"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Universum_0" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="4215249561"/>
+					<property type="7" name="Id" data="1826795857"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
@@ -219,11 +358,11 @@
 					<property type="6" name="Orbital Distance Max" data="400"/>
 					<property type="6" name="Moon Orbital Distance Min" data="20"/>
 					<property type="6" name="Moon Orbital Distance Max" data="60"/>
-					<property type="6" name="Orbital Speed Min" data="0.02"/>
-					<property type="6" name="Orbital Speed Max" data="0.15"/>
+					<property type="6" name="Orbital Speed Min" data="0.005"/>
+					<property type="6" name="Orbital Speed Max" data="0.02"/>
 					<property type="6" name="Axial Speed Min" data="0.01"/>
 					<property type="6" name="Axial Speed Max" data="0.05"/>
-					<property type="2" name="Player GameObject Id" data="0"/>
+					<property type="2" name="Player GameObject Id" data="2599276278"/>
 					<property type="2" name="Camera GameObject Id" data="1111111112"/>
 					<property type="2" name="Sun Light GameObject Id" data="1111111113"/>
 					<property type="6" name="Far Clip Space" data="1e+06"/>
@@ -232,42 +371,58 @@
 					<property type="6" name="Scale" data="2"/>
 					<property type="12" name="Auto Pause Orbit On Surface" data="true"/>
 					<property type="2" name="Saved System Count" data="1"/>
-					<property type="2" name="Sys0_SunId" data="3336972111"/>
+					<property type="2" name="Sys0_SunId" data="225873069"/>
 					<property type="9" name="Sys0_LightColor" data="1 1 0.9"/>
 					<property type="6" name="Sys0_LightPower" data="2.82677"/>
 					<property type="2" name="Sys0_PlanetCount" data="2"/>
-					<property type="2" name="Sys0_P0_Id" data="1541018069"/>
+					<property type="2" name="Sys0_P0_Id" data="560244364"/>
 					<property type="6" name="Sys0_P0_OrbR" data="8095.42"/>
-					<property type="6" name="Sys0_P0_OrbS" data="0.103026"/>
+					<property type="6" name="Sys0_P0_OrbS" data="0.0145799"/>
 					<property type="6" name="Sys0_P0_OrbT" data="0.140432"/>
 					<property type="6" name="Sys0_P0_Phase" data="1.28529"/>
 					<property type="6" name="Sys0_P0_AxS" data="0.0403716"/>
 					<property type="6" name="Sys0_P0_Grav" data="150"/>
-					<property type="2" name="Sys0_P1_Id" data="2487044716"/>
-					<property type="6" name="Sys0_P1_OrbR" data="26009.7"/>
-					<property type="6" name="Sys0_P1_OrbS" data="0.0769358"/>
-					<property type="6" name="Sys0_P1_OrbT" data="0.273218"/>
-					<property type="6" name="Sys0_P1_Phase" data="4.8306"/>
-					<property type="6" name="Sys0_P1_AxS" data="0.0143867"/>
+					<property type="2" name="Sys0_P1_Id" data="3620058202"/>
+					<property type="6" name="Sys0_P1_OrbR" data="24059.1"/>
+					<property type="6" name="Sys0_P1_OrbS" data="0.00886037"/>
+					<property type="6" name="Sys0_P1_OrbT" data="0.0321969"/>
+					<property type="6" name="Sys0_P1_Phase" data="1.05396"/>
+					<property type="6" name="Sys0_P1_AxS" data="0.0275187"/>
 					<property type="6" name="Sys0_P1_Grav" data="150"/>
-					<property type="2" name="Sys0_MoonCount" data="2"/>
+					<property type="2" name="Sys0_MoonCount" data="4"/>
 					<property type="2" name="Sys0_M0_Parent" data="0"/>
-					<property type="2" name="Sys0_M0_Id" data="848462533"/>
+					<property type="2" name="Sys0_M0_Id" data="560406661"/>
 					<property type="6" name="Sys0_M0_OrbR" data="4137.36"/>
-					<property type="6" name="Sys0_M0_OrbS" data="0.178177"/>
-					<property type="6" name="Sys0_M0_OrbT" data="0.00492256"/>
+					<property type="6" name="Sys0_M0_OrbS" data="0.0153416"/>
+					<property type="6" name="Sys0_M0_OrbT" data="0.182652"/>
 					<property type="6" name="Sys0_M0_Phase" data="4.45798"/>
-					<property type="6" name="Sys0_M0_AxS" data="0.0167097"/>
+					<property type="6" name="Sys0_M0_AxS" data="0.031258"/>
 					<property type="6" name="Sys0_M0_Grav" data="150"/>
 					<property type="2" name="Sys0_M1_Parent" data="1"/>
-					<property type="2" name="Sys0_M1_Id" data="931886372"/>
-					<property type="6" name="Sys0_M1_OrbR" data="2847.61"/>
-					<property type="6" name="Sys0_M1_OrbS" data="0.051106"/>
-					<property type="6" name="Sys0_M1_OrbT" data="0.0197702"/>
-					<property type="6" name="Sys0_M1_Phase" data="5.1923"/>
-					<property type="6" name="Sys0_M1_AxS" data="0.0178318"/>
+					<property type="2" name="Sys0_M1_Id" data="1625588369"/>
+					<property type="6" name="Sys0_M1_OrbR" data="3967.8"/>
+					<property type="6" name="Sys0_M1_OrbS" data="0.0347914"/>
+					<property type="6" name="Sys0_M1_OrbT" data="0.0701464"/>
+					<property type="6" name="Sys0_M1_Phase" data="2.1115"/>
+					<property type="6" name="Sys0_M1_AxS" data="0.045924"/>
 					<property type="6" name="Sys0_M1_Grav" data="150"/>
-					<property type="7" name="Owned GO Ids" data="3336972111,1541018069,848462533,2487044716,931886372"/>
+					<property type="2" name="Sys0_M2_Parent" data="1"/>
+					<property type="2" name="Sys0_M2_Id" data="3725664130"/>
+					<property type="6" name="Sys0_M2_OrbR" data="5663.24"/>
+					<property type="6" name="Sys0_M2_OrbS" data="0.0158738"/>
+					<property type="6" name="Sys0_M2_OrbT" data="0.186292"/>
+					<property type="6" name="Sys0_M2_Phase" data="0.268388"/>
+					<property type="6" name="Sys0_M2_AxS" data="0.0217801"/>
+					<property type="6" name="Sys0_M2_Grav" data="150"/>
+					<property type="2" name="Sys0_M3_Parent" data="1"/>
+					<property type="2" name="Sys0_M3_Id" data="1298975945"/>
+					<property type="6" name="Sys0_M3_OrbR" data="7032.73"/>
+					<property type="6" name="Sys0_M3_OrbS" data="0.0125867"/>
+					<property type="6" name="Sys0_M3_OrbT" data="0.0541362"/>
+					<property type="6" name="Sys0_M3_Phase" data="3.93956"/>
+					<property type="6" name="Sys0_M3_AxS" data="0.0157178"/>
+					<property type="6" name="Sys0_M3_Grav" data="150"/>
+					<property type="7" name="Owned GO Ids" data="225873069,560244364,3620058202,560406661,1625588369,3725664130,1298975945"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -280,14 +435,14 @@
 				</userData>
 			</item>
 		</node>
-		<node name="Universum_Sun_1" id="2332217960">
+		<node name="Universum_Sun_0" id="2332218395">
 			<position x="1894.42" y="39.0155" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="3336972111"/>
+					<property type="7" name="Id" data="225873069"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
@@ -301,7 +456,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
-					<property type="6" name="LodDistance" data="1e+06"/>
+					<property type="6" name="LodDistance" data="1"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="ComponentPlanetSunComponent" data="PlanetSunComponent"/>
@@ -327,19 +482,19 @@
 				</userData>
 			</item>
 		</node>
-		<node name="Universum_Moon_0" id="3069375000">
-			<position x="3133.19" y="39.0155" z="3763.52"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
+		<node name="Universum_Planet_1" id="3109368668">
+			<position x="4173.65" y="184.354" z="7767.94"/>
+			<rotation qw="1" qx="0" qy="0.000140179" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_0_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_1_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="848462533"/>
+					<property type="7" name="Id" data="560244364"/>
 					<property type="7" name="Category" data="Planets"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -348,117 +503,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
-					<property type="6" name="LodDistance" data="1e+06"/>
-					<property type="6" name="LodLevels" data="0"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
-					<property type="7" name="ComponentPlanetTerraComponent" data="PlanetTerraComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="Radius" data="500"/>
-					<property type="2" name="SegmentsH" data="64"/>
-					<property type="2" name="SegmentsV" data="64"/>
-					<property type="2" name="BlendTexSize" data="1024"/>
-					<property type="7" name="BrushName" data="AllWhite.png"/>
-					<property type="6" name="BrushSize" data="30"/>
-					<property type="6" name="BrushIntensity" data="0.5"/>
-					<property type="6" name="BrushFalloff" data="2"/>
-					<property type="6" name="DetailUVScale" data="128"/>
-					<property type="6" name="BaseUVScale" data="32"/>
-					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubItemIndex" data="0"/>
-					<property type="7" name="Workflow" data="SpecularAsFresnelWorkflow"/>
-					<property type="6" name="Metalness" data="0.02"/>
-					<property type="6" name="Roughness" data="1"/>
-					<property type="10" name="Fresnel" data="0.02 0.818 0.818 0"/>
-					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
-					<property type="6" name="RefractionStrength" data="0.075"/>
-					<property type="7" name="Brdf" data="Default"/>
-					<property type="12" name="TwoSidedLighting" data="false"/>
-					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
-					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_PASS"/>
-					<property type="6" name="AlphaTestThreshold" data="0.5"/>
-					<property type="12" name="ReceiveShadows" data="true"/>
-					<property type="9" name="DiffuseColor" data="1 1 1"/>
-					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
-					<property type="9" name="SpecularColor" data="0.04 0.04 0.04"/>
-					<property type="9" name="EmissiveColor" data="0 0 0"/>
-					<property type="7" name="DiffuseTextureName" data="moon_3_d.png"/>
-					<property type="7" name="NormalTextureName" data="moon_3_n.dds"/>
-					<property type="6" name="NormalMapWeight" data="1"/>
-					<property type="6" name="ClearCoat" data="0"/>
-					<property type="6" name="ClearCoatRoughness" data="0.2"/>
-					<property type="7" name="SpecularTextureName" data=""/>
-					<property type="7" name="MetallicTextureName" data=""/>
-					<property type="7" name="RoughnessTextureName" data=""/>
-					<property type="7" name="DetailWeightTextureName" data="PlanetTerraBlendDefault.png"/>
-					<property type="7" name="Detail0TextureName" data="moon_1_d.png"/>
-					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail1TextureName" data="moon_3_d.png"/>
-					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail2TextureName" data="island_sand_d.jpg"/>
-					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail3TextureName" data="mntn_black_d.jpg"/>
-					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail0NMTextureName" data="moon_1_n.dds"/>
-					<property type="7" name="Detail1NMTextureName" data="moon_3_n.dds"/>
-					<property type="7" name="Detail2NMTextureName" data="island_sand_n.dds"/>
-					<property type="7" name="Detail3NMTextureName" data="mntn_black_n.dds"/>
-					<property type="7" name="ReflectionTextureName" data=""/>
-					<property type="7" name="EmissiveTextureName" data=""/>
-					<property type="7" name="TransparencyMode" data="None"/>
-					<property type="7" name="Transparency" data="1"/>
-					<property type="12" name="UseAlphaFromTextures" data="true"/>
-					<property type="2" name="UVScale" data="1"/>
-					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
-					<property type="7" name="ShadowConstBias" data="0.001"/>
-					<property type="12" name="BringToFront" data="false"/>
-					<property type="12" name="CutOff" data="false"/>
-					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
-					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
-					<property type="6" name="UpdateThreshold" data="0.5"/>
-					<property type="7" name="Categories" data="All"/>
-					<property type="12" name="TriggerPermanentely" data="true"/>
-				</userData>
-			</item>
-		</node>
-		<node name="Universum_Planet_0" id="3109369103">
-			<position x="4174.45" y="39.0155" z="7767.71"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="1541018069"/>
-					<property type="7" name="Category" data="Planets"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="9" name="DefaultDirection" data="0 0 1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="1000000"/>
-					<property type="6" name="LodDistance" data="1e+06"/>
+					<property type="6" name="LodDistance" data="1"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="ComponentPlanetTerraComponent" data="PlanetTerraComponent"/>
@@ -469,13 +514,13 @@
 					<property type="6" name="Radius" data="2618.16"/>
 					<property type="2" name="SegmentsH" data="64"/>
 					<property type="2" name="SegmentsV" data="64"/>
-					<property type="2" name="BlendTexSize" data="1024"/>
-					<property type="7" name="BrushName" data="AllWhite.png"/>
-					<property type="6" name="BrushSize" data="30"/>
-					<property type="6" name="BrushIntensity" data="0.5"/>
-					<property type="6" name="BrushFalloff" data="2"/>
-					<property type="6" name="DetailUVScale" data="128"/>
-					<property type="6" name="BaseUVScale" data="128"/>
+					<property type="2" name="Blend TexSize" data="1024"/>
+					<property type="7" name="Brush Name" data="AllWhite.png"/>
+					<property type="6" name="Brush Size" data="30"/>
+					<property type="6" name="Brush Intensity" data="0.5"/>
+					<property type="6" name="Brush Falloff" data="2"/>
+					<property type="6" name="Detail UV Scale" data="128"/>
+					<property type="6" name="Base UV Scale" data="128"/>
 					<property type="7" name="ComponentProceduralPlanetComponent" data="ProceduralPlanetComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -576,9 +621,9 @@
 					<property type="6" name="Transparency" data="0.95"/>
 					<property type="7" name="Reflection Map" data=""/>
 					<property type="6" name="Wave Amplitude Scale" data="1"/>
-					<property type="6" name="Wave0 Amplitude" data="0.08"/>
+					<property type="6" name="Wave0 Amplitude" data="0.2"/>
 					<property type="6" name="Wave0 Frequency" data="2"/>
-					<property type="6" name="Wave0 Speed" data="0.3"/>
+					<property type="6" name="Wave0 Speed" data="0.8"/>
 					<property type="6" name="Wave0 Direction" data="0"/>
 					<property type="6" name="Wave1 Amplitude" data="0.05"/>
 					<property type="6" name="Wave1 Frequency" data="3"/>
@@ -611,19 +656,19 @@
 				</userData>
 			</item>
 		</node>
-		<node name="Universum_Planet_2" id="3109369973">
-			<position x="4961.91" y="39.0155" z="-25828.2"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
+		<node name="Universum_Moon_2" id="3069375870">
+			<position x="3132.82" y="485.235" z="3763.64"/>
+			<rotation qw="1" qx="0" qy="0.000108535" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_2_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="2487044716"/>
+					<property type="7" name="Id" data="560406661"/>
 					<property type="7" name="Category" data="Planets"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -632,7 +677,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
-					<property type="6" name="LodDistance" data="1e+06"/>
+					<property type="6" name="LodDistance" data="1"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="ComponentPlanetTerraComponent" data="PlanetTerraComponent"/>
@@ -640,16 +685,126 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="Radius" data="1643.05"/>
+					<property type="6" name="Radius" data="500"/>
 					<property type="2" name="SegmentsH" data="64"/>
 					<property type="2" name="SegmentsV" data="64"/>
-					<property type="2" name="BlendTexSize" data="1024"/>
-					<property type="7" name="BrushName" data="AllWhite.png"/>
-					<property type="6" name="BrushSize" data="30"/>
-					<property type="6" name="BrushIntensity" data="0.5"/>
-					<property type="6" name="BrushFalloff" data="2"/>
-					<property type="6" name="DetailUVScale" data="128"/>
-					<property type="6" name="BaseUVScale" data="128"/>
+					<property type="2" name="Blend TexSize" data="0"/>
+					<property type="7" name="Brush Name" data="AllWhite.png"/>
+					<property type="6" name="Brush Size" data="30"/>
+					<property type="6" name="Brush Intensity" data="0.5"/>
+					<property type="6" name="Brush Falloff" data="2"/>
+					<property type="6" name="Detail UV Scale" data="128"/>
+					<property type="6" name="Base UV Scale" data="32"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubItemIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularAsFresnelWorkflow"/>
+					<property type="6" name="Metalness" data="0.02"/>
+					<property type="6" name="Roughness" data="1"/>
+					<property type="10" name="Fresnel" data="0.02 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0.075"/>
+					<property type="7" name="Brdf" data="Default"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_PASS"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="1 1 1"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.04 0.04 0.04"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="moon_3_d.png"/>
+					<property type="7" name="NormalTextureName" data="moon_3_n.dds"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data="PlanetTerraBlendDefault.png"/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="1"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.001"/>
+					<property type="12" name="BringToFront" data="false"/>
+					<property type="12" name="CutOff" data="false"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="ShortTimeActivation" data="false"/>
+					<property type="6" name="Radius" data="1000"/>
+					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="12" name="TriggerPermanentely" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Universum_Planet_3" id="3109369538">
+			<position x="13781.5" y="120.647" z="20917.4"/>
+			<rotation qw="1" qx="0" qy="9.5551e-05" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Universum_Planet_3_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3620058202"/>
+					<property type="7" name="Category" data="Planets"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="1000000"/>
+					<property type="6" name="LodDistance" data="1"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="ComponentPlanetTerraComponent" data="PlanetTerraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="Radius" data="2642.23"/>
+					<property type="2" name="SegmentsH" data="64"/>
+					<property type="2" name="SegmentsV" data="64"/>
+					<property type="2" name="Blend TexSize" data="1024"/>
+					<property type="7" name="Brush Name" data="AllWhite.png"/>
+					<property type="6" name="Brush Size" data="30"/>
+					<property type="6" name="Brush Intensity" data="0.5"/>
+					<property type="6" name="Brush Falloff" data="2"/>
+					<property type="6" name="Detail UV Scale" data="128"/>
+					<property type="6" name="Base UV Scale" data="128"/>
 					<property type="7" name="ComponentProceduralPlanetComponent" data="ProceduralPlanetComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -704,8 +859,8 @@
 					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
 					<property type="9" name="SpecularColor" data="0.04 0.04 0.04"/>
 					<property type="9" name="EmissiveColor" data="0 0 0"/>
-					<property type="7" name="DiffuseTextureName" data="snow_grass2_d.jpg"/>
-					<property type="7" name="NormalTextureName" data="snow_grass2_n.dds"/>
+					<property type="7" name="DiffuseTextureName" data="mntn_x1_d.jpg"/>
+					<property type="7" name="NormalTextureName" data="mntn_x1_n.dds"/>
 					<property type="6" name="NormalMapWeight" data="1"/>
 					<property type="6" name="ClearCoat" data="0"/>
 					<property type="6" name="ClearCoatRoughness" data="0.2"/>
@@ -713,18 +868,18 @@
 					<property type="7" name="MetallicTextureName" data=""/>
 					<property type="7" name="RoughnessTextureName" data=""/>
 					<property type="7" name="DetailWeightTextureName" data="PlanetTerraBlendDefault.png"/>
-					<property type="7" name="Detail0TextureName" data="mntn_canyon2o_d.jpg"/>
+					<property type="7" name="Detail0TextureName" data="grass_mix_d.jpg"/>
 					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail1TextureName" data="grass_autumn_red_d.jpg"/>
+					<property type="7" name="Detail1TextureName" data="ground_white_d.jpg"/>
 					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail2TextureName" data="grass_green2y_d.jpg"/>
+					<property type="7" name="Detail2TextureName" data="savanna_dry_d.jpg"/>
 					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail3TextureName" data="jungle_stone_d.jpg"/>
+					<property type="7" name="Detail3TextureName" data="desert_cracksv_d.jpg"/>
 					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail0NMTextureName" data="mntn_canyon2o_n.dds"/>
-					<property type="7" name="Detail1NMTextureName" data="grass_autumn_red_n.dds"/>
-					<property type="7" name="Detail2NMTextureName" data="grass_green2y_n.dds"/>
-					<property type="7" name="Detail3NMTextureName" data="jungle_stone_n.dds"/>
+					<property type="7" name="Detail0NMTextureName" data="grass_mix_n.dds"/>
+					<property type="7" name="Detail1NMTextureName" data="ground_white_n.dds"/>
+					<property type="7" name="Detail2NMTextureName" data="savanna_dry_n.dds"/>
+					<property type="7" name="Detail3NMTextureName" data="desert_cracksv_n.dds"/>
 					<property type="7" name="ReflectionTextureName" data=""/>
 					<property type="7" name="EmissiveTextureName" data=""/>
 					<property type="7" name="TransparencyMode" data="None"/>
@@ -735,37 +890,6 @@
 					<property type="7" name="ShadowConstBias" data="0.001"/>
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
-					<property type="7" name="ComponentPlanetOceanComponent" data="PlanetOceanComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="Radius" data="1645.05"/>
-					<property type="2" name="SegmentsH" data="32"/>
-					<property type="2" name="SegmentsV" data="32"/>
-					<property type="7" name="Datablock" data="PlanetOceanDefaultMaterial"/>
-					<property type="9" name="Deep Colour" data="0 0.03 0.07"/>
-					<property type="9" name="Shallow Colour" data="0 0.12 0.18"/>
-					<property type="6" name="Roughness" data="0.08"/>
-					<property type="6" name="Transparency" data="0.95"/>
-					<property type="7" name="Reflection Map" data=""/>
-					<property type="6" name="Wave Amplitude Scale" data="1"/>
-					<property type="6" name="Wave0 Amplitude" data="0.08"/>
-					<property type="6" name="Wave0 Frequency" data="2"/>
-					<property type="6" name="Wave0 Speed" data="0.3"/>
-					<property type="6" name="Wave0 Direction" data="0"/>
-					<property type="6" name="Wave1 Amplitude" data="0.05"/>
-					<property type="6" name="Wave1 Frequency" data="3"/>
-					<property type="6" name="Wave1 Speed" data="0.2"/>
-					<property type="6" name="Wave1 Direction" data="1.2"/>
-					<property type="6" name="Wave2 Amplitude" data="0.03"/>
-					<property type="6" name="Wave2 Frequency" data="5"/>
-					<property type="6" name="Wave2 Speed" data="0.4"/>
-					<property type="6" name="Wave2 Direction" data="2.7"/>
-					<property type="6" name="Wave3 Amplitude" data="0.02"/>
-					<property type="6" name="Wave3 Frequency" data="8"/>
-					<property type="6" name="Wave3 Speed" data="0.6"/>
-					<property type="6" name="Wave3 Direction" data="4.3"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -778,26 +902,26 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="3286.1"/>
+					<property type="6" name="Radius" data="5284.46"/>
 					<property type="6" name="UpdateThreshold" data="0.5"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
 				</userData>
 			</item>
 		</node>
-		<node name="Universum_Moon_1" id="3069375435">
-			<position x="6276.65" y="39.0155" z="-28354.1"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
+		<node name="Universum_Moon_4" id="3069376740">
+			<position x="11738.3" y="179.208" z="24318.7"/>
+			<rotation qw="1" qx="0" qy="0.000159458" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_1_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_4_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="931886372"/>
+					<property type="7" name="Id" data="1625588369"/>
 					<property type="7" name="Category" data="Planets"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -806,7 +930,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
-					<property type="6" name="LodDistance" data="1e+06"/>
+					<property type="6" name="LodDistance" data="1"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="ComponentPlanetTerraComponent" data="PlanetTerraComponent"/>
@@ -817,13 +941,233 @@
 					<property type="6" name="Radius" data="500"/>
 					<property type="2" name="SegmentsH" data="64"/>
 					<property type="2" name="SegmentsV" data="64"/>
-					<property type="2" name="BlendTexSize" data="1024"/>
-					<property type="7" name="BrushName" data="AllWhite.png"/>
-					<property type="6" name="BrushSize" data="30"/>
-					<property type="6" name="BrushIntensity" data="0.5"/>
-					<property type="6" name="BrushFalloff" data="2"/>
-					<property type="6" name="DetailUVScale" data="128"/>
-					<property type="6" name="BaseUVScale" data="32"/>
+					<property type="2" name="Blend TexSize" data="0"/>
+					<property type="7" name="Brush Name" data="AllWhite.png"/>
+					<property type="6" name="Brush Size" data="30"/>
+					<property type="6" name="Brush Intensity" data="0.5"/>
+					<property type="6" name="Brush Falloff" data="2"/>
+					<property type="6" name="Detail UV Scale" data="128"/>
+					<property type="6" name="Base UV Scale" data="32"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubItemIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularAsFresnelWorkflow"/>
+					<property type="6" name="Metalness" data="0.02"/>
+					<property type="6" name="Roughness" data="1"/>
+					<property type="10" name="Fresnel" data="0.02 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0.075"/>
+					<property type="7" name="Brdf" data="Default"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_PASS"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="1 1 1"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.04 0.04 0.04"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="moon_1_d.png"/>
+					<property type="7" name="NormalTextureName" data="moon_1_n.dds"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data="PlanetTerraBlendDefault.png"/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="1"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.001"/>
+					<property type="12" name="BringToFront" data="false"/>
+					<property type="12" name="CutOff" data="false"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="ShortTimeActivation" data="false"/>
+					<property type="6" name="Radius" data="1000"/>
+					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="12" name="TriggerPermanentely" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Universum_Moon_5" id="3069377175">
+			<position x="19241.8" y="148.963" z="22419.8"/>
+			<rotation qw="1" qx="0" qy="7.56254e-05" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Universum_Moon_5_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3725664130"/>
+					<property type="7" name="Category" data="Planets"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="1000000"/>
+					<property type="6" name="LodDistance" data="1"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="ComponentPlanetTerraComponent" data="PlanetTerraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="Radius" data="500"/>
+					<property type="2" name="SegmentsH" data="64"/>
+					<property type="2" name="SegmentsV" data="64"/>
+					<property type="2" name="Blend TexSize" data="0"/>
+					<property type="7" name="Brush Name" data="AllWhite.png"/>
+					<property type="6" name="Brush Size" data="30"/>
+					<property type="6" name="Brush Intensity" data="0.5"/>
+					<property type="6" name="Brush Falloff" data="2"/>
+					<property type="6" name="Detail UV Scale" data="128"/>
+					<property type="6" name="Base UV Scale" data="32"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubItemIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularAsFresnelWorkflow"/>
+					<property type="6" name="Metalness" data="0.02"/>
+					<property type="6" name="Roughness" data="1"/>
+					<property type="10" name="Fresnel" data="0.02 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0.075"/>
+					<property type="7" name="Brdf" data="Default"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_PASS"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="1 1 1"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.04 0.04 0.04"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="moon_1_d.png"/>
+					<property type="7" name="NormalTextureName" data="moon_1_n.dds"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data="PlanetTerraBlendDefault.png"/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="1"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.001"/>
+					<property type="12" name="BringToFront" data="false"/>
+					<property type="12" name="CutOff" data="false"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="ShortTimeActivation" data="false"/>
+					<property type="6" name="Radius" data="1000"/>
+					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="12" name="TriggerPermanentely" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Universum_Moon_6" id="3069377610">
+			<position x="8871.95" y="269.505" z="15882"/>
+			<rotation qw="1" qx="0" qy="5.45757e-05" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Universum_Moon_6_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1298975945"/>
+					<property type="7" name="Category" data="Planets"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="1000000"/>
+					<property type="6" name="LodDistance" data="1"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="ComponentPlanetTerraComponent" data="PlanetTerraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="Radius" data="500"/>
+					<property type="2" name="SegmentsH" data="64"/>
+					<property type="2" name="SegmentsV" data="64"/>
+					<property type="2" name="Blend TexSize" data="0"/>
+					<property type="7" name="Brush Name" data="AllWhite.png"/>
+					<property type="6" name="Brush Size" data="30"/>
+					<property type="6" name="Brush Intensity" data="0.5"/>
+					<property type="6" name="Brush Falloff" data="2"/>
+					<property type="6" name="Detail UV Scale" data="128"/>
+					<property type="6" name="Base UV Scale" data="32"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -854,18 +1198,18 @@
 					<property type="7" name="MetallicTextureName" data=""/>
 					<property type="7" name="RoughnessTextureName" data=""/>
 					<property type="7" name="DetailWeightTextureName" data="PlanetTerraBlendDefault.png"/>
-					<property type="7" name="Detail0TextureName" data="moon_1_d.png"/>
+					<property type="7" name="Detail0TextureName" data=""/>
 					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail1TextureName" data="moon_2_d.png"/>
+					<property type="7" name="Detail1TextureName" data=""/>
 					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail2TextureName" data="island_sand_d.jpg"/>
+					<property type="7" name="Detail2TextureName" data=""/>
 					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail3TextureName" data="mntn_black_d.jpg"/>
+					<property type="7" name="Detail3TextureName" data=""/>
 					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail0NMTextureName" data="moon_1_n.dds"/>
-					<property type="7" name="Detail1NMTextureName" data="moon_2_n.dds"/>
-					<property type="7" name="Detail2NMTextureName" data="island_sand_n.dds"/>
-					<property type="7" name="Detail3NMTextureName" data="mntn_black_n.dds"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
 					<property type="7" name="ReflectionTextureName" data=""/>
 					<property type="7" name="EmissiveTextureName" data=""/>
 					<property type="7" name="TransparencyMode" data="None"/>
@@ -892,125 +1236,6 @@
 					<property type="6" name="UpdateThreshold" data="0.5"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
-				</userData>
-			</item>
-		</node>
-		<node name="FutureFighterJet_0" id="1171646049">
-			<position x="-5879.83" y="127.354" z="10757.2"/>
-			<rotation qw="0.34208" qx="0.000333648" qy="0.93967" qz="0.000968856"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="FutureFighterJet_0" meshFile="FutureFighterJet.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="FutureFighterJet"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="2599276278"/>
-					<property type="7" name="Category" data="Default"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="9" name="DefaultDirection" data="0 0 1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="1000"/>
-					<property type="6" name="LodDistance" data="0"/>
-					<property type="6" name="LodLevels" data="0"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
-					<property type="7" name="DataBlock0" data="FutureFighterJet"/>
-					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="9" name="CollisionSize" data="0 0 0"/>
-					<property type="9" name="OffsetPosition" data="0 0 0"/>
-					<property type="9" name="OffsetDirection" data="0 0 0"/>
-					<property type="6" name="Mass" data="5000"/>
-					<property type="9" name="MassOrigin" data="0 0 0"/>
-					<property type="6" name="LinearDamping" data="0.1"/>
-					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
-					<property type="9" name="Gravity" data="0 0 0"/>
-					<property type="7" name="GravitySourceCategory" data=""/>
-					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="6" name="Speed" data="1"/>
-					<property type="6" name="MinSpeed" data="1"/>
-					<property type="6" name="MaxSpeed" data="5"/>
-					<property type="7" name="CollisionType" data="ConvexHull"/>
-					<property type="9" name="ConstraintAxis" data="0 0 0"/>
-					<property type="12" name="EnableGyroscopicTorque" data="false"/>
-					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
-					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="ScriptFile" data="FutureFighterJet_0.lua"/>
-					<property type="12" name="CloneScript" data="false"/>
-					<property type="12" name="HasCommonScript" data="false"/>
-					<property type="2" name="OrderIndex" data="0"/>
-					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
-					<property type="7" name="TemplateName" data="Nucleus_Outer"/>
-					<property type="12" name="Repeat" data="false"/>
-					<property type="6" name="PlayTime" data="0"/>
-					<property type="6" name="PlaySpeed" data="1"/>
-					<property type="9" name="OffsetPosition" data="0 0 -5"/>
-					<property type="9" name="OffsetOrientation" data="0 90 0"/>
-					<property type="8" name="Scale" data="3 3"/>
-					<property type="7" name="BlendingMethod" data="Transparent Colour"/>
-					<property type="12" name="FadeIn" data="false"/>
-					<property type="6" name="FadeInTime" data="1000"/>
-					<property type="12" name="FadeOut" data="false"/>
-					<property type="6" name="FadeOutTime" data="1000"/>
-					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
-					<property type="7" name="SoundName" data="turbine1_22khz_16bit_mono_golgotha.wav"/>
-					<property type="6" name="Volume" data="70"/>
-					<property type="12" name="Loop" data="true"/>
-					<property type="12" name="Stream" data="false"/>
-					<property type="12" name="RelativeToListener" data="false"/>
-					<property type="12" name="PlayWhenInMotion" data="false"/>
-					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
-					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="DeviceName" data="Win32InputManager"/>
-					<property type="12" name="IsExclusive" data="true"/>
-					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
-					<property type="6" name="RotationSpeed" data="10"/>
-					<property type="6" name="GoalRadius" data="0.5"/>
-					<property type="6" name="AnimationSpeed" data="1"/>
-					<property type="6" name="Acceleration" data="0"/>
-					<property type="7" name="Categories" data="All"/>
-					<property type="12" name="UseStandUp" data="false"/>
-					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
-					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="9" name="YOffset" data="0 5 -7"/>
-					<property type="9" name="LookAtOffset" data="0 1 0"/>
-					<property type="6" name="SpringForce" data="0.1"/>
-					<property type="6" name="Friction" data="0.5"/>
-					<property type="6" name="SpringLength" data="6"/>
 				</userData>
 			</item>
 		</node>

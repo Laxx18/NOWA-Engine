@@ -35,13 +35,14 @@ namespace NOWA
     //  RENDER THREAD  —  create / destroy
     // =========================================================================
 
-    bool PlanetTerra::create(float r, int segH, int segV, int blendTex, Ogre::SceneNode* attachNode, const Ogre::String& datablockName)
+    bool PlanetTerra::create(float r, int segH, int segV, int blendTex, Ogre::SceneNode* attachNode, const Ogre::String& datablockName, bool useWeightTexture)
     {
         this->radius = r;
         this->segmentsH = segH;
         this->segmentsV = segV;
         this->blendTexSize = blendTex;
         this->attachedNode = attachNode;
+        this->useWeightTexture = useWeightTexture;
 
         // Build CPU geometry (safe on any thread)
         generateBaseSphere();
@@ -50,14 +51,17 @@ namespace NOWA
         recalculateTangents();
         buildVertexAdjacency();
 
-        // Default blend: fully layer-0
-        blendData.assign(static_cast<size_t>(blendTexSize) * blendTexSize * 4u, 0u);
-        for (size_t i = 0u; i < blendData.size(); i += 4u)
+        if (true == this->useWeightTexture)
         {
-            blendData[i] = 255u;
-            blendData[i + 1] = 0u;
-            blendData[i + 2] = 0u;
-            blendData[i + 3] = 0u;
+            // Default blend: fully layer-0
+            this->blendData.assign(static_cast<size_t>(this->blendTexSize) * this->blendTexSize * 4u, 0u);
+            for (size_t i = 0u; i < this->blendData.size(); i += 4u)
+            {
+                this->blendData[i] = 255u;
+                this->blendData[i + 1] = 0u;
+                this->blendData[i + 2] = 0u;
+                this->blendData[i + 3] = 0u;
+            }
         }
 
         const Ogre::String meshName = objectName + "_PlanetMesh";
@@ -68,8 +72,11 @@ namespace NOWA
         }
 
         setDatablockByName(datablockName);
-        createBlendWeightTexture();
-        uploadBlendData();
+        if (true == this->useWeightTexture)
+        {
+            createBlendWeightTexture();
+            uploadBlendData();
+        }
         // Match the item's static state to the node before re-attaching.
         if (this->planetItem->isStatic() != attachedNode->isStatic())
         {
@@ -446,6 +453,10 @@ namespace NOWA
 
     bool PlanetTerra::saveBlendDataToFile(const Ogre::String& filePathName) const
     {
+        if (false == this->useWeightTexture)
+        {
+            return true;
+        }
         // Write directly from the CPU blendData array via Image2.
         // writeContentsToFile reads from the GPU system-RAM copy which is not
         // reliably populated when using _transitionTo(Resident, nullptr).
@@ -882,11 +893,11 @@ namespace NOWA
 
     void PlanetTerra::applyPaintBrush(const Ogre::Vector2& hitUV, bool invert, int layer, const std::vector<float>& brushData, int brushW, int brushH, float brushSize, float brushIntensity, float brushFalloff)
     {
-        if (layer < 0 || layer > 3)
+        if (layer < 0 || layer > 3 || false == this->useWeightTexture)
         {
             return;
         }
-        if (blendData.empty())
+        if (this->blendData.empty())
         {
             return;
         }
@@ -931,7 +942,7 @@ namespace NOWA
                 float channels[4];
                 for (int c = 0; c < 4; ++c)
                 {
-                    channels[c] = static_cast<float>(blendData[idx + c]) / 255.0f;
+                    channels[c] = static_cast<float>(this->blendData[idx + c]) / 255.0f;
                 }
 
                 channels[layer] = std::max(0.0f, std::min(1.0f, channels[layer] + weight));
@@ -956,13 +967,10 @@ namespace NOWA
 
                 for (int c = 0; c < 4; ++c)
                 {
-                    blendData[idx + c] = static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, channels[c])) * 255.0f + 0.5f);
+                    this->blendData[idx + c] = static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, channels[c])) * 255.0f + 0.5f);
                 }
             }
         }
-
-        int i = 0;
-        i = 1;
     }
 
     // =========================================================================
@@ -989,7 +997,10 @@ namespace NOWA
         }
         this->blendData = data;
         // Upload to GPU immediately so the visual matches the restored state
-        this->uploadBlendData();
+        if (true == this->useWeightTexture)
+        {
+            this->uploadBlendData();
+        }
     }
 
 } // namespace NOWA

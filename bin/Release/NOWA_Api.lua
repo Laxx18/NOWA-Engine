@@ -2562,7 +2562,7 @@ return {
 			getAttributeValueByIndex =
 			{
 				type = "function",
-				description = "Gets the attribute value as variant by the given index which corresponds the occurence in the attributes component.",
+				description = "Gets the attribute value as Variant by the given index.",
 				args = "(number index)",
 				returns = "(Variant)",
 				valuetype = "Variant"
@@ -2570,7 +2570,7 @@ return {
 			getAttributeValueByName =
 			{
 				type = "function",
-				description = "Gets the attribute value as variant by the given name.",
+				description = "Gets the attribute value as Variant by the given name.",
 				args = "(string name)",
 				returns = "(Variant)",
 				valuetype = "Variant"
@@ -2578,7 +2578,7 @@ return {
 			getAttributeValueBool =
 			{
 				type = "function",
-				description = "Gets the bool value by the given index which corresponds the occurence in the attributes component.",
+				description = "Gets the bool value by index.",
 				args = "(number index)",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -2586,7 +2586,7 @@ return {
 			getAttributeValueNumber =
 			{
 				type = "function",
-				description = "Gets the number value by the given index which corresponds the occurence in the attributes component.",
+				description = "Gets the number value by index.",
 				args = "(number index)",
 				returns = "(number)",
 				valuetype = "number"
@@ -2594,7 +2594,7 @@ return {
 			getAttributeValueString =
 			{
 				type = "function",
-				description = "Gets the string value by the given index which corresponds the occurence in the attributes component.",
+				description = "Gets the string value by index.",
 				args = "(number index)",
 				returns = "(string)",
 				valuetype = "string"
@@ -2602,7 +2602,7 @@ return {
 			getAttributeValueId =
 			{
 				type = "function",
-				description = "Gets the id value by the given index which corresponds the occurence in the attributes component.",
+				description = "Gets the id value by index.",
 				args = "(number index)",
 				returns = "(string)",
 				valuetype = "string"
@@ -2610,7 +2610,7 @@ return {
 			getAttributeValueVector2 =
 			{
 				type = "function",
-				description = "Gets the Vector2 value by the given index which corresponds the occurence in the attributes component.",
+				description = "Gets the Vector2 value by index.",
 				args = "(number index)",
 				returns = "(Vector2)",
 				valuetype = "Vector2"
@@ -2618,7 +2618,7 @@ return {
 			getAttributeValueVector3 =
 			{
 				type = "function",
-				description = "Gets the Vector3 value by the given index which corresponds the occurence in the attributes component.",
+				description = "Gets the Vector3 value by index.",
 				args = "(number index)",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
@@ -2626,63 +2626,63 @@ return {
 			getAttributeValueVector4 =
 			{
 				type = "function",
-				description = "Gets the Vector4 value by the given index which corresponds the occurence in the attributes component.",
+				description = "Gets the Vector4 value by index.",
 				args = "(number index)",
 				returns = "(Vector4)",
 				valuetype = "Vector4"
 			},
-			getAttributeValueBool =
+			getAttributeValueBool2 =
 			{
 				type = "function",
-				description = "Gets the bool value by the given name",
+				description = "Gets the bool value by name.",
 				args = "(string name)",
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
-			getAttributeValueNumber =
+			getAttributeValueNumber2 =
 			{
 				type = "function",
-				description = "Gets the number value by the given name",
+				description = "Gets the number value by name.",
 				args = "(string name)",
 				returns = "(number)",
 				valuetype = "number"
 			},
-			getAttributeValueString =
+			getAttributeValueString2 =
 			{
 				type = "function",
-				description = "Gets the string value by the given name",
+				description = "Gets the string value by name.",
 				args = "(string name)",
 				returns = "(string)",
 				valuetype = "string"
 			},
-			getAttributeValueId =
+			getAttributeValueId2 =
 			{
 				type = "function",
-				description = "Gets the id value by the given name",
+				description = "Gets the id value by name.",
 				args = "(string name)",
 				returns = "(string)",
 				valuetype = "string"
 			},
-			getAttributeValueVector2 =
+			getAttributeValueVector22 =
 			{
 				type = "function",
-				description = "Gets the Vector2 value by the given name",
-				args = "()",
+				description = "Gets the Vector2 value by name.",
+				args = "(string name)",
 				returns = "(Vector2)",
 				valuetype = "Vector2"
 			},
-			getAttributeValueVector3 =
+			getAttributeValueVector32 =
 			{
 				type = "function",
-				description = "Gets the Vector3 value by the given name",
+				description = "Gets the Vector3 value by name.",
 				args = "(string name)",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
 			},
-			getAttributeValueVector4 =
+			getAttributeValueVector42 =
 			{
 				type = "function",
-				description = "Gets the Vector4 value by the given name",
+				description = "Gets the Vector4 value by name.",
 				args = "(string name)",
 				returns = "(Vector4)",
 				valuetype = "Vector4"
@@ -2690,7 +2690,7 @@ return {
 			addAttributeBool =
 			{
 				type = "method",
-				description = "Adds an attribute bool with the name and the given value.",
+				description = "Adds a bool attribute.",
 				args = "(string name, boolean value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2698,7 +2698,7 @@ return {
 			addAttributeNumber =
 			{
 				type = "method",
-				description = "Adds an attribute number with the name and the given value.",
+				description = "Adds a number attribute.",
 				args = "(string name, number value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2706,7 +2706,7 @@ return {
 			addAttributeString =
 			{
 				type = "method",
-				description = "Adds an attribute string with the name and the given value.",
+				description = "Adds a string attribute.",
 				args = "(string name, string value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2714,7 +2714,7 @@ return {
 			addAttributeId =
 			{
 				type = "method",
-				description = "Adds an attribute id with the name and the given value.",
+				description = "Adds an id attribute.",
 				args = "(string name, string id)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2722,7 +2722,7 @@ return {
 			addAttributeVector2 =
 			{
 				type = "method",
-				description = "Adds an attribute Vector2 with the name and the given value.",
+				description = "Adds a Vector2 attribute.",
 				args = "(string name, Vector2 value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2730,7 +2730,7 @@ return {
 			addAttributeVector3 =
 			{
 				type = "method",
-				description = "Adds an attribute Vector3 with the name and the given value.",
+				description = "Adds a Vector3 attribute.",
 				args = "(string name, Vector3 value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2738,7 +2738,7 @@ return {
 			addAttributeVector4 =
 			{
 				type = "method",
-				description = "Adds an attribute Vector4 with the name and the given value.",
+				description = "Adds a Vector4 attribute.",
 				args = "(string name, Vector4 value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2746,7 +2746,7 @@ return {
 			changeValueBool =
 			{
 				type = "method",
-				description = "Changes the attribute bool with the name and the given value.",
+				description = "Changes the bool attribute value by name.",
 				args = "(string name, boolean value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2754,7 +2754,7 @@ return {
 			changeValueNumber =
 			{
 				type = "method",
-				description = "Changes the attribute number with the name and the given value.",
+				description = "Changes the number attribute value by name.",
 				args = "(string name, number value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2762,7 +2762,7 @@ return {
 			changeValueString =
 			{
 				type = "method",
-				description = "Changes the attribute string with the name and the given value.",
+				description = "Changes the string attribute value by name.",
 				args = "(string name, string value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2770,7 +2770,7 @@ return {
 			changeValueId =
 			{
 				type = "method",
-				description = "Changes the attribute id with the name and the given value.",
+				description = "Changes the id attribute value by name.",
 				args = "(string name, string id)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2778,7 +2778,7 @@ return {
 			changeValueVector2 =
 			{
 				type = "method",
-				description = "Changes the attribute Vector2 with the name and the given value.",
+				description = "Changes the Vector2 attribute value by name.",
 				args = "(string name, Vector2 value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2786,7 +2786,7 @@ return {
 			changeValueVector3 =
 			{
 				type = "method",
-				description = "Changes the attribute Vector3 with the name and the given value.",
+				description = "Changes the Vector3 attribute value by name.",
 				args = "(string name, Vector3 value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2794,7 +2794,7 @@ return {
 			changeValueVector4 =
 			{
 				type = "method",
-				description = "Changes the attribute Vector4 with the name and the given value.",
+				description = "Changes the Vector4 attribute value by name.",
 				args = "(string name, Vector4 value)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2802,7 +2802,7 @@ return {
 			saveValues =
 			{
 				type = "method",
-				description = "Saves all values from this component. Note: if crypted is set to true, the content will by set in a not readable form.",
+				description = "Saves all attribute values.",
 				args = "(string saveName, boolean crypted)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2810,7 +2810,7 @@ return {
 			saveValue =
 			{
 				type = "method",
-				description = "Save the value by the given index. Note: if crypted is set to true, the content will by set in a not readable form.",
+				description = "Saves the attribute value at the given index.",
 				args = "(string saveName, number index, boolean crypted)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2818,15 +2818,15 @@ return {
 			saveValue2 =
 			{
 				type = "method",
-				description = "Save the value by the given name. Note: if crypted is set to true, the content will by set in a not readable form.",
-				args = "(string saveName, string name, boolean crypted)",
+				description = "Saves the attribute value for the given Variant.",
+				args = "(string saveName, Variant attribute, boolean crypted)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
 			loadValues =
 			{
 				type = "function",
-				description = "Loads all values for this component.",
+				description = "Loads all attribute values.",
 				args = "(string saveName)",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -2834,7 +2834,7 @@ return {
 			loadValue =
 			{
 				type = "function",
-				description = "Loads the value by the given index.",
+				description = "Loads the attribute value at the given index.",
 				args = "(string saveName, number index)",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -2842,10 +2842,18 @@ return {
 			loadValue2 =
 			{
 				type = "function",
-				description = "Loads the value by the given name.",
-				args = "(string saveName, string name)",
+				description = "Loads the attribute value for the given Variant.",
+				args = "(string saveName, Variant attribute)",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			reactOnAttributeChanged =
+			{
+				type = "method",
+				description = "Registers a Lua closure that is called whenever any attribute value is changed via actualizeValue (e.g. from NOWA-Design or from C++). The closure receives the user-visible attribute name and the Variant holding the new value. Example: attributesComp:reactOnAttributeChanged(function(name, attr) if name == 'energy' then ... end end)",
+				args = "(func closure(string attributeName, Variant attribute)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -5365,7 +5373,7 @@ return {
 	CrowdComponent =
 	{
 		type = "class",
-		description = "Usage: This component is used, in order to tag this game object, that it will be part of OgreRecast crowd system. Its possible to move an army of game objects as crowd.",
+		description = "Usage: This component is used in order to tag this game object so that it becomes part of the OgreRecast crowd system. It allows moving an army of game objects as a crowd.  Typical crowding scenarios: Scenario 1 - RTS unit group: Multiple workers are selected and sent to a target. Each has a CrowdComponent. Detour crowding automatically handles collision avoidance between them - they find space beside each other without explicit formation logic.  Scenario 2 - City inhabitants: NPCs wander randomly (WANDER behavior in MovingBehavior), avoid each other, and react to the player. NPCs with controlled=false are registered as temporary obstacles so others can route around them.  Scenario 3 - Mixed mode: Some agents are under crowd control (groups), others under OgreNewt control (player, physics objects). The player is not a crowd agent but a NavMeshComponent dynamic obstacle - the crowd automatically avoids them.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -7705,14 +7713,6 @@ return {
 				returns = "(GameObjectTitleComponent)",
 				valuetype = "GameObjectTitleComponent"
 			},
-			getAttributesComponent =
-			{
-				type = "function",
-				description = "Gets the attributes component.",
-				args = "()",
-				returns = "(AttributesComponent)",
-				valuetype = "AttributesComponent"
-			},
 			getBuoyancyComponent =
 			{
 				type = "function",
@@ -8721,14 +8721,6 @@ return {
 				returns = "(LuaScriptComponent)",
 				valuetype = "LuaScriptComponent"
 			},
-			getAttributesComponentFromName =
-			{
-				type = "function",
-				description = "Gets the attributes component.",
-				args = "(string name)",
-				returns = "(AttributesComponent)",
-				valuetype = "AttributesComponent"
-			},
 			getBuoyancyComponentFromName =
 			{
 				type = "function",
@@ -9673,6 +9665,30 @@ return {
 				returns = "(AttributeEffectComponent)",
 				valuetype = "AttributeEffectComponent"
 			},
+			getAttributesComponent =
+			{
+				type = "function",
+				description = "Gets the AttributesComponent of this game object.",
+				args = "()",
+				returns = "(AttributesComponent)",
+				valuetype = "AttributesComponent"
+			},
+			getAttributesComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the AttributesComponent by occurrence index.",
+				args = "(number occurrenceIndex)",
+				returns = "(AttributesComponent)",
+				valuetype = "AttributesComponent"
+			},
+			getAttributesComponentFromName =
+			{
+				type = "function",
+				description = "Gets the AttributesComponent by name.",
+				args = "(string name)",
+				returns = "(AttributesComponent)",
+				valuetype = "AttributesComponent"
+			},
 			getBillboardComponent =
 			{
 				type = "function",
@@ -10457,6 +10473,54 @@ return {
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
 			},
+			getPlanetOceanComponent =
+			{
+				type = "function",
+				description = "Gets the PlanetOceanComponent.",
+				args = "()",
+				returns = "(PlanetOceanComponent)",
+				valuetype = "PlanetOceanComponent"
+			},
+			getPlanetOceanComponentFromName =
+			{
+				type = "function",
+				description = "Gets the PlanetOceanComponent by name.",
+				args = "(string name)",
+				returns = "(PlanetOceanComponent)",
+				valuetype = "PlanetOceanComponent"
+			},
+			getPlanetSunComponent =
+			{
+				type = "function",
+				description = "Gets the PlanetSunComponent from this GameObject.",
+				args = "()",
+				returns = "(PlanetSunComponent)",
+				valuetype = "PlanetSunComponent"
+			},
+			getPlanetSurfaceComponent =
+			{
+				type = "function",
+				description = "Gets the PlanetSurfaceComponent.",
+				args = "()",
+				returns = "(PlanetSurfaceComponent)",
+				valuetype = "PlanetSurfaceComponent"
+			},
+			getPlanetSurfaceComponentFromName =
+			{
+				type = "function",
+				description = "Gets the PlanetSurfaceComponent by name.",
+				args = "(string name)",
+				returns = "(PlanetSurfaceComponent)",
+				valuetype = "PlanetSurfaceComponent"
+			},
+			getPlanetTerraComponent =
+			{
+				type = "function",
+				description = "Gets the PlanetTerraComponent from this GameObject.",
+				args = "()",
+				returns = "(PlanetTerraComponent)",
+				valuetype = "PlanetTerraComponent"
+			},
 			getProceduralGeometryComponent =
 			{
 				type = "function",
@@ -10497,6 +10561,14 @@ return {
 				returns = "(ProceduralMazeComponent)",
 				valuetype = "ProceduralMazeComponent"
 			},
+			getProceduralPlanetComponent =
+			{
+				type = "function",
+				description = "Gets the ProceduralPlanetComponent from this GameObject.",
+				args = "()",
+				returns = "(ProceduralPlanetComponent)",
+				valuetype = "ProceduralPlanetComponent"
+			},
 			getProceduralRoadComponent =
 			{
 				type = "function",
@@ -10516,7 +10588,7 @@ return {
 			getProceduralStairsComponent =
 			{
 				type = "function",
-				description = "Gets the first ProceduralStairsComponent from this GameObject.",
+				description = "Gets the first ProceduralStairsComponent attached to this GameObject. Returns nil if no such component exists.",
 				args = "()",
 				returns = "(ProceduralStairsComponent)",
 				valuetype = "ProceduralStairsComponent"
@@ -10524,7 +10596,7 @@ return {
 			getProceduralStairsComponentFromName =
 			{
 				type = "function",
-				description = "Gets a named ProceduralStairsComponent from this GameObject.",
+				description = "Gets a named ProceduralStairsComponent from this GameObject. Use this when the GameObject has more than one stair component.",
 				args = "(string name)",
 				returns = "(ProceduralStairsComponent)",
 				valuetype = "ProceduralStairsComponent"
@@ -10856,6 +10928,22 @@ return {
 				args = "(string name)",
 				returns = "(UnderwaterEffectComponent)",
 				valuetype = "UnderwaterEffectComponent"
+			},
+			getUniversumComponent =
+			{
+				type = "function",
+				description = "Gets the UniversumComponent.",
+				args = "()",
+				returns = "(UniversumComponent)",
+				valuetype = "UniversumComponent"
+			},
+			getUniversumComponentFromName =
+			{
+				type = "function",
+				description = "Gets the UniversumComponent by name.",
+				args = "(string name)",
+				returns = "(UniversumComponent)",
+				valuetype = "UniversumComponent"
 			},
 			getWaterFoamEffectComponentFromIndex =
 			{
@@ -11208,14 +11296,6 @@ return {
 				args = "(Contact other)",
 				returns = "(Contact)",
 				valuetype = "Contact"
-			},
-			castAttributesComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(AttributesComponent other)",
-				returns = "(AttributesComponent)",
-				valuetype = "AttributesComponent"
 			},
 			castPhysicsBuoyancyComponent =
 			{
@@ -12153,6 +12233,14 @@ return {
 				returns = "(AttributeEffectComponent)",
 				valuetype = "AttributeEffectComponent"
 			},
+			castAttributesComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type for Lua auto completion.",
+				args = "(AttributesComponent other)",
+				returns = "(AttributesComponent)",
+				valuetype = "AttributesComponent"
+			},
 			castBillboardComponent =
 			{
 				type = "function",
@@ -12473,6 +12561,22 @@ return {
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
 			},
+			castPlanetOceanComponent =
+			{
+				type = "function",
+				description = "Casts type for Lua auto completion.",
+				args = "(PlanetOceanComponent other)",
+				returns = "(PlanetOceanComponent)",
+				valuetype = "PlanetOceanComponent"
+			},
+			castPlanetSurfaceComponent =
+			{
+				type = "function",
+				description = "Casts type for Lua auto completion.",
+				args = "(PlanetSurfaceComponent other)",
+				returns = "(PlanetSurfaceComponent)",
+				valuetype = "PlanetSurfaceComponent"
+			},
 			castProceduralGeometryComponent =
 			{
 				type = "function",
@@ -12500,7 +12604,7 @@ return {
 			castProceduralStairsComponent =
 			{
 				type = "function",
-				description = "Cast for Lua auto-completion support.",
+				description = "Casts a GameObjectComponent to ProceduralStairsComponent for Lua auto-completion support.",
 				args = "(ProceduralStairsComponent other)",
 				returns = "(ProceduralStairsComponent)",
 				valuetype = "ProceduralStairsComponent"
@@ -12624,6 +12728,14 @@ return {
 				args = "(UnderwaterEffectComponent other)",
 				returns = "(UnderwaterEffectComponent)",
 				valuetype = "UnderwaterEffectComponent"
+			},
+			castUniversumComponent =
+			{
+				type = "function",
+				description = "Casts type for Lua auto completion.",
+				args = "(UniversumComponent other)",
+				returns = "(UniversumComponent)",
+				valuetype = "UniversumComponent"
 			},
 			castWaterFoamEffectComponent =
 			{
@@ -13765,7 +13877,7 @@ return {
 	InstantRadiosityComponent =
 	{
 		type = "class",
-		description = "Usage: Instant Radiosity for Global Illumination. Traces rays and creates Virtual Point Lights (VPLs) at hit points to simulate indirect lighting. Works on dynamic objects.  For directional lights in enclosed spaces (buildings with windows), place LightAreaOfInterestComponent markers at windows/openings. The AoI tells the system: "Shoot rays HERE specifically" - because directional light rays come from infinity and need to know where openings are to enter a building.  Scenario example: You have a house mesh with 3 windows. Without AoIs, directional light rays would be shot randomly and most would hit the exterior walls, wasting computation and missing the interior.  Solution: Create empty GameObjects at each window opening and add LightAreaOfInterestComponent.  Scene: --> House (mesh with windows baked in) --> Window1_AoI (empty GO at window position)   |--> LightAreaOfInterestComponent (halfSize matches window size) --> Window2_AoI   |--> LightAreaOfInterestComponent --> Window3_AoI   |--> LightAreaOfInterestComponent --> SunLight (directional) --> IRController   | --> InstantRadiosityComponent  When is EventDataBoundsUpdated sufficient? For outdoor scenes or scenes with only point/spot lights - you don't need specific AoIs. The scene bounds fallback works fine because: - Point/spot lights have a defined position, rays radiate from there - Outdoor scenes don't have "openings" to target  Requirements: Forward+ rendering with VPLs enabled. Only one instance allowed per scene.",
+		description = "Usage: Instant Radiosity for Global Illumination. Traces rays and creates Virtual Point Lights (VPLs) at hit points to simulate indirect lighting. Works on dynamic objects.  For directional lights in enclosed spaces (buildings with windows), place LightAreaOfInterestComponent markers at windows/openings. The AoI tells the system: Shoot rays HERE specifically - because directional light rays come from infinity and need to know where openings are to enter a building.  Scenario example: You have a house mesh with 3 windows. Without AoIs, directional light rays would be shot randomly and most would hit the exterior walls, wasting computation and missing the interior.  Solution: Add LightAreaOfInterestComponent directly to the house GameObject. Set halfSize to cover the interior volume. No empty or invisible GameObjects are needed - attach AoIs to existing visible meshes that represent the zone.  Scene setup examples:  Example 1 - House interior with sunlight: --> House (mesh)   |--> LightAreaOfInterestComponent (halfSize covers interior) --> SunLight (directional) --> MainGameObject (global config, no visible mesh needed)   |--> InstantRadiosityComponent Result: Sunlight bounces off interior walls, fills rooms with indirect light.  Example 2 - Cave entrance: --> CaveMesh   |--> LightAreaOfInterestComponent (halfSize covers cave mouth area only) --> SunLight (directional) --> MainGameObject   |--> InstantRadiosityComponent Result: Sunlight bounces off rock walls at cave entrance, warm indirect glow spills inward.  Example 3 - Courtyard between buildings: --> Courtyard (floor or center mesh)   |--> LightAreaOfInterestComponent (halfSize covers courtyard area) --> BuildingA --> BuildingB --> SunLight (directional) --> MainGameObject   |--> InstantRadiosityComponent Result: Sun bounces off building walls into courtyard, soft fill light between buildings.  Example 4 - Multiple rooms in one scene: --> Room1_Mesh   |--> LightAreaOfInterestComponent (halfSize = room1 interior) --> Room2_Mesh   |--> LightAreaOfInterestComponent (halfSize = room2 interior) --> CaveMesh   |--> LightAreaOfInterestComponent (halfSize = cave volume) --> MainGameObject   |--> InstantRadiosityComponent Result: Each zone computed independently, very efficient, no wasted rays outside zones.  Example 5 - Dungeon corridor with torches: --> Corridor_Mesh   |--> LightAreaOfInterestComponent (halfSize covers corridor length) --> Torch1 (point light) --> Torch2 (point light) --> MainGameObject   |--> InstantRadiosityComponent Result: Torch light bounces off stone walls and floor, realistic warm indirect fill.  Example 6 - Outdoor scene, no AoI needed: --> Terrain --> Trees, Rocks (meshes) --> SunLight (directional) --> MainGameObject   |--> InstantRadiosityComponent (useSceneBoundsAsFallback = true) Result: Whole scene used as AoI fallback. Fine for small outdoor areas. For large worlds keep vplMaxRange small (8-15) to avoid leaking and performance issues.  Example 7 - Test box / light probe room: --> CubeRoom (mesh with inward facing faces)   |--> LightAreaOfInterestComponent (halfSize = cube interior) --> CaseMesh (object inside cube) --> SunLight or PointLight --> MainGameObject   |--> InstantRadiosityComponent Result: Light bounces off inner cube walls and illuminates CaseMesh with indirect light. Classic use case for validating radiosity setup.  Do I need LightAreaOfInterestComponent for a house interior? Yes, always preferred. Without it the fallback covers the whole scene bounds which wastes rays on areas outside the house. Add LightAreaOfInterestComponent to the house mesh GameObject itself and set halfSize to match the interior. This focuses all rays where they matter.  Where to place InstantRadiosityComponent? Always on MainGameObject or any global config GameObject. Only one instance is allowed per scene. It is a scene-wide system, not per-object. The GameObject it lives on has no effect on which geometry gets illuminated - that is controlled entirely by AoIs or scene bounds fallback.  Forward+ lighting requirement: Instant Radiosity REQUIRES Forward+ or Forward3D rendering to be enabled. This is because VPLs are real Ogre lights inserted into the scene at runtime. Traditional deferred/forward rendering has a hard limit of typically 3-8 lights per object. Forward+ and Forward3D lift this limit by binning lights into a grid or cluster structure, allowing hundreds of lights per pixel.  How many lights get created? numRays controls how many rays are cast. Each ray that hits a surface can produce one VPL. So with numRays=128 and numRayBounces=1, you could get up to 128 VPLs inserted as real lights into the scene. With numRayBounces=2, each bounce can spawn another set, so up to 256 VPLs. The cellSize parameter clusters nearby VPLs together to reduce the actual count - larger cellSize means fewer but stronger VPLs.  VPL count budget guide: - numRays=64,  cellSize=1.0 -> ~20-40  actual lights  (fast, low quality) - numRays=128, cellSize=1.0 -> ~40-80  actual lights  (balanced) - numRays=256, cellSize=0.5 -> ~80-150 actual lights  (slow, high quality) Forward+ handles up to 1024 lights per cell, so even 150 VPLs is well within budget.  VPL vs real lights: VPLs are NOT manually created Ogre::Light objects you would place in the editor. They are injected internally by InstantRadiosity into the Forward+ light list each frame. They do not appear in the scene graph and are invisible to the editor. They are destroyed and recreated on every build() call.  IrradianceVolume mode: Instead of keeping all VPLs as individual lights (expensive), IrradianceVolume bakes them into a 3D texture grid. This is much faster at runtime since the GPU samples the texture instead of iterating over hundreds of lights. Use IrradianceVolume for static or rarely changing scenes. Use raw VPLs for fully dynamic scenes where lights or geometry move frequently.  Best practices: - Must be place under MainGameObject, only one per scene - Add LightAreaOfInterestComponent to mesh GameObjects that define important zones - Start with numRays=128, numRayBounces=1, cellSize=1.0 and tune from there - Keep vplMaxRange as small as possible to avoid light leaking through walls - Prefer IrradianceVolume for static scenes for best performance - For large outdoor worlds use useSceneBoundsAsFallback with small vplMaxRange  Requirements: Forward+ or Forward3D rendering with VPLs enabled. Only one instance allowed per scene.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -26269,6 +26381,770 @@ return {
 		type = "class",
 		description = "Modifies UV on a procedural plane."
 	},
+	PlanetOceanComponent =
+	{
+		type = "class",
+		description = "Usage: Creates an animated spherical ocean around the parent GameObject. Set Radius slightly larger than any terrain sphere beneath it. Four independent Gerstner waves are configurable with direction, amplitude, frequency and speed. Transparency and reflection cubemap are also configurable.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Enables or disables the ocean animation.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the ocean is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRadius =
+			{
+				type = "method",
+				description = "Sets the ocean sphere radius. Triggers mesh rebuild.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRadius =
+			{
+				type = "function",
+				description = "Gets the ocean sphere radius.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDeepColour =
+			{
+				type = "method",
+				description = "Sets the deep ocean diffuse colour.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDeepColour =
+			{
+				type = "function",
+				description = "Gets the deep ocean colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setShallowColour =
+			{
+				type = "method",
+				description = "Sets the shallow water emissive tint.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShallowColour =
+			{
+				type = "function",
+				description = "Gets the shallow water colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setRoughness =
+			{
+				type = "method",
+				description = "Sets PBS roughness. Uses specular_fresnel workflow. 0.06 = calm ocean.",
+				args = "(number roughness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRoughness =
+			{
+				type = "function",
+				description = "Gets PBS roughness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setTransparency =
+			{
+				type = "method",
+				description = "Sets water transparency [0=opaque, 1=fully transparent].",
+				args = "(number transparency)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTransparency =
+			{
+				type = "function",
+				description = "Gets water transparency.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setReflectionMap =
+			{
+				type = "method",
+				description = "Sets optional cubemap for reflections. Empty to skip.",
+				args = "(string cubemapName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getReflectionMap =
+			{
+				type = "function",
+				description = "Gets reflection cubemap name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setWaveAmplitudeScale =
+			{
+				type = "method",
+				description = "Global amplitude multiplier. 0 = flat ocean.",
+				args = "(number scale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWaveAmplitudeScale =
+			{
+				type = "function",
+				description = "Gets global wave amplitude scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave0Amplitude =
+			{
+				type = "method",
+				description = "Wave 0 crest height in metres (calibrated for 50m planet, scales with radius).",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave0Amplitude =
+			{
+				type = "function",
+				description = "Gets wave 0 amplitude.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave0Frequency =
+			{
+				type = "method",
+				description = "Wave 0 cycles per hemisphere (radius-independent). 2 = two crests across equator.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave0Frequency =
+			{
+				type = "function",
+				description = "Gets wave 0 frequency.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave0Speed =
+			{
+				type = "method",
+				description = "Wave 0 phase speed in radians per second.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave0Speed =
+			{
+				type = "function",
+				description = "Gets wave 0 speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave0Direction =
+			{
+				type = "method",
+				description = "Wave 0 propagation direction in radians (0 = +X axis).",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave0Direction =
+			{
+				type = "function",
+				description = "Gets wave 0 direction.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave1Amplitude =
+			{
+				type = "method",
+				description = "Wave 1 crest height in metres.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave1Amplitude =
+			{
+				type = "function",
+				description = "Gets wave 1 amplitude.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave1Frequency =
+			{
+				type = "method",
+				description = "Wave 1 cycles per hemisphere.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave1Frequency =
+			{
+				type = "function",
+				description = "Gets wave 1 frequency.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave1Speed =
+			{
+				type = "method",
+				description = "Wave 1 phase speed.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave1Speed =
+			{
+				type = "function",
+				description = "Gets wave 1 speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave1Direction =
+			{
+				type = "method",
+				description = "Wave 1 propagation direction in radians.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave1Direction =
+			{
+				type = "function",
+				description = "Gets wave 1 direction.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave2Amplitude =
+			{
+				type = "method",
+				description = "Wave 2 crest height in metres.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave2Amplitude =
+			{
+				type = "function",
+				description = "Gets wave 2 amplitude.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave2Frequency =
+			{
+				type = "method",
+				description = "Wave 2 cycles per hemisphere.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave2Frequency =
+			{
+				type = "function",
+				description = "Gets wave 2 frequency.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave2Speed =
+			{
+				type = "method",
+				description = "Wave 2 phase speed.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave2Speed =
+			{
+				type = "function",
+				description = "Gets wave 2 speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave2Direction =
+			{
+				type = "method",
+				description = "Wave 2 propagation direction in radians.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave2Direction =
+			{
+				type = "function",
+				description = "Gets wave 2 direction.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave3Amplitude =
+			{
+				type = "method",
+				description = "Wave 3 crest height in metres.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave3Amplitude =
+			{
+				type = "function",
+				description = "Gets wave 3 amplitude.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave3Frequency =
+			{
+				type = "method",
+				description = "Wave 3 cycles per hemisphere.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave3Frequency =
+			{
+				type = "function",
+				description = "Gets wave 3 frequency.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave3Speed =
+			{
+				type = "method",
+				description = "Wave 3 phase speed.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave3Speed =
+			{
+				type = "function",
+				description = "Gets wave 3 speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWave3Direction =
+			{
+				type = "method",
+				description = "Wave 3 propagation direction in radians.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWave3Direction =
+			{
+				type = "function",
+				description = "Gets wave 3 direction.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
+	PlanetSunComponent =
+	{
+		type = "class",
+		description = "Spherical sun surface with animated procedural plasma/lava emissive texture updated every frame. The plasma animation runs entirely on the GPU-uploaded 128x128 emissive map — no vertex deformation. Place a PointLight or DirectionalLight on the same GameObject for a complete sun setup. AnimationSpeed controls boiling rate; PlasmaScale controls granule density.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Enables or disables the sun plasma animation.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Returns true if the sun animation is currently active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRadius =
+			{
+				type = "method",
+				description = "Sets the sun sphere radius in world units and fully recreates the mesh.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRadius =
+			{
+				type = "function",
+				description = "Returns the current sun radius in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSegmentsH =
+			{
+				type = "method",
+				description = "Sets the horizontal tessellation and recreates the mesh.",
+				args = "(unumber segs)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSegmentsH =
+			{
+				type = "function",
+				description = "Returns the current horizontal tessellation segment count.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setSegmentsV =
+			{
+				type = "method",
+				description = "Sets the vertical tessellation and recreates the mesh.",
+				args = "(unumber segs)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSegmentsV =
+			{
+				type = "function",
+				description = "Returns the current vertical tessellation segment count.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setEmissiveColour =
+			{
+				type = "method",
+				description = "Sets the emissive tint colour multiplied with the animated plasma texture. Controls the sun glow colour.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEmissiveColour =
+			{
+				type = "function",
+				description = "Returns the current emissive tint colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setDiffuseColour =
+			{
+				type = "method",
+				description = "Sets the base diffuse colour of the sun surface.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDiffuseColour =
+			{
+				type = "function",
+				description = "Returns the current diffuse colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setRoughness =
+			{
+				type = "method",
+				description = "Sets PBS roughness [0.0, 1.0]. High values (0.9) give a matte gaseous look.",
+				args = "(number roughness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRoughness =
+			{
+				type = "function",
+				description = "Returns the current roughness value.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setAnimationSpeed =
+			{
+				type = "method",
+				description = "Sets the plasma animation speed multiplier. Higher = faster boiling surface.",
+				args = "(number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAnimationSpeed =
+			{
+				type = "function",
+				description = "Returns the current animation speed multiplier.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setPlasmaScale =
+			{
+				type = "method",
+				description = "Sets the spatial frequency of the plasma pattern. Higher = more fine-grained granules.",
+				args = "(number scale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPlasmaScale =
+			{
+				type = "function",
+				description = "Returns the current plasma scale value.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
+	PlanetSurfaceComponent =
+	{
+		type = "class",
+		description = "Marks this GameObject as a surface object belonging to a specific planet or moon managed by UniversumComponent. Usage: Place buildings, props, or any object on a planet in the editor. Add PlanetSurfaceComponent and set Target Planet Id to the planet's Id (visible in the Properties panel). UniversumComponent hides this object when the planet is orbiting and shows/repositions it when the player enters the planet's atmosphere zone. On simulation stop all objects are restored to their original positions.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setTargetPlanetId =
+			{
+				type = "method",
+				description = "Sets the Id of the planet or moon this object is placed on.",
+				args = "(unumber id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTargetPlanetId =
+			{
+				type = "function",
+				description = "Gets the target planet Id.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			}
+		}
+	},
+	PlanetTerraComponent =
+	{
+		type = "class",
+		description = "Spherical planet terrain with brush-based sculpting and multi-layer painting. Blend-weight texture '<goName>_blendWeight' (RGBA8, 4 terrain layers) must be referenced in the assigned PBS datablock.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Enables or disables the sculpt/paint edit mode.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Returns true if the edit mode is currently active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRadius =
+			{
+				type = "method",
+				description = "Sets the planet radius in world units and fully recreates the mesh. Existing sculpt data is discarded.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRadius =
+			{
+				type = "function",
+				description = "Returns the current planet radius in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSegmentsH =
+			{
+				type = "method",
+				description = "Sets the horizontal (longitude) tessellation and recreates the mesh. Minimum 4.",
+				args = "(unumber segs)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSegmentsH =
+			{
+				type = "function",
+				description = "Returns the current horizontal tessellation segment count.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setSegmentsV =
+			{
+				type = "method",
+				description = "Sets the vertical (latitude) tessellation and recreates the mesh. Minimum 4.",
+				args = "(unumber segs)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSegmentsV =
+			{
+				type = "function",
+				description = "Returns the current vertical tessellation segment count.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setEditMode =
+			{
+				type = "method",
+				description = "Sets the active edit mode. Valid values: 'Sculpt', 'Paint'.",
+				args = "(string mode)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEditMode =
+			{
+				type = "function",
+				description = "Returns the active edit mode: 'Sculpt' or 'Paint'.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setBrushMode =
+			{
+				type = "method",
+				description = "Sets the sculpt brush mode. Valid values: 'Pull', 'Push', 'Smooth', 'Flatten', 'Inflate'.",
+				args = "(string mode)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushMode =
+			{
+				type = "function",
+				description = "Returns the current sculpt brush mode.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setPaintLayer =
+			{
+				type = "method",
+				description = "Sets the active paint layer. Valid values: '0', '1', '2', '3' (maps to RGBA channels of the blend texture).",
+				args = "(string layer)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPaintLayer =
+			{
+				type = "function",
+				description = "Returns the active paint layer as a string '0'..'3'.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setBrushName =
+			{
+				type = "method",
+				description = "Loads the named brush image from the Brushes resource group as the active brush mask.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushName =
+			{
+				type = "function",
+				description = "Returns the filename of the currently active brush image.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setBrushSize =
+			{
+				type = "method",
+				description = "Sets the brush radius. In Sculpt mode: world units. In Paint mode: blend-texture pixels.",
+				args = "(number size)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushSize =
+			{
+				type = "function",
+				description = "Returns the current brush radius.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrushIntensity =
+			{
+				type = "method",
+				description = "Sets the brush strength per application step. Range 0..1.",
+				args = "(number intensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushIntensity =
+			{
+				type = "function",
+				description = "Returns the current brush intensity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrushFalloff =
+			{
+				type = "method",
+				description = "Sets the brush edge falloff exponent. Higher values produce a sharper edge.",
+				args = "(number falloff)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushFalloff =
+			{
+				type = "function",
+				description = "Returns the current brush falloff exponent.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			bakeMeshToFile =
+			{
+				type = "function",
+				description = "Exports the current planet mesh to '<goName>_Planet.mesh' in the scene folder. Returns true on success.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			}
+		}
+	},
 	PlayerContact =
 	{
 		type = "class",
@@ -26922,6 +27798,79 @@ return {
 		type = "class",
 		description = "Generates a procedural path."
 	},
+	ProceduralPlanetComponent =
+	{
+		type = "class",
+		description = "Generates a procedural planet surface on a sibling PlanetTerraComponent. Supports Perlin FBM hills, island masking, canyon carving, river drainage and road flattening. Click Generate to apply. Parameters are preserved in the scene XML.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setHillAmplitude =
+			{
+				type = "method",
+				description = "Sets the hill height variation in world units (metres above/below sphere surface).",
+				args = "(number amplitude)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setHillFrequency =
+			{
+				type = "method",
+				description = "Sets the number of major terrain features across the sphere.",
+				args = "(number frequency)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setSeed =
+			{
+				type = "method",
+				description = "Sets the random seed. Change to generate a completely different planet.",
+				args = "(unumber seed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setEnableIsland =
+			{
+				type = "method",
+				description = "Enables radial island masking to create a landmass surrounded by lowlands.",
+				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setEnableRivers =
+			{
+				type = "method",
+				description = "Enables flow-accumulation river carving.",
+				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setEnableCanyons =
+			{
+				type = "method",
+				description = "Enables long canyon trench carving.",
+				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setEnableRoads =
+			{
+				type = "method",
+				description = "Enables Catmull-Rom road path flattening.",
+				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			generateProceduralPlanet =
+			{
+				type = "method",
+				description = "Runs the full generation pipeline and applies the result to the sibling PlanetTerraComponent.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
 	ProceduralRoadComponent =
 	{
 		type = "class",
@@ -27018,106 +27967,362 @@ return {
 		inherits = "GameObjectComponent",
 		childs = 
 		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the stair placement mode. When false, mouse input for placement is ignored.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Returns true if the stair placement mode is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			setStairShape =
 			{
 				type = "method",
-				description = "Sets the stair shape: 'Linear', 'Curved', or 'Spiral'. Rebuilds the mesh.",
+				description = "Sets the stair shape and rebuilds the mesh. Valid values: 'Linear', 'Curved'. Curved supports Arc Angle > 360 degrees for full spirals.",
 				args = "(string shape)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getStairShape =
+			{
+				type = "function",
+				description = "Returns the currently selected stair shape name: 'Linear' or 'Curved'.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
 			setStepCount =
 			{
 				type = "method",
-				description = "Sets the number of steps. Rebuilds the mesh.",
+				description = "Sets the number of steps in the flight (minimum 1). Rebuilds the mesh. Total stair height = StepCount × StepHeight. Total stair depth  = StepCount × StepDepth (Linear only).",
 				args = "(number n)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			getStepCount =
+			{
+				type = "function",
+				description = "Returns the current number of steps.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			},
 			setStepHeight =
 			{
 				type = "method",
-				description = "Sets the vertical rise per step in world units. Rebuilds the mesh.",
+				description = "Sets the vertical rise per step in world units. Rebuilds the mesh. Minimum clamped to 0.01. Standard architectural value: 0.15 – 0.20 m.",
 				args = "(number h)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getStepHeight =
+			{
+				type = "function",
+				description = "Returns the vertical rise per step in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			setStepDepth =
 			{
 				type = "method",
-				description = "Sets the horizontal run (tread depth) per step. Rebuilds the mesh.",
+				description = "Sets the horizontal run (tread depth) per step in world units. Rebuilds the mesh. Linear only — for Curved the arc geometry determines effective depth. Minimum clamped to 0.01. Standard architectural value: 0.25 – 0.30 m.",
 				args = "(number d)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getStepDepth =
+			{
+				type = "function",
+				description = "Returns the horizontal run per step in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			setStepWidth =
 			{
 				type = "method",
-				description = "Sets the lateral width of the flight (Linear only). Rebuilds the mesh.",
+				description = "Sets the lateral width of the stair flight in world units. Rebuilds the mesh. Linear only — for Curved use setInnerRadius() and setOuterRadius() instead. Minimum clamped to 0.01.",
 				args = "(number w)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getStepWidth =
+			{
+				type = "function",
+				description = "Returns the lateral width of the stair flight in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			setStepNosing =
 			{
 				type = "method",
-				description = "Sets the tread overhang beyond the riser (0=flush). Rebuilds the mesh.",
+				description = "Sets the tread overhang beyond the riser in world units. Rebuilds the mesh. 0 = flush (no overhang). Automatically clamped to less than StepDepth. For Curved stairs the value is converted to an angular extension at the mid-radius. Standard architectural value: 0.02 – 0.04 m.",
 				args = "(number n)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getStepNosing =
+			{
+				type = "function",
+				description = "Returns the tread nosing overhang in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			setOpenRiser =
 			{
 				type = "method",
-				description = "When true, omits the front vertical riser face. Rebuilds the mesh.",
+				description = "When true, omits the front vertical riser face giving a floating/open stair look. Rebuilds the mesh. The Riser Datablock is ignored when this is true.",
 				args = "(boolean open)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getOpenRiser =
+			{
+				type = "function",
+				description = "Returns true if the vertical riser faces are omitted.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			setStringerStyle =
 			{
 				type = "method",
-				description = "Sets the side panel style: 'None', 'Closed', or 'Open'. Rebuilds the mesh.",
+				description = "Sets the side panel style. Rebuilds the mesh. Valid values: 'None'   – no side panels; steps appear to float with open sides. 'Closed' – one solid rectangular board per side spanning the full profile.            Uses the Stringer Datablock material. 'Open'   – per-step notched profile on each side, same silhouette as the            stair profile but rendered with the Stringer Datablock material.            Useful for wooden open-riser stairs with a visible stringer board.",
 				args = "(string style)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			getStringerStyle =
+			{
+				type = "function",
+				description = "Returns the current stringer style: 'None', 'Closed', or 'Open'.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			},
 			setBottomStyle =
 			{
 				type = "method",
-				description = "Sets the underside style: 'None', 'Sloped', or 'Stepped'. Rebuilds the mesh.",
+				description = "Sets the underside geometry style. Rebuilds the mesh. Valid values: 'None'    – hollow / open underside. No geometry below the steps. 'Sloped'  – one flat diagonal soffit panel under the entire Linear flight.             For Curved: a flat annular disk at y=0 closes the base. 'Stepped' – the underside mirrors the step geometry (fully closed solid).             Recommended when the stair is visible from below.",
 				args = "(string style)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getBottomStyle =
+			{
+				type = "function",
+				description = "Returns the current bottom style: 'None', 'Sloped', or 'Stepped'.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
 			setInnerRadius =
 			{
 				type = "method",
-				description = "Sets the inner void radius (Curved/Spiral only). Rebuilds the mesh.",
+				description = "Sets the inner void radius for Curved stairs in world units. Rebuilds the mesh. This is the radius of the central column / void at the centre of the spiral. Minimum clamped to 0.01. Must be less than Outer Radius.",
 				args = "(number r)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			getInnerRadius =
+			{
+				type = "function",
+				description = "Returns the inner void radius for Curved stairs in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			},
 			setOuterRadius =
 			{
 				type = "method",
-				description = "Sets the outer edge radius (Curved/Spiral only). Rebuilds the mesh.",
+				description = "Sets the outer edge radius for Curved stairs in world units. Rebuilds the mesh. The difference (OuterRadius - InnerRadius) is the effective step width. Automatically clamped to be at least 0.01 greater than Inner Radius.",
 				args = "(number r)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getOuterRadius =
+			{
+				type = "function",
+				description = "Returns the outer edge radius for Curved stairs in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			setArcAngle =
 			{
 				type = "method",
-				description = "Sets the total arc in degrees (Curved/Spiral only). Rebuilds the mesh.",
+				description = "Sets the total rotation of the stair flight in degrees. Rebuilds the mesh. 90  = quarter turn.  180 = half turn.  270 = three-quarter turn. 360 = full spiral.   Any value > 360 creates a multi-revolution spiral. Minimum clamped to 1 degree.",
 				args = "(number deg)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getArcAngle =
+			{
+				type = "function",
+				description = "Returns the total arc angle of the stair flight in degrees.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRotationDir =
+			{
+				type = "method",
+				description = "Sets the direction the stair turns when ascending. Rebuilds the mesh. Valid values: 'Counter-Clockwise', 'Clockwise'. Curved only — has no effect on Linear stairs.",
+				args = "(string dir)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRotationDir =
+			{
+				type = "function",
+				description = "Returns the rotation direction: 'Counter-Clockwise' or 'Clockwise'.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setCentrePole =
+			{
+				type = "method",
+				description = "When true, generates a solid cylinder at the inner radius as a structural pole. Curved only — has no effect on Linear stairs. Rebuilds the mesh. The pole uses the Stringer Datablock material.",
+				args = "(boolean enabled)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCentrePole =
+			{
+				type = "function",
+				description = "Returns true if the centre pole cylinder is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setPivotPosition =
+			{
+				type = "method",
+				description = "Sets where the scene node origin sits relative to the stair geometry. Rebuilds the mesh. Valid values: 'Bottom-Front'  – origin at the base of the first step (default).                   Place the GO at ground level at the foot of the stair. 'Bottom-Centre' – origin at the horizontal midpoint of the flight.                   Useful for symmetric placement around a centre point. 'Bottom-Back'   – origin at the base of the top step.                   Place the GO where the stair meets the upper floor.",
+				args = "(string pivot)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPivotPosition =
+			{
+				type = "function",
+				description = "Returns the pivot position: 'Bottom-Front', 'Bottom-Centre', or 'Bottom-Back'.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setRampCollider =
+			{
+				type = "method",
+				description = "When true, generates an invisible diagonal ramp face over the stair flight. This lets physics-driven characters walk up stairs smoothly without stairstep jitter — the ramp face is fully transparent (PBS opacity = 0). Works for both Linear (single diagonal quad) and Curved (helical sectors). The auto-created datablock is named 'StairsRamp_<gameObjectId>'. Combine with a PhysicsArtifactComponent for collision detection. Rebuilds the mesh.",
+				args = "(boolean enabled)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRampCollider =
+			{
+				type = "function",
+				description = "Returns true if the invisible diagonal ramp collider submesh is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setUVMode =
+			{
+				type = "method",
+				description = "Sets the UV projection mode applied to all faces. Rebuilds the mesh. Valid values: 'Box'        – each face projected from its dominant axis (best for untiled textures). 'Continuous' – UVs flow along the stair flight direction (best for tiling textures).",
+				args = "(string mode)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUVMode =
+			{
+				type = "function",
+				description = "Returns the current UV mode: 'Box' or 'Continuous'.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setUVTiling =
+			{
+				type = "method",
+				description = "Sets the UV tiling multiplier applied to all faces. Rebuilds the mesh. x = U repeat, y = V repeat. Default is (1, 1) = no tiling. Increase to tile a texture across multiple steps, e.g. (4, 2).",
+				args = "(Vector2 tiling)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUVTiling =
+			{
+				type = "function",
+				description = "Returns the current UV tiling multiplier as a Vector2.",
+				args = "()",
+				returns = "(Vector2)",
+				valuetype = "Vector2"
+			},
+			setTreadDatablock =
+			{
+				type = "method",
+				description = "Assigns a PBS datablock by name to the top (horizontal tread) faces. This is a live swap — does NOT trigger a full mesh rebuild. The datablock must already be registered with the HlmsManager.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTreadDatablock =
+			{
+				type = "function",
+				description = "Returns the PBS datablock name currently applied to the tread faces.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setRiserDatablock =
+			{
+				type = "method",
+				description = "Assigns a PBS datablock by name to the front (vertical riser) faces. This is a live swap — does NOT trigger a full mesh rebuild. Ignored when Open Riser = true (no riser faces are generated).",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRiserDatablock =
+			{
+				type = "function",
+				description = "Returns the PBS datablock name currently applied to the riser faces.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setStringerDatablock =
+			{
+				type = "method",
+				description = "Assigns a PBS datablock by name to the stringer side panels, soffit, and centre pole. This is a live swap — does NOT trigger a full mesh rebuild. Ignored when Stringer Style = None and Bottom Style = None and Centre Pole = false.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getStringerDatablock =
+			{
+				type = "function",
+				description = "Returns the PBS datablock name currently applied to stringer/soffit/pole faces.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
 			rebuildMesh =
 			{
 				type = "method",
-				description = "Forces a complete geometry rebuild. Call after multiple Lua parameter changes to avoid redundant rebuilds.",
+				description = "Forces a complete geometry rebuild from all current parameter values. Call this once after making several parameter changes via Lua to avoid triggering a redundant rebuild after every individual setter call. Example:   local s = go:getProceduralStairsComponent()   s:setStepCount(16)    -- no rebuild yet if called internally   s:setStepHeight(0.18)   s:setStepDepth(0.28)   s:rebuildMesh()        -- single rebuild covering all changes",
 				args = "()",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -31275,6 +32480,143 @@ return {
 			}
 		}
 	},
+	UniversumComponent =
+	{
+		type = "class",
+		description = "Procedural universe generator. Creates solar systems with suns, planets, moons, and optional oceans driven by a reproducible random seed. Generation: Click Generate to destroy and rebuild the universe from the current seed and configuration. Scale: Scale=1 gives sun~250m, planets 80-300m. Scale=2 multiplies all radii and distances by 10. Textures: Scans the TerrainTextures resource group for _d. (diffuse) and _n. (normal) files.   Files containing 'sun' go to the sun pool, 'moon' to the moon pool, all others to the planet pool.   Each planet gets a random diffuse, normal, and 4 shuffled detail textures paired with their _n.dds normals.   Moons get 2 detail layers. Add more textures to TerrainTextures to increase variety. Orbital motion: Planets orbit their sun via PhysicsActiveKinematicComponent::setPosition each frame.   Only the planet the player is currently on is frozen -- all other planets and moons keep moving.   Axial rotation of the frozen planet is also stopped so buildings stay physically valid (TreeCollision).   Day/night is faked by rotating the directional light direction at the planet's axial speed.   Moons of the frozen planet still orbit normally -- player watches them arc across the sky.   Pause/resume can also be driven from Lua: universum:pausePlanetOrbit(id) / resumePlanetOrbit(id). Auto Pause Orbit On Surface: When enabled (default), orbital motion pauses automatically when   any object enters a planet's AreaOfInterestComponent zone, and resumes when it leaves.   Disable this flag if you want full manual control via Lua reactOnEnter / reactOnLeave instead. Gravity: All planets and moons are assigned category 'Planets'.   Set PhysicsActiveComponent::gravitySourceCategory='Planets' on the player or spacecraft.   Surface gravity scales with radius: 50m reference = 19.8 m/s^2, clamped to [2, 150]. AreaOfInterest: Each planet/moon gets an AreaOfInterestComponent (radius = 2x planet radius).   The C++ PlanetOrbitObserver is attached automatically -- no Lua script needed for basic use. Camera: Set CameraGameObjectId to the main camera (defaults to MAIN_CAMERA_ID).   Far clip lerps between FarClipSpace (default 1000000) and FarClipSurface (default 5000).   Camera speed hint is posted as EventDataFeedback '[UNIVERSUM_CAMSPEED:value]' after Generate. Sun light: Set SunLightGameObjectId to the scene directional light (defaults to MAIN_LIGHT_ID).   Light direction, color, and power are updated each frame toward the nearest solar system.   While on a surface, the light rotates to fake sunrise and sunset.   Each star type gets a randomised color: G=warm yellow, F=white, K=orange, M=red, B=blue-white. Player setup: PlayerGameObjectId + PhysicsActiveComponent with gravitySourceCategory='Planets'.   The player is always a dynamic body. The planet kinematic body provides the collision surface.   Spacecraft, hinge joints, and wheels all work normally when landed (objects are in close range). PlanetSurfaceComponent: Add this component to any building, prop, or object placed on a planet.   Set its TargetPlanetId to the planet's Id (shown in the Properties panel).   At simulation start all surface objects are hidden and their physics disabled.   When the player enters the planet's atmosphere zone, objects are repositioned and shown.   Local offsets are computed at simulation start: localPos = planetRot.Inverse * (objPos - planetPos).   When the player leaves, objects are hidden again. On simulation stop, all are fully restored.   Works for any component type: PhysicsArtifactComponent (buildings), props, vehicles, etc.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setRandomSeed =
+			{
+				type = "method",
+				description = "Sets the random seed for reproducible universe generation.",
+				args = "(unumber seed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRandomSeed =
+			{
+				type = "function",
+				description = "Gets the current random seed.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setSolarSystemCount =
+			{
+				type = "method",
+				description = "Sets the number of solar systems to generate.",
+				args = "(unumber count)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setUseMotion =
+			{
+				type = "method",
+				description = "Enables or disables kinematic orbital motion.",
+				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setUseOcean =
+			{
+				type = "method",
+				description = "Enables or disables ocean generation on planets.",
+				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setPlayerGameObjectId =
+			{
+				type = "method",
+				description = "Sets the player GameObject id (as string -- Lua numbers lose precision for large 64-bit ids). The id is used by the AOI observer to only trigger planet-pause events when THIS object enters.",
+				args = "(string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPlayerGameObjectId =
+			{
+				type = "function",
+				description = "Gets the player GameObject id as string.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setCameraGameObjectId =
+			{
+				type = "method",
+				description = "Sets the camera GameObject id (as string). The camera's far-clip distance is lerped between farClipSpace and farClipSurface based on proximity to planets.",
+				args = "(string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCameraGameObjectId =
+			{
+				type = "function",
+				description = "Gets the camera GameObject id as string.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setSunLightGameObjectId =
+			{
+				type = "method",
+				description = "Sets the directional light GameObject id (as string) to steer as the sun. Defaults to MAIN_LIGHT_ID.",
+				args = "(string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSunLightGameObjectId =
+			{
+				type = "function",
+				description = "Gets the sun light GameObject id as string.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setAutoPauseOrbit =
+			{
+				type = "method",
+				description = "When enabled, orbital motion pauses automatically when any object enters a planet AreaOfInterest zone, and resumes when it leaves. Day/night is faked via directional light rotation during the pause.",
+				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAutoPauseOrbit =
+			{
+				type = "function",
+				description = "Gets whether automatic orbital pause on surface is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			reactOnPlanetEntered =
+			{
+				type = "method",
+				description = "Registers a Lua closure called when any object enters a planet or moon atmosphere zone. Receives the planet GameObject. Wire this in the LuaScriptComponent connect() of the same GameObject as UniversumComponent. Example: universum:reactOnPlanetEntered(function(planetGameObject, enteredGameObject) log('Entered ' .. tostring(enteredGameObject:getId())) end)",
+				args = "(func closure(planetGameObject, enteredGameObject)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnPlanetLeft =
+			{
+				type = "method",
+				description = "Registers a Lua closure called when any object leaves a planet or moon atmosphere zone. Receives the planet GameObject.",
+				args = "(func closure(planetGameObject, enteredGameObject)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnUniverseGenerated =
+			{
+				type = "method",
+				description = "Registers a Lua closure called once after generateUniverse() completes successfully. Use this to read planet ids, set up your player spawn point, configure gravity sources, etc.",
+				args = "(func closure()",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
 	UnweldVerticesModifier =
 	{
 		type = "class",
@@ -31474,8 +32816,8 @@ return {
 			assign =
 			{
 				type = "method",
-				description = "Assings another value to this Variant.",
-				args = "(string other)",
+				description = "Assigns another value to this Variant.",
+				args = "(Variant other)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -31500,6 +32842,22 @@ return {
 				type = "method",
 				description = "Sets the number value.",
 				args = "(number value)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			incrementValueNumber =
+			{
+				type = "method",
+				description = "Increments the number value by the given amount.",
+				args = "(number amount)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			decrementValueNumber =
+			{
+				type = "method",
+				description = "Decrements the number value by the given amount.",
+				args = "(number amount)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -31559,6 +32917,14 @@ return {
 				returns = "(number)",
 				valuetype = "number"
 			},
+			getValueBool =
+			{
+				type = "function",
+				description = "Gets the bool value.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			getValueString =
 			{
 				type = "function",
@@ -31574,14 +32940,6 @@ return {
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
-			},
-			getValueBool =
-			{
-				type = "function",
-				description = "Gets the bool value.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
 			},
 			getValueVector2 =
 			{
@@ -31632,18 +32990,6 @@ return {
 				type = "value"
 			},
 			VAR_VEC4 =
-			{
-				type = "value"
-			},
-			VAR_QUAT =
-			{
-				type = "value"
-			},
-			VAR_MAT3 =
-			{
-				type = "value"
-			},
-			VAR_MAT4 =
 			{
 				type = "value"
 			},

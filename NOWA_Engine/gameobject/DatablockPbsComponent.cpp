@@ -1839,6 +1839,89 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::setTextureDirectly");
     }
 
+    void DatablockPbsComponent::clearTexture(Ogre::PbsTextureTypes pbsTextureType)
+    {
+        if (nullptr == this->datablock)
+        {
+            return;
+        }
+
+        Variant* attribute = nullptr;
+
+        switch (pbsTextureType)
+        {
+        case Ogre::PBSM_DIFFUSE:
+            attribute = this->diffuseTextureName;
+            break;
+        case Ogre::PBSM_NORMAL:
+            attribute = this->normalTextureName;
+            break;
+        case Ogre::PBSM_SPECULAR:
+            attribute = this->specularTextureName;
+            break; // also PBSM_METALLIC
+        case Ogre::PBSM_ROUGHNESS:
+            attribute = this->roughnessTextureName;
+            break;
+        case Ogre::PBSM_DETAIL_WEIGHT:
+            attribute = this->detailWeightTextureName;
+            break;
+        case Ogre::PBSM_DETAIL0:
+            attribute = this->detail0TextureName;
+            break;
+        case Ogre::PBSM_DETAIL1:
+            attribute = this->detail1TextureName;
+            break;
+        case Ogre::PBSM_DETAIL2:
+            attribute = this->detail2TextureName;
+            break;
+        case Ogre::PBSM_DETAIL3:
+            attribute = this->detail3TextureName;
+            break;
+        case Ogre::PBSM_DETAIL0_NM:
+            attribute = this->detail0NMTextureName;
+            break;
+        case Ogre::PBSM_DETAIL1_NM:
+            attribute = this->detail1NMTextureName;
+            break;
+        case Ogre::PBSM_DETAIL2_NM:
+            attribute = this->detail2NMTextureName;
+            break;
+        case Ogre::PBSM_DETAIL3_NM:
+            attribute = this->detail3NMTextureName;
+            break;
+        case Ogre::PBSM_EMISSIVE:
+            attribute = this->emissiveTextureName;
+            break;
+        case Ogre::PBSM_REFLECTION:
+            attribute = this->reflectionTextureName;
+            break;
+        default:
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[DatablockPbsComponent] clearTexture: unknown pbsTextureType " + Ogre::StringConverter::toString(static_cast<int>(pbsTextureType)) + " for game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        if (nullptr == attribute)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[DatablockPbsComponent] clearTexture: attribute is null for pbsTextureType " + Ogre::StringConverter::toString(static_cast<int>(pbsTextureType)) + " for game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, pbsTextureType, attribute]()
+        {
+            // Clear the attribute so the UI and serialisation see no texture.
+            attribute->setValue(Ogre::String(""));
+            attribute->removeUserData("OldTexture");
+
+            // Unbind directly from the datablock — bypass internalSetTextureName
+            // which would fall back to reading the saved PBS texture name from disk.
+            this->datablock->setTexture(pbsTextureType, static_cast<Ogre::TextureGpu*>(nullptr));
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::clearTexture");
+    }
+
     void DatablockPbsComponent::setSubItemIndex(unsigned int subItemIndex)
     {
         this->subItemIndex->setValue(subItemIndex);

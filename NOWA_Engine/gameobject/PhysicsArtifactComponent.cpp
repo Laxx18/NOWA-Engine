@@ -225,17 +225,33 @@ namespace NOWA
 				meshName = item->getMesh()->getName();
 				if (Ogre::StringUtil::match(meshName, "Plane*", true))
 				{
-					// if the mesh name is a plane, the tree collision does not work, so use box
-					Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
-					size.y = 0.001f;
-					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+
+					NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
+                    {
+                        // if the mesh name is a plane, the tree collision does not work, so use box
+                        Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
+                        size.y = 0.001f;
+                        staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::createBoxCollision");
 					// Causes crash, when deleted all bodies!, something is wrong with that!
 					// this->ogreNewt->AddSceneCollision(staticCollision, 0);
 				}
 				else
 				{
-					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
-					// this->ogreNewt->AddSceneCollision(staticCollision, 0);
+                    // Build TreeCollision on the render thread so that all pending
+                    // immutable buffer uploads (e.g. from PlanetTerraComponent) are
+                    // committed before vao->mapAsyncTickets() is called inside the
+                    // TreeCollision ctor. Calling mapAsyncTickets with pending uploads
+                    // forces an immediate flush and logs the D3D11 performance warning.
+                    // enqueueAndWait guarantees the render thread has processed its
+                    // queue before we read back vertex data.
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
+                    {
+                        staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::createTreeCollision");
+                    // this->ogreNewt->AddSceneCollision(staticCollision, 0);
 				}
 			}
 			else
@@ -420,16 +436,23 @@ namespace NOWA
 				meshName = item->getMesh()->getName();
 				if (Ogre::StringUtil::match(meshName, "Plane*", true))
 				{
-					// if the mesh name is a plane, the tree collision does not work, so use box
-					// Attention: Is this correct?
-					Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
-					size.y = 0.001f;
-					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(),
-						Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+					NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
+                    {
+                        // if the mesh name is a plane, the tree collision does not work, so use box
+                        // Attention: Is this correct?
+                        Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
+                        size.y = 0.001f;
+                        staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::reCreateBoxCollision");
 				}
 				else
 				{
-					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
+                    {
+                        staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::reCreateTreeCollision");
 				}
 			}
 			else

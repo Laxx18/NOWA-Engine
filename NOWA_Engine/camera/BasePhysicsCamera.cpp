@@ -15,7 +15,6 @@ namespace NOWA
 		ogreNewt(ogreNewt),
 		cameraSize(cameraSize),
 		BaseCamera(id, moveSpeed, rotateSpeed, smoothValue),
-		cameraBody(nullptr),
 		upVector(nullptr)
 	{
 		

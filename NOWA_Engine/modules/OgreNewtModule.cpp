@@ -244,10 +244,13 @@ namespace NOWA
 	}
 
 	void OgreNewtModule::update(Ogre::Real dt)
-	{
-		if (nullptr != this->ogreNewt)
-			this->ogreNewt->update(dt);
-	}
+    {
+        if (nullptr != this->ogreNewt)
+        {
+            this->ogreNewt->update(dt);
+            // this->ogreNewt->updateFixed(dt);
+        }
+    }
 
 	void OgreNewtModule::setGlobalGravity(const Ogre::Vector3& globalGravity)
 	{
@@ -267,60 +270,35 @@ namespace NOWA
         }
 
         body->setRenderUpdateCallback([](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic, bool isTeleport)
-        {
-            if (nullptr == node)
             {
-                return;
-            }
-
-            Ogre::Node* parent = node->getParent();
-            if (nullptr == parent)
-            {
-                return;
-            }
-
-            if (!node->isStatic())
-            {
-                // Use _setDerivedPosition / _setDerivedOrientation to write directly to the
-                // world-space SIMD transform buffers that the renderer consumes each frame.
-                //
-                // The previous path used updateNodePosition -> setPosition(localPos), which
-                // writes to the local transform and sets a dirty flag. For SCENE_DYNAMIC nodes,
-                // Ogre-Next resolves the dirty flag lazily during the next full scene-graph
-                // update -- not within the current render command. The GPU therefore reads
-                // stale data for the remainder of the current frame, producing one-frame lag
-                // or oscillation when the callback fires from per-frame orbital/physics updates.
-                //
-                // _setDerivedPosition bypasses the local->world computation entirely: it writes
-                // the final world-space position directly into the SIMD buffer. The position
-                // is immediately visible on the current frame. Newton's body matrix (pos) is
-                // already in world space, so no parent-transform decomposition is needed.
-                //
-                // Note: OgreNewt already computes the interpolated position before calling here:
-                //   m_nodePosit = m_prevPosit + (m_curPosit - m_prevPosit) * interpolatParam
-                // That interpolation is correct and untouched. We are only changing HOW the
-                // result is written to the SceneNode -- immediate vs lazy.
-                NOWA::GraphicsModule::getInstance()->enqueue([node, pos, rot, updateRot]()
+                if (nullptr == node || !node->getParent())
                 {
-                    node->_setDerivedPosition(pos);
-                    if (true == updateRot)
+                    return;
+                }
+
+                if (!node->isStatic())
+                {
+                    // Write into the transform buffer — NOT directly to the SceneNode.
+                    // updateAllTransforms on the render thread reads from this buffer
+                    // and interpolates correctly between physics steps.
+                    // Direct _setDerivedPosition bypasses interpolation and fights
+                    // with updateAllTransforms, causing visual jitter.
+                    NOWA::GraphicsModule::getInstance()->updateNodePosition(node, pos, true, false);
+                    if (updateRot)
                     {
-                        node->_setDerivedOrientation(rot);
+                        NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, rot, true, false);
                     }
-                }, "OgreNewtModule::updateNodeDynamic");
-            }
-            else if (updateStatic)
-            {
-                // Static nodes: keep the local-space path with the Updated parent transforms.
-                // updateNodePosition/Orientation correctly handles the static-node memory layout
-                // and notifies Ogre-Next's static spatial partitioning (BVH) as required.
-                // For static nodes, fireAndForget suppresses interpolation on teleport.
-                const bool fireAndForget = isTeleport;
-                const Ogre::Vector3 localPos = (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated();
-                const Ogre::Quaternion localRot = parent->_getDerivedOrientationUpdated().Inverse() * rot;
-                NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos, false, fireAndForget);
-                NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot, false, fireAndForget);
-            }
-        });
+                }
+                else if (updateStatic)
+                {
+                    // Static path unchanged
+                    const bool fireAndForget = isTeleport;
+                    Ogre::Node* parent = node->getParent();
+                    const Ogre::Vector3 localPos = (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated();
+                    const Ogre::Quaternion localRot = parent->_getDerivedOrientationUpdated().Inverse() * rot;
+                    NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos, false, fireAndForget);
+                    NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot, false, fireAndForget);
+                }
+            });
     }
 } // namespace end

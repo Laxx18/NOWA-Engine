@@ -3894,12 +3894,16 @@ GameObject* GameObjectController::selectGameObject(int x, int y, Ogre::Camera* c
         // check if there is an hit with an polygon of an entity
         if (MathHelper::getInstance()->getRaycastFromPoint(x, y, camera, Core::getSingletonPtr()->getOgreRenderWindow(), raySceneQuery, result, (size_t&)targetMovableObject, closestDistance, normal))
         {
-            try
+            const Ogre::Any& userAny = targetMovableObject->getUserObjectBindings().getUserAny();
+            if (!userAny.isEmpty())
             {
-                gameObject = Ogre::any_cast<GameObject*>((targetMovableObject)->getUserObjectBindings().getUserAny());
-            }
-            catch (...)
-            {
+                try
+                {
+                    gameObject = Ogre::any_cast<GameObject*>(userAny);
+                }
+                catch (Ogre::Exception&)
+                {
+                }
             }
         }
     }
@@ -3914,14 +3918,17 @@ GameObject* GameObjectController::selectGameObject(int x, int y, Ogre::Camera* c
 
         for (const auto& it : result)
         {
-            // Store the relevant picking information
-            try
+            const Ogre::Any& userAny = it.movable->getUserObjectBindings().getUserAny();
+            if (!userAny.isEmpty())
             {
-                // here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
-                gameObject = Ogre::any_cast<GameObject*>(it.movable->getUserObjectBindings().getUserAny());
-            }
-            catch (...)
-            {
+                try
+                {
+                    // here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
+                    gameObject = Ogre::any_cast<GameObject*>(userAny);
+                }
+                catch (Ogre::Exception&)
+                {
+                }
             }
         }
     }
@@ -3953,20 +3960,21 @@ GameObject* GameObjectController::selectGameObject(int x, int y, Ogre::Camera* c
         unsigned int finalType = type & categoryIds;
         if (type == finalType)
         {
-            try
+            Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
+            if (nullptr != tempNode)
             {
-                // here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
-                Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
-                if (nullptr != tempNode)
+                const Ogre::Any& userAny = tempNode->getUserObjectBindings().getUserAny();
+                if (!userAny.isEmpty())
                 {
-                    gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
-                    // PhysicsComponent* physicsComponent = Ogre::any_cast<PhysicsComponent*>(info.mBody->getUserData());
-                    // GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObject*>((*it).movable->getUserAny());
-                    // return physicsComponent->getOwner().get();
+                    try
+                    {
+                        // here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
+                        gameObject = Ogre::any_cast<GameObject*>(userAny);
+                    }
+                    catch (Ogre::Exception&)
+                    {
+                    }
                 }
-            }
-            catch (...)
-            {
             }
         }
     }

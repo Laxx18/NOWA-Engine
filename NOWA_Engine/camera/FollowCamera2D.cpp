@@ -128,138 +128,101 @@ namespace NOWA
 	}
 
 	void FollowCamera2D::moveCamera(Ogre::Real dt)
-	{
-		// Error: No bounds have been set
-		if (Ogre::Vector3::ZERO == this->mostRightUp)
-		{
-			return;
-		}
+    {
+        if (Ogre::Vector3::ZERO == this->mostRightUp)
+        {
+            return;
+        }
 
-		if (nullptr == this->sceneNode)
-		{
-			return;
-		}
+        if (nullptr == this->sceneNode)
+        {
+            return;
+        }
 
-		if (true == this->firstTimeMoveValueSet)
-		{
-			this->lastMoveValue = Ogre::Vector3::ZERO;
+        if (true == this->firstTimeMoveValueSet)
+        {
+            this->lastMoveValue = Ogre::Vector3::ZERO;
 
-			ENQUEUE_RENDER_COMMAND("FollowCamera2D::moveCamera start",
-			{
-				// set the camera position to the target one for the first time
-				this->camera->setPosition(this->sceneNode->getPosition());
-				this->camera->move(this->offset);
-			});
+            ENQUEUE_RENDER_COMMAND("FollowCamera2D::moveCamera start", {
+                this->camera->setPosition(this->sceneNode->getPosition());
+                this->camera->move(this->offset);
+            });
 
-			/*this->pDebugLine = this->sceneManager->createManualObject("DebugRayLineFlubber");
-			this->pDebugLine->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
-			this->pDebugLine->setQueryFlags(0);
-			Ogre::SceneNode *pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode("Debugline1FlubberNode1");
-			pNode->attachObject(this->pDebugLine);*/
+            this->firstTimeMoveValueSet = false;
+        }
 
-			this->firstTimeMoveValueSet = false;
-		}
+        const Ogre::Vector3 cameraPosition = this->camera->getPosition();
 
-		const Ogre::Vector3 cameraPosition = this->camera->getPosition();
+        // Read directly from the physics body — NOT from the SceneNode.
+        // SceneNode is updated by the render thread one frame later.
+        Ogre::Vector3 playerPosition;
+        if (nullptr != this->physicsBody)
+        {
+            playerPosition = this->physicsBody->getPosition();
+        }
+        else
+        {
+            playerPosition = this->sceneNode->getPosition();
+        }
 
-		//////////////////////////////////////////////////////////////////////////////////////////////
-		//// The camera follows the game object as long as it is within the virtual environments bounds
-		Ogre::Vector3 velocity = Ogre::Vector3::ZERO;
-		// also add the offset, by which the player differentiates from the camera, to get the correct position
-		if (this->sceneNode->getPosition().x + this->offset.x - this->mostRightUp.x > this->minimumBounds.x
-			&& this->sceneNode->getPosition().x + this->offset.x + this->mostRightUp.x < this->maximumBounds.x)
-		{
+        // Replace all this->sceneNode->getPosition() below with playerPosition
+        Ogre::Vector3 velocity = Ogre::Vector3::ZERO;
 
-			velocity.x = this->sceneNode->getPosition().x - cameraPosition.x + this->offset.x;
-			// Aufschlageffekt, dies koennte nutzlich sein, wenn ein schwer objekt auf den Boden knallt wie bei Prehistorik lax, damit die Kamera erschuettert wird! wenn smooth value angepasst wird
+        if (playerPosition.x + this->offset.x - this->mostRightUp.x > this->minimumBounds.x && playerPosition.x + this->offset.x + this->mostRightUp.x < this->maximumBounds.x)
+        {
+            velocity.x = playerPosition.x - cameraPosition.x + this->offset.x;
 
-// Attention: Instead of lowpass filter which osscilates to much, maybe use spring formula:
-			/*
-			Ogre::Vector3 anchorPosition = predecessorJointSpringCompPtr->getBody()->getPosition() + jointSpringCompPtr->getAnchorOffsetPosition();
-				Ogre::Vector3 springPosition = this->getPosition() + jointSpringCompPtr->getSpringOffsetPosition();
+            if (Ogre::Math::RealEqual(velocity.x, 0.0f))
+            {
+                velocity.x = 0.0f;
+            }
+            if (Ogre::Math::RealEqual(velocity.y, 0.0f))
+            {
+                velocity.y = 0.0f;
+            }
+            if (Ogre::Math::RealEqual(velocity.z, 0.0f))
+            {
+                velocity.z = 0.0f;
+            }
+        }
 
-				// Calculate spring force
-				Ogre::Vector3 dragForce = ((anchorPosition - springPosition) * mass * jointSpringCompPtr->getSpringStrength()) - body->getVelocity();
-			*/
+        if (playerPosition.y + this->offset.y - this->mostRightUp.y > this->minimumBounds.y && playerPosition.y + this->offset.y + this->mostRightUp.y < this->maximumBounds.y)
+        {
+            velocity.y = playerPosition.y - cameraPosition.y + this->offset.y;
+        }
 
-			if (Ogre::Math::RealEqual(velocity.x, 0.0f))
-			{
-				velocity.x = 0.0f;
-			}
-			if (Ogre::Math::RealEqual(velocity.y, 0.0f))
-			{
-				velocity.y = 0.0f;
-			}
-			if (Ogre::Math::RealEqual(velocity.z, 0.0f))
-			{
-				velocity.z = 0.0f;
-			}
-		}
-		// check the y bounds
-		if (this->sceneNode->getPosition().y + this->offset.y - this->mostRightUp.y > this->minimumBounds.y
-			&& this->sceneNode->getPosition().y + this->offset.y + this->mostRightUp.y < this->maximumBounds.y)
-		{
-			velocity.y = this->sceneNode->getPosition().y - cameraPosition.y + this->offset.y;
-		}
+        velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
+        velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
 
-		velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
-		velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
+        Ogre::Vector3 newMove = this->camera->getPosition() + (velocity * this->moveCameraWeight);
+        NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newMove);
 
-		// TODO: cameraUpdate in queue
-		// this->camera->move(velocity * this->moveCameraWeight);
-		Ogre::Vector3 newMove = this->camera->getPosition() + (velocity * this->moveCameraWeight);
-		NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newMove);
+        this->lastMoveValue = velocity;
 
-		this->lastMoveValue = velocity;
+        // Bounds clamping — unchanged, uses cameraPosition not sceneNode
+        Ogre::Real cameraPositionX = cameraPosition.x;
+        Ogre::Real mostRightUpX = this->mostRightUp.x;
+        Ogre::Real borderXRight = cameraPositionX + mostRightUpX;
+        Ogre::Real borderXLeft = cameraPositionX - mostRightUpX;
 
-		//////////////////////////////////////////////////////////////////////////////////////////////
-		//// If the camera is out of bounds, constrain its position to remain within bounds
-		// x bounds
-		Ogre::Real cameraPositionX = cameraPosition.x;
-		Ogre::Real mostRightUpX = this->mostRightUp.x;
-		Ogre::Real borderXRight = cameraPositionX + mostRightUpX;
-		Ogre::Real borderXLeft = cameraPositionX - mostRightUpX;
-		if (borderXRight > this->maximumBounds.x/* + this->borderOffset.x*/)
-		{
-			/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera max x bounds", _1(cameraPosition),
-			{
-				this->camera->setPosition(this->maximumBounds.x - this->mostRightUp.x, cameraPosition.y, cameraPosition.z);
-			});*/
+        if (borderXRight > this->maximumBounds.x)
+        {
+            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(this->maximumBounds.x - this->mostRightUp.x, cameraPosition.y, cameraPosition.z));
+        }
+        else if (borderXLeft < this->minimumBounds.x)
+        {
+            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(this->minimumBounds.x + this->mostRightUp.x, cameraPosition.y, cameraPosition.z));
+        }
 
-			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(this->maximumBounds.x - this->mostRightUp.x, cameraPosition.y, cameraPosition.z));
-		}
-		else if (borderXLeft < this->minimumBounds.x/* - this->borderOffset.x*/)
-		{
-			Ogre::Vector3 newPos = Ogre::Vector3(this->minimumBounds.x + this->mostRightUp.x/* + this->borderOffset.x*/, cameraPosition.y, cameraPosition.z);
-			/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera min x bounds", _1(newPos),
-			{
-				this->camera->setPosition(newPos);
-			});*/
-
-			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPos);
-		}
-
-		// y bounds
-		if (this->camera->getPosition().y + this->mostRightUp.y > this->maximumBounds.y/* + this->borderOffset.y*/)
-		{
-			/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera max y bounds", _1(cameraPosition),
-			{
-				this->camera->setPosition(cameraPosition.x, this->maximumBounds.y - this->mostRightUp.y, cameraPosition.z);
-			});*/
-
-			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(cameraPosition.x, this->maximumBounds.y - this->mostRightUp.y, cameraPosition.z));
-		}
-		else if (this->camera->getPosition().y + this->mostRightUp.y < this->minimumBounds.y/* - this->borderOffset.y*/)
-		{
-			/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera min y bounds", _1(cameraPosition),
-			{
-				this->camera->setPosition(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z);
-			});*/
-
-			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z));
-		}
-		// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[FollowCamera2D] Position: " + Ogre::StringConverter::toString(this->camera->getPosition()));
-	}
+        if (this->camera->getPosition().y + this->mostRightUp.y > this->maximumBounds.y)
+        {
+            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(cameraPosition.x, this->maximumBounds.y - this->mostRightUp.y, cameraPosition.z));
+        }
+        else if (this->camera->getPosition().y + this->mostRightUp.y < this->minimumBounds.y)
+        {
+            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z));
+        }
+    }
 
 	void FollowCamera2D::rotateCamera(Ogre::Real dt, bool forJoyStick)
 	{

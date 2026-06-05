@@ -119,7 +119,6 @@ namespace NOWA
         Ogre::VertexBufferPacked* vertexBuffer;
         Ogre::TextureGpu* noiseTexture;
         float normalMapWeight;
-        int noiseTexCounter; // Incremented each create() to guarantee unique texture name
 
         // Base sphere data computed once at create().
         std::vector<Ogre::Vector3> baseDirs;

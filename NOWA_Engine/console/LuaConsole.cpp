@@ -109,6 +109,8 @@ namespace NOWA
         // causing every log message to be treated as critical. Removed.
         this->print(message);
 
+        // Deactivated, because performance issues
+#if 0
         if (lml == Ogre::LML_CRITICAL)
         {
             if (this->criticalLogs.size() > CONSOLE_MAX_LINES - 1)
@@ -122,6 +124,7 @@ namespace NOWA
             // (and any other listener) can react without polling.
             this->fireOgreLogEvent(message);
         }
+#endif
     }
 
     void LuaConsole::fireOgreLogEvent(const Ogre::String& message)

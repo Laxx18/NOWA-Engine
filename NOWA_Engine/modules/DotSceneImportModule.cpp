@@ -1389,18 +1389,32 @@ namespace NOWA
                         for (size_t i = 0; i < nodesList.size(); i++)
                         {
                             Ogre::Node* node = nodesList[i];
-                            if (nullptr != node)
+                            if (nullptr == node)
                             {
-                                auto gameObject = Ogre::any_cast<GameObject*>(node->getUserObjectBindings().getUserAny());
-                                if (nullptr != gameObject)
-                                {
-                                    if (gameObject->getName() == name)
-                                    {
-                                        pNode = nodesList[i];
-                                        foundNode = true;
-                                        break;
-                                    }
-                                }
+                                continue;
+                            }
+
+                            const Ogre::Any& userAny = node->getUserObjectBindings().getUserAny();
+                            if (userAny.isEmpty())
+                            {
+                                continue;
+                            }
+
+                            GameObject* gameObject = nullptr;
+                            try
+                            {
+                                gameObject = Ogre::any_cast<GameObject*>(userAny);
+                            }
+                            catch (Ogre::Exception&)
+                            {
+                                continue;
+                            }
+
+                            if (gameObject->getName() == name)
+                            {
+                                pNode = nodesList[i];
+                                foundNode = true;
+                                break;
                             }
                         }
                     }

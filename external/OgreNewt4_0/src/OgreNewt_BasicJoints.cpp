@@ -1309,18 +1309,24 @@ namespace OgreNewt
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
+    // ndOgreHingeActuator.cpp
+
     ndOgreHingeActuator::ndOgreHingeActuator(const ndMatrix& pinAndPivotFrame, ndBodyKinematic* const child, ndBodyKinematic* const parent, ndFloat32 angularRate, ndFloat32 minAngle, ndFloat32 maxAngle) :
         ndJointHinge(pinAndPivotFrame, child, parent),
         m_motorSpeed(ndAbs(angularRate)),
-        m_maxTorque(OGRENEWT_LARGE_TORQUE)
+        m_maxTorque(OGRENEWT_LARGE_TORQUE),
+        m_minAngle(minAngle),
+        m_maxAngle(maxAngle),
+        m_targetAngle(ndFloat32(0.0f))
     {
-        // We use our own limit handling (like ND3 custom joint),
-        // so disable the built-in hinge limit state.
+        // Disable the built-in hinge limit state; we handle limits ourselves
+        // in JacobianDerivative via friction bounds, matching ND3 actuator behaviour.
         SetLimitState(false);
 
-        // initial limits & target angle
-        SetMinAngularLimit(minAngle);
-        SetMaxAngularLimit(maxAngle);
+        // Push min/max into the base class so GetLimits() stays consistent,
+        // but we also mirror them in m_minAngle/m_maxAngle to avoid going
+        // through SetLimits() recursively in our own setters.
+        SetLimits(minAngle, maxAngle);
     }
 
     void ndOgreHingeActuator::UpdateParameters()
@@ -1330,24 +1336,7 @@ namespace OgreNewt
 
     ndFloat32 ndOgreHingeActuator::GetActuatorAngle() const
     {
-        // In ND3: GetActuatorAngle() just returned GetJointAngle().
-        // Here we use ndJointHinge::GetAngle(), which uses m_angle updated in UpdateParameters().
         return GetAngle();
-    }
-
-    ndFloat32 ndOgreHingeActuator::GetTargetAngle() const
-    {
-        return GetTargetAngle();
-    }
-
-    ndFloat32 ndOgreHingeActuator::GetMinAngularLimit() const
-    {
-        return GetMinAngularLimit();
-    }
-
-    ndFloat32 ndOgreHingeActuator::GetMaxAngularLimit() const
-    {
-        return GetMaxAngularLimit();
     }
 
     ndFloat32 ndOgreHingeActuator::GetAngularRate() const
@@ -1360,19 +1349,33 @@ namespace OgreNewt
         return m_maxTorque;
     }
 
+    void ndOgreHingeActuator::SetTargetAngle(ndFloat32 angle)
+    {
+        // Clamp to our stored limits, then forward to base class if the
+        // value actually changed. Avoid calling our own SetTargetAngle() here.
+        angle = ndClamp(angle, m_minAngle, m_maxAngle);
+        if (ndAbs(angle - ndJointHinge::GetTargetAngle()) > ndFloat32(1.0e-3f))
+        {
+            WakeBodies();
+            ndJointHinge::SetTargetAngle(angle);
+        }
+    }
+
     void ndOgreHingeActuator::SetMinAngularLimit(ndFloat32 limit)
     {
-        SetMinAngularLimit(limit);
+        // Store locally and sync the base class pair.
+        m_minAngle = limit;
+        SetLimits(m_minAngle, m_maxAngle); // ND4 API: both limits in one call
     }
 
     void ndOgreHingeActuator::SetMaxAngularLimit(ndFloat32 limit)
     {
-        SetMaxAngularLimit(limit);
+        m_maxAngle = limit;
+        SetLimits(m_minAngle, m_maxAngle);
     }
 
     void ndOgreHingeActuator::SetAngularRate(ndFloat32 rate)
     {
-        // ND3: EnableMotor(false, rate) -> store |rate|, no actual "motor" flag.
         m_motorSpeed = ndAbs(rate);
     }
 
@@ -1393,62 +1396,36 @@ namespace OgreNewt
         }
     }
 
-    void ndOgreHingeActuator::SetTargetAngle(ndFloat32 angle)
+    void ndOgreHingeActuator::SetSpringAndDamping(bool enable, bool /*massIndependent*/, ndFloat32 springDamperRelaxation, ndFloat32 spring, ndFloat32 damper)
     {
-        // Direct ND4 clone of ND3 SetTargetAngle:
-        // angle = clamp(angle, m_minAngle, m_maxAngle);
-        // if |angle - m_targetAngle| > 1e-3, wake body and update m_targetAngle.
-        angle = ndClamp(angle, GetMinAngularLimit(), GetMaxAngularLimit());
-        if (ndAbs(angle - GetTargetAngle()) > ndFloat32(1.0e-3f))
-        {
-            WakeBodies();
-            SetTargetAngle(angle);
-        }
-    }
-
-    void ndOgreHingeActuator::SetSpringAndDamping(bool enable, bool massIndependent, ndFloat32 springDamperRelaxation, ndFloat32 spring, ndFloat32 damper)
-    {
-        // ND3 used SetAsSpringDamper / SetMassIndependentSpringDamper
-        // which boiled down to a spring-damper stiffness on the constraint row.
-        // In ND4, ndJointHinge already has SetAsSpringDamper(regularizer, spring, damper),
-        // which is mass-independent; we ignore massIndependent but keep behaviour.
         if (enable)
         {
             SetAsSpringDamper(springDamperRelaxation, spring, damper);
         }
         else
         {
-            // "Disable" spring/damper by setting zero
             SetAsSpringDamper(ndFloat32(0.0f), ndFloat32(0.0f), ndFloat32(0.0f));
         }
     }
 
-    // This is the core of the ND3 dCustomHingeActuator::SubmitAngularRow port.
-    // We:
-    // 1) Apply the base hinge rows (3 linear + 2 angular) via ApplyBaseRows.
-    // 2) Add one angular row which behaves like the ND3 actuator servo.
-    // 3) Use friction limits (±m_maxTorque) and limits (m_minLimit/m_maxLimit)
-    //    exactly like the ND3 code.
     void ndOgreHingeActuator::JacobianDerivative(ndConstraintDescritor& desc)
     {
         ndMatrix matrix0;
         ndMatrix matrix1;
         CalculateGlobalMatrix(matrix0, matrix1);
 
-        // 1) base hinge constraints (position + basic twist alignment)
+        // 1) Base hinge rows (3 linear + 2 angular constraints)
         ApplyBaseRows(desc, matrix0, matrix1);
 
-        // 2) actuator row, ported from dCustomHingeActuator::SubmitAngularRow
-        //    (we use m_angle & m_targetAngle instead of m_curJointAngle & m_targetAngle.GetAngle())
+        // 2) Actuator row — ported from dCustomHingeActuator::SubmitAngularRow (ND3)
         const ndFloat32 timestep = desc.m_timestep;
         const ndFloat32 invTimeStep = desc.m_invTimestep;
 
         const ndFloat32 angle = GetAngle();
-        const ndFloat32 targetAngle = GetTargetAngle();
-
+        const ndFloat32 targetAngle = ndJointHinge::GetTargetAngle();
         const ndFloat32 step = m_motorSpeed * timestep;
-        ndFloat32 currentSpeed = ndFloat32(0.0f);
 
+        ndFloat32 currentSpeed = ndFloat32(0.0f);
         if (angle < (targetAngle - step))
         {
             currentSpeed = m_motorSpeed;
@@ -1466,22 +1443,21 @@ namespace OgreNewt
             currentSpeed = ndFloat32(0.3f) * (targetAngle - angle) * invTimeStep;
         }
 
-        // This is equivalent to NewtonUserJointAddAngularRow(m_joint, 0.0f, &matrix0.m_front[0]);
+        // Angular constraint row along the hinge pin axis
         AddAngularRowJacobian(desc, &matrix0.m_front[0], ndFloat32(0.0f));
 
-        // accel = NewtonUserJointCalculateRowZeroAcceleration + currentSpeed * invTimeStep;
         const ndFloat32 accel = GetMotorZeroAcceleration(desc) + currentSpeed * invTimeStep;
         SetMotorAcceleration(desc, accel);
 
-        // 3) Limit handling via friction, just like ND3:
-        //    if angle > max -> only positive torque
-        //    if angle < min -> only negative torque
-        //    else           -> +-m_maxTorque
-        if (angle > GetMaxAngularLimit())
+        // 3) Limit handling via friction bounds, exactly like ND3 actuator:
+        //    past max -> allow only positive corrective torque
+        //    past min -> allow only negative corrective torque
+        //    inside   -> full ±m_maxTorque
+        if (angle > m_maxAngle)
         {
             SetHighFriction(desc, m_maxTorque);
         }
-        else if (angle < GetMinAngularLimit())
+        else if (angle < m_minAngle)
         {
             SetLowerFriction(desc, -m_maxTorque);
         }

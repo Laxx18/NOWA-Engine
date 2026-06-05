@@ -1077,20 +1077,23 @@ namespace NOWA
 	{
 // Attention: Check this! As ragdoll will store lots of nodes without name (bones)
 		Ogre::String nodeName = ogreNode->getName();
-		if (true == nodeName.empty())
+ 		if (true == nodeName.empty())
 		{
 			return;
 		}
 
 		GameObject* gameObject = nullptr;
-		try
-		{
-			gameObject = Ogre::any_cast<GameObject*>(ogreNode->getUserObjectBindings().getUserAny());
-		}
-		catch (...)
-		{
-
-		}
+        const Ogre::Any& userAny = ogreNode->getUserObjectBindings().getUserAny();
+        if (!userAny.isEmpty())
+        {
+            try
+            {
+                gameObject = Ogre::any_cast<GameObject*>(userAny);
+            }
+            catch (Ogre::Exception&)
+            {
+            }
+        }
 
 		// Attention: Scene Type must be stored too!!!
 		std::hash<Ogre::String> hash;

@@ -94,7 +94,7 @@ namespace NOWA
 			PhysicsComponent* physicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 			if (nullptr != physicsComponent)
 			{
-				GameObjectPtr visitorGameObject = physicsComponent->getOwner();
+				auto visitorGameObject = physicsComponent->getOwner().get();
 				// Check for correct category
 				unsigned int type = visitorGameObject->getCategoryId();
 				unsigned int finalType = type & this->categoryId;
@@ -394,36 +394,31 @@ namespace NOWA
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 
 		OgreNewt::CollisionPtr collisionPtr;
-		if (this->collisionType->getListSelectedValue() == "Tree")
-		{
-			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr != item)
-			{
-				collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
-			}
-		}
-		else
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsTriggerComponent::createDynamicCollision", _4(&inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin),
-			{
-				collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
-					collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
-			});
-		}
+        if (this->collisionType->getListSelectedValue() == "Tree")
+        {
+            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+            if (nullptr != item)
+            {
+                collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
+            }
+        }
+        else
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsTriggerComponent::createDynamicCollision", _4(&inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin),
+                { collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()); });
+        }
 
-		if (nullptr == this->physicsBody)
-		{
-			this->physicsBody = new OgreNewt::TriggerBody(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr,
-				new PhysicsTriggerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(),
-														  this->enterClosureFunction,
-														  this->insideClosureFunction, this->leaveClosureFunction));
-		}
-		else
-		{
-			// Just re-create the trigger (internally the newton body will fortunately not change, so also this physics body remains the same, which avoids lots of problems, 
-			// when used in combination with joint, undo, redo :)
-			static_cast<OgreNewt::TriggerBody*>(this->physicsBody)->reCreateTrigger(collisionPtr);
-		}
+        if (nullptr == this->physicsBody)
+        {
+            this->physicsBody = new OgreNewt::TriggerBody(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr,
+                new PhysicsTriggerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->enterClosureFunction, this->insideClosureFunction, this->leaveClosureFunction));
+        }
+        else
+        {
+            // Just re-create the trigger (internally the newton body will fortunately not change, so also this physics body remains the same, which avoids lots of problems,
+            // when used in combination with joint, undo, redo :)
+            static_cast<OgreNewt::TriggerBody*>(this->physicsBody)->reCreateTrigger(collisionPtr);
+        }
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
 

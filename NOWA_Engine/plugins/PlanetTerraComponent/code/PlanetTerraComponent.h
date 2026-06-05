@@ -264,7 +264,7 @@ namespace NOWA
         }
         static Ogre::String AttrBlendTexSize()
         {
-            return "BlendTexSize";
+            return "Blend TexSize";
         }
         static Ogre::String AttrDatablock()
         {
@@ -276,53 +276,53 @@ namespace NOWA
         }
         static Ogre::String AttrBrushMode()
         {
-            return "BrushMode";
+            return "Brush Mode";
         }
         static Ogre::String AttrPaintLayer()
         {
-            return "PaintLayer";
+            return "Paint Layer";
         }
         static Ogre::String AttrBrushName()
         {
-            return "BrushName";
+            return "Brush Name";
         }
         static Ogre::String AttrBrushSize()
         {
-            return "BrushSize";
+            return "Brush Size";
         }
         static Ogre::String AttrBrushIntensity()
         {
-            return "BrushIntensity";
+            return "Brush Intensity";
         }
         static Ogre::String AttrBrushFalloff()
         {
-            return "BrushFalloff";
+            return "Brush Falloff";
         }
         static Ogre::String AttrBaseUVScale()
         {
-            return "BaseUVScale";
+            return "Base UV Scale";
         }
 
         static Ogre::String AttrDetailUVScale()
         {
-            return "DetailUVScale";
+            return "Detail UV Scale";
         }
 
         static Ogre::String AttrDetail0NMTextureName()
         {
-            return "Detail0NMTexture";
+            return "Detail0 NM Texture";
         }
         static Ogre::String AttrDetail1NMTextureName()
         {
-            return "Detail1NMTexture";
+            return "Detail1 NM Texture";
         }
         static Ogre::String AttrDetail2NMTextureName()
         {
-            return "Detail2NMTexture";
+            return "Detail2 NM Texture";
         }
         static Ogre::String AttrDetail3NMTextureName()
         {
-            return "Detail3NMTexture";
+            return "Detail3 NM Texture";
         }
 
         static Ogre::String AttrBakeMesh()

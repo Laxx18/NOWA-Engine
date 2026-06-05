@@ -1912,11 +1912,6 @@ namespace NOWA
 		return makeStrongPtr<GameObjectComponent>(gameObject->getComponentByIndex(index)).get();
 	}
 
-	AttributesComponent* getAttributesComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<AttributesComponent>(gameObject->getComponent<AttributesComponent>()).get();
-	}
-
 	PhysicsBuoyancyComponent* getPhysicsBuoyancyComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<PhysicsBuoyancyComponent>(gameObject->getComponent<PhysicsBuoyancyComponent>()).get();
@@ -2570,11 +2565,6 @@ namespace NOWA
 	LuaScriptComponent* getLuaScriptComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<LuaScriptComponent>(gameObject->getComponent<LuaScriptComponent>()).get();
-	}
-
-	AttributesComponent* getAttributesComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<AttributesComponent>(gameObject->getComponentFromName<AttributesComponent>(name)).get();
 	}
 
 	PhysicsBuoyancyComponent* getPhysicsBuoyancyComponentFromName(GameObject* gameObject, const Ogre::String& name)
@@ -3241,7 +3231,6 @@ namespace NOWA
 		gameObjectClass.def("getOccurrenceIndexFromComponent", &GameObject::getOccurrenceIndexFromComponent);
 		gameObjectClass.def("deleteComponent", (bool (GameObject::*)(const Ogre::String&, unsigned int)) & GameObject::deleteComponent);
 		gameObjectClass.def("deleteComponentByIndex", &GameObject::deleteComponentByIndex);
-		gameObjectClass.def("getAttributesComponent", &getAttributesComponent);
 		gameObjectClass.def("getPhysicsBuoyancyComponent", &getPhysicsBuoyancyComponent);
 		gameObjectClass.def("getPhysicsTriggerComponent", &getPhysicsTriggerComponent);
 		gameObjectClass.def("getDistributedComponent", &getDistributedComponent);
@@ -3380,7 +3369,6 @@ namespace NOWA
 		gameObjectClass.def("getMyGUIRepeatClickControllerComponent", (MyGUIRepeatClickControllerComponent * (*)(GameObject*)) & getMyGUIRepeatClickControllerComponent);
 		gameObjectClass.def("getMyGUIMiniMapComponent", (MyGUIMiniMapComponent * (*)(GameObject*)) & getMyGUIMiniMapComponent);
 		gameObjectClass.def("getLuaScriptComponent", &getLuaScriptComponent);
-		gameObjectClass.def("getAttributesComponentFromName", &getAttributesComponentFromName);
 		gameObjectClass.def("getPhysicsBuoyancyComponentFromName", &getPhysicsBuoyancyComponentFromName);
 		gameObjectClass.def("getPhysicsTriggerComponentFromName", &getPhysicsTriggerComponentFromName);
 		gameObjectClass.def("getDistributedComponentFromName", &getDistributedComponentFromName);
@@ -3539,7 +3527,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "bool deleteComponent(string componentClassName, unsigned int occurrenceIndex)", "Deletes the component by the given class name and optionally with its occurrence index.");
 		AddClassToCollection("GameObject", "bool deleteComponentByIndex(unsigned int index)", "Deletes the component by the given index.");
 		AddClassToCollection("GameObject", "GameObjectTitleComponent getGameObjectTitleComponent()", "Gets the game object title component.");
-		AddClassToCollection("GameObject", "AttributesComponent getAttributesComponent()", "Gets the attributes component.");
 		AddClassToCollection("GameObject", "BuoyancyComponent getBuoyancyComponent()", "Gets the physics buoyancy component.");
 		AddClassToCollection("GameObject", "DistributedComponent getDistributedComponent()", "Gets the distributed component. Usage in a network scenario.");
 		AddClassToCollection("GameObject", "ExitComponent getExitComponent()", "Gets the exit component.");
@@ -3666,7 +3653,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "MyGUIRepeatClickControllerComponent getMyGUIRepeatClickControllerComponent()", "Gets the MyGUI repeat click controller component. This can be used if the game object just has one MyGUI repeat click controller component.");
 		AddClassToCollection("GameObject", "MyGUIMiniMapComponent getMyGUIMiniMapComponent()", "Gets the MyGUI mini map component. Note: There can only be one mini map.");
 		AddClassToCollection("GameObject", "LuaScriptComponent getLuaScriptComponent()", "Gets the lua script component.");
-		AddClassToCollection("GameObject", "AttributesComponent getAttributesComponentFromName(String name)", "Gets the attributes component.");
 		AddClassToCollection("GameObject", "BuoyancyComponent getBuoyancyComponentFromName(String name)", "Gets the physics buoyancy component.");
 		AddClassToCollection("GameObject", "DistributedComponent getDistributedComponentFromName(String name)", "Gets the distributed component. Usage in a network scenario.");
 		AddClassToCollection("GameObject", "ExitComponent getExitComponentFromName(String name)", "Gets the exit component.");
@@ -4795,7 +4781,6 @@ namespace NOWA
 		gameObjectControllerClass.def("castMouseButtonID", &GameObjectController::cast<OIS::MouseButtonID>);
 
 		gameObjectControllerClass.def("castGameObjectComponent", &GameObjectController::cast<GameObjectComponent>);
-		gameObjectControllerClass.def("castAttributesComponent", &GameObjectController::cast<AttributesComponent>);
 		gameObjectControllerClass.def("castPhysicsBuoyancyComponent", &GameObjectController::cast<PhysicsBuoyancyComponent>);
 		gameObjectControllerClass.def("castPhysicsTriggerComponent", &GameObjectController::cast<PhysicsTriggerComponent>);
 		gameObjectControllerClass.def("castDistributedComponent", &GameObjectController::cast<DistributedComponent>);
@@ -4963,7 +4948,6 @@ namespace NOWA
 		
 		AddClassToCollection("GameObjectController", "GameObject castGameObject(GameObject other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "Contact castContact(Contact other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "AttributesComponent castAttributesComponent(AttributesComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsBuoyancyComponent castPhysicsBuoyancyComponent(PhysicsBuoyancyComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsTriggerComponent castPhysicsTriggerComponent(PhysicsTriggerComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "DistributedComponent castDistributedComponent(DistributedComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -5484,329 +5468,6 @@ namespace NOWA
             "Replaces manual idle/walk/run branching logic with a single call. "
             "The source pointer is kept on the dominant clip so getLength() and getTimePosition() remain valid. "
             "Call addTime(dt) as normal after this.");
-	}
-
-	void addAttributeBool(AttributesComponent* instance, const Ogre::String& name, bool value)
-	{
-		instance->addAttribute<bool>(name, value, Variant::VAR_BOOL);
-	}
-
-	void addAttributeFloat(AttributesComponent* instance, const Ogre::String& name, unsigned int value)
-	{
-		instance->addAttribute<unsigned int>(name, value, Variant::VAR_UINT);
-	}
-
-	void addAttributeInt(AttributesComponent* instance, const Ogre::String& name, int value)
-	{
-		instance->addAttribute<int>(name, value, Variant::VAR_INT);
-	}
-
-	void addAttributeUInt(AttributesComponent* instance, const Ogre::String& name, unsigned int value)
-	{
-		instance->addAttribute<unsigned int>(name, value, Variant::VAR_INT);
-	}
-
-	void addAttributeULong(AttributesComponent* instance, const Ogre::String& name, unsigned long value)
-	{
-		// Attention: Danger, as lua cannot work with huge numbers
-		instance->addAttribute<unsigned long>(name, value, Variant::VAR_ULONG);
-	}
-
-	void addAttributeString(AttributesComponent* instance, const Ogre::String& name, const Ogre::String& value)
-	{
-		instance->addAttribute<Ogre::String>(name, value, Variant::VAR_STRING);
-	}
-
-	void addAttributeVector2(AttributesComponent* instance, const Ogre::String& name, const Ogre::Vector2& value)
-	{
-		instance->addAttribute<Ogre::Vector2>(name, value, Variant::VAR_VEC2);
-	}
-
-	void addAttributeVector3(AttributesComponent* instance, const Ogre::String& name, const Ogre::Vector3& value)
-	{
-		instance->addAttribute<Ogre::Vector3>(name, value, Variant::VAR_VEC3);
-	}
-
-	void addAttributeVector4(AttributesComponent* instance, const Ogre::String& name, const Ogre::Vector4& value)
-	{
-		instance->addAttribute<Ogre::Vector4>(name, value, Variant::VAR_VEC4);
-	}
-
-	void changeValueBool(AttributesComponent* instance, const Ogre::String& name, bool value)
-	{
-		instance->changeValue<bool>(name, value);
-	}
-
-	void changeValueInt(AttributesComponent* instance, const Ogre::String& name, int value)
-	{
-		instance->changeValue<int>(name, value);
-	}
-
-	void changeValueUInt(AttributesComponent* instance, const Ogre::String& name, unsigned int value)
-	{
-		instance->changeValue<unsigned int>(name, value);
-	}
-
-	void changeValueULong(AttributesComponent* instance, const Ogre::String& name, unsigned long value)
-	{
-		instance->changeValue<unsigned long>(name, value);
-	}
-
-	void changeValueFloat(AttributesComponent* instance, const Ogre::String& name, int value)
-	{
-		instance->changeValue<unsigned int>(name, value);
-	}
-
-	void changeValueString(AttributesComponent* instance, const Ogre::String& name, const Ogre::String& value)
-	{
-		instance->changeValue<Ogre::String>(name, value);
-	}
-
-	void changeValueVector2(AttributesComponent* instance, const Ogre::String& name, const Ogre::Vector2& value)
-	{
-		instance->changeValue<Ogre::Vector2>(name, value);
-	}
-
-	void changeValueVector3(AttributesComponent* instance, const Ogre::String& name, const Ogre::Vector3& value)
-	{
-		instance->changeValue<Ogre::Vector3>(name, value);
-	}
-
-	void changeValueVector4(AttributesComponent* instance, const Ogre::String& name, const Ogre::Vector4& value)
-	{
-		instance->changeValue<Ogre::Vector4>(name, value);
-	}
-
-	void incrementValueNumber(Variant* instance, Ogre::Real value)
-	{
-		instance->setValue(instance->getReal() + value);
-	}
-
-	void decrementValueNumber(Variant* instance, Ogre::Real value)
-	{
-		instance->setValue(instance->getReal() - value);
-	}
-
-	void bindAttributesComponent(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<Variant>("Variant")
-				// more constructors must be made with different parameters if necessary
-			.def(constructor<>())
-			// Operators -> Lua does not support >=, > why? http://www.rasterbar.com/products/luabind/docs.html
-			/*.def(self < other<Variant>())
-			.def(self > other<Variant>())
-			.def(self <= other<Variant>())
-			.def(self >= other<Variant>())
-			.def(self == other<Variant>())
-			.def(self != other<Variant>())
-			*/
-			// .def("assign", (void (Variant::*)(const Ogre::String&)) &Variant::assign)
-			.def("assign", (void (Variant::*)(const Variant&)) & Variant::assign)
-			// .def("add", (void (Variant::*)(const Ogre::String&)) &Variant::add)
-			// .def("add2", (void (Variant::*)(const Variant&)) &Variant::add)
-			// .def("inverse", (void (Variant::*)(const Ogre::String&)) &Variant::inverse)
-			// .def("inverse2", (void (Variant::*)(const Variant&)) &Variant::inverse)
-			// .def("toggle", (void (Variant::*)(const Ogre::String&)) &Variant::toggle)
-			// .def("toggle2", (void (Variant::*)(const Variant&)) &Variant::toggle)
-			// .def("hasInverse", &Variant::hasInverse)
-
-			.def("getType", &Variant::getType)
-			.def("getName", &Variant::getName)
-			// .def("setReadOnly", &Variant::setReadOnly)
-			// .def("isReadOnly", &Variant::isReadOnly)
-			// .def("clone", &Variant::clone)
-			// .def("setValueType", (void (Variant::*)(int, const Ogre::String&)) &Variant::setValue)
-			// .def("setValueFloat", (void (Variant::*)(Ogre::Real)) &Variant::setValue)
-			.def("setValueNumber", (void (Variant::*)(Ogre::Real)) & Variant::setValue)
-			.def("incrementValueNumber", &incrementValueNumber)
-			.def("decrementValueNumber", &decrementValueNumber)
-			.def("setValueBool", (void (Variant::*)(bool)) & Variant::setValue)
-			// .def("setValueInt", (void (Variant::*)(int)) &Variant::setValue)
-			// .def("setValueUInt", (void (Variant::*)(unsigned int)) &Variant::setValue)
-			.def("setValueString", (void (Variant::*)(const Ogre::String&)) & Variant::setValue)
-			.def("setValueId", (void (Variant::*)(const Ogre::String&)) & Variant::setValue)
-			.def("setValueVector2", (void (Variant::*)(const Ogre::Vector2&)) & Variant::setValue)
-			.def("setValueVector3", (void (Variant::*)(const Ogre::Vector3&)) & Variant::setValue)
-			.def("setValueVector4", (void (Variant::*)(const Ogre::Vector4&)) & Variant::setValue)
-			// .def("setValueList", (void (Variant::*)(const std::vector<Ogre::String>&)) &Variant::setValue) does not work yet
-			// .def("setValueQuaternion", (void (Variant::*)(const Ogre::Quaternion&)) &Variant::setValue)
-			// .def("setValueMatrix3", (void (Variant::*)(const Ogre::Matrix3&)) &Variant::setValue)
-			// .def("setValueMatrix4", (void (Variant::*)(const Ogre::Matrix4&)) &Variant::setValue)
-
-			// .def("setValueVariant", (void (Variant::*)(const Variant&)) &Variant::setValue)
-
-			// .def("getValueFloat", &Variant::getReal)
-			.def("getValueNumber", &Variant::getReal)
-			.def("getValueBool", &Variant::getBool)
-			// .def("getValueInt", &Variant::getInt)
-			// .def("getValueUInt", &Variant::getUInt)
-			.def("getValueString", &Variant::getString)
-			.def("getValueId", &Variant::getString)
-			.def("getValueVector2", &Variant::getVector2)
-			.def("getValueVector3", &Variant::getVector3)
-			.def("getValueVector4", &Variant::getVector4)
-			// .def("getValueQuaternion", &Variant::getQuaternion)
-			// .def("getValueMatrix3", &Variant::getMatrix3)
-			// .def("getValueMatrix4", &Variant::getMatrix4)
-			];
-
-		AddClassToCollection("Variant", "class", "The class Variant is a common datatype for any attribute key and value.");
-		AddClassToCollection("Variant", "void assign(String other)", "Assings another value to this Variant.");
-		AddClassToCollection("Variant", "int getType()", "Gets the type of this variant.");
-		AddClassToCollection("Variant", "String getName()", "Gets the name of this variant.");
-		AddClassToCollection("Variant", "void setValueNumber(number value)", "Sets the number value.");
-		AddClassToCollection("Variant", "void setValueBool(bool value)", "Sets the bool value.");
-		AddClassToCollection("Variant", "void setValueString(String value)", "Sets the String value.");
-		AddClassToCollection("Variant", "void setValueId(String id)", "Sets the Game Object ID value.");
-		AddClassToCollection("Variant", "void setValueVector2(Vector2 value)", "Sets the Vector2 value.");
-		AddClassToCollection("Variant", "void setValueVector3(Vector3 value)", "Sets the Vector3 value.");
-		AddClassToCollection("Variant", "void setValueVector4(Vector4 value)", "Sets the Vector4 value.");
-		// AddClassToCollection("Variant", "void setValueQuaternion(Quaternion value)", "Sets the Quaternion value.");
-		// AddClassToCollection("Variant", "void setValueMatrix3(Matrix3 value)", "Sets the Matrix3 value.");
-		// AddClassToCollection("Variant", "void setValueMatrix4(Matrix4 value)", "Sets the Matrix4 value.");
-		AddClassToCollection("Variant", "number getValueNumber()", "Gets the number value.");
-		AddClassToCollection("Variant", "String getValueString()", "Gets the string value.");
-		AddClassToCollection("Variant", "String getValueId()", "Gets the id value.");
-		AddClassToCollection("Variant", "bool getValueBool()", "Gets the bool value.");
-		AddClassToCollection("Variant", "Vector2 getValueVector2()", "Gets the Vector2 value.");
-		AddClassToCollection("Variant", "Vector3 getValueVector3()", "Gets the Vector3 value.");
-		AddClassToCollection("Variant", "Vector4 getValueVector4()", "Gets the Vector4 value.");
-		// AddClassToCollection("Variant", "Quaternion getValueQuaternion()", "Gets the Quaternion value.");
-		// AddClassToCollection("Variant", "Matrix3 getValueMatrix3()", "Gets the Matrix3 value.");
-		// AddClassToCollection("Variant", "Matrix4 getValueMatrix4()", "Gets the Matrix4 value.");
-
-		LUA_CONST_START(Variant)
-			LUA_CONST(Variant, VAR_NULL);
-		LUA_CONST(Variant, VAR_BOOL);
-		LUA_CONST(Variant, VAR_REAL);
-		LUA_CONST(Variant, VAR_INT);
-		LUA_CONST(Variant, VAR_VEC2);
-		LUA_CONST(Variant, VAR_VEC3);
-		LUA_CONST(Variant, VAR_VEC4);
-		LUA_CONST(Variant, VAR_STRING);
-		LUA_CONST_END;
-
-		AddClassToCollection("Variant", "VAR_NULL", "Null type");
-		AddClassToCollection("Variant", "VAR_BOOL", "Bool type");
-		AddClassToCollection("Variant", "VAR_REAL", "Number type");
-		AddClassToCollection("Variant", "VAR_INT", "Number type");
-		AddClassToCollection("Variant", "VAR_VEC2", "Vector2 type");
-		AddClassToCollection("Variant", "VAR_VEC3", "Vector3 type");
-		AddClassToCollection("Variant", "VAR_VEC4", "Vector4 type");
-		AddClassToCollection("Variant", "VAR_QUAT", "Quaternion type");
-		AddClassToCollection("Variant", "VAR_MAT3", "Matrix3 type");
-		AddClassToCollection("Variant", "VAR_MAT4", "Matrix4 type");
-		AddClassToCollection("Variant", "VAR_STRING", "String type");
-
-		module(lua)
-			[
-				class_<AttributesComponent, GameObjectComponent>("AttributesComponent")
-				.def("getAttributeValueByIndex", &AttributesComponent::getAttributeValueByIndex)
-			.def("getAttributeValueByName", &AttributesComponent::getAttributeValueByName)
-			// .def("addAttribute", &AttributesComponent::addAttribute)
-			// .def("deleteAttribute", &AttributesComponent::deleteAttribute)
-			// .def("getAttributes", &AttributesComponent::getAttributes)
-			// .def("deleteAllAttributes", &AttributesComponent::deleteAllAttributes)
-			// .def("setCloneWithInitValues", &AttributesComponent::setCloneWithInitValues)
-			.def("getAttributeValueBool", (bool (AttributesComponent::*)(unsigned int)) & AttributesComponent::getAttributeValueBool)
-			// .def("getAttributeValueInt", (int (AttributesComponent::*)(unsigned int)) &AttributesComponent::getAttributeValueInt)
-			// .def("getAttributeValueUInt", (unsigned int (AttributesComponent::*)(unsigned int)) &AttributesComponent::getAttributeValueUInt)
-			// .def("getAttributeValueULong", (unsigned long (AttributesComponent::*)(unsigned int)) &AttributesComponent::getAttributeValueULong)
-			// .def("getAttributeValueReal", (Ogre::Real (AttributesComponent::*)(unsigned int)) &AttributesComponent::getAttributeValueReal)
-			.def("getAttributeValueNumber", (Ogre::Real(AttributesComponent::*)(unsigned int)) & AttributesComponent::getAttributeValueReal)
-			.def("getAttributeValueString", (Ogre::String(AttributesComponent::*)(unsigned int)) & AttributesComponent::getAttributeValueString)
-			.def("getAttributeValueId", (Ogre::String(AttributesComponent::*)(unsigned int)) & AttributesComponent::getAttributeValueString)
-			.def("getAttributeValueVector2", (Ogre::Vector2(AttributesComponent::*)(unsigned int)) & AttributesComponent::getAttributeValueVector2)
-			.def("getAttributeValueVector3", (Ogre::Vector3(AttributesComponent::*)(unsigned int)) & AttributesComponent::getAttributeValueVector3)
-			.def("getAttributeValueVector4", (Ogre::Vector4(AttributesComponent::*)(unsigned int)) & AttributesComponent::getAttributeValueVector4)
-
-			.def("getAttributeValueBool2", (bool (AttributesComponent::*)(const Ogre::String&)) & AttributesComponent::getAttributeValueBool)
-			// .def("getAttributeValueInt2", (int (AttributesComponent::*)(const Ogre::String&)) &AttributesComponent::getAttributeValueInt)
-			// .def("getAttributeValueUInt2", (unsigned int (AttributesComponent::*)(const Ogre::String&)) &AttributesComponent::getAttributeValueUInt)
-			// .def("getAttributeValueULong2", (unsigned long (AttributesComponent::*)(const Ogre::String&)) &AttributesComponent::getAttributeValueULong)
-			// .def("getAttributeValueReal2", (Ogre:Real (AttributesComponent::*)(const Ogre::String&)) &AttributesComponent::getAttributeValueReal)
-			.def("getAttributeValueNumber2", (Ogre::Real(AttributesComponent::*)(const Ogre::String&)) & AttributesComponent::getAttributeValueReal)
-			.def("getAttributeValueString2", (Ogre::String(AttributesComponent::*)(const Ogre::String&)) & AttributesComponent::getAttributeValueString)
-			.def("getAttributeValueId2", (Ogre::String(AttributesComponent::*)(const Ogre::String&)) & AttributesComponent::getAttributeValueString)
-			.def("getAttributeValueVector22", (Ogre::Vector2(AttributesComponent::*)(const Ogre::String&)) & AttributesComponent::getAttributeValueVector2)
-			.def("getAttributeValueVector32", (Ogre::Vector3(AttributesComponent::*)(const Ogre::String&)) & AttributesComponent::getAttributeValueVector3)
-			.def("getAttributeValueVector42", (Ogre::Vector4(AttributesComponent::*)(const Ogre::String&)) & AttributesComponent::getAttributeValueVector4)
-
-			.def("addAttributeBool", &addAttributeBool)
-			.def("addAttributeNumber", &addAttributeFloat)
-			// .def("addAttributeFloat", &addAttributeFloat)
-			// .def("addAttributeInt", &addAttributeInt)
-			// .def("addAttributeUInt", &addAttributeUInt)
-			// .def("addAttributeULong", &addAttributeULong)
-			.def("addAttributeString", &addAttributeString)
-			.def("addAttributeId", &addAttributeString)
-			.def("addAttributeVector2", &addAttributeVector2)
-			.def("addAttributeVector3", &addAttributeVector3)
-			.def("addAttributeVector4", &addAttributeVector4)
-
-			.def("changeValueBool", &changeValueBool)
-			.def("changeValueNumber", &changeValueFloat)
-			// .def("changeValueFloat", &changeValueFloat)
-			// .def("changeValueInt", &changeValueInt)
-			// .def("changeValueUInt", &changeValueUInt)
-			// .def("changeValueULong", &changeValueULong)
-			.def("changeValueString", &changeValueString)
-			.def("changeValueId", &changeValueString)
-			.def("changeValueVector2", &changeValueVector2)
-			.def("changeValueVector3", &changeValueVector3)
-			.def("changeValueVector4", &changeValueVector4)
-
-			.def("saveValues", &AttributesComponent::saveValues)
-			.def("saveValue", (void (AttributesComponent::*)(const Ogre::String&, unsigned int, bool)) & AttributesComponent::saveValue)
-			.def("saveValue", (void (AttributesComponent::*)(const Ogre::String&, Variant*, bool)) & AttributesComponent::saveValue)
-			.def("loadValues", &AttributesComponent::loadValues)
-			.def("loadValue", (bool (AttributesComponent::*)(const Ogre::String&, unsigned int)) & AttributesComponent::loadValue)
-			.def("loadValue", (bool (AttributesComponent::*)(const Ogre::String&, Variant*)) & AttributesComponent::loadValue)
-			];
-
-		AddClassToCollection("AttributesComponent", "class inherits GameObjectComponent", AttributesComponent::getStaticInfoText());
-		AddClassToCollection("AttributesComponent", "Variant getAttributeValueByIndex(unsigned int index)", "Gets the attribute value as variant by the given index which corresponds the occurence in the attributes component.");
-		AddClassToCollection("AttributesComponent", "Variant getAttributeValueByName(String name)", "Gets the attribute value as variant by the given name.");
-		AddClassToCollection("AttributesComponent", "bool getAttributeValueBool(unsigned int index)", "Gets the bool value by the given index which corresponds the occurence in the attributes component.");
-		AddClassToCollection("AttributesComponent", "number getAttributeValueNumber(unsigned int index)", "Gets the number value by the given index which corresponds the occurence in the attributes component.");
-		AddClassToCollection("AttributesComponent", "String getAttributeValueString(unsigned int index)", "Gets the string value by the given index which corresponds the occurence in the attributes component.");
-		AddClassToCollection("AttributesComponent", "String getAttributeValueId(unsigned int index)", "Gets the id value by the given index which corresponds the occurence in the attributes component.");
-		AddClassToCollection("AttributesComponent", "Vector2 getAttributeValueVector2(unsigned int index)", "Gets the Vector2 value by the given index which corresponds the occurence in the attributes component.");
-		AddClassToCollection("AttributesComponent", "Vector3 getAttributeValueVector3(unsigned int index)", "Gets the Vector3 value by the given index which corresponds the occurence in the attributes component.");
-		AddClassToCollection("AttributesComponent", "Vector4 getAttributeValueVector4(unsigned int index)", "Gets the Vector4 value by the given index which corresponds the occurence in the attributes component.");
-		AddClassToCollection("AttributesComponent", "bool getAttributeValueBool(String name)", "Gets the bool value by the given name");
-		AddClassToCollection("AttributesComponent", "number getAttributeValueNumber(String name)", "Gets the number value by the given name");
-		AddClassToCollection("AttributesComponent", "String getAttributeValueString(String name)", "Gets the string value by the given name");
-		AddClassToCollection("AttributesComponent", "String getAttributeValueId(String name)", "Gets the id value by the given name");
-		AddClassToCollection("AttributesComponent", "Vector2 getAttributeValueVector2(String name", "Gets the Vector2 value by the given name");
-		AddClassToCollection("AttributesComponent", "Vector3 getAttributeValueVector3(String name)", "Gets the Vector3 value by the given name");
-		AddClassToCollection("AttributesComponent", "Vector4 getAttributeValueVector4(String name)", "Gets the Vector4 value by the given name");
-
-		AddClassToCollection("AttributesComponent", "void addAttributeBool(String name, bool value)", "Adds an attribute bool with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void addAttributeNumber(String name, number value)", "Adds an attribute number with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void addAttributeString(String name, String value)", "Adds an attribute string with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void addAttributeId(String name, String id)", "Adds an attribute id with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void addAttributeVector2(String name, Vector2 value)", "Adds an attribute Vector2 with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void addAttributeVector3(String name, Vector3 value)", "Adds an attribute Vector3 with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void addAttributeVector4(String name, Vector4 value)", "Adds an attribute Vector4 with the name and the given value.");
-
-		AddClassToCollection("AttributesComponent", "void changeValueBool(String name, bool value)", "Changes the attribute bool with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void changeValueNumber(String name, number value)", "Changes the attribute number with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void changeValueString(String name, String value)", "Changes the attribute string with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void changeValueId(String name, String id)", "Changes the attribute id with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void changeValueVector2(String name, Vector2 value)", "Changes the attribute Vector2 with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void changeValueVector3(String name, Vector3 value)", "Changes the attribute Vector3 with the name and the given value.");
-		AddClassToCollection("AttributesComponent", "void changeValueVector4(String name, Vector4 value)", "Changes the attribute Vector4 with the name and the given value.");
-
-		AddClassToCollection("AttributesComponent", "void saveValues(String saveName, bool crypted)", "Saves all values from this component. Note: if crypted is set to true, the content will by set in a not readable form.");
-		AddClassToCollection("AttributesComponent", "void saveValue(String saveName, unsigned int index, bool crypted)", "Save the value by the given index. Note: if crypted is set to true, the content will by set in a not readable form.");
-		AddClassToCollection("AttributesComponent", "void saveValue2(String saveName, String name, bool crypted)", "Save the value by the given name. Note: if crypted is set to true, the content will by set in a not readable form.");
-
-		AddClassToCollection("AttributesComponent", "bool loadValues(String saveName)", "Loads all values for this component.");
-		AddClassToCollection("AttributesComponent", "bool loadValue(String saveName, unsigned int index)", "Loads the value by the given index.");
-		AddClassToCollection("AttributesComponent", "bool loadValue2(String saveName, String name)", "Loads the value by the given name.");
 	}
 
 	// TODO: No documentation and no inner type declared for luabind
@@ -13095,7 +12756,6 @@ namespace NOWA
 				bindGameObjectComponent(this->lua);
 				bindAiComponents(this->lua);
 				bindAnimationComponent(this->lua);
-				bindAttributesComponent(this->lua);
 				bindDistributedComponent(this->lua);
 				bindCameraComponent(this->lua);
 				bindCameraBehaviorComponent(this->lua);

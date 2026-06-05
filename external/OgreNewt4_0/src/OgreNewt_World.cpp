@@ -297,7 +297,7 @@ void World::update(Ogre::Real timestep)
     processPhysicsQueue();
     ndWorld::Update(static_cast<ndFloat32>(timestep));
     Sync();
-    processPhysicsQueue();
+    // processPhysicsQueue();
     interalPostUpdate(1.0f);
 }
 
@@ -356,7 +356,7 @@ void World::updateFixed(Ogre::Real timestep)
     // Must wait before touching ndFreeListAlloc in processPhysicsQueue().
     Sync();
 
-    processPhysicsQueue();
+    // processPhysicsQueue();
 
     const float interp = (dtFixed > 0.0) ? float(m_timeAccumulator / dtFixed) : 0.0f;
     interalPostUpdate(interp);

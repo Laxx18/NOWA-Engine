@@ -838,33 +838,40 @@ namespace NOWA
 							
 
 							if (movableObject->getQueryFlags() == this->gameObjectPtr->getMovableObject()->getQueryFlags())
-							{
-								// Flubber* pInterestingFlubber = Ogre::any_cast<Flubber*>(pMovableObject->getUserAny());
-								// GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObjectPtr>(movableObject->getUserAny());
-								GameObject* gameObject = Ogre::any_cast<GameObject*>(movableObject->getUserObjectBindings().getUserAny());
-								auto distributedComponent = NOWA::GameObjectComponent::makeStrongPtr(gameObject->getComponent<DistributedComponent>());
-								if (distributedComponent)
-								{
-									Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DistributedComponent] Sphere for movable: " + movableObject->getName()
-										+ " query flags: " + Ogre::StringConverter::toString(movableObject->getQueryFlags())
-										+ " for distributed game object: " + this->gameObjectPtr->getName() + " with query flags: "
-										+ Ogre::StringConverter::toString(this->gameObjectPtr->getMovableObject()->getQueryFlags())
-										+ " system adress: " + Ogre::String(distributedComponent->getSystemAddress().ToString()) + " dest adress: "
-										+ Ogre::String(serializeParameters->destinationConnection->GetSystemAddress().ToString()));
-									// if (distributedComponent->getSystemAddress() == serializeParameters->destinationConnection->GetSystemAddress())
-									{
-										Ogre::Vector3 position = this->physicsActiveCompPtr->getPosition();
-										Ogre::Quaternion orientation = this->physicsActiveCompPtr->getOrientation();
+                            {
+                                const Ogre::Any& userAny = movableObject->getUserObjectBindings().getUserAny();
+                                if (userAny.isEmpty())
+                                {
+                                    continue;
+                                }
 
-										serializeParameters->outputBitstream[0].Write(RakNet::GetTime());
-										serializeParameters->outputBitstream[0].WriteAlignedBytes((const unsigned char*)&position, sizeof(position));
-										serializeParameters->outputBitstream[0].WriteAlignedBytes((const unsigned char*)&orientation, sizeof(orientation));
-										/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DistributedComponent] Server serialize position: " + Ogre::StringConverter::toString(position)
-											+ " for distributed game object: " + this->gameObjectPtr->getName() 
-											+ " to: " + Ogre::String(serializeParameters->destinationConnection->GetSystemAddress().ToString()));*/
-									}
-								}
-							}
+                                GameObject* gameObject = nullptr;
+                                try
+                                {
+                                    gameObject = Ogre::any_cast<GameObject*>(userAny);
+                                }
+                                catch (Ogre::Exception&)
+                                {
+                                    continue;
+                                }
+
+                                auto distributedComponent = NOWA::GameObjectComponent::makeStrongPtr(gameObject->getComponent<DistributedComponent>());
+                                if (distributedComponent)
+                                {
+                                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                                        "[DistributedComponent] Sphere for movable: " + movableObject->getName() + " query flags: " + Ogre::StringConverter::toString(movableObject->getQueryFlags()) +
+                                            " for distributed game object: " + this->gameObjectPtr->getName() + " with query flags: " + Ogre::StringConverter::toString(this->gameObjectPtr->getMovableObject()->getQueryFlags()) +
+                                            " system adress: " + Ogre::String(distributedComponent->getSystemAddress().ToString()) + " dest adress: " + Ogre::String(serializeParameters->destinationConnection->GetSystemAddress().ToString()));
+                                    {
+                                        Ogre::Vector3 position = this->physicsActiveCompPtr->getPosition();
+                                        Ogre::Quaternion orientation = this->physicsActiveCompPtr->getOrientation();
+
+                                        serializeParameters->outputBitstream[0].Write(RakNet::GetTime());
+                                        serializeParameters->outputBitstream[0].WriteAlignedBytes((const unsigned char*)&position, sizeof(position));
+                                        serializeParameters->outputBitstream[0].WriteAlignedBytes((const unsigned char*)&orientation, sizeof(orientation));
+                                    }
+                                }
+                            }
 						}
 					}
 					else // without area of interest
@@ -938,31 +945,38 @@ namespace NOWA
 						DistributedCompPtr interestedDistributedComponent = nullptr;
 
 						Ogre::String message = this->gameObjectPtr->getName() + ": found gameobjects: " + Ogre::StringConverter::toString(result.size()) + ": ";
-						for (auto it = result.cbegin(); it != result.cend(); ++it)
-						{
-							Ogre::MovableObject* movableObject = *it;
+                        for (auto it = result.cbegin(); it != result.cend(); ++it)
+                        {
+                            Ogre::MovableObject* movableObject = *it;
 
-							GameObject* interestGameObject = Ogre::any_cast<GameObject*>(movableObject->getUserObjectBindings().getUserAny());
-							message += interestGameObject->getName() + ", ";
+                            const Ogre::Any& userAny = movableObject->getUserObjectBindings().getUserAny();
+                            if (userAny.isEmpty())
+                            {
+                                continue;
+                            }
 
-							interestedDistributedComponent = NOWA::GameObjectComponent::makeStrongPtr(interestGameObject->getComponent<DistributedComponent>());
-							if (0 != this->gameObjectPtr->getControlledByClientID())
-							{
-								//Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DistributedComponent] Sending to: " + movableObject->getName()
-								//	+ " query flags: " + Ogre::StringConverter::toString(movableObject->getQueryFlags())
-								//	+ " for distributed game object: " + this->gameObjectPtr->getName() + " with query flags: "
-								//	+ Ogre::StringConverter::toString(this->gameObjectPtr->getEntity()->getQueryFlags())
-								//	+ " movable system adress: " + Ogre::String(interestedDistributedComponent->getSystemAddress().ToString())
-								//	// + " this system adress: " + Ogre::String(this->systemAddress.ToString())
-								//	+ " dest adress: " + Ogre::String(serializeParameters->destinationConnection->GetSystemAddress().ToString()));
-							}
-							if (interestedDistributedComponent->getSystemAddress() == serializeParameters->destinationConnection->GetSystemAddress()
-								&& interestGameObject->getName() != this->gameObjectPtr->getName())
-							{
-								transmit = true;
-								break;
-							}
-						}
+                            GameObject* interestGameObject = nullptr;
+                            try
+                            {
+                                interestGameObject = Ogre::any_cast<GameObject*>(userAny);
+                            }
+                            catch (Ogre::Exception&)
+                            {
+                                continue;
+                            }
+
+                            message += interestGameObject->getName() + ", ";
+
+                            interestedDistributedComponent = NOWA::GameObjectComponent::makeStrongPtr(interestGameObject->getComponent<DistributedComponent>());
+                            if (0 != this->gameObjectPtr->getControlledByClientID())
+                            {
+                            }
+                            if (interestedDistributedComponent->getSystemAddress() == serializeParameters->destinationConnection->GetSystemAddress() && interestGameObject->getName() != this->gameObjectPtr->getName())
+                            {
+                                transmit = true;
+                                break;
+                            }
+                        }
 						Ogre::LogManager::getSingletonPtr()->logMessage(message);
 					}
 
