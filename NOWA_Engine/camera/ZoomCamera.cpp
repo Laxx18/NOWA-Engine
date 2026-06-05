@@ -104,16 +104,7 @@ namespace NOWA
             GameObject* gameObject = gameObjects[i].get();
 
             // Read from physics body if available — SceneNode is one frame behind.
-            Ogre::Vector3 pos;
-            auto physComp = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsComponent>());
-            if (nullptr != this->physicsBody)
-            {
-                pos = this->physicsBody->getPosition();
-            }
-            else
-            {
-                pos = gameObject->getPosition();
-            }
+            Ogre::Vector3 pos = gameObject->getPosition();
 
             averagePosition += pos;
             numTargets++;
@@ -143,19 +134,9 @@ namespace NOWA
             GameObject* gameObject = gameObjects[i].get();
 
             // Read from physics body if available
-            Ogre::Vector3 pos;
-            Ogre::Quaternion orient;
+            Ogre::Vector3 pos = gameObject->getPosition();
+            Ogre::Quaternion orient = gameObject->getOrientation();
             auto physComp = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsComponent>());
-            if (nullptr != this->physicsBody)
-            {
-                pos = this->physicsBody->getPosition();
-                orient = this->physicsBody->getOrientation();
-            }
-            else
-            {
-                pos = gameObject->getPosition();
-                orient = gameObject->getOrientation();
-            }
 
             Ogre::Quaternion localOrient = Ogre::Quaternion::IDENTITY;
             Ogre::Vector3 targetLocalPosition = Ogre::Vector3::ZERO;

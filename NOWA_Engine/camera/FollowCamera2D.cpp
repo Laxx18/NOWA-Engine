@@ -155,15 +155,7 @@ namespace NOWA
 
         // Read directly from the physics body — NOT from the SceneNode.
         // SceneNode is updated by the render thread one frame later.
-        Ogre::Vector3 playerPosition;
-        if (nullptr != this->physicsBody)
-        {
-            playerPosition = this->physicsBody->getPosition();
-        }
-        else
-        {
-            playerPosition = this->sceneNode->getPosition();
-        }
+        Ogre::Vector3 playerPosition = this->sceneNode->getPosition();
 
         // Replace all this->sceneNode->getPosition() below with playerPosition
         Ogre::Vector3 velocity = Ogre::Vector3::ZERO;

@@ -537,6 +537,9 @@ namespace NOWA
         /** Returns a uniform int in [lo, hi] from rng. */
         int randInt(std::mt19937& rng, int lo, int hi);
 
+        unsigned long getCurrentlyPausedBodyId() const;
+
+        unsigned long getInnermostOverlapId() const;
     private:
         void handleSceneParsed(EventDataPtr eventData);
     private:
@@ -598,6 +601,7 @@ namespace NOWA
         // Attached to each planet/moon's AreaOfInterestComponent at generateUniverse time.
         // Destroyed in destroyUniverse.
         std::vector<PlanetOrbitObserver*> planetObservers;
+        std::set<unsigned long> activeTriggerOverlaps;
 
         // Texture pools built once per generateUniverse() call from TerrainTextures group.
         std::vector<Ogre::String> sunTextures;

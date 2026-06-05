@@ -209,11 +209,6 @@ namespace NOWA
 
 		if (true == activated)
 		{
-            if (nullptr != this->physicsActiveComponent)
-            {
-                this->baseCamera->setPhysicsBody(this->physicsActiveComponent->getBody());
-            }
-
 			Ogre::Real smoothValue = this->smoothValue->getReal();
 			if (0.0f == smoothValue)
 			{

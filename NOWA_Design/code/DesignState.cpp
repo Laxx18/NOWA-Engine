@@ -1878,12 +1878,13 @@ void DesignState::update(Ogre::Real dt)
             // OnTransform fires here and writes the NEW m_curRotation —
             // Lua will read it next frame, which is the correct order.
             this->ogreNewt->update(dt);
-        }
 
-		// Newton has stepped, interalPostUpdate has set m_nodePosit.
-        // Camera reads the correct interpolated position and writes
-        // into the transform buffer. Render thread lerps it at 400fps.
-        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
+			// Newton has stepped, interalPostUpdate has set m_nodePosit.
+            // Camera reads the correct interpolated position and writes
+            // into the transform buffer. Render thread lerps it at 400fps.
+			// So if simulating (almost in any case a physics object is involved for tracking, so it must be done on max 144hz updaterate to stay in sync with physics).
+            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
+        }
 
         if (nullptr != this->editorManager)
         {
@@ -1945,6 +1946,11 @@ void DesignState::renderUpdate(Ogre::Real dt)
 	{
 		return;
 	}
+    if (false == this->simulating)
+    {
+        // So if not simulating (no physics object is involved for tracking, so it can stay in max fps render update function).
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
+    }
 
 	// Prevent rotation, when user does something in GUI, or control is pressed
 	if (true == validScene && 0 == GetAsyncKeyState(VK_LCONTROL)/* && false == this->playerInControl*/)

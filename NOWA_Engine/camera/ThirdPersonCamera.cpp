@@ -88,26 +88,8 @@ namespace NOWA
         }
         Ogre::Vector3 localUp = -gravityDir.normalisedCopy();
 
-        // Player basis and camera.
-        // Read directly from the physics body (m_curPosit / m_curRotation) —
-        // NOT from the SceneNode. The SceneNode is updated by the render thread
-        // one frame later via enqueued _setDerivedPosition. At high speed that
-        // one-frame lag is large enough to make the camera visibly chase the ship.
-        // Newton has already Sync()'d before moveCamera() is called, so
-        // physicsBody->getPosition() / getOrientation() are safe to read here.
-        Ogre::Vector3 playerPosition;
-        Ogre::Quaternion playerOrientation;
-
-        if (nullptr != this->physicsBody)
-        {
-            playerPosition = this->physicsBody->getPosition();
-            playerOrientation = this->physicsBody->getOrientation();
-        }
-        else
-        {
-            playerPosition = this->sceneNode->_getDerivedPositionUpdated();
-            playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
-        }
+        Ogre::Vector3 playerPosition = this->sceneNode->_getDerivedPositionUpdated();
+        Ogre::Quaternion playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
 
         Ogre::Vector3 cameraPosition = this->camera->getPosition();
 
@@ -148,16 +130,16 @@ namespace NOWA
         Ogre::Vector3 supportTarget = playerPosition + tVector + localOffset;
 
         Ogre::Vector3 vVector = (supportTarget - cameraPosition) * this->cameraSpring * this->moveCameraWeight;
-        vVector *= this->cameraFriction * 0.4f;
+        vVector *= this->cameraFriction/* * 0.4f*/;
 
         // Clamp total displacement to half the spring length per frame.
         Ogre::Vector3 totalDisplacement = velocityVector + vVector;
         Ogre::Real dispLen = totalDisplacement.length();
-        Ogre::Real maxDisp = this->cameraSpringLength * 0.5f;
-        if (dispLen > maxDisp)
+        Ogre::Real maxDisp = this->cameraSpringLength/* * 0.5f*/;
+        /*if (dispLen > maxDisp)
         {
             totalDisplacement *= maxDisp / dispLen;
-        }
+        }*/
 
         // Final camera position
         Ogre::Vector3 positionVector = cameraPosition + totalDisplacement;

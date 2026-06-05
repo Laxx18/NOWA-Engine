@@ -20,8 +20,6 @@ namespace NOWA
 
 		virtual void setDefaultDirection(const Ogre::Vector3& defaultDirection);
 
-		virtual void setPhysicsBody(OgreNewt::Body* body);
-
 		virtual void moveCamera(Ogre::Real dt);
 
 		virtual void rotateCamera(Ogre::Real dt, bool forJoyStick = false);
@@ -76,7 +74,6 @@ namespace NOWA
 		Ogre::Camera* camera;
 
 		Ogre::SceneNode* cameraNode;
-        OgreNewt::Body* physicsBody;
 		Ogre::Vector3 defaultDirection;
 		Ogre::Real moveSpeed;
 		Ogre::Real rotateSpeed;

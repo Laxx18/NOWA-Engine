@@ -94,19 +94,8 @@ namespace NOWA
             return;
         }
 
-        Ogre::Vector3 targetPosition;
-        Ogre::Quaternion targetOrientation;
-
-        if (nullptr != this->physicsBody)
-        {
-            targetPosition = this->physicsBody->getPosition();
-            targetOrientation = this->physicsBody->getOrientation();
-        }
-        else
-        {
-            targetPosition = this->sceneNode->_getDerivedPositionUpdated();
-            targetOrientation = this->sceneNode->_getDerivedOrientationUpdated();
-        }
+        Ogre::Vector3 targetPosition = this->sceneNode->_getDerivedPositionUpdated();
+        Ogre::Quaternion targetOrientation = this->sceneNode->_getDerivedOrientationUpdated();
 
         Ogre::Quaternion camOrientation = MathHelper::getInstance()->lookAt((targetOrientation * this->offsetOrientation) * this->defaultDirection, Ogre::Vector3::UNIT_Y);
 
