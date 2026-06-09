@@ -671,13 +671,39 @@ namespace NOWA
         // Normal path — own widget
         if (nullptr != this->widget)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComponent::setActivated", _1(activated), {
+			NOWA::GraphicsModule::RenderCommand cmd = [this, activated]()
+            {
                 this->widget->setVisible(activated);
-                for (size_t i = 0; i < this->widget->getChildCount(); i++)
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComponent::setActivated");
+
+            // Notify child components — they manage their own widget visibility
+            if (nullptr != this->gameObjectPtr)
+            {
+                for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
                 {
-                    this->widget->getChildAt(i)->setVisible(activated);
+                    auto compPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+                    if (nullptr == compPtr)
+                    {
+                        continue;
+                    }
+
+                    auto childGuiComp = boost::dynamic_pointer_cast<MyGUIComponent>(compPtr);
+                    if (nullptr == childGuiComp || childGuiComp.get() == this)
+                    {
+                        continue;
+                    }
+
+                    // Only affect direct children of this component
+                    if (childGuiComp->getParentId() == this->getId())
+                    {
+                        if (nullptr != childGuiComp->getWidget())
+                        {
+                            childGuiComp->getWidget()->setVisible(activated && childGuiComp->isActivated());
+                        }
+                    }
                 }
-            });
+            }
         }
     }
 
@@ -1426,6 +1452,18 @@ namespace NOWA
 	bool MyGUIWindowComponent::postInit(void)
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIWindowComponent] Init MyGUI window component for game object: " + this->gameObjectPtr->getName());
+
+		// Force initial visibility state, bypassing the guard in setActivated
+        // because the default value may equal the current value (e.g. false==false)
+        if (nullptr != this->widget)
+        {
+            bool initialActivated = this->activated->getBool();
+            this->widget->setVisible(initialActivated);
+            for (size_t i = 0; i < this->widget->getChildCount(); i++)
+            {
+                this->widget->getChildAt(i)->setVisible(initialActivated);
+            }
+        }
 
         if (true == this->commonWidget->getBool())
         {

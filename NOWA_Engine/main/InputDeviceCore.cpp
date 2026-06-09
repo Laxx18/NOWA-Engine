@@ -148,8 +148,9 @@ InputDeviceCore::InputDeviceCore()
     keyboard(nullptr),
     inputSystem(nullptr),
     mainInputDeviceModule(nullptr),
-    joystickIndex(0),
-    bSelectDown(false),
+    joystickIndex(0), 
+    bSelectDown(false), 
+    bLock(false),
     keyDispatchDepth(0),
     mouseDispatchDepth(0),
     joystickDispatchDepth(0)
@@ -224,6 +225,8 @@ void InputDeviceCore::destroyContent(void)
         this->inputSystem->destroyInputSystem(this->inputSystem);
         // this->inputSystem->destroyInputSystem();
         this->inputSystem = nullptr;
+        this->bSelectDown = false;
+        this->bLock = false;
 
         // Clear Listeners
         this->keyListenerStack.clear();
@@ -1107,6 +1110,24 @@ void InputDeviceCore::releaseDevice(unsigned long id)
             break;
         }
     }
+}
+
+void InputDeviceCore::lockDevices(bool bLock)
+{
+    this->bLock = bLock;
+    for (const auto& module : this->keyboardInputDeviceModules)
+    {
+        module->lockDevice(bLock);
+    }
+    for (const auto& module : this->joystickInputDeviceModules)
+    {
+        module->lockDevice(bLock);
+    }
+}
+
+bool InputDeviceCore::areDevicesLocked(void) const
+{
+    return this->bLock;
 }
 
 InputDeviceModule* InputDeviceCore::getMainKeyboardInputDeviceModule(void) const

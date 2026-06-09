@@ -13,6 +13,8 @@
 
 namespace NOWA
 {
+    class AtmosphereComponent;
+
     /**
      * @class UniversumComponent
      * @brief Orchestrates procedural universe generation.
@@ -404,43 +406,64 @@ namespace NOWA
          */
         void reactOnUniverseGenerated(luabind::object closureFunction);
 
+        void reactOnLanded(luabind::object closureFunction);
+
+        void requestTakeoff(void);
+
+        void requestLanding(void);
+
+        void reactOnLanding(luabind::object closureFunction);
+
+        void callLandingFunction(unsigned long bodyId, unsigned long shipId);
+
+        void callLandedFunction(unsigned long bodyId, unsigned long shipId);
+
     private:
         // ---- Internal structs ------------------------------------------------
 
         struct SurfaceObject
         {
-            unsigned long gameObjectId;
-            Ogre::Vector3 localPosition;       // Offset from planet center in planet-local space
-            Ogre::Quaternion localOrientation; // Orientation relative to planet
-            Ogre::Vector3 savedWorldPosition;  // World position at connect() for disconnect() restore
-            Ogre::Quaternion savedWorldOrientation;
+            unsigned long gameObjectId = 0ul;
+            Ogre::Vector3 localPosition = Ogre::Vector3::ZERO;              // Offset from planet center in planet-local space
+            Ogre::Quaternion localOrientation = Ogre::Quaternion::IDENTITY; // Orientation relative to planet
+            Ogre::Vector3 savedWorldPosition = Ogre::Vector3::ZERO;         // World position at connect() for disconnect() restore
+            Ogre::Quaternion savedWorldOrientation = Ogre::Quaternion::IDENTITY;
         };
 
         struct OrbitalBody
         {
-            unsigned long gameObjectId;
-            float orbitalRadius;
-            float orbitalSpeed;
-            float orbitalTilt;
-            float phaseOffset;
-            float axialSpeed;
-            float orbitalElapsed;  // Pauses when player is on this body
-            float axialElapsed;    // Never pauses -- drives day/night cycle
-            bool orbitalPaused;    // Set by AreaOfInterest enter/leave
-            float gravityStrength; // Computed from radius: larger = stronger
-            Ogre::Vector3 currentPosition;
+            unsigned long gameObjectId = 0ul;
+            float orbitalRadius = 0.0f;
+            float orbitalSpeed = 0.0f;
+            float orbitalTilt = 0.0f;
+            float phaseOffset = 0.0f;
+            float axialSpeed = 0.0f;
+            float orbitalElapsed = 0.0f;  // Pauses when player is on this body
+            float axialElapsed = 0.0f;    // Never pauses -- drives day/night cycle
+            bool orbitalPaused = false;   // Set by AreaOfInterest enter/leave
+            float gravityStrength = 0.0f; // Computed from radius: larger = stronger
+            Ogre::Vector3 currentPosition = Ogre::Vector3::ZERO;
             std::vector<SurfaceObject> surfaceObjects; // GOs placed on this body's surface
         };
 
         struct SolarSystem
         {
-            unsigned long sunId;
-            Ogre::Vector3 position;
+            unsigned long sunId = 0ul;
+            Ogre::Vector3 position = Ogre::Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
             std::vector<OrbitalBody> planets;
             // pair: <parentPlanetIndex, moonData>
             std::vector<std::pair<size_t, OrbitalBody>> moons;
-            Ogre::Vector3 sunLightColor; // Randomised star color at generation time
-            float sunLightPower;         // Randomised star intensity
+            Ogre::Vector3 sunLightColor = Ogre::Vector3::UNIT_SCALE; // Randomised star color at generation time
+            float sunLightPower = 1.0f;                              // Randomised star intensity
+        };
+
+        enum class LandingState : unsigned int
+        {
+            NONE = 0,        // in space, no body frozen
+            APPROACHING = 1, // inside AOI, orbit frozen, ship still flying above
+            LANDING = 2,     // within altitudeThreshold, auto-landing active
+            LANDED = 3,      // on surface, input locked, waiting for requestTakeoff()
+            TAKING_OFF = 4   // rising, input unlocked; -> APPROACHING when clear
         };
 
         // ---- Generation helpers ----------------------------------------------
@@ -540,6 +563,20 @@ namespace NOWA
         unsigned long getCurrentlyPausedBodyId() const;
 
         unsigned long getInnermostOverlapId() const;
+
+        void applyShipMovement(GameObjectPtr shipGo, const Ogre::Vector3& velocity, const Ogre::Quaternion& targetOrient, float orientStrength);
+        void setPlayerInputLock(bool locked);
+        void updateLandingStateMachine(Ogre::Real dt);
+
+        // Snaps a frozen moon back onto its orbital circle around the
+        // planet's current position before resuming orbital motion.
+        // Called by resumePlanetOrbit() to prevent visible teleport on leave.
+        void snapMoonToOrbit(OrbitalBody& moon, const OrbitalBody& parentPlanet);
+
+        void restoreSpaceShadowSettings();
+        void setBodyCastShadows(unsigned long bodyGoId, bool castShadows, const Ogre::String& tag);
+        void setupLandingState(OrbitalBody& body, unsigned long bodyGoId, float axialSpeedOverride, unsigned long playerGoId);
+        bool teardownLandingState(unsigned long planetGameObjectId, unsigned long gameObjectId, OrbitalBody& body, bool isHideSurface, SolarSystem& system);
     private:
         void handleSceneParsed(EventDataPtr eventData);
     private:
@@ -590,14 +627,15 @@ namespace NOWA
         Ogre::Light* cachedSunLight;     // Raw ptr to the hijacked scene directional light
         Ogre::Vector3 currentLightColor; // Lerp target for smooth system transitions
         float currentLightPower;
-        float fakeLightElapsed;    // Drives fake day/night when player is on surface
-        float fakeLightAxialSpeed; // Axial speed of the planet the player is on
         bool playerOnSurface;      // True when any planet has orbitalPaused==true
+        bool firstLightFrame;
 
         // ---- Lua delegation closures -----------------------------------------
         luabind::object planetEnteredClosureFunction;
         luabind::object planetLeftClosureFunction;
         luabind::object universeGeneratedClosureFunction;
+        luabind::object landingClosureFunction;
+        luabind::object landedClosureFunction;
         // Attached to each planet/moon's AreaOfInterestComponent at generateUniverse time.
         // Destroyed in destroyUniverse.
         std::vector<PlanetOrbitObserver*> planetObservers;
@@ -610,6 +648,23 @@ namespace NOWA
         std::vector<Ogre::String> sunNormalTextures;
         std::vector<Ogre::String> moonNormalTextures;
         std::vector<Ogre::String> planetNormalTextures;
+
+        AtmosphereComponent* cachedAtmosphereComponent;
+
+        // Landing state machine
+        LandingState landingState;
+        Ogre::Vector3 landingBodyCentre;
+        float landingBodyRadius;
+        unsigned long landedOnBodyId;
+        float landingAltitudeThreshold; // auto-land below this (units)
+        float takeoffClearanceAltitude; // takeoff done above this (units)
+        float takeoffSpeed;             // units/s during ascent
+        bool landingInputLocked;
+        bool landingFired;
+        float landingDebugTimer;
+        float fakeLightElapsed;
+        float fakeLightAxialSpeed;
+        bool shadowsConfiguredForSurface;
     };
 
 } // namespace NOWA

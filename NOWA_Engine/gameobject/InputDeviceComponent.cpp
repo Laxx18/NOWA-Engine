@@ -364,7 +364,17 @@ namespace NOWA
 	bool InputDeviceComponent::hasValidDevice(void) const
 	{
 		return this->bValidDevice;
-	}
+    }
+
+    void InputDeviceComponent::lockDevice(bool bLockDevice)
+    {
+        InputDeviceCore::getSingletonPtr()->lockDevices(bLockDevice);
+    }
+
+    bool InputDeviceComponent::isDeviceLocked(void) const
+    {
+        return InputDeviceCore::getSingletonPtr()->areDevicesLocked();
+    }
 
 	// Lua registration part
 
@@ -407,7 +417,8 @@ namespace NOWA
 			.def("getInputDeviceModule", &InputDeviceComponent::getInputDeviceModule)
 			.def("checkDevice", &InputDeviceComponent::checkDevice)
 			.def("hasValidDevice", &InputDeviceComponent::hasValidDevice)
-
+            .def("lockDevice", &InputDeviceComponent::lockDevice)
+            .def("isDeviceLocked", &InputDeviceComponent::isDeviceLocked)
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "class inherits GameObjectComponent", InputDeviceComponent::getStaticInfoText());
@@ -421,6 +432,9 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "InputDeviceModule getInputDeviceModule()", "Gets the assigned input device module instance.");
 		LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "bool checkDevice(string deviceName)", "Gets for the given device name, whether its a valid device or not.");
 		LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "bool hasValidDevice()", "Gets after calling @setDeviceName, whether the set device is valid.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "void lockDevice(bool bLockDevice)", "Locks the device, so if set to true, no inputs are processed, until the device is again unlocked. Note: Actually all devices are locked/unlocked.");
+        LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "bool isDeviceLocked()", "Gets wether the device is locked and no inputs are processed. Note: Actually all devices are concerned.");
 
 		gameObjectClass.def("getInputDeviceComponent", (InputDeviceComponent * (*)(GameObject*)) & getInputDeviceComponent);
 

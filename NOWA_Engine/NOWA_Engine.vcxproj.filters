@@ -46,6 +46,9 @@
     <Filter Include="planetsun">
       <UniqueIdentifier>{f9cd0703-ccf7-4c81-ba68-5e08ad36ed7b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="planetatmosphere">
+      <UniqueIdentifier>{1849d3fc-dbc3-4dae-951c-fb220f3e34c2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="console\EditString.h">
@@ -396,9 +399,6 @@
     <ClInclude Include="gameobject\CameraBehaviorComponents.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\ProceduralComponents.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\TagChildNodeComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -676,6 +676,9 @@
     </ClInclude>
     <ClInclude Include="planetsun\PlanetSun.h">
       <Filter>planetsun</Filter>
+    </ClInclude>
+    <ClInclude Include="planetatmosphere\PlanetAtmosphere.h">
+      <Filter>planetatmosphere</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -990,9 +993,6 @@
     <ClCompile Include="gameobject\CameraBehaviorComponents.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
-    <ClCompile Include="gameobject\ProceduralComponents.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
     <ClCompile Include="gameobject\TagChildNodeComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
@@ -1243,6 +1243,9 @@
     </ClCompile>
     <ClCompile Include="planetsun\PlanetSun.cpp">
       <Filter>planetsun</Filter>
+    </ClCompile>
+    <ClCompile Include="planetatmosphere\PlanetAtmosphere.cpp">
+      <Filter>planetatmosphere</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

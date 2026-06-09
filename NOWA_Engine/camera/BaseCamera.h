@@ -5,89 +5,93 @@
 
 namespace NOWA
 {
-	class Ogre::SceneManager;
-	class Ogre::Camera;
-	class Ogre::SceneNode;
+    class Ogre::SceneManager;
+    class Ogre::Camera;
+    class Ogre::SceneNode;
 
-	class EXPORTED BaseCamera
-	{
-	public:
-		friend class CameraManager;
+    class EXPORTED BaseCamera
+    {
+    public:
+        friend class CameraManager;
 
-		BaseCamera(unsigned int id, Ogre::Real moveSpeed = 20.0f, Ogre::Real rotateSpeed = 1.0f, Ogre::Real smoothValue = 0.3f, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z);
+        BaseCamera(unsigned int id, Ogre::Real moveSpeed = 20.0f, Ogre::Real rotateSpeed = 1.0f, Ogre::Real smoothValue = 0.3f, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z);
 
-		virtual ~BaseCamera();
+        virtual ~BaseCamera();
 
-		virtual void setDefaultDirection(const Ogre::Vector3& defaultDirection);
+        virtual void setDefaultDirection(const Ogre::Vector3& defaultDirection);
 
-		virtual void moveCamera(Ogre::Real dt);
+        virtual void setPhysicsBody(OgreNewt::Body* body);
 
-		virtual void rotateCamera(Ogre::Real dt, bool forJoyStick = false);
+        virtual void moveCamera(Ogre::Real dt);
 
-		virtual void snapToPosition(const Ogre::Vector3& position);
+        virtual void rotateCamera(Ogre::Real dt, bool forJoyStick = false);
 
-		virtual void snapToOrientation(const Ogre::Quaternion& orientation);
+        virtual void snapToPosition(const Ogre::Vector3& position);
 
-		virtual Ogre::Vector3 getPosition(void);
+        virtual void snapToOrientation(const Ogre::Quaternion& orientation);
 
-		virtual Ogre::Quaternion getOrientation(void);
+        virtual Ogre::Vector3 getPosition(void);
 
-		virtual void setMoveSpeed(Ogre::Real moveSpeed);
+        virtual Ogre::Quaternion getOrientation(void);
 
-		virtual void setRotationSpeed(Ogre::Real rotationSpeed);
+        virtual void setMoveSpeed(Ogre::Real moveSpeed);
 
-		virtual void reset(void);
+        virtual void setRotationSpeed(Ogre::Real rotationSpeed);
 
-		virtual Ogre::String getBehaviorType(void) 
-		{
-			return "BASE_MOVE_CAMERA_" + Ogre::StringConverter::toString(this->id);
-		}
+        virtual void reset(void);
 
-		static Ogre::String BehaviorType(void)
-		{
-			return "BASE_MOVE_CAMERA";
-		}
+        virtual Ogre::String getBehaviorType(void)
+        {
+            return "BASE_MOVE_CAMERA_" + Ogre::StringConverter::toString(this->id);
+        }
 
-		unsigned int getId(void) const;
+        static Ogre::String BehaviorType(void)
+        {
+            return "BASE_MOVE_CAMERA";
+        }
 
-		Ogre::Camera* getCamera(void) const;
-		
-		void setSmoothValue(Ogre::Real smoothValue);
-		
-		Ogre::Real getSmoothValue(void) const;
+        unsigned int getId(void) const;
 
-		void setCameraControlLocked(bool cameraControlLocked);
+        Ogre::Camera* getCamera(void) const;
 
-		bool getCameraControlLocked(void) const;
+        void setSmoothValue(Ogre::Real smoothValue);
 
-		void applyGravityDirection(const Ogre::Vector3& gravityDirection);
+        Ogre::Real getSmoothValue(void) const;
 
-	protected:
+        void setCameraControlLocked(bool cameraControlLocked);
 
-		virtual void onSetData(void);
-		
-		virtual void onClearData(void);
-	private:
-		void postInitialize(Ogre::Camera* camera);
-	protected:
-		unsigned int id;
-		Ogre::Camera* camera;
+        bool getCameraControlLocked(void) const;
 
-		Ogre::SceneNode* cameraNode;
-		Ogre::Vector3 defaultDirection;
-		Ogre::Real moveSpeed;
-		Ogre::Real rotateSpeed;
-		Ogre::Vector2 lastValue;
-		bool firstTimeValueSet;
-		Ogre::Vector3 lastMoveValue;
-		bool firstTimeMoveValueSet;
-		Ogre::Real smoothValue;
-		bool cameraControlLocked;
-		Ogre::Real moveCameraWeight;
-		Ogre::Real rotateCameraWeight;
-		Ogre::Vector3 gravityDirection;
-	};
+        void applyGravityDirection(const Ogre::Vector3& gravityDirection);
 
-}; //namespace end
+    protected:
+        virtual void onSetData(void);
+
+        virtual void onClearData(void);
+
+    private:
+        void postInitialize(Ogre::Camera* camera);
+
+    protected:
+        unsigned int id;
+        Ogre::Camera* camera;
+
+        Ogre::SceneNode* cameraNode;
+        OgreNewt::Body* physicsBody;
+        Ogre::Vector3 defaultDirection;
+        Ogre::Real moveSpeed;
+        Ogre::Real rotateSpeed;
+        Ogre::Vector2 lastValue;
+        bool firstTimeValueSet;
+        Ogre::Vector3 lastMoveValue;
+        bool firstTimeMoveValueSet;
+        Ogre::Real smoothValue;
+        bool cameraControlLocked;
+        Ogre::Real moveCameraWeight;
+        Ogre::Real rotateCameraWeight;
+        Ogre::Vector3 gravityDirection;
+    };
+
+}; // namespace end
 
 #endif

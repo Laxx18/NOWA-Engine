@@ -50,43 +50,6 @@ namespace NOWA
 		this->sceneNode = sceneNode;
 	}
 
-	//void AttachCamera::moveCamera(Ogre::Real dt)
- //   {
- //       if (nullptr == this->sceneNode)
- //       {
- //           return;
- //       }
-
- //       // Read position/orientation from the physics body directly — NOT from
- //       // the SceneNode. The SceneNode is updated by the render thread one frame
- //       // later. At high speed this lag makes the camera visibly chase the ship.
- //       Ogre::Vector3 targetPosition;
- //       Ogre::Quaternion targetOrientation;
-
- //       if (nullptr != this->physicsBody)
- //       {
- //           // m_curPosit/m_curRotation are written by OnTransform on the Newton
- //           // worker thread, but Newton has already Sync()'d before we get here,
- //           // so these values are safe to read on the logic thread.
- //           targetPosition = this->physicsBody->getPosition();
- //           targetOrientation = this->physicsBody->getOrientation();
- //       }
- //       else
- //       {
- //           targetPosition = this->sceneNode->_getDerivedPositionUpdated();
- //           targetOrientation = this->sceneNode->_getDerivedOrientationUpdated();
- //       }
-
- //       Ogre::Quaternion camOrientation = MathHelper::getInstance()->lookAt((targetOrientation * this->offsetOrientation) * this->defaultDirection, Ogre::Vector3::UNIT_Y);
-
- //       Ogre::Vector3 targetVector = targetPosition + (camOrientation * this->offsetPosition * this->moveCameraWeight);
-
- //       targetVector = (targetVector * this->smoothValue) + (this->camera->getPosition() * (1.0f - this->smoothValue));
-
- //       NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, camOrientation);
- //       NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, targetVector);
- //   }
-
 	void AttachCamera::moveCamera(Ogre::Real dt)
     {
         if (nullptr == this->sceneNode)
@@ -94,8 +57,19 @@ namespace NOWA
             return;
         }
 
-        Ogre::Vector3 targetPosition = this->sceneNode->_getDerivedPositionUpdated();
-        Ogre::Quaternion targetOrientation = this->sceneNode->_getDerivedOrientationUpdated();
+        Ogre::Vector3 targetPosition;
+        Ogre::Quaternion targetOrientation;
+
+        if (nullptr != this->physicsBody)
+        {
+            targetPosition = this->physicsBody->getPosition();
+            targetOrientation = this->physicsBody->getOrientation();
+        }
+        else
+        {
+            targetPosition = this->sceneNode->_getDerivedPositionUpdated();
+            targetOrientation = this->sceneNode->_getDerivedOrientationUpdated();
+        }
 
         Ogre::Quaternion camOrientation = MathHelper::getInstance()->lookAt((targetOrientation * this->offsetOrientation) * this->defaultDirection, Ogre::Vector3::UNIT_Y);
 

@@ -28,6 +28,8 @@ GPL v3
 
 #include "editor/EditorManager.h"
 
+#include <numeric>
+
 namespace
 {
     std::unordered_set<size_t> expandToCoLocated(const std::unordered_set<size_t>& base, const std::vector<int>& vertexGroup, const std::vector<std::vector<size_t>>& positionGroups)

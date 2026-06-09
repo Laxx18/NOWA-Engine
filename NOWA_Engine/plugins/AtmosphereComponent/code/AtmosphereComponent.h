@@ -175,6 +175,18 @@ namespace NOWA
 		bool getEnableSky(void) const;
 
 		/**
+         * @brief Sets whether sun is shown and visible.
+         * @param[in] showSun 				The flag to set
+         */
+        void setShowSun(bool showSun);
+
+        /**
+         * @brief Gets whether sun is shown and visible.
+         * @return showSun 					If true, sun is enabled, else not
+         */
+        bool getShowSun(void) const;
+
+		/**
 		 * @brief Sets the start time in format hh:mm e.g. 03:15 is at night and 13:30 is at day and 23:59 is midnight.
 		 * @param[in] startTime				The start time to set.
 		 */
@@ -508,9 +520,16 @@ namespace NOWA
 		 * @return	  The color value at that camera direction, given the current parameters
 		*/
 		Ogre::Vector3 getAtmosphereAt(const Ogre::Vector3& cameraDir, bool bSkipSun = false);
+
+		void setExternalLightMode(bool external);
+
+        bool isExternalLightMode(void) const;
+
+        void updateExternalSunDirection(const Ogre::Vector3& dir);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrEnableSky(void) { return "Enable Sky"; }
+        static const Ogre::String AttrShowSun(void) { return "Show Sun"; }
 		static const Ogre::String AttrStartTime(void) { return "Start Time"; }
 		static const Ogre::String AttrTimeMultiplicator(void) { return "Time Multiplicator"; }
 		static const Ogre::String AttrPresetsCount(void) { return "Presets Count"; }
@@ -533,11 +552,14 @@ namespace NOWA
 		void generateDefaultData(unsigned short i);
 
 		Ogre::Real convertTime(const Ogre::String& strTimeOfDay);
+
+		void resetAtmosphere(void);
 	private:
 		Ogre::String name;
 
 		Variant* activated;
 		Variant* enableSky;
+        Variant* showSun;
 		Variant* startTime;
 		Variant* timeMultiplicator;
 		Variant* presetCount;
@@ -563,6 +585,8 @@ namespace NOWA
 		int dayTimeCurrentMinutes;
 		bool hasLoaded;
 		Ogre::Vector3 oldLightDirection;
+        bool externalLightMode = false;
+        Ogre::Vector3 cachedExternalSunDir = Ogre::Vector3::UNIT_Y;
 	};
 
 }; // namespace end

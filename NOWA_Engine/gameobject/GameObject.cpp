@@ -29,6 +29,7 @@
 #include "OgreMeshLodGenerator.h"
 #include "OgreMesh2Serializer.h"
 #include "OgrePixelCountLodStrategy.h"
+#include "OgreSubMesh2.h"
 
 #include <array>
 #include <unordered_set>
@@ -58,7 +59,8 @@ namespace NOWA
 		timeSinceLastUpdate(2.0f),
         cachedLuaScriptComponent(nullptr),
         cachedAiLuaComponent(nullptr),
-        cachedAiLuaGoalComponent(nullptr)
+        cachedAiLuaGoalComponent(nullptr),
+        bIsLoadingFromFile(false)
 	{
 		this->name = new Variant(GameObject::AttrName(), "Default", this->attributes);
 		if (0 == id)
@@ -167,9 +169,9 @@ namespace NOWA
 		// {
 		// 	this->renderQueueIndex = new Variant(GameObject::AttrRenderQueueIndex(), static_cast<unsigned int>(NOWA::RENDER_QUEUE_V1_MESH), this->attributes, false);
 		// }
-		this->renderDistance = new Variant(GameObject::AttrRenderDistance(), static_cast<unsigned int>(1000), this->attributes, false);
-		this->lodDistance = new Variant(GameObject::AttrLodDistance(), 0, this->attributes, false);
-		this->lodLevels = new Variant(GameObject::AttrLodLevels(), 0.0f, this->attributes, false);
+        this->renderDistance = new Variant(GameObject::AttrRenderDistance(), static_cast<unsigned int>(Core::getSingletonPtr()->getGlobalRenderDistance()), this->attributes, false);
+        this->lodDistance = new Variant(GameObject::AttrLodDistance(), static_cast<unsigned int>(Core::getSingletonPtr()->getGlobalRenderDistance()), this->attributes, false);
+		this->lodLevels = new Variant(GameObject::AttrLodLevels(), 4, this->attributes, false);
 		this->lodLevels->setReadOnly(true);
 		this->shadowRenderingDistance = new Variant(GameObject::AttrShadowDistance(), static_cast<unsigned int>(300), this->attributes, false);
 
@@ -221,11 +223,6 @@ namespace NOWA
 
         NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->sceneNode);
 
-        if (nullptr != this->sceneNode)
-        {
-            this->sceneNode->getUserObjectBindings().clear();
-        }
-
         if (nullptr != this->sceneNode || nullptr != this->movableObject || nullptr != this->boundingBoxDraw || nullptr != this->clampObjectQuery)
         {
             auto sceneNode = this->sceneNode;
@@ -244,6 +241,10 @@ namespace NOWA
             // the render thread executes this lambda.
             NOWA::GraphicsModule::DestroyCommand destroyCommand = [sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager]()
             {
+                if (nullptr != sceneNode)
+                {
+                    sceneNode->getUserObjectBindings().clear();
+                }
                 GameObject::destroyGameObjectResources(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager);
             };
             GraphicsModule::getInstance()->enqueueDestroy(destroyCommand, "GameObject::~GameObject");
@@ -2083,16 +2084,16 @@ namespace NOWA
 		{
 			this->visible->setValue(visible);
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setVisible", _1(visible),
-			{
-				if (nullptr != this->movableObject)
-				{
-					this->sceneNode->setVisible(visible);
-					this->movableObject->setVisible(visible);
-				}
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
+            {
+                if (nullptr != this->movableObject)
+                {
+                    this->sceneNode->setVisible(visible);
+                    this->movableObject->setVisible(visible);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
 		}
-
 	}
 
 	void GameObject::setLoadedVisible(bool visible)
@@ -2110,28 +2111,30 @@ namespace NOWA
 			{
 				this->visible->setValue(visible);
 
-				ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setLoadedVisible1", _1(visible),
-				{
-					if (nullptr != this->movableObject)
-					{
-						this->sceneNode->setVisible(visible);
-						this->movableObject->setVisible(visible);
-					}
-				});
+				NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
+                {
+                    if (nullptr != this->movableObject)
+                    {
+                        this->sceneNode->setVisible(visible);
+                        this->movableObject->setVisible(visible);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setLoadedVisible1");
 			}
 		}
 		else
 		{
 			this->visible->setValue(visible);
 
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setLoadedVisible2", _1(visible),
-			{
-				if (nullptr != this->movableObject)
-				{
-					this->sceneNode->setVisible(visible);
-					this->movableObject->setVisible(visible);
-				}
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
+            {
+                if (nullptr != this->movableObject)
+                {
+                    this->sceneNode->setVisible(visible);
+                    this->movableObject->setVisible(visible);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setLoadedVisible2");
 		}
 	}
 
@@ -2163,50 +2166,50 @@ namespace NOWA
 
 		if (NOWA::ITEM == this->type || NOWA::PLANE == this->type)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::setUseReflection1",
-			{
-				Ogre::Item * item = this->getMovableObjectUnsafe<Ogre::Item>();
-				if (nullptr != item)
-				{
-					for (size_t i = 0; i < item->getNumSubItems(); i++)
-					{
-						Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-						if (nullptr != pbsDatablock)
-						{
-							if (true == this->useReflection->getBool())
-							{
-								WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-								if (nullptr != workspaceBaseComponent)
-								{
-									Ogre::TextureGpu* cubemapTex =
-										workspaceBaseComponent->getDynamicCubemapTexture();
-									if (nullptr != cubemapTex)
-									{
-										pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, cubemapTex);
-										pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
-										pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
-										this->setDataBlockPbsReflectionTextureName("cubemap");
-									}
-									else
-									{
-										pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
-										pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
-									}
-								}
-							}
-							else
-							{
-								auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
-								if (nullptr != reflectionTexture)
-								{
-									pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, static_cast<Ogre::TextureGpu*>(nullptr));
-									this->setDataBlockPbsReflectionTextureName("");
-								}
-							}
-						}
-					}
-				}
-			});
+			NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
+                if (nullptr != item)
+                {
+                    for (size_t i = 0; i < item->getNumSubItems(); i++)
+                    {
+                        Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+                        if (nullptr != pbsDatablock)
+                        {
+                            if (true == this->useReflection->getBool())
+                            {
+                                WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+                                if (nullptr != workspaceBaseComponent)
+                                {
+                                    Ogre::TextureGpu* cubemapTex = workspaceBaseComponent->getDynamicCubemapTexture();
+                                    if (nullptr != cubemapTex)
+                                    {
+                                        pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, cubemapTex);
+                                        pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
+                                        pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
+                                        this->setDataBlockPbsReflectionTextureName("cubemap");
+                                    }
+                                    else
+                                    {
+                                        pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
+                                        pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
+                                if (nullptr != reflectionTexture)
+                                {
+                                    pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, static_cast<Ogre::TextureGpu*>(nullptr));
+                                    this->setDataBlockPbsReflectionTextureName("");
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setUseReflection1");
 		}
 		else if (NOWA::OCEAN == this->type)
 		{
@@ -2286,6 +2289,16 @@ namespace NOWA
 
 	void GameObject::setLodLevels(unsigned int lodLevels)
 	{
+        // No lod usage, then now lod levels
+        if (this->lodDistance->getUInt() <= 0.0f)
+        {
+            this->lodLevels->setReadOnly(false);
+            this->lodLevels->setValue(0);
+            this->lodLevels->setReadOnly(true);
+
+            return;
+        }
+
 		this->lodLevels->setReadOnly(false);
 		this->lodLevels->setValue(lodLevels);
 		this->lodLevels->setReadOnly(true);
@@ -2360,6 +2373,11 @@ namespace NOWA
 
 	void GameObject::setRenderDistance(unsigned int renderDistance)
 	{
+		if (this->renderDistance->getUInt() == renderDistance)
+		{
+            return;
+		}
+
 		// unsigned int negative not possible!
 		if (renderDistance < 0)
 		{
@@ -2407,100 +2425,167 @@ namespace NOWA
 	}
 
 	void GameObject::setLodDistance(Ogre::Real lodDistance)
-	{
-		if (lodDistance < 0.0f)
-		{
-			lodDistance = 0.0f;
-		}
+    {
+        if (this->lodDistance->getUInt() == static_cast<unsigned int>(lodDistance))
+        {
+            return;
+        }
 
-		if (0 != this->renderDistance->getUInt())
-		{
-			if (static_cast<unsigned int>(lodDistance) > this->renderDistance->getUInt())
-			{
-				lodDistance = static_cast<Ogre::Real>(this->renderDistance->getUInt());
-			}
-		}
+        this->lodDistance->setValue(lodDistance);
 
-		this->lodDistance->setValue(lodDistance);
+        // No lod usage -- clear lod levels.
+        if (lodDistance <= 0.0f)
+        {
+            this->lodLevels->setReadOnly(false);
+            this->lodLevels->setValue(0);
+            this->lodLevels->setReadOnly(true);
+            return;
+        }
 
-		if (lodDistance <= 0.0f)
-		{
-			return;
-		}
+        // During scene load, lodDistance and lodLevels are restored directly from
+        // the saved values -- no need to regenerate, the mesh already has correct LOD.
+        if (true == this->bIsLoadingFromFile)
+        {
+            return;
+        }
 
-		if (Ogre::Item* item = this->getMovableObject<Ogre::Item>())
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, lodDistance]()
+        if (Ogre::Item* item = this->getMovableObject<Ogre::Item>())
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, lodDistance]()
             {
                 this->applyLodDistanceToItem(item, lodDistance);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setLodDistance");
-		}
-	}
+        }
+    }
 
 	void GameObject::applyLodDistanceToItem(Ogre::Item* item, Ogre::Real lodDistance)
-	{
-		Ogre::String tempMeshFile = item->getMesh()->getName();
-		Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+    {
+        Ogre::String tempMeshFile = item->getMesh()->getName();
+        Ogre::MeshPtr v2Mesh = item->getMesh();
 
-		if (!v1Mesh)
-		{
-			v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(
-				tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-				Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
-		}
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] applyLodDistanceToItem: '" + tempMeshFile + "' numLodLevels=" + Ogre::StringConverter::toString(v2Mesh->getNumLodLevels()));
 
-		if (!generateLodForMesh(tempMeshFile, v1Mesh, lodDistance))
-			return;
+        // Case 1: mesh already has LOD levels (baked v2 or previously generated).
+        // Rescale mLodValues directly -- no v1 round-trip needed.
+        if (v2Mesh->getNumLodLevels() > 1)
+        {
+            Ogre::Mesh::LodValueArray* lodValues = const_cast<Ogre::Mesh::LodValueArray*>(v2Mesh->_getLodValueArray());
+            const size_t numLevels = lodValues->size();
+            const size_t numReductions = numLevels - 1;
+            Ogre::LodStrategy* strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
 
-		Ogre::MeshPtr v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-		if (!v2Mesh)
-		{
-			v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(
-				tempMeshFile, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-				v1Mesh.get(), true, true, true);
-			v2Mesh->load();
-		}
+            Ogre::String lodLog = "[GameObject] applyLodDistanceToItem: '" + tempMeshFile + "' LOD values before: ";
+            for (size_t i = 0; i < numLevels; ++i)
+            {
+                lodLog += Ogre::StringConverter::toString((*lodValues)[i]) + " ";
+            }
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, lodLog);
 
-		v1Mesh->unload();
-		Ogre::v1::MeshManager::getSingletonPtr()->remove(v1Mesh);
+            for (size_t i = 1; i < numLevels; ++i)
+            {
+                Ogre::Real dist = lodDistance * (static_cast<float>(i) / static_cast<float>(numReductions));
+                Ogre::Real transformed = strategy->transformUserValue(dist);
+                (*lodValues)[i] = transformed;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[GameObject] LOD level " + Ogre::StringConverter::toString(i) + " dist=" + Ogre::StringConverter::toString(dist) + " transformed=" + Ogre::StringConverter::toString(transformed));
+            }
 
-		Ogre::String path;
-		DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup(), path);
+            lodLog = "[GameObject] applyLodDistanceToItem: '" + tempMeshFile + "' LOD values after: ";
+            for (size_t i = 0; i < numLevels; ++i)
+            {
+                lodLog += Ogre::StringConverter::toString((*lodValues)[i]) + " ";
+            }
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, lodLog);
 
-		saveV2MeshToFile(tempMeshFile, v2Mesh.get());
-	}
+            item->setRenderingDistance(lodDistance);
+
+			Ogre::String vaoLog = "[GameObject] applyLodDistanceToItem: '" + tempMeshFile + "' SubMesh VAO counts: ";
+            for (unsigned int si = 0; si < v2Mesh->getNumSubMeshes(); ++si)
+            {
+                Ogre::SubMesh* sm = v2Mesh->getSubMesh(si);
+                vaoLog += "subMesh[" + Ogre::StringConverter::toString(si) + "]=" + Ogre::StringConverter::toString(static_cast<unsigned int>(sm->mVao[Ogre::VpNormal].size())) + " VAOs  ";
+            }
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, vaoLog);
+            return;
+        }
+
+        // Case 2: no LOD levels yet -- generate via v1 round-trip.
+        // Only works if the file on disk is v1 format.
+        Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+
+        if (!v1Mesh)
+        {
+            try
+            {
+                v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true,
+                    true);
+            }
+            catch (const Ogre::Exception& e)
+            {
+                // v2-native mesh with no LOD -- just apply render distance.
+                item->setRenderingDistance(lodDistance);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] applyLodDistanceToItem: '" + tempMeshFile + "' is v2-native with no LOD levels -- only renderingDistance applied. " + e.getDescription());
+                return;
+            }
+        }
+
+        if (!generateLodForMesh(tempMeshFile, v1Mesh, lodDistance))
+        {
+            item->setRenderingDistance(lodDistance);
+            v1Mesh->unload();
+            Ogre::v1::MeshManager::getSingletonPtr()->remove(v1Mesh);
+            return;
+        }
+
+        // Remove existing v2 mesh so we can re-create it with LOD.
+        Ogre::MeshManager::getSingletonPtr()->remove(v2Mesh);
+        v2Mesh.reset();
+
+        Ogre::MeshPtr newV2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(tempMeshFile, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+        newV2Mesh->load();
+
+        item->setRenderingDistance(lodDistance);
+
+        v1Mesh->unload();
+        Ogre::v1::MeshManager::getSingletonPtr()->remove(v1Mesh);
+
+        Ogre::String path;
+        DeployResourceModule::getInstance()->tagResource(tempMeshFile, newV2Mesh->getGroup(), path);
+
+        // Do NOT save to disk -- keep original v1 file intact for future LOD regeneration.
+    }
 
 	bool GameObject::generateLodForMesh(const Ogre::String& meshName, Ogre::v1::MeshPtr v1Mesh, Ogre::Real lodDistance)
-	{
-		Ogre::LodConfig lodConfig;
-		Ogre::MeshLodGenerator lodGenerator;
-		lodGenerator.getAutoconfig(v1Mesh, lodConfig);
+    {
+        Ogre::LodConfig lodConfig;
+        Ogre::MeshLodGenerator lodGenerator;
+        lodGenerator.getAutoconfig(v1Mesh, lodConfig);
 
-		if (lodConfig.levels.size() == this->lodLevels->getUInt())
-			return false; // LOD already set
+        if (lodConfig.levels.size() == this->lodLevels->getUInt())
+        {
+            return false; // LOD already set
+        }
 
-		this->lodLevels->setReadOnly(false);
-		this->lodLevels->setValue(static_cast<unsigned int>(lodConfig.levels.size()));
-		this->lodLevels->setReadOnly(true);
+        this->lodLevels->setReadOnly(false);
+        this->lodLevels->setValue(static_cast<unsigned int>(lodConfig.levels.size()));
+        this->lodLevels->setReadOnly(true);
 
-		lodConfig.strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
+        lodConfig.strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
 
-		Ogre::Real factor[3] = { 0.0f, 0.0f, 0.0f };
-		for (short i = 0; i < lodConfig.levels.size() - 1; ++i)
-		{
-			factor[i] = lodConfig.levels[i].distance / lodConfig.levels[i + 1].distance;
-		}
+        const size_t numLevels = lodConfig.levels.size();
 
-		for (short i = 0; i < lodConfig.levels.size(); ++i)
-		{
-			Ogre::Real dist = (i < lodConfig.levels.size() - 1) ? lodDistance * factor[i] : lodDistance;
-			lodConfig.levels[i].distance = lodConfig.strategy->transformUserValue(dist);
-		}
+        // Distribute LOD levels evenly from lodDistance/numLevels up to lodDistance.
+        // e.g. lodDistance=100, numLevels=4: 25, 50, 75, 100
+        for (size_t i = 0; i < numLevels; ++i)
+        {
+            Ogre::Real dist = lodDistance * (static_cast<float>(i + 1) / static_cast<float>(numLevels));
+            lodConfig.levels[i].distance = lodConfig.strategy->transformUserValue(dist);
+        }
 
-		lodGenerator.generateLodLevels(lodConfig);
-		return true;
-	}
+        lodGenerator.generateLodLevels(lodConfig);
+        return true;
+    }
 
 	void GameObject::saveV1MeshToFile(const Ogre::String& meshName, Ogre::v1::Mesh* mesh)
 	{

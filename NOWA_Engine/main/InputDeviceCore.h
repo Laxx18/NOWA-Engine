@@ -82,6 +82,10 @@ namespace NOWA
 
 		void releaseDevice(unsigned long id);
 
+		void lockDevices(bool bLock);
+
+		bool areDevicesLocked(void) const;
+
 		InputDeviceModule* getMainKeyboardInputDeviceModule(void) const;
 
 		InputDeviceModule* getKeyboardInputDeviceModule(unsigned long id) const;
@@ -152,6 +156,7 @@ namespace NOWA
 		unsigned short joystickIndex;
 
 		bool bSelectDown;
+        bool bLock;
 
 		void addDevice(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject);
 	};

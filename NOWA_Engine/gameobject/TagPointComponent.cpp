@@ -742,6 +742,12 @@ namespace NOWA
 
     void TagPointComponent::resetTagPointV2(Ogre::Item* item)
     {
+        // TODO: Is this correct?
+        if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+            return;
+        }
+
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, item]()
         {
             // Remove the tracked closure

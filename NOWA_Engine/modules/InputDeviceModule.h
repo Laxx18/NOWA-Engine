@@ -181,6 +181,8 @@ namespace NOWA
 		std::vector<JoyStickButton> getPressedButtons(void) const;
 
 		void update(Ogre::Real dt);
+
+		void lockDevice(bool bLock);
 	private:
 		InputDeviceModule(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject);
 
@@ -213,6 +215,7 @@ namespace NOWA
 		Ogre::Real timeSinceLastActionDown;
 		Ogre::Real timeSinceLastActionPressed;
 		bool canPress;
+        bool bLock;
 	};
 
 	// Shortcuts for currently mapped keys

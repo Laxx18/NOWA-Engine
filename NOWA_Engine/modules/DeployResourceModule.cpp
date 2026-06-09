@@ -450,6 +450,7 @@ namespace NOWA
             configFile << "FileSystem=../../media/NOWA/Scripts/planetterra\n";
             configFile << "FileSystem=../../media/NOWA/Scripts/planetocean\n";
             configFile << "FileSystem=../../media/NOWA/Scripts/planetsun\n";
+            configFile << "FileSystem=../../media/NOWA/Scripts/planetatmosphere\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/ocean\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/ocean/textures\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/ocean/HLSL\n";

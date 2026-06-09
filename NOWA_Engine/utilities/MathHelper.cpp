@@ -448,7 +448,137 @@ namespace NOWA
 		Ogre::Quaternion q;
 		q.FromAxes(right, up, forward); // note: Ogre uses right, up, forward
 		return q;
-	}
+    }
+
+    Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
+    {
+        // Compute ship's current world forward using the mesh's default direction.
+        Ogre::Vector3 worldFwd = currentOrient * defaultDirection;
+
+        // Project onto the surface plane to get the horizontal heading.
+        Ogre::Vector3 fwdH = worldFwd - worldFwd.dotProduct(surfaceNormal) * surfaceNormal;
+        if (fwdH.squaredLength() < 0.001f)
+        {
+            // Ship is pointing straight into or away from the planet.
+            // Fall back to ship's right axis instead.
+            Ogre::Vector3 worldRight = currentOrient * Ogre::Vector3::UNIT_X;
+            fwdH = worldRight - worldRight.dotProduct(surfaceNormal) * surfaceNormal;
+            if (fwdH.squaredLength() < 0.001f)
+            {
+                // Last resort: any direction perpendicular to the normal.
+                fwdH = surfaceNormal.perpendicular();
+            }
+        }
+        fwdH.normalise();
+
+        // R1: rotate local +Y to align with surfaceNormal.
+        // getRotationTo() handles all edge cases (parallel / anti-parallel vectors) internally.
+        Ogre::Quaternion R1 = Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
+
+        // After R1 the default forward direction lands at:
+        Ogre::Vector3 rotatedFwd = R1 * defaultDirection;
+        Ogre::Vector3 rotatedFwdH = rotatedFwd - rotatedFwd.dotProduct(surfaceNormal) * surfaceNormal;
+        if (rotatedFwdH.squaredLength() < 0.001f)
+        {
+            // Forward happens to be perfectly vertical after R1 -- no twist needed.
+            return R1;
+        }
+        rotatedFwdH.normalise();
+
+        // R2: twist around surfaceNormal so the forward heading matches fwdH.
+        Ogre::Quaternion R2 = rotatedFwdH.getRotationTo(fwdH);
+
+        // Combined orientation: align up first, then twist to correct heading.
+        return R2 * R1;
+    }
+
+	//Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
+ //   {
+ //       // Compute the ship's current forward direction in world space using the
+ //       // mesh-specific default direction set in NOWA-Design (e.g. UNIT_Z for the fighter).
+ //       Ogre::Vector3 worldFwd = currentOrient * defaultDirection;
+
+ //       // Project onto the surface plane to get the horizontal heading.
+ //       Ogre::Vector3 fwdH = worldFwd - worldFwd.dotProduct(surfaceNormal) * surfaceNormal;
+
+ //       if (fwdH.squaredLength() < 0.01f)
+ //       {
+ //           // Degenerate: ship pointing straight toward or away from the body.
+ //           // Try an alternate axis perpendicular to defaultDir to get a usable heading.
+ //           Ogre::Vector3 altLocal = (std::abs(defaultDirection.z) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
+ //           Ogre::Vector3 altWorld = currentOrient * altLocal;
+ //           fwdH = altWorld - altWorld.dotProduct(surfaceNormal) * surfaceNormal;
+ //           if (fwdH.squaredLength() < 0.01f)
+ //           {
+ //               return currentOrient;
+ //           }
+ //       }
+ //       fwdH.normalise();
+
+ //       // Build target rotation matrix.
+ //       // Column 1 (local Y) = surfaceNormal -- ship stands upright on the body.
+ //       // The column that corresponds to defaultDir is set to fwdH (or -fwdH for
+ //       // negative-direction axes) so the ship's forward stays in its original heading.
+ //       // The remaining column is derived from the cross product to maintain
+ //       // right-handedness.
+ //       //
+ //       // Handles UNIT_Z, NEGATIVE_UNIT_Z, UNIT_X, NEGATIVE_UNIT_X automatically.
+ //       Ogre::Vector3 col0, col1, col2;
+ //       col1 = surfaceNormal;
+
+ //       const float absX = std::abs(defaultDirection.x);
+ //       const float absY = std::abs(defaultDirection.y);
+ //       const float absZ = std::abs(defaultDirection.z);
+
+ //       if (absZ >= absX && absZ >= absY)
+ //       {
+ //           // Forward is along the Z axis (UNIT_Z or NEGATIVE_UNIT_Z -- most common).
+ //           // col2 = direction of local +Z in world = fwdH if UNIT_Z, -fwdH if NEGATIVE_UNIT_Z.
+ //           col2 = fwdH * (defaultDirection.z > 0.0f ? 1.0f : -1.0f);
+ //           col0 = col1.crossProduct(col2); // X = Y cross Z
+ //           if (col0.squaredLength() < 1e-6f)
+ //           {
+ //               return currentOrient;
+ //           }
+ //           col0.normalise();
+ //           col2 = col0.crossProduct(col1); // reorthogonalize Z = X cross Y
+ //           col2.normalise();
+ //       }
+ //       else if (absX >= absY)
+ //       {
+ //           // Forward is along the X axis (UNIT_X or NEGATIVE_UNIT_X).
+ //           // col0 = direction of local +X in world.
+ //           col0 = fwdH * (defaultDirection.x > 0.0f ? 1.0f : -1.0f);
+ //           col2 = col0.crossProduct(col1); // Z = X cross Y
+ //           if (col2.squaredLength() < 1e-6f)
+ //           {
+ //               return currentOrient;
+ //           }
+ //           col2.normalise();
+ //           col0 = col1.crossProduct(col2); // reorthogonalize X = Y cross Z
+ //           col0.normalise();
+ //       }
+ //       else
+ //       {
+ //           // Forward is along the Y axis -- unusual for a ship, but handle gracefully.
+ //           // Fall back: treat fwdH as Z axis.
+ //           col2 = fwdH;
+ //           col0 = col1.crossProduct(col2);
+ //           if (col0.squaredLength() < 1e-6f)
+ //           {
+ //               return currentOrient;
+ //           }
+ //           col0.normalise();
+ //           col2 = col0.crossProduct(col1);
+ //           col2.normalise();
+ //       }
+
+ //       Ogre::Matrix3 m;
+ //       m.SetColumn(0, col0);
+ //       m.SetColumn(1, col1);
+ //       m.SetColumn(2, col2);
+ //       return Ogre::Quaternion(m);
+ //   }
 
 	Ogre::Radian MathHelper::getAngle(const Ogre::Vector3& dir1, const Ogre::Vector3& dir2, const Ogre::Vector3& norm, bool signedAngle)
 	{

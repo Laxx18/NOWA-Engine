@@ -278,6 +278,16 @@ namespace NOWA
 		*/
 		Ogre::Quaternion computeDirectionQuaternion(const Ogre::Vector3& direction, const Ogre::Vector3& fallbackUp = Ogre::Vector3::UNIT_Y);
 
+		// =========================================================================
+        // computeLandingOrientation -- build target orientation for surface landing
+        //
+        // Returns a quaternion where:
+        //   local Y (up)     = surfaceNormal (outward from planet)
+        //   local -Z (fwd)   = ship's current forward projected onto surface plane
+        // This aligns the ship to the surface while preserving its heading.
+        // =========================================================================
+        Ogre::Quaternion computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection);
+
 		/**
 		 * @brief		Gets angle between two vectors. The normal of the two vectors is used in conjunction with the signed angle parameter, to determine
 		 *				whether the angle between the two vectors is negative or positive.

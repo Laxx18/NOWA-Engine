@@ -1088,6 +1088,11 @@ namespace NOWA
 
 	Ogre::Real InputDeviceModule::getSteerAxis(void)
 	{
+        if (true == this->bLock)
+        {
+            return 0.0f;
+        }
+
 		// Keyboard device: compose LEFT/RIGHT keys into an axis
 		if (InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().front() == this)
 		{
@@ -1205,6 +1210,11 @@ namespace NOWA
 
 	bool InputDeviceModule::isActionDown(InputDeviceModule::Action action)
 	{
+        if (true == this->bLock)
+        {
+            return false;
+        }
+
 		bool somethingDown = false;
 
 		// Keyboard can only be the first player ...
@@ -1263,11 +1273,21 @@ namespace NOWA
 
 	bool InputDeviceModule::isKeyDown(OIS::KeyCode keyCode) const
 	{
+        if (true == this->bLock)
+        {
+            return false;
+        }
+
 		return InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(keyCode);
 	}
 
 	bool InputDeviceModule::isActionDownAmount(InputDeviceModule::Action action, Ogre::Real dt, Ogre::Real actionDuration)
 	{
+        if (true == this->bLock)
+        {
+            return false;
+        }
+
 		if (this->timeSinceLastActionDown >= 0.0f)
 		{
 			this->timeSinceLastActionDown = this->timeSinceLastActionDown - dt;
@@ -1287,6 +1307,11 @@ namespace NOWA
 
 	bool InputDeviceModule::isActionPressed(InputDeviceModule::Action action, Ogre::Real dt, Ogre::Real durationBetweenTheAction)
 	{
+        if (true == this->bLock)
+        {
+            return false;
+        }
+
 		if (this->timeSinceLastActionPressed >= 0.0f)
 		{
 			this->timeSinceLastActionPressed = this->timeSinceLastActionPressed - dt;
@@ -1317,6 +1342,11 @@ namespace NOWA
 
 	bool InputDeviceModule::areButtonsDown2(JoyStickButton button1, JoyStickButton button2) const
 	{
+        if (true == this->bLock)
+        {
+            return false;
+        }
+
 		short pressedButtonCount = -1;
 
 		for (size_t i = 0; i < this->pressedButtons.size(); i++)
@@ -1332,6 +1362,11 @@ namespace NOWA
 
 	bool InputDeviceModule::areButtonsDown3(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3) const
 	{
+        if (true == this->bLock)
+        {
+            return false;
+        }
+
 		short pressedButtonCount = -1;
 
 		for (size_t i = 0; i < this->pressedButtons.size(); i++)
@@ -1347,6 +1382,11 @@ namespace NOWA
 
 	bool InputDeviceModule::areButtonsDown4(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3, JoyStickButton button4) const
 	{
+        if (true == this->bLock)
+        {
+            return false;
+        }
+
 		short pressedButtonCount = -1;
 
 		for (size_t i = 0; i < this->pressedButtons.size(); i++)
@@ -1362,6 +1402,11 @@ namespace NOWA
 
 	/*bool InputDeviceModule::areButtonsDown(std::vector<JoyStickButton> buttons) const
 	{
+	    if (true == this->bLock)
+        {
+            return false;
+        }
+
 		short pressedButtonCount = -1;
 
 		for (size_t i = 0; i < this->pressedButtons.size(); i++)
@@ -1390,6 +1435,11 @@ namespace NOWA
 
 	void InputDeviceModule::update(Ogre::Real dt)
 	{
+        if (true == this->bLock)
+        {
+            return;
+        }
+
 		if (true == this->isKeyboard)
 		{
 			return;
@@ -1597,7 +1647,12 @@ namespace NOWA
 
 		// Note: Buttons have priority and will overwrite pov
 		this->pressedButton = foundButton;
-	}
+    }
+
+    void InputDeviceModule::lockDevice(bool bLock)
+    {
+        this->bLock = bLock;
+    }
 
 
 } // namespace end

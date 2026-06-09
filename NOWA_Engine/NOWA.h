@@ -137,7 +137,6 @@ extern "C"
 #include "gameObject/AiComponents.h"
 #include "gameObject/PlayerControllerComponents.h"
 #include "gameObject/CameraBehaviorComponents.h"
-#include "gameObject/ProceduralComponents.h"
 #include "gameObject/LuaScriptComponent.h"
 #include "gameObject/OceanComponent.h"
 #include "gameObject/TerraComponent.h"
@@ -308,9 +307,6 @@ namespace NOWA
 	typedef boost::shared_ptr<CameraBehaviorThirdPersonComponent> CameraBehaviorThirdPersonCompPtr;
 	typedef boost::shared_ptr<CameraBehaviorFollow2DComponent> CameraBehaviorFollow2DCompPtr;
 	typedef boost::shared_ptr<CameraBehaviorZoomComponent> CameraBehaviorZoomCompPtr;
-
-	typedef boost::shared_ptr<ProceduralPrimitiveComponent> ProceduralPrimitiveCompPtr;
-	typedef boost::shared_ptr<ProceduralBooleanComponent> ProceduralBooleanCompPtr;
 
 	// MYGUI
 	typedef boost::shared_ptr<MyGUIWindowComponent> MyGUIWindowCompPtr;

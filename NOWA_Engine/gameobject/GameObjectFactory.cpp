@@ -66,7 +66,6 @@
 #include "AiComponents.h"
 #include "PlayerControllerComponents.h"
 #include "CameraBehaviorComponents.h"
-#include "ProceduralComponents.h"
 #include "LuaScriptComponent.h"
 #include "OceanComponent.h"
 #include "TerraComponent.h"
@@ -255,10 +254,6 @@ namespace NOWA
 		this->componentFactory.registerClass<CameraBehaviorThirdPersonComponent>(CameraBehaviorThirdPersonComponent::getStaticClassId(), CameraBehaviorThirdPersonComponent::getStaticClassName());
 		this->componentFactory.registerClass<CameraBehaviorFollow2DComponent>(CameraBehaviorFollow2DComponent::getStaticClassId(), CameraBehaviorFollow2DComponent::getStaticClassName());
 		this->componentFactory.registerClass<CameraBehaviorZoomComponent>(CameraBehaviorZoomComponent::getStaticClassId(), CameraBehaviorZoomComponent::getStaticClassName());
-		
-		// Procedural Components
-		this->componentFactory.registerClass<ProceduralPrimitiveComponent>(ProceduralPrimitiveComponent::getStaticClassId(), ProceduralPrimitiveComponent::getStaticClassName());
-		this->componentFactory.registerClass<ProceduralBooleanComponent>(ProceduralBooleanComponent::getStaticClassId(), ProceduralBooleanComponent::getStaticClassName());
 
 		// MYGUI Components
 		this->componentFactory.registerClass<MyGUIWindowComponent>(MyGUIWindowComponent::getStaticClassId(), MyGUIWindowComponent::getStaticClassName());
@@ -551,18 +546,19 @@ namespace NOWA
 				{
 					gameObjectPtr->setRenderQueueIndex(renderQueueIndex);
 				}
-				if (true == renderDistanceSet)
-				{
-					gameObjectPtr->setRenderDistance(renderDistance);
-				}
-				if (true == shadowRenderingDistanceSet)
-				{
-					gameObjectPtr->setShadowRenderingDistance(shadowRenderingDistance);
-				}
-				// Do not set via setter, because else the lod distance is re-calculated, but its just required to re-calculate if the user sets a different distance.
-				gameObjectPtr->lodLevels->setValue(lodLevels);
-				gameObjectPtr->lodDistance->setValue(lodDistance);
-				gameObjectPtr->setDataBlocks(dataBlocks);
+                gameObjectPtr->bIsLoadingFromFile = true;
+                if (true == renderDistanceSet)
+                {
+                    gameObjectPtr->setRenderDistance(renderDistance);
+                }
+                if (true == shadowRenderingDistanceSet)
+                {
+                    gameObjectPtr->setShadowRenderingDistance(shadowRenderingDistance);
+                }
+                gameObjectPtr->lodLevels->setValue(lodLevels);
+                gameObjectPtr->lodDistance->setValue(lodDistance);
+                gameObjectPtr->bIsLoadingFromFile = false;
+                gameObjectPtr->setDataBlocks(dataBlocks);
 			}
 			if (!gameObjectPtr->init())
 			{

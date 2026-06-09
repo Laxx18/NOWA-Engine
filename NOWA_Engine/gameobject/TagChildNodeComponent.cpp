@@ -69,11 +69,13 @@ namespace NOWA
 	}
 
 	bool TagChildNodeComponent::connect(void)
-	{
-// Here when in post init add child, so that object cann be moved in editor directly
-		// if source id = 0 and one was a child, remove the child! resolve groups!
-		if (false == alreadyConnected)
-		{
+    {
+        GameObjectComponent::connect();
+        // sourceId points to the parent GameObject (e.g. the spaceship).
+        // This component's GameObject (e.g. a spotlight) becomes a child of that parent node.
+        // Ogre's scene graph then carries this node along automatically -- no update() required.
+        if (false == this->alreadyConnected)
+        {
             GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
 
             if (nullptr == sourceGameObjectPtr)
@@ -81,60 +83,70 @@ namespace NOWA
                 return false;
             }
 
-			ENQUEUE_RENDER_COMMAND_MULTI(
-                "TagChildNodeComponent::connect", _1(sourceGameObjectPtr),
-			{
-				this->sourceChildNode = sourceGameObjectPtr->getSceneNode();
+            GraphicsModule::RenderCommand renderCommand = [this, sourceGameObjectPtr]()
+            {
+                Ogre::SceneNode* ownNode = this->gameObjectPtr->getSceneNode();
+                Ogre::SceneNode* newParentNode = sourceGameObjectPtr->getSceneNode();
 
-				// Remember the old position for disconnection
-				this->oldSourceChildPosition = this->sourceChildNode->getPosition();
-				this->oldSourceChildOrientation = this->sourceChildNode->getOrientation();
+                // Remember world-space transform so disconnect can restore it exactly
+                this->oldSourceChildPosition = ownNode->_getDerivedPosition();
+                this->oldSourceChildOrientation = ownNode->_getDerivedOrientation();
 
-				Ogre::Vector3 resultPosition = this->sourceChildNode->getPosition();
-				Ogre::Quaternion resultOrientation = this->sourceChildNode->getOrientation();
+                // Remember the original parent so disconnect can re-attach there
+                this->sourceParentOfChildNode = ownNode->getParent();
+                this->sourceChildNode = ownNode;
 
-				// Remove from source
-				this->sourceParentOfChildNode = this->sourceChildNode->getParent();
-				this->sourceParentOfChildNode->removeChild(this->sourceChildNode);
-				// Add as child to this one
-				this->gameObjectPtr->getSceneNode()->addChild(this->sourceChildNode);
+                // Compute the local transform relative to the new parent so the node stays
+                // at exactly the world-space position it was placed at in the editor.
+                // E.g. if the spotlight was placed at the cockpit, it stays at the cockpit offset.
+                Ogre::Quaternion parentWorldOrient = newParentNode->_getDerivedOrientation();
+                Ogre::Vector3 parentWorldPos = newParentNode->_getDerivedPosition();
 
-				// Set the new transform
-				this->sourceChildNode->setOrientation(resultOrientation * this->gameObjectPtr->getSceneNode()->getOrientation().Inverse());
-				this->sourceChildNode->setPosition(resultPosition - this->gameObjectPtr->getSceneNode()->getPosition());
-				this->sourceChildNode->setInheritScale(false);
+                Ogre::Vector3 localPos = parentWorldOrient.Inverse() * (this->oldSourceChildPosition - parentWorldPos);
+                Ogre::Quaternion localOrient = parentWorldOrient.Inverse() * this->oldSourceChildOrientation;
 
-				resultPosition = this->sourceChildNode->getPosition();
-				resultOrientation = this->sourceChildNode->getOrientation();
+                // Re-parent: detach from current parent, attach under the spaceship node
+                this->sourceParentOfChildNode->removeChild(ownNode);
+                newParentNode->addChild(ownNode);
 
-				this->alreadyConnected = true;
-			});
-		}
-		return true;
-	}
+                ownNode->setPosition(localPos);
+                ownNode->setOrientation(localOrient);
+                ownNode->setInheritScale(false);
 
-	bool TagChildNodeComponent::disconnect(void)
-	{
-		GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
-		if (nullptr != sourceGameObjectPtr)
-		{
-			if (nullptr != this->sourceChildNode)
-			{
-				ENQUEUE_RENDER_COMMAND("TagChildNodeComponent::disconnect",
-				{
-					// Remove from this one
-					this->sourceChildNode->getParent()->removeChild(this->sourceChildNode);
-					// This is tricky: Source was the scene node directly, so get its parent, which sould be the world node and add as child
-					this->sourceParentOfChildNode->addChild(this->sourceChildNode);
-					this->sourceChildNode->setOrientation(this->oldSourceChildOrientation);
-					this->sourceChildNode->setPosition(this->oldSourceChildPosition);
+                this->alreadyConnected = true;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagChildNodeComponent::connect");
+        }
+        return true;
+    }
 
-					this->alreadyConnected = false;
-				});
-			}
-		}
-		return true;
-	}
+    bool TagChildNodeComponent::disconnect(void)
+    {
+        GameObjectComponent::disconnect();
+        if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+            return true;
+        }
+
+        if (nullptr != this->sourceChildNode && nullptr != this->sourceParentOfChildNode)
+        {
+            GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                // Detach this node from the spaceship
+                this->sourceChildNode->getParent()->removeChild(this->sourceChildNode);
+                // Re-attach to original parent (e.g. root scene node)
+                this->sourceParentOfChildNode->addChild(this->sourceChildNode);
+                // Restore original world-space transform
+                this->sourceChildNode->setPosition(this->oldSourceChildPosition);
+                this->sourceChildNode->setOrientation(this->oldSourceChildOrientation);
+                this->sourceChildNode->setInheritScale(true);
+
+                this->alreadyConnected = false;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagChildNodeComponent::disconnect");
+        }
+        return true;
+    }
 
 	bool TagChildNodeComponent::onCloned(void)
 	{

@@ -21,6 +21,7 @@ namespace NOWA
 		name("AtmosphereComponent"),
 		activated(new Variant(AtmosphereComponent::AttrActivated(), true, this->attributes)),
 		enableSky(new Variant(AtmosphereComponent::AttrEnableSky(), true, this->attributes)),
+        showSun(new Variant(AtmosphereComponent::AttrShowSun(), true, this->attributes)),
 		startTime(new Variant(AtmosphereComponent::AttrStartTime(), Ogre::String("12:00"), this->attributes)),
 		timeMultiplicator(new Variant(AtmosphereComponent::AttrTimeMultiplicator(), 0.01f, this->attributes)),
 		lightDirectionalComponent(nullptr),
@@ -29,10 +30,13 @@ namespace NOWA
 		azimuth(0.0f),
 		hasLoaded(false),
 		dayTimeCurrentMinutes(0),
-		oldLightDirection(Ogre::Vector3(-1.0f, -1.0f, -1.0f))
+		oldLightDirection(Ogre::Vector3(-1.0f, -1.0f, -1.0f)),
+        externalLightMode(false),
+		cachedExternalSunDir(Ogre::Vector3::UNIT_Y)
 	{
 		this->activated->setDescription("If activated, the atmospheric effects will take place.");
 		this->enableSky->setDescription("Sets whether sky is enabled and visible.");
+        this->showSun->setDescription("Sets whether sun is shown.");
 		this->startTime->setDescription("Sets the start time in format hh:mm e.g. 03:15 is at night and 13:30 is at day and 23:59 is midnight.");
 		this->timeMultiplicator->setDescription("Sets the time multiplier. How long a day lasts. Default value is 1. Setting e.g. to 2, the day goes by twice as fast. Range [0.1; 5].");
 
@@ -483,6 +487,11 @@ namespace NOWA
 			this->enableSky->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShowSun")
+        {
+            this->showSun->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartTime")
 		{
 			this->setStartTime(XMLConverter::getAttrib(propertyElement, "data"));
@@ -800,133 +809,98 @@ namespace NOWA
 			return false;
 		}
 
-		NOWA::GraphicsModule::RenderCommand cmd = [this]()
+		if (true == this->activated->getBool())
         {
-            if (nullptr != this->atmosphereNpr)
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
-                this->atmosphereNpr->setLight(nullptr);
-                delete this->atmosphereNpr;
-                this->atmosphereNpr = nullptr;
-            }
+                if (nullptr != this->atmosphereNpr)
+                {
+                    this->atmosphereNpr->setLight(nullptr);
+                    delete this->atmosphereNpr;
+                    this->atmosphereNpr = nullptr;
+                }
 
-            this->atmosphereNpr = new Ogre::AtmosphereNpr(this->gameObjectPtr->getSceneManager()->getDestinationRenderSystem()->getVaoManager());
+                this->atmosphereNpr = new Ogre::AtmosphereNpr(this->gameObjectPtr->getSceneManager()->getDestinationRenderSystem()->getVaoManager());
 
-            this->oldLightDirection = this->lightDirectionalComponent->getDirection();
-            // Todo: If terra is set, update for terra, see sample
-            this->atmosphereNpr->setLight(this->lightDirectionalComponent->getOgreLight());
+                this->oldLightDirection = this->lightDirectionalComponent->getDirection();
+                // Todo: If terra is set, update for terra, see sample
+                this->atmosphereNpr->setLight(this->lightDirectionalComponent->getOgreLight());
 
-            {
-                // Preserve the Power Scale explicitly set by the sample
-                Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-                preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
-                this->atmosphereNpr->setPreset(preset);
-            }
+                {
+                    // Preserve the Power Scale explicitly set by the sample
+                    Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+                    preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
+                    this->atmosphereNpr->setPreset(preset);
+                }
 
-            this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), this->enableSky->getBool());
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::postInit");
+                this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), this->enableSky->getBool());
+                this->setShowSun(this->showSun->getBool());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::postInit");
+        }
 
 		return true;
 	}
 
 	void AtmosphereComponent::onRemoveComponent(void)
-	{
-		GameObjectComponent::onRemoveComponent();
+    {
+        GameObjectComponent::onRemoveComponent();
 
-		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
-		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
-
-		id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
-		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
-
-		if (this->atmosphereNpr == nullptr)
-		{
-			return;
-		}
-
-		Ogre::AtmosphereNpr* atmosphereNpr = this->atmosphereNpr;
-
-		// Clear pointers on *this* immediately
-		this->atmosphereNpr = nullptr;
-
-		NOWA::GraphicsModule::RenderCommand cmd = [this, &atmosphereNpr]()
-        {
-            if (atmosphereNpr)
-            {
-                delete atmosphereNpr;
-                atmosphereNpr = nullptr;
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::destroyTerra");
-	}
+        this->resetAtmosphere();
+    }
 
 	bool AtmosphereComponent::connect(void)
 	{
-		this->setStartTime(this->startTime->getString());
-
-		Ogre::AtmosphereNpr::PresetArray presets;
-
-		for (size_t i = 0; i < this->times.size(); i++)
-		{
-			presets.push_back(Ogre::AtmosphereNpr::Preset());
-			presets.back().time = this->convertTime(this->times[i]->getString());
-			presets.back().densityCoeff = this->densityCoefficients[i]->getReal();
-			presets.back().densityDiffusion = this->densityDiffusions[i]->getReal();
-			presets.back().horizonLimit = this->horizonLimits[i]->getReal();
-			presets.back().sunPower = this->sunPowers[i]->getReal();
-			if (true == this->enableSky->getBool())
-			{
-				presets.back().skyPower = this->skyPowers[i]->getReal();
-				presets.back().skyColour = this->skyColors[i]->getVector3();
-			}
-			presets.back().fogDensity = this->fogDensities[i]->getReal();
-			presets.back().fogBreakMinBrightness = this->fogBreakMinBrightnesses[i]->getReal();
-			presets.back().fogBreakFalloff = this->fogBreakFalloffs[i]->getReal();
-			presets.back().linkedLightPower = this->linkedLightPowers[i]->getReal();
-			presets.back().linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[i]->getReal();
-			presets.back().linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[i]->getReal();
-			presets.back().envmapScale = this->envmapScales[i]->getReal();
-		}
-
-		NOWA::GraphicsModule::RenderCommand cmd = [this, presets]()
-        {
-            this->atmosphereNpr->setPresets(presets);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::connect");
-
-		// this->lightDirectionalComponent->setPowerScale(presets.front().sunPower);
+        this->setActivated(this->activated->getBool());
 
 		return true;
 	}
 
 	bool AtmosphereComponent::disconnect(void)
-	{
-		this->setStartTime(this->startTime->getString());
+    {
+        this->setStartTime(this->startTime->getString());
 
-		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
-		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
-		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+        id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		// TODO: Reset to start time and convert timeOfDay variable
-		if (nullptr != this->atmosphereNpr)
-		{
-			this->update(0.016, false);
+        if (nullptr != this->atmosphereNpr)
+        {
+            this->update(0.016f, false);
+        }
+
+		if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+			// Guard: lightDirectionalComponent or its light may already be destroyed
+			// during scene teardown. Capture a nullable raw pointer and check inside.
+			Ogre::Light* light = nullptr;
+			if (nullptr != this->lightDirectionalComponent)
+			{
+				light = this->lightDirectionalComponent->getOgreLight();
+			}
+
+			if (nullptr != light)
+			{
+				Ogre::Vector3 oldDir = this->oldLightDirection;
+				NOWA::GraphicsModule::RenderCommand cmd = [light, oldDir]()
+				{
+                
+					light->setDirection(oldDir);
+				};
+				NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::disconnect");
+			}
 		}
 
-		NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            this->lightDirectionalComponent->getOgreLight()->setDirection(this->oldLightDirection);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::disconnect");
+        this->resetAtmosphere();
 
-		return true;
-	}
+        return true;
+    }
 
 	void AtmosphereComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating)
+		if (false == notSimulating && true == this->activated->getBool())
 		{
 			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
 
@@ -974,40 +948,45 @@ namespace NOWA
 			this->azimuth += this->timeMultiplicator->getReal() * dt;
 			this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
-			auto closureFunction2 = [this](Ogre::Real renderDt)
-				{
-					const float sunAngle = this->timeOfDay * Ogre::Math::PI;
-					const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
-					const Ogre::Vector3 sunDir((Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy());
+			auto closureFunction2 = [sunDir = Ogre::Vector3(/* computed below */), atmosphereTime01 = float(0.0f), atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(),
+                                        lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(), defaultDir = this->lightDirectionalComponent->getOwner()->getDefaultDirection(), externalLightMode = this->externalLightMode,
+                                        cachedSunDir = this->cachedExternalSunDir, timeOfDay = this->timeOfDay, azimuth = this->azimuth](Ogre::Real renderDt) mutable
+            {
+                // Everything is a local copy — no this, no dangling pointers
+                Ogre::Vector3 sd;
+                if (false == externalLightMode)
+                {
+                    const float sunAngle = timeOfDay * Ogre::Math::PI;
+                    const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
+                    sd = (Ogre::Quaternion(Ogre::Radian(azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy();
 
-					Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(
-						this->lightDirectionalComponent->getOwner()->getSceneNode()->getOrientation(),
-						sunDir,
-						lightDirectionalComponent->getOwner()->getDefaultDirection(),
-						renderDt,
-						60.0f);
-					this->lightDirectionalComponent->getOwner()->getSceneNode()->_setDerivedOrientation(newOrientation);
+                    Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(lightNode->getOrientation(), sd, defaultDir, renderDt, 60.0f);
+                    lightNode->_setDerivedOrientation(newOrientation);
+                }
+                else
+                {
+                    sd = cachedSunDir;
+                    if (sd.squaredLength() > 0.0f)
+                    {
+                        sd.normalise();
+                    }
+                }
 
-					// AtmosphereNpr expects [0..1), NOT [-1..1]
-					float atmosphereTime01 = (this->timeOfDay + 1.0f) * 0.5f;
+                float time01 = (timeOfDay + 1.0f) * 0.5f;
+                time01 = Ogre::Math::Clamp(time01, 0.0f, 0.999999f);
 
-					// Clamp defensively (important!)
-                atmosphereTime01 = Ogre::Math::Clamp(atmosphereTime01, 0.0f, 0.999999f);
-
-                this->atmosphereNpr->updatePreset(sunDir, atmosphereTime01);
+                atmosphereNpr->updatePreset(sd, time01);
 
                 Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
                 if (nullptr != camera)
                 {
-                    this->atmosphereNpr->_update(this->gameObjectPtr->getSceneManager(), NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera());
+                    atmosphereNpr->_update(sceneManager, camera);
                 }
             };
-            id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
-            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction2, false);
 
 			if (true == this->bShowDebugData)
 			{
-				Ogre::String time = getCurrentTimeOfDay();  // <-- MOVED HERE!
+				Ogre::String time = getCurrentTimeOfDay();
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
 					"[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
@@ -1081,7 +1060,35 @@ namespace NOWA
 			}
 		}
 		return normalizedTime;
-	}
+    }
+
+    void AtmosphereComponent::resetAtmosphere(void)
+    {
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+        id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+        if (nullptr == this->atmosphereNpr)
+        {
+            return;
+        }
+
+        // Capture by value — never capture a pointer-to-local by reference across async boundaries
+        Ogre::AtmosphereNpr* atmosphereNpr = this->atmosphereNpr;
+        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+
+        this->atmosphereNpr = nullptr;
+
+        NOWA::GraphicsModule::RenderCommand cmd = [atmosphereNpr, sceneManager]()
+        {
+            atmosphereNpr->setSky(sceneManager, false);
+            atmosphereNpr->setLight(nullptr);
+            delete atmosphereNpr;
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::resetAtmosphere");
+    }
 
 	Ogre::String AtmosphereComponent::getCurrentTimeOfDay(void)
 	{
@@ -1138,6 +1145,10 @@ namespace NOWA
 		{
 			this->setEnableSky(attribute->getBool());
 		}
+        else if (AtmosphereComponent::AttrShowSun() == attribute->getName())
+        {
+            this->setShowSun(attribute->getBool());
+        }
 		else if (AtmosphereComponent::AttrStartTime() == attribute->getName())
 		{
 			this->setStartTime(attribute->getString());
@@ -1236,6 +1247,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "EnableSky"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->enableSky->getBool())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ShowSun"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->showSun->getBool())));
+        propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -1356,8 +1373,7 @@ namespace NOWA
 	bool AtmosphereComponent::canStaticAddComponent(GameObject* gameObject)
 	{
 		auto atmosphereCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<AtmosphereComponent>());
-		// Constraints: Can only be placed under a main light object and only once
-		if (gameObject->getId() == GameObjectController::MAIN_LIGHT_ID && nullptr == atmosphereCompPtr)
+		if (nullptr == atmosphereCompPtr)
 		{
 			return true;
 		}
@@ -1365,9 +1381,103 @@ namespace NOWA
 	}
 
 	void AtmosphereComponent::setActivated(bool activated)
-	{
-		this->activated->setValue(activated);
-	}
+    {
+        this->activated->setValue(activated);
+
+        if (true == this->activated->getBool())
+        {
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                if (nullptr != this->atmosphereNpr)
+                {
+                    this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), false);
+                    this->atmosphereNpr->setLight(nullptr);
+                    delete this->atmosphereNpr;
+                    this->atmosphereNpr = nullptr;
+                }
+
+                this->atmosphereNpr = new Ogre::AtmosphereNpr(this->gameObjectPtr->getSceneManager()->getDestinationRenderSystem()->getVaoManager());
+
+                this->oldLightDirection = this->lightDirectionalComponent->getDirection();
+                this->atmosphereNpr->setLight(this->lightDirectionalComponent->getOgreLight());
+
+                {
+                    Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+                    preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
+                    this->atmosphereNpr->setPreset(preset);
+                }
+
+                this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), this->enableSky->getBool());
+                this->setShowSun(this->showSun->getBool());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setActivated_on");
+
+            this->setStartTime(this->startTime->getString());
+
+            Ogre::AtmosphereNpr::PresetArray presets;
+            const bool bShowSun = this->showSun->getBool();
+
+            for (size_t i = 0; i < this->times.size(); i++)
+            {
+                presets.push_back(Ogre::AtmosphereNpr::Preset());
+                presets.back().time = this->convertTime(this->times[i]->getString());
+                presets.back().densityCoeff = this->densityCoefficients[i]->getReal();
+                presets.back().densityDiffusion = this->densityDiffusions[i]->getReal();
+                presets.back().horizonLimit = this->horizonLimits[i]->getReal();
+                presets.back().sunPower = bShowSun ? this->sunPowers[i]->getReal() : 0.0f;
+                if (true == this->enableSky->getBool())
+                {
+                    presets.back().skyPower = this->skyPowers[i]->getReal();
+                    presets.back().skyColour = this->skyColors[i]->getVector3();
+                }
+                presets.back().fogDensity = this->fogDensities[i]->getReal();
+                presets.back().fogBreakMinBrightness = this->fogBreakMinBrightnesses[i]->getReal();
+                presets.back().fogBreakFalloff = this->fogBreakFalloffs[i]->getReal();
+                presets.back().linkedLightPower = bShowSun ? this->linkedLightPowers[i]->getReal() : 0.0f;
+                presets.back().linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[i]->getReal();
+                presets.back().linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[i]->getReal();
+                presets.back().envmapScale = this->envmapScales[i]->getReal();
+            }
+
+            NOWA::GraphicsModule::RenderCommand cmd2 = [this, presets]()
+            {
+                this->atmosphereNpr->setPresets(presets);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd2), "AtmosphereComponent::setActivated_presets");
+        }
+        else
+        {
+            // Disable sky rendering state first, then tear down
+            if (nullptr != this->atmosphereNpr)
+            {
+                Ogre::AtmosphereNpr* atmosphereNpr = this->atmosphereNpr;
+                Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+                Ogre::Light* ogreLight = this->lightDirectionalComponent->getOgreLight();
+                const Ogre::Vector3 restoreDir = this->oldLightDirection;
+
+                this->atmosphereNpr = nullptr;
+
+                NOWA::GraphicsModule::RenderCommand cmd = [atmosphereNpr, sceneManager, ogreLight, restoreDir]()
+                {
+                    // Turn off sky so Ogre stops rendering the sky pass
+                    atmosphereNpr->setSky(sceneManager, false);
+                    // Detach from light so the light no longer drives atmosphere updates
+                    atmosphereNpr->setLight(nullptr);
+                    // Restore original light direction
+                    ogreLight->setDirection(restoreDir);
+                    delete atmosphereNpr;
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setActivated_off");
+            }
+
+            // Remove render-thread closures so update() stops submitting work
+            Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+            NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+            id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+            NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+        }
+    }
 
 	bool AtmosphereComponent::isActivated(void) const
 	{
@@ -1388,7 +1498,53 @@ namespace NOWA
 	bool AtmosphereComponent::getEnableSky(void) const
 	{
 		return this->enableSky->getBool();
-	}
+    }
+
+    void AtmosphereComponent::setShowSun(bool showSun)
+    {
+        this->showSun->setValue(showSun);
+
+        // Only reapply presets if currently active — avoids touching a null atmosphereNpr
+        if (false == this->activated->getBool() || nullptr == this->atmosphereNpr)
+        {
+            return;
+        }
+
+        Ogre::AtmosphereNpr::PresetArray presets;
+
+        for (size_t i = 0; i < this->times.size(); i++)
+        {
+            presets.push_back(Ogre::AtmosphereNpr::Preset());
+            presets.back().time = this->convertTime(this->times[i]->getString());
+            presets.back().densityCoeff = this->densityCoefficients[i]->getReal();
+            presets.back().densityDiffusion = this->densityDiffusions[i]->getReal();
+            presets.back().horizonLimit = this->horizonLimits[i]->getReal();
+            presets.back().sunPower = showSun ? this->sunPowers[i]->getReal() : 0.0f;
+            if (true == this->enableSky->getBool())
+            {
+                presets.back().skyPower = this->skyPowers[i]->getReal();
+                presets.back().skyColour = this->skyColors[i]->getVector3();
+            }
+            presets.back().fogDensity = this->fogDensities[i]->getReal();
+            presets.back().fogBreakMinBrightness = this->fogBreakMinBrightnesses[i]->getReal();
+            presets.back().fogBreakFalloff = this->fogBreakFalloffs[i]->getReal();
+            presets.back().linkedLightPower = showSun ? this->linkedLightPowers[i]->getReal() : 0.0f;
+            presets.back().linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[i]->getReal();
+            presets.back().linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[i]->getReal();
+            presets.back().envmapScale = this->envmapScales[i]->getReal();
+        }
+
+        NOWA::GraphicsModule::RenderCommand cmd = [this, presets]()
+        {
+            this->atmosphereNpr->setPresets(presets);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setShowSun");
+    }
+
+    bool AtmosphereComponent::getShowSun(void) const
+    {
+        return this->showSun->getBool();
+    }
 
 	void AtmosphereComponent::setTimeMultiplicator(Ogre::Real timeMultiplicator)
 	{
@@ -1981,7 +2137,24 @@ namespace NOWA
 	Ogre::Vector3 AtmosphereComponent::getAtmosphereAt(const Ogre::Vector3& cameraDir, bool bSkipSun)
 	{
 		return this->atmosphereNpr->getAtmosphereAt(cameraDir, bSkipSun);
-	}
+    }
+
+    void AtmosphereComponent::setExternalLightMode(bool external)
+    {
+        this->externalLightMode = external;
+    }
+
+    bool AtmosphereComponent::isExternalLightMode(void) const
+    {
+        return this->externalLightMode;
+    }
+
+    void AtmosphereComponent::updateExternalSunDirection(const Ogre::Vector3& dir)
+    {
+        // Called from UniversumComponent::update() on the logic thread.
+        // The render closure in update() will pick this up next frame.
+        this->cachedExternalSunDir = dir;
+    }
 
 	// Lua registration part
 

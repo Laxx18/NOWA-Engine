@@ -53,8 +53,19 @@ namespace NOWA
 
         // Read directly from the physics body — NOT from the SceneNode.
         // SceneNode is updated by the render thread one frame later.
-        Ogre::Vector3 playerPosition = this->sceneNode->_getDerivedPositionUpdated();
-        Ogre::Quaternion playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
+        Ogre::Vector3 playerPosition;
+        Ogre::Quaternion playerOrientation;
+
+        if (nullptr != this->physicsBody)
+        {
+            playerPosition = this->physicsBody->getPosition();
+            playerOrientation = this->physicsBody->getOrientation();
+        }
+        else
+        {
+            playerPosition = this->sceneNode->_getDerivedPositionUpdated();
+            playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
+        }
 
         // Everything below unchanged
         Ogre::Vector3 localUp = surfaceNormal;

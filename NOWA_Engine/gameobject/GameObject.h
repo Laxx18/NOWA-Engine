@@ -1086,6 +1086,8 @@ namespace NOWA
 
 		std::vector<std::pair<GameObjectCompPtr, bool>> delayedAddCommponentList;
 		Ogre::Real timeSinceLastUpdate;
+
+		bool bIsLoadingFromFile;
 	};
 
 }; // namespace end

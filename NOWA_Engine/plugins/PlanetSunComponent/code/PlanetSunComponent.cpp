@@ -228,7 +228,10 @@ namespace NOWA
                 {
                     if (nullptr != this->sun)
                     {
-                        this->sun->recreate(this->radius->getReal(), static_cast<int>(this->segmentsH->getUInt()), static_cast<int>(this->segmentsV->getUInt()), this->gameObjectPtr->getSceneNode(), this->datablock->getString());
+                        const float lodDist = static_cast<float>(this->gameObjectPtr->getLodDistance());
+                        const float renderDist = static_cast<float>(this->gameObjectPtr->getRenderDistance());
+                        const float effectiveLodDist = (lodDist > 0.0f) ? lodDist : (renderDist > 0.0f) ? renderDist : this->radius->getReal() * 4.0f;
+                        this->sun->recreate(this->radius->getReal(), static_cast<int>(this->segmentsH->getUInt()), static_cast<int>(this->segmentsV->getUInt()), this->gameObjectPtr->getSceneNode(), this->datablock->getString(), effectiveLodDist);
                     }
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetSunComponent::setSegmentsH");
@@ -243,7 +246,10 @@ namespace NOWA
                 {
                     if (nullptr != this->sun)
                     {
-                        this->sun->recreate(this->radius->getReal(), static_cast<int>(this->segmentsH->getUInt()), static_cast<int>(this->segmentsV->getUInt()), this->gameObjectPtr->getSceneNode(), this->datablock->getString());
+                        const float lodDist = static_cast<float>(this->gameObjectPtr->getLodDistance());
+                        const float renderDist = static_cast<float>(this->gameObjectPtr->getRenderDistance());
+                        const float effectiveLodDist = (lodDist > 0.0f) ? lodDist : (renderDist > 0.0f) ? renderDist : this->radius->getReal() * 4.0f;
+                        this->sun->recreate(this->radius->getReal(), static_cast<int>(this->segmentsH->getUInt()), static_cast<int>(this->segmentsV->getUInt()), this->gameObjectPtr->getSceneNode(), this->datablock->getString(), effectiveLodDist);
                     }
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetSunComponent::setSegmentsV");
@@ -258,7 +264,10 @@ namespace NOWA
                 {
                     if (nullptr != this->sun)
                     {
-                        this->sun->recreate(this->radius->getReal(), static_cast<int>(this->segmentsH->getUInt()), static_cast<int>(this->segmentsV->getUInt()), this->gameObjectPtr->getSceneNode(), this->datablock->getString());
+                        const float lodDist = static_cast<float>(this->gameObjectPtr->getLodDistance());
+                        const float renderDist = static_cast<float>(this->gameObjectPtr->getRenderDistance());
+                        const float effectiveLodDist = (lodDist > 0.0f) ? lodDist : (renderDist > 0.0f) ? renderDist : this->radius->getReal() * 4.0f;
+                        this->sun->recreate(this->radius->getReal(), static_cast<int>(this->segmentsH->getUInt()), static_cast<int>(this->segmentsV->getUInt()), this->gameObjectPtr->getSceneNode(), this->datablock->getString(), effectiveLodDist);
                     }
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetSunComponent::setDatablock");
@@ -406,7 +415,10 @@ namespace NOWA
 
         NOWA::GraphicsModule::RenderCommand cmd = [this, r, sH, sV, db, ec, dc, rou, aspd, psc]()
         {
-            if (false == this->sun->create(r, sH, sV, this->gameObjectPtr->getSceneNode(), db))
+            const float lodDist = static_cast<float>(this->gameObjectPtr->getLodDistance());
+            const float renderDist = static_cast<float>(this->gameObjectPtr->getRenderDistance());
+            const float effectiveLodDist = (lodDist > 0.0f) ? lodDist : (renderDist > 0.0f) ? renderDist : this->radius->getReal() * 4.0f;
+            if (false == this->sun->create(r, sH, sV, this->gameObjectPtr->getSceneNode(), db, effectiveLodDist))
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetSunComponent] Failed to create sun for '" + this->gameObjectPtr->getName() + "'.");
                 return;
@@ -495,7 +507,10 @@ namespace NOWA
         NOWA::GraphicsModule::RenderCommand cmd = [this, r]()
         {
             this->gameObjectPtr->nullMovableObject();
-            this->sun->recreate(r, static_cast<int>(this->segmentsH->getUInt()), static_cast<int>(this->segmentsV->getUInt()), this->gameObjectPtr->getSceneNode(), this->datablock->getString());
+            const float lodDist = static_cast<float>(this->gameObjectPtr->getLodDistance());
+            const float renderDist = static_cast<float>(this->gameObjectPtr->getRenderDistance());
+            const float effectiveLodDist = (lodDist > 0.0f) ? lodDist : (renderDist > 0.0f) ? renderDist : this->radius->getReal() * 4.0f;
+            this->sun->recreate(r, static_cast<int>(this->segmentsH->getUInt()), static_cast<int>(this->segmentsV->getUInt()), this->gameObjectPtr->getSceneNode(), this->datablock->getString(), effectiveLodDist);
             this->gameObjectPtr->init(this->sun->getItem());
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetSunComponent::setRadius");

@@ -121,6 +121,8 @@ namespace NOWA
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrSourceId(void) { return "Source Id"; }
 	protected:
+        virtual void onActivatedChanged(bool activated);
+
 		virtual void controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller) { };
 
 		void activateController(bool bActivate);
@@ -132,6 +134,7 @@ namespace NOWA
 		MyGUIComponent* sourceMyGUIComponent;
 		Ogre::Real elapsedTime;
 		Ogre::Vector4 oldCoordinate;
+        bool isSimulating;
 	};
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -231,6 +234,8 @@ namespace NOWA
 		static const Ogre::String AttrFunction(void) { return "Function"; }
 		static const Ogre::String AttrDurationSec(void) { return "Duration (Sec)"; }
 	protected:
+        virtual void onActivatedChanged(bool activated) override;
+
 		virtual void controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller) override;
 
 		void onFrameUpdate(MyGUI::Widget* widget, MyGUI::ControllerItem* controller);
@@ -332,11 +337,14 @@ namespace NOWA
 		static const Ogre::String AttrAlpha(void) { return "Target Alpha"; }
 		static const Ogre::String AttrCoefficient(void) { return "Coefficient"; }
 	protected:
+        virtual void onActivatedChanged(bool activated) override;
+
 		void controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller);
 	private:
 		Variant* alpha;
 		Variant* coefficient;
 		Ogre::Real oldAlpha;
+        bool isCurrentlyFadingOut;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -459,6 +467,8 @@ namespace NOWA
 		static const Ogre::String AttrMessage(void) { return "Message "; }
 		static const Ogre::String AttrDurationSec(void) { return "Duration (Sec)"; }
 	protected:
+        virtual void onActivatedChanged(bool activated) override;
+
 		virtual void controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller) override { };
 	private:
 		Variant* messageCount;
@@ -567,6 +577,8 @@ namespace NOWA
 		static const Ogre::String AttrRemainPixels(void) { return "Remain Pixels"; }
 		static const Ogre::String AttrShadowSize(void) { return "Shadow Size"; }
 	protected:
+        virtual void onActivatedChanged(bool activated) override;
+
 		virtual void controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller) override;
 	private:
 		Variant* time;
@@ -666,6 +678,8 @@ namespace NOWA
 		static const Ogre::String AttrTimeLeft(void) { return "Time Left (Sec)"; }
 		static const Ogre::String AttrStep(void) { return "Step"; }
 	protected:
+        virtual void onActivatedChanged(bool activated) override;
+
 		virtual void controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller) override;
 	private:
 		Variant* timeLeft;

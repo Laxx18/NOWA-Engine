@@ -126,6 +126,10 @@ namespace NOWA
 		bool checkDevice(const Ogre::String& deviceName);
 
 		bool hasValidDevice(void) const;
+
+		void lockDevice(bool bLockDevice);
+
+		bool isDeviceLocked(void) const;
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId

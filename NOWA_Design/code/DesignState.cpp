@@ -3,7 +3,6 @@
 #include "GuiEvents.h"
 #include "OgreFrameStats.h"
 #include "MyGUIHelper.h"
-#include "Procedural.h"
 
 // Compile directly into project
 #include "TreeControl/TreeControl.cpp"
@@ -283,96 +282,6 @@ void DesignState::createScene(void)
 	// Causes crash, when exiting application
 	// NOWA::Core::getSingletonPtr()->minimizeMemory(this->sceneManager);
 	// NOWA::Core::getSingletonPtr()->setTightMemoryBudget();
-
-	//Ogre::v1::MeshPtr meshPtr =  Procedural::PlaneGenerator().setNumSegX(20).setNumSegY(20).setSizeX(150).setSizeY(150).setUTile(5.0).setVTile(5.0).realizeMesh("testMesh");
-	//Ogre::v1::MeshPtr meshPtr =  Procedural::SphereGenerator().setRadius(2.f).setUTile(5.).setVTile(5.).realizeMesh("testMesh");
-	//Ogre::v1::MeshPtr meshPtr = Procedural::CylinderGenerator().setHeight(3.f).setRadius(1.f).setUTile(3.).realizeMesh("testMesh");
-	//Ogre::v1::MeshPtr meshPtr = Procedural::TorusGenerator().setRadius(3.f).setSectionRadius(1.f).setUTile(10.).setVTile(5.).realizeMesh("testMesh");
-	//Ogre::v1::MeshPtr meshPtr = Procedural::ConeGenerator().setRadius(2.f).setHeight(3.f).setNumSegBase(36).setNumSegHeight(2).setUTile(3.).realizeMesh("testMesh");
-	// Ogre::v1::MeshPtr meshPtr = Procedural::TubeGenerator().setHeight(3.f).setUTile(3.).realizeMesh("testMesh");
-	//Ogre::v1::MeshPtr meshPtr = Procedural::BoxGenerator().setSizeX(2.0).setSizeY(4.f).setSizeZ(6.f).realizeMesh("testMesh");
-	//Ogre::v1::MeshPtr meshPtr = Procedural::CapsuleGenerator().setHeight(2.f).realizeMesh("testMesh");
-	//Ogre::v1::MeshPtr meshPtr = Procedural::TorusKnotGenerator().setRadius(2.f).setSectionRadius(.5f).setUTile(3.f).setNumSegCircle(64).setNumSegSection(16).realizeMesh("testMesh");
-	//Ogre::v1::MeshPtr meshPtr = Procedural::IcoSphereGenerator().setRadius(2.).setNumIterations(3).setUTile(5.).setVTile(5.).realizeMesh("testMesh");
-	// Ogre::v1::MeshPtr meshPtr = Procedural::RoundedBoxGenerator().setSizeX(1.f).setSizeY(5.f).setSizeZ(5.f).setChamferSize(1.f).realizeMesh("testMesh");
-	// Ogre::v1::MeshPtr meshPtr = Procedural::SpringGenerator().setNumSegCircle(32).setNumSegPath(30).realizeMesh("testMesh");
-
-	/*Procedural::Shape shape = Procedural::CircleShape().setRadius(1).setNumSeg(16).realizeShape();
-	Procedural::Path line = Procedural::CatmullRomSpline3().addPoint(0, 0, -3).addPoint(0, 0, -1).addPoint(0, 0, 1).addPoint(-1, 0, 2).addPoint(-3, 0, 2).addPoint(-5, 0, 2).realizePath();
-	Ogre::v1::MeshPtr meshPtr = Procedural::Extruder().setCapped(false).setShapeToExtrude(&shape).setExtrusionPath(&line).realizeMesh("testMesh");*/
-
-	// -- Road
-	//// The path of the road, generated from a simple spline
-	//Procedural::Path p = Procedural::CatmullRomSpline3().setNumSeg(8).addPoint(0, 0, 0).addPoint(0, 0, 10).addPoint(10, 0, 10).addPoint(20, 0, 0).close().realizePath().scale(2);
-	//// The shape that will be extruded along the path
-	//Procedural::Shape s = Procedural::Shape().addPoint(-1.2f, .2f).addPoint(-1.f, .2f).addPoint(-.9f, .1f).addPoint(.9f, .1f).addPoint(1.f, .2f).addPoint(1.2f, .2f).scale(2).setOutSide(Procedural::SIDE_LEFT);
-	//// This is an example use of a shape texture track,
-	//// which specifies how texture coordinates should be mapped relative to the shape points
-	//Procedural::Track textureTrack = Procedural::Track(Procedural::Track::AM_POINT).addKeyFrame(0, 0).addKeyFrame(2, .2f).addKeyFrame(3, .8f).addKeyFrame(5, 1);
-	//// The extruder actually creates the road mesh from all parameters
-	//Ogre::v1::MeshPtr meshPtr = Procedural::Extruder().setExtrusionPath(&p).setShapeToExtrude(&s).setShapeTextureTrack(&textureTrack).setUTile(20.f).realizeMesh("testMesh");
-
-	//// -- Jarre
-	////
-	//Procedural::TriangleBuffer tb;
-	//// Body
-	//Procedural::Shape jarreShape = Procedural::CubicHermiteSpline2().addPoint(Ogre::Vector2(0, 0), Ogre::Vector2::UNIT_X, Ogre::Vector2::UNIT_X)
-	//	.addPoint(Ogre::Vector2(2, 3))
-	//	.addPoint(Ogre::Vector2(.5, 5), Ogre::Vector2(-1, 1).normalisedCopy(), Ogre::Vector2::UNIT_Y)
-	//	.addPoint(Ogre::Vector2(1, 7), Ogre::Vector2(1, 1).normalisedCopy()).realizeShape().thicken(.1f).getShape(0);
-	//Procedural::Lathe().setShapeToExtrude(&jarreShape).addToTriangleBuffer(tb);
-	//// Handle 1
-	//Procedural::Shape jarreHandleShape = Procedural::CircleShape().setRadius(.2f).realizeShape();
-	//Procedural::Path jarreHandlePath = Procedural::CatmullRomSpline3().addPoint(Ogre::Vector3(0, 6.5f, .75f))
-	//	.addPoint(Ogre::Vector3(0, 6, 1.5f))
-	//	.addPoint(Ogre::Vector3(0, 5, .55f)).setNumSeg(10).realizePath();
-	//Procedural::Extruder().setShapeToExtrude(&jarreHandleShape).setExtrusionPath(&jarreHandlePath).addToTriangleBuffer(tb);
-	//// Handle2
-	//jarreHandlePath.reflect(Ogre::Vector3::UNIT_Z);
-	//Procedural::Extruder().setShapeToExtrude(&jarreHandleShape).setExtrusionPath(&jarreHandlePath).addToTriangleBuffer(tb);
-	//Ogre::v1::MeshPtr meshPtr = tb.transformToMesh("testMesh");
-
-	// -- Pillar
-	// The path of the pillar, just a straight line
-	//Procedural::Path pillarBodyPath = Procedural::LinePath().betweenPoints(Vector3(0, 0, 0), Vector3(0, 5, 0)).realizePath();
-	//// We're doing something custom for the shape to extrude
-	//Procedural::Shape pillarBodyShape;
-	//const int pillarSegs = 64;
-	//for (int i = 0; i<pillarSegs; i++)
-	//	pillarBodyShape.addPoint(.5*(1 - .15*Math::Abs(Math::Sin(i / (float)pillarSegs*8.*Math::TWO_PI))) *
-	//		Vector2(Math::Cos(i / (float)pillarSegs*Math::TWO_PI), Math::Sin(i / (float)pillarSegs*Math::TWO_PI)));
-	//pillarBodyShape.close();
-	//// We're also setting up a scale track, as traditionnal pillars are not perfectly straight
-	//Procedural::Track pillarTrack = Procedural::CatmullRomSpline2().addPoint(0, 1).addPoint(0.5f, .95f).addPoint(1, .8f).realizeShape().convertToTrack(Procedural::Track::AM_RELATIVE_LINEIC);
-	//// Creation of the pillar body
-	//Procedural::TriangleBuffer pillarTB;
-	//Procedural::Extruder().setExtrusionPath(&pillarBodyPath).setShapeToExtrude(&pillarBodyShape).setScaleTrack(&pillarTrack).setCapped(false).setPosition(0, 1, 0).addToTriangleBuffer(pillarTB);
-	//// Creation of the top and the bottom of the pillar
-	//Procedural::Shape s3 = Procedural::RoundedCornerSpline2().addPoint(-1, -.25f).addPoint(-1, .25f).addPoint(1, .25f).addPoint(1, -.25f).close().realizeShape().setOutSide(Procedural::SIDE_LEFT);
-	//Procedural::Path p3;
-	//for (int i = 0; i<32; i++)
-	//{
-	//	Ogre::Radian r = (Ogre::Radian) (Ogre::Math::HALF_PI - (float)i / 32.*Ogre::Math::TWO_PI);
-	//	p3.addPoint(0, -.5 + .5*i / 32.*Math::Sin(r), -1 + .5*i / 32.*Math::Cos(r));
-	//}
-	//p3.addPoint(0, 0, -1).addPoint(0, 0, 1);
-	//for (int i = 1; i<32; i++)
-	//{
-	//	Ogre::Radian r = (Ogre::Radian) (Ogre::Math::HALF_PI - (float)i / 32.*Ogre::Math::TWO_PI);
-	//	p3.addPoint(0, -.5 + .5*(1 - i / 32.)*Math::Sin(r), 1 + .5*(1 - i / 32.)*Math::Cos(r));
-	//}
-	//Procedural::Extruder().setExtrusionPath(&p3).setShapeToExtrude(&s3).setPosition(0, 6., 0).addToTriangleBuffer(pillarTB);
-	//Procedural::BoxGenerator().setPosition(0, .5, 0).addToTriangleBuffer(pillarTB);
-	//Ogre::v1::MeshPtr meshPtr = pillarTB.transformToMesh("testMesh");
-
-	//NOWA::MathHelper::getInstance()->ensureHasTangents(meshPtr);
-
-	//Ogre::v1::Entity* entity = this->sceneManager->createEntity("testMesh");
-	//Ogre::SceneNode* sceneNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-	//sceneNode->attachObject(entity);
-	//sceneNode->setPosition(Ogre::Vector3::ZERO);
-	//entity->setDatablockOrMaterialName("GroundDirtPlane");
-	//entity->setCastShadows(true);
 
 	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 5.0f, NOWA::Interpolator::Linear, 1.0f, 0.0f, 1.0f)));
 }

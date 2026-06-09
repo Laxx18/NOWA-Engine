@@ -22,6 +22,15 @@
 #include "Vao/OgreVertexArrayObject.h"
 #include "Vao/OgreVertexBufferPacked.h"
 
+#include "OgreMeshManager2.h"
+#include "OgreConfigFile.h"
+#include "OgreLodConfig.h"
+#include "OgreLodStrategyManager.h"
+#include "OgreMeshLodGenerator.h"
+#include "OgreMesh2Serializer.h"
+#include "OgrePixelCountLodStrategy.h"
+#include "OgreSubMesh2.h"
+
 #include <cmath>
 
 namespace NOWA
@@ -56,12 +65,13 @@ namespace NOWA
     //  Lifecycle
     // =========================================================================
 
-    bool PlanetSun::create(float radius, int segmentsH, int segmentsV, Ogre::SceneNode* attachNode, const Ogre::String& datablockName)
+    bool PlanetSun::create(float radius, int segmentsH, int segmentsV, Ogre::SceneNode* attachNode, const Ogre::String& datablockName, float lodDistance)
     {
         this->radius = radius;
         this->segmentsH = segmentsH;
         this->segmentsV = segmentsV;
         this->attachedNode = attachNode;
+        this->lodDistance = lodDistance;
 
         this->generateBaseSphere();
 
@@ -111,10 +121,10 @@ namespace NOWA
         this->vertexBuffer = nullptr;
     }
 
-    bool PlanetSun::recreate(float r, int segH, int segV, Ogre::SceneNode* attachNode, const Ogre::String& datablockName)
+    bool PlanetSun::recreate(float r, int segH, int segV, Ogre::SceneNode* attachNode, const Ogre::String& datablockName, float lodDistance)
     {
         this->destroy();
-        return this->create(r, segH, segV, attachNode, datablockName);
+        return this->create(r, segH, segV, attachNode, datablockName, lodDistance);
     }
 
     void PlanetSun::update(float deltaTime)
@@ -341,6 +351,134 @@ namespace NOWA
     }
 #endif
 
+    void PlanetSun::buildLodVaos(Ogre::SubMesh* subMesh)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetSun] buildLodVaos called"
+                                                                            " VpNormal.size=" +
+                                                                                Ogre::StringConverter::toString(static_cast<unsigned int>(subMesh->mVao[Ogre::VpNormal].size())) + " VpShadow.size=" +
+                                                                                Ogre::StringConverter::toString(static_cast<unsigned int>(subMesh->mVao[Ogre::VpShadow].size())) + " lodDistance=" + Ogre::StringConverter::toString(lodDistance));
+
+        const float effectiveLodDist = (this->lodDistance > 0.0f) ? this->lodDistance : this->radius * 4.0f;
+
+        Ogre::VaoManager* vm = this->sceneManager->getDestinationRenderSystem()->getVaoManager();
+
+        const int lodDivisors[] = {2, 4, 8};
+        const int numLods = 3;
+
+        Ogre::LodStrategy* strategy = Ogre::LodStrategyManager::getSingleton().getStrategy(this->sunMesh->getLodStrategyName());
+        if (nullptr == strategy)
+        {
+            strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
+        }
+
+        Ogre::Mesh::LodValueArray* lodValues = const_cast<Ogre::Mesh::LodValueArray*>(this->sunMesh->_getLodValueArray());
+
+        // Vertex layout matches buildItem exactly: pos3 + normal3 + tangent4 + uv2
+        Ogre::VertexElement2Vec elems;
+        elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
+        elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
+        elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));
+        elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
+        constexpr size_t fpv = 12u;
+
+        const float PI = Ogre::Math::PI;
+        const float TWO_PI = Ogre::Math::TWO_PI;
+
+        for (int lod = 0; lod < numLods; ++lod)
+        {
+            const int div = lodDivisors[lod];
+            const int lodSegH = std::max(4, this->segmentsH / div);
+            const int lodSegV = std::max(4, this->segmentsV / div);
+
+            const size_t lodVertCount = static_cast<size_t>((lodSegH + 1) * (lodSegV + 1));
+            const size_t lodIndexCount = static_cast<size_t>(lodSegH) * static_cast<size_t>(lodSegV) * 6u;
+
+            float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(lodVertCount * fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+
+            for (int v = 0; v <= lodSegV; ++v)
+            {
+                const float phi = static_cast<float>(v) / static_cast<float>(lodSegV) * PI;
+                const float sinPhi = std::sin(phi);
+                const float cosPhi = std::cos(phi);
+
+                for (int h = 0; h <= lodSegH; ++h)
+                {
+                    const float theta = static_cast<float>(h) / static_cast<float>(lodSegH) * TWO_PI;
+                    const size_t idx = static_cast<size_t>(v * (lodSegH + 1) + h);
+                    const size_t o = idx * fpv;
+
+                    Ogre::Vector3 dir(sinPhi * std::cos(theta), cosPhi, sinPhi * std::sin(theta));
+
+                    Ogre::Vector3 T(-std::sin(theta), 0.0f, std::cos(theta));
+                    if (sinPhi < 0.01f)
+                    {
+                        T = Ogre::Vector3(1.0f, 0.0f, 0.0f);
+                    }
+                    T.normalise();
+                    const float uvX = static_cast<float>(h) / static_cast<float>(lodSegH);
+                    const float uvY = static_cast<float>(v) / static_cast<float>(lodSegV);
+                    const float w = (uvX > 0.5f) ? -1.0f : 1.0f;
+
+                    vd[o + 0] = dir.x * this->radius;
+                    vd[o + 1] = dir.y * this->radius;
+                    vd[o + 2] = dir.z * this->radius;
+                    vd[o + 3] = dir.x;
+                    vd[o + 4] = dir.y;
+                    vd[o + 5] = dir.z;
+                    vd[o + 6] = T.x;
+                    vd[o + 7] = T.y;
+                    vd[o + 8] = T.z;
+                    vd[o + 9] = w;
+                    vd[o + 10] = uvX;
+                    vd[o + 11] = uvY;
+                }
+            }
+
+            uint32_t* id = reinterpret_cast<uint32_t*>(OGRE_MALLOC_SIMD(lodIndexCount * sizeof(uint32_t), Ogre::MEMCATEGORY_GEOMETRY));
+
+            size_t iIdx = 0u;
+            for (int v = 0; v < lodSegV; ++v)
+            {
+                for (int h = 0; h < lodSegH; ++h)
+                {
+                    const uint32_t tl = static_cast<uint32_t>(v * (lodSegH + 1) + h);
+                    const uint32_t tr = static_cast<uint32_t>(v * (lodSegH + 1) + h + 1);
+                    const uint32_t bl = static_cast<uint32_t>((v + 1) * (lodSegH + 1) + h);
+                    const uint32_t br = static_cast<uint32_t>((v + 1) * (lodSegH + 1) + h + 1);
+                    // Same winding as generateBaseSphere
+                    id[iIdx++] = tl;
+                    id[iIdx++] = tr;
+                    id[iIdx++] = bl;
+                    id[iIdx++] = tr;
+                    id[iIdx++] = br;
+                    id[iIdx++] = bl;
+                }
+            }
+
+            Ogre::VertexBufferPacked* lodVB = vm->createVertexBuffer(elems, lodVertCount, Ogre::BT_IMMUTABLE, vd, true);
+            OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+
+            Ogre::IndexBufferPacked* lodIB = vm->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, lodIndexCount, Ogre::BT_IMMUTABLE, id, true);
+
+            Ogre::VertexBufferPackedVec vbVec;
+            vbVec.push_back(lodVB);
+            Ogre::VertexArrayObject* lodVao = vm->createVertexArrayObject(vbVec, lodIB, Ogre::OT_TRIANGLE_LIST);
+
+            subMesh->mVao[Ogre::VpNormal].push_back(lodVao);
+            subMesh->mVao[Ogre::VpShadow].push_back(lodVao);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetSun] LOD " + Ogre::StringConverter::toString(lod) +
+                                                                                    " pushed VpNormal.size=" + Ogre::StringConverter::toString(static_cast<unsigned int>(subMesh->mVao[Ogre::VpNormal].size())) +
+                                                                                    " VpShadow.size=" + Ogre::StringConverter::toString(static_cast<unsigned int>(subMesh->mVao[Ogre::VpShadow].size())));
+
+            const float dist = effectiveLodDist * (static_cast<float>(lod + 1) / static_cast<float>(numLods));
+            lodValues->push_back(strategy->transformUserValue(dist));
+
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+             //    "[PlanetSun] LOD " + Ogre::StringConverter::toString(lod) + " segH=" + Ogre::StringConverter::toString(lodSegH) + " segV=" + Ogre::StringConverter::toString(lodSegV) + " dist=" + Ogre::StringConverter::toString(dist));
+        }
+    }
+
     void PlanetSun::updateAndUpload()
     {
         if (nullptr == this->vertexBuffer)
@@ -457,11 +595,11 @@ namespace NOWA
                 const uint32_t bl = static_cast<uint32_t>((v + 1) * (this->segmentsH + 1) + h);
                 const uint32_t br = static_cast<uint32_t>((v + 1) * (this->segmentsH + 1) + h + 1);
                 this->indices[iIdx++] = tl;
-                this->indices[iIdx++] = bl;
-                this->indices[iIdx++] = tr;
                 this->indices[iIdx++] = tr;
                 this->indices[iIdx++] = bl;
+                this->indices[iIdx++] = tr;
                 this->indices[iIdx++] = br;
+                this->indices[iIdx++] = bl;
             }
         }
     }
@@ -518,19 +656,32 @@ namespace NOWA
 
         Ogre::VertexArrayObject* vao = vaoManager->createVertexArrayObject(vertexBuffers, indexBuffer, Ogre::OT_TRIANGLE_LIST);
 
-        Ogre::MeshPtr mesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+        this->sunMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 
-        Ogre::SubMesh* subMesh = mesh->createSubMesh();
+        Ogre::SubMesh* subMesh = this->sunMesh->createSubMesh();
         subMesh->mVao[Ogre::VpNormal].push_back(vao);
         subMesh->mVao[Ogre::VpShadow].push_back(vao);
 
         // Sun has no vertex displacement — bounds = exact radius + small margin.
         const float boundsRadius = this->radius + 2.0f;
-        mesh->_setBounds(Ogre::Aabb(Ogre::Vector3::ZERO, Ogre::Vector3(boundsRadius)), false);
-        mesh->_setBoundingSphereRadius(boundsRadius);
+        this->sunMesh->_setBounds(Ogre::Aabb(Ogre::Vector3::ZERO, Ogre::Vector3(boundsRadius)), false);
+        this->sunMesh->_setBoundingSphereRadius(boundsRadius);
 
-        this->sunMesh = mesh;
-        return this->sceneManager->createItem(mesh, Ogre::SCENE_DYNAMIC);
+        // In buildItemFromCPUArrays, BEFORE calling buildLodVaos:
+        // Use forceSameBuffers=true so VpShadow shares VpNormal VAOs at all LOD levels.
+        // Must be called before buildLodVaos so the shadow VAO array gets all LOD entries.
+        if (!this->sunMesh->hasValidShadowMappingVaos())
+        {
+            this->sunMesh->prepareForShadowMapping(true);
+        }
+
+        // Will not work for sun, its to hugh and its also not good because sun is always far away!
+        // this->buildLodVaos(subMesh);
+
+        Ogre::Item* item = this->sceneManager->createItem(this->sunMesh, Ogre::SCENE_DYNAMIC);
+        item->setName(objectName + "_PlanetSun");
+
+        return item;
     }
 
 } // namespace NOWA

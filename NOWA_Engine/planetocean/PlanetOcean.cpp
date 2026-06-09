@@ -150,6 +150,7 @@ namespace NOWA
     {
         this->oceanTime += deltaTime;
         this->updateAndUpload();
+        // Commented out, because immese frames drop. Need another approach here!
         // this->updateNormalMap();
     }
 

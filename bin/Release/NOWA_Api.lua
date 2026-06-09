@@ -3001,16 +3001,6 @@ return {
 			}
 		}
 	},
-	BezierCurve2 =
-	{
-		type = "class",
-		description = "Generates a procedural bezier curve spline2."
-	},
-	BezierCurve3 =
-	{
-		type = "class",
-		description = "Generates a procedural bezier curve spline3."
-	},
 	BillboardComponent =
 	{
 		type = "class",
@@ -3129,48 +3119,6 @@ return {
 		type = "class",
 		description = "OgreNewt physics body."
 	},
-	Boolean =
-	{
-		type = "class",
-		description = "Uses a boolean operation on two procedural meshes."
-	},
-	BoxGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh box.",
-		childs = 
-		{
-			setEnableNormals =
-			{
-				type = "method",
-				description = "Sets whether normals are enabled.",
-				args = "(boolean enableNormals)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			setNumTexCoordSet =
-			{
-				type = "method",
-				description = "Sets the number of texture coordinate sets.",
-				args = "(number numTexCoordSet)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			setSwitchUV =
-			{
-				type = "method",
-				description = "Sets whether the uv coordinates should be switched.",
-				args = "(boolean switchUV)",
-				returns = "(nil)",
-				valuetype = "nil"
-			}
-		}
-	},
-	BoxUVModifier =
-	{
-		type = "class",
-		description = "Modifies UV on a procedural box."
-	},
 	Button =
 	{
 		type = "class",
@@ -3194,11 +3142,6 @@ return {
 				valuetype = "boolean"
 			}
 		}
-	},
-	CalculateNormalsModifier =
-	{
-		type = "class",
-		description = "Calculates and modifies normals on a procedural mesh."
 	},
 	Camera =
 	{
@@ -3862,26 +3805,6 @@ return {
 				valuetype = "nil"
 			}
 		}
-	},
-	CapsuleGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh capsule."
-	},
-	CatmullRomSpline2 =
-	{
-		type = "class",
-		description = "Generates a procedural catmull rom spline2."
-	},
-	CatmullRomSpline3 =
-	{
-		type = "class",
-		description = "Generates a procedural catmull rom spline3."
-	},
-	CircleShape =
-	{
-		type = "class",
-		description = "Generates a procedural circle shape mesh."
 	},
 	ColorValue =
 	{
@@ -5049,11 +4972,6 @@ return {
 			}
 		}
 	},
-	ConeGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh cone."
-	},
 	Contact =
 	{
 		type = "class",
@@ -5410,26 +5328,6 @@ return {
 				valuetype = "boolean"
 			}
 		}
-	},
-	CubicHermiteSpline2 =
-	{
-		type = "class",
-		description = "Generates a procedural cubic hermite spline2."
-	},
-	CubicHermiteSpline3 =
-	{
-		type = "class",
-		description = "Generates a procedural cubic ermite spline3."
-	},
-	CylinderGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh cylinder."
-	},
-	CylinderUVModifier =
-	{
-		type = "class",
-		description = "Modifies UV on a procedural cylinder."
 	},
 	DatablockPbsComponent =
 	{
@@ -6997,16 +6895,6 @@ return {
 				valuetype = "boolean"
 			}
 		}
-	},
-	EllipseShape =
-	{
-		type = "class",
-		description = "Generates a procedural ellipse shape mesh."
-	},
-	Extruder =
-	{
-		type = "class",
-		description = "Extrudes a procedural meshes."
 	},
 	FadeComponent =
 	{
@@ -10473,6 +10361,22 @@ return {
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
 			},
+			getPlanetAtmosphereComponent =
+			{
+				type = "function",
+				description = "Gets the PlanetAtmosphereComponent from this GameObject.",
+				args = "()",
+				returns = "(PlanetAtmosphereComponent)",
+				valuetype = "PlanetAtmosphereComponent"
+			},
+			getPlanetAtmosphereComponentFromName =
+			{
+				type = "function",
+				description = "Gets the PlanetAtmosphereComponent by name.",
+				args = "(string name)",
+				returns = "(PlanetAtmosphereComponent)",
+				valuetype = "PlanetAtmosphereComponent"
+			},
 			getPlanetOceanComponent =
 			{
 				type = "function",
@@ -12561,6 +12465,14 @@ return {
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
 			},
+			castPlanetAtmosphereComponent =
+			{
+				type = "function",
+				description = "Casts type for Lua auto completion.",
+				args = "(PlanetAtmosphereComponent other)",
+				returns = "(PlanetAtmosphereComponent)",
+				valuetype = "PlanetAtmosphereComponent"
+			},
 			castPlanetOceanComponent =
 			{
 				type = "function",
@@ -13373,16 +13285,6 @@ return {
 			}
 		}
 	},
-	HelixPath =
-	{
-		type = "class",
-		description = "Generates a procedural helix path."
-	},
-	HemisphereUVModifier =
-	{
-		type = "class",
-		description = "Modifies UV on a procedural hemisphere."
-	},
 	IESLightComponent =
 	{
 		type = "class",
@@ -13423,11 +13325,6 @@ return {
 				valuetype = "string"
 			}
 		}
-	},
-	IcoSphereGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh ico sphere."
 	},
 	ImageBox =
 	{
@@ -13512,6 +13409,22 @@ return {
 			{
 				type = "function",
 				description = "Gets after calling @setDeviceName, whether the set device is valid.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			lockDevice =
+			{
+				type = "method",
+				description = "Locks the device, so if set to true, no inputs are processed, until the device is again unlocked. Note: Actually all devices are locked/unlocked.",
+				args = "(boolean bLockDevice)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isDeviceLocked =
+			{
+				type = "function",
+				description = "Gets wether the device is locked and no inputs are processed. Note: Actually all devices are concerned.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -18170,16 +18083,6 @@ return {
 			}
 		}
 	},
-	KochanekBartelsSpline2 =
-	{
-		type = "class",
-		description = "Generates a procedural kochanek bartels spline2."
-	},
-	Lathe =
-	{
-		type = "class",
-		description = "Performs a lathe operation on a procedural mesh."
-	},
 	LightAreaComponent =
 	{
 		type = "class",
@@ -18846,11 +18749,6 @@ return {
 				valuetype = "Vector3"
 			}
 		}
-	},
-	LinePath =
-	{
-		type = "class",
-		description = "Generates a procedural line path."
 	},
 	LinesComponent =
 	{
@@ -19802,11 +19700,6 @@ return {
 			}
 		}
 	},
-	MeshLinearTransform =
-	{
-		type = "class",
-		description = "Performs a linear transform on a procedural mesh."
-	},
 	MeshModifyComponent =
 	{
 		type = "class",
@@ -20007,11 +19900,6 @@ return {
 				valuetype = "nil"
 			}
 		}
-	},
-	MeshUVTransform =
-	{
-		type = "class",
-		description = "Transforms UV on a procedural mesh."
 	},
 	MessageBoxStyle =
 	{
@@ -20813,11 +20701,6 @@ return {
 				valuetype = "nil"
 			}
 		}
-	},
-	MultiShape =
-	{
-		type = "class",
-		description = "Combines procedural shapes."
 	},
 	MyGUIButtonComponent =
 	{
@@ -26371,15 +26254,270 @@ return {
 			}
 		}
 	},
-	PlaneGenerator =
+	PlanetAtmosphereComponent =
 	{
 		type = "class",
-		description = "Generates a procedural mesh plane."
-	},
-	PlaneUVModifier =
-	{
-		type = "class",
-		description = "Modifies UV on a procedural plane."
+		description = "Adds an animated atmosphere and cloud layer to a planet GameObject. Layer 1: translucent halo shell scaled by AtmosphereThickness. Layer 2: Perlin FBM cloud coverage texture re-generated each render frame. Set Radius to match the sibling planet sphere. UniversumComponent sets Radius automatically when generating planets.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Enables or disables the atmosphere and cloud animation.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the atmosphere is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRadius =
+			{
+				type = "method",
+				description = "Sets the planet surface radius. Must match PlanetTerraComponent radius. Triggers a full geometry rebuild.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRadius =
+			{
+				type = "function",
+				description = "Gets the planet surface radius.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSegmentsH =
+			{
+				type = "method",
+				description = "Sets the horizontal sphere segment count. Triggers a full rebuild. Range 8..64.",
+				args = "(unumber segments)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSegmentsH =
+			{
+				type = "function",
+				description = "Gets the horizontal segment count.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setSegmentsV =
+			{
+				type = "method",
+				description = "Sets the vertical sphere segment count. Triggers a full rebuild. Range 8..64.",
+				args = "(unumber segments)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSegmentsV =
+			{
+				type = "function",
+				description = "Gets the vertical segment count.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setAtmosphereColour =
+			{
+				type = "method",
+				description = "Sets the emissive halo colour of the atmosphere shell. RGB [0..1]. Blue (0.3,0.6,1.0) for Earth-like.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAtmosphereColour =
+			{
+				type = "function",
+				description = "Gets the atmosphere halo colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setAtmosphereThickness =
+			{
+				type = "method",
+				description = "Sets the atmosphere shell height as a fraction of planet radius. 0.08 = 8% above surface. Range 0.01..1.0.",
+				args = "(number thickness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAtmosphereThickness =
+			{
+				type = "function",
+				description = "Gets the atmosphere thickness fraction.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setAtmosphereOpacity =
+			{
+				type = "method",
+				description = "Sets the atmosphere shell transparency [0=invisible, 1=opaque].",
+				args = "(number opacity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAtmosphereOpacity =
+			{
+				type = "function",
+				description = "Gets the atmosphere opacity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setEnableAtmosphere =
+			{
+				type = "method",
+				description = "Shows or hides the translucent atmosphere halo shell.",
+				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEnableAtmosphere =
+			{
+				type = "function",
+				description = "Returns true if the atmosphere shell is visible.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setEnableClouds =
+			{
+				type = "method",
+				description = "Shows or hides the animated cloud layer sphere.",
+				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEnableClouds =
+			{
+				type = "function",
+				description = "Returns true if the cloud layer is visible.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setCloudLayerHeight =
+			{
+				type = "method",
+				description = "Sets the cloud sphere altitude as a fraction of planet radius. 0.02 = 2% above surface. Range 0.001..0.5.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCloudLayerHeight =
+			{
+				type = "function",
+				description = "Gets the cloud layer height fraction.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCloudSpeed =
+			{
+				type = "method",
+				description = "Sets the cloud drift speed in UV space per second. 0.012 = slow realistic drift. Range 0..2.",
+				args = "(number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCloudSpeed =
+			{
+				type = "function",
+				description = "Gets the cloud drift speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCloudCoverage =
+			{
+				type = "method",
+				description = "Sets the cloud density threshold. 0.3 = overcast, 0.55 = moderate, 0.75 = sparse. Range 0..1.",
+				args = "(number coverage)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCloudCoverage =
+			{
+				type = "function",
+				description = "Gets the cloud coverage threshold.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCloudOctaves =
+			{
+				type = "method",
+				description = "Sets the Perlin FBM octave count for the cloud texture. More octaves = more detail but more CPU cost. Range 1..6.",
+				args = "(unumber octaves)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCloudOctaves =
+			{
+				type = "function",
+				description = "Gets the cloud FBM octave count.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setCloudColour =
+			{
+				type = "method",
+				description = "Sets the cloud base colour multiplier. White (1,1,1) for standard clouds.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCloudColour =
+			{
+				type = "function",
+				description = "Gets the cloud colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setCloudShadowStrength =
+			{
+				type = "method",
+				description = "Sets the darkening factor under clouds [0=none, 1=full]. Range 0..1.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCloudShadowStrength =
+			{
+				type = "function",
+				description = "Gets the cloud shadow strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCloudTextureSize =
+			{
+				type = "method",
+				description = "Sets the cloud texture resolution in texels per side. Must be 64, 128 or 256.",
+				args = "(unumber size)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCloudTextureSize =
+			{
+				type = "function",
+				description = "Gets the cloud texture size in texels per side.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			}
+		}
 	},
 	PlanetOceanComponent =
 	{
@@ -27517,11 +27655,6 @@ return {
 			}
 		}
 	},
-	PrismGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh prism."
-	},
 	ProceduralGeometryComponent =
 	{
 		type = "class",
@@ -27787,16 +27920,6 @@ return {
 				valuetype = "number"
 			}
 		}
-	},
-	ProceduralMultiPath =
-	{
-		type = "class",
-		description = "Generates a procedural multi path."
-	},
-	ProceduralPath =
-	{
-		type = "class",
-		description = "Generates a procedural path."
 	},
 	ProceduralPlanetComponent =
 	{
@@ -29972,11 +30095,6 @@ return {
 			}
 		}
 	},
-	RectangleShape =
-	{
-		type = "class",
-		description = "Generates a procedural rectangle shape mesh."
-	},
 	ReferenceComponent =
 	{
 		type = "class",
@@ -30009,21 +30127,6 @@ return {
 				valuetype = "GameObject"
 			}
 		}
-	},
-	RoundedBoxGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh rounded box."
-	},
-	RoundedCornerSpline2 =
-	{
-		type = "class",
-		description = "Generates a procedural rounded corner spline2."
-	},
-	RoundedCornerSpline3 =
-	{
-		type = "class",
-		description = "Generates a procedural rounded corner spline3."
 	},
 	SceneManager =
 	{
@@ -30382,11 +30485,6 @@ return {
 				valuetype = "nil"
 			}
 		}
-	},
-	Shape =
-	{
-		type = "class",
-		description = "Generates a custom procedural shape mesh."
 	},
 	SimpleSoundComponent =
 	{
@@ -31092,21 +31190,6 @@ return {
 			}
 		}
 	},
-	SphereGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh sphere."
-	},
-	SphereUVModifier =
-	{
-		type = "class",
-		description = "Modifies UV on a procedural sphere."
-	},
-	SpherifyModifier =
-	{
-		type = "class",
-		description = "Modifies a sphere on a procedural mesh."
-	},
 	SpiderMovementManipulation =
 	{
 		type = "class",
@@ -31439,16 +31522,6 @@ return {
 				valuetype = "boolean"
 			}
 		}
-	},
-	SpringGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh spring."
-	},
-	SvgLoader =
-	{
-		type = "class",
-		description = "Generates a procedural from svg file."
 	},
 	TS_LOCAL =
 	{
@@ -31812,11 +31885,6 @@ return {
 			}
 		}
 	},
-	TextureBuffer =
-	{
-		type = "class",
-		description = "Textures a procedural mesh."
-	},
 	TimeLineComponent =
 	{
 		type = "class",
@@ -31890,16 +31958,6 @@ return {
 				valuetype = "boolean"
 			}
 		}
-	},
-	TorusGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh torus."
-	},
-	TorusKnotGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh torus knot."
 	},
 	TransformEaseComponent =
 	{
@@ -32082,26 +32140,6 @@ return {
 				type = "value"
 			}
 		}
-	},
-	TriangleBuffer =
-	{
-		type = "class",
-		description = "Triangulates a procedural mesh."
-	},
-	TriangleShape =
-	{
-		type = "class",
-		description = "Generates a procedural triangle shape mesh."
-	},
-	Triangulator =
-	{
-		type = "class",
-		description = "Triangulator manages trianulgation operations on a procedural mesh."
-	},
-	TubeGenerator =
-	{
-		type = "class",
-		description = "Generates a procedural mesh tube."
 	},
 	UnderwaterEffectComponent =
 	{
@@ -32607,6 +32645,22 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			reactOnLanding =
+			{
+				type = "method",
+				description = "Registers a closure called once when the ship is close enough to land (within landingThreshold, default 30 units above the surface). Use this to show your Land button. The callback does not lock input. Call universumComp:requestLanding() from the button handler to start autopilot.",
+				args = "(func closure(bodyGameObject, shipGameObject)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			requestLanding =
+			{
+				type = "method",
+				description = "Starts the landing autopilot. Only valid in APPROACHING state. Locks input immediately and drives the ship to the surface. Fires reactOnLanded when settled. For testing without a button: call this directly inside reactOnLanding.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			reactOnUniverseGenerated =
 			{
 				type = "method",
@@ -32616,11 +32670,6 @@ return {
 				valuetype = "nil"
 			}
 		}
-	},
-	UnweldVerticesModifier =
-	{
-		type = "class",
-		description = "Unwelds vertices on a procedural mesh."
 	},
 	ValueBarComponent =
 	{
@@ -33655,11 +33704,6 @@ return {
 				valuetype = "GameObject"
 			}
 		}
-	},
-	WeldVerticesModifier =
-	{
-		type = "class",
-		description = "Welds vertices on a procedural mesh."
 	},
 	Widget =
 	{

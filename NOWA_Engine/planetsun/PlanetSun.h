@@ -36,9 +36,9 @@ namespace NOWA
         ~PlanetSun();
 
         // Lifecycle
-        bool create(float radius, int segmentsH, int segmentsV, Ogre::SceneNode* attachNode, const Ogre::String& datablockName);
+        bool create(float radius, int segmentsH, int segmentsV, Ogre::SceneNode* attachNode, const Ogre::String& datablockName, float lodDistance);
         void destroy();
-        bool recreate(float radius, int segmentsH, int segmentsV, Ogre::SceneNode* attachNode, const Ogre::String& datablockName);
+        bool recreate(float radius, int segmentsH, int segmentsV, Ogre::SceneNode* attachNode, const Ogre::String& datablockName, float lodDistance);
         void update(float deltaTime);
 
         // Material
@@ -67,7 +67,7 @@ namespace NOWA
         Ogre::Item* buildItem(const Ogre::String& meshName);
         void initPlasmaTexture();
         void updateAndUpload();
-
+        void buildLodVaos(Ogre::SubMesh* subMesh);
     private:
         Ogre::String        objectName;
         Ogre::SceneManager* sceneManager;
@@ -84,6 +84,7 @@ namespace NOWA
         float  radius;
         int    segmentsH;
         int    segmentsV;
+        float lodDistance = 1000.0f;
 
         std::vector<Ogre::Vector3> baseDirs;
         std::vector<Ogre::Vector2> uvCoords;

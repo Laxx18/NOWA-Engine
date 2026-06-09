@@ -33,7 +33,7 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
 {
     SetThreadCount(m_threadsRequested);
     setSolverModel(m_solverMode);
-    SetSubSteps(1);
+    SetSubSteps(4);
     setUpdateFPS(desiredFps, maxUpdatesPerFrames);
 
     m_defaultMatID = new OgreNewt::MaterialID(this, 0);

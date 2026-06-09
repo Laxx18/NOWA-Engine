@@ -505,8 +505,12 @@ namespace NOWA
             const int segV = static_cast<int>(this->segmentsV->getUInt());
             const int bts = static_cast<int>(this->blendTexSize->getUInt());
 
+            const float lodDist = static_cast<float>(this->gameObjectPtr->getLodDistance());
+            const float renderDist = static_cast<float>(this->gameObjectPtr->getRenderDistance());
+            const float effectiveLodDist = (lodDist > 0.0f) ? lodDist : (renderDist > 0.0f) ? renderDist : this->radius->getReal() * 4.0f;
+
             // useBlendWeight: true if 0u != this->blendTexSize->getUInt()
-            if (!this->planet->create(r, segH, segV, bts, this->gameObjectPtr->getSceneNode(), PlanetTerraComponent::DefaultMaterialName(), 0u != this->blendTexSize->getUInt()))
+            if (!this->planet->create(r, segH, segV, bts, this->gameObjectPtr->getSceneNode(), PlanetTerraComponent::DefaultMaterialName(), effectiveLodDist, 0u != this->blendTexSize->getUInt()))
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetTerraComponent] Planet creation failed for: " + this->gameObjectPtr->getName());
                 return;

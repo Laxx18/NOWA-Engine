@@ -88,8 +88,26 @@ namespace NOWA
         }
         Ogre::Vector3 localUp = -gravityDir.normalisedCopy();
 
-        Ogre::Vector3 playerPosition = this->sceneNode->_getDerivedPositionUpdated();
-        Ogre::Quaternion playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
+        // Player basis and camera.
+        // Read directly from the physics body (m_curPosit / m_curRotation) —
+        // NOT from the SceneNode. The SceneNode is updated by the render thread
+        // one frame later via enqueued _setDerivedPosition. At high speed that
+        // one-frame lag is large enough to make the camera visibly chase the ship.
+        // Newton has already Sync()'d before moveCamera() is called, so
+        // physicsBody->getPosition() / getOrientation() are safe to read here.
+        Ogre::Vector3 playerPosition;
+        Ogre::Quaternion playerOrientation;
+
+        if (nullptr != this->physicsBody)
+        {
+            playerPosition = this->physicsBody->getPosition();
+            playerOrientation = this->physicsBody->getOrientation();
+        }
+        else
+        {
+            playerPosition = this->sceneNode->_getDerivedPositionUpdated();
+            playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
+        }
 
         Ogre::Vector3 cameraPosition = this->camera->getPosition();
 

@@ -54,7 +54,7 @@ namespace NOWA
         ~PlanetTerra();
 
         // ── Creation / destruction (RENDER THREAD) ─────────────────────────────
-        bool create(float radius, int segH, int segV, int blendTexSize, Ogre::SceneNode* attachNode, const Ogre::String& datablockName, bool useWeightTexture = true);
+        bool create(float radius, int segH, int segV, int blendTexSize, Ogre::SceneNode* attachNode, const Ogre::String& datablockName, float lodDistance, bool useWeightTexture = true);
         void destroy();
 
         // ── Full topology rebuild when seg-count changes (RENDER THREAD) ───────
@@ -202,6 +202,7 @@ namespace NOWA
         // Returns the new Item (does NOT swap/attach — caller does that).
         Ogre::Item* buildItemFromCPUArrays(const Ogre::String& meshName);
 
+        void buildLodVaos(Ogre::SubMesh* subMesh);
     private:
         Ogre::String objectName;
         Ogre::SceneManager* sceneManager = nullptr;
@@ -245,6 +246,7 @@ namespace NOWA
         // UV1 = UV0 * baseUVScale. Stored so rebuildDynamicBuffers can reapply it.
         float baseUVScale = 1.0f;
         bool useWeightTexture = true;
+        float lodDistance = 1000.0f;
     };
 
 } // namespace NOWA

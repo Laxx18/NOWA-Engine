@@ -737,7 +737,6 @@ namespace NOWA
 
         if (false == std::filesystem::exists(navFilePath))
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] No .nav file found — will build from scratch.");
             return false;
         }
 

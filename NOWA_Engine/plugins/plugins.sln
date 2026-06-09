@@ -122,14 +122,19 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetOceanComponent", "Pla
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UniversumComponent", "UniversumComponent\UniversumComponent.vcxproj", "{0F68CB4C-4382-462F-808C-6C0B587FA2C3}"
 	ProjectSection(ProjectDependencies) = postProject
+		{308C9914-5476-4C5C-B66F-50A21D896E73} = {308C9914-5476-4C5C-B66F-50A21D896E73}
 		{345BF13C-3CB4-4ABA-95C4-901CC1577514} = {345BF13C-3CB4-4ABA-95C4-901CC1577514}
 		{62AD74CD-E722-4429-A187-F19D3D87625D} = {62AD74CD-E722-4429-A187-F19D3D87625D}
+		{AE55EBC8-552F-469C-B8D2-E9D78D9C30D3} = {AE55EBC8-552F-469C-B8D2-E9D78D9C30D3}
+		{C9835873-3C67-42BF-9D99-D41CEA9B294A} = {C9835873-3C67-42BF-9D99-D41CEA9B294A}
 		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF} = {DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetSunComponent", "PlanetSunComponent\PlanetSunComponent.vcxproj", "{C9835873-3C67-42BF-9D99-D41CEA9B294A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetSurfaceComponent", "PlanetSurfaceComponent\PlanetSurfaceComponent.vcxproj", "{48E4869D-2B81-426A-905A-4F7636E3C275}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetAtmosphereComponent", "PlanetAtmosphereComponent\PlanetAtmosphereComponent.vcxproj", "{308C9914-5476-4C5C-B66F-50A21D896E73}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -377,6 +382,10 @@ Global
 		{48E4869D-2B81-426A-905A-4F7636E3C275}.Debug|x64.Build.0 = Debug|x64
 		{48E4869D-2B81-426A-905A-4F7636E3C275}.Release|x64.ActiveCfg = Release|x64
 		{48E4869D-2B81-426A-905A-4F7636E3C275}.Release|x64.Build.0 = Release|x64
+		{308C9914-5476-4C5C-B66F-50A21D896E73}.Debug|x64.ActiveCfg = Debug|x64
+		{308C9914-5476-4C5C-B66F-50A21D896E73}.Debug|x64.Build.0 = Debug|x64
+		{308C9914-5476-4C5C-B66F-50A21D896E73}.Release|x64.ActiveCfg = Release|x64
+		{308C9914-5476-4C5C-B66F-50A21D896E73}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
