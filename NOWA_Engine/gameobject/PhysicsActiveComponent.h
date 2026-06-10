@@ -502,11 +502,17 @@ namespace NOWA
 		 */
 		void setOnContactFunctionName(const Ogre::String& onContactFunctionName);
 
+        void setCppContactCallback(std::function<void(GameObjectPtr, const OgreNewt::ContactSnapshot&)> callback);
+
+        void removeCppContactCallback(void);
+
 		Ogre::Vector3 getUp(void) const;
 
 		Ogre::Vector3 getRight(void) const;
 
 		Ogre::Vector3 getForward(void) const;
+
+
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrForce(void) { return "Force"; }
@@ -598,9 +604,14 @@ namespace NOWA
 		Ogre::Real currentGravityStrength;
 		std::atomic_flag gravityUpdated = ATOMIC_FLAG_INIT;
 
+		std::function<void(GameObjectPtr /*otherGo*/, const OgreNewt::ContactSnapshot& /*contact*/)> cppContactCallback;
+
 		Ogre::Vector3 up;
 		Ogre::Vector3 forward;
 		Ogre::Vector3 right;
+
+		Ogre::Real savedMass;
+        Ogre::Vector3 savedInertia;
 	};
 
 }; //namespace end

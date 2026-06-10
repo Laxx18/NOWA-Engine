@@ -608,6 +608,7 @@ namespace NOWA
 		//// Apply mass and scale to inertia (the bigger the object, the more mass)
 		//inertia *= weightedMass;
 		//this->physicsBody->setMassMatrix(weightedMass, inertia);
+		//this->physicsBody->getMassMatrix(this->savedMass, this->savedInertia);
 
 		if (this->linearDamping->getReal() != 0.0f)
 		{
@@ -619,8 +620,6 @@ namespace NOWA
 		}
 
 		// Can be used if in vehicle: vehicle->m_curPosit = vehiclePos; etc. is not used!
-
-		this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
 
 		// For fixed Update: Does not work, called to often
 		// this->physicsBody->setNodeUpdateNotify<PhysicsActiveComponent>(&PhysicsActiveComponent::updateCallback, this);

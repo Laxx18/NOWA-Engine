@@ -349,16 +349,13 @@ namespace NOWA
             this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
         }
 
-        // ── Step 7: Force / torque callback and constraints ───────────────────
-        this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
-
         this->setConstraintAxis(this->constraintAxis->getVector3());
         this->setConstraintDirection(this->constraintDirection->getVector3());
 
         this->setActivated(this->activated->getBool());
         this->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
 
-        // ── Step 8: Wire body to scene node ───────────────────────────────────
+        // ── Step 7: Wire body to scene node ───────────────────────────────────
         this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 

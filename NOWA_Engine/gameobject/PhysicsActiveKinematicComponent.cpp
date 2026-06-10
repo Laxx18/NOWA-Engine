@@ -305,7 +305,7 @@ namespace NOWA
 
 		// Note: Kinematic Body has not force and torque callback!
 		// this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveKinematicComponent>(&PhysicsActiveComponent::moveCallback, this);
-		this->physicsBody->setCustomForceAndTorqueCallback(nullptr);
+        this->physicsBody->removeForceAndTorqueCallback();
 
 		this->setActivated(this->activated->getBool());
 

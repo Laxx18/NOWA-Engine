@@ -147,15 +147,19 @@ namespace NOWA
         landingBodyCentre(Ogre::Vector3::ZERO),
         landingBodyRadius(0.0f),
         landedOnBodyId(0ul),
-        landingAltitudeThreshold(40.0f),
-        takeoffClearanceAltitude(70.0f),
+        landingAltitudeThreshold(60.0f),
+        takeoffClearanceAltitude(90.0f),
         takeoffSpeed(15.0f),
         landingInputLocked(false),
         landingFired(false),
         landingDebugTimer(0.0f),
         fakeLightElapsed(0.0f),
         fakeLightAxialSpeed(0.0f),
-        shadowsConfiguredForSurface(false)
+        shadowsConfiguredForSurface(false),
+        landingContactActive(false),
+        landingContactTimer(0.0f),
+        currentAmbientUpper(0.03f, 0.03f, 0.04f),
+        currentAmbientLower(0.03f, 0.03f, 0.04f)
     {
         this->generate->setDescription("Runs the full generation pipeline and applies the result to the "
                                        "sibling PlanetTerraComponent. The planet must already exist.");
@@ -418,12 +422,6 @@ namespace NOWA
             const unsigned int savedSystemCount = XMLConverter::getAttribUnsignedInt(propertyElement, "data");
             propertyElement = propertyElement->next_sibling("property");
 
-            // Undo all, do nothing here, if nothing changed!
-            if (this->solarSystems.size() == savedSystemCount)
-            {
-                return true;
-            }
-
             for (unsigned int si = 0u; si < savedSystemCount; ++si)
             {
                 const Ogre::String sp = "Sys" + Ogre::StringConverter::toString(si) + "_";
@@ -630,36 +628,6 @@ namespace NOWA
             this->registerAndHideSurfaceObjects();
         }
 
-        // All orbiting planets/moons must be SCENE_DYNAMIC so that setPositionOrientation()
-        // updates their visual position each frame. SCENE_STATIC nodes require
-        // sceneManager->notifyStaticDirty(node) after every move -- the OgreNewt render callback
-        // does not call this, so static planets silently never move in the scene.
-        // The earlier stutter was from the AreaOfInterest observer firing for all bodies
-        // (not just the player) -- that is now fixed by the player-ID filter. setDynamic(true)
-        // itself is safe for orbital motion.
-        if (false == this->solarSystems.empty())
-        {
-            for (SolarSystem& system : this->solarSystems)
-            {
-                for (OrbitalBody& planet : system.planets)
-                {
-                    GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planet.gameObjectId);
-                    if (nullptr != planetGo && false == planet.orbitalPaused)
-                    {
-                        this->setPlanetDynamic(planetGo, true);
-                    }
-                }
-                for (auto& moonPair : system.moons)
-                {
-                    GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
-                    if (nullptr != moonGo && false == moonPair.second.orbitalPaused)
-                    {
-                        this->setPlanetDynamic(moonGo, true);
-                    }
-                }
-            }
-        }
-
         // If the universe was loaded from a saved scene, planet GOs already exist in the
         // scene. Re-attach PlanetOrbitObserver to each planet's AreaOfInterestComponent
 
@@ -670,11 +638,19 @@ namespace NOWA
         // They were set to SCENE_DYNAMIC in connect() for orbital motion.
         for (SolarSystem& system : this->solarSystems)
         {
+            // No cast shadows for sun, else its projected on nearby moons, planets and looks ugly
+            this->setBodyCastShadows(system.sunId, false, "UniversumComponent::connect::sunNoCastShadows");
+
             for (OrbitalBody& planet : system.planets)
             {
                 GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planet.gameObjectId);
                 if (nullptr != planetGo)
                 {
+                    if (false == planet.orbitalPaused)
+                    {
+                        this->setPlanetDynamic(planetGo, true);
+                    }
+
                     auto aoiComp = NOWA::makeStrongPtr(planetGo->getComponent<AreaOfInterestComponent>());
                     if (nullptr != aoiComp)
                     {
@@ -690,6 +666,11 @@ namespace NOWA
                 GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moon.gameObjectId);
                 if (nullptr != moonGo)
                 {
+                    if (false == moonPair.second.orbitalPaused)
+                    {
+                        this->setPlanetDynamic(moonGo, true);
+                    }
+
                     auto aoiComp = NOWA::makeStrongPtr(moonGo->getComponent<AreaOfInterestComponent>());
                     if (nullptr != aoiComp)
                     {
@@ -717,7 +698,42 @@ namespace NOWA
     {
         GameObjectComponent::disconnect();
 
+        this->reset();
+
+        return true;
+    }
+
+    void UniversumComponent::reset(void)
+    {
         this->cachedAtmosphereComponent = nullptr;
+
+        for (SolarSystem& system : this->solarSystems)
+        {
+            for (OrbitalBody& planet : system.planets)
+            {
+                GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planet.gameObjectId);
+                if (nullptr != planetGo)
+                {
+                    auto aoiComp = NOWA::makeStrongPtr(planetGo->getComponent<AreaOfInterestComponent>());
+                    if (nullptr != aoiComp)
+                    {
+                        aoiComp->attachTriggerObserver(nullptr);
+                    }
+                }
+            }
+            for (auto& moonPair : system.moons)
+            {
+                GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
+                if (nullptr != moonGo)
+                {
+                    auto aoiComp = NOWA::makeStrongPtr(moonGo->getComponent<AreaOfInterestComponent>());
+                    if (nullptr != aoiComp)
+                    {
+                        aoiComp->attachTriggerObserver(nullptr);
+                    }
+                }
+            }
+        }
 
         // Delete any observers from a previous connect() cycle before creating new ones.
         // disconnect() nullifies the AOI pointer but does not delete the objects.
@@ -727,9 +743,31 @@ namespace NOWA
             delete obs;
         }
         this->planetObservers.clear();
+        // Clear runtime solar system data so init() can safely re-read
+        // from XML on the next UndoAll/reload without duplicate entries.
+        this->solarSystems.clear();
+        this->ownedGameObjectIds.clear();
 
         // Restore all surface objects to original world positions and make visible.
         this->restoreAllSurfaceObjects();
+
+        {
+            const unsigned long shipGOId = this->playerGameObjectId->getULong();
+            if (0ul != shipGOId)
+            {
+                GameObjectPtr shipGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(shipGOId);
+                if (nullptr != shipGo)
+                {
+                    auto actComp = NOWA::makeStrongPtr(shipGo->getComponent<PhysicsActiveComponent>());
+                    if (nullptr != actComp)
+                    {
+                        actComp->removeCppContactCallback();
+                    }
+                }
+            }
+            this->landingContactActive = false;
+            this->landingContactTimer = 0.0f;
+        }
 
         // Restore shadow casting -- editor and next simulation start from a clean state.
         if (nullptr != this->cachedSunLight)
@@ -760,6 +798,11 @@ namespace NOWA
         this->fakeLightAxialSpeed = 0.0f;
         this->fakeLightElapsed = 0.0f;
         this->shadowsConfiguredForSurface = false;
+        this->landingContactActive = false;
+        this->landingContactTimer = 0.0f;
+        this->currentAmbientUpper = Ogre::Vector3(0.03f, 0.03f, 0.04f);
+        this->currentAmbientLower = Ogre::Vector3(0.03f, 0.03f, 0.04f);
+        this->elapsedTime = 0.0f;
 
         // When simulation stops, the undo system resets all planet/moon SceneNodes back
         // to their spawn positions (t=0 state). We must reset the per-body timers to match,
@@ -798,8 +841,6 @@ namespace NOWA
                 }
             }
         }
-
-        return true;
     }
 
     void UniversumComponent::onRemoveComponent(void)
@@ -812,7 +853,7 @@ namespace NOWA
 
     void UniversumComponent::applyShipMovement(GameObjectPtr shipGo, const Ogre::Vector3& velocity, const Ogre::Quaternion& targetOrient, float orientStrength)
     {
-        // Try kinematic first.
+        // Kinematic bodies use direct velocity setters -- no force accumulation.
         auto kinComp = NOWA::makeStrongPtr(shipGo->getComponent<PhysicsActiveKinematicComponent>());
         if (nullptr != kinComp)
         {
@@ -823,20 +864,19 @@ namespace NOWA
             }
             return;
         }
-        // Dynamic body: use the same direct-state setters.
-        // setVelocity and setOmegaVelocityRotateTo bypass the force pipeline,
-        // which is what we need so the ship's own flight controller cannot override us.
+        // Dynamic bodies use force-based setters.
         auto actComp = NOWA::makeStrongPtr(shipGo->getComponent<PhysicsActiveComponent>());
         if (nullptr != actComp)
         {
-            actComp->setVelocity(velocity);
+            actComp->applyRequiredForceForVelocity(velocity);
             if (orientStrength > 0.0f)
             {
-                actComp->setOmegaVelocityRotateTo(targetOrient, Ogre::Vector3::UNIT_SCALE, orientStrength);
+                actComp->applyOmegaForceRotateTo(targetOrient, Ogre::Vector3::UNIT_SCALE, orientStrength);
             }
             return;
         }
-        // No physics component: direct node manipulation fallback.
+        // No physics component: approximate by direct node manipulation.
+        // This branch is a safety fallback and won't look smooth.
         if (velocity.squaredLength() > 0.0f)
         {
             shipGo->setAttributePosition(shipGo->getPosition() + velocity * 0.016f);
@@ -918,50 +958,56 @@ namespace NOWA
 
         if (this->landingState == LandingState::LANDING)
         {
-            // Target: settle height above the surface along the surface normal.
             const float settleHeight = 1.0f;
             Ogre::Vector3 targetPos = this->landingBodyCentre + surfaceNormal * (this->landingBodyRadius + settleHeight);
             Ogre::Vector3 toTarget = targetPos - shipPos;
             float distToTarget = toTarget.length();
-            // Proportional descent: faster when far, slower as we close in. Capped at 5 u/s.
             Ogre::Vector3 descentVelocity = Ogre::Vector3::ZERO;
-            if (distToTarget > 0.05f)
+            if (distToTarget > 0.05f && distToSurface > settleHeight * 2.0f)
             {
                 const float maxDescentSpeed = 15.0f;
                 descentVelocity = toTarget.normalisedCopy() * std::min(distToTarget * 0.5f, maxDescentSpeed);
             }
+            else
+            {
+                // Within the settle zone the proportional velocity has dropped to near zero.
+                // applyRequiredForceForVelocity(ZERO) counteracts gravity and the ship
+                // hovers permanently without ever making physical contact.
+                // A small constant push guarantees the ship presses against the surface
+                // until notifyLandingContact() fires the LANDED transition.
+                descentVelocity = -surfaceNormal * 2.0f;
+            }
             this->applyShipMovement(shipGo, descentVelocity, targetOrient, 5.0f);
-            // Log progress every ~2 seconds so the user can verify descent.
+
             this->landingDebugTimer += dt;
             if (this->landingDebugTimer >= 2.0f)
             {
                 this->landingDebugTimer = 0.0f;
-                Ogre::Vector3 shipUp = currentOrient * Ogre::Vector3::UNIT_Y;
-                float alignment = shipUp.dotProduct(surfaceNormal);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "[UniversumComponent] LANDING: distToSurface=" + Ogre::StringConverter::toString(distToSurface) + " distToTarget=" + Ogre::StringConverter::toString(distToTarget) + " alignment=" + Ogre::StringConverter::toString(alignment));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING: distToSurface=" + Ogre::StringConverter::toString(distToSurface) + " distToTarget=" + Ogre::StringConverter::toString(distToTarget) +
+                                                                                       " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
             }
-            // Settled: close to target point AND ship local-Y reasonably aligned to normal.
-            // distToTarget checks proximity to the settle position (not raw surface distance).
-            // Alignment 0.85 = within ~32 degrees -- looser than before to avoid physics
-            // convergence stall blocking the landed transition.
-            Ogre::Vector3 shipUp = currentOrient * Ogre::Vector3::UNIT_Y;
-            float alignment = shipUp.dotProduct(surfaceNormal);
-            if (distToTarget <= 0.5f && alignment > 0.85f)
+
+            // First physics contact with the body = landed. No timer needed.
+            if (true == this->landingContactActive)
             {
-                this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrient, 2.0f);
+                this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrient, 0.0f);
                 this->landingState = LandingState::LANDED;
                 this->landingDebugTimer = 0.0f;
+                this->landingContactActive = false;
+                // Unlock input so the player character can exit the ship and walk.
+                this->setPlayerInputLock(false);
+                this->landingInputLocked = false;
                 this->callLandedFunction(this->landedOnBodyId, playerGOId);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "[UniversumComponent] Landed on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId) + " distToSurface=" + Ogre::StringConverter::toString(distToSurface) + " alignment=" + Ogre::StringConverter::toString(alignment));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Landed on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId));
+                return;
             }
+            this->landingContactActive = false;
             return;
         }
 
         if (this->landingState == LandingState::LANDED)
         {
-            this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrient, 2.0f);
+            this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrient, 0.0f);
             return;
         }
 
@@ -987,6 +1033,25 @@ namespace NOWA
         this->landingState = LandingState::TAKING_OFF;
         this->setPlayerInputLock(false);
         this->landingInputLocked = false;
+
+        {
+            const unsigned long shipGOId = this->playerGameObjectId->getULong();
+            if (0ul != shipGOId)
+            {
+                GameObjectPtr shipGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(shipGOId);
+                if (nullptr != shipGo)
+                {
+                    auto actComp = NOWA::makeStrongPtr(shipGo->getComponent<PhysicsActiveComponent>());
+                    if (nullptr != actComp)
+                    {
+                        actComp->removeCppContactCallback();
+                    }
+                }
+            }
+            this->landingContactActive = false;
+            this->landingContactTimer = 0.0f;
+        }
+
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Takeoff requested on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId));
     }
 
@@ -994,15 +1059,38 @@ namespace NOWA
     {
         if (this->landingState != LandingState::APPROACHING)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                "[UniversumComponent] requestLanding ignored -- not in APPROACHING state (current=" + Ogre::StringConverter::toString(static_cast<unsigned int>(this->landingState)) + ")");
             return;
         }
         this->landingState = LandingState::LANDING;
         this->setPlayerInputLock(true);
         this->landingInputLocked = true;
         this->landingFired = false;
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Landing autopilot started on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId));
+        this->landingContactActive = false;
+        this->landingContactTimer = 0.0f;
+
+        // Register contact callback on the ship so any collision with the
+        // planet/moon surface sets the landingContactActive flag.
+        const unsigned long shipGOId = this->playerGameObjectId->getULong();
+        if (0ul != shipGOId)
+        {
+            GameObjectPtr shipGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(shipGOId);
+            if (nullptr != shipGo)
+            {
+                auto actComp = NOWA::makeStrongPtr(shipGo->getComponent<PhysicsActiveComponent>());
+                if (nullptr != actComp)
+                {
+                    const unsigned long bodyId = this->landedOnBodyId;
+                    actComp->setCppContactCallback(
+                        [this, bodyId](GameObjectPtr otherGo, const OgreNewt::ContactSnapshot&)
+                        {
+                            if (nullptr != otherGo && otherGo->getId() == bodyId)
+                            {
+                                this->landingContactActive = true;
+                            }
+                        });
+                }
+            }
+        }
     }
 
     void UniversumComponent::callLandingFunction(unsigned long bodyId, unsigned long shipId)
@@ -1072,6 +1160,22 @@ namespace NOWA
             parentPlanet.currentPosition.z + std::sin(angle) * moon.orbitalRadius);
     }
 
+    void UniversumComponent::snapPlanetToOrbit(OrbitalBody& planet, const Ogre::Vector3& sunPos)
+    {
+        // Re-derive orbitalElapsed from the planet's current world position so
+        // the orbit resumes from exactly where the planet was frozen, with no jump.
+        // Mirrors snapMoonToOrbit but the reference point is the sun, not a parent.
+        Ogre::Vector3 offset = planet.currentPosition - sunPos;
+        if (std::abs(planet.orbitalSpeed) > 1e-6f)
+        {
+            float newAngle = std::atan2(offset.z, offset.x);
+            planet.orbitalElapsed = (newAngle - planet.phaseOffset) / planet.orbitalSpeed;
+        }
+        // Recompute currentPosition from the formula for floating-point consistency.
+        float angle = planet.orbitalElapsed * planet.orbitalSpeed + planet.phaseOffset;
+        planet.currentPosition = Ogre::Vector3(sunPos.x + std::cos(angle) * planet.orbitalRadius, sunPos.y + std::sin(angle * planet.orbitalTilt) * planet.orbitalRadius * 0.1f, sunPos.z + std::sin(angle) * planet.orbitalRadius);
+    }
+
     // ============================================================
     // Refactored -- duplications removed, helpers extracted.
     // Logic is identical to the original; only structure changed.
@@ -1107,11 +1211,19 @@ namespace NOWA
         {
             return;
         }
+
+        
         Ogre::MovableObject* movable = bodyGo->getMovableObject();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[setBodyCastShadows] bodyGoId=" + Ogre::StringConverter::toString(bodyGoId) + " movable=" + (movable ? movable->getName() : "NULL") + " castShadows=" + Ogre::StringConverter::toString(castShadows));
+
         if (nullptr == movable)
         {
             return;
         }
+
+
         NOWA::GraphicsModule::RenderCommand cmd = [movable, castShadows]
         {
             movable->setCastShadows(castShadows);
@@ -1146,18 +1258,34 @@ namespace NOWA
 
         this->currentFarClip = this->farClipSurface->getReal();
 
-        this->setBodyCastShadows(bodyGoId, false, "UniversumComponent::pausePlanetOrbit::bodyCastShadowsFalse");
-
-        // Enable shadows on the light right away.
+        // Enable shadow casting on the directional light so the ship shadow
+        // is visible on the moon surface.
         if (nullptr != this->cachedSunLight)
         {
             Ogre::Light* light = this->cachedSunLight;
             NOWA::GraphicsModule::RenderCommand shadowCmd = [light]
             {
+                const Ogre::String& shadowNodeName = WorkspaceModule::getInstance()->shadowNodeName;
+                Ogre::CompositorShadowNodeDef* shadowDef = Ogre::Root::getSingleton().getCompositorManager2()->getShadowNodeDefinitionNonConst(shadowNodeName);
+                if (nullptr != shadowDef)
+                {
+                    const size_t numDefs = shadowDef->getNumShadowTextureDefinitions();
+                    for (size_t si = 0u; si < numDefs; ++si)
+                    {
+                        shadowDef->getShadowTextureDefinitionNonConst(si)->pssmLambda = 0.95f;
+                    }
+                }
+
                 light->setCastShadows(true);
             };
-            NOWA::GraphicsModule::getInstance()->enqueue(std::move(shadowCmd), "UniversumComponent::pausePlanetOrbit::enableShadows");
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(shadowCmd), "UniversumComponent::setupLandingState::enableShadows");
         }
+
+        // Disable shadow CASTING on the moon mesh only.
+        // The moon still RECEIVES shadows (ship shadow falls on it correctly).
+        // Without this, the moon sphere projects its circular silhouette onto
+        // its own surface via the PSSM shadow map = the black hole artifact.
+        this->setBodyCastShadows(bodyGoId, false, "UniversumComponent::setupLandingState::bodyCastShadowsFalse");
     }
 
     // Shared teardown called from both planet and moon branches of resumePlanetOrbit.
@@ -1168,7 +1296,7 @@ namespace NOWA
 
         this->shadowsConfiguredForSurface = false;
         this->restoreSpaceShadowSettings();
-        this->setBodyCastShadows(this->landedOnBodyId, true, "UniversumComponent::resumePlanetOrbit::bodyCastShadowsTrue");
+        this->setBodyCastShadows(this->landedOnBodyId, true, "UniversumComponent::teardownLandingState::bodyCastShadowsTrue");
 
         if (isHideSurface)
         {
@@ -1211,7 +1339,7 @@ namespace NOWA
                 {
                     light->setCastShadows(false);
                 };
-                NOWA::GraphicsModule::getInstance()->enqueue(std::move(shadowCmd), "UniversumComponent::resumePlanetOrbit::disableShadows");
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(shadowCmd), "UniversumComponent::teardownLandingState::disableShadows");
             }
 
             this->restoreSpaceShadowSettings();
@@ -1253,7 +1381,9 @@ namespace NOWA
                     GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
                     if (nullptr != planetGo)
                     {
-                        auto atmoComp = NOWA::makeStrongPtr(planetGo->getComponent<AtmosphereComponent>());
+                        this->setPlanetDynamic(planetGo, false);
+
+                        /*auto atmoComp = NOWA::makeStrongPtr(planetGo->getComponent<AtmosphereComponent>());
                         if (nullptr != atmoComp)
                         {
                             this->cachedAtmosphereComponent = atmoComp.get();
@@ -1264,7 +1394,7 @@ namespace NOWA
                         else
                         {
                             this->cachedAtmosphereComponent = nullptr;
-                        }
+                        }*/
                     }
                 }
 
@@ -1283,9 +1413,31 @@ namespace NOWA
                 OrbitalBody& moon = moonPair.second;
                 moon.orbitalPaused = true;
                 // Moons use orbitalSpeed for day/night (tidally locked assumption).
-                this->setupLandingState(moon, planetGameObjectId, moon.orbitalSpeed, playerGoId);
+                this->setupLandingState(moon, planetGameObjectId, moon.axialSpeed, playerGoId);
                 this->showSurfaceObjects(moon);
                 this->callPlanetEnteredFunction(planetGameObjectId, gameObjectId);
+
+                // Activate atmosphere if present on this moon.
+                {
+                    GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
+                    if (nullptr != moonGo)
+                    {
+                        this->setPlanetDynamic(moonGo, false);
+
+                        /*auto atmoComp = NOWA::makeStrongPtr(moonGo->getComponent<AtmosphereComponent>());
+                        if (nullptr != atmoComp)
+                        {
+                            this->cachedAtmosphereComponent = atmoComp.get();
+                            atmoComp->setExternalLightMode(true);
+                            atmoComp->setShowSun(false);
+                            atmoComp->setActivated(true);
+                        }
+                        else
+                        {
+                            this->cachedAtmosphereComponent = nullptr;
+                        }*/
+                    }
+                }
 
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
                     "[UniversumComponent] Orbital motion paused for moon id=" + Ogre::StringConverter::toString(planetGameObjectId) + " -- landing state=APPROACHING, bodyRadius=" + Ogre::StringConverter::toString(this->landingBodyRadius));
@@ -1310,6 +1462,26 @@ namespace NOWA
         this->landingBodyRadius = 0.0f;
         this->landingFired = false;
         this->fakeLightElapsed = 0.0f;
+        this->currentAmbientUpper = Ogre::Vector3(0.03f, 0.03f, 0.04f);
+        this->currentAmbientLower = Ogre::Vector3(0.03f, 0.03f, 0.04f);
+
+        {
+            const unsigned long shipGOId = this->playerGameObjectId->getULong();
+            if (0ul != shipGOId)
+            {
+                GameObjectPtr shipGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(shipGOId);
+                if (nullptr != shipGo)
+                {
+                    auto actComp = NOWA::makeStrongPtr(shipGo->getComponent<PhysicsActiveComponent>());
+                    if (nullptr != actComp)
+                    {
+                        actComp->removeCppContactCallback();
+                    }
+                }
+            }
+            this->landingContactActive = false;
+            this->landingContactTimer = 0.0f;
+        }
 
         for (SolarSystem& system : this->solarSystems)
         {
@@ -1320,7 +1492,21 @@ namespace NOWA
                     continue;
                 }
 
+                GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
+                if (nullptr != planetGo)
+                {
+                    this->setPlanetDynamic(planetGo, true);
+                }
+
                 this->teardownLandingState(planetGameObjectId, gameObjectId, planet, true, system);
+
+                // Snap planet back to its orbital position so orbit resumes without a jump.
+                // The planet was frozen while other bodies moved, so orbitalElapsed is stale.
+                GameObjectPtr sunGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(system.sunId);
+                if (nullptr != sunGo)
+                {
+                    this->snapPlanetToOrbit(planet, sunGo->getPosition());
+                }
 
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Orbital motion resumed for planet id=" + Ogre::StringConverter::toString(planetGameObjectId));
                 return;
@@ -1335,6 +1521,12 @@ namespace NOWA
 
                 OrbitalBody& moon = moonPair.second;
                 const size_t parentIdx = moonPair.first;
+
+                GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
+                if (nullptr != moonGo)
+                {
+                    this->setPlanetDynamic(moonGo, true);
+                }
 
                 this->teardownLandingState(planetGameObjectId, gameObjectId, moon, true, system);
 
@@ -1534,25 +1726,6 @@ namespace NOWA
             playerActuallyOnSurface = (distToSurface <= 20.0f);
         }
 
-        // One-shot shadow configuration on first truly-on-surface frame.
-        if (true == playerActuallyOnSurface && false == this->shadowsConfiguredForSurface)
-        {
-            this->shadowsConfiguredForSurface = true;
-
-            // Now farClip is at farClipSurface -- safe to set pssmLambda.
-            const Ogre::String& shadowNodeName = WorkspaceModule::getInstance()->shadowNodeName;
-            Ogre::CompositorShadowNodeDef* shadowDef = Ogre::Root::getSingleton().getCompositorManager2()->getShadowNodeDefinitionNonConst(shadowNodeName);
-            if (nullptr != shadowDef)
-            {
-                const size_t numDefs = shadowDef->getNumShadowTextureDefinitions();
-                for (size_t si = 0u; si < numDefs; ++si)
-                {
-                    shadowDef->getShadowTextureDefinitionNonConst(si)->pssmLambda = 0.95f;
-                }
-            }
-            // No setCastShadows call here -- already done in setupLandingState.
-        }
-
         // Light color lerp runs every frame in all modes.
         this->currentLightColor = this->currentLightColor + (nearestSystem->sunLightColor - this->currentLightColor) * dt * 0.5f;
 
@@ -1579,41 +1752,51 @@ namespace NOWA
         {
             // SPACE / APPROACH MODE
             dir = camPos - sunPos;
+            // Lerp ambient back to space values in case we just left a surface.
+            const Ogre::Vector3 spaceAmb = Ogre::Vector3(0.03f, 0.03f, 0.04f);
+            this->currentAmbientUpper = this->currentAmbientUpper + (spaceAmb - this->currentAmbientUpper) * dt * 2.0f;
+            this->currentAmbientLower = this->currentAmbientLower + (spaceAmb - this->currentAmbientLower) * dt * 2.0f;
+            ambientUpper = this->currentAmbientUpper;
+            ambientLower = this->currentAmbientLower;
         }
         else
         {
             // SURFACE MODE
             this->fakeLightElapsed += dt;
-
             Ogre::Vector3 baseDir = (this->landingBodyCentre - sunPos).normalisedCopy();
             Ogre::Radian fakeAngle(this->fakeLightElapsed * this->fakeLightAxialSpeed);
             Ogre::Quaternion fakeRot(fakeAngle, Ogre::Vector3::UNIT_Y);
             dir = fakeRot * baseDir;
-
             if (dir.squaredLength() < 1e-6f)
             {
                 dir = Ogre::Vector3::UNIT_Y;
             }
 
-            // Causes freeze for 1 second
-            /*if (nullptr != this->cachedAtmosphereComponent && true == this->cachedAtmosphereComponent->isActivated())
-            {
-                this->cachedAtmosphereComponent->updateExternalSunDirection(dir.normalisedCopy());
-            }*/
-
-            // Day/night factor from sun elevation above the surface horizon.
             const Ogre::Vector3 shipPos = (nullptr != shipGo) ? shipGo->getPosition() : this->landingBodyCentre;
             const Ogre::Vector3 surfaceNormal = (shipPos - this->landingBodyCentre).normalisedCopy();
             const float sunElevation = surfaceNormal.dotProduct(-dir.normalisedCopy());
-
             float dayFactor = Ogre::Math::Clamp((sunElevation + 0.15f) / 0.30f, 0.0f, 1.0f);
             dayFactor = dayFactor * dayFactor * (3.0f - 2.0f * dayFactor);
 
+            const Ogre::Vector3 nightUpper = Ogre::Vector3(0.01f, 0.01f, 0.02f);
+            const Ogre::Vector3 nightLower = Ogre::Vector3(0.005f, 0.005f, 0.01f);
             const Ogre::Vector3 dayUpper = nearestSystem->sunLightColor * 0.4f;
             const Ogre::Vector3 dayLower = nearestSystem->sunLightColor * 0.15f;
-            ambientUpper = Ogre::Vector3(0.01f, 0.01f, 0.02f) + (dayUpper - Ogre::Vector3(0.01f, 0.01f, 0.02f)) * dayFactor;
-            ambientLower = Ogre::Vector3(0.005f, 0.005f, 0.01f) + (dayLower - Ogre::Vector3(0.005f, 0.005f, 0.01f)) * dayFactor;
-            finalLightPower = nearestSystem->sunLightPower * dayFactor;
+
+            const Ogre::Vector3 targetAmbUpper = nightUpper + (dayUpper - nightUpper) * dayFactor;
+            const Ogre::Vector3 targetAmbLower = nightLower + (dayLower - nightLower) * dayFactor;
+            const float targetPower = nearestSystem->sunLightPower * dayFactor;
+
+            // Lerp everything so the day/night transition is smooth and there is no
+            // sudden jump when playerActuallyOnSurface first becomes true.
+            const float lerpSpeed = 2.0f;
+            this->currentLightPower = this->currentLightPower + (targetPower - this->currentLightPower) * dt * lerpSpeed;
+            this->currentAmbientUpper = this->currentAmbientUpper + (targetAmbUpper - this->currentAmbientUpper) * dt * lerpSpeed;
+            this->currentAmbientLower = this->currentAmbientLower + (targetAmbLower - this->currentAmbientLower) * dt * lerpSpeed;
+
+            finalLightPower = this->currentLightPower;
+            ambientUpper = this->currentAmbientUpper;
+            ambientLower = this->currentAmbientLower;
         }
 
         if (dir.squaredLength() <= 0.0f)
@@ -2333,47 +2516,7 @@ namespace NOWA
 
     void UniversumComponent::destroyUniverse(void)
     {
-        // ---- Step 1: null out AreaOfInterestComponent observer pointers ----
-        // PlanetOrbitObserver objects are owned by UniversumComponent and deleted below.
-        // AreaOfInterestComponent stores a raw pointer to them. If we delete the observers
-        // while AoI still holds the pointer, any later setActivated(false) call (e.g. at
-        // engine exit via destroyContent()) will dereference a dangling pointer and crash.
-        // Calling attachTriggerObserver(nullptr) is safe -- it just assigns nullptr;
-        // it does NOT delete the old observer since AoI only deletes in onRemoveComponent.
-        for (SolarSystem& system : this->solarSystems)
-        {
-            for (OrbitalBody& planet : system.planets)
-            {
-                GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planet.gameObjectId);
-                if (nullptr != planetGo)
-                {
-                    auto aoiComp = NOWA::makeStrongPtr(planetGo->getComponent<AreaOfInterestComponent>());
-                    if (nullptr != aoiComp)
-                    {
-                        aoiComp->attachTriggerObserver(nullptr);
-                    }
-                }
-            }
-            for (auto& moonPair : system.moons)
-            {
-                GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
-                if (nullptr != moonGo)
-                {
-                    auto aoiComp = NOWA::makeStrongPtr(moonGo->getComponent<AreaOfInterestComponent>());
-                    if (nullptr != aoiComp)
-                    {
-                        aoiComp->attachTriggerObserver(nullptr);
-                    }
-                }
-            }
-        }
-
-        // ---- Step 2: delete observer objects (AoI no longer holds the pointer) ----
-        for (PlanetOrbitObserver* obs : this->planetObservers)
-        {
-            delete obs;
-        }
-        this->planetObservers.clear();
+        this->reset();
 
         // Now destroy all owned game objects.
         for (const unsigned long id : this->ownedGameObjectIds)
@@ -2381,8 +2524,6 @@ namespace NOWA
             AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(id);
         }
         this->ownedGameObjectIds.clear();
-        this->solarSystems.clear();
-        this->elapsedTime = 0.0f;
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Universe destroyed.");
     }
@@ -3587,6 +3728,8 @@ namespace NOWA
             .def("reactOnLanding", &UniversumComponent::reactOnLanding)
             .def("reactOnLanded", &UniversumComponent::reactOnLanded)
             .def("requestLanding", &UniversumComponent::requestLanding)
+            .def("requestTakeoff", &UniversumComponent::requestTakeoff)
+                
             .def("reactOnUniverseGenerated", &UniversumComponent::reactOnUniverseGenerated)
         ];
 
@@ -3623,10 +3766,15 @@ namespace NOWA
             "Call universumComp:requestLanding() from the button handler to start autopilot.");
 
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void requestLanding()",
-            "Starts the landing autopilot. Only valid in APPROACHING state. "
+            "Starts the landing autopilot. "
             "Locks input immediately and drives the ship to the surface. "
             "Fires reactOnLanded when settled. "
             "For testing without a button: call this directly inside reactOnLanding.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void requestTakeoff()",
+            "Starts the takeoff autopilot. "
+            "Locks input immediately and drives the ship to the surface. "
+            "For testing without a button: call this directly inside reactOnLanded.");
         
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnUniverseGenerated(func closure())",
             "Registers a Lua closure called once after generateUniverse() completes successfully. "

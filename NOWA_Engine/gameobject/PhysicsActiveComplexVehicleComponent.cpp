@@ -457,8 +457,6 @@ namespace NOWA
 
         // Can be used if in vehicle: vehicle->m_curPosit = vehiclePos; etc. is not used!
 
-        this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
-
         // For fixed Update: Does not work, called to often
         // this->physicsBody->setNodeUpdateNotify<PhysicsActiveComponent>(&PhysicsActiveComponent::updateCallback, this);
 

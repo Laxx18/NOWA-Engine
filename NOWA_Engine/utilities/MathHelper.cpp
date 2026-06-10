@@ -450,47 +450,47 @@ namespace NOWA
 		return q;
     }
 
-    Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
-    {
-        // Compute ship's current world forward using the mesh's default direction.
-        Ogre::Vector3 worldFwd = currentOrient * defaultDirection;
+    //Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
+    //{
+    //    // Compute ship's current world forward using the mesh's default direction.
+    //    Ogre::Vector3 worldFwd = currentOrient * defaultDirection;
 
-        // Project onto the surface plane to get the horizontal heading.
-        Ogre::Vector3 fwdH = worldFwd - worldFwd.dotProduct(surfaceNormal) * surfaceNormal;
-        if (fwdH.squaredLength() < 0.001f)
-        {
-            // Ship is pointing straight into or away from the planet.
-            // Fall back to ship's right axis instead.
-            Ogre::Vector3 worldRight = currentOrient * Ogre::Vector3::UNIT_X;
-            fwdH = worldRight - worldRight.dotProduct(surfaceNormal) * surfaceNormal;
-            if (fwdH.squaredLength() < 0.001f)
-            {
-                // Last resort: any direction perpendicular to the normal.
-                fwdH = surfaceNormal.perpendicular();
-            }
-        }
-        fwdH.normalise();
+    //    // Project onto the surface plane to get the horizontal heading.
+    //    Ogre::Vector3 fwdH = worldFwd - worldFwd.dotProduct(surfaceNormal) * surfaceNormal;
+    //    if (fwdH.squaredLength() < 0.001f)
+    //    {
+    //        // Ship is pointing straight into or away from the planet.
+    //        // Fall back to ship's right axis instead.
+    //        Ogre::Vector3 worldRight = currentOrient * Ogre::Vector3::UNIT_X;
+    //        fwdH = worldRight - worldRight.dotProduct(surfaceNormal) * surfaceNormal;
+    //        if (fwdH.squaredLength() < 0.001f)
+    //        {
+    //            // Last resort: any direction perpendicular to the normal.
+    //            fwdH = surfaceNormal.perpendicular();
+    //        }
+    //    }
+    //    fwdH.normalise();
 
-        // R1: rotate local +Y to align with surfaceNormal.
-        // getRotationTo() handles all edge cases (parallel / anti-parallel vectors) internally.
-        Ogre::Quaternion R1 = Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
+    //    // R1: rotate local +Y to align with surfaceNormal.
+    //    // getRotationTo() handles all edge cases (parallel / anti-parallel vectors) internally.
+    //    Ogre::Quaternion R1 = Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
 
-        // After R1 the default forward direction lands at:
-        Ogre::Vector3 rotatedFwd = R1 * defaultDirection;
-        Ogre::Vector3 rotatedFwdH = rotatedFwd - rotatedFwd.dotProduct(surfaceNormal) * surfaceNormal;
-        if (rotatedFwdH.squaredLength() < 0.001f)
-        {
-            // Forward happens to be perfectly vertical after R1 -- no twist needed.
-            return R1;
-        }
-        rotatedFwdH.normalise();
+    //    // After R1 the default forward direction lands at:
+    //    Ogre::Vector3 rotatedFwd = R1 * defaultDirection;
+    //    Ogre::Vector3 rotatedFwdH = rotatedFwd - rotatedFwd.dotProduct(surfaceNormal) * surfaceNormal;
+    //    if (rotatedFwdH.squaredLength() < 0.001f)
+    //    {
+    //        // Forward happens to be perfectly vertical after R1 -- no twist needed.
+    //        return R1;
+    //    }
+    //    rotatedFwdH.normalise();
 
-        // R2: twist around surfaceNormal so the forward heading matches fwdH.
-        Ogre::Quaternion R2 = rotatedFwdH.getRotationTo(fwdH);
+    //    // R2: twist around surfaceNormal so the forward heading matches fwdH.
+    //    Ogre::Quaternion R2 = rotatedFwdH.getRotationTo(fwdH);
 
-        // Combined orientation: align up first, then twist to correct heading.
-        return R2 * R1;
-    }
+    //    // Combined orientation: align up first, then twist to correct heading.
+    //    return R2 * R1;
+    //}
 
 	//Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
  //   {
@@ -579,6 +579,13 @@ namespace NOWA
  //       m.SetColumn(2, col2);
  //       return Ogre::Quaternion(m);
  //   }
+
+    Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
+    {
+        // Align local Y (ship up) with the outward surface normal.
+        // Does not depend on currentOrient so there is no feedback loop and no jitter.
+        return Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
+    }
 
 	Ogre::Radian MathHelper::getAngle(const Ogre::Vector3& dir1, const Ogre::Vector3& dir2, const Ogre::Vector3& norm, bool signedAngle)
 	{

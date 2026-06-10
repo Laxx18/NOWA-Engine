@@ -2710,7 +2710,7 @@ namespace NOWA
             }
             else
             {
-                this->playerController->getPhysicsComponent()->applyOmegaForceRotateToDirection(this->playerController->getPhysicsComponent()->getForward(), 10.0f);
+                this->playerController->getPhysicsComponent()->applyOmegaForceKeepUpright(10.0f);
             }
         }
 

@@ -573,10 +573,14 @@ namespace NOWA
         // Called by resumePlanetOrbit() to prevent visible teleport on leave.
         void snapMoonToOrbit(OrbitalBody& moon, const OrbitalBody& parentPlanet);
 
+        void snapPlanetToOrbit(OrbitalBody& planet, const Ogre::Vector3& sunPos);
+
         void restoreSpaceShadowSettings();
         void setBodyCastShadows(unsigned long bodyGoId, bool castShadows, const Ogre::String& tag);
         void setupLandingState(OrbitalBody& body, unsigned long bodyGoId, float axialSpeedOverride, unsigned long playerGoId);
         bool teardownLandingState(unsigned long planetGameObjectId, unsigned long gameObjectId, OrbitalBody& body, bool isHideSurface, SolarSystem& system);
+
+        void reset(void);
     private:
         void handleSceneParsed(EventDataPtr eventData);
     private:
@@ -665,6 +669,11 @@ namespace NOWA
         float fakeLightElapsed;
         float fakeLightAxialSpeed;
         bool shadowsConfiguredForSurface;
+        bool landingContactActive;
+        float landingContactTimer;
+
+        Ogre::Vector3 currentAmbientUpper;
+        Ogre::Vector3 currentAmbientLower;
     };
 
 } // namespace NOWA

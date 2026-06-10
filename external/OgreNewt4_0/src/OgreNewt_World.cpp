@@ -33,7 +33,8 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
 {
     SetThreadCount(m_threadsRequested);
     setSolverModel(m_solverMode);
-    SetSubSteps(4);
+    // Must be 1 because else on any movecallback forces and especially jump force will not work anymore! because on logic thread 1x jump is made and if substeps are 4, then 4 times gravity back, so no jump possible!
+    SetSubSteps(1);
     setUpdateFPS(desiredFps, maxUpdatesPerFrames);
 
     m_defaultMatID = new OgreNewt::MaterialID(this, 0);

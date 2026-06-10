@@ -1891,11 +1891,11 @@ void DesignState::renderUpdate(Ogre::Real dt)
 
 		if (GetAsyncKeyState(VK_LSHIFT))
 		{
-			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 1000.0f;
+			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 100.0f;
 			if (this->cameraMoveSpeed < 2.0f)
 				this->cameraMoveSpeed = 2.0f;
-			if (this->cameraMoveSpeed > 50.0f)
-				this->cameraMoveSpeed = 50.0f;
+			if (this->cameraMoveSpeed > 5000.0f)
+				this->cameraMoveSpeed = 5000.0f;
 
 			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
 			if (nullptr != cameraBehavior)

@@ -3902,32 +3902,32 @@ namespace NOWA
         {
         case EDITOR_CAMERA_VIEW_FRONT:
         {
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y));
+            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y), true);
             break;
         }
         case EDITOR_CAMERA_VIEW_TOP:
         {
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_Y));
+            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_Y), true);
             break;
         }
         case EDITOR_CAMERA_VIEW_BACK:
         {
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y));
+            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y), true);
             break;
         }
         case EDITOR_CAMERA_VIEW_BOTTOM:
         {
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
+            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X), true);
             break;
         }
         case EDITOR_CAMERA_VIEW_LEFT:
         {
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
+            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y), true);
             break;
         }
         case EDITOR_CAMERA_VIEW_RIGHT:
         {
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
+            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y), true);
             break;
         }
         }

@@ -596,6 +596,7 @@ namespace NOWA
 		// Apply mass and scale to inertia (the bigger the object, the more mass)
 		inertia *= this->mass->getReal();
 		this->physicsBody->setMassMatrix(this->mass->getReal(), inertia);
+        this->physicsBody->getMassMatrix(this->savedMass, this->savedInertia);
 
 		// set mass origin
 		this->physicsBody->setCenterOfMass(calculatedMassOrigin);
@@ -608,8 +609,6 @@ namespace NOWA
 		{
 			this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
 		}
-
-		// this->physicsBody->setCustomForceAndTorqueCallback<PhysicsPlayerControllerComponent>(&PhysicsActiveComponent::moveCallback, this);
 
 		// Must be set after body set its position! And also the current orientation (initialOrientation) must be correct! Else weird rotation behavior occurs
 		this->setConstraintAxis(this->constraintAxis->getVector3());

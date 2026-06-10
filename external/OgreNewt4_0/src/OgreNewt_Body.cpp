@@ -803,8 +803,17 @@ namespace OgreNewt
             ndMatrix inertia = dyn->CalculateInertiaMatrix();
 
             ndVector desired((ndFloat32)desiredOmega.x, (ndFloat32)desiredOmega.y, (ndFloat32)desiredOmega.z, ndFloat32(0.0f));
+
+            // PD controller:
+            // P term: drives toward desired omega
+            // D term: damps current angular velocity to prevent overshoot
+            // Without D term, the body overshoots and oscillates every frame.
+            const ndFloat32 kD = 0.8f; // damping ratio — tune between 0 (no damping) and 1 (critical)
+
             ndVector omegaError = desired - currentOmega;
-            ndVector torque = inertia.RotateVector(omegaError) * (ndFloat32(1.0f) / (ndFloat32)timeStep);
+            ndVector dampingTerm = currentOmega * kD;
+
+            ndVector torque = inertia.RotateVector(omegaError - dampingTerm) * (ndFloat32(1.0f) / (ndFloat32)timeStep);
 
             dyn->SetTorque(torque);
         }
@@ -1208,13 +1217,20 @@ namespace OgreNewt
         }
 
         ndBodyKinematic::ndContactMap& cmap = me->GetContactMap();
-        for (ndBodyKinematic::ndContactMap::Iterator it(cmap); it; it++)
+
+        // Use it.Begin() + it.GetNode()->GetInfo() — the correct nd4 iterator pattern.
+        // *it is WRONG for this iterator type and returns garbage.
+        ndBodyKinematic::ndContactMap::Iterator it(cmap);
+        for (it.Begin(); it; it++)
         {
-            ndContact* const contact = *it;
-            if (!contact || !contact->IsActive())
+            ndContact* const contact = it.GetNode()->GetInfo();
+            if (!contact)
             {
                 continue;
             }
+
+            // Do NOT check IsActive() — nd4 demo explicitly comments this out.
+            // The contact map entry is sufficient proof of touching.
 
             ndBodyKinematic* const body0 = contact->GetBody0();
             ndBodyKinematic* const body1 = contact->GetBody1();
@@ -1241,6 +1257,11 @@ namespace OgreNewt
 
             OgreNewt::ContactJoint contactJoint(contact);
             const ndContactPointList& pts = contact->GetContactPoints();
+            if (pts.GetCount() == 0)
+            {
+                continue;
+            }
+
             for (ndContactPointList::ndNode* node = pts.GetFirst(); node; node = node->GetNext())
             {
                 OgreNewt::Contact ogreContact(node, &contactJoint);

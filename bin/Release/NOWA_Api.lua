@@ -32656,7 +32656,15 @@ return {
 			requestLanding =
 			{
 				type = "method",
-				description = "Starts the landing autopilot. Only valid in APPROACHING state. Locks input immediately and drives the ship to the surface. Fires reactOnLanded when settled. For testing without a button: call this directly inside reactOnLanding.",
+				description = "Starts the landing autopilot. Locks input immediately and drives the ship to the surface. Fires reactOnLanded when settled. For testing without a button: call this directly inside reactOnLanding.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			requestTakeoff =
+			{
+				type = "method",
+				description = "Starts the takeoff autopilot. Locks input immediately and drives the ship to the surface. For testing without a button: call this directly inside reactOnLanded.",
 				args = "()",
 				returns = "(nil)",
 				valuetype = "nil"

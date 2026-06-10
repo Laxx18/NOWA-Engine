@@ -832,7 +832,7 @@ namespace NOWA
 
 				if (attributeName == GameObject::AttrVisible())
 				{
-					this->setLoadedVisible(this->attributes[i].second);
+                    this->setLoadedVisible(this->attributes[i].second->getBool());
 				}
 			}
 			this->attributes[i].second->resetChange();
@@ -1065,25 +1065,28 @@ namespace NOWA
 		}
 		else if (GameObject::AttrCategory() == attribute->getName())
 		{
-			// Call with the default value and the new one from selected list item
-			this->category->setListSelectedValue(attribute->getListSelectedValue());
-			this->changeCategory(attribute->getListSelectedOldValue(), attribute->getListSelectedValue());
-			this->categoryId->setValue(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(attribute->getListSelectedValue()));
-		
-			this->movableObject->setQueryFlags(this->categoryId->getUInt());
+            if (attribute->getListSelectedValue() != this->category->getListSelectedValue())
+            {
+                // Call with the default value and the new one from selected list item
+                this->category->setListSelectedValue(attribute->getListSelectedValue());
+                this->changeCategory(attribute->getListSelectedOldValue(), attribute->getListSelectedValue());
+                this->categoryId->setValue(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(attribute->getListSelectedValue()));
+
+                this->movableObject->setQueryFlags(this->categoryId->getUInt());
+            }
 		}
 		else if (GameObject::AttrRenderCategory() == attribute->getName())
 		{
-			// Call with the default value and the new one from selected list item
-			this->renderCategory->setListSelectedValue(attribute->getListSelectedValue());
-			this->changeRenderCategory(attribute->getListSelectedOldValue(), attribute->getListSelectedValue());
-			this->renderCategoryId->setValue(AppStateManager::getSingletonPtr()->getGameObjectController()->getRenderCategoryId(attribute->getListSelectedValue()));
+            if (attribute->getListSelectedValue() != this->renderCategory->getListSelectedValue())
+            {
+                // Call with the default value and the new one from selected list item
+                this->renderCategory->setListSelectedValue(attribute->getListSelectedValue());
+                this->changeRenderCategory(attribute->getListSelectedOldValue(), attribute->getListSelectedValue());
+                this->renderCategoryId->setValue(AppStateManager::getSingletonPtr()->getGameObjectController()->getRenderCategoryId(attribute->getListSelectedValue()));
 
-			// TODO: Here wait?
-			ENQUEUE_RENDER_COMMAND("GameObject::actualizeValue setVisibilityFlags",
-			{
-				this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
-			});
+                // TODO: Here wait?
+                ENQUEUE_RENDER_COMMAND("GameObject::actualizeValue setVisibilityFlags", { this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt()); });
+            }
 		}
 		else if (GameObject::AttrTagName() == attribute->getName())
 		{
@@ -2007,6 +2010,11 @@ namespace NOWA
 
 	void GameObject::setDynamic(bool dynamic)
 	{
+		if (this->dynamic->getBool() == dynamic)
+		{
+            return;
+		}
+
 		this->dynamic->setValue(dynamic);
 
 		NOWA::GraphicsModule::RenderCommand cmd = [this, dynamic]()
@@ -2162,6 +2170,11 @@ namespace NOWA
 
 	void GameObject::setUseReflection(bool useReflection)
 	{
+		if (useReflection == this->useReflection->getBool())
+		{
+            return;
+		}
+
 		this->useReflection->setValue(useReflection);
 
 		if (NOWA::ITEM == this->type || NOWA::PLANE == this->type)

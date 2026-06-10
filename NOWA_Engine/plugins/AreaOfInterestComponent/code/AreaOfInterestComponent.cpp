@@ -209,7 +209,7 @@ namespace NOWA
 
 	void AreaOfInterestComponent::attachTriggerObserver(AreaOfInterestComponent::ITriggerSphereQueryObserver* triggerSphereQueryObserver)
 	{
-		this->triggerSphereQueryObserver = triggerSphereQueryObserver;
+        this->triggerSphereQueryObserver = triggerSphereQueryObserver;
 	}
 
 	void AreaOfInterestComponent::checkAreaForActiveObjects(Ogre::Real dt)
@@ -476,77 +476,77 @@ namespace NOWA
 	}
 
 	void AreaOfInterestComponent::setActivated(bool activated)
-	{
-		this->triggerUpdateTimer = 0.0f;
+    {
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, activated]()
+        {
+            this->triggerUpdateTimer = 0.0f;
 
-		auto luaScriptCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
-		if (nullptr != luaScriptCompPtr)
-		{
-			this->luaScriptComponent = luaScriptCompPtr.get();
-		}
+            auto luaScriptCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
+            if (nullptr != luaScriptCompPtr)
+            {
+                this->luaScriptComponent = luaScriptCompPtr.get();
+            }
 
-		if (true == activated)
-		{
-			if (nullptr != luaScriptComponent && false == luaScriptComponent->isActivated())
-			{
-				// If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
-				// luaScriptComponent->setActivated(true);
-				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
-					"Cannot activate component, because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
-				AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
-				return;
-			}
-		}
+            if (true == activated)
+            {
+                if (nullptr != luaScriptComponent && false == luaScriptComponent->isActivated())
+                {
+                    // If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
+                    // luaScriptComponent->setActivated(true);
+                    boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
+                        "Cannot activate component, because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
+                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+                    return;
+                }
+            }
 
-		this->activated->setValue(activated);
+            this->activated->setValue(activated);
 
-		if (false == activated)
-		{
-			// If not activated remove all objects
-			for (auto it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
-			{
-				GameObject* gameObject = it->second.first;
+            if (false == activated)
+            {
+                // If not activated remove all objects
+                for (auto it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
+                {
+                    GameObject* gameObject = it->second.first;
 
-				auto activationComponent = NOWA::makeStrongPtr(gameObject->getComponent<ActivationComponent>());
-				if (nullptr != activationComponent)
-				{
-					// Activate all components of that game object
-					activationComponent->setActivated(false);
-				}
+                    auto activationComponent = NOWA::makeStrongPtr(gameObject->getComponent<ActivationComponent>());
+                    if (nullptr != activationComponent)
+                    {
+                        // Activate all components of that game object
+                        activationComponent->setActivated(false);
+                    }
 
-				if (nullptr != this->triggerSphereQueryObserver)
-				{
-					this->triggerSphereQueryObserver->onLeave(gameObject);
-				}
+                    if (nullptr != this->triggerSphereQueryObserver)
+                    {
+                        this->triggerSphereQueryObserver->onLeave(gameObject);
+                    }
 
-				// Call also function in lua script, if it does exist in the lua script component
-				if (nullptr != this->gameObjectPtr->getLuaScript())
-				{
-					if (this->leaveClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this, gameObject]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->leaveClosureFunction, gameObject);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+                    // Call also function in lua script, if it does exist in the lua script component
+                    if (nullptr != this->gameObjectPtr->getLuaScript())
+                    {
+                        if (this->leaveClosureFunction.is_valid())
+                        {
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[AreaOfInterestComponent] Caught error in 'reactOnLeave2' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
-				}
+                            try
+                            {
+                                luabind::call_function<void>(this->leaveClosureFunction, gameObject);
+                            }
+                            catch (luabind::error& error)
+                            {
+                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                std::stringstream msg;
+                                msg << errorMsg;
 
-				it = this->triggeredGameObjects.erase(it);
-			}
-		}
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[AreaOfInterestComponent] Caught error in 'reactOnLeave2' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                            }
+                        }
+                    }
+
+                    it = this->triggeredGameObjects.erase(it);
+                }
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 	}
 
 	void AreaOfInterestComponent::setRadius(Ogre::Real radius)

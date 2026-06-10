@@ -2578,9 +2578,13 @@ namespace NOWA
         this->body->setType(categoryId);
         this->body->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this->physicsRagDollComponentV2)));
 
-        if (nullptr != this->parentRagBone)
+        if (nullptr != this->parentRagBone && true == this->physicsRagDollComponentV2->activated->getBool())
         {
             this->body->setCustomForceAndTorqueCallback<PhysicsRagDollComponentV2::RagBone>(&PhysicsRagDollComponentV2::RagBone::moveCallback, this);
+        }
+        else
+        {
+            this->body->removeForceAndTorqueCallback();
         }
 
         if (false == this->physicsRagDollComponentV2->activated->getBool())
@@ -2615,7 +2619,14 @@ namespace NOWA
         {
             this->physicsRagDollComponentV2->setGyroscopicTorqueEnabled(this->physicsRagDollComponentV2->gyroscopicTorque->getBool());
 
-            this->body->setCustomForceAndTorqueCallback<PhysicsRagDollComponentV2>(&PhysicsActiveComponent::moveCallback, this->physicsRagDollComponentV2);
+            if (nullptr != this->parentRagBone && true == this->physicsRagDollComponentV2->activated->getBool())
+            {
+                this->body->setCustomForceAndTorqueCallback<PhysicsRagDollComponentV2>(&PhysicsActiveComponent::moveCallback, this->physicsRagDollComponentV2);
+            }
+            else
+            {
+                this->body->removeForceAndTorqueCallback();
+            }
         }
     }
 

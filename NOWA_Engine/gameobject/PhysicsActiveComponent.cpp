@@ -56,7 +56,9 @@ namespace NOWA
         currentGravityStrength(0.0f),
         up(Ogre::Vector3::ZERO),
         forward(Ogre::Vector3::ZERO),
-        right(Ogre::Vector3::ZERO)
+        right(Ogre::Vector3::ZERO),
+        savedMass(0.0f),
+        savedInertia(Ogre::Vector3::ZERO)
     {
         this->forceCommand.vectorValue = Ogre::Vector3::ZERO;
         this->forceCommand.pending.store(false);
@@ -519,13 +521,12 @@ namespace NOWA
         Ogre::Real weightedMass = this->mass->getReal();
         inertia *= weightedMass;
         this->physicsBody->setMassMatrix(weightedMass, inertia);
+        this->physicsBody->getMassMatrix(this->savedMass, this->savedInertia);
         this->physicsBody->setCenterOfMass(calculatedMassOrigin);
 
         this->physicsBody->setGravity(this->gravity->getVector3());
         this->physicsBody->setLinearDamping(this->linearDamping->getReal());
         this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
-
-        this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
 
         // set user data for ogrenewt
         this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
@@ -596,14 +597,13 @@ namespace NOWA
         // apply mass and scale to inertia (the bigger the object, the more mass)
         inertia *= weightedMass;
         this->physicsBody->setMassMatrix(weightedMass, inertia);
+        this->physicsBody->getMassMatrix(this->savedMass, this->savedInertia);
 
         // set mass origin
         this->physicsBody->setCenterOfMass(calculatedMassOrigin);
 
         this->physicsBody->setLinearDamping(this->linearDamping->getReal());
         this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
-
-        this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
 
         this->setActivated(this->activated->getBool());
 
@@ -656,6 +656,7 @@ namespace NOWA
         Ogre::Real weightedMass = this->mass->getReal();
         inertia *= weightedMass;
         this->physicsBody->setMassMatrix(weightedMass, inertia);
+        this->physicsBody->getMassMatrix(this->savedMass, this->savedInertia);
         this->physicsBody->setCenterOfMass(calculatedMassOrigin);
 
         // Re-apply material group ID — reCreateCollision creates a fresh body
@@ -765,6 +766,7 @@ namespace NOWA
 
         inertia *= cumMass;
         this->physicsBody->setMassMatrix(cumMass, inertia);
+        this->physicsBody->getMassMatrix(this->savedMass, this->savedInertia);
         this->physicsBody->setCenterOfMass(cumMassOrigin);
 
         this->physicsBody->setLinearDamping(this->linearDamping->getReal());
@@ -778,7 +780,6 @@ namespace NOWA
 
         this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
         this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
-        this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
 
         this->physicsBody->attachNode(rootNode);
 
@@ -855,23 +856,29 @@ namespace NOWA
     void PhysicsActiveComponent::setActivated(bool activated)
     {
         this->activated->setValue(activated);
-
         if (false == activated)
         {
             if (nullptr != this->physicsBody)
             {
+                // Zero invMass = ndBodyKinematic treated as static.
+                // Any body pushing against it produces no movement regardless of mass difference.
+                this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
                 this->physicsBody->unFreeze();
                 this->physicsBody->freeze();
-                // this->physicsBody->setAutoSleep(1);
+                this->physicsBody->removeForceAndTorqueCallback();
             }
         }
         else
         {
             if (nullptr != this->physicsBody)
             {
+                // Restore original mass captured in createDynamicBody.
+                if (this->savedMass > 0.0f)
+                {
+                    this->physicsBody->setMassMatrix(this->savedMass, this->savedInertia);
+                }
                 this->physicsBody->unFreeze();
-                // this->physicsBody->setAutoSleep(0);
-                // physicsBody->setVelocity(Ogre::Vector3(0.0f, 0.1f, 0.0f));
+                this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
             }
         }
     }
@@ -923,6 +930,51 @@ namespace NOWA
     void PhysicsActiveComponent::setOmegaVelocity(const Ogre::Vector3& omegaVelocity)
     {
         this->physicsBody->setOmega(omegaVelocity);
+    }
+
+    void PhysicsActiveComponent::applyOmegaForceKeepUpright(Ogre::Real strength)
+    {
+        if (nullptr == this->physicsBody)
+        {
+            return;
+        }
+
+        // this->up, this->forward and this->right are computed every logic frame
+        // in PhysicsActiveComponent::update() from gravityDirection and defaultDirection.
+        // They are already surface-projected and normalised, so we use them directly.
+
+        // Re-project forward onto the surface plane to eliminate any floating point drift
+        // that may have accumulated since the last update() call.
+        Ogre::Vector3 surfaceForward = this->forward - this->forward.dotProduct(this->up) * this->up;
+        if (surfaceForward.squaredLength() < 1e-6f)
+        {
+            // Forward is parallel to up -- degenerate, cannot build a valid orientation.
+            // Kill angular velocity and wait for the next frame.
+            this->applyOmegaForce(Ogre::Vector3::ZERO);
+            return;
+        }
+        surfaceForward.normalise();
+
+        // Build an orthonormal right vector from up x forward.
+        Ogre::Vector3 surfaceRight = this->up.crossProduct(surfaceForward);
+        surfaceRight.normalise();
+
+        // Build the target rotation matrix.
+        // Column 0 = right, column 1 = up, column 2 = -forward (Ogre right-hand convention:
+        // the camera/entity looks down -Z in local space, so the forward column is negated).
+        Ogre::Matrix3 targetMatrix;
+        targetMatrix.SetColumn(0, surfaceRight);
+        targetMatrix.SetColumn(1, this->up);
+        targetMatrix.SetColumn(2, -surfaceForward);
+
+        Ogre::Quaternion targetOrientation;
+        targetOrientation.FromRotationMatrix(targetMatrix);
+        targetOrientation.normalise();
+
+        // Drive all three axes (UNIT_SCALE) toward the target orientation.
+        // This corrects yaw, pitch and roll simultaneously every frame,
+        // preventing the roll drift that occurs on spherical planet surfaces.
+        this->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_SCALE, strength);
     }
 
     Ogre::Vector3 PhysicsActiveComponent::getOmegaVelocity(void) const
@@ -1045,38 +1097,29 @@ namespace NOWA
 
     void PhysicsActiveComponent::applyForce(const Ogre::Vector3& force)
     {
-        // if (force != Ogre::Vector3::ZERO)
-        {
-            // Set the command values
-            this->forceCommand.vectorValue = force;
+        // Set the command values
+        this->forceCommand.vectorValue = force;
 
-            // Mark as pending - this will be seen by the physics thread
-            this->forceCommand.pending.store(true);
-        }
+        // Mark as pending - this will be seen by the physics thread
+        this->forceCommand.pending.store(true);
     }
 
     void PhysicsActiveComponent::applyRequiredForceForVelocity(const Ogre::Vector3& velocity)
     {
-        // if (velocity != Ogre::Vector3::ZERO)
-        // {
-            // Set the command values
-            this->requiredVelocityForForceCommand.vectorValue = velocity;
+        // Set the command values
+        this->requiredVelocityForForceCommand.vectorValue = velocity;
 
-            // Mark as pending - this will be seen by the physics thread
-            this->requiredVelocityForForceCommand.pending.store(true);
-       // }
+        // Mark as pending - this will be seen by the physics thread
+        this->requiredVelocityForForceCommand.pending.store(true);
     }
 
     void PhysicsActiveComponent::applyRequiredForceForJumpVelocity(const Ogre::Vector3& velocity)
     {
-        // if (velocity != Ogre::Vector3::ZERO)
-        {
-            // Set the command values
-            this->jumpForceCommand.vectorValue = velocity;
+        // Set the command values
+        this->jumpForceCommand.vectorValue = velocity;
 
-            // Mark as pending - this will be seen by the physics thread
-            this->jumpForceCommand.pending.store(true);
-        }
+        // Mark as pending - this will be seen by the physics thread
+        this->jumpForceCommand.pending.store(true);
     }
 
     void PhysicsActiveComponent::applyDirectionForce(Ogre::Real speed)
@@ -1118,31 +1161,44 @@ namespace NOWA
             return;
         }
 
-        // Compute difference in orientation
-        Ogre::Quaternion diffOrientation = this->physicsBody->getOrientation().Inverse() * resultOrientation;
+        Ogre::Quaternion current = this->physicsBody->getOrientation();
+        Ogre::Quaternion diffOrientation = current.Inverse() * resultOrientation;
 
-        // Convert quaternion difference to angular velocity
-        Ogre::Vector3 angularVelocity;
+        // Ensure shortest path
+        if (diffOrientation.w < 0.0f)
+        {
+            diffOrientation = -diffOrientation;
+        }
+
         Ogre::Degree angle;
         Ogre::Vector3 rotationAxis;
-
         diffOrientation.ToAngleAxis(angle, rotationAxis);
 
-        // Ensure the rotation axis is valid (ToAngleAxis can return zero rotation)
         if (rotationAxis.isZeroLength())
         {
+            // Already aligned — kill any residual angular velocity immediately
+            this->applyOmegaForce(Ogre::Vector3::ZERO);
             return;
         }
 
-        // Scale by strength
-        angularVelocity = rotationAxis * angle.valueRadians() * strength;
+        // Convert to world space axis
+        rotationAxis = current * rotationAxis;
+        rotationAxis.normalise();
+
+        // Clamp desired omega — never exceed a safe angular speed.
+        // Without this, a 180-degree error with strength=5 gives ~15 rad/s
+        // which overshoots every frame and oscillates forever.
+        const Ogre::Real MAX_OMEGA = 2.0f; // rad/s — tune this
+
+        Ogre::Real desiredSpeed = std::min(angle.valueRadians() * strength, MAX_OMEGA);
+
+        Ogre::Vector3 angularVelocity = rotationAxis * desiredSpeed;
 
         // Filter by axes
         angularVelocity.x *= axes.x;
         angularVelocity.y *= axes.y;
         angularVelocity.z *= axes.z;
 
-        // Apply omega force
         this->applyOmegaForce(angularVelocity);
     }
 
@@ -1496,11 +1552,11 @@ namespace NOWA
         Ogre::Real weightedMass = this->mass->getReal();
         inertia *= weightedMass;
         this->physicsBody->setMassMatrix(weightedMass, inertia);
+        this->physicsBody->getMassMatrix(this->savedMass, this->savedInertia);
         this->physicsBody->setCenterOfMass(calculatedMassOrigin);
         this->physicsBody->setGravity(this->gravity->getVector3());
         this->physicsBody->setLinearDamping(this->linearDamping->getReal());
         this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
-        this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
         this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
         this->setPosition(this->initialPosition);
@@ -2773,6 +2829,21 @@ namespace NOWA
         }
     }
 
+    void PhysicsActiveComponent::setCppContactCallback(std::function<void(GameObjectPtr, const OgreNewt::ContactSnapshot&)> callback)
+    {
+        this->cppContactCallback = std::move(callback);
+        // Enable the contact callback on the body if not already active.
+        if (nullptr != this->physicsBody)
+        {
+            this->physicsBody->setContactCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::contactCallback, this);
+        }
+    }
+
+    void PhysicsActiveComponent::removeCppContactCallback()
+    {
+        this->cppContactCallback = nullptr;
+    }
+
     void PhysicsActiveComponent::destroyLineMap(void)
     {
         for (auto it = this->drawLineMap.cbegin(); it != this->drawLineMap.cend(); ++it)
@@ -2811,7 +2882,6 @@ namespace NOWA
         return this->forward;
     }
 
-#if 0
     void PhysicsActiveComponent::moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
     {
         // This moveCallback is called in the physics thread!
@@ -2867,6 +2937,7 @@ namespace NOWA
                     wholeForce = directionToPlanet * (mass * gravityAcceleration);
 
                     this->currentGravityStrength = gravityAcceleration;
+
                     this->gravityUpdated.test_and_set();
                 }
             }
@@ -2896,7 +2967,9 @@ namespace NOWA
         }
 
         // Checks if a required force for velocity command is pending.
-        if (this->requiredVelocityForForceCommand.pending.load())
+        // Skip velocity override when a jump is pending -- the jump impulse must not
+        // be wiped by the movement setForce call in the same substep.
+        if (this->requiredVelocityForForceCommand.pending.load() && false == this->jumpForceCommand.pending.load())
         {
             bool expected = false;
             if (this->requiredVelocityForForceCommand.inProgress.compare_exchange_strong(expected, true))
@@ -2905,11 +2978,6 @@ namespace NOWA
                 Ogre::Vector3 currentVelocity = body->getVelocity();
                 Ogre::Vector3 velocityError = velocityToApply - currentVelocity;
                 Ogre::Vector3 moveForce = velocityError * mass / timeStep;
-
-                /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MoveCallback] timeStep=" + Ogre::StringConverter::toString(timeStep) + " mass=" + Ogre::StringConverter::toString(mass) +
-                                                                                        " velocityToApply=" + Ogre::StringConverter::toString(velocityToApply) + " currentVelocity=" + Ogre::StringConverter::toString(currentVelocity) +
-                                                                                        " velocityError=" + Ogre::StringConverter::toString(velocityError) + " moveForce=" + Ogre::StringConverter::toString(moveForce) +
-                                                                                        " moveForce.length=" + Ogre::StringConverter::toString(moveForce.length()));*/
 
                 body->setForce(moveForce);
                 this->requiredVelocityForForceCommand.inProgress.store(false);
@@ -2925,9 +2993,9 @@ namespace NOWA
                 Ogre::Vector3 velocityToApply = this->jumpForceCommand.vectorValue;
                 Ogre::Vector3 moveForce = (velocityToApply - body->getVelocity()) * mass / timeStep;
 
-                // Jump is a one-shot impulse — accumulate into wholeForce so it
-                // fires once and is cleared, rather than replacing thrust setForce.
-                wholeForce += moveForce;
+                // Use addForce so gravity in wholeForce is not overwritten.
+                // The velocity command is skipped this substep so nothing wipes this.
+                body->addForce(moveForce);
 
                 this->jumpForceCommand.pending.store(false);
                 this->jumpForceCommand.inProgress.store(false);
@@ -3026,482 +3094,23 @@ namespace NOWA
 
         // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MoveCallback] wholeForce=" + Ogre::StringConverter::toString(wholeForce) + " wholeForce.length=" + Ogre::StringConverter::toString(wholeForce.length()));
     }
-#endif
-    
-#if 1
-    void PhysicsActiveComponent::moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
-    {
-        // This moveCallback is called in the physics thread!
-
-        // Clear stale force and torque from previous substep FIRST.
-        // Without this, if no command is pending this substep, Newton reuses
-        // the previous substep's force/torque — causing the body to keep
-        // accelerating even when Lua has stopped sending commands.
-        body->setForce(Ogre::Vector3::ZERO);
-        body->setTorque(Ogre::Vector3::ZERO);
-
-        /////////////////////Standard gravity force/////////////////////////////////////
-        Ogre::Vector3 wholeForce = body->getGravity();
-        Ogre::Real mass = 0.0f;
-        Ogre::Vector3 inertia = Ogre::Vector3::ZERO;
-        this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
-
-        Ogre::Real nearestPlanetDistance = std::numeric_limits<Ogre::Real>::max();
-        GameObjectPtr nearestGravitySourceObject;
-
-        body->getMassMatrix(mass, inertia);
-
-        if (false == this->hasAttraction)
-        {
-            wholeForce *= mass;
-        }
-
-        if (false == this->gravitySourceCategory->getString().empty())
-        {
-            auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->gravitySourceCategory->getString());
-            for (size_t i = 0; i < gravitySourceGameObjects.size(); i++)
-            {
-                wholeForce = this->getPosition() - gravitySourceGameObjects[i]->getPosition();
-                Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();
-                if (squaredDistanceToGravitySource < nearestPlanetDistance)
-                {
-                    nearestPlanetDistance = squaredDistanceToGravitySource;
-                    nearestGravitySourceObject = gravitySourceGameObjects[i];
-                }
-            }
-
-            if (nullptr != nearestGravitySourceObject)
-            {
-                auto gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
-                if (nullptr != gravitySourcePhysicsComponentPtr)
-                {
-                    Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
-                    directionToPlanet.normalise();
-
-                    Ogre::Real gravityAcceleration = -this->gravity->getVector3().length();
-
-                    this->gravityDirection = -directionToPlanet;
-                    wholeForce = directionToPlanet * (mass * gravityAcceleration);
-
-                    this->currentGravityStrength = gravityAcceleration;
-                    this->gravityUpdated.test_and_set();
-                }
-            }
-            else
-            {
-                this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
-                this->currentGravityStrength = 0.0f;
-                this->gravityUpdated.clear();
-            }
-        }
-
-        // Checks if a force command is pending.
-        // Uses addForce so it stacks ON TOP of wholeForce at the bottom,
-        // not as a replacement. Store into wholeForce directly instead.
-        if (this->forceCommand.pending.load())
-        {
-            bool expected = false;
-            if (this->forceCommand.inProgress.compare_exchange_strong(expected, true))
-            {
-                // Accumulate into wholeForce so it is added with gravity below,
-                // not as a separate addForce call which would stack each substep.
-                wholeForce += this->forceCommand.vectorValue;
-
-                this->forceCommand.pending.store(false);
-                this->forceCommand.inProgress.store(false);
-            }
-        }
-
-        // Checks if a required force for velocity command is pending.
-        if (this->requiredVelocityForForceCommand.pending.load())
-        {
-            bool expected = false;
-            if (this->requiredVelocityForForceCommand.inProgress.compare_exchange_strong(expected, true))
-            {
-                Ogre::Vector3 velocityToApply = this->requiredVelocityForForceCommand.vectorValue;
-                Ogre::Vector3 moveForce = (velocityToApply - body->getVelocity()) * mass / timeStep;
-
-                // setForce replaces — does not accumulate across substeps.
-                // wholeForce (gravity etc.) is added on top via addForce at the bottom.
-                body->setForce(moveForce);
-
-                this->requiredVelocityForForceCommand.inProgress.store(false);
-            }
-        }
-
-        // Checks if a jump force command is pending.
-        if (this->jumpForceCommand.pending.load())
-        {
-            bool expected = false;
-            if (this->jumpForceCommand.inProgress.compare_exchange_strong(expected, true))
-            {
-                Ogre::Vector3 velocityToApply = this->jumpForceCommand.vectorValue;
-                Ogre::Vector3 moveForce = (velocityToApply - body->getVelocity()) * mass / timeStep;
-
-                // Jump is a one-shot impulse — accumulate into wholeForce so it
-                // fires once and is cleared, rather than replacing thrust setForce.
-                wholeForce += moveForce;
-
-                this->jumpForceCommand.pending.store(false);
-                this->jumpForceCommand.inProgress.store(false);
-            }
-        }
-
-        // Checks if an omega force command is pending.
-        if (this->omegaForceCommand.pending.load())
-        {
-            bool expected = false;
-            if (this->omegaForceCommand.inProgress.compare_exchange_strong(expected, true))
-            {
-                Ogre::Vector3 desiredOmega = this->omegaForceCommand.vectorValue;
-
-                // setTorqueFromOmega calls setTorque internally — replaces, does not accumulate.
-                // Zero torque was already set at the top so if this is not pending,
-                // the body holds its current rotation via damping.
-                body->setTorqueFromOmega(desiredOmega, timeStep);
-
-                this->omegaForceCommand.inProgress.store(false);
-            }
-        }
-
-        /////////////////Force observer//////////////////////////////////////////
-
-        std::vector<std::shared_ptr<IForceObserver>> local;
-        {
-            std::shared_lock<std::shared_mutex> lk(forceObserversMutex);
-            local.reserve(forceObservers.size());
-            for (const auto& kv : forceObservers)
-            {
-                local.push_back(kv.second);
-            }
-        }
-
-        for (const auto& obs : local)
-        {
-            obs->onForceAdd(body, timeStep, threadIndex);
-        }
-
-        /////////////////Magnetic attraction behaviour//////////////////////////////////////
-
-        for (auto it = this->physicsAttractors.cbegin(); it != this->physicsAttractors.cend(); ++it)
-        {
-            boost::shared_ptr<JointAttractorComponent> jointAttractorCompPtr = boost::dynamic_pointer_cast<JointAttractorComponent>(NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
-
-            {
-                Ogre::Vector3 attractorDirection = body->getPosition() - jointAttractorCompPtr->getOwner()->getPosition();
-                Ogre::Real squaredDistance = attractorDirection.squaredLength();
-                attractorDirection.normalise();
-
-                if (squaredDistance <= jointAttractorCompPtr->getAttractionDistance() * jointAttractorCompPtr->getAttractionDistance())
-                {
-                    if (squaredDistance < 5.0f * 5.0f)
-                    {
-                        squaredDistance = 5.0f * 5.0f;
-                    }
-                    this->hasAttraction = true;
-                    Ogre::Real attractorForce = (-1 * jointAttractorCompPtr->getMagneticStrength()) / (squaredDistance);
-                    attractorDirection *= attractorForce;
-                    wholeForce += attractorDirection;
-                }
-                else
-                {
-                    this->hasAttraction = false;
-                }
-            }
-        }
-
-        /////////////////////Spring Joint behaviour/////////////////////////////////////
-
-        for (auto it = this->springs.cbegin(); it != this->springs.cend(); ++it)
-        {
-            boost::shared_ptr<JointSpringComponent> jointSpringCompPtr = boost::dynamic_pointer_cast<JointSpringComponent>(NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
-
-            auto predecessorJointSpringCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointSpringCompPtr->getPredecessorId()));
-            if (nullptr != predecessorJointSpringCompPtr)
-            {
-                Ogre::Vector3 anchorPosition = predecessorJointSpringCompPtr->getBody()->getPosition() + jointSpringCompPtr->getAnchorOffsetPosition();
-                Ogre::Vector3 springPosition = this->getPosition() + jointSpringCompPtr->getSpringOffsetPosition();
-
-                Ogre::Vector3 dragForce = ((anchorPosition - springPosition) * mass * jointSpringCompPtr->getSpringStrength()) - body->getVelocity();
-
-                if (jointSpringCompPtr->getShowLine())
-                {
-                    jointSpringCompPtr->drawLine(anchorPosition, this->getPosition());
-                }
-
-                wholeForce += dragForce;
-            }
-        }
-
-        // addForce accumulates on top of whatever setForce placed (thrust or zero).
-        // Gravity, springs, attractors, and one-shot forces all land here correctly.
-        body->addForce(wholeForce);
-    }
-#endif
-
-#if 0
-    void PhysicsActiveComponent::moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
-    {
-        // This moveCallback is called in the physics thread!
-
-        /////////////////////Standard gravity force/////////////////////////////////////
-        Ogre::Vector3 wholeForce = body->getGravity();
-        Ogre::Real mass = 0.0f;
-        Ogre::Vector3 inertia = Ogre::Vector3::ZERO;
-        this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
-
-        Ogre::Real nearestPlanetDistance = std::numeric_limits<Ogre::Real>::max();
-        GameObjectPtr nearestGravitySourceObject;
-
-        // calculate gravity
-        body->getMassMatrix(mass, inertia);
-
-        if (false == this->hasAttraction)
-        {
-            wholeForce *= mass;
-        }
-
-        if (false == this->gravitySourceCategory->getString().empty())
-        {
-            // If there is a gravity source GO, calculate gravity in that direction of the source, but only work with the nearest object, else the force will mess up
-            auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->gravitySourceCategory->getString());
-            for (size_t i = 0; i < gravitySourceGameObjects.size(); i++)
-            {
-                wholeForce = this->getPosition() - gravitySourceGameObjects[i]->getPosition();
-                Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();
-                if (squaredDistanceToGravitySource < nearestPlanetDistance)
-                {
-                    nearestPlanetDistance = squaredDistanceToGravitySource;
-                    nearestGravitySourceObject = gravitySourceGameObjects[i];
-                }
-            }
-
-            // Only do calculation for the nearest planet
-            if (nullptr != nearestGravitySourceObject)
-            {
-                auto gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
-                if (nullptr != gravitySourcePhysicsComponentPtr)
-                {
-                    Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
-                    directionToPlanet.normalise();
-
-                    // Ensures constant acceleration of e.g. -19.8 m/s²
-                    Ogre::Real gravityAcceleration = -this->gravity->getVector3().length(); // Should be e.g. 19.8
-
-                    this->gravityDirection = -directionToPlanet;
-                    wholeForce = directionToPlanet * (mass * gravityAcceleration); // F = m * a
-
-                    // Store the current gravity strength for jump normalization
-                    this->currentGravityStrength = gravityAcceleration;
-                    // Mark gravity as updated
-                    this->gravityUpdated.test_and_set();
-
-                    // this->setConstraintDirection(this->gravityDirection);
-
-                    // More realistic planetary scenario: Depending on planet size, gravity is much harder or slower like on the moon:
-                    // Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();
-                    // Ogre::Real strength = (gravityAcceleration * gravitySourcePhysicsComponentPtr->getMass()) / squaredDistanceToGravitySource;
-                    // wholeForce = directionToPlanet * (mass * strength);
-                }
-            }
-            else
-            {
-                this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
-                this->currentGravityStrength = 0.0f;
-
-                this->gravityUpdated.clear();
-            }
-        }
-
-        // Checks if a force command is pending
-        if (this->forceCommand.pending.load())
-        {
-            // Try to claim this command
-            bool expected = false;
-            if (this->forceCommand.inProgress.compare_exchange_strong(expected, true))
-            {
-                Ogre::Vector3 forceToApply = this->forceCommand.vectorValue;
-                body->addForce(forceToApply);
-
-                // Mark command as no longer pending
-                this->forceCommand.pending.store(false);
-
-                // Release the command
-                this->forceCommand.inProgress.store(false);
-            }
-        }
-
-        // Checks if a required force for velocity command is pending
-        if (this->requiredVelocityForForceCommand.pending.load())
-        {
-            // Try to claim this command
-            bool expected = false;
-            if (this->requiredVelocityForForceCommand.inProgress.compare_exchange_strong(expected, true))
-            {
-                // We've claimed the command
-
-                // Get the velocity to apply
-                Ogre::Vector3 velocityToApply = this->requiredVelocityForForceCommand.vectorValue;
-
-                // Calculate and apply the force
-                Ogre::Vector3 moveForce = (velocityToApply - body->getVelocity()) * mass / timeStep;
-                body->addForce(moveForce);
-
-                // Mark command as no longer pending
-                this->requiredVelocityForForceCommand.pending.store(false);
-
-                // Release the command
-                this->requiredVelocityForForceCommand.inProgress.store(false);
-            }
-        }
-
-        // Checks if a jump force command is pending
-        if (this->jumpForceCommand.pending.load())
-        {
-            // Try to claim this command
-            bool expected = false;
-            if (this->jumpForceCommand.inProgress.compare_exchange_strong(expected, true))
-            {
-                // We've claimed the command
-
-                // Get the velocity to apply
-                Ogre::Vector3 velocityToApply = this->jumpForceCommand.vectorValue;
-
-                // Calculate and apply the force
-                Ogre::Vector3 moveForce = (velocityToApply - body->getVelocity()) * mass / timeStep;
-                body->addForce(moveForce);
-
-                if (moveForce.length() > 5000.0f)
-                {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SPIKE] timeStep=" + Ogre::StringConverter::toString(timeStep) + " mass=" + Ogre::StringConverter::toString(mass) +
-                                                                                            " velocityToApply=" + Ogre::StringConverter::toString(velocityToApply) + " currentVelocity=" + Ogre::StringConverter::toString(body->getVelocity()) +
-                                                                                            " moveForce.length=" + Ogre::StringConverter::toString(moveForce.length()));
-                }
-
-                // Mark command as no longer pending
-                this->jumpForceCommand.pending.store(false);
-
-                // Release the command
-                this->jumpForceCommand.inProgress.store(false);
-            }
-        }
-
-        // Checks if an omage force command is pending
-        if (this->omegaForceCommand.pending.load())
-        {
-            // Try to claim this command
-            bool expected = false;
-            if (this->omegaForceCommand.inProgress.compare_exchange_strong(expected, true))
-            {
-                // Get the omega force to apply
-                Ogre::Vector3 omegaForceToApply = this->omegaForceCommand.vectorValue;
-
-                body->setBodyAngularVelocity(omegaForceToApply, timeStep);
-
-                // Mark command as no longer pending
-                this->omegaForceCommand.pending.store(false);
-
-                // Release the command
-                this->omegaForceCommand.inProgress.store(false);
-            }
-        }
-
-        /////////////////Force observer//////////////////////////////////////////
-
-        std::vector<std::shared_ptr<IForceObserver>> local;
-        {
-            std::shared_lock<std::shared_mutex> lk(forceObserversMutex);
-            local.reserve(forceObservers.size());
-            for (const auto& kv : forceObservers)
-            {
-                local.push_back(kv.second);
-            }
-        }
-
-        for (const auto& obs : local)
-        {
-            obs->onForceAdd(body, timeStep, threadIndex);
-        }
-
-        /////////////////Magnetic attraction behaviour//////////////////////////////////////
-
-        // https://www.physicsforums.com/threads/c-model-of-a-charged-particle-in-a-magnetic-field.582600/
-        // http://stackoverflow.com/questions/37402504/adding-a-list-of-forces-to-a-particle-in-c
-        // http://natureofcode.com/book/chapter-4-particle-systems/
-
-        // A repeller may be attracted by several attractors with different magnetic strengths etc.
-        for (auto it = this->physicsAttractors.cbegin(); it != this->physicsAttractors.cend(); ++it)
-        {
-            boost::shared_ptr<JointAttractorComponent> jointAttractorCompPtr = boost::dynamic_pointer_cast<JointAttractorComponent>(NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
-
-            // Causes threading issues, if its required, use atomic bool
-            // if (this->gameObjectPtr->getSceneNode()->getAttachedObject(0)->isVisible())
-            {
-                // Check if its within the attraction distance
-                Ogre::Vector3 attractorDirection = body->getPosition() - jointAttractorCompPtr->getOwner()->getPosition();
-                Ogre::Real squaredDistance = attractorDirection.squaredLength();
-                attractorDirection.normalise();
-
-                if (squaredDistance <= jointAttractorCompPtr->getAttractionDistance() * jointAttractorCompPtr->getAttractionDistance())
-                {
-                    if (squaredDistance < 5.0f * 5.0f)
-                    {
-                        squaredDistance = 5.0f * 5.0f;
-                    }
-                    this->hasAttraction = true;
-                    // Depending on the magnetic strength and the distance to the attractor
-                    Ogre::Real attractorForce = (-1 * jointAttractorCompPtr->getMagneticStrength()) / (squaredDistance);
-                    /*Ogre::Real attractorForce = (-9.8f * NOWA::makeStrongPtr(jointAttractorComponent->getOwner()->getComponent<PhysicsActiveComponent>())->getMass() * body->getMass())
-                    / (distance * distance);*/
-                    // (G * mass * m.mass) / (distance * distance)
-                    attractorDirection *= attractorForce;
-                    // body->addForce(attractorDirection);
-                    wholeForce += attractorDirection;
-                }
-                else
-                {
-                    this->hasAttraction = false;
-                }
-            }
-        }
-
-        /////////////////////Spring Joint behaviour/////////////////////////////////////
-
-        for (auto it = this->springs.cbegin(); it != this->springs.cend(); ++it)
-        {
-            boost::shared_ptr<JointSpringComponent> jointSpringCompPtr = boost::dynamic_pointer_cast<JointSpringComponent>(NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
-
-            // Get the global position our cursor is at
-            auto predecessorJointSpringCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointSpringCompPtr->getPredecessorId()));
-            if (nullptr != predecessorJointSpringCompPtr)
-            {
-                Ogre::Vector3 anchorPosition = predecessorJointSpringCompPtr->getBody()->getPosition() + jointSpringCompPtr->getAnchorOffsetPosition();
-                Ogre::Vector3 springPosition = this->getPosition() + jointSpringCompPtr->getSpringOffsetPosition();
-
-                // Calculate spring force
-                Ogre::Vector3 dragForce = ((anchorPosition - springPosition) * mass * jointSpringCompPtr->getSpringStrength()) - body->getVelocity();
-
-                if (jointSpringCompPtr->getShowLine())
-                {
-                    jointSpringCompPtr->drawLine(anchorPosition, this->getPosition());
-                }
-
-                // addGlobalForce will create a bad effect, because when the spring is touched, it will start to rotate repeatedly, because global force also internally adds torque!
-                // body->addGlobalForce(dragForce, springPosition);
-
-                // Add the spring force at the handle
-                // body->addForce(dragForce);
-                wholeForce += dragForce;
-            }
-        }
-
-        body->addForce(wholeForce);
-    }
-#endif
 
     void PhysicsActiveComponent::contactCallback(OgreNewt::Body* otherBody, OgreNewt::Contact* contact)
     {
         PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(otherBody->getUserData());
+
+        // C++ closure path
+        if (this->cppContactCallback)
+        {
+            OgreNewt::ContactSnapshot snapshot = contact->createSnapshot();
+            GameObjectPtr otherGo = (nullptr != otherPhysicsComponent) ? otherPhysicsComponent->getOwner() : nullptr;
+            auto cb = this->cppContactCallback;
+            NOWA::AppStateManager::LogicCommand cmd = [cb, otherGo, snapshot]()
+            {
+                cb(otherGo, snapshot);
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+        }
 
         if (nullptr != this->gameObjectPtr->getLuaScript())
         {

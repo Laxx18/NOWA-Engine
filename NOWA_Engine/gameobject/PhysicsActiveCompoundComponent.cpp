@@ -606,6 +606,7 @@ namespace NOWA
 		// apply mass and scale to inertia (the bigger the object, the more mass)
 		inertia *= this->mass->getReal();
 		this->physicsBody->setMassMatrix(this->mass->getReal(), inertia);
+        this->physicsBody->getMassMatrix(this->savedMass, this->savedInertia);
 
 		// set mass origin
 		this->physicsBody->setCenterOfMass(calculatedMassOrigin);
@@ -618,8 +619,6 @@ namespace NOWA
 		{
 			this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
 		}
-
-		this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
 
 		this->setConstraintAxis(this->constraintAxis->getVector3());
 		// pin the object stand in pose and not fall down

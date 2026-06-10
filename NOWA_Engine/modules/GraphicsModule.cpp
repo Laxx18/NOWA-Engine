@@ -2243,7 +2243,7 @@ namespace NOWA
                 Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
 
                 // Interpolate orientation
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, false);
+                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
 
                 // Interpolate scale
                 Ogre::Vector3 interpScale = Ogre::Math::lerp(prevTransform.scale, currTransform.scale, this->interpolationWeight);
@@ -2282,7 +2282,7 @@ namespace NOWA
                 Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
 
                 // Interpolate orientation
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, false);
+                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
 
                 // Apply to scene camera
                 cameraTransform.camera->setOrientation(interpRot);
@@ -2308,7 +2308,7 @@ namespace NOWA
                 Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
 
                 // Interpolate orientation
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, false);
+                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
 
                 // Apply to scene oldBone
                 oldBoneTransform.oldBone->setOrientation(interpRot);
@@ -2328,7 +2328,7 @@ namespace NOWA
                 const GraphicsModule::TransformData& currTransform = boneTransform.transforms[this->currentTransformBoneIdx];
 
                 Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, false);
+                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
 
                 boneTransform.bone->setOrientation(interpRot);
                 boneTransform.bone->setPosition(interpPos);

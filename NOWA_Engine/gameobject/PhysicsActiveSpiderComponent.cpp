@@ -952,7 +952,6 @@ namespace NOWA
             this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
         }
 
-        this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveSpiderComponent>(&PhysicsActiveSpiderComponent::spiderMoveCallback, this);
         this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
@@ -1108,10 +1107,35 @@ namespace NOWA
     // =========================================================================
     void PhysicsActiveSpiderComponent::setActivated(bool activated)
     {
-        PhysicsActiveComponent::setActivated(activated);
-        if (this->physicsBody)
+        this->activated->setValue(activated);
+
+        if (false == activated)
         {
-            static_cast<OgreNewt::SpiderBody*>(this->physicsBody)->setCanMove(activated);
+            if (nullptr != this->physicsBody)
+            {
+                this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
+                this->physicsBody->unFreeze();
+                this->physicsBody->freeze();
+                // this->physicsBody->setAutoSleep(1);
+
+                this->physicsBody->removeForceAndTorqueCallback();
+            }
+        }
+        else
+        {
+            if (nullptr != this->physicsBody)
+            {
+                if (this->savedMass > 0.0f)
+                {
+                    this->physicsBody->setMassMatrix(this->savedMass, this->savedInertia);
+                }
+
+                this->physicsBody->unFreeze();
+                // this->physicsBody->setAutoSleep(0);
+                // physicsBody->setVelocity(Ogre::Vector3(0.0f, 0.1f, 0.0f));
+
+                this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveSpiderComponent>(&PhysicsActiveSpiderComponent::spiderMoveCallback, this);
+            }
         }
     }
 
