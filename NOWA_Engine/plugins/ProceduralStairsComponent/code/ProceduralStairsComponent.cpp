@@ -8,11 +8,13 @@ GPL v3
 #include "ProceduralStairsComponent.h"
 #include "editor/EditorManager.h"
 #include "gameObject/GameObjectController.h"
+#include "gameobject/PhysicsArtifactComponent.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/InputDeviceCore.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
+#include "modules/LuaScriptApi.h"
 
 #include "OgreAbiUtils.h"
 #include "OgreHlmsManager.h"

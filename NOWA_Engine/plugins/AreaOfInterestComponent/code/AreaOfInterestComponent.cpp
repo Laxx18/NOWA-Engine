@@ -6,6 +6,7 @@
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/LuaScriptComponent.h"
 
 #include "OgreAbiUtils.h"
 
@@ -645,7 +646,7 @@ namespace NOWA
 		return makeStrongPtr<AreaOfInterestComponent>(gameObject->getComponentFromName<AreaOfInterestComponent>(name)).get();
 	}
 
-	void AreaOfInterestComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectController)
+	void AreaOfInterestComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectController)
 	{
 		module(lua)
 		[

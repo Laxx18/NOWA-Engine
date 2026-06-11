@@ -9,6 +9,8 @@ GPL v3
 #include "gameobject/GameObjectFactory.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
+#include "main/Core.h"
+#include "gameobject/PhysicsArtifactComponent.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
 
@@ -1593,7 +1595,7 @@ namespace NOWA
         return makeStrongPtr<ProceduralMazeComponent>(gameObject->getComponentFromName<ProceduralMazeComponent>(name)).get();
     }
 
-    void ProceduralMazeComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void ProceduralMazeComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)[class_<ProceduralMazeComponent, GameObjectComponent>("ProceduralMazeComponent")
                 .def("setNumColumns", &ProceduralMazeComponent::setNumColumns)

@@ -14,6 +14,7 @@ GPL v3
 #include "utilities/MovableText.h"
 #include "utilities/XMLConverter.h"
 
+#include "OgreMeshManager2.h"
 #include "OgreAbiUtils.h"
 #include "OgreBitwise.h"
 #include "OgreHlmsPbsDatablock.h"

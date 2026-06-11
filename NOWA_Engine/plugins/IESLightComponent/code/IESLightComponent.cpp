@@ -475,7 +475,7 @@ namespace NOWA
 		return makeStrongPtr<IESLightComponent>(gameObject->getComponentFromName<IESLightComponent>(name)).get();
 	}
 
-	void IESLightComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void IESLightComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

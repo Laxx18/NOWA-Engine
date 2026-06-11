@@ -13,7 +13,10 @@
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/LightDirectionalComponent.h"
 #include "gameobject/PhysicsArtifactComponent.h"
+#include "gameobject/PhysicsActiveComponent.h"
+#include "gameobject/PhysicsActiveKinematicComponent.h"
 #include "gameobject/PhysicsComponent.h"
+#include "gameobject/InputDeviceComponent.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
 #include "modules/LuaScriptApi.h"
@@ -252,6 +255,10 @@ namespace NOWA
     bool UniversumComponent::init(rapidxml::xml_node<>*& propertyElement)
     {
         bool success = GameObjectComponent::init(propertyElement);
+
+        // Prevents duplicates when readXML fires multiple times in one reload cycle.
+        this->solarSystems.clear();
+        this->ownedGameObjectIds.clear();
 
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRandomSeed())
         {
@@ -743,10 +750,6 @@ namespace NOWA
             delete obs;
         }
         this->planetObservers.clear();
-        // Clear runtime solar system data so init() can safely re-read
-        // from XML on the next UndoAll/reload without duplicate entries.
-        this->solarSystems.clear();
-        this->ownedGameObjectIds.clear();
 
         // Restore all surface objects to original world positions and make visible.
         this->restoreAllSurfaceObjects();
@@ -2312,6 +2315,9 @@ namespace NOWA
 
                             moonPair.second.surfaceObjects.push_back(so);
                             registered = true;
+
+                            // Hide and disable physics.
+                            this->hideSurfaceObjects(moonPair.second);
                         }
                         break;
                     }
@@ -2352,7 +2358,7 @@ namespace NOWA
                 physComp->setOrientation(worldRot);
                 if (nullptr != physComp->getBody())
                 {
-                    physComp->getBody()->setAutoSleep(0);
+                    physComp->setActivated(true);
                 }
             }
             else
@@ -2378,7 +2384,7 @@ namespace NOWA
             auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
             if (nullptr != physComp && nullptr != physComp->getBody())
             {
-                physComp->getBody()->setAutoSleep(1);
+                physComp->setActivated(false);
             }
         }
     }
@@ -2404,7 +2410,7 @@ namespace NOWA
                         physComp->setOrientation(so.savedWorldOrientation);
                         if (nullptr != physComp->getBody())
                         {
-                            physComp->getBody()->setAutoSleep(0);
+                            physComp->setActivated(true);
                         }
                     }
                     else
@@ -2432,7 +2438,7 @@ namespace NOWA
                         physComp->setOrientation(so.savedWorldOrientation);
                         if (nullptr != physComp->getBody())
                         {
-                            physComp->getBody()->setAutoSleep(0);
+                            physComp->setActivated(true);
                         }
                     }
                     else
@@ -3689,11 +3695,11 @@ namespace NOWA
         return Ogre::StringConverter::toString(instance->getSunLightGameObjectId());
     }
 
-    void UniversumComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void UniversumComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)
         [
-            class_<UniversumComponent, GameObjectComponent>("UniversumComponent")
+           luabind::class_<UniversumComponent, GameObjectComponent>("UniversumComponent")
             .def("setRandomSeed", &UniversumComponent::setRandomSeed)
             .def("getRandomSeed", &UniversumComponent::getRandomSeed)
             .def("setSolarSystemCount", &UniversumComponent::setSolarSystemCount)

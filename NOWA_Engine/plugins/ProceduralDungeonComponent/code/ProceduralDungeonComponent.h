@@ -9,6 +9,7 @@ GPL v3
 
 #include "OgrePlugin.h"
 #include "gameobject/GameObjectComponent.h"
+#include "main/Events.h"
 
 #include <memory>
 #include <random>

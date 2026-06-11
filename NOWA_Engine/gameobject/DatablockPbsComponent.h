@@ -2,8 +2,12 @@
 #define DATA_BLOCK_PBS_COMPONENT_H
 
 #include "GameObjectComponent.h"
+#include "OgreTextureGpuManager.h"
 
-class Ogre::HlmsDatablock;
+namespace Ogre
+{
+    class HlmsDatablock;
+}
 
 // TODO: Print info for each GO, which kind of datablock is uses, separate also unlit in own datablock component and terra
 

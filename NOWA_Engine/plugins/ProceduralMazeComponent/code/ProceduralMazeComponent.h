@@ -20,6 +20,8 @@ namespace Ogre
 
 namespace NOWA
 {
+    class PhysicsArtifactComponent;
+
 	/**
 	 * @brief	Component for procedural 3D maze generation.
 	 *			Uses Depth-First Search (DFS) backtracker algorithm to generate

@@ -1264,11 +1264,11 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="9" name="YOffset" data="0 4 7"/>
-					<property type="9" name="LookAtOffset" data="0 1 0"/>
-					<property type="6" name="SpringForce" data="0.1"/>
-					<property type="6" name="Friction" data="0.5"/>
-					<property type="6" name="SpringLength" data="6"/>
+					<property type="9" name="YOffset" data="0 5 7"/>
+					<property type="9" name="LookAtOffset" data="0 2 0"/>
+					<property type="6" name="SpringForce" data="0.3"/>
+					<property type="6" name="Friction" data="0.1"/>
+					<property type="6" name="SpringLength" data="3"/>
 				</userData>
 			</item>
 		</node>
@@ -1391,11 +1391,11 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="9" name="YOffset" data="0 3 -2"/>
-					<property type="9" name="LookAtOffset" data="0 1 0"/>
+					<property type="9" name="YOffset" data="0 5 -2"/>
+					<property type="9" name="LookAtOffset" data="0 2 0"/>
 					<property type="6" name="SpringForce" data="0.6"/>
 					<property type="6" name="Friction" data="0.6"/>
-					<property type="6" name="SpringLength" data="30"/>
+					<property type="6" name="SpringLength" data="10"/>
 				</userData>
 			</item>
 		</node>

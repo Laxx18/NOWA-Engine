@@ -13,11 +13,10 @@ GPL v3
 #include "main/Events.h"
 #include "network/GameObjectStateHistory.h"
 
-class PhysicsActiveComponent;
-class PhysicsActiveKinematicComponent;
-
 namespace NOWA
 {
+    class PhysicsActiveComponent;
+    class PhysicsActiveKinematicComponent;
 
 	/**
 	  * @brief		Your documentation
@@ -278,7 +277,7 @@ namespace NOWA
 		bool isTransforming;
 		Ogre::Vector3 oldPosition;
 		Ogre::Quaternion oldOrientation;
-		GameObjectStateHistory* gameObjectStateHistory;
+		NET::GameObjectStateHistory* gameObjectStateHistory;
 
 		Variant* activated;
 		Variant* targetId;

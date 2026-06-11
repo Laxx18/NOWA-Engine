@@ -11,6 +11,9 @@
 #include "main/ProcessManager.h"
 #include "main/Core.h"
 
+#include "Compositor/OgreCompositorNode.h"
+#include "Compositor/OgreCompositorNodeDef.h"
+
 #include "OgreBitwise.h"
 #include "OgreAbiUtils.h"
 
@@ -1142,7 +1145,7 @@ namespace NOWA
 		return makeStrongPtr<HdrEffectComponent>(gameObject->getComponentFromName<HdrEffectComponent>(name)).get();
 	}
 
-	void HdrEffectComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void HdrEffectComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

@@ -271,7 +271,7 @@ namespace NOWA
         return makeStrongPtr<CameraBehaviorAttachComponent>(gameObject->getComponentFromName<CameraBehaviorAttachComponent>(name)).get();
     }
 
-    void CameraBehaviorAttachComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void CameraBehaviorAttachComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)[class_<CameraBehaviorAttachComponent, CameraBehaviorComponent>("CameraBehaviorAttachComponent")
                 .def("setSmoothValue", &CameraBehaviorAttachComponent::setSmoothValue)

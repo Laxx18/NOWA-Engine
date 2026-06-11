@@ -357,7 +357,7 @@ namespace NOWA
 		Ogre::Real lastSteerAngle;
 		Ogre::Real lastMotorForce;
 		bool firstTimeSet;
-		Path* pPath;
+        NOWA::KI::Path* pPath;
 		std::pair<bool, Ogre::Vector3> currentWaypoint;
 		Ogre::Real previousDistance;
 		Ogre::Vector3 previousPosition;

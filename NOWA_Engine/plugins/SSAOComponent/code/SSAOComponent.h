@@ -2,6 +2,7 @@
 #define SSAOCOMPONENT_H
 
 #include "gameobject/GameObjectComponent.h"
+#include "gameobject/CompositorEffectComponents.h"
 #include "main/Events.h"
 #include "OgrePlugin.h"
 

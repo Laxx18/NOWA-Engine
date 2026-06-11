@@ -10,6 +10,7 @@ GPL v3
 #include "NOWAPrecompiled.h"
 #include "OgrePlugin.h"
 #include "gameobject/GameObjectComponent.h"
+#include "gameobject/GameObjectController.h"
 #include <unordered_map>
 #include <vector>
 
@@ -21,6 +22,8 @@ namespace Ogre
 
 namespace NOWA
 {
+    class PhysicsArtifactComponent;
+
     /**
      * @struct FoliageRule
      * @brief Rule-based vegetation placement (professional system)

@@ -4,6 +4,8 @@
 #include "gameobject/GameObjectController.h"
 #include "gameobject/GameObjectFactory.h"
 #include "utilities/XMLConverter.h"
+#include "modules/LuaScriptApi.h"
+#include "main/AppStateManager.h"
 
 #include "OgreAbiUtils.h"
 
@@ -813,7 +815,7 @@ namespace NOWA
 		return makeStrongPtr<AttributeEffectComponent>(gameObject->getComponentFromName<AttributeEffectComponent>(name)).get();
 	}
 
-	void AttributeEffectComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void AttributeEffectComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

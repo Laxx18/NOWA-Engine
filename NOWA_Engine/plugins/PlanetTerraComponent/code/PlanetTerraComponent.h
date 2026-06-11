@@ -12,6 +12,7 @@ GPL v3
 #include "gameobject/GameObjectComponent.h"
 #include "gameobject/PlanetTerraComponentBase.h"
 #include "planetterra/PlanetTerra.h"
+#include "main/Events.h"
 
 // OIS forward declarations (included via NOWAPrecompiled typically)
 #include "OISKeyboard.h"

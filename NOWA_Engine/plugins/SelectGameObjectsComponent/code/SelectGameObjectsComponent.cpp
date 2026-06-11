@@ -1,6 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "SelectGameObjectsComponent.h"
 #include "utilities/XMLConverter.h"
+#include "utilities/Outline.h"
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
@@ -569,7 +570,7 @@ namespace NOWA
 	}
 #endif
 
-	void SelectGameObjectsComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void SelectGameObjectsComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

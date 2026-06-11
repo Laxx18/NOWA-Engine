@@ -4,8 +4,10 @@
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
 #include "gameobject/GameObjectFactory.h"
 
+#include "OgreWindow.h"
 #include "Compositor/Pass/PassQuad/OgreCompositorPassQuadDef.h"
 #include "Compositor/Pass/PassMipmap/OgreCompositorPassMipmapDef.h"
 #include "Compositor/Pass/PassScene/OgreCompositorPassScene.h"
@@ -359,27 +361,27 @@ namespace NOWA
 	void KeyholeEffectComponent::createKeyholeCompositorEffect(void)
 	{
 		Ogre::Image2 shapeImage;
-		shapeImage.load(this->shapeMask->getString(), ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+		shapeImage.load(this->shapeMask->getString(), Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
 
 		this->destroyShape();
 
 		//const uint8 numMipmaps = image.getNumMipmaps();
 
-		TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
+		Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
 
 		Ogre::PixelFormatGpu pixelFormat = shapeImage.getPixelFormat();
-		this->shapeTexture = textureManager->createTexture(this->shapeMask->getString() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()),
-														   GpuPageOutStrategy::SaveToSystemRam, TextureFlags::RenderToTexture | TextureFlags::AllowAutomipmaps, TextureTypes::Type2D);
+		this->shapeTexture = textureManager->createTexture(this->shapeMask->getString() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()), Ogre::GpuPageOutStrategy::SaveToSystemRam,
+            Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::AllowAutomipmaps, Ogre::TextureTypes::Type2D);
 		this->shapeTexture->setResolution(shapeImage.getWidth(), shapeImage.getHeight());
 		this->shapeTexture->setPixelFormat(pixelFormat);
-		this->shapeTexture->scheduleTransitionTo(GpuResidency::Resident);
+        this->shapeTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
 
 		if (nullptr == this->shapeStagingTexture)
 		{
 			this->shapeStagingTexture = textureManager->getStagingTexture(shapeImage.getWidth(), shapeImage.getHeight(), 1u, 1u, pixelFormat);
 		}
 		this->shapeStagingTexture->startMapRegion();
-		TextureBox texBox = this->shapeStagingTexture->mapRegion(shapeImage.getWidth(), shapeImage.getHeight(), 1u, 1u, pixelFormat);
+        Ogre::TextureBox texBox = this->shapeStagingTexture->mapRegion(shapeImage.getWidth(), shapeImage.getHeight(), 1u, 1u, pixelFormat);
 
 		//for( uint8 mip=0; mip<numMipmaps; ++mip )
 		texBox.copyFrom(shapeImage.getData(0));
@@ -450,7 +452,7 @@ namespace NOWA
 	{
 		if (nullptr != this->shapeTexture)
 		{
-			TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
+            Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
 
 			textureManager->destroyTexture(this->shapeTexture);
 			this->shapeTexture = nullptr;
@@ -514,7 +516,7 @@ namespace NOWA
 		return makeStrongPtr<KeyholeEffectComponent>(gameObject->getComponentFromName<KeyholeEffectComponent>(name)).get();
 	}
 
-	void KeyholeEffectComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void KeyholeEffectComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

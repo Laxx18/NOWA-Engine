@@ -11,9 +11,13 @@ GPL v3
 #include "main/Events.h"
 #include "OgrePlugin.h"
 
+namespace Ogre
+{
+    class Terra;
+}
+
 namespace NOWA
 {
-	class Terra;
 	class TerraComponent;
 
 	/**

@@ -2,6 +2,7 @@
 #include "PlanetSurfaceComponent.h"
 
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/GameObjectController.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
 
@@ -188,7 +189,7 @@ namespace NOWA
         return makeStrongPtr<PlanetSurfaceComponent>(gameObject->getComponentFromName<PlanetSurfaceComponent>(name)).get();
     }
 
-    void PlanetSurfaceComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void PlanetSurfaceComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)[class_<PlanetSurfaceComponent, GameObjectComponent>("PlanetSurfaceComponent").def("setTargetPlanetId", &PlanetSurfaceComponent::setTargetPlanetId).def("getTargetPlanetId", &PlanetSurfaceComponent::getTargetPlanetId)];
 

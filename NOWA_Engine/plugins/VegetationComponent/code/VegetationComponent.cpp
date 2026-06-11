@@ -4,6 +4,7 @@
 #include "gameobject/TerraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
+#include "main/Core.h"
 #include "modules/GraphicsModule.h" // Your render thread queue
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
@@ -13,6 +14,7 @@
 #include <regex>
 
 #include "OgreAbiUtils.h"
+#include "OgrePlatformInformation.h"
 
 namespace
 {
@@ -1051,7 +1053,7 @@ namespace NOWA
         this->regenerateVegetation();
     }
 
-    void VegetationComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void VegetationComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         // Lua bindings
     }

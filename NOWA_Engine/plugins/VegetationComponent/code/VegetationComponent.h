@@ -10,6 +10,7 @@ GPL v3
 #include "NOWAPrecompiled.h"
 #include "OgrePlugin.h"
 #include "gameobject/GameObjectComponent.h"
+#include "main/Events.h"
 #include <atomic>
 #include <vector>
 

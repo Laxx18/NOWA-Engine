@@ -503,7 +503,7 @@ namespace NOWA
 		 * @param[in] sunAltitude			Altitude of the sun. At 90° the sun is facing downards (i.e. 12pm) *Must* be in range [0; pi)
 		 * @param[in] azimuth					Rotation around Y axis. In radians.
 		 */
-		void setSunDir(const Ogre::Radian& sunAltitude, const Ogre::Radian& azimuth = Radian(0.0f));
+		void setSunDir(const Ogre::Radian& sunAltitude, const Ogre::Radian& azimuth = Ogre::Radian(0.0f));
 
 		/** 
 		 * @brief More direct approach on setting time of day.

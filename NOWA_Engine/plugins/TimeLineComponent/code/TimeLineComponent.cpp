@@ -763,7 +763,7 @@ namespace NOWA
 		return makeStrongPtr<TimeLineComponent>(gameObject->getComponentFromName<TimeLineComponent>(name)).get();
 	}
 
-	void TimeLineComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void TimeLineComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[
@@ -802,6 +802,8 @@ namespace NOWA
 		{
 			return true;
 		}
+
+		return false;
 	}
 
 }; //namespace end

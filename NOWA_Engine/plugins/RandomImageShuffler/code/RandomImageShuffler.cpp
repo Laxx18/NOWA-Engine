@@ -842,7 +842,7 @@ namespace NOWA
 		return makeStrongPtr<RandomImageShuffler>(gameObject->getComponentFromName<RandomImageShuffler>(name)).get();
 	}
 
-	void RandomImageShuffler::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void RandomImageShuffler::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

@@ -731,7 +731,7 @@ namespace NOWA
 		return makeStrongPtr<SpeechBubbleComponent>(gameObject->getComponentFromName<SpeechBubbleComponent>(name)).get();
 	}
 
-	void SpeechBubbleComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void SpeechBubbleComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

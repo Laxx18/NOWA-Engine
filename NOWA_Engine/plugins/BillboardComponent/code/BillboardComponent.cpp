@@ -2,6 +2,8 @@
 #include "BillboardComponent.h"
 #include "utilities/XMLConverter.h"
 #include "modules/DeployResourceModule.h"
+#include "modules/LuaScriptApi.h"
+#include "gameobject/GameObjectController.h"
 
 #include "gameobject/GameObjectFactory.h"
 
@@ -774,7 +776,7 @@ namespace NOWA
 		return makeStrongPtr<BillboardComponent>(gameObject->getComponentFromName<BillboardComponent>(name)).get();
 	}
 
-	void BillboardComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void BillboardComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 
 		module(lua)

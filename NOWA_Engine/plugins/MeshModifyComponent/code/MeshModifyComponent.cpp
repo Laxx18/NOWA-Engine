@@ -9,10 +9,13 @@ GPL v3
 #include "gameobject/GameObjectFactory.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
+#include "main/InputDeviceCore.h"
+#include "main/Core.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
 
 #include "OgreAbiUtils.h"
+#include "OgreMeshManager2.h"
 #include "OgreBitwise.h"
 #include "OgreHlmsPbsDatablock.h"
 #include "OgreItem.h"
@@ -2219,11 +2222,11 @@ namespace NOWA
         return makeStrongPtr<MeshModifyComponent>(gameObject->getComponentFromName<MeshModifyComponent>(name)).get();
     }
 
-    void MeshModifyComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void MeshModifyComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)
         [
-            class_<MeshModifyComponent, GameObjectComponent>("MeshModifyComponent")
+           luabind::class_<MeshModifyComponent, GameObjectComponent>("MeshModifyComponent")
             .def("setActivated", &MeshModifyComponent::setActivated)
             .def("isActivated", &MeshModifyComponent::isActivated)
             .def("setBrushSize", &MeshModifyComponent::setBrushSize)

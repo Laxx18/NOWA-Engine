@@ -2,8 +2,10 @@
 #include "ProceduralFoliageVolumeComponent.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/TerraComponent.h"
+#include "gameobject/PhysicsArtifactComponent.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
+#include "main/Core.h"
 #include "modules/GraphicsModule.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
@@ -2235,7 +2237,7 @@ namespace NOWA
         return allowIfHit ? (hitObject != nullptr) : (hitObject == nullptr);
     }
 
-    void ProceduralFoliageVolumeComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void ProceduralFoliageVolumeComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         // Lua bindings - can be filled in later if needed
     }

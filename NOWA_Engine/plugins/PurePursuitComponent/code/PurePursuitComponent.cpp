@@ -6,6 +6,9 @@
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/NodeComponent.h"
+#include "gameobject/PhysicsActiveVehicleComponent.h"
+#include "ki/Path.h"
 
 #include "OgreAbiUtils.h"
 
@@ -289,7 +292,7 @@ namespace NOWA
 
 		if (nullptr == this->pPath)
 		{
-			this->pPath = new Path();
+			this->pPath = new KI::Path();
 		}
 
 		this->pPath->clear();
@@ -1111,8 +1114,8 @@ namespace NOWA
 	bool PurePursuitComponent::detectObstacle(Ogre::Real detectionRange)
 	{
 		Ogre::Vector3 curPos = this->gameObjectPtr->getPosition();
-		Quaternion curOrientation = this->gameObjectPtr->getOrientation();
-		Ogre::Vector3 forwardDir = curOrientation * Vector3::UNIT_X;
+		Ogre::Quaternion curOrientation = this->gameObjectPtr->getOrientation();
+		Ogre::Vector3 forwardDir = curOrientation * Ogre::Vector3::UNIT_X;
 		Ogre::Vector3 detectionPoint = curPos + forwardDir * detectionRange;
 
 		for (const auto& obstacle : obstacles)
@@ -1133,8 +1136,8 @@ namespace NOWA
 	void PurePursuitComponent::adjustPathAroundObstacle(Ogre::Vector3& lookaheadPoint)
 	{
 		Ogre::Quaternion curOrientation = this->gameObjectPtr->getOrientation();
-		Ogre::Vector3 forwardDir = curOrientation * Vector3::UNIT_X;
-		Ogre::Vector3 rightDir = curOrientation * Vector3::UNIT_Z;
+		Ogre::Vector3 forwardDir = curOrientation * Ogre::Vector3::UNIT_X;
+        Ogre::Vector3 rightDir = curOrientation * Ogre::Vector3::UNIT_Z;
 
 		// Calculate new lookahead point to the right of the obstacle
 		lookaheadPoint += rightDir * 5.0f;
@@ -1453,7 +1456,7 @@ namespace NOWA
 		instance->setWaypointId(index, Ogre::StringConverter::parseUnsignedLong(waypointId));
 	}
 
-	void PurePursuitComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void PurePursuitComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		// Somehow setWaypointId, addWaypointId etc. local functions with string are not called, but instead the ones with unsigned long, hence redirect to the str versions..
 

@@ -10,6 +10,7 @@ GPL v3
 #include "gameobject/CompositorEffectComponents.h"
 #include "main/Events.h"
 #include "OgrePlugin.h"
+#include "OgreStagingTexture.h"
 
 namespace NOWA
 {

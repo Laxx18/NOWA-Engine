@@ -4,6 +4,7 @@
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
 #include "gameobject/GameObjectFactory.h"
 
 #include "OgreAbiUtils.h"
@@ -988,7 +989,7 @@ namespace NOWA
 		return makeStrongPtr<InstantRadiosityComponent>(gameObject->getComponentFromName<InstantRadiosityComponent>(name)).get();
 	}
 
-	void InstantRadiosityComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void InstantRadiosityComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

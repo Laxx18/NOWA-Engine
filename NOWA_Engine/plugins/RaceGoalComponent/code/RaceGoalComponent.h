@@ -18,6 +18,7 @@ class PhysicsActiveComponent;
 
 namespace NOWA
 {
+    class PhysicsActiveKinematicComponent;
 
 	/**
 	  * @brief		Can be used for a player controlled vehicle against cheating :). That is create several checkpoints with the given

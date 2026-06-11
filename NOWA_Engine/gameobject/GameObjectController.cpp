@@ -1016,6 +1016,9 @@ void GameObjectController::destroyContent(const std::vector<Ogre::String>& exclu
                 boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(gameObjectPtr->getId()));
                 AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(deleteGameObjectEvent);
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + gameObjectPtr->getName());
+
+                unsigned long it = gameObjectPtr->getId();
+
                 gameObjectPtr->destroy();
             }
         }

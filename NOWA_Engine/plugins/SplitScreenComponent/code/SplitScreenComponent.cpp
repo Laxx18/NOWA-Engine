@@ -4,6 +4,7 @@
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
 #include "gameobject/GameObjectFactory.h"
 #include "modules/WorkspaceModule.h"
 
@@ -12,10 +13,13 @@
 #include "gameobject/CameraBehaviorComponents.h"
 
 #include "OgreAbiUtils.h"
-
+#include "OgreWindow.h"
+#include "OgreDepthBuffer.h"
 #include "Compositor/Pass/PassQuad/OgreCompositorPassQuadDef.h"
 #include "Compositor/Pass/PassMipmap/OgreCompositorPassMipmapDef.h"
 #include "Compositor/Pass/PassScene/OgreCompositorPassScene.h"
+#include "Compositor/OgreCompositorNode.h"
+#include "Compositor/OgreCompositorNodeDef.h"
 
 namespace NOWA
 {
@@ -303,22 +307,22 @@ namespace NOWA
 		Ogre::TextureGpu* texture = nullptr;
 		if (false == this->textureManager->hasTextureResource(name, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME))
 		{
-			Ogre::TextureGpu* manualTexture = this->textureManager->createTexture("ManualTexture_" + name, GpuPageOutStrategy::SaveToSystemRam, TextureFlags::ManualTexture, TextureTypes::Type2D);
+            Ogre::TextureGpu* manualTexture = this->textureManager->createTexture("ManualTexture_" + name, Ogre::GpuPageOutStrategy::SaveToSystemRam, Ogre::TextureFlags::ManualTexture, Ogre::TextureTypes::Type2D);
 
 			int windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth()/* * this->geometry->getVector4().z*/;
 			int windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() /** this->geometry->getVector4().w*/;
 
 			manualTexture->setResolution(windowWidth, windowHeight);
-			manualTexture->scheduleTransitionTo(GpuResidency::OnStorage);
+			manualTexture->scheduleTransitionTo(Ogre::GpuResidency::OnStorage);
 			manualTexture->setNumMipmaps(1);
 
-			manualTexture->setPixelFormat(PFG_RGBA8_UNORM_SRGB);
-			manualTexture->scheduleTransitionTo(GpuResidency::Resident);
+			manualTexture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
+            manualTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
 
-			texture = this->textureManager->createTexture(name, GpuPageOutStrategy::Discard, TextureFlags::RenderToTexture, TextureTypes::Type2D);
+			texture = this->textureManager->createTexture(name, Ogre::GpuPageOutStrategy::Discard, Ogre::TextureFlags::RenderToTexture, Ogre::TextureTypes::Type2D);
 			texture->copyParametersFrom(manualTexture);
-			texture->scheduleTransitionTo(GpuResidency::Resident);
-			texture->_setDepthBufferDefaults(DepthBuffer::POOL_DEFAULT, false, PFG_D32_FLOAT);
+            texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+            texture->_setDepthBufferDefaults(Ogre::DepthBuffer::POOL_DEFAULT, false, Ogre::PFG_D32_FLOAT);
 
 			return texture;
 		}
@@ -640,7 +644,7 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getCameraBehaviorGameObjectId());
 	}
 
-	void SplitScreenComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void SplitScreenComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 			[

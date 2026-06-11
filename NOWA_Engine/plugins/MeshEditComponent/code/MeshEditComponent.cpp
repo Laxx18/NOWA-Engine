@@ -9,9 +9,13 @@ GPL v3
 #include "gameobject/GameObjectFactory.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
+#include "main/InputDeviceCore.h"
+#include "main/Core.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
+#include "utilities/MathHelper.h"
 
+#include "OgreMeshManager2.h"
 #include "OgreAbiUtils.h"
 #include "OgreBitwise.h"
 #include "OgreHlmsPbsDatablock.h"
@@ -6470,7 +6474,7 @@ namespace NOWA
         return (item != nullptr && go->getComponentCount<MeshEditComponent>() == 0);
     }
 
-    void MeshEditComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& /*gameObjectClass*/, class_<GameObjectController>& /*gameObjectControllerClass*/)
+    void MeshEditComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& /*gameObjectClass*/,luabind::class_<GameObjectController>& /*gameObjectControllerClass*/)
     {
         luabind::module(lua)
         [

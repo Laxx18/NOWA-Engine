@@ -163,7 +163,7 @@ namespace NOWA
 		return makeStrongPtr<ActivationComponent>(gameObject->getComponentFromName<ActivationComponent>(name)).get();
 	}
 
-	void ActivationComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void ActivationComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		
 	}

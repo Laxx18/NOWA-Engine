@@ -11,6 +11,7 @@ GPL v3
 #include "gameobject/TerraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/InputDeviceCore.h"
+#include "main/Core.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"

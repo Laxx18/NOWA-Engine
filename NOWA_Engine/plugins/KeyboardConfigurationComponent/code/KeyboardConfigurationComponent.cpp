@@ -2,10 +2,12 @@
 #include "KeyboardConfigurationComponent.h"
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
+#include "modules/InputDeviceModule.h"
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
 #include "main/InputDeviceCore.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/MyGUIComponents.h"
 
 #include "OgreAbiUtils.h"
 
@@ -677,7 +679,7 @@ namespace NOWA
 		return makeStrongPtr<KeyboardConfigurationComponent>(gameObject->getComponentFromName<KeyboardConfigurationComponent>(name)).get();
 	}
 
-	void KeyboardConfigurationComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void KeyboardConfigurationComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

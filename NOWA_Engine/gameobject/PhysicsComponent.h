@@ -4,7 +4,10 @@
 #include "GameObjectComponent.h"
 #include "modules/LuaScript.h"
 
-class Terra;
+namespace Ogre
+{
+    class Terra;
+}
 
 namespace NOWA
 {
@@ -111,6 +114,11 @@ namespace NOWA
 		 * @see		GameObjectComponent::writeXML
 		 */
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) = 0;
+
+		/**
+         * @see		GameObjectComponent::setActivated
+         */
+        virtual void setActivated(bool activated) override;
 
 		/**
 		 * @brief		Sets the orientation for this game object

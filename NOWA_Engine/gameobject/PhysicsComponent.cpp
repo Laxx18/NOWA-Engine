@@ -1327,6 +1327,21 @@ namespace NOWA
         return this->gameObjectPtr->getSceneNode()->getScale();
     }
 
+    void PhysicsComponent::setActivated(bool activated)
+    {
+        if (nullptr != this->physicsBody)
+        {
+            if (true == activated)
+            {
+                this->physicsBody->setAutoSleep(0);
+            }
+            else
+            {
+                this->physicsBody->setAutoSleep(1);
+            }
+        }
+    }
+
     void PhysicsComponent::setOrientation(const Ogre::Quaternion& orientation)
     {
         this->gameObjectPtr->setAttributeOrientation(orientation);

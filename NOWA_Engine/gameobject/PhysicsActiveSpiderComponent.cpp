@@ -1107,6 +1107,8 @@ namespace NOWA
     // =========================================================================
     void PhysicsActiveSpiderComponent::setActivated(bool activated)
     {
+        PhysicsComponent::setActivated(activated);
+
         this->activated->setValue(activated);
 
         if (false == activated)

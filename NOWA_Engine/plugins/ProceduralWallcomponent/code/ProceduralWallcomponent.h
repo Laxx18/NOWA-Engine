@@ -8,10 +8,13 @@ GPL v3
 #define PROCEDURAL_WALL_COMPONENT_H
 
 #include "OgrePlugin.h"
+#include "main/Events.h"
 #include "gameobject/WallComponentBase.h"
 
 namespace NOWA
 {
+    class PhysicsArtifactComponent;
+
     /**
      * @class ProceduralWallComponent
      * @brief Interactive wall building component - click and drag to create walls dynamically

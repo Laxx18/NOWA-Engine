@@ -262,7 +262,7 @@ namespace NOWA
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         static bool canStaticAddComponent(GameObject* gameObject);
 
-        static void createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass);
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
         static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor();
 

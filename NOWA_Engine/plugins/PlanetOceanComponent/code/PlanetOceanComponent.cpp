@@ -1076,7 +1076,7 @@ namespace NOWA
         return makeStrongPtr<PlanetOceanComponent>(gameObject->getComponentFromName<PlanetOceanComponent>(name)).get();
     }
 
-    void PlanetOceanComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void PlanetOceanComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)[class_<PlanetOceanComponent, GameObjectComponent>("PlanetOceanComponent")
                 .def("setActivated", &PlanetOceanComponent::setActivated)

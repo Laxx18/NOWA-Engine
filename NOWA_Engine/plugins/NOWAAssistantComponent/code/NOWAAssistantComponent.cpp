@@ -4,6 +4,7 @@
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
 #include "gameobject/GameObjectFactory.h"
 
 #include "OgreAbiUtils.h"

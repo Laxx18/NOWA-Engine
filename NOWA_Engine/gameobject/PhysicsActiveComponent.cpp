@@ -855,6 +855,8 @@ namespace NOWA
 
     void PhysicsActiveComponent::setActivated(bool activated)
     {
+        PhysicsComponent::setActivated(activated);
+
         this->activated->setValue(activated);
         if (false == activated)
         {
@@ -939,41 +941,59 @@ namespace NOWA
             return;
         }
 
-        // this->up, this->forward and this->right are computed every logic frame
-        // in PhysicsActiveComponent::update() from gravityDirection and defaultDirection.
-        // They are already surface-projected and normalised, so we use them directly.
+        // this->up and this->forward are computed every logic frame in
+        // PhysicsActiveComponent::update() from gravityDirection and defaultDirection.
+        // this->forward is already surface-projected, normalised, and accounts for
+        // whatever defaultDirection the mesh uses (+X, -Z, etc.).
 
-        // Re-project forward onto the surface plane to eliminate any floating point drift
-        // that may have accumulated since the last update() call.
+        // Re-project forward onto the surface plane to remove any floating point drift.
         Ogre::Vector3 surfaceForward = this->forward - this->forward.dotProduct(this->up) * this->up;
         if (surfaceForward.squaredLength() < 1e-6f)
         {
-            // Forward is parallel to up -- degenerate, cannot build a valid orientation.
-            // Kill angular velocity and wait for the next frame.
+            // Degenerate: forward parallel to up. Kill angular velocity this frame.
             this->applyOmegaForce(Ogre::Vector3::ZERO);
             return;
         }
         surfaceForward.normalise();
 
-        // Build an orthonormal right vector from up x forward.
-        Ogre::Vector3 surfaceRight = this->up.crossProduct(surfaceForward);
-        surfaceRight.normalise();
+        // Build the target orientation as a quaternion directly from the two basis vectors,
+        // without going through a rotation matrix. This avoids any column-convention
+        // assumption about which local axis is "forward" for this mesh.
+        //
+        // getRotationTo() gives the shortest-arc rotation from the body's current up
+        // to the desired up (planet surface normal). We then apply a second rotation
+        // to align forward within the horizontal plane.
+        Ogre::Quaternion currentOrientation = this->physicsBody->getOrientation();
 
-        // Build the target rotation matrix.
-        // Column 0 = right, column 1 = up, column 2 = -forward (Ogre right-hand convention:
-        // the camera/entity looks down -Z in local space, so the forward column is negated).
-        Ogre::Matrix3 targetMatrix;
-        targetMatrix.SetColumn(0, surfaceRight);
-        targetMatrix.SetColumn(1, this->up);
-        targetMatrix.SetColumn(2, -surfaceForward);
+        // Step 1: compute the rotation that brings the body's current up axis to planet up.
+        Ogre::Vector3 currentUp = currentOrientation * Ogre::Vector3::UNIT_Y;
+        Ogre::Quaternion uprightRot = currentUp.getRotationTo(this->up);
 
-        Ogre::Quaternion targetOrientation;
-        targetOrientation.FromRotationMatrix(targetMatrix);
+        // Step 2: after applying uprightRot the body is level, but may have any yaw.
+        // Compute the yaw correction: rotate the body's forward (after levelling) to
+        // match surfaceForward, but only around the up axis.
+        Ogre::Vector3 levelledForward = uprightRot * (currentOrientation * this->gameObjectPtr->getDefaultDirection());
+        // Project levelledForward onto the horizontal plane
+        levelledForward = levelledForward - levelledForward.dotProduct(this->up) * this->up;
+        if (levelledForward.squaredLength() < 1e-6f)
+        {
+            // Cannot determine yaw -- apply only the upright correction.
+            Ogre::Quaternion targetOrientation = uprightRot * currentOrientation;
+            targetOrientation.normalise();
+            this->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_SCALE, strength);
+            return;
+        }
+        levelledForward.normalise();
+
+        Ogre::Quaternion yawRot = levelledForward.getRotationTo(surfaceForward);
+
+        // Combine: first level the body, then correct yaw.
+        Ogre::Quaternion targetOrientation = yawRot * uprightRot * currentOrientation;
         targetOrientation.normalise();
 
-        // Drive all three axes (UNIT_SCALE) toward the target orientation.
+        // Drive all three axes toward the target orientation.
         // This corrects yaw, pitch and roll simultaneously every frame,
-        // preventing the roll drift that occurs on spherical planet surfaces.
+        // preventing roll drift on spherical planet surfaces.
         this->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_SCALE, strength);
     }
 
@@ -1104,7 +1124,7 @@ namespace NOWA
         this->forceCommand.pending.store(true);
     }
 
-    void PhysicsActiveComponent::applyRequiredForceForVelocity(const Ogre::Vector3& velocity)
+     void PhysicsActiveComponent::applyRequiredForceForVelocity(const Ogre::Vector3& velocity)
     {
         // Set the command values
         this->requiredVelocityForForceCommand.vectorValue = velocity;
@@ -1115,10 +1135,7 @@ namespace NOWA
 
     void PhysicsActiveComponent::applyRequiredForceForJumpVelocity(const Ogre::Vector3& velocity)
     {
-        // Set the command values
         this->jumpForceCommand.vectorValue = velocity;
-
-        // Mark as pending - this will be seen by the physics thread
         this->jumpForceCommand.pending.store(true);
     }
 
@@ -2888,7 +2905,7 @@ namespace NOWA
 
         // Clear stale force and torque from previous substep FIRST.
         // Without this, if no command is pending this substep, Newton reuses
-        // the previous substep's force/torque — causing the body to keep
+        // the previous substep's force/torque -- causing the body to keep
         // accelerating even when Lua has stopped sending commands.
         body->setForce(Ogre::Vector3::ZERO);
         body->setTorque(Ogre::Vector3::ZERO);
@@ -2937,7 +2954,6 @@ namespace NOWA
                     wholeForce = directionToPlanet * (mass * gravityAcceleration);
 
                     this->currentGravityStrength = gravityAcceleration;
-
                     this->gravityUpdated.test_and_set();
                 }
             }
@@ -2950,15 +2966,11 @@ namespace NOWA
         }
 
         // Checks if a force command is pending.
-        // Uses addForce so it stacks ON TOP of wholeForce at the bottom,
-        // not as a replacement. Store into wholeForce directly instead.
         if (this->forceCommand.pending.load())
         {
             bool expected = false;
             if (this->forceCommand.inProgress.compare_exchange_strong(expected, true))
             {
-                // Accumulate into wholeForce so it is added with gravity below,
-                // not as a separate addForce call which would stack each substep.
                 wholeForce += this->forceCommand.vectorValue;
 
                 this->forceCommand.pending.store(false);
@@ -2992,9 +3004,6 @@ namespace NOWA
             {
                 Ogre::Vector3 velocityToApply = this->jumpForceCommand.vectorValue;
                 Ogre::Vector3 moveForce = (velocityToApply - body->getVelocity()) * mass / timeStep;
-
-                // Use addForce so gravity in wholeForce is not overwritten.
-                // The velocity command is skipped this substep so nothing wipes this.
                 body->addForce(moveForce);
 
                 this->jumpForceCommand.pending.store(false);
@@ -3010,9 +3019,6 @@ namespace NOWA
             {
                 Ogre::Vector3 desiredOmega = this->omegaForceCommand.vectorValue;
 
-                // setTorqueFromOmega calls setTorque internally — replaces, does not accumulate.
-                // Zero torque was already set at the top so if this is not pending,
-                // the body holds its current rotation via damping.
                 body->setTorqueFromOmega(desiredOmega, timeStep);
 
                 this->omegaForceCommand.inProgress.store(false);
@@ -3091,8 +3097,6 @@ namespace NOWA
         // addForce accumulates on top of whatever setForce placed (thrust or zero).
         // Gravity, springs, attractors, and one-shot forces all land here correctly.
         body->addForce(wholeForce);
-
-        // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MoveCallback] wholeForce=" + Ogre::StringConverter::toString(wholeForce) + " wholeForce.length=" + Ogre::StringConverter::toString(wholeForce.length()));
     }
 
     void PhysicsActiveComponent::contactCallback(OgreNewt::Body* otherBody, OgreNewt::Contact* contact)

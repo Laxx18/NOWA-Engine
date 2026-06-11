@@ -12,6 +12,8 @@ GPL v3
 
 namespace NOWA
 {
+    class PhysicsArtifactComponent;
+
     /**
      * @class ProceduralGeometryComponent
      * @brief Click-to-place procedural geometry primitive component.

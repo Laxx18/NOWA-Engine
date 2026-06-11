@@ -80,7 +80,7 @@ namespace NOWA
 
         static bool canStaticAddComponent(GameObject* gameObject);
 
-        static void createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass);
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController);
 
         static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor();
 

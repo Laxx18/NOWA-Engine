@@ -45,7 +45,8 @@ namespace OgreNewt
         m_nodeupdatenotifycallback(nullptr),
         m_contactCallback(nullptr),
         m_renderUpdateCallback(nullptr),
-        m_selfCollisionGroup(0)
+        m_selfCollisionGroup(0),
+        m_desiredImpulseVelocity(Ogre::Vector3::ZERO)
     {
         switch (notifyKind)
         {
@@ -114,7 +115,8 @@ namespace OgreNewt
         m_nodeupdatenotifycallback(nullptr),
         m_contactCallback(nullptr),
         m_renderUpdateCallback(nullptr),
-        m_selfCollisionGroup(0)
+        m_selfCollisionGroup(0),
+        m_desiredImpulseVelocity(Ogre::Vector3::ZERO)
     {
 
         switch (notifyKind)
@@ -171,7 +173,8 @@ namespace OgreNewt
         m_nodeupdatenotifycallback(nullptr),
         m_contactCallback(nullptr),
         m_renderUpdateCallback(nullptr),
-        m_selfCollisionGroup(0)
+        m_selfCollisionGroup(0),
+        m_desiredImpulseVelocity(Ogre::Vector3::ZERO)
     {
         // getNewtonBody() intentionally empty — subclass initialises them.
     }
@@ -252,6 +255,44 @@ namespace OgreNewt
         {
             m_forcecallback(this, timestep, threadIndex);
         }
+
+        // Apply any pending one-shot impulse velocity set from the logic thread.
+        // This runs after m_forcecallback so the impulse accumulates on top of
+        // whatever forces the callback set, without being overwritten by them.
+        // ApplyImpulsePair deposits into m_impulseForce which Newton integrates
+        // independently of SetForce/addForce -- immune to substep force overwrites.
+        // Per Julio Jerez: the impulse must be applied here, not via force / timeStep.
+        {
+            std::lock_guard<std::mutex> lock(m_impulseMutex);
+            if (!m_desiredImpulseVelocity.isZeroLength())
+            {
+                auto* dyn = getNewtonBody()->GetAsBodyDynamic();
+                if (nullptr != dyn)
+                {
+                    Ogre::Real mass = 0.0f;
+                    Ogre::Vector3 inertia = Ogre::Vector3::ZERO;
+                    getMassMatrix(mass, inertia);
+
+                    // linearImpulse = (desiredVelocity - currentVelocity) * mass
+                    // This changes the body velocity by exactly desiredVelocity in one step.
+                    Ogre::Vector3 currentVel(dyn->GetVelocity().m_x, dyn->GetVelocity().m_y, dyn->GetVelocity().m_z);
+                    Ogre::Vector3 deltaVel = m_desiredImpulseVelocity - currentVel;
+                    Ogre::Vector3 linearImpulse = deltaVel * mass;
+
+                    ndVector ndLinear((ndFloat32)linearImpulse.x, (ndFloat32)linearImpulse.y, (ndFloat32)linearImpulse.z, ndFloat32(0.0f));
+                    ndVector ndAngular(ndFloat32(0.0f), ndFloat32(0.0f), ndFloat32(0.0f), ndFloat32(0.0f));
+                    dyn->ApplyImpulsePair(ndLinear, ndAngular, (ndFloat32)timestep);
+                }
+                // Consume the impulse -- fire once only.
+                m_desiredImpulseVelocity = Ogre::Vector3::ZERO;
+            }
+        }
+    }
+
+    void Body::setDesiredImpulseVelocity(const Ogre::Vector3& desiredVelocity)
+    {
+        std::lock_guard<std::mutex> lock(m_impulseMutex);
+        m_desiredImpulseVelocity = desiredVelocity;
     }
 
     void Body::standardForceCallback(OgreNewt::Body* me, float timestep, int threadIndex)
@@ -1000,7 +1041,7 @@ namespace OgreNewt
         for (ndBodyList::ndNode* node = bodyList.GetFirst(); node; node = node->GetNext())
         {
             // IMPORTANT: reference, not copy (GetInfo() returns T&)
-            auto bodySp = node->GetInfo();                          // ndSharedPtr<ndBody>& (most likely)
+            auto bodySp = node->GetInfo();                           // ndSharedPtr<ndBody>& (most likely)
             ndBodyKinematic* const b = bodySp->GetAsBodyKinematic(); // or bodySp->GetAsBody()
 
             if (b == getNewtonBody())

@@ -5,6 +5,9 @@
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/PhysicsActiveComponent.h"
+#include "gameobject/PhysicsActiveKinematicComponent.h"
+#include "gameobject/PhysicsPlayerControllerComponent.h"
 
 #include "OgreAbiUtils.h"
 
@@ -615,7 +618,7 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getTargetId());
 	}
 
-	void TransformHistoryComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void TransformHistoryComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

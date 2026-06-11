@@ -5,6 +5,8 @@
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/PhysicsActiveComponent.h"
+#include "gameobject/PhysicsActiveKinematicComponent.h"
 
 #include "OgreAbiUtils.h"
 
@@ -576,7 +578,7 @@ namespace NOWA
 		return makeStrongPtr<FollowTargetComponent>(gameObject->getComponentFromName<FollowTargetComponent>(name)).get();
 	}
 
-	void FollowTargetComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void FollowTargetComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

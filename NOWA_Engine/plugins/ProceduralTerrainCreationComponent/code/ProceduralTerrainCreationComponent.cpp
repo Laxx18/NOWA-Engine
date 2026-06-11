@@ -2805,7 +2805,7 @@ namespace NOWA
         return makeStrongPtr<ProceduralTerrainCreationComponent>(gameObject->getComponentFromName<ProceduralTerrainCreationComponent>(name)).get();
     }
 
-    void ProceduralTerrainCreationComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void ProceduralTerrainCreationComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)[class_<ProceduralTerrainCreationComponent, GameObjectComponent>("ProceduralTerrainCreationComponent")
                 .def("setResolution", &ProceduralTerrainCreationComponent::setResolution)

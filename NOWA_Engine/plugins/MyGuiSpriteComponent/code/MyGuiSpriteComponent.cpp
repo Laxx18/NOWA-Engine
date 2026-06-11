@@ -881,7 +881,7 @@ namespace NOWA
         return makeStrongPtr<MyGuiSpriteComponent>(gameObject->getComponentFromName<MyGuiSpriteComponent>(name)).get();
     }
 
-    void MyGuiSpriteComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void MyGuiSpriteComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)[class_<MyGuiSpriteComponent, MyGUIComponent>("MyGuiSpriteComponent")
                 .def("setActivated", &MyGuiSpriteComponent::setActivated)

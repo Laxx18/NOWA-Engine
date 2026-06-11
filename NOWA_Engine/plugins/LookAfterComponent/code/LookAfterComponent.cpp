@@ -4,7 +4,7 @@
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
 #include "main/AppStateManager.h"
-
+#include "modules/LuaScriptApi.h"
 #include "gameobject/GameObjectFactory.h"
 
 #include "OgreAbiUtils.h"
@@ -533,7 +533,7 @@ namespace NOWA
 		instance->setTargetId(Ogre::StringConverter::parseUnsignedLong(id));
 	}
 
-	void LookAfterComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void LookAfterComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

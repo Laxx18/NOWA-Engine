@@ -2,12 +2,14 @@
 #include "PlanetTerraComponent.h"
 #include "gameobject/GameObjectController.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/DatablockPbsComponent.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/InputDeviceCore.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
+#include "editor/EditorManager.h"
 
 #include "OgreAbiUtils.h"
 #include "OgreImage2.h"
@@ -249,6 +251,7 @@ namespace NOWA
         rayQuery->setSortByDistance(true);
 
         // Subscribe to editor events
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PlanetTerraComponent::handleNewComponent), EventDataNewComponent::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PlanetTerraComponent::handleMeshModifyMode), EventDataEditorMode::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PlanetTerraComponent::handleGameObjectSelected), EventDataGameObjectSelected::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PlanetTerraComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
@@ -282,6 +285,8 @@ namespace NOWA
 
     bool PlanetTerraComponent::connect(void)
     {
+        this->wireBlendTextureToPbsDatablock();
+
         return true;
     }
 
@@ -1183,7 +1188,7 @@ namespace NOWA
         try
         {
             Ogre::Image2 img;
-            img.load(name, ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+            img.load(name, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
             brushImageW = static_cast<int>(img.getWidth());
             brushImageH = static_cast<int>(img.getHeight());
             brushData.resize(static_cast<size_t>(brushImageW) * brushImageH, 0.0f);
@@ -1263,11 +1268,6 @@ namespace NOWA
         {
             return;
         }
-
-        // DatablockPbsComponent::postInit() just completed on the main thread.
-        // Its HlmsPbsDatablock clone is fully set up. We can now safely wire
-        // the blend weight texture directly via enqueueAndWait on the render thread.
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PlanetTerraComponent::handleNewComponent), EventDataNewComponent::getStaticEventType());
 
         this->wireBlendTextureToPbsDatablock();
 

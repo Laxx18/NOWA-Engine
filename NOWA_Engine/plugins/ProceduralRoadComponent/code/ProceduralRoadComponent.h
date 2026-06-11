@@ -9,9 +9,12 @@ GPL v3
 
 #include "OgrePlugin.h"
 #include "gameobject/RoadComponentBase.h"
+#include "main/Events.h"
 
 namespace NOWA
 {
+    class PhysicsArtifactComponent;
+
     /**
      * @class ProceduralRoadComponent
      * @brief Interactive road building component - click and drag to create roads dynamically

@@ -19,6 +19,7 @@ Key changes vs. the v1 version:
 #include "NOWAPrecompiled.h"
 #include "AnimationSequenceComponent.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/PlayerControllerComponents.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
 #include "modules/LuaScriptApi.h"
@@ -616,7 +617,7 @@ namespace NOWA
     {
         this->animationCount->setValue(animationCount);
 
-        size_t oldSize = this->animationNames.size();
+        unsigned int oldSize = this->animationNames.size();
 
         if (animationCount > oldSize)
         {
@@ -626,7 +627,7 @@ namespace NOWA
             this->animationTimePositions.resize(animationCount);
             this->animationSpeeds.resize(animationCount);
 
-            for (size_t i = oldSize; i < animationCount; i++)
+            for (unsigned int i = oldSize; i < animationCount; i++)
             {
                 this->animationNames[i] = new Variant(AnimationSequenceComponent::AttrAnimationName() + Ogre::StringConverter::toString(i), this->availableAnimations, this->attributes);
                 this->animationNames[i]->addUserData(GameObject::AttrActionNeedRefresh());
@@ -846,7 +847,7 @@ namespace NOWA
         return makeStrongPtr<AnimationSequenceComponent>(gameObject->getComponentFromName<AnimationSequenceComponent>(name)).get();
     }
 
-    void AnimationSequenceComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    void AnimationSequenceComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)[class_<AnimationSequenceComponent, GameObjectComponent>("AnimationSequenceComponent")
                 .def("getParentClassName", &AnimationSequenceComponent::getParentClassName)

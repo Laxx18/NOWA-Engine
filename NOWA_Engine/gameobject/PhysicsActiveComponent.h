@@ -297,6 +297,15 @@ namespace NOWA
 		 * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
 		 */
 		virtual void applyOmegaForceRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength = 10.0f);
+
+		/**
+         * @brief   Applies omega force to keep the body upright on a planet surface,
+         *          correcting yaw, pitch AND roll every frame.
+         *          Call this instead of applyOmegaForceRotateToDirection when the body
+         *          lives on a spherical planet, to prevent roll drift accumulation.
+         * @param[in]   strength    The correction strength (default 10.0f)
+         */
+        virtual void applyOmegaForceKeepUpright(Ogre::Real strength = 10.0f);
 		
 		Ogre::Vector3 getOmegaVelocity(void) const;
 
@@ -558,7 +567,7 @@ namespace NOWA
 
 		Command forceCommand;
 		Command requiredVelocityForForceCommand;
-		Command jumpForceCommand;
+        Command jumpForceCommand;
 		Command omegaForceCommand;
 
 		Variant* activated;

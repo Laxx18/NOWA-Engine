@@ -5,6 +5,7 @@
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/OceanComponent.h"
 #include "modules/ParticleFxModule.h"
 
 #include "OgreAbiUtils.h"
@@ -545,7 +546,7 @@ namespace NOWA
 		return makeStrongPtr<WaterFoamEffectComponent>(gameObject->getComponentFromName<WaterFoamEffectComponent>(name)).get();
 	}
 
-	void WaterFoamEffectComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void WaterFoamEffectComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[
@@ -579,6 +580,7 @@ namespace NOWA
 		{
 			return true;
 		}
+        return false;
 	}
 
 }; //namespace end

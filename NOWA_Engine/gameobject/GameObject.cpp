@@ -208,6 +208,8 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying Gameobject " + this->id->getString());
 
+		unsigned long id = this->id->getULong();
+
         this->delayedAddCommponentList.clear();
         this->luaScript = nullptr;
 

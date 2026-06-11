@@ -6,6 +6,8 @@
 #include "main/AppStateManager.h"
 #include "main/Events.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/PhysicsActiveKinematicComponent.h"
+#include "gameobject/PhysicsActiveVehicleComponent.h"
 
 #include "OgreAbiUtils.h"
 
@@ -242,7 +244,7 @@ namespace NOWA
 	{
 		if (nullptr == this->pPath)
 		{
-			this->pPath = new Path();
+			this->pPath = new KI::Path();
 			this->pPath->setRepeat(true);
 		}
 
@@ -625,7 +627,7 @@ namespace NOWA
 			// After finish, waypoint index starts at 0 again, which would let the vehicle be on the last place again^^, hence take the laps count into account
 			// But lap is incremented later, hence use the old current waypoint index, if the new one gets smaller as the old one
 			this->oldCurrentWaypointIndex = this->currentWaypointIndex;
-			this->currentWaypointIndex = (this->currentLap * waypoints.size()) + (this->purePursuitComponent->getPath()->getCurrentWaypointIndex() + 1);
+			this->currentWaypointIndex = (this->currentLap * static_cast<unsigned int>(waypoints.size())) + (this->purePursuitComponent->getPath()->getCurrentWaypointIndex() + 1);
 			if (this->currentWaypointIndex < this->oldCurrentWaypointIndex)
 			{
 				this->currentWaypointIndex = this->oldCurrentWaypointIndex + 1;
@@ -796,7 +798,7 @@ namespace NOWA
 		{
 			// Update the race positions
 			const auto& vehicleComponent = this->allRaceGoals[i];
-			this->allRaceGoals[i]->setRacingPosition(i + 1);
+            this->allRaceGoals[i]->setRacingPosition(static_cast<unsigned int>(i + 1));
 		}
 
 		if (this->bShowDebugData)
@@ -829,7 +831,7 @@ namespace NOWA
 
 		// Check if car1 is behind car2 and moving faster in the same direction
 		Ogre::Real dotProduct = relativePosition.dotProduct(direction1);
-		return dotProduct > 0 && direction1.dotProduct(direction2) < cos(Math::PI / 4); // Check if directions are sufficiently aligned
+		return dotProduct > 0 && direction1.dotProduct(direction2) < cos(Ogre::Math::PI / 4); // Check if directions are sufficiently aligned
 	}
 
 #if 0
@@ -1117,7 +1119,7 @@ namespace NOWA
 		return makeStrongPtr<RaceGoalComponent>(gameObject->getComponentFromName<RaceGoalComponent>(name)).get();
 	}
 
-	void RaceGoalComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void RaceGoalComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[

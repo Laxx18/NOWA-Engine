@@ -837,7 +837,7 @@ namespace NOWA
 		return makeStrongPtr<OceanEffectComponent>(gameObject->getComponentFromName<OceanEffectComponent>(name)).get();
 	}
 
-	void OceanEffectComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	void OceanEffectComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[
