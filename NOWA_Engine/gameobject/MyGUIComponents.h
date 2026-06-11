@@ -282,7 +282,7 @@ namespace NOWA
 		unsigned long priorId;
 		Ogre::Vector4 oldCoordinate;
         bool bIsCloning;
-		luabind::object mouseButtonClickClosureFunction;
+        std::vector<luabind::object> mouseButtonClickClosureFunctions;
 		luabind::object mouseEnterClosureFunction;
 		luabind::object mouseLeaveClosureFunction;
 

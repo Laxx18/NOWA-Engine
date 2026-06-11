@@ -8864,6 +8864,7 @@ namespace NOWA
 			.def("getForce", &PhysicsActiveComponent::getForce)
 			.def("setGyroscopicTorqueEnabled", &PhysicsActiveComponent::setGyroscopicTorqueEnabled)
 			.def("setContactSolvingEnabled", &PhysicsActiveComponent::setContactSolvingEnabled)
+            .def("reactOnContactSolving", &PhysicsActiveComponent::reactOnContactSolving)
 			.def("setGravity", &PhysicsActiveComponent::setGravity)
 			.def("getGravity", &PhysicsActiveComponent::getGravity)
 			.def("setCollisionDirection", &PhysicsActiveComponent::setCollisionDirection)
@@ -8961,7 +8962,9 @@ namespace NOWA
 		AddClassToCollection("PhysicsActiveComponent", "void setGravity(Vector3 gravity)", "Sets the acting gravity for the physics body. Default value is Vector3(0, -19.8, 0).");
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getGravity()", "Gets the acting gravity for the physics body.");
 		AddClassToCollection("PhysicsActiveComponent", "void setGyroscopicTorqueEnabled(bool enable)", "Sets whether to enable gyroscopic precision for torque. See: https://www.youtube.com/watch?v=BCVQFoPO5qQ, https://www.youtube.com/watch?v=UlErvZoU7Q0.");
-		AddClassToCollection("PhysicsActiveComponent", "void setContactSolvingEnabled(bool enable)", "Enables contact solving, so that in a lua script onContactSolving(otherGameObject) will be called, when two bodies are colliding.");
+		AddClassToCollection("PhysicsActiveComponent", "void setContactSolvingEnabled(bool enable)", "Enables contact solving, so that in a lua script onContactSolving(otherGameObject, contact) will be called, when two bodies are colliding.");
+
+		AddClassToCollection("PhysicsActiveComponent", "void reactOnContactSolving(func closure(otherGameObject, contact))", "Registers a closure called once when the ship landed. Note: setContactSolvingEnabled(true) must be called first to enable the contact solving.");
 
 		AddClassToCollection("PhysicsActiveComponent", "void setCollisionDirection(Vector3 collisionOffsetDirection)", "Sets an offset collision direction for the collision hull. "
 			"The collision hull will be rotated according to the given direction. Default is Vector3(0, 0, 0). Note: For convex hull, this cannot be used.");

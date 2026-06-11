@@ -1,3 +1,58 @@
+// Motion blur effect (frame accumulation)
+compositor_node "Motion Blur"
+{
+	in 0 rt_input
+	in 1 rt_output
+
+	custom_id Ogre/Postprocess
+
+	// Sum texture must keep its content across frames (accumulation buffer),
+	// hence keep_content. No depth buffer needed.
+	texture sum target_width target_height PFG_RGBA8_UNORM_SRGB depth_pool 0 keep_content
+
+	// Initialisation pass for sum texture.
+	// num_initial 1 means this pass only runs on the very first frame,
+	// so the sum texture starts with valid scene content instead of garbage.
+	target sum
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			store { depth dont_care stencil dont_care }
+			num_initial 1
+			material Ogre/Copy/4xFP32
+			input 0 rt_input
+		}
+	}
+
+	// Do the motion blur: blend current frame with the accumulated sum
+	target rt_output
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			material Postprocess/Combine
+			input 0 rt_input
+			input 1 sum
+		}
+	}
+
+	// Copy the blended result back into sum for the next frame
+	target sum
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			store { depth dont_care stencil dont_care }
+			material Ogre/Copy/4xFP32
+			input 0 rt_output
+		}
+	}
+
+	out 0 rt_output
+	out 1 rt_input
+}
+
 //Dark Sylinc's Bloom
 compositor_node Bloom
 {

@@ -561,7 +561,7 @@
 					<property type="9" name="ConstraintAxis" data="0 1 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -702,7 +702,7 @@
 					<property type="9" name="ConstraintAxis" data="0 1 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="false"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="FireParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -804,7 +804,7 @@
 					<property type="9" name="ConstraintAxis" data="0 1 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="false"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

@@ -155,7 +155,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -590,7 +590,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="OnSteerAngleChangedFunctionName" data="onSteeringAngleChanged"/>
 					<property type="7" name="OnMotorForceChangedFunctionName" data="onMotorForceChanged"/>
 					<property type="7" name="OnHandBrakeChangedFunctionName" data="onHandBrakeChanged"/>
@@ -719,7 +719,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -794,7 +794,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -869,7 +869,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1029,7 +1029,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="false"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="OnKinematicContactFunctionName" data=""/>
 				</userData>
 			</item>
@@ -2745,7 +2745,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -2822,7 +2822,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="OnSteerAngleChangedFunctionName" data="onSteeringAngleChanged"/>
 					<property type="7" name="OnMotorForceChangedFunctionName" data="onMotorForceChanged"/>
 					<property type="7" name="OnHandBrakeChangedFunctionName" data="onHandBrakeChanged"/>
@@ -3065,7 +3065,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3140,7 +3140,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3215,7 +3215,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3424,7 +3424,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3499,7 +3499,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3574,7 +3574,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3651,7 +3651,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="OnSteerAngleChangedFunctionName" data="onSteeringAngleChanged"/>
 					<property type="7" name="OnMotorForceChangedFunctionName" data="onMotorForceChanged"/>
 					<property type="7" name="OnHandBrakeChangedFunctionName" data="onHandBrakeChanged"/>
@@ -3894,7 +3894,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3969,7 +3969,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="false"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="OnKinematicContactFunctionName" data=""/>
 				</userData>
 			</item>

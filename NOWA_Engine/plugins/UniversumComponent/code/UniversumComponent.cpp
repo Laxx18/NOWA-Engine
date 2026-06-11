@@ -3771,6 +3771,8 @@ namespace NOWA
             "Use this to show your Land button. The callback does not lock input. "
             "Call universumComp:requestLanding() from the button handler to start autopilot.");
 
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnLanded(func closure(bodyGameObject, shipGameObject))", "Registers a closure called once when the ship landed.");
+
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void requestLanding()",
             "Starts the landing autopilot. "
             "Locks input immediately and drives the ship to the surface. "

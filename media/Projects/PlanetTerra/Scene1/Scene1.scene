@@ -4,9 +4,9 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.4" g="0.4" b="0.36"/>
-			<ambientLightLowerHemisphere r="0.15" g="0.15" b="0.135" a="1"/>
-			<hemisphereDir x="-0.975042" y="-0.115835" z="-0.18941"/>
+			<ambientLightUpperHemisphere r="0.03" g="0.03" b="0.04"/>
+			<ambientLightLowerHemisphere r="0.03" g="0.03" b="0.04" a="1"/>
+			<hemisphereDir x="0.53505" y="-0.141563" z="-0.832875"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -34,7 +34,7 @@
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-2327.08 -3518.22 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
+		<bounds mostLeftNearPosition="-2335.22 -2574.42 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -42,8 +42,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-2326.31" y="1156.42" z="6572.58"/>
-			<rotation qw="0.867868" qx="-0.335625" qy="-0.341387" qz="-0.132726"/>
+			<position x="-2334.39" y="1157.87" z="6582.7"/>
+			<rotation qw="0.908363" qx="-0.201379" qy="-0.357814" qz="-0.0793254"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-2334.18 1157.87 6582.89"/>
-					<property type="9" name="CameraOrientation" data="-25.2002 -42.7909 -0.0213296"/>
+					<property type="9" name="CameraPosition" data="-2326.67 1156.55 6572.35"/>
+					<property type="9" name="CameraOrientation" data="-30.9845 -53.185 -0.122902"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -106,17 +106,12 @@
 					<property type="6" name="ShadowSplitFade" data="0.313"/>
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="7" name="SkyBoxName" data="blue_starfield.dds"/>
-					<property type="7" name="ComponentCompositorEffectBloomComponent" data="CompositorEffectBloomComponent"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
-					<property type="6" name="ImageWeight" data="1"/>
-					<property type="6" name="BlurWeight" data="0.4"/>
 				</userData>
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
-			<rotation qw="0.266018" qx="-0.407501" qy="-0.212762" qz="-0.847295"/>
+			<rotation qw="0.112728" qx="0.946636" qy="0.138325" qz="0.268399"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -420,7 +415,7 @@
 			<position x="4172.55" y="184.37" z="7768.26"/>
 			<rotation qw="1" qx="0" qy="0.00033643" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_1" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_1" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="560244364"/>
@@ -602,7 +597,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -704,7 +699,7 @@
 			<position x="13779.7" y="120.654" z="20918.4"/>
 			<rotation qw="1" qx="0" qy="0.000229323" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_3" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_3" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3620058202"/>
@@ -712,7 +707,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1067,7 +1062,7 @@
 			<position x="8870.77" y="269.516" z="15882.4"/>
 			<rotation qw="1" qx="0" qy="0.000130982" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_6" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_6" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1298975945"/>
@@ -1173,11 +1168,11 @@
 				</userData>
 			</item>
 		</node>
-		<node name="Villager1_0" id="661960225">
+		<node name="Player" id="3757936288">
 			<position x="-2322.14" y="1149.4" z="6568.55"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Villager1_0" meshFile="Villager1.mesh" castShadows="true" visible="false">
+			<item name="Player" meshFile="Villager1.mesh" castShadows="true" visible="false">
 				<subitem index="0" datablockName="Chibi_Villager1"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1221,7 +1216,6 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
 					<property type="7" name="ComponentPlayerControllerJumpNRunComponent" data="PlayerControllerJumpNRunComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1269,6 +1263,15 @@
 					<property type="6" name="SpringForce" data="0.3"/>
 					<property type="6" name="Friction" data="0.1"/>
 					<property type="6" name="SpringLength" data="3"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="Player.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="2" name="OrderIndex" data="3"/>
 				</userData>
 			</item>
 		</node>
@@ -1320,7 +1323,6 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1394,8 +1396,15 @@
 					<property type="9" name="YOffset" data="0 5 -2"/>
 					<property type="9" name="LookAtOffset" data="0 2 0"/>
 					<property type="6" name="SpringForce" data="0.6"/>
-					<property type="6" name="Friction" data="0.6"/>
-					<property type="6" name="SpringLength" data="10"/>
+					<property type="6" name="Friction" data="0.5"/>
+					<property type="6" name="SpringLength" data="30"/>
+					<property type="7" name="ComponentCompositorEffectRadialBlurComponent" data="CompositorEffectRadialBlurComponent"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
+					<property type="8" name="Center" data="0.5 0.5"/>
+					<property type="6" name="Min Distance" data="0.2"/>
+					<property type="6" name="Max Distance" data="0.95"/>
+					<property type="6" name="Exponent" data="4.5"/>
 				</userData>
 			</item>
 		</node>
@@ -1447,7 +1456,6 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
 					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1469,7 +1477,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1497,8 +1505,8 @@
 			</item>
 		</node>
 		<node name="Light (Spot)_0" id="2100318845">
-			<position x="3222.11" y="-3517.93" z="1825.97"/>
-			<rotation qw="0.5" qx="0" qy="0.866025" qz="0"/>
+			<position x="-2317.33" y="1148.55" z="6562.61"/>
+			<rotation qw="0.965889" qx="0.00842919" qy="-0.258809" qz="0.00225859"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Light (Spot)_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -1539,7 +1547,7 @@
 					<property type="12" name="CastShadows" data="false"/>
 					<property type="9" name="Size" data="30 40 1"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
-					<property type="12" name="ShowDummyEntity" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ComponentTagChildNodeComponent" data="TagChildNodeComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

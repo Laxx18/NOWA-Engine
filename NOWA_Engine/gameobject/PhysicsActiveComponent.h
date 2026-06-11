@@ -493,6 +493,12 @@ namespace NOWA
 		void setContactSolvingEnabled(bool enable);
 
 		/**
+         * @brief Registers a Lua closure called when a game object collides with another one.
+         * @param closureFunction  Lua function receiving
+         */
+        void reactOnContactSolving(luabind::object closureFunction);
+
+		/**
 		* @brief		Detaches and destroys all force observer
 		*/
 		void detachAndDestroyAllForceObserver(void);
@@ -521,7 +527,6 @@ namespace NOWA
 
 		Ogre::Vector3 getForward(void) const;
 
-
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrForce(void) { return "Force"; }
@@ -541,7 +546,6 @@ namespace NOWA
 		static const Ogre::String AttrConstraintAxis(void) { return "Constraint Axis"; }
 		static const Ogre::String AttrAsSoftBody(void) { return "As Softbody"; }
 		static const Ogre::String AttrEnableGyroscopicTorque(void) { return "Enable Gyroscopic Torque"; }
-		static const Ogre::String AttrOnContactFunctionName(void) { return "On Contact Function Name"; }
 	protected:
 		void parseCommonProperties(rapidxml::xml_node<>*& propertyElement);
 
@@ -588,7 +592,6 @@ namespace NOWA
 		Variant* constraintAxis;
 		Variant* gyroscopicTorque;
 		Variant* asSoftBody;
-		Variant* onContactFunctionName;
 
 		// Ogre::String defaultPoseName;
 
@@ -614,6 +617,8 @@ namespace NOWA
 		std::atomic_flag gravityUpdated = ATOMIC_FLAG_INIT;
 
 		std::function<void(GameObjectPtr /*otherGo*/, const OgreNewt::ContactSnapshot& /*contact*/)> cppContactCallback;
+
+		luabind::object contactSolvingClosureFunction;
 
 		Ogre::Vector3 up;
 		Ogre::Vector3 forward;

@@ -735,21 +735,30 @@ namespace NOWA
         // Call also function in lua script, if it does exist in the lua script component
         if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
         {
-            if (this->mouseButtonClickClosureFunction.is_valid())
-            {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                {
-                    try
-                    {
-                        luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-                    }
-                    catch (luabind::error& error)
-                    {
-                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                        std::stringstream msg;
-                        msg << errorMsg;
+            // Copy the list — it may be modified during iteration
+            auto closures = this->mouseButtonClickClosureFunctions;
 
-                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGuiSpriteComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            if (false == closures.empty())
+            {
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                {
+                    for (const auto& closure : closures)
+                    {
+                        if (false == closure.is_valid())
+                        {
+                            continue;
+                        }
+                        try
+                        {
+                            luabind::call_function<void>(closure);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUISpriteComponent] Caught error in 'reactOnMouseButtonClick post sprite' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        }
                     }
                 };
                 NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));

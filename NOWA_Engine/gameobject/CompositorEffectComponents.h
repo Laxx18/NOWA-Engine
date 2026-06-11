@@ -1920,6 +1920,895 @@ namespace NOWA
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * @brief   Frame-accumulation motion blur post-process effect.
+     *
+     * Uses the classic accumulation buffer technique: the previous frame sum
+     * is blended with the current frame via the "Postprocess/Combine" material.
+     * The compositor node "Motion Blur" is created in C++ code (setupCompositor),
+     * because it requires mNumInitialPasses for the sum texture initialisation,
+     * which cannot be expressed in compositor scripts.
+     *
+     * Parameters:
+     *   blurStrength -- How much of the previous frame sum is kept [0..0.99].
+     *                   0.0 disables the trail, 0.8 is the classic Ogre default,
+     *                   values close to 1.0 create very long ghosting trails.
+     *
+     * Requirements: A camera component must exist.
+     */
+    class EXPORTED CompositorEffectMotionBlurComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectMotionBlurComponent> CompositorEffectMotionBlurCompPtr;
+
+    public:
+        CompositorEffectMotionBlurComponent();
+        virtual ~CompositorEffectMotionBlurComponent();
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectMotionBlurComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectMotionBlurComponent";
+        }
+
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Frame accumulation motion blur.\n"
+                   "The previous frame sum is blended with the current frame,\n"
+                   "which creates motion trails for moving objects and camera motion.\n"
+                   "\n"
+                   "Parameters:\n"
+                   "blurStrength:\n"
+                   "How much of the previous frame is kept. Range 0 to 0.99.\n"
+                   "0.8 is the classic default. Values near 1.0 create long ghost trails.\n"
+                   "\n"
+                   "Requirements: A camera component must exist.";
+        }
+
+        /**
+         * @brief   Sets how much of the previous frame sum is kept [0..0.99].
+         *          Higher values create longer motion trails. Default 0.8.
+         */
+        void setBlurStrength(Ogre::Real blurStrength);
+        Ogre::Real getBlurStrength(void) const;
+
+    public:
+        static const Ogre::String AttrBlurStrength(void)
+        {
+            return "Blur Strength";
+        }
+
+    private:
+        Ogre::MaterialPtr combineMaterial;
+        Ogre::Pass* combinePass;
+
+        Variant* blurStrength;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @brief   Radial blur post-process effect (speed / warp / explosion shock look).
+     *
+     * Blurs the image radially away from a configurable center point in UV space.
+     * Maps to the "Postprocess/RadialBlur" material, which expects:
+     *   centerUVPos float4 -- xy = blur center in UV space,
+     *                         z  = minimum UV distance where the blur starts to attenuate,
+     *                         w  = 1 / (maxDistance - minDistance)
+     *   exponent    float  -- Attenuation curve of the blur falloff.
+     *
+     * The component exposes user friendly values (center, min distance, max distance,
+     * exponent) and packs the float4 internally.
+     *
+     * Requirements: A camera component must exist.
+     */
+    class EXPORTED CompositorEffectRadialBlurComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectRadialBlurComponent> CompositorEffectRadialBlurCompPtr;
+
+    public:
+        CompositorEffectRadialBlurComponent();
+        virtual ~CompositorEffectRadialBlurComponent();
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectRadialBlurComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectRadialBlurComponent";
+        }
+
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Radial blur post process effect for speed, warp or explosion shock looks.\n"
+                   "Blurs the image radially away from a configurable center point.\n"
+                   "\n"
+                   "Parameters:\n"
+                   "center:\n"
+                   "Blur center in UV space. 0.5 0.5 is the screen center.\n"
+                   "\n"
+                   "minDistance:\n"
+                   "UV distance from the center where the blur starts to attenuate.\n"
+                   "Inside this radius the image stays sharp.\n"
+                   "\n"
+                   "maxDistance:\n"
+                   "UV distance where the blur reaches full strength.\n"
+                   "\n"
+                   "exponent:\n"
+                   "Attenuation curve between min and max distance.\n"
+                   "Higher values create a smaller, sharper blur spot.\n"
+                   "\n"
+                   "Requirements: A camera component must exist.";
+        }
+
+        /**
+         * @brief   Sets the blur center in UV space. Default (0.5, 0.5) = screen center.
+         */
+        void setCenter(const Ogre::Vector2& center);
+        Ogre::Vector2 getCenter(void) const;
+
+        /**
+         * @brief   Sets the minimum UV distance. Inside this radius the image is sharp.
+         *          Default 0.2.
+         */
+        void setMinDistance(Ogre::Real minDistance);
+        Ogre::Real getMinDistance(void) const;
+
+        /**
+         * @brief   Sets the maximum UV distance where the blur reaches full strength.
+         *          Must be greater than minDistance. Default 0.95.
+         */
+        void setMaxDistance(Ogre::Real maxDistance);
+        Ogre::Real getMaxDistance(void) const;
+
+        /**
+         * @brief   Sets the attenuation exponent of the blur falloff. Default 4.5.
+         */
+        void setExponent(Ogre::Real exponent);
+        Ogre::Real getExponent(void) const;
+
+    public:
+        static const Ogre::String AttrCenter(void)
+        {
+            return "Center";
+        }
+        static const Ogre::String AttrMinDistance(void)
+        {
+            return "Min Distance";
+        }
+        static const Ogre::String AttrMaxDistance(void)
+        {
+            return "Max Distance";
+        }
+        static const Ogre::String AttrExponent(void)
+        {
+            return "Exponent";
+        }
+
+    private:
+        /**
+         * @brief   Packs center, min distance and max distance into the
+         *          centerUVPos float4 shader constant and pushes it to the render thread.
+         */
+        void applyCenterParams(void);
+
+    private:
+        Ogre::MaterialPtr radialBlurMaterial;
+        Ogre::Pass* radialBlurPass;
+
+        Variant* center;
+        Variant* minDistance;
+        Variant* maxDistance;
+        Variant* exponent;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @brief   ASCII art post-process effect.
+     *
+     * Renders the scene as a grid of ASCII characters, sampled from a character
+     * lookup volume texture. Maps to the "Postprocess/ASCII" material:
+     *   numTiles   float2 -- Number of character tiles in x and y.
+     *   iNumTiles  float2 -- 1 / numTiles (derived, computed in C++).
+     *   iNumTiles2 float2 -- 0.5 / numTiles (derived, computed in C++).
+     *   charBias   float  -- Bias for the character selection by luminance.
+     *
+     * Requirements: A camera component must exist.
+     */
+    class EXPORTED CompositorEffectAsciiComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectAsciiComponent> CompositorEffectAsciiCompPtr;
+
+    public:
+        CompositorEffectAsciiComponent();
+        virtual ~CompositorEffectAsciiComponent();
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectAsciiComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectAsciiComponent";
+        }
+
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "ASCII art post process effect.\n"
+                   "Renders the scene as a grid of ASCII characters.\n"
+                   "\n"
+                   "Parameters:\n"
+                   "numTiles:\n"
+                   "Number of character tiles in x and y direction.\n"
+                   "Higher values create smaller characters and more detail.\n"
+                   "\n"
+                   "charBias:\n"
+                   "Bias for the character selection by luminance.\n"
+                   "\n"
+                   "Requirements: A camera component must exist.";
+        }
+
+        /**
+         * @brief   Sets the number of character tiles in x and y.
+         *          Default (100, 50). Higher = smaller characters.
+         */
+        void setNumTiles(const Ogre::Vector2& numTiles);
+        Ogre::Vector2 getNumTiles(void) const;
+
+        /**
+         * @brief   Sets the character selection bias by luminance. Default 0.734375.
+         */
+        void setCharBias(Ogre::Real charBias);
+        Ogre::Real getCharBias(void) const;
+
+    public:
+        static const Ogre::String AttrNumTiles(void)
+        {
+            return "Num Tiles";
+        }
+        static const Ogre::String AttrCharBias(void)
+        {
+            return "Char Bias";
+        }
+
+    private:
+        Ogre::MaterialPtr asciiMaterial;
+        Ogre::Pass* asciiPass;
+
+        Variant* numTiles;
+        Variant* charBias;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @brief   Laplace edge detection post-process effect.
+     *
+     * Maps to the "Postprocess/Laplace" material:
+     *   pixelSize float -- Sampling offset in UV space. Default 0.0031.
+     *   scale     float -- Intensity scale of the detected edges. Default 1.0.
+     *
+     * Requirements: A camera component must exist.
+     */
+    class EXPORTED CompositorEffectLaplaceComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectLaplaceComponent> CompositorEffectLaplaceCompPtr;
+
+    public:
+        CompositorEffectLaplaceComponent();
+        virtual ~CompositorEffectLaplaceComponent();
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectLaplaceComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectLaplaceComponent";
+        }
+
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Laplace edge detection post process effect.\n"
+                   "\n"
+                   "Parameters:\n"
+                   "pixelSize:\n"
+                   "Sampling offset in UV space. Larger values create thicker edges.\n"
+                   "\n"
+                   "scale:\n"
+                   "Intensity scale of the detected edges.\n"
+                   "\n"
+                   "Requirements: A camera component must exist.";
+        }
+
+        /**
+         * @brief   Sets the sampling offset in UV space. Default 0.0031.
+         */
+        void setPixelSize(Ogre::Real pixelSize);
+        Ogre::Real getPixelSize(void) const;
+
+        /**
+         * @brief   Sets the intensity scale of the detected edges. Default 1.0.
+         */
+        void setScale(Ogre::Real scale);
+        Ogre::Real getScale(void) const;
+
+    public:
+        static const Ogre::String AttrPixelSize(void)
+        {
+            return "Pixel Size";
+        }
+        static const Ogre::String AttrScale(void)
+        {
+            return "Scale";
+        }
+
+    private:
+        Ogre::MaterialPtr laplaceMaterial;
+        Ogre::Pass* laplacePass;
+
+        Variant* pixelSize;
+        Variant* scale;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @brief   Tiling (mosaic) post-process effect.
+     *
+     * Maps to the "Postprocess/Tiling" material:
+     *   NumTiles  float -- Number of tiles across the screen. Default 75.
+     *   Threshold float -- Edge threshold inside each tile. Default 0.15.
+     *
+     * Requirements: A camera component must exist.
+     */
+    class EXPORTED CompositorEffectTilingComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectTilingComponent> CompositorEffectTilingCompPtr;
+
+    public:
+        CompositorEffectTilingComponent();
+        virtual ~CompositorEffectTilingComponent();
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectTilingComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectTilingComponent";
+        }
+
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Tiling mosaic post process effect.\n"
+                   "\n"
+                   "Parameters:\n"
+                   "numTiles:\n"
+                   "Number of tiles across the screen.\n"
+                   "\n"
+                   "threshold:\n"
+                   "Edge threshold inside each tile.\n"
+                   "\n"
+                   "Requirements: A camera component must exist.";
+        }
+
+        /**
+         * @brief   Sets the number of tiles across the screen. Default 75.
+         */
+        void setNumTiles(Ogre::Real numTiles);
+        Ogre::Real getNumTiles(void) const;
+
+        /**
+         * @brief   Sets the edge threshold inside each tile. Default 0.15.
+         */
+        void setThreshold(Ogre::Real threshold);
+        Ogre::Real getThreshold(void) const;
+
+    public:
+        static const Ogre::String AttrNumTiles(void)
+        {
+            return "Num Tiles";
+        }
+        static const Ogre::String AttrThreshold(void)
+        {
+            return "Threshold";
+        }
+
+    private:
+        Ogre::MaterialPtr tilingMaterial;
+        Ogre::Pass* tilingPass;
+
+        Variant* numTiles;
+        Variant* threshold;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @brief   Night vision post-process effect (green tinted noise overlay).
+     *
+     * Maps to the "Postprocess/NightVision" material. The animation time is
+     * driven automatically by Ogre (param_named_auto time), so this component
+     * only handles activation. No tunable parameters.
+     *
+     * Requirements: A camera component must exist.
+     */
+    class EXPORTED CompositorEffectNightVisionComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectNightVisionComponent> CompositorEffectNightVisionCompPtr;
+
+    public:
+        CompositorEffectNightVisionComponent();
+        virtual ~CompositorEffectNightVisionComponent();
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectNightVisionComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectNightVisionComponent";
+        }
+
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+        {
+        }
+
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Night vision post process effect with green tint and animated noise.\n"
+                   "The noise animation is driven automatically.\n"
+                   "Requirements: A camera component must exist.";
+        }
+
+    private:
+        Ogre::MaterialPtr material;
+        Ogre::Pass* pass;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @brief   Dither post-process effect (ordered noise dithering).
+     *
+     * Maps to the "Postprocess/Dither" material. No tunable parameters.
+     *
+     * Requirements: A camera component must exist.
+     */
+    class EXPORTED CompositorEffectDitherComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectDitherComponent> CompositorEffectDitherCompPtr;
+
+    public:
+        CompositorEffectDitherComponent();
+        virtual ~CompositorEffectDitherComponent();
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectDitherComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectDitherComponent";
+        }
+
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+        {
+        }
+
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Dither post process effect with ordered noise dithering.\n"
+                   "Requirements: A camera component must exist.";
+        }
+
+    private:
+        Ogre::MaterialPtr material;
+        Ogre::Pass* pass;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @brief   Posterize post-process effect (color quantisation).
+     *
+     * Maps to the "Postprocess/Posterize" material. No tunable parameters.
+     *
+     * Requirements: A camera component must exist.
+     */
+    class EXPORTED CompositorEffectPosterizeComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectPosterizeComponent> CompositorEffectPosterizeCompPtr;
+
+    public:
+        CompositorEffectPosterizeComponent();
+        virtual ~CompositorEffectPosterizeComponent();
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectPosterizeComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectPosterizeComponent";
+        }
+
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+        {
+        }
+
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Posterize post process effect with color quantisation.\n"
+                   "Requirements: A camera component must exist.";
+        }
+
+    private:
+        Ogre::MaterialPtr material;
+        Ogre::Pass* pass;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 }; //namespace end
 
 #endif

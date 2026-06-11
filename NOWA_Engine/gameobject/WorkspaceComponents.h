@@ -20,6 +20,7 @@
 namespace Ogre
 {
 	class ParallaxCorrectedCubemapAuto;
+    class Terra;
 }
 
 namespace NOWA
@@ -295,8 +296,6 @@ namespace NOWA
 
 		void initializeHdr(Ogre::uint8 fsaa);
 
-		void createCompositorEffectsFromCode(void);
-
 		void updateShadowGlobalBias(void);
 
 		void setWorkspace(Ogre::CompositorWorkspace* workspace);
@@ -343,6 +342,9 @@ namespace NOWA
 	private:
 		void reconnectAllNodes(void);
 
+		void onEffectActivationChanged(const Ogre::String& effectName, bool activated);
+
+		void enableEffect(const Ogre::String& effectName, bool activated);
 	protected:
 		Variant* backgroundColor;
 		Variant* viewportRect;

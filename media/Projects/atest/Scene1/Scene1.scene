@@ -90,13 +90,13 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="6" name="Radius" data="0.45476"/>
 					<property type="6" name="Height" data="1.46684"/>
 					<property type="6" name="StepHeight" data="0.3"/>
 					<property type="6" name="JumpSpeed" data="10"/>
 					<property type="7" name="OnContactFrictionFunctionName" data="onContactFriction"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -459,7 +459,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 				</userData>
 			</item>
 		</node>

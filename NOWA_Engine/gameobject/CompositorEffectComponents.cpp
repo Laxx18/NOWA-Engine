@@ -145,6 +145,16 @@ namespace NOWA
 	void CompositorEffectBaseComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
+
+        GameObjectPtr workspaceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->workspaceGameObjectId->getULong());
+        if (nullptr != workspaceGameObjectPtr)
+        {
+            auto workspaceCompPtr = NOWA::makeStrongPtr(workspaceGameObjectPtr->getComponent<WorkspaceBaseComponent>());
+            if (nullptr != workspaceCompPtr)
+            {
+                workspaceCompPtr->enableEffect(this->effectName, activated);
+            }
+        }
 	}
 
 	Ogre::String CompositorEffectBaseComponent::getClassName(void) const
@@ -556,8 +566,8 @@ namespace NOWA
 		frameLimit(new Variant(CompositorEffectOldTvComponent::AttrFrameLimit(), 0.4f, this->attributes)),
 		frameShape(new Variant(CompositorEffectOldTvComponent::AttrFrameShape(), 0.26f, this->attributes)),
 		frameSharpness(new Variant(CompositorEffectOldTvComponent::AttrFrameSharpness(), 6.0f, this->attributes)),
-		time(new Variant(CompositorEffectOldTvComponent::AttrTime(), static_cast<unsigned int>(120), this->attributes)),
-		sinusTime(new Variant(CompositorEffectOldTvComponent::AttrSinusTime(), static_cast<unsigned int>(120), this->attributes))
+		time(new Variant(CompositorEffectOldTvComponent::AttrTime(), static_cast<unsigned int>(2), this->attributes)),
+		sinusTime(new Variant(CompositorEffectOldTvComponent::AttrSinusTime(), static_cast<unsigned int>(2), this->attributes))
 	{
 		this->effectName = "Old TV";
 	}
@@ -4254,5 +4264,1243 @@ namespace NOWA
     }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
+
+    // ============================================================================================
+    // CompositorEffectComponents.cpp  --  ADDITIONS
+    // Insert this whole block (together with part 2 and part 3) BEFORE the final
+    // "}; // namespace end" in CompositorEffectComponents.cpp
+    // ============================================================================================
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CompositorEffectMotionBlurComponent::CompositorEffectMotionBlurComponent() : CompositorEffectBaseComponent(), combinePass(nullptr), blurStrength(new Variant(CompositorEffectMotionBlurComponent::AttrBlurStrength(), 0.8f, this->attributes))
+    {
+        this->effectName = "Motion Blur";
+
+        this->blurStrength->setDescription("How much of the previous frame sum is kept. Range 0 to 0.99. Higher values create longer motion trails.");
+    }
+
+    CompositorEffectMotionBlurComponent::~CompositorEffectMotionBlurComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectMotionBlurComponent] Destructor compositor effect motion blur component for game object: " + this->gameObjectPtr->getName());
+        this->combinePass = nullptr;
+    }
+
+    bool CompositorEffectMotionBlurComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrBlurStrength())
+        {
+            this->setBlurStrength(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectMotionBlurComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectMotionBlurCompPtr clonedCompPtr(boost::make_shared<CompositorEffectMotionBlurComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setBlurStrength(this->blurStrength->getReal());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectMotionBlurComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectMotionBlurComponent] Init compositor effect motion blur component for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String materialName = "Postprocess/Combine";
+
+        this->combineMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+        if (true == this->combineMaterial.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectMotionBlurComponent] Could not set: " + this->effectName + " because the material: '" + materialName + "' does not exist!");
+            return false;
+        }
+
+        this->combinePass = this->combineMaterial->getTechnique(0)->getPass(0);
+
+        // Set initial value, so that the compositor starts with the loaded values
+        this->setBlurStrength(this->blurStrength->getReal());
+
+        return success;
+    }
+
+    void CompositorEffectMotionBlurComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+
+        if (CompositorEffectMotionBlurComponent::AttrBlurStrength() == attribute->getName())
+        {
+            this->setBlurStrength(attribute->getReal());
+        }
+    }
+
+    void CompositorEffectMotionBlurComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Blur Strength"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->blurStrength->getReal())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    Ogre::String CompositorEffectMotionBlurComponent::getClassName(void) const
+    {
+        return "CompositorEffectMotionBlurComponent";
+    }
+
+    Ogre::String CompositorEffectMotionBlurComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    void CompositorEffectMotionBlurComponent::setBlurStrength(Ogre::Real blurStrength)
+    {
+        // Values >= 1 would accumulate forever and burn the image in, hence clamp
+        if (blurStrength < 0.0f)
+        {
+            blurStrength = 0.0f;
+        }
+        if (blurStrength > 0.99f)
+        {
+            blurStrength = 0.99f;
+        }
+
+        this->blurStrength->setValue(blurStrength);
+
+        if (nullptr != this->combinePass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectMotionBlurComponent::setBlurStrength", _1(blurStrength), { this->combinePass->getFragmentProgramParameters()->setNamedConstant("blur", blurStrength); });
+        }
+    }
+
+    Ogre::Real CompositorEffectMotionBlurComponent::getBlurStrength(void) const
+    {
+        return this->blurStrength->getReal();
+    }
+
+    CompositorEffectMotionBlurComponent* getCompositorEffectMotionBlurComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<CompositorEffectMotionBlurComponent>(gameObject->getComponent<CompositorEffectMotionBlurComponent>()).get();
+    }
+
+    CompositorEffectMotionBlurComponent* getCompositorEffectMotionBlurComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CompositorEffectMotionBlurComponent>(gameObject->getComponentFromName<CompositorEffectMotionBlurComponent>(name)).get();
+    }
+
+    void CompositorEffectMotionBlurComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)[luabind::class_<CompositorEffectMotionBlurComponent, GameObjectComponent>("CompositorEffectMotionBlurComponent")
+                .def("setBlurStrength", &CompositorEffectMotionBlurComponent::setBlurStrength)
+                .def("getBlurStrength", &CompositorEffectMotionBlurComponent::getBlurStrength)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectMotionBlurComponent", "class inherits GameObjectComponent", getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectMotionBlurComponent", "void setBlurStrength(float blurStrength)",
+            "Sets how much of the previous frame sum is kept. Range 0 to 0.99. "
+            "Higher values create longer motion trails.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectMotionBlurComponent", "float getBlurStrength()", "Gets the motion blur accumulation strength.");
+
+        gameObjectClass.def("getCompositorEffectMotionBlurComponent", &getCompositorEffectMotionBlurComponent);
+        gameObjectClass.def("getCompositorEffectMotionBlurComponentFromName", &getCompositorEffectMotionBlurComponentFromName);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectMotionBlurComponent getCompositorEffectMotionBlurComponent()", "Gets the CompositorEffectMotionBlurComponent.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectMotionBlurComponent getCompositorEffectMotionBlurComponentFromName(string name)", "Gets the CompositorEffectMotionBlurComponent by name.");
+        gameObjectControllerClass.def("castCompositorEffectMotionBlurComponent", &GameObjectController::cast<CompositorEffectMotionBlurComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CompositorEffectMotionBlurComponent castCompositorEffectMotionBlurComponent(CompositorEffectMotionBlurComponent other)", "Casts for Lua auto completion.");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CompositorEffectRadialBlurComponent::CompositorEffectRadialBlurComponent() :
+        CompositorEffectBaseComponent(),
+        radialBlurPass(nullptr),
+        center(new Variant(CompositorEffectRadialBlurComponent::AttrCenter(), Ogre::Vector2(0.5f, 0.5f), this->attributes)),
+        minDistance(new Variant(CompositorEffectRadialBlurComponent::AttrMinDistance(), 0.2f, this->attributes)),
+        maxDistance(new Variant(CompositorEffectRadialBlurComponent::AttrMaxDistance(), 0.95f, this->attributes)),
+        exponent(new Variant(CompositorEffectRadialBlurComponent::AttrExponent(), 4.5f, this->attributes))
+    {
+        this->effectName = "Radial Blur";
+
+        this->center->setDescription("Blur center in UV space. 0.5 0.5 is the screen center.");
+        this->minDistance->setDescription("UV distance from the center where the blur starts. Inside this radius the image stays sharp.");
+        this->maxDistance->setDescription("UV distance where the blur reaches full strength. Must be greater than the min distance.");
+        this->exponent->setDescription("Attenuation curve between min and max distance. Higher values create a smaller, sharper blur spot.");
+    }
+
+    CompositorEffectRadialBlurComponent::~CompositorEffectRadialBlurComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectRadialBlurComponent] Destructor compositor effect radial blur component for game object: " + this->gameObjectPtr->getName());
+        this->radialBlurPass = nullptr;
+    }
+
+    bool CompositorEffectRadialBlurComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrCenter())
+        {
+            this->setCenter(XMLConverter::getAttribVector2(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrMinDistance())
+        {
+            this->setMinDistance(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrMaxDistance())
+        {
+            this->setMaxDistance(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrExponent())
+        {
+            this->setExponent(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectRadialBlurComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectRadialBlurCompPtr clonedCompPtr(boost::make_shared<CompositorEffectRadialBlurComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setCenter(this->center->getVector2());
+        clonedCompPtr->setMinDistance(this->minDistance->getReal());
+        clonedCompPtr->setMaxDistance(this->maxDistance->getReal());
+        clonedCompPtr->setExponent(this->exponent->getReal());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectRadialBlurComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectRadialBlurComponent] Init compositor effect radial blur component for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String materialName = "Postprocess/RadialBlur";
+
+        this->radialBlurMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+        if (true == this->radialBlurMaterial.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectRadialBlurComponent] Could not set: " + this->effectName + " because the material: '" + materialName + "' does not exist!");
+            return false;
+        }
+
+        this->radialBlurPass = this->radialBlurMaterial->getTechnique(0)->getPass(0);
+
+        // Set initial values, so that the compositor starts with the loaded values
+        this->applyCenterParams();
+        this->setExponent(this->exponent->getReal());
+
+        return success;
+    }
+
+    void CompositorEffectRadialBlurComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+
+        if (CompositorEffectRadialBlurComponent::AttrCenter() == attribute->getName())
+        {
+            this->setCenter(attribute->getVector2());
+        }
+        else if (CompositorEffectRadialBlurComponent::AttrMinDistance() == attribute->getName())
+        {
+            this->setMinDistance(attribute->getReal());
+        }
+        else if (CompositorEffectRadialBlurComponent::AttrMaxDistance() == attribute->getName())
+        {
+            this->setMaxDistance(attribute->getReal());
+        }
+        else if (CompositorEffectRadialBlurComponent::AttrExponent() == attribute->getName())
+        {
+            this->setExponent(attribute->getReal());
+        }
+    }
+
+    void CompositorEffectRadialBlurComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Center"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->center->getVector2())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Min Distance"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->minDistance->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Max Distance"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxDistance->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Exponent"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->exponent->getReal())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    Ogre::String CompositorEffectRadialBlurComponent::getClassName(void) const
+    {
+        return "CompositorEffectRadialBlurComponent";
+    }
+
+    Ogre::String CompositorEffectRadialBlurComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    void CompositorEffectRadialBlurComponent::applyCenterParams(void)
+    {
+        if (nullptr == this->radialBlurPass)
+        {
+            return;
+        }
+
+        Ogre::Real tempMinDistance = this->minDistance->getReal();
+        Ogre::Real tempMaxDistance = this->maxDistance->getReal();
+
+        // Guard against invalid ranges, which would create a division by zero
+        if (tempMaxDistance <= tempMinDistance)
+        {
+            tempMaxDistance = tempMinDistance + 0.01f;
+        }
+
+        const Ogre::Vector2 tempCenter = this->center->getVector2();
+
+        // x, y = center in UV space
+        // z    = min distance
+        // w    = 1 / (max - min)
+        const Ogre::Vector4 centerUVPos(tempCenter.x, tempCenter.y, tempMinDistance, 1.0f / (tempMaxDistance - tempMinDistance));
+
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectRadialBlurComponent::applyCenterParams", _1(centerUVPos), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("centerUVPos", centerUVPos); });
+    }
+
+    void CompositorEffectRadialBlurComponent::setCenter(const Ogre::Vector2& center)
+    {
+        this->center->setValue(center);
+        this->applyCenterParams();
+    }
+
+    Ogre::Vector2 CompositorEffectRadialBlurComponent::getCenter(void) const
+    {
+        return this->center->getVector2();
+    }
+
+    void CompositorEffectRadialBlurComponent::setMinDistance(Ogre::Real minDistance)
+    {
+        this->minDistance->setValue(minDistance);
+        this->applyCenterParams();
+    }
+
+    Ogre::Real CompositorEffectRadialBlurComponent::getMinDistance(void) const
+    {
+        return this->minDistance->getReal();
+    }
+
+    void CompositorEffectRadialBlurComponent::setMaxDistance(Ogre::Real maxDistance)
+    {
+        this->maxDistance->setValue(maxDistance);
+        this->applyCenterParams();
+    }
+
+    Ogre::Real CompositorEffectRadialBlurComponent::getMaxDistance(void) const
+    {
+        return this->maxDistance->getReal();
+    }
+
+    void CompositorEffectRadialBlurComponent::setExponent(Ogre::Real exponent)
+    {
+        this->exponent->setValue(exponent);
+
+        if (nullptr != this->radialBlurPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectRadialBlurComponent::setExponent", _1(exponent), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("exponent", exponent); });
+        }
+    }
+
+    Ogre::Real CompositorEffectRadialBlurComponent::getExponent(void) const
+    {
+        return this->exponent->getReal();
+    }
+
+    CompositorEffectRadialBlurComponent* getCompositorEffectRadialBlurComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<CompositorEffectRadialBlurComponent>(gameObject->getComponent<CompositorEffectRadialBlurComponent>()).get();
+    }
+
+    CompositorEffectRadialBlurComponent* getCompositorEffectRadialBlurComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CompositorEffectRadialBlurComponent>(gameObject->getComponentFromName<CompositorEffectRadialBlurComponent>(name)).get();
+    }
+
+    void CompositorEffectRadialBlurComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)[luabind::class_<CompositorEffectRadialBlurComponent, GameObjectComponent>("CompositorEffectRadialBlurComponent")
+                .def("setCenter", &CompositorEffectRadialBlurComponent::setCenter)
+                .def("getCenter", &CompositorEffectRadialBlurComponent::getCenter)
+                .def("setMinDistance", &CompositorEffectRadialBlurComponent::setMinDistance)
+                .def("getMinDistance", &CompositorEffectRadialBlurComponent::getMinDistance)
+                .def("setMaxDistance", &CompositorEffectRadialBlurComponent::setMaxDistance)
+                .def("getMaxDistance", &CompositorEffectRadialBlurComponent::getMaxDistance)
+                .def("setExponent", &CompositorEffectRadialBlurComponent::setExponent)
+                .def("getExponent", &CompositorEffectRadialBlurComponent::getExponent)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectRadialBlurComponent", "class inherits GameObjectComponent", getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectRadialBlurComponent", "void setCenter(Vector2 center)", "Sets the blur center in UV space. 0.5 0.5 is the screen center.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectRadialBlurComponent", "Vector2 getCenter()", "Gets the blur center in UV space.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectRadialBlurComponent", "void setMinDistance(float minDistance)",
+            "Sets the UV distance from the center where the blur starts. "
+            "Inside this radius the image stays sharp.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectRadialBlurComponent", "float getMinDistance()", "Gets the minimum UV distance.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectRadialBlurComponent", "void setMaxDistance(float maxDistance)", "Sets the UV distance where the blur reaches full strength. Must be greater than the min distance.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectRadialBlurComponent", "float getMaxDistance()", "Gets the maximum UV distance.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectRadialBlurComponent", "void setExponent(float exponent)",
+            "Sets the attenuation curve between min and max distance. "
+            "Higher values create a smaller, sharper blur spot.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectRadialBlurComponent", "float getExponent()", "Gets the attenuation exponent.");
+
+        gameObjectClass.def("getCompositorEffectRadialBlurComponent", &getCompositorEffectRadialBlurComponent);
+        gameObjectClass.def("getCompositorEffectRadialBlurComponentFromName", &getCompositorEffectRadialBlurComponentFromName);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectRadialBlurComponent getCompositorEffectRadialBlurComponent()", "Gets the CompositorEffectRadialBlurComponent.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectRadialBlurComponent getCompositorEffectRadialBlurComponentFromName(string name)", "Gets the CompositorEffectRadialBlurComponent by name.");
+        gameObjectControllerClass.def("castCompositorEffectRadialBlurComponent", &GameObjectController::cast<CompositorEffectRadialBlurComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CompositorEffectRadialBlurComponent castCompositorEffectRadialBlurComponent(CompositorEffectRadialBlurComponent other)", "Casts for Lua auto completion.");
+    }
+
+    // ============================================================================================
+    // CompositorEffectComponents.cpp  --  ADDITIONS, PART 2 (ASCII, Laplace, Tiling)
+    // ============================================================================================
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CompositorEffectAsciiComponent::CompositorEffectAsciiComponent() :
+        CompositorEffectBaseComponent(),
+        asciiPass(nullptr),
+        numTiles(new Variant(CompositorEffectAsciiComponent::AttrNumTiles(), Ogre::Vector2(100.0f, 50.0f), this->attributes)),
+        charBias(new Variant(CompositorEffectAsciiComponent::AttrCharBias(), 0.734375f, this->attributes))
+    {
+        this->effectName = "ASCII";
+
+        this->numTiles->setDescription("Number of character tiles in x and y direction. Higher values create smaller characters and more detail.");
+        this->charBias->setDescription("Bias for the character selection by luminance.");
+    }
+
+    CompositorEffectAsciiComponent::~CompositorEffectAsciiComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectAsciiComponent] Destructor compositor effect ascii component for game object: " + this->gameObjectPtr->getName());
+        this->asciiPass = nullptr;
+    }
+
+    bool CompositorEffectAsciiComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrNumTiles())
+        {
+            this->setNumTiles(XMLConverter::getAttribVector2(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrCharBias())
+        {
+            this->setCharBias(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectAsciiComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectAsciiCompPtr clonedCompPtr(boost::make_shared<CompositorEffectAsciiComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setNumTiles(this->numTiles->getVector2());
+        clonedCompPtr->setCharBias(this->charBias->getReal());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectAsciiComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectAsciiComponent] Init compositor effect ascii component for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String materialName = "Postprocess/ASCII";
+
+        this->asciiMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+        if (true == this->asciiMaterial.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectAsciiComponent] Could not set: " + this->effectName + " because the material: '" + materialName + "' does not exist!");
+            return false;
+        }
+
+        this->asciiPass = this->asciiMaterial->getTechnique(0)->getPass(0);
+
+        // Set initial values, so that the compositor starts with the loaded values
+        this->setNumTiles(this->numTiles->getVector2());
+        this->setCharBias(this->charBias->getReal());
+
+        return success;
+    }
+
+    void CompositorEffectAsciiComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+
+        if (CompositorEffectAsciiComponent::AttrNumTiles() == attribute->getName())
+        {
+            this->setNumTiles(attribute->getVector2());
+        }
+        else if (CompositorEffectAsciiComponent::AttrCharBias() == attribute->getName())
+        {
+            this->setCharBias(attribute->getReal());
+        }
+    }
+
+    void CompositorEffectAsciiComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Num Tiles"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numTiles->getVector2())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Char Bias"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->charBias->getReal())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    Ogre::String CompositorEffectAsciiComponent::getClassName(void) const
+    {
+        return "CompositorEffectAsciiComponent";
+    }
+
+    Ogre::String CompositorEffectAsciiComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    void CompositorEffectAsciiComponent::setNumTiles(const Ogre::Vector2& numTiles)
+    {
+        Ogre::Vector2 tempNumTiles = numTiles;
+
+        // Guard against division by zero
+        if (tempNumTiles.x < 1.0f)
+        {
+            tempNumTiles.x = 1.0f;
+        }
+        if (tempNumTiles.y < 1.0f)
+        {
+            tempNumTiles.y = 1.0f;
+        }
+
+        this->numTiles->setValue(tempNumTiles);
+
+        if (nullptr != this->asciiPass)
+        {
+            // The shader expects the tile count plus two derived reciprocal values
+            const Ogre::Vector2 iNumTiles(1.0f / tempNumTiles.x, 1.0f / tempNumTiles.y);
+            const Ogre::Vector2 iNumTiles2(0.5f / tempNumTiles.x, 0.5f / tempNumTiles.y);
+
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectAsciiComponent::setNumTiles", _3(tempNumTiles, iNumTiles, iNumTiles2), {
+                Ogre::GpuProgramParametersSharedPtr params = this->asciiPass->getFragmentProgramParameters();
+                params->setNamedConstant("numTiles", tempNumTiles);
+                params->setNamedConstant("iNumTiles", iNumTiles);
+                params->setNamedConstant("iNumTiles2", iNumTiles2);
+            });
+        }
+    }
+
+    Ogre::Vector2 CompositorEffectAsciiComponent::getNumTiles(void) const
+    {
+        return this->numTiles->getVector2();
+    }
+
+    void CompositorEffectAsciiComponent::setCharBias(Ogre::Real charBias)
+    {
+        this->charBias->setValue(charBias);
+
+        if (nullptr != this->asciiPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectAsciiComponent::setCharBias", _1(charBias), { this->asciiPass->getFragmentProgramParameters()->setNamedConstant("charBias", charBias); });
+        }
+    }
+
+    Ogre::Real CompositorEffectAsciiComponent::getCharBias(void) const
+    {
+        return this->charBias->getReal();
+    }
+
+    CompositorEffectAsciiComponent* getCompositorEffectAsciiComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<CompositorEffectAsciiComponent>(gameObject->getComponent<CompositorEffectAsciiComponent>()).get();
+    }
+
+    CompositorEffectAsciiComponent* getCompositorEffectAsciiComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CompositorEffectAsciiComponent>(gameObject->getComponentFromName<CompositorEffectAsciiComponent>(name)).get();
+    }
+
+    void CompositorEffectAsciiComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)[luabind::class_<CompositorEffectAsciiComponent, GameObjectComponent>("CompositorEffectAsciiComponent")
+                .def("setNumTiles", &CompositorEffectAsciiComponent::setNumTiles)
+                .def("getNumTiles", &CompositorEffectAsciiComponent::getNumTiles)
+                .def("setCharBias", &CompositorEffectAsciiComponent::setCharBias)
+                .def("getCharBias", &CompositorEffectAsciiComponent::getCharBias)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectAsciiComponent", "class inherits GameObjectComponent", getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectAsciiComponent", "void setNumTiles(Vector2 numTiles)",
+            "Sets the number of character tiles in x and y direction. "
+            "Higher values create smaller characters and more detail.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectAsciiComponent", "Vector2 getNumTiles()", "Gets the number of character tiles.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectAsciiComponent", "void setCharBias(float charBias)", "Sets the bias for the character selection by luminance.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectAsciiComponent", "float getCharBias()", "Gets the character selection bias.");
+
+        gameObjectClass.def("getCompositorEffectAsciiComponent", &getCompositorEffectAsciiComponent);
+        gameObjectClass.def("getCompositorEffectAsciiComponentFromName", &getCompositorEffectAsciiComponentFromName);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectAsciiComponent getCompositorEffectAsciiComponent()", "Gets the CompositorEffectAsciiComponent.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectAsciiComponent getCompositorEffectAsciiComponentFromName(string name)", "Gets the CompositorEffectAsciiComponent by name.");
+        gameObjectControllerClass.def("castCompositorEffectAsciiComponent", &GameObjectController::cast<CompositorEffectAsciiComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CompositorEffectAsciiComponent castCompositorEffectAsciiComponent(CompositorEffectAsciiComponent other)", "Casts for Lua auto completion.");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CompositorEffectLaplaceComponent::CompositorEffectLaplaceComponent() :
+        CompositorEffectBaseComponent(),
+        laplacePass(nullptr),
+        pixelSize(new Variant(CompositorEffectLaplaceComponent::AttrPixelSize(), 0.0031f, this->attributes)),
+        scale(new Variant(CompositorEffectLaplaceComponent::AttrScale(), 1.0f, this->attributes))
+    {
+        this->effectName = "Laplace";
+
+        this->pixelSize->setDescription("Sampling offset in UV space. Larger values create thicker edges.");
+        this->scale->setDescription("Intensity scale of the detected edges.");
+    }
+
+    CompositorEffectLaplaceComponent::~CompositorEffectLaplaceComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectLaplaceComponent] Destructor compositor effect laplace component for game object: " + this->gameObjectPtr->getName());
+        this->laplacePass = nullptr;
+    }
+
+    bool CompositorEffectLaplaceComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrPixelSize())
+        {
+            this->setPixelSize(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrScale())
+        {
+            this->setScale(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectLaplaceComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectLaplaceCompPtr clonedCompPtr(boost::make_shared<CompositorEffectLaplaceComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setPixelSize(this->pixelSize->getReal());
+        clonedCompPtr->setScale(this->scale->getReal());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectLaplaceComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectLaplaceComponent] Init compositor effect laplace component for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String materialName = "Postprocess/Laplace";
+
+        this->laplaceMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+        if (true == this->laplaceMaterial.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectLaplaceComponent] Could not set: " + this->effectName + " because the material: '" + materialName + "' does not exist!");
+            return false;
+        }
+
+        this->laplacePass = this->laplaceMaterial->getTechnique(0)->getPass(0);
+
+        // Set initial values, so that the compositor starts with the loaded values
+        this->setPixelSize(this->pixelSize->getReal());
+        this->setScale(this->scale->getReal());
+
+        return success;
+    }
+
+    void CompositorEffectLaplaceComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+
+        if (CompositorEffectLaplaceComponent::AttrPixelSize() == attribute->getName())
+        {
+            this->setPixelSize(attribute->getReal());
+        }
+        else if (CompositorEffectLaplaceComponent::AttrScale() == attribute->getName())
+        {
+            this->setScale(attribute->getReal());
+        }
+    }
+
+    void CompositorEffectLaplaceComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Pixel Size"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pixelSize->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Scale"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->scale->getReal())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    Ogre::String CompositorEffectLaplaceComponent::getClassName(void) const
+    {
+        return "CompositorEffectLaplaceComponent";
+    }
+
+    Ogre::String CompositorEffectLaplaceComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    void CompositorEffectLaplaceComponent::setPixelSize(Ogre::Real pixelSize)
+    {
+        this->pixelSize->setValue(pixelSize);
+
+        if (nullptr != this->laplacePass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLaplaceComponent::setPixelSize", _1(pixelSize), { this->laplacePass->getFragmentProgramParameters()->setNamedConstant("pixelSize", pixelSize); });
+        }
+    }
+
+    Ogre::Real CompositorEffectLaplaceComponent::getPixelSize(void) const
+    {
+        return this->pixelSize->getReal();
+    }
+
+    void CompositorEffectLaplaceComponent::setScale(Ogre::Real scale)
+    {
+        this->scale->setValue(scale);
+
+        if (nullptr != this->laplacePass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLaplaceComponent::setScale", _1(scale), { this->laplacePass->getFragmentProgramParameters()->setNamedConstant("scale", scale); });
+        }
+    }
+
+    Ogre::Real CompositorEffectLaplaceComponent::getScale(void) const
+    {
+        return this->scale->getReal();
+    }
+
+    CompositorEffectLaplaceComponent* getCompositorEffectLaplaceComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<CompositorEffectLaplaceComponent>(gameObject->getComponent<CompositorEffectLaplaceComponent>()).get();
+    }
+
+    CompositorEffectLaplaceComponent* getCompositorEffectLaplaceComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CompositorEffectLaplaceComponent>(gameObject->getComponentFromName<CompositorEffectLaplaceComponent>(name)).get();
+    }
+
+    void CompositorEffectLaplaceComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)[luabind::class_<CompositorEffectLaplaceComponent, GameObjectComponent>("CompositorEffectLaplaceComponent")
+                .def("setPixelSize", &CompositorEffectLaplaceComponent::setPixelSize)
+                .def("getPixelSize", &CompositorEffectLaplaceComponent::getPixelSize)
+                .def("setScale", &CompositorEffectLaplaceComponent::setScale)
+                .def("getScale", &CompositorEffectLaplaceComponent::getScale)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectLaplaceComponent", "class inherits GameObjectComponent", getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectLaplaceComponent", "void setPixelSize(float pixelSize)", "Sets the sampling offset in UV space. Larger values create thicker edges.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectLaplaceComponent", "float getPixelSize()", "Gets the sampling offset.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectLaplaceComponent", "void setScale(float scale)", "Sets the intensity scale of the detected edges.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectLaplaceComponent", "float getScale()", "Gets the edge intensity scale.");
+
+        gameObjectClass.def("getCompositorEffectLaplaceComponent", &getCompositorEffectLaplaceComponent);
+        gameObjectClass.def("getCompositorEffectLaplaceComponentFromName", &getCompositorEffectLaplaceComponentFromName);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectLaplaceComponent getCompositorEffectLaplaceComponent()", "Gets the CompositorEffectLaplaceComponent.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectLaplaceComponent getCompositorEffectLaplaceComponentFromName(string name)", "Gets the CompositorEffectLaplaceComponent by name.");
+        gameObjectControllerClass.def("castCompositorEffectLaplaceComponent", &GameObjectController::cast<CompositorEffectLaplaceComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CompositorEffectLaplaceComponent castCompositorEffectLaplaceComponent(CompositorEffectLaplaceComponent other)", "Casts for Lua auto completion.");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CompositorEffectTilingComponent::CompositorEffectTilingComponent() :
+        CompositorEffectBaseComponent(),
+        tilingPass(nullptr),
+        numTiles(new Variant(CompositorEffectTilingComponent::AttrNumTiles(), 75.0f, this->attributes)),
+        threshold(new Variant(CompositorEffectTilingComponent::AttrThreshold(), 0.15f, this->attributes))
+    {
+        this->effectName = "Tiling";
+
+        this->numTiles->setDescription("Number of tiles across the screen.");
+        this->threshold->setDescription("Edge threshold inside each tile.");
+    }
+
+    CompositorEffectTilingComponent::~CompositorEffectTilingComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectTilingComponent] Destructor compositor effect tiling component for game object: " + this->gameObjectPtr->getName());
+        this->tilingPass = nullptr;
+    }
+
+    bool CompositorEffectTilingComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrNumTiles())
+        {
+            this->setNumTiles(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrThreshold())
+        {
+            this->setThreshold(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectTilingComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectTilingCompPtr clonedCompPtr(boost::make_shared<CompositorEffectTilingComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setNumTiles(this->numTiles->getReal());
+        clonedCompPtr->setThreshold(this->threshold->getReal());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectTilingComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectTilingComponent] Init compositor effect tiling component for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String materialName = "Postprocess/Tiling";
+
+        this->tilingMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+        if (true == this->tilingMaterial.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectTilingComponent] Could not set: " + this->effectName + " because the material: '" + materialName + "' does not exist!");
+            return false;
+        }
+
+        this->tilingPass = this->tilingMaterial->getTechnique(0)->getPass(0);
+
+        // Set initial values, so that the compositor starts with the loaded values
+        this->setNumTiles(this->numTiles->getReal());
+        this->setThreshold(this->threshold->getReal());
+
+        return success;
+    }
+
+    void CompositorEffectTilingComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+
+        if (CompositorEffectTilingComponent::AttrNumTiles() == attribute->getName())
+        {
+            this->setNumTiles(attribute->getReal());
+        }
+        else if (CompositorEffectTilingComponent::AttrThreshold() == attribute->getName())
+        {
+            this->setThreshold(attribute->getReal());
+        }
+    }
+
+    void CompositorEffectTilingComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Num Tiles"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numTiles->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Threshold"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->threshold->getReal())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    Ogre::String CompositorEffectTilingComponent::getClassName(void) const
+    {
+        return "CompositorEffectTilingComponent";
+    }
+
+    Ogre::String CompositorEffectTilingComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    void CompositorEffectTilingComponent::setNumTiles(Ogre::Real numTiles)
+    {
+        // Guard against division by zero in the shader
+        if (numTiles < 1.0f)
+        {
+            numTiles = 1.0f;
+        }
+
+        this->numTiles->setValue(numTiles);
+
+        if (nullptr != this->tilingPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectTilingComponent::setNumTiles", _1(numTiles), { this->tilingPass->getFragmentProgramParameters()->setNamedConstant("NumTiles", numTiles); });
+        }
+    }
+
+    Ogre::Real CompositorEffectTilingComponent::getNumTiles(void) const
+    {
+        return this->numTiles->getReal();
+    }
+
+    void CompositorEffectTilingComponent::setThreshold(Ogre::Real threshold)
+    {
+        this->threshold->setValue(threshold);
+
+        if (nullptr != this->tilingPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectTilingComponent::setThreshold", _1(threshold), { this->tilingPass->getFragmentProgramParameters()->setNamedConstant("Threshold", threshold); });
+        }
+    }
+
+    Ogre::Real CompositorEffectTilingComponent::getThreshold(void) const
+    {
+        return this->threshold->getReal();
+    }
+
+    CompositorEffectTilingComponent* getCompositorEffectTilingComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<CompositorEffectTilingComponent>(gameObject->getComponent<CompositorEffectTilingComponent>()).get();
+    }
+
+    CompositorEffectTilingComponent* getCompositorEffectTilingComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CompositorEffectTilingComponent>(gameObject->getComponentFromName<CompositorEffectTilingComponent>(name)).get();
+    }
+
+    void CompositorEffectTilingComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)[luabind::class_<CompositorEffectTilingComponent, GameObjectComponent>("CompositorEffectTilingComponent")
+                .def("setNumTiles", &CompositorEffectTilingComponent::setNumTiles)
+                .def("getNumTiles", &CompositorEffectTilingComponent::getNumTiles)
+                .def("setThreshold", &CompositorEffectTilingComponent::setThreshold)
+                .def("getThreshold", &CompositorEffectTilingComponent::getThreshold)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectTilingComponent", "class inherits GameObjectComponent", getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectTilingComponent", "void setNumTiles(float numTiles)", "Sets the number of tiles across the screen.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectTilingComponent", "float getNumTiles()", "Gets the number of tiles.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectTilingComponent", "void setThreshold(float threshold)", "Sets the edge threshold inside each tile.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectTilingComponent", "float getThreshold()", "Gets the edge threshold.");
+
+        gameObjectClass.def("getCompositorEffectTilingComponent", &getCompositorEffectTilingComponent);
+        gameObjectClass.def("getCompositorEffectTilingComponentFromName", &getCompositorEffectTilingComponentFromName);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectTilingComponent getCompositorEffectTilingComponent()", "Gets the CompositorEffectTilingComponent.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectTilingComponent getCompositorEffectTilingComponentFromName(string name)", "Gets the CompositorEffectTilingComponent by name.");
+        gameObjectControllerClass.def("castCompositorEffectTilingComponent", &GameObjectController::cast<CompositorEffectTilingComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CompositorEffectTilingComponent castCompositorEffectTilingComponent(CompositorEffectTilingComponent other)", "Casts for Lua auto completion.");
+    }
+
+    // ============================================================================================
+    // CompositorEffectComponents.cpp  --  ADDITIONS, PART 3 (Night Vision, Dither, Posterize)
+    // ============================================================================================
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CompositorEffectNightVisionComponent::CompositorEffectNightVisionComponent() : CompositorEffectBaseComponent(), pass(nullptr)
+    {
+        this->effectName = "Night Vision";
+    }
+
+    CompositorEffectNightVisionComponent::~CompositorEffectNightVisionComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectNightVisionComponent] Destructor compositor effect night vision component for game object: " + this->gameObjectPtr->getName());
+        this->pass = nullptr;
+    }
+
+    bool CompositorEffectNightVisionComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectNightVisionComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectNightVisionCompPtr clonedCompPtr(boost::make_shared<CompositorEffectNightVisionComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectNightVisionComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectNightVisionComponent] Init compositor effect night vision component for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String materialName = "Postprocess/NightVision";
+
+        this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+        if (true == this->material.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectNightVisionComponent] Could not set: " + this->effectName + " because the material: '" + materialName + "' does not exist!");
+            return false;
+        }
+
+        this->pass = this->material->getTechnique(0)->getPass(0);
+
+        return success;
+    }
+
+    void CompositorEffectNightVisionComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+    }
+
+    void CompositorEffectNightVisionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+    }
+
+    Ogre::String CompositorEffectNightVisionComponent::getClassName(void) const
+    {
+        return "CompositorEffectNightVisionComponent";
+    }
+
+    Ogre::String CompositorEffectNightVisionComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CompositorEffectDitherComponent::CompositorEffectDitherComponent() : CompositorEffectBaseComponent(), pass(nullptr)
+    {
+        this->effectName = "Dither";
+    }
+
+    CompositorEffectDitherComponent::~CompositorEffectDitherComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectDitherComponent] Destructor compositor effect dither component for game object: " + this->gameObjectPtr->getName());
+        this->pass = nullptr;
+    }
+
+    bool CompositorEffectDitherComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectDitherComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectDitherCompPtr clonedCompPtr(boost::make_shared<CompositorEffectDitherComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectDitherComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectDitherComponent] Init compositor effect dither component for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String materialName = "Postprocess/Dither";
+
+        this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+        if (true == this->material.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDitherComponent] Could not set: " + this->effectName + " because the material: '" + materialName + "' does not exist!");
+            return false;
+        }
+
+        this->pass = this->material->getTechnique(0)->getPass(0);
+
+        return success;
+    }
+
+    void CompositorEffectDitherComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+    }
+
+    void CompositorEffectDitherComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+    }
+
+    Ogre::String CompositorEffectDitherComponent::getClassName(void) const
+    {
+        return "CompositorEffectDitherComponent";
+    }
+
+    Ogre::String CompositorEffectDitherComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CompositorEffectPosterizeComponent::CompositorEffectPosterizeComponent() : CompositorEffectBaseComponent(), pass(nullptr)
+    {
+        this->effectName = "Posterize";
+    }
+
+    CompositorEffectPosterizeComponent::~CompositorEffectPosterizeComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectPosterizeComponent] Destructor compositor effect posterize component for game object: " + this->gameObjectPtr->getName());
+        this->pass = nullptr;
+    }
+
+    bool CompositorEffectPosterizeComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectPosterizeComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectPosterizeCompPtr clonedCompPtr(boost::make_shared<CompositorEffectPosterizeComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectPosterizeComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectPosterizeComponent] Init compositor effect posterize component for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String materialName = "Postprocess/Posterize";
+
+        this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+        if (true == this->material.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectPosterizeComponent] Could not set: " + this->effectName + " because the material: '" + materialName + "' does not exist!");
+            return false;
+        }
+
+        this->pass = this->material->getTechnique(0)->getPass(0);
+
+        return success;
+    }
+
+    void CompositorEffectPosterizeComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+    }
+
+    void CompositorEffectPosterizeComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+    }
+
+    Ogre::String CompositorEffectPosterizeComponent::getClassName(void) const
+    {
+        return "CompositorEffectPosterizeComponent";
+    }
+
+    Ogre::String CompositorEffectPosterizeComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
 
 }; // namespace end

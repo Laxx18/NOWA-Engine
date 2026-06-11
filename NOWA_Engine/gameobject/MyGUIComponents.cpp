@@ -415,6 +415,8 @@ namespace NOWA
 	{
 		GameObjectComponent::disconnect();
 
+		this->mouseButtonClickClosureFunctions.clear();
+
 		this->isSimulating = false;
 
 		// Causes wrong position if position was one time wrong
@@ -1372,7 +1374,7 @@ namespace NOWA
 
 	void MyGUIComponent::reactOnMouseButtonClick(luabind::object closureFunction)
 	{
-		this->mouseButtonClickClosureFunction = closureFunction;
+        this->mouseButtonClickClosureFunctions.push_back(closureFunction);
 	}
 
 	void MyGUIComponent::reactOnMouseEnter(luabind::object closureFunction)
@@ -1585,39 +1587,46 @@ namespace NOWA
     }
 
 	void MyGUIWindowComponent::mouseButtonClick(MyGUI::Widget* sender)
-	{
-		if (true == this->isSimulating)
-		{
-			MyGUI::Window* window = sender->castType<MyGUI::Window>();
-			if (nullptr != window)
-			{
-				// Call also function in lua script, if it does exist in the lua script component
-				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+    {
+        if (true == this->isSimulating)
+        {
+            MyGUI::Window* window = sender->castType<MyGUI::Window>();
+            if (nullptr != window)
+            {
+                if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
+                {
+                    // Copy the list — it may be modified during iteration
+                    auto closures = this->mouseButtonClickClosureFunctions;
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIWindowComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
-				}
-			}
-		}
-	}
+                    if (false == closures.empty())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        {
+                            for (const auto& closure : closures)
+                            {
+                                if (false == closure.is_valid())
+                                {
+                                    continue;
+                                }
+                                try
+                                {
+                                    luabind::call_function<void>(closure);
+                                }
+                                catch (luabind::error& error)
+                                {
+                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                    std::stringstream msg;
+                                    msg << errorMsg;
+                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIWindowComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                                }
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    }
+                }
+            }
+        }
+    }
 
 	bool MyGUIWindowComponent::connect(void)
 	{
@@ -1962,25 +1971,33 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+                    // Copy the list — it may be modified during iteration
+                    auto closures = this->mouseButtonClickClosureFunctions;
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUITextComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    if (false == closures.empty())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        {
+                            for (const auto& closure : closures)
+                            {
+                                if (false == closure.is_valid())
+                                {
+                                    continue;
+                                }
+                                try
+                                {
+                                    luabind::call_function<void>(closure);
+                                }
+                                catch (luabind::error& error)
+                                {
+                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                    std::stringstream msg;
+                                    msg << errorMsg;
+                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUITextBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                                }
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 			}
@@ -2564,25 +2581,33 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+                    // Copy the list — it may be modified during iteration
+                    auto closures = this->mouseButtonClickClosureFunctions;
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIButtonComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    if (false == closures.empty())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        {
+                            for (const auto& closure : closures)
+                            {
+                                if (false == closure.is_valid())
+                                {
+                                    continue;
+                                }
+                                try
+                                {
+                                    luabind::call_function<void>(closure);
+                                }
+                                catch (luabind::error& error)
+                                {
+                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                    std::stringstream msg;
+                                    msg << errorMsg;
+                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIButtonComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                                }
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 				else
@@ -2975,25 +3000,33 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+                    // Copy the list — it may be modified during iteration
+                    auto closures = this->mouseButtonClickClosureFunctions;
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUICheckBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    if (false == closures.empty())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        {
+                            for (const auto& closure : closures)
+                            {
+                                if (false == closure.is_valid())
+                                {
+                                    continue;
+                                }
+                                try
+                                {
+                                    luabind::call_function<void>(closure);
+                                }
+                                catch (luabind::error& error)
+                                {
+                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                    std::stringstream msg;
+                                    msg << errorMsg;
+                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUICheckBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                                }
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 			}
@@ -3476,25 +3509,33 @@ namespace NOWA
 		// Call also function in lua script, if it does exist in the lua script component
 		if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 		{
-			if (this->mouseButtonClickClosureFunction.is_valid())
-			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-					{
-						try
-						{
-							luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+            // Copy the list — it may be modified during iteration
+            auto closures = this->mouseButtonClickClosureFunctions;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIImageBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-								+ " details: " + msg.str());
-						}
-					};
-				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            if (false == closures.empty())
+            {
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                {
+                    for (const auto& closure : closures)
+                    {
+                        if (false == closure.is_valid())
+                        {
+                            continue;
+                        }
+                        try
+                        {
+                            luabind::call_function<void>(closure);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIImageBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        }
+                    }
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
 	}
@@ -3951,25 +3992,33 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+                    // Copy the list — it may be modified during iteration
+                    auto closures = this->mouseButtonClickClosureFunctions;
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIProgressBarComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    if (false == closures.empty())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        {
+                            for (const auto& closure : closures)
+                            {
+                                if (false == closure.is_valid())
+                                {
+                                    continue;
+                                }
+                                try
+                                {
+                                    luabind::call_function<void>(closure);
+                                }
+                                catch (luabind::error& error)
+                                {
+                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                    std::stringstream msg;
+                                    msg << errorMsg;
+                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIProgressBarComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                                }
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 			}
@@ -4420,25 +4469,33 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+                    // Copy the list — it may be modified during iteration
+                    auto closures = this->mouseButtonClickClosureFunctions;
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIListBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    if (false == closures.empty())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        {
+                            for (const auto& closure : closures)
+                            {
+                                if (false == closure.is_valid())
+                                {
+                                    continue;
+                                }
+                                try
+                                {
+                                    luabind::call_function<void>(closure);
+                                }
+                                catch (luabind::error& error)
+                                {
+                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                    std::stringstream msg;
+                                    msg << errorMsg;
+                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIListBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                                }
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 			}
@@ -5250,25 +5307,33 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+                    // Copy the list — it may be modified during iteration
+                    auto closures = this->mouseButtonClickClosureFunctions;
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComboBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    if (false == closures.empty())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        {
+                            for (const auto& closure : closures)
+                            {
+                                if (false == closure.is_valid())
+                                {
+                                    continue;
+                                }
+                                try
+                                {
+                                    luabind::call_function<void>(closure);
+                                }
+                                catch (luabind::error& error)
+                                {
+                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                    std::stringstream msg;
+                                    msg << errorMsg;
+                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComboBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                                }
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 			}

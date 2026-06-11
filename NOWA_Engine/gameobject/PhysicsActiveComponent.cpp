@@ -40,7 +40,6 @@ namespace NOWA
         constraintAxis(new Variant(PhysicsActiveComponent::AttrConstraintAxis(), Ogre::Vector3::ZERO, this->attributes)),
         asSoftBody(new Variant(PhysicsActiveComponent::AttrAsSoftBody(), false, this->attributes)),
         gyroscopicTorque(new Variant(PhysicsActiveComponent::AttrEnableGyroscopicTorque(), false, this->attributes)),
-        onContactFunctionName(new Variant(PhysicsActiveComponent::AttrOnContactFunctionName(), Ogre::String(""), this->attributes)),
         height(0.0f),
         rise(0.0f),
         upVector(nullptr),
@@ -108,9 +107,6 @@ namespace NOWA
 
         this->constraintDirection->setDescription("Sets the axis around which the game object only can be rotated.");
         this->constraintAxis->setDescription("Sets the normal axis at which the game object only can be moved. E.g. setting (0, 0, 1), the game object can be moved at x-y axis.");
-
-        this->onContactFunctionName->setDescription("Sets the function name to react in lua script at the moment when a game object collided with another game object. E.g. onContact(otherGameObject, contact).");
-        this->onContactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onContactFunctionName->getString() + "(otherGameObject, contact)");
     }
 
     PhysicsActiveComponent::~PhysicsActiveComponent()
@@ -237,11 +233,6 @@ namespace NOWA
             this->collidable->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnContactFunctionName")
-        {
-            this->onContactFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
 
         // Snapshot loaded, game object pointer should exist, set transform
         if (nullptr != this->gameObjectPtr)
@@ -292,10 +283,6 @@ namespace NOWA
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-        // Gameobject available
-
-        clonedCompPtr->setOnContactFunctionName(this->onContactFunctionName->getString());
-
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
         return clonedCompPtr;
     }
@@ -328,8 +315,6 @@ namespace NOWA
     bool PhysicsActiveComponent::connect(void)
     {
         PhysicsComponent::connect();
-
-        this->setOnContactFunctionName(this->onContactFunctionName->getString());
 
         this->lastTime = static_cast<double>(this->timer.getMilliseconds()) * 0.001;
 
@@ -1725,10 +1710,6 @@ namespace NOWA
         {
             this->setCollidable(attribute->getBool());
         }
-        else if (PhysicsActiveComponent::AttrOnContactFunctionName() == attribute->getName())
-        {
-            this->setOnContactFunctionName(attribute->getString());
-        }
     }
 
     void PhysicsActiveComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -1865,12 +1846,6 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "Collidable"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collidable->getBool())));
-        propertiesXML->append_node(propertyXML);
-
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "OnContactFunctionName"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onContactFunctionName->getString())));
         propertiesXML->append_node(propertyXML);
     }
 
@@ -2732,6 +2707,11 @@ namespace NOWA
         }
     }
 
+    void PhysicsActiveComponent::reactOnContactSolving(luabind::object closureFunction)
+    {
+        this->contactSolvingClosureFunction = closureFunction;
+    }
+
     void PhysicsActiveComponent::detachAndDestroyAllForceObserver(void)
     {
         std::unique_lock<std::shared_mutex> lk(forceObserversMutex);
@@ -2744,7 +2724,7 @@ namespace NOWA
 
     void PhysicsActiveComponent::setContactSolvingEnabled(bool enable)
     {
-        if (nullptr == this->gameObjectPtr || nullptr == this->gameObjectPtr->getLuaScript() || true == this->onContactFunctionName->getString().empty() || nullptr == this->physicsBody)
+        if (nullptr == this->gameObjectPtr || nullptr == this->physicsBody)
         {
             return;
         }
@@ -2829,20 +2809,6 @@ namespace NOWA
         if (0 == this->physicsAttractors.size())
         {
             this->hasAttraction = false;
-        }
-    }
-
-    void PhysicsActiveComponent::setOnContactFunctionName(const Ogre::String& onContactFunctionName)
-    {
-        this->onContactFunctionName->setValue(onContactFunctionName);
-        if (false == onContactFunctionName.empty())
-        {
-            this->onContactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onContactFunctionName + "(otherGameObject, contact)");
-            this->setContactSolvingEnabled(true);
-        }
-        else
-        {
-            this->setContactSolvingEnabled(false);
         }
     }
 
@@ -3116,13 +3082,13 @@ namespace NOWA
             NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
         }
 
-        if (nullptr != this->gameObjectPtr->getLuaScript())
+        if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->contactSolvingClosureFunction.is_valid())
         {
             // Snapshot NOW — contact ptr is dangling by logic thread execution time
             OgreNewt::ContactSnapshot contactSnapshot = contact->createSnapshot();
             NOWA::AppStateManager::LogicCommand logicCommand = [this, otherPhysicsComponent, contactSnapshot]()
             {
-                this->gameObjectPtr->getLuaScript()->callTableFunction(this->onContactFunctionName->getString(), otherPhysicsComponent->getOwner(), contactSnapshot);
+                luabind::call_function<void>(this->contactSolvingClosureFunction, otherPhysicsComponent->getOwner(), contactSnapshot);
             };
             NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
         }

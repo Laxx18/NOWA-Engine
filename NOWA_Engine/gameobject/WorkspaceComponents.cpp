@@ -370,27 +370,14 @@ namespace NOWA
 
         this->canUseOcean = this->useOcean;
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
+
+        for (auto component : compositorEffectComponents)
         {
-            if (nullptr != this->workspace)
-            {
-                Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
-                if (nullptr != workspaceDef)
-                {
-                    // Use clearAll() instead of clearAllInterNodeConnections()
-                    // to also clear external connections
-                    workspaceDef->clearAll();
-                    workspaceDef->clearOutputConnections();
-                }
-            }
-            auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
-            for (size_t i = 0; i < compositorEffectComponents.size(); i++)
-            {
-                compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, compositorEffectComponents[i]->isActivated());
-            }
-            this->reconnectAllNodes();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::connect");
+            component->enableEffect(component->effectName, component->isActivated());
+        }
+
+        this->reconnectAllNodes();
 
         GraphicsModule::getInstance()->endWorkspaceTransition();
         return true;
@@ -413,9 +400,9 @@ namespace NOWA
 
             auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
 
-            for (size_t i = 0; i < compositorEffectComponents.size(); i++)
+            for (auto component : compositorEffectComponents)
             {
-                compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, false);
+                component->enableEffect(component->effectName, false);
             }
 
             this->reconnectAllNodes();
@@ -1445,6 +1432,50 @@ namespace NOWA
         }
     }
 
+    void WorkspaceBaseComponent::onEffectActivationChanged(const Ogre::String& effectName, bool activated)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, effectName, activated]()
+        {
+            this->enableEffect(effectName, activated);
+        };
+
+        GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "WorkspaceBaseComponent::onEffectActivationChanged");
+    }
+
+    void WorkspaceBaseComponent::enableEffect(const Ogre::String& effectName, bool activated)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, effectName, activated]()
+        {
+            if (nullptr == this->workspace)
+            {
+                return;
+            }
+
+            Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinitionNoThrow(this->workspaceName);
+
+            if (nullptr == workspaceDef)
+            {
+                return;
+            }
+
+            workspaceDef->clearAll();
+            workspaceDef->clearOutputConnections();
+
+            auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
+
+            for (auto comp : compositorEffectComponents)
+            {
+                const bool enabled = (comp->effectName == effectName) ? activated : comp->isActivated();
+
+                comp->enableEffect(comp->effectName, enabled);
+            }
+
+            this->reconnectAllNodes();
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::enableEffect");
+    }
+
     void WorkspaceBaseComponent::baseCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
     {
         if (true == this->useMSAA->getBool())
@@ -2098,639 +2129,6 @@ namespace NOWA
             // Restore manual & auto params to the newly compiled shader
             pass->getFragmentProgramParameters()->copyConstantsFrom(*oldParams);
         });
-    }
-
-    void WorkspaceBaseComponent::createCompositorEffectsFromCode(void)
-    {
-        NOWA::GraphicsModule::RenderCommand command = [this]()
-        {
-            Ogre::Root* root = Core::getSingletonPtr()->getOgreRoot();
-
-            // Bloom compositor is loaded from script but here is the hard coded equivalent
-            if (!this->compositorManager->hasNodeDefinition("Bloom"))
-            {
-                Ogre::CompositorNodeDef* bloomDef = compositorManager->addNodeDefinition("Bloom");
-
-                // Input channels
-                bloomDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                bloomDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-                bloomDef->mCustomIdentifier = "Ogre/Postprocess";
-
-                // Local textures
-                bloomDef->setNumLocalTextureDefinitions(2);
-                {
-                    Ogre::TextureDefinitionBase::TextureDefinition* texDef = bloomDef->addTextureDefinition("rt0");
-                    texDef->widthFactor = 0.25f;
-                    texDef->heightFactor = 0.25f;
-                    texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-
-                    Ogre::RenderTargetViewDef* rtv = bloomDef->addRenderTextureView("rt0");
-                    Ogre::RenderTargetViewEntry attachment;
-                    attachment.textureName = "rt0";
-                    rtv->colourAttachments.push_back(attachment);
-                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
-
-                    texDef = bloomDef->addTextureDefinition("rt1");
-                    texDef->widthFactor = 0.25f;
-                    texDef->heightFactor = 0.25f;
-                    texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-
-                    rtv = bloomDef->addRenderTextureView("rt1");
-                    attachment.textureName = "rt1";
-                    rtv->colourAttachments.push_back(attachment);
-                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
-                }
-
-                bloomDef->setNumTargetPass(4);
-
-                {
-                    Ogre::CompositorTargetDef* targetDef = bloomDef->addTargetPass("rt0");
-
-                    {
-                        auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-                        Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-
-                        passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                        passQuad->mMaterialName = "Postprocess/BrightPass2";
-                        passQuad->addQuadTextureSource(0, "rt_input");
-                        passQuad->mProfilingId = "NOWA_Post_Effect_Bright_Pass2_Pass_Quad";
-                    }
-                }
-                {
-                    Ogre::CompositorTargetDef* targetDef = bloomDef->addTargetPass("rt1");
-
-                    {
-                        auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-                        Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-
-                        passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                        passQuad->mMaterialName = "Postprocess/BlurV";
-                        passQuad->addQuadTextureSource(0, "rt0");
-
-                        passQuad->mProfilingId = "NOWA_Post_Effect_BlurV_Pass_Quad";
-                    }
-                }
-                {
-                    Ogre::CompositorTargetDef* targetDef = bloomDef->addTargetPass("rt0");
-
-                    {
-                        auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-                        Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-
-                        passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                        passQuad->mMaterialName = "Postprocess/BlurH";
-                        passQuad->addQuadTextureSource(0, "rt1");
-
-                        passQuad->mProfilingId = "NOWA_Post_Effect_BlurH_Pass_Quad";
-                    }
-                }
-                {
-                    Ogre::CompositorTargetDef* targetDef = bloomDef->addTargetPass("rt_output");
-
-                    {
-                        auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-                        Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-
-                        passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                        passQuad->mMaterialName = "Postprocess/BloomBlend2";
-                        passQuad->addQuadTextureSource(0, "rt_input");
-                        passQuad->addQuadTextureSource(1, "rt0");
-
-                        passQuad->mProfilingId = "NOWA_Post_Effect_Bloom_Blend2_Pass_Quad";
-                    }
-                }
-
-                // Output channels
-                bloomDef->setNumOutputChannels(2);
-                bloomDef->mapOutputChannel(0, "rt_output");
-                bloomDef->mapOutputChannel(1, "rt_input");
-            }
-
-            // Glass compositor is loaded from script but here is the hard coded equivalent
-            if (!compositorManager->hasNodeDefinition("Glass"))
-            {
-                Ogre::CompositorNodeDef* glassDef = compositorManager->addNodeDefinition("Glass");
-
-                // Input channels
-                glassDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                glassDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-                glassDef->mCustomIdentifier = "Ogre/Postprocess";
-
-                glassDef->setNumTargetPass(1);
-
-                {
-                    Ogre::CompositorTargetDef* targetDef = glassDef->addTargetPass("rt_output");
-
-                    {
-                        auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-                        Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-
-                        passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                        passQuad->mMaterialName = "Postprocess/Glass";
-                        passQuad->addQuadTextureSource(0, "rt_input");
-
-                        passQuad->mProfilingId = "NOWA_Post_Effect_Glass_Pass_Quad";
-                    }
-                }
-
-                // Output channels
-                glassDef->setNumOutputChannels(2);
-                glassDef->mapOutputChannel(0, "rt_output");
-                glassDef->mapOutputChannel(1, "rt_input");
-            }
-
-            if (!compositorManager->hasNodeDefinition("Motion Blur"))
-            {
-                /// Motion blur effect
-                Ogre::CompositorNodeDef* motionBlurDef = compositorManager->addNodeDefinition("Motion Blur");
-
-                // Input channels
-                motionBlurDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                motionBlurDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-                motionBlurDef->mCustomIdentifier = "Ogre/Postprocess";
-
-                // Local textures
-                motionBlurDef->setNumLocalTextureDefinitions(1);
-                {
-                    Ogre::TextureDefinitionBase::TextureDefinition* texDef = motionBlurDef->addTextureDefinition("sum");
-                    texDef->width = 0;
-                    texDef->height = 0;
-                    texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-                    texDef->textureFlags &= (Ogre::uint32)~Ogre::TextureFlags::DiscardableContent;
-
-                    Ogre::RenderTargetViewDef* rtv = motionBlurDef->addRenderTextureView("sum");
-                    Ogre::RenderTargetViewEntry attachment;
-                    attachment.textureName = "sum";
-                    rtv->colourAttachments.push_back(attachment);
-                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
-                }
-
-                motionBlurDef->setNumTargetPass(3);
-
-                /// Initialisation pass for sum texture
-                {
-                    Ogre::CompositorTargetDef* targetDef = motionBlurDef->addTargetPass("sum");
-                    {
-                        auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-                        Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-
-                        passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                        passQuad->mNumInitialPasses = 1;
-                        passQuad->mMaterialName = "Ogre/Copy/4xFP32";
-                        passQuad->addQuadTextureSource(0, "rt_input");
-
-                        passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
-                        passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                        passQuad->mProfilingId = "NOWA_Post_Effect_Copy_4xFP32_Input_Pass_Quad";
-                    }
-                }
-                /// Do the motion blur
-                {
-                    Ogre::CompositorTargetDef* targetDef = motionBlurDef->addTargetPass("rt_output");
-
-                    {
-                        auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-                        Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-
-                        passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                        passQuad->mMaterialName = "Postprocess/Combine";
-                        passQuad->addQuadTextureSource(0, "rt_input");
-                        passQuad->addQuadTextureSource(1, "sum");
-
-                        passQuad->mProfilingId = "NOWA_Post_Effect_Combine_Pass_Quad";
-                    }
-                }
-                /// Copy back sum texture for the next frame
-                {
-                    Ogre::CompositorTargetDef* targetDef = motionBlurDef->addTargetPass("sum");
-
-                    {
-                        auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-                        Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-
-                        passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                        passQuad->mMaterialName = "Ogre/Copy/4xFP32";
-                        passQuad->addQuadTextureSource(0, "rt_output");
-
-                        passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
-                        passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                        passQuad->mProfilingId = "NOWA_Post_Effect_Copy_4xFP32_Output_Pass_Quad";
-                    }
-                }
-
-                // Output channels
-                motionBlurDef->setNumOutputChannels(2);
-                motionBlurDef->mapOutputChannel(0, "rt_output");
-                motionBlurDef->mapOutputChannel(1, "rt_input");
-            }
-
-            if (!compositorManager->hasNodeDefinition("Volumetric Light"))
-            {
-                Ogre::CompositorNodeDef* volLightDef = compositorManager->addNodeDefinition("Volumetric Light");
-
-                // Input channels — identical contract to Bloom / Cartoon
-                volLightDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                volLightDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-                volLightDef->mCustomIdentifier = "Ogre/Postprocess";
-
-                // Two ½-resolution intermediate RTs
-                volLightDef->setNumLocalTextureDefinitions(2);
-                {
-                    // rt0 — sun mask output
-                    Ogre::TextureDefinitionBase::TextureDefinition* texDef = volLightDef->addTextureDefinition("rt0");
-                    texDef->widthFactor = 0.5f;
-                    texDef->heightFactor = 0.5f;
-                    texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-
-                    Ogre::RenderTargetViewDef* rtv = volLightDef->addRenderTextureView("rt0");
-                    Ogre::RenderTargetViewEntry attachment;
-                    attachment.textureName = "rt0";
-                    rtv->colourAttachments.push_back(attachment);
-                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
-
-                    // rt1 — radial blur output
-                    texDef = volLightDef->addTextureDefinition("rt1");
-                    texDef->widthFactor = 0.5f;
-                    texDef->heightFactor = 0.5f;
-                    texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-
-                    rtv = volLightDef->addRenderTextureView("rt1");
-                    attachment.textureName = "rt1";
-                    rtv->colourAttachments.push_back(attachment);
-                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
-                }
-
-                volLightDef->setNumTargetPass(3);
-
-                // --- Pass 1: Sun Mask ---
-                {
-                    Ogre::CompositorTargetDef* targetDef = volLightDef->addTargetPass("rt0");
-                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    passQuad->mMaterialName = "Postprocess/VolumetricLightSunMask";
-                    passQuad->addQuadTextureSource(0, "rt_input");
-                    passQuad->mProfilingId = "NOWA_Post_Effect_VolumetricLight_SunMask_Pass_Quad";
-                }
-
-                // --- Pass 2: Radial Blur ---
-                {
-                    Ogre::CompositorTargetDef* targetDef = volLightDef->addTargetPass("rt1");
-                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    passQuad->mMaterialName = "Postprocess/VolumetricLightRadialBlur";
-                    passQuad->addQuadTextureSource(0, "rt0");
-                    passQuad->mProfilingId = "NOWA_Post_Effect_VolumetricLight_RadialBlur_Pass_Quad";
-                }
-
-                // --- Pass 3: Blend ---
-                {
-                    Ogre::CompositorTargetDef* targetDef = volLightDef->addTargetPass("rt_output");
-                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    passQuad->mMaterialName = "Postprocess/VolumetricLightBlend";
-                    passQuad->addQuadTextureSource(0, "rt_input"); // original scene
-                    passQuad->addQuadTextureSource(1, "rt1");      // god-ray contribution
-                    passQuad->mProfilingId = "NOWA_Post_Effect_VolumetricLight_Blend_Pass_Quad";
-                }
-
-                // Output channels
-                volLightDef->setNumOutputChannels(2);
-                volLightDef->mapOutputChannel(0, "rt_output");
-                volLightDef->mapOutputChannel(1, "rt_input");
-            }
-
-            if (!this->compositorManager->hasNodeDefinition("Fog"))
-            {
-                Ogre::CompositorNodeDef* fogDef = compositorManager->addNodeDefinition("Fog");
-
-                // Input channels — standard in 0/1 + depth on in 2
-                fogDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                fogDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                fogDef->addTextureSourceName("depthTexture", 2, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-                fogDef->mCustomIdentifier = "Ogre/Postprocess";
-
-                // Single target pass — no intermediate RTs needed
-                fogDef->setNumTargetPass(1);
-
-                {
-                    Ogre::CompositorTargetDef* targetDef = fogDef->addTargetPass("rt_output");
-
-                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    passQuad->mMaterialName = "Postprocess/Fog";
-                    passQuad->addQuadTextureSource(0, "rt_input");     // scene colour -> t0
-                    passQuad->addQuadTextureSource(1, "depthTexture"); // depth        -> t1
-                    passQuad->mProfilingId = "NOWA_Post_Effect_Fog_Pass_Quad";
-                }
-
-                // Output channels — standard ping-pong contract
-                fogDef->setNumOutputChannels(2);
-                fogDef->mapOutputChannel(0, "rt_output");
-                fogDef->mapOutputChannel(1, "rt_input");
-            }
-
-            if (!this->compositorManager->hasNodeDefinition("Light Shafts"))
-            {
-                Ogre::CompositorNodeDef* shaftsDef = compositorManager->addNodeDefinition("Light Shafts");
-
-                shaftsDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                shaftsDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                shaftsDef->addTextureSourceName("depthTexture", 2, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-                shaftsDef->mCustomIdentifier = "Ogre/Postprocess";
-
-                // Two ½-resolution intermediates
-                shaftsDef->setNumLocalTextureDefinitions(2);
-                {
-                    Ogre::TextureDefinitionBase::TextureDefinition* texDef = shaftsDef->addTextureDefinition("rt0");
-                    texDef->widthFactor = 0.5f;
-                    texDef->heightFactor = 0.5f;
-                    texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-
-                    Ogre::RenderTargetViewDef* rtv = shaftsDef->addRenderTextureView("rt0");
-                    Ogre::RenderTargetViewEntry attachment;
-                    attachment.textureName = "rt0";
-                    rtv->colourAttachments.push_back(attachment);
-                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
-
-                    texDef = shaftsDef->addTextureDefinition("rt1");
-                    texDef->widthFactor = 0.5f;
-                    texDef->heightFactor = 0.5f;
-                    texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-
-                    rtv = shaftsDef->addRenderTextureView("rt1");
-                    attachment.textureName = "rt1";
-                    rtv->colourAttachments.push_back(attachment);
-                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
-                }
-
-                shaftsDef->setNumTargetPass(3);
-
-                // --- Pass 1: Occlusion Mask ---
-                {
-                    Ogre::CompositorTargetDef* targetDef = shaftsDef->addTargetPass("rt0");
-                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    passQuad->mMaterialName = "Postprocess/LightShaftsOcclusionMask";
-                    passQuad->addQuadTextureSource(0, "rt_input");     // colour → t0
-                    passQuad->addQuadTextureSource(1, "depthTexture"); // depth  → t1
-                    passQuad->mProfilingId = "NOWA_Post_Effect_LightShafts_OcclusionMask_Pass_Quad";
-                }
-
-                // --- Pass 2: Radial Blur ---
-                {
-                    Ogre::CompositorTargetDef* targetDef = shaftsDef->addTargetPass("rt1");
-                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    passQuad->mMaterialName = "Postprocess/LightShaftsRadialBlur";
-                    passQuad->addQuadTextureSource(0, "rt0");
-                    passQuad->mProfilingId = "NOWA_Post_Effect_LightShafts_RadialBlur_Pass_Quad";
-                }
-
-                // --- Pass 3: Blend ---
-                {
-                    Ogre::CompositorTargetDef* targetDef = shaftsDef->addTargetPass("rt_output");
-                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    passQuad->mMaterialName = "Postprocess/LightShaftsBlend";
-                    passQuad->addQuadTextureSource(0, "rt_input"); // original scene
-                    passQuad->addQuadTextureSource(1, "rt1");      // shaft contribution
-                    passQuad->mProfilingId = "NOWA_Post_Effect_LightShafts_Blend_Pass_Quad";
-                }
-
-                shaftsDef->setNumOutputChannels(2);
-                shaftsDef->mapOutputChannel(0, "rt_output");
-                shaftsDef->mapOutputChannel(1, "rt_input");
-            }
-
-            // ============================================================
-            // Gaussian DOF node
-            // ============================================================
-            if (!this->compositorManager->hasNodeDefinition("Depth Of Field Gaussian"))
-            {
-                Ogre::CompositorNodeDef* dofDef = compositorManager->addNodeDefinition("Depth Of Field Gaussian");
-
-                dofDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                dofDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                dofDef->addTextureSourceName("depthTexture", 2, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-                dofDef->mCustomIdentifier = "Ogre/Postprocess";
-
-                // 3 half-res RGBA16F intermediates
-                dofDef->setNumLocalTextureDefinitions(3);
-
-                auto addHalfResRT = [&](const char* name) -> Ogre::TextureDefinitionBase::TextureDefinition*
-                {
-                    auto* t = dofDef->addTextureDefinition(name);
-                    t->widthFactor = 0.5f;
-                    t->heightFactor = 0.5f;
-                    t->format = Ogre::PFG_RGBA16_FLOAT;
-                    auto* rtv = dofDef->addRenderTextureView(name);
-                    Ogre::RenderTargetViewEntry att;
-                    att.textureName = name;
-                    rtv->colourAttachments.push_back(att);
-                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
-                    return t;
-                };
-
-                addHalfResRT("rt0"); // CoC + colour
-                addHalfResRT("rt1"); // H-blur
-                addHalfResRT("rt2"); // V-blur
-
-                dofDef->setNumTargetPass(4);
-
-                // Pass 1: CoC
-                {
-                    auto* td = dofDef->addTargetPass("rt0");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFGaussianCoC";
-                    pq->addQuadTextureSource(0, "rt_input");
-                    pq->addQuadTextureSource(1, "depthTexture");
-                    pq->mProfilingId = "NOWA_Post_DOF_Gaussian_CoC_Pass_Quad";
-                }
-                // Pass 2: Horizontal blur
-                {
-                    auto* td = dofDef->addTargetPass("rt1");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFGaussianBlurH";
-                    pq->addQuadTextureSource(0, "rt0");
-                    pq->mProfilingId = "NOWA_Post_DOF_Gaussian_BlurH_Pass_Quad";
-                }
-                // Pass 3: Vertical blur
-                {
-                    auto* td = dofDef->addTargetPass("rt2");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFGaussianBlurV";
-                    pq->addQuadTextureSource(0, "rt1");
-                    pq->mProfilingId = "NOWA_Post_DOF_Gaussian_BlurV_Pass_Quad";
-                }
-                // Pass 4: Blend
-                {
-                    auto* td = dofDef->addTargetPass("rt_output");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFGaussianBlend";
-                    pq->addQuadTextureSource(0, "rt_input");
-                    pq->addQuadTextureSource(1, "rt2");
-                    pq->addQuadTextureSource(2, "rt0");
-                    pq->mProfilingId = "NOWA_Post_DOF_Gaussian_Blend_Pass_Quad";
-                }
-
-                dofDef->setNumOutputChannels(2);
-                dofDef->mapOutputChannel(0, "rt_output");
-                dofDef->mapOutputChannel(1, "rt_input");
-            }
-
-            // ============================================================
-            // Hex Bokeh DOF node
-            // ============================================================
-            if (!this->compositorManager->hasNodeDefinition("Depth Of Field Hex Bokeh"))
-            {
-                Ogre::CompositorNodeDef* dofDef = compositorManager->addNodeDefinition("Depth Of Field Hex Bokeh");
-
-                dofDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                dofDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                dofDef->addTextureSourceName("depthTexture", 2, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-                dofDef->mCustomIdentifier = "Ogre/Postprocess";
-
-                // 5 half-res intermediates: CoC, Dir0, Dir1, Dir2, Combined
-                dofDef->setNumLocalTextureDefinitions(5);
-
-                auto addHalfResRT = [&](const char* name)
-                {
-                    auto* t = dofDef->addTextureDefinition(name);
-                    t->widthFactor = 0.5f;
-                    t->heightFactor = 0.5f;
-                    t->format = Ogre::PFG_RGBA16_FLOAT;
-                    auto* rtv = dofDef->addRenderTextureView(name);
-                    Ogre::RenderTargetViewEntry att;
-                    att.textureName = name;
-                    rtv->colourAttachments.push_back(att);
-                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
-                };
-
-                addHalfResRT("rt0"); // CoC + colour
-                addHalfResRT("rt1"); // dir 0°
-                addHalfResRT("rt2"); // dir 60°
-                addHalfResRT("rt3"); // dir -60°
-                addHalfResRT("rt4"); // hex combined
-
-                dofDef->setNumTargetPass(6);
-
-                // Pass 1: CoC
-                {
-                    auto* td = dofDef->addTargetPass("rt0");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFHexBokehCoC";
-                    pq->addQuadTextureSource(0, "rt_input");
-                    pq->addQuadTextureSource(1, "depthTexture");
-                    pq->mProfilingId = "NOWA_Post_DOF_Hex_CoC_Pass_Quad";
-                }
-                // Pass 2: Dir 0°
-                {
-                    auto* td = dofDef->addTargetPass("rt1");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFHexBokehDir0";
-                    pq->addQuadTextureSource(0, "rt0");
-                    pq->mProfilingId = "NOWA_Post_DOF_Hex_Dir0_Pass_Quad";
-                }
-                // Pass 3: Dir 60°
-                {
-                    auto* td = dofDef->addTargetPass("rt2");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFHexBokehDir1";
-                    pq->addQuadTextureSource(0, "rt0");
-                    pq->mProfilingId = "NOWA_Post_DOF_Hex_Dir1_Pass_Quad";
-                }
-                // Pass 4: Dir -60°
-                {
-                    auto* td = dofDef->addTargetPass("rt3");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFHexBokehDir2";
-                    pq->addQuadTextureSource(0, "rt0");
-                    pq->mProfilingId = "NOWA_Post_DOF_Hex_Dir2_Pass_Quad";
-                }
-                // Pass 5: Combine
-                {
-                    auto* td = dofDef->addTargetPass("rt4");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFHexBokehCombine";
-                    pq->addQuadTextureSource(0, "rt1");
-                    pq->addQuadTextureSource(1, "rt2");
-                    pq->addQuadTextureSource(2, "rt3");
-                    pq->mProfilingId = "NOWA_Post_DOF_Hex_Combine_Pass_Quad";
-                }
-                // Pass 6: Blend
-                {
-                    auto* td = dofDef->addTargetPass("rt_output");
-                    auto* pq = static_cast<Ogre::CompositorPassQuadDef*>(td->addPass(Ogre::PASS_QUAD));
-                    pq->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    pq->mMaterialName = "Postprocess/DOFHexBokehBlend";
-                    pq->addQuadTextureSource(0, "rt_input");
-                    pq->addQuadTextureSource(1, "rt4");
-                    pq->addQuadTextureSource(2, "rt0");
-                    pq->mProfilingId = "NOWA_Post_DOF_Hex_Blend_Pass_Quad";
-                }
-
-                dofDef->setNumOutputChannels(2);
-                dofDef->mapOutputChannel(0, "rt_output");
-                dofDef->mapOutputChannel(1, "rt_input");
-            }
-
-            if (!this->compositorManager->hasNodeDefinition("Outline"))
-            {
-                Ogre::CompositorNodeDef* outlineDef = compositorManager->addNodeDefinition("Outline");
-
-                outlineDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                outlineDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-                outlineDef->addTextureSourceName("depthTexture", 2, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-                outlineDef->mCustomIdentifier = "Ogre/Postprocess";
-
-                // Single target pass — no intermediate RTs needed
-                outlineDef->setNumTargetPass(1);
-
-                {
-                    Ogre::CompositorTargetDef* targetDef = outlineDef->addTargetPass("rt_output");
-
-                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-                    passQuad->mMaterialName = "Postprocess/Outline";
-                    passQuad->addQuadTextureSource(0, "rt_input");     // scene colour → t0
-                    passQuad->addQuadTextureSource(1, "depthTexture"); // depth        → t1
-                    passQuad->mProfilingId = "NOWA_Post_Effect_Outline_Pass_Quad";
-                }
-
-                outlineDef->setNumOutputChannels(2);
-                outlineDef->mapOutputChannel(0, "rt_output");
-                outlineDef->mapOutputChannel(1, "rt_input");
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "WorkspaceBaseComponent::createCompositorEffectsFromCode");
     }
 
     void WorkspaceBaseComponent::initializeSmaa(PresetQuality quality, EdgeDetectionMode edgeDetectionMode)

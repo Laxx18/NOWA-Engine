@@ -3914,6 +3914,47 @@ return {
 			}
 		}
 	},
+	CompositorEffectAsciiComponent =
+	{
+		type = "class",
+		description = "ASCII art post process effect. Renders the scene as a grid of ASCII characters.  Parameters: numTiles: Number of character tiles in x and y direction. Higher values create smaller characters and more detail.  charBias: Bias for the character selection by luminance.  Requirements: A camera component must exist.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setNumTiles =
+			{
+				type = "method",
+				description = "Sets the number of character tiles in x and y direction. Higher values create smaller characters and more detail.",
+				args = "(Vector2 numTiles)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNumTiles =
+			{
+				type = "function",
+				description = "Gets the number of character tiles.",
+				args = "()",
+				returns = "(Vector2)",
+				valuetype = "Vector2"
+			},
+			setCharBias =
+			{
+				type = "method",
+				description = "Sets the bias for the character selection by luminance.",
+				args = "(number charBias)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCharBias =
+			{
+				type = "function",
+				description = "Gets the character selection bias.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	CompositorEffectBaseComponent =
 	{
 		type = "class",
@@ -4383,6 +4424,47 @@ return {
 			}
 		}
 	},
+	CompositorEffectLaplaceComponent =
+	{
+		type = "class",
+		description = "Laplace edge detection post process effect.  Parameters: pixelSize: Sampling offset in UV space. Larger values create thicker edges.  scale: Intensity scale of the detected edges.  Requirements: A camera component must exist.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setPixelSize =
+			{
+				type = "method",
+				description = "Sets the sampling offset in UV space. Larger values create thicker edges.",
+				args = "(number pixelSize)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPixelSize =
+			{
+				type = "function",
+				description = "Gets the sampling offset.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setScale =
+			{
+				type = "method",
+				description = "Sets the intensity scale of the detected edges.",
+				args = "(number scale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getScale =
+			{
+				type = "function",
+				description = "Gets the edge intensity scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	CompositorEffectLightShaftsComponent =
 	{
 		type = "class",
@@ -4549,6 +4631,31 @@ return {
 				args = "()",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
+			}
+		}
+	},
+	CompositorEffectMotionBlurComponent =
+	{
+		type = "class",
+		description = "Frame accumulation motion blur. The previous frame sum is blended with the current frame, which creates motion trails for moving objects and camera motion.  Parameters: blurStrength: How much of the previous frame is kept. Range 0 to 0.99. 0.8 is the classic default. Values near 1.0 create long ghost trails.  Requirements: A camera component must exist.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setBlurStrength =
+			{
+				type = "method",
+				description = "Sets how much of the previous frame sum is kept. Range 0 to 0.99. Higher values create longer motion trails.",
+				args = "(number blurStrength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBlurStrength =
+			{
+				type = "function",
+				description = "Gets the motion blur accumulation strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},
@@ -4794,6 +4901,79 @@ return {
 			}
 		}
 	},
+	CompositorEffectRadialBlurComponent =
+	{
+		type = "class",
+		description = "Radial blur post process effect for speed, warp or explosion shock looks. Blurs the image radially away from a configurable center point.  Parameters: center: Blur center in UV space. 0.5 0.5 is the screen center.  minDistance: UV distance from the center where the blur starts to attenuate. Inside this radius the image stays sharp.  maxDistance: UV distance where the blur reaches full strength.  exponent: Attenuation curve between min and max distance. Higher values create a smaller, sharper blur spot.  Requirements: A camera component must exist.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setCenter =
+			{
+				type = "method",
+				description = "Sets the blur center in UV space. 0.5 0.5 is the screen center.",
+				args = "(Vector2 center)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCenter =
+			{
+				type = "function",
+				description = "Gets the blur center in UV space.",
+				args = "()",
+				returns = "(Vector2)",
+				valuetype = "Vector2"
+			},
+			setMinDistance =
+			{
+				type = "method",
+				description = "Sets the UV distance from the center where the blur starts. Inside this radius the image stays sharp.",
+				args = "(number minDistance)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMinDistance =
+			{
+				type = "function",
+				description = "Gets the minimum UV distance.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxDistance =
+			{
+				type = "method",
+				description = "Sets the UV distance where the blur reaches full strength. Must be greater than the min distance.",
+				args = "(number maxDistance)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxDistance =
+			{
+				type = "function",
+				description = "Gets the maximum UV distance.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setExponent =
+			{
+				type = "method",
+				description = "Sets the attenuation curve between min and max distance. Higher values create a smaller, sharper blur spot.",
+				args = "(number exponent)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getExponent =
+			{
+				type = "function",
+				description = "Gets the attenuation exponent.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	CompositorEffectSharpenEdgesComponent =
 	{
 		type = "class",
@@ -4829,6 +5009,47 @@ return {
 			{
 				type = "function",
 				description = "Gets the sharpen edges weight.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
+	CompositorEffectTilingComponent =
+	{
+		type = "class",
+		description = "Tiling mosaic post process effect.  Parameters: numTiles: Number of tiles across the screen.  threshold: Edge threshold inside each tile.  Requirements: A camera component must exist.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setNumTiles =
+			{
+				type = "method",
+				description = "Sets the number of tiles across the screen.",
+				args = "(number numTiles)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNumTiles =
+			{
+				type = "function",
+				description = "Gets the number of tiles.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setThreshold =
+			{
+				type = "method",
+				description = "Sets the edge threshold inside each tile.",
+				args = "(number threshold)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getThreshold =
+			{
+				type = "function",
+				description = "Gets the edge threshold.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -9697,6 +9918,22 @@ return {
 				returns = "(CameraBehaviorZoomComponent)",
 				valuetype = "CameraBehaviorZoomComponent"
 			},
+			getCompositorEffectAsciiComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectAsciiComponent.",
+				args = "()",
+				returns = "(CompositorEffectAsciiComponent)",
+				valuetype = "CompositorEffectAsciiComponent"
+			},
+			getCompositorEffectAsciiComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectAsciiComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectAsciiComponent)",
+				valuetype = "CompositorEffectAsciiComponent"
+			},
 			getCompositorEffectDepthOfFieldComponent =
 			{
 				type = "function",
@@ -9729,6 +9966,22 @@ return {
 				returns = "(CompositorEffectFogComponent)",
 				valuetype = "CompositorEffectFogComponent"
 			},
+			getCompositorEffectLaplaceComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectLaplaceComponent.",
+				args = "()",
+				returns = "(CompositorEffectLaplaceComponent)",
+				valuetype = "CompositorEffectLaplaceComponent"
+			},
+			getCompositorEffectLaplaceComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectLaplaceComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectLaplaceComponent)",
+				valuetype = "CompositorEffectLaplaceComponent"
+			},
 			getCompositorEffectLightShaftsComponent =
 			{
 				type = "function",
@@ -9745,6 +9998,22 @@ return {
 				returns = "(CompositorEffectLightShaftsComponent)",
 				valuetype = "CompositorEffectLightShaftsComponent"
 			},
+			getCompositorEffectMotionBlurComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectMotionBlurComponent.",
+				args = "()",
+				returns = "(CompositorEffectMotionBlurComponent)",
+				valuetype = "CompositorEffectMotionBlurComponent"
+			},
+			getCompositorEffectMotionBlurComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectMotionBlurComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectMotionBlurComponent)",
+				valuetype = "CompositorEffectMotionBlurComponent"
+			},
 			getCompositorEffectOutlineComponent =
 			{
 				type = "function",
@@ -9760,6 +10029,38 @@ return {
 				args = "(string name)",
 				returns = "(CompositorEffectOutlineComponent)",
 				valuetype = "CompositorEffectOutlineComponent"
+			},
+			getCompositorEffectRadialBlurComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectRadialBlurComponent.",
+				args = "()",
+				returns = "(CompositorEffectRadialBlurComponent)",
+				valuetype = "CompositorEffectRadialBlurComponent"
+			},
+			getCompositorEffectRadialBlurComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectRadialBlurComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectRadialBlurComponent)",
+				valuetype = "CompositorEffectRadialBlurComponent"
+			},
+			getCompositorEffectTilingComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectTilingComponent.",
+				args = "()",
+				returns = "(CompositorEffectTilingComponent)",
+				valuetype = "CompositorEffectTilingComponent"
+			},
+			getCompositorEffectTilingComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectTilingComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectTilingComponent)",
+				valuetype = "CompositorEffectTilingComponent"
 			},
 			getCompositorEffectVolumetricLightComponent =
 			{
@@ -12201,6 +12502,14 @@ return {
 				returns = "(CameraBehaviorZoomComponent)",
 				valuetype = "CameraBehaviorZoomComponent"
 			},
+			castCompositorEffectAsciiComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectAsciiComponent other)",
+				returns = "(CompositorEffectAsciiComponent)",
+				valuetype = "CompositorEffectAsciiComponent"
+			},
 			castCompositorEffectDepthOfFieldComponent =
 			{
 				type = "function",
@@ -12217,6 +12526,14 @@ return {
 				returns = "(CompositorEffectFogComponent)",
 				valuetype = "CompositorEffectFogComponent"
 			},
+			castCompositorEffectLaplaceComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectLaplaceComponent other)",
+				returns = "(CompositorEffectLaplaceComponent)",
+				valuetype = "CompositorEffectLaplaceComponent"
+			},
 			castCompositorEffectLightShaftsComponent =
 			{
 				type = "function",
@@ -12225,6 +12542,14 @@ return {
 				returns = "(CompositorEffectLightShaftsComponent)",
 				valuetype = "CompositorEffectLightShaftsComponent"
 			},
+			castCompositorEffectMotionBlurComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectMotionBlurComponent other)",
+				returns = "(CompositorEffectMotionBlurComponent)",
+				valuetype = "CompositorEffectMotionBlurComponent"
+			},
 			castCompositorEffectOutlineComponent =
 			{
 				type = "function",
@@ -12232,6 +12557,22 @@ return {
 				args = "(CompositorEffectOutlineComponent other)",
 				returns = "(CompositorEffectOutlineComponent)",
 				valuetype = "CompositorEffectOutlineComponent"
+			},
+			castCompositorEffectRadialBlurComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectRadialBlurComponent other)",
+				returns = "(CompositorEffectRadialBlurComponent)",
+				valuetype = "CompositorEffectRadialBlurComponent"
+			},
+			castCompositorEffectTilingComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectTilingComponent other)",
+				returns = "(CompositorEffectTilingComponent)",
+				valuetype = "CompositorEffectTilingComponent"
 			},
 			castCompositorEffectVolumetricLightComponent =
 			{
@@ -24391,8 +24732,16 @@ return {
 			setContactSolvingEnabled =
 			{
 				type = "method",
-				description = "Enables contact solving, so that in a lua script onContactSolving(otherGameObject) will be called, when two bodies are colliding.",
+				description = "Enables contact solving, so that in a lua script onContactSolving(otherGameObject, contact) will be called, when two bodies are colliding.",
 				args = "(boolean enable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnContactSolving =
+			{
+				type = "method",
+				description = "Registers a closure called once when the ship landed. Note: setContactSolvingEnabled(true) must be called first to enable the contact solving.",
+				args = "(func closure(otherGameObject, contact)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -32649,6 +32998,14 @@ return {
 			{
 				type = "method",
 				description = "Registers a closure called once when the ship is close enough to land (within landingThreshold, default 30 units above the surface). Use this to show your Land button. The callback does not lock input. Call universumComp:requestLanding() from the button handler to start autopilot.",
+				args = "(func closure(bodyGameObject, shipGameObject)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnLanded =
+			{
+				type = "method",
+				description = "Registers a closure called once when the ship landed.",
 				args = "(func closure(bodyGameObject, shipGameObject)",
 				returns = "(nil)",
 				valuetype = "nil"

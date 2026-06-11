@@ -89,7 +89,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -214,7 +214,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					
 					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

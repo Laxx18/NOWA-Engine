@@ -38,7 +38,7 @@ local function activatePlayer()
         -- Place the player 3 units to the right of the ship in ship-local space
         -- and 1 unit up so they stand on the surface next to the ship.
         local shipRight = shipOrient:xAxis();
-        spawnPos = Vector3(shipPos.x + shipRight.x * 3.0, shipPos.y + 1.0, shipPos.z + shipRight.z * 3.0);
+        spawnPos = Vector3(shipPos.x + shipRight.x * 6.0, shipPos.y + 1.0, shipPos.z + shipRight.z * 6.0);
         -- Face the same direction as the ship.
         spawnOrient = shipOrient;
     elseif lastContactPos ~= nil and lastContactNorm ~= nil then
@@ -91,15 +91,6 @@ Universum_0["connect"] = function(gameObject)
     landStartButton:reactOnMouseButtonClick(function()
         if landStartButton:getCaption() == "Land" then
             universumComp:requestLanding();
-            landStartButton:setCaption("Start");
-        else
-            landStartButton:setCaption("Land");
-            universumComp:requestTakeoff();
-            fighterGo:getPhysicsActiveComponent():setGravitySourceCategory("");
-            fighterGo:getInputDeviceComponent():setActivated(true);
-            fighterGo:getPhysicsActiveComponent():setActivated(true);
-            playerGo:setVisible(false);
-            playerGo:getPhysicsActiveComponent():setActivated(false);
         end
     end);
  
@@ -124,12 +115,12 @@ Universum_0["connect"] = function(gameObject)
         if attrib ~= nil then
             attrib:changeValueBool("isOnPlanet", false);
         end
+        
+        landStartButton:setCaption("Land");
+        
         if fadeWindowComponent ~= nil then
             fadeWindowComponent:setAlpha(0);
             fadeWindowComponent:setActivated(true);
-        end
-        if enteredGameObject ~= nil then
-
         end
     end)
  
@@ -148,6 +139,8 @@ Universum_0["connect"] = function(gameObject)
     universumComp:reactOnLanded(function(bodyGO, shipGO)
         log("[Universum] reactOnLanded fired -- spawning player");
         activatePlayer();
+        --fadeWindowComponent:setAlpha(0);
+        --fadeWindowComponent:setActivated(true);
     end)
  
 end

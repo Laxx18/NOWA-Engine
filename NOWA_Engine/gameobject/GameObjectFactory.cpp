@@ -145,6 +145,14 @@ namespace NOWA
         this->componentFactory.registerClass<CompositorEffectLightShaftsComponent>(CompositorEffectLightShaftsComponent::getStaticClassId(), CompositorEffectLightShaftsComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectDepthOfFieldComponent>(CompositorEffectDepthOfFieldComponent::getStaticClassId(), CompositorEffectDepthOfFieldComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectOutlineComponent>(CompositorEffectOutlineComponent::getStaticClassId(), CompositorEffectOutlineComponent::getStaticClassName());
+		this->componentFactory.registerClass<CompositorEffectMotionBlurComponent>(CompositorEffectMotionBlurComponent::getStaticClassId(), CompositorEffectMotionBlurComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectRadialBlurComponent>(CompositorEffectRadialBlurComponent::getStaticClassId(), CompositorEffectRadialBlurComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectAsciiComponent>(CompositorEffectAsciiComponent::getStaticClassId(), CompositorEffectAsciiComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectLaplaceComponent>(CompositorEffectLaplaceComponent::getStaticClassId(), CompositorEffectLaplaceComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectTilingComponent>(CompositorEffectTilingComponent::getStaticClassId(), CompositorEffectTilingComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectNightVisionComponent>(CompositorEffectNightVisionComponent::getStaticClassId(), CompositorEffectNightVisionComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectDitherComponent>(CompositorEffectDitherComponent::getStaticClassId(), CompositorEffectDitherComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectPosterizeComponent>(CompositorEffectPosterizeComponent::getStaticClassId(), CompositorEffectPosterizeComponent::getStaticClassName());
 
 		this->componentFactory.registerClass<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassId(), DatablockPbsComponent::getStaticClassName());
 		this->componentFactory.registerClass<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassId(), DatablockUnlitComponent::getStaticClassName());

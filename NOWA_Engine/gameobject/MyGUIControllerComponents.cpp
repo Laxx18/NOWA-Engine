@@ -376,21 +376,20 @@ namespace NOWA
 
         if (true == activated)
         {
-            // Store old coordinate so we can restore on deactivate/disconnect
-            this->oldCoordinate = Ogre::Vector4(static_cast<Ogre::Real>(this->sourceWidget->getCoord().left), static_cast<Ogre::Real>(this->sourceWidget->getCoord().top), static_cast<Ogre::Real>(this->sourceWidget->getCoord().width),
-                static_cast<Ogre::Real>(this->sourceWidget->getCoord().height));
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                // Store old coordinate on the render thread where sourceWidget is safe to read
+                this->oldCoordinate = Ogre::Vector4(static_cast<Ogre::Real>(this->sourceWidget->getCoord().left), static_cast<Ogre::Real>(this->sourceWidget->getCoord().top), static_cast<Ogre::Real>(this->sourceWidget->getCoord().width),
+                    static_cast<Ogre::Real>(this->sourceWidget->getCoord().height));
 
-            ENQUEUE_RENDER_COMMAND("MyGUIPositionControllerComponent::onActivatedChanged_start", {
-                // Recreate controllerItem if it was consumed by a previous run
-                if (nullptr == this->controllerItem)
-                {
-                    MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
-                    this->controllerItem = item->castType<MyGUI::ControllerPosition>();
-                    this->controllerItem->eventUpdateAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::onFrameUpdate);
-                    this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::controllerFinished);
-                }
-
+                // Unconditional remove + recreate — eliminates racy nullptr guard
                 MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+                this->controllerItem = nullptr;
+
+                MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
+                this->controllerItem = item->castType<MyGUI::ControllerPosition>();
+                this->controllerItem->eventUpdateAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::onFrameUpdate);
+                this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::controllerFinished);
 
                 this->controllerItem->castType<MyGUI::ControllerPosition>()->setTime(this->durationSec->getReal());
 
@@ -427,18 +426,19 @@ namespace NOWA
                 this->controllerItem->castType<MyGUI::ControllerPosition>()->setCoord(MyGUI::CoordConverter::convertFromRelative(floatCoord, MyGUI::RenderManager::getInstance().getViewSize()));
 
                 MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIPositionControllerComponent::onActivatedChanged_start");
         }
         else
         {
-            // Stop and restore old position
-            if (nullptr != this->controllerItem)
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
-                ENQUEUE_RENDER_COMMAND("MyGUIPositionControllerComponent::onActivatedChanged_stop", {
-                    MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
-                    this->controllerItem = nullptr;
-                });
-            }
+                MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+                this->controllerItem = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIPositionControllerComponent::onActivatedChanged_stop");
+
+            // Restore old widget position — safe to call after render command completes
             this->activateController(false);
         }
     }
@@ -693,34 +693,27 @@ namespace NOWA
 
         if (true == activated)
         {
-            // Fade to this->alpha->getReal().
-            // Direction is determined purely by the alpha value the caller set beforehand:
-            //   setAlpha(1); setActivated(true)  → fade in
-            //   setAlpha(0); setActivated(true)  → fade out
             NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
+                // Everything touching controllerItem and MyGUI happens
+                // exclusively here — no logic-thread races possible.
                 MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+                this->controllerItem = nullptr; // safe: we're on render thread
 
-                if (nullptr == this->controllerItem)
-                {
-                    MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerFadeAlpha::getClassTypeName());
-                    this->controllerItem = item->castType<MyGUI::ControllerFadeAlpha>();
-                    this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIFadeAlphaControllerComponent::controllerFinished);
-                }
+                MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerFadeAlpha::getClassTypeName());
+                this->controllerItem = item->castType<MyGUI::ControllerFadeAlpha>();
+                this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIFadeAlphaControllerComponent::controllerFinished);
 
-                // Re-enable source widget in case it was deactivated by a previous fade-out
                 if (nullptr != this->sourceMyGUIComponent)
                 {
                     this->sourceMyGUIComponent->setActivated(true);
                 }
 
-                // Store current alpha for disconnect restoration
                 this->oldAlpha = this->sourceWidget->getAlpha();
 
                 Ogre::Real targetAlpha = this->alpha->getReal();
                 Ogre::Real currentAlpha = this->sourceWidget->getAlpha();
 
-                // Force-reset if already at target so the animation actually fires
                 if (currentAlpha == targetAlpha)
                 {
                     this->sourceWidget->setAlpha((targetAlpha == 1.0f) ? 0.0f : 1.0f);
@@ -735,16 +728,12 @@ namespace NOWA
         }
         else
         {
-            // Cancel any running animation without restoring state
-            if (nullptr != this->controllerItem)
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
-                NOWA::GraphicsModule::RenderCommand cmd = [this]()
-                {
-                    MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
-                    this->controllerItem = nullptr;
-                };
-                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIFadeAlphaControllerComponent::onActivatedChanged_cancel");
-            }
+                MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+                this->controllerItem = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIFadeAlphaControllerComponent::onActivatedChanged_cancel");
         }
     }
 
@@ -907,16 +896,18 @@ namespace NOWA
 
         if (true == activated)
         {
-            // Guard: source widget must be an EditBox
-            if (nullptr == this->sourceWidget->castType<MyGUI::EditBox>(false))
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
-                return;
-            }
+                // Guard: source widget must be an EditBox — checked on render thread
+                // where the widget is valid to touch
+                if (nullptr == this->sourceWidget->castType<MyGUI::EditBox>(false))
+                {
+                    return;
+                }
 
-            ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::onActivatedChanged_start", {
                 for (size_t i = 0; i < this->messages.size(); i++)
                 {
-                    // Destroy any leftover edit box from a previous run before creating a new one
+                    // Destroy any leftover edit box from a previous run
                     if (nullptr != this->editBoxes[i])
                     {
                         MyGUI::Gui::getInstancePtr()->destroyWidget(this->editBoxes[i]);
@@ -932,30 +923,38 @@ namespace NOWA
                     this->editBoxes[i]->setAlpha(this->sourceMyGUIComponent->getColor().w);
 
                     MyGUITextComponent* myGuiTextComponent = static_cast<MyGUITextComponent*>(this->sourceMyGUIComponent);
+
                     this->editBoxes[i]->setTextColour(MyGUI::Colour(myGuiTextComponent->getTextColor().x, myGuiTextComponent->getTextColor().y, myGuiTextComponent->getTextColor().z, myGuiTextComponent->getTextColor().w));
                     this->editBoxes[i]->setFontHeight(myGuiTextComponent->getFontHeight());
                     this->editBoxes[i]->setTextAlign(myGuiTextComponent->mapStringToAlign(myGuiTextComponent->getAlign()));
                     this->editBoxes[i]->setOnlyText(this->messages[i]->getString());
-
-                    this->justAdded = true;
                 }
 
                 this->sourceWidget->setVisible(false);
-            });
 
-            // Reset the scroll timer
+                // justAdded is only ever read/written from render-thread closures
+                // and the tracked closure update, so setting it here is safe
+                this->justAdded = true;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIScrollingMessageControllerComponent::onActivatedChanged_start");
+
+            // Reset the scroll timer — pure logic-thread state, safe to call after
+            // the render command has fully completed
             this->setDurationSec(this->durationSec->getReal());
         }
         else
         {
-            // Stop the animation and clean up without fully disconnecting
+            // Stop the tracked render closure first — removes the per-frame scroll update
             Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
             NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
+            // Reset logic-thread state before the render command runs so that
+            // any in-flight tracked closure that still fires sees a clean state
             this->timeToGo = 0.0f;
             this->justAdded = false;
 
-            ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::onActivatedChanged_stop", {
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
                 if (nullptr != this->sourceWidget)
                 {
                     this->sourceWidget->setVisible(true);
@@ -969,7 +968,8 @@ namespace NOWA
                         this->editBoxes[i] = nullptr;
                     }
                 }
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIScrollingMessageControllerComponent::onActivatedChanged_stop");
         }
     }
 
@@ -1344,26 +1344,33 @@ namespace NOWA
 
         if (true == activated)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIEdgeHideControllerComponent::onActivatedChanged_start", {
-                if (nullptr == this->controllerItem)
-                {
-                    MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerEdgeHide::getClassTypeName());
-                    this->controllerItem = item->castType<MyGUI::ControllerEdgeHide>();
-                    this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIEdgeHideControllerComponent::controllerFinished);
-                }
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                // Always remove first — safe no-op if not currently added,
+                // and prevents double-adding if Lua calls setActivated(true) twice
+                MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+                this->controllerItem = nullptr;
 
-                MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
+                MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerEdgeHide::getClassTypeName());
+                this->controllerItem = item->castType<MyGUI::ControllerEdgeHide>();
+                this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIEdgeHideControllerComponent::controllerFinished);
+
                 this->controllerItem->castType<MyGUI::ControllerEdgeHide>()->setTime(this->time->getReal());
                 this->controllerItem->castType<MyGUI::ControllerEdgeHide>()->setRemainPixels(this->remainPixels->getUInt());
                 this->controllerItem->castType<MyGUI::ControllerEdgeHide>()->setShadowSize(this->shadowSize->getUInt());
-            });
+
+                MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIEdgeHideControllerComponent::onActivatedChanged_start");
         }
         else
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIEdgeHideControllerComponent::onActivatedChanged_stop", {
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
                 MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
                 this->controllerItem = nullptr;
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIEdgeHideControllerComponent::onActivatedChanged_stop");
         }
     }
 
