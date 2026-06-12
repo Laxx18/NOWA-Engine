@@ -34,6 +34,7 @@ local function activatePlayer()
         -- Deactivate, so that physics are not processed
         fighterGo:getPhysicsActiveComponent():setActivated(false);
         fighterGo:getPhysicsActiveComponent():setGravitySourceCategory("Planets");
+        fighterGo:getParticleFxComponent():setActivated(false);
         
         -- Place the player 3 units to the right of the ship in ship-local space
         -- and 1 unit up so they stand on the surface next to the ship.

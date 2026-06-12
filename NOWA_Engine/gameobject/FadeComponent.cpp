@@ -27,26 +27,36 @@ namespace NOWA
 			FaderProcess::finished();
 			if (nullptr != this->fadeComponent->getOwner()->getLuaScript())
 			{
-				if (this->fadeComponent->fadeCompletedClosureFunction.is_valid())
-				{
-					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-						{
-							try
-							{
-								luabind::call_function<void>(this->fadeComponent->fadeCompletedClosureFunction);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
+				auto* closureListPtr = &this->fadeComponent->fadeCompletedClosureFunctions;
 
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Caught error in 'reactOnFadeCompleted' Error: " + Ogre::String(error.what())
-									+ " details: " + msg.str());
-							}
-						};
-					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-				}
+                if (false == closureListPtr->empty())
+                {
+                    NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                    {
+                        // Copy happens HERE on the logic thread — safe for luabind::object
+                        auto closures = *closureListPtr;
+
+                        for (const auto& closure : closures)
+                        {
+                            if (false == closure.is_valid())
+                            {
+                                continue;
+                            }
+                            try
+                            {
+                                luabind::call_function<void>(closure);
+                            }
+                            catch (luabind::error& error)
+                            {
+                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                std::stringstream msg;
+                                msg << errorMsg;
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Caught error in 'reactOnFadeCompleted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                            }
+                        }
+                    };
+                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                }
 			}
 		}
 	private:
@@ -125,6 +135,9 @@ namespace NOWA
 	bool FadeComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
+
+		this->fadeCompletedClosureFunctions.clear();
+
 		return true;
 	}
 
@@ -252,7 +265,7 @@ namespace NOWA
 
 	void FadeComponent::reactOnFadeCompleted(luabind::object closureFunction)
 	{
-		this->fadeCompletedClosureFunction = closureFunction;
+        this->fadeCompletedClosureFunctions.push_back(closureFunction);
 	}
 
 	Ogre::String FadeComponent::getClassName(void) const

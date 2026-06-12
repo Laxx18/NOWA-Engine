@@ -573,6 +573,7 @@ namespace NOWA
 		Command requiredVelocityForForceCommand;
         Command jumpForceCommand;
 		Command omegaForceCommand;
+        std::atomic<bool> pendingDeactivation;
 
 		Variant* activated;
 		Variant* gravity;

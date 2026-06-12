@@ -154,6 +154,10 @@ namespace NOWA
 	bool AreaOfInterestComponent::disconnect(void)
 	{
 		this->triggerUpdateTimer = 0.0f;
+
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		return true;
 	}
 
@@ -184,7 +188,12 @@ namespace NOWA
 	{
 		if (false == notSimulating && true == this->activated->getBool())
 		{
-			this->checkAreaForActiveObjects(dt);
+            auto closureFunction = [this, dt](Ogre::Real renderDt)
+            {
+                this->checkAreaForActiveObjects(dt);
+            };
+            Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 	}
 

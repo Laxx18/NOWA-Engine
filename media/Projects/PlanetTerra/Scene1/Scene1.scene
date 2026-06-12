@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.03" g="0.03" b="0.04"/>
 			<ambientLightLowerHemisphere r="0.03" g="0.03" b="0.04" a="1"/>
-			<hemisphereDir x="0.53505" y="-0.141563" z="-0.832875"/>
+			<hemisphereDir x="0.57735" y="0.577349" z="0.577351"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -34,7 +34,7 @@
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-2335.22 -2574.42 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
+		<bounds mostLeftNearPosition="-2328.36 -2574.42 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -42,8 +42,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-2334.39" y="1157.87" z="6582.7"/>
-			<rotation qw="0.908363" qx="-0.201379" qy="-0.357814" qz="-0.0793254"/>
+			<position x="-2327.59" y="1157.9" z="6575.05"/>
+			<rotation qw="0.918731" qx="-0.225243" qy="-0.314789" qz="-0.0781437"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-2326.67 1156.55 6572.35"/>
-					<property type="9" name="CameraOrientation" data="-30.9845 -53.185 -0.122902"/>
+					<property type="9" name="CameraPosition" data="-2323.25 1159.19 6570.51"/>
+					<property type="9" name="CameraOrientation" data="-30.3794 -36.7618 -0.117727"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -111,7 +111,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
-			<rotation qw="0.112728" qx="0.946636" qy="0.138325" qz="0.268399"/>
+			<rotation qw="-0.235617" qx="0.39965" qy="0.227166" qz="0.856248"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -368,7 +368,7 @@
 			<position x="1894.42" y="39.0155" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_0" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Sun_0_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="225873069"/>
@@ -415,7 +415,7 @@
 			<position x="4172.55" y="184.37" z="7768.26"/>
 			<rotation qw="1" qx="0" qy="0.00033643" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_1" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_1_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="560244364"/>
@@ -423,7 +423,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -589,7 +589,7 @@
 			<position x="3132.31" y="485.259" z="3763.81"/>
 			<rotation qw="1" qx="0" qy="0.000260483" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_2" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_2_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="560406661"/>
@@ -597,7 +597,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -699,7 +699,7 @@
 			<position x="13779.7" y="120.654" z="20918.4"/>
 			<rotation qw="1" qx="0" qy="0.000229323" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_3" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_3_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3620058202"/>
@@ -842,7 +842,7 @@
 			<position x="11735.3" y="179.224" z="24319"/>
 			<rotation qw="1" qx="0" qy="0.0003827" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_4" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_4_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1625588369"/>
@@ -850,7 +850,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -952,7 +952,7 @@
 			<position x="19239.8" y="148.985" z="22421.6"/>
 			<rotation qw="1" qx="0" qy="0.000181501" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_5" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_5_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3725664130"/>
@@ -960,7 +960,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1062,7 +1062,7 @@
 			<position x="8870.77" y="269.516" z="15882.4"/>
 			<rotation qw="1" qx="0" qy="0.000130982" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_6" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_6_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1298975945"/>
@@ -1070,7 +1070,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1505,8 +1505,8 @@
 			</item>
 		</node>
 		<node name="Light (Spot)_0" id="2100318845">
-			<position x="-2317.33" y="1148.55" z="6562.61"/>
-			<rotation qw="0.965889" qx="0.00842919" qy="-0.258809" qz="0.00225859"/>
+			<position x="-2317.3" y="1148.54" z="6562.57"/>
+			<rotation qw="0.939657" qx="0.00820026" qy="-0.342007" qz="0.00298465"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Light (Spot)_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -1538,7 +1538,7 @@
 					<property type="9" name="Specular" data="1 1 1"/>
 					<property type="6" name="PowerScale" data="30"/>
 					<property type="7" name="AttenuationMode" data="Radius"/>
-					<property type="6" name="AttenuationRange" data="46"/>
+					<property type="6" name="AttenuationRange" data="150"/>
 					<property type="6" name="AttenuationConstant" data="0.5"/>
 					<property type="6" name="AttenuationLinear" data="0"/>
 					<property type="6" name="AttenuationQuadratic" data="0.5"/>
@@ -1552,6 +1552,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
 					<property type="6" name="SourceId" data="2599276278"/>
 				</userData>
 			</item>

@@ -1111,30 +1111,27 @@ namespace NOWA
 
         this->activated->setValue(activated);
 
-        if (false == activated)
+       if (false == activated)
         {
             if (nullptr != this->physicsBody)
             {
-                this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
-                this->physicsBody->unFreeze();
-                this->physicsBody->freeze();
-                // this->physicsBody->setAutoSleep(1);
-
-                this->physicsBody->removeForceAndTorqueCallback();
+                // Do NOT touch mass/freeze here — Newton may be mid-step on this body.
+                // Set a flag that the force callback will consume safely inside Newton's thread.
+                this->pendingDeactivation.store(true, std::memory_order_release);
             }
         }
         else
         {
             if (nullptr != this->physicsBody)
             {
+                // Activation is safe from logic thread since we're restoring, not zeroing.
+                // But clear any pending deactivation first.
+                this->pendingDeactivation.store(false, std::memory_order_release);
+
                 if (this->savedMass > 0.0f)
                 {
                     this->physicsBody->setMassMatrix(this->savedMass, this->savedInertia);
                 }
-
-                this->physicsBody->unFreeze();
-                // this->physicsBody->setAutoSleep(0);
-                // physicsBody->setVelocity(Ogre::Vector3(0.0f, 0.1f, 0.0f));
 
                 this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveSpiderComponent>(&PhysicsActiveSpiderComponent::spiderMoveCallback, this);
             }

@@ -1,90 +1,13 @@
-
-compositor_node NOWAHdrRenderingNode
-{
-	texture rt0			target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
-	texture rt1 		target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
-	
-	texture oldLumRt	           1             1 PFG_R16_FLOAT depth_pool 0
-
-
-	target rt0
-	{
-		pass render_scene
-		{
-			load
-			{
-				all				clear
-				clear_colour	0 0 0 1
-			}
-			store
-			{
-				colour	store_or_resolve
-				depth			dont_care
-				stencil			dont_care
-			}
-			// 0 - 2 transparent objects would be rendered through the ground and sky would be visible!
-			rq_first 	10
-			rq_last 	20
-			overlays	off
-			shadows		NOWAShadowNode
-		}
-		
-		//Render sky after opaque stuff (performance optimization)
-		pass render_quad
-		{
-			quad_normals	camera_direction
-			material 		NOWASkyPostprocess
-		}
-		
-		//Render transparent stuff after sky
-		pass render_scene
-		{
-			overlays	off
-			shadows		NOWAShadowNode reuse
-		}
-	}
-
-	//Initialize lumRt1 at startup, to avoid NaNs.
-	target oldLumRt
-	{
-		pass clear
-		{
-			num_initial 1
-			colour_value 0.01 0.01 0.01 1
-		}
-	}
-
-	out 0 rt0
-	out 1 rt1
-	out 2 oldLumRt
-}
-
-compositor_node NOWAHdrMsaaResolve
-{
-	in 0 hdr_msaa_rt
-	in 1 oldLumRt
-
-	texture resolvedRt target_width target_height PFG_RGBA16_FLOAT depth_pool 0
-
-	target resolvedRt
-	{
-		pass render_quad
-		{
-			load { all dont_care }
-			material HDR/Resolve_4xFP32_HDR_Box
-			input 0 hdr_msaa_rt
-			input 1 oldLumRt
-		}
-	}
-
-	out 0 resolvedRt
-}
-
 compositor_node NOWAHdrPostprocessingNode
 {
 	in 0 rt0
 	in 1 lumRt1
-	in 2 rt_output
+
+	//Tonemap output is now a LOCAL texture, no longer an input.
+	//This prevents read/write aliasing: previously rt1 could arrive both as
+	//in 0 (scene, after an odd number of effect nodes) and in 2 (write target),
+	//making FinalToneMapping sample the very texture it renders into.
+	texture rt_output target_width target_height PFG_RGBA16_FLOAT depth_pool 0
 
 	//For maximum quality use these as FLOAT16_RGBA, however they're slower on
 	//AMD cards (0.748ms slower on AMD Radeon HD 7770 at 1920x1080).
@@ -95,7 +18,6 @@ compositor_node NOWAHdrPostprocessingNode
 	texture rtBlur1	256 256 PFG_R10G10B10A2_UNORM	depth_pool 0
 
 	texture lumRt0	  1   1 PFG_R16_FLOAT	depth_pool 0
-	//texture lumRt1  1   1 PFG_R16_FLOAT	depth_pool 0
 	texture rtIter0	 64  64 PFG_R16_FLOAT	depth_pool 0
 	texture rtIter1	 16  16 PFG_R16_FLOAT	depth_pool 0
 	texture rtIter2	  4   4 PFG_R16_FLOAT	depth_pool 0
@@ -142,6 +64,7 @@ compositor_node NOWAHdrPostprocessingNode
 		}
 	}
 
+	//Copy adapted luminance back for the adaptation lerp next frame
 	target lumRt1
 	{
 		pass render_quad
@@ -164,6 +87,8 @@ compositor_node NOWAHdrPostprocessingNode
 		}
 	}
 
+	//Three clean horizontal/vertical blur pairs, like the Ogre demo.
+	//Result must end up in rtBlur0, which FinalToneMapping consumes.
 	target rtBlur1
 	{
 		pass render_quad
@@ -219,27 +144,7 @@ compositor_node NOWAHdrPostprocessingNode
 		pass render_quad
 		{
 			load		{ all dont_care }
-			material	HDR/BoxBlurH
-			input		0	rtBlur1
-		}
-	}
-
-	target rtBlur1
-	{
-		pass render_quad
-		{
-			load		{ all dont_care }
-			material	HDR/BoxBlurH
-			input		0	rtBlur0
-		}
-	}
-
-	target rtBlur0
-	{
-		pass render_quad
-		{
-			load		{ all dont_care }
-			material	HDR/BoxBlurH
+			material	HDR/BoxBlurV
 			input		0	rtBlur1
 		}
 	}

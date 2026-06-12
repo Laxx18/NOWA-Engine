@@ -130,7 +130,8 @@ namespace NOWA
 		Variant* easeFunction;
 
 		Interpolator::EaseFunctions selectedEaseFunction;
-		luabind::object fadeCompletedClosureFunction;
+
+		std::vector<luabind::object> fadeCompletedClosureFunctions;
 	};
 
 }; //namespace end

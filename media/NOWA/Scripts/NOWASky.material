@@ -105,6 +105,7 @@ material NOWASkyPostprocess
 
 			fragment_program_ref NOWASkyPostprocess_ps
 			{
+				param_named hdrSkyPower float 1.0
 			}
 
 			texture_unit

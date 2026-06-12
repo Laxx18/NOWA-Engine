@@ -415,8 +415,8 @@ namespace NOWA
 
 		luabind::object mouseButtonPressedClosureFunction;
         luabind::object mouseButtonReleasedClosureFunction; 
-		luabind::object closureFunctionRequestDropRequest;
-		luabind::object closureFunctionRequestDropAccepted;
+		std::vector<luabind::object> closureFunctionRequestDropRequest;
+        std::vector<luabind::object> closureFunctionRequestDropAccepted;
         int selectedSlotIndex;
 		DragDropData* dragDropData;
 		Ogre::String oldResourceLocationName;

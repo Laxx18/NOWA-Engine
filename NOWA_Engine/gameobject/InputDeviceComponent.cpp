@@ -373,7 +373,7 @@ namespace NOWA
 
     bool InputDeviceComponent::isDeviceLocked(void) const
     {
-        return InputDeviceCore::getSingletonPtr()->areDevicesLocked();
+        return InputDeviceCore::getSingletonPtr()->areDevicesLocked() || false == this->activated->getBool();
     }
 
 	// Lua registration part
@@ -434,7 +434,7 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "bool hasValidDevice()", "Gets after calling @setDeviceName, whether the set device is valid.");
 
 		LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "void lockDevice(bool bLockDevice)", "Locks the device, so if set to true, no inputs are processed, until the device is again unlocked. Note: Actually all devices are locked/unlocked.");
-        LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "bool isDeviceLocked()", "Gets wether the device is locked and no inputs are processed. Note: Actually all devices are concerned.");
+        LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "bool isDeviceLocked()", "Gets wether the device is locked and no inputs are processed. Note: if lock is set, all devices are locked, else if exclusive, then the device is locked, which is not activated.");
 
 		gameObjectClass.def("getInputDeviceComponent", (InputDeviceComponent * (*)(GameObject*)) & getInputDeviceComponent);
 

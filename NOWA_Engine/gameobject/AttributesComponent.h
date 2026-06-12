@@ -29,6 +29,16 @@ namespace NOWA
 
         virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
+        /**
+         * @see		GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
+
+        /**
+         * @see		GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
+
         static unsigned int getStaticClassId(void)
         {
             return NOWA::getIdFromName("AttributesComponent");
@@ -203,6 +213,7 @@ namespace NOWA
                 if (attributeName == this->attributeNames[i]->getString())
                 {
                     this->attributeValues[i]->setValue(newAttributeValue);
+                    this->fireAttributeChanged(attributeName, this->attributeValues[i]);
                     return true;
                 }
             }
@@ -281,7 +292,7 @@ namespace NOWA
         std::vector<Variant*> attributeTypes;
         std::vector<Variant*> attributeValues;
 
-        luabind::object attributeChangedClosureFunction;
+        std::vector<luabind::object> attributeChangedClosureFunctions;
     };
 
 }; // namespace end

@@ -377,7 +377,12 @@ namespace NOWA
             component->enableEffect(component->effectName, component->isActivated());
         }
 
-        this->reconnectAllNodes();
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->reconnectAllNodes();
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::connect");
 
         GraphicsModule::getInstance()->endWorkspaceTransition();
         return true;
@@ -1384,7 +1389,7 @@ namespace NOWA
                         workspaceDef->connect(lastInNode, 0, hdrPostProcessingNodeName, 0);
                     }
 
-                    workspaceDef->connect(this->renderingNodeName, channelRT1, hdrPostProcessingNodeName, 2);
+                    // workspaceDef->connect(this->renderingNodeName, channelRT1, hdrPostProcessingNodeName, 2);
 
                     if (true == oceanUnderwater)
                     {
@@ -1411,7 +1416,7 @@ namespace NOWA
                     workspaceDef->connect(this->renderingNodeName, channelOldLumRt, msaaNodeName, 1);
                     workspaceDef->connect("NOWAHdrMsaaResolve", 0, hdrPostProcessingNodeName, 0);
                     workspaceDef->connect(this->renderingNodeName, channelOldLumRt, hdrPostProcessingNodeName, 1);
-                    workspaceDef->connect(this->renderingNodeName, channelRT1, hdrPostProcessingNodeName, 2);
+                    // workspaceDef->connect(this->renderingNodeName, channelRT1, hdrPostProcessingNodeName, 2);
 
                     if (true == oceanUnderwater)
                     {
@@ -1426,7 +1431,25 @@ namespace NOWA
                 }
             }
 
-            workspaceDef->connectExternal(0, finalRenderNodeName, 0);
+            // Only declare the external route if no path has done it yet.
+            // clearAllInterNodeConnections() keeps external routes alive, so on a
+            // workspace created via baseCreateWorkspace this is always already present;
+            // connecting it again would just stack duplicates and spam warnings.
+            bool externalAlreadyConnected = false;
+            const Ogre::CompositorWorkspaceDef::ChannelRouteList& channelRoutes = workspaceDef->_getChannelRoutes();
+            for (Ogre::CompositorWorkspaceDef::ChannelRouteList::const_iterator routeIt = channelRoutes.begin(); routeIt != channelRoutes.end(); ++routeIt)
+            {
+                if (routeIt->outNode == Ogre::IdString() && 0 == routeIt->outChannel && routeIt->inNode == finalRenderNodeName && 0 == routeIt->inChannel)
+                {
+                    externalAlreadyConnected = true;
+                    break;
+                }
+            }
+
+            if (false == externalAlreadyConnected)
+            {
+                workspaceDef->connectExternal(0, finalRenderNodeName, 0);
+            }
 
             this->workspace->reconnectAllNodes();
         }
@@ -1577,7 +1600,7 @@ namespace NOWA
                 }
 
                 workspaceDef->connect(this->renderingNodeName, channelOldLumRt, "NOWAHdrPostprocessingNode", 1);
-                workspaceDef->connect(this->renderingNodeName, channelRT1, "NOWAHdrPostprocessingNode", 2);
+                // workspaceDef->connect(this->renderingNodeName, channelRT1, "NOWAHdrPostprocessingNode", 2);
 
                 if (true == oceanUnderwater)
                 {
@@ -1606,7 +1629,7 @@ namespace NOWA
                 workspaceDef->connect(this->renderingNodeName, channelOldLumRt, "NOWAHdrMsaaResolve", 1);
                 workspaceDef->connect("NOWAHdrMsaaResolve", 0, "NOWAHdrPostprocessingNode", 0);
                 workspaceDef->connect(this->renderingNodeName, channelOldLumRt, "NOWAHdrPostprocessingNode", 1);
-                workspaceDef->connect(this->renderingNodeName, channelRT1, "NOWAHdrPostprocessingNode", 2);
+                // workspaceDef->connect(this->renderingNodeName, channelRT1, "NOWAHdrPostprocessingNode", 2);
 
                 if (true == oceanUnderwater)
                 {

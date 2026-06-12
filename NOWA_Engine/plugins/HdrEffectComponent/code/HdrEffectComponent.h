@@ -294,6 +294,8 @@ namespace NOWA
 		void handleHdrActivated(NOWA::EventDataPtr eventData);
 
 		void refreshAllParameters(void);
+
+		void applyCurrentValues(void);
 	public:
 		static const Ogre::String AttrEffectName(void) { return "Effect Name"; }
 		static const Ogre::String AttrSkyColor(void) { return "Sky Color"; }

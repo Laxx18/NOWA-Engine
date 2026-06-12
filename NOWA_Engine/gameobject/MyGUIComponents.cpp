@@ -1595,13 +1595,15 @@ namespace NOWA
             {
                 if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
                 {
-                    // Copy the list — it may be modified during iteration
-                    auto closures = this->mouseButtonClickClosureFunctions;
+                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-                    if (false == closures.empty())
+                    if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                         {
+                            // Copy happens HERE on the logic thread — safe for luabind::object
+                            auto closures = *closureListPtr;
+
                             for (const auto& closure : closures)
                             {
                                 if (false == closure.is_valid())
@@ -1971,13 +1973,15 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-                    // Copy the list — it may be modified during iteration
-                    auto closures = this->mouseButtonClickClosureFunctions;
+                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-                    if (false == closures.empty())
+                    if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                         {
+                            // Copy happens HERE on the logic thread — safe for luabind::object
+                            auto closures = *closureListPtr;
+
                             for (const auto& closure : closures)
                             {
                                 if (false == closure.is_valid())
@@ -1998,7 +2002,7 @@ namespace NOWA
                             }
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
+                    }
 				}
 			}
 		}
@@ -2581,13 +2585,15 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-                    // Copy the list — it may be modified during iteration
-                    auto closures = this->mouseButtonClickClosureFunctions;
+                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-                    if (false == closures.empty())
+                    if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                         {
+                            // Copy happens HERE on the logic thread — safe for luabind::object
+                            auto closures = *closureListPtr;
+
                             for (const auto& closure : closures)
                             {
                                 if (false == closure.is_valid())
@@ -2608,7 +2614,7 @@ namespace NOWA
                             }
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
+                    }
 				}
 				else
 				{
@@ -3000,13 +3006,15 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-                    // Copy the list — it may be modified during iteration
-                    auto closures = this->mouseButtonClickClosureFunctions;
+                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-                    if (false == closures.empty())
+                    if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                         {
+                            // Copy happens HERE on the logic thread — safe for luabind::object
+                            auto closures = *closureListPtr;
+
                             for (const auto& closure : closures)
                             {
                                 if (false == closure.is_valid())
@@ -3027,7 +3035,7 @@ namespace NOWA
                             }
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
+                    }
 				}
 			}
 		}
@@ -3509,13 +3517,15 @@ namespace NOWA
 		// Call also function in lua script, if it does exist in the lua script component
 		if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 		{
-            // Copy the list — it may be modified during iteration
-            auto closures = this->mouseButtonClickClosureFunctions;
+            auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-            if (false == closures.empty())
+            if (false == closureListPtr->empty())
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                 {
+                    // Copy happens HERE on the logic thread — safe for luabind::object
+                    auto closures = *closureListPtr;
+
                     for (const auto& closure : closures)
                     {
                         if (false == closure.is_valid())
@@ -3536,7 +3546,7 @@ namespace NOWA
                     }
                 };
                 NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-			}
+            }
 		}
 	}
 
@@ -3992,13 +4002,15 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-                    // Copy the list — it may be modified during iteration
-                    auto closures = this->mouseButtonClickClosureFunctions;
+                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-                    if (false == closures.empty())
+                    if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                         {
+                            // Copy happens HERE on the logic thread — safe for luabind::object
+                            auto closures = *closureListPtr;
+
                             for (const auto& closure : closures)
                             {
                                 if (false == closure.is_valid())
@@ -4019,7 +4031,7 @@ namespace NOWA
                             }
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
+                    }
 				}
 			}
 		}
@@ -4469,13 +4481,15 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-                    // Copy the list — it may be modified during iteration
-                    auto closures = this->mouseButtonClickClosureFunctions;
+                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-                    if (false == closures.empty())
+                    if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                         {
+                            // Copy happens HERE on the logic thread — safe for luabind::object
+                            auto closures = *closureListPtr;
+
                             for (const auto& closure : closures)
                             {
                                 if (false == closure.is_valid())
@@ -4496,7 +4510,7 @@ namespace NOWA
                             }
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
+                    }
 				}
 			}
 		}
@@ -5307,13 +5321,15 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-                    // Copy the list — it may be modified during iteration
-                    auto closures = this->mouseButtonClickClosureFunctions;
+                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-                    if (false == closures.empty())
+                    if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                         {
+                            // Copy happens HERE on the logic thread — safe for luabind::object
+                            auto closures = *closureListPtr;
+
                             for (const auto& closure : closures)
                             {
                                 if (false == closure.is_valid())
@@ -5334,7 +5350,7 @@ namespace NOWA
                             }
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
+                    }
 				}
 			}
 		}

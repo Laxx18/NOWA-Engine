@@ -162,7 +162,9 @@ namespace NOWA
         landingContactActive(false),
         landingContactTimer(0.0f),
         currentAmbientUpper(0.03f, 0.03f, 0.04f),
-        currentAmbientLower(0.03f, 0.03f, 0.04f)
+        currentAmbientLower(0.03f, 0.03f, 0.04f),
+        landingRayQuery(nullptr),
+        resolvedLandingTargetValid(false)
     {
         this->generate->setDescription("Runs the full generation pipeline and applies the result to the "
                                        "sibling PlanetTerraComponent. The planet must already exist.");
@@ -581,6 +583,9 @@ namespace NOWA
         this->currentFarClip = this->farClipSpace->getReal();
         this->postInitDone = true;
 
+        this->landingRayQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), NOWA::GameObjectController::ALL_CATEGORIES_ID);
+        this->landingRayQuery->setSortByDistance(true);
+
         // If the universe was loaded from a saved scene, planet GOs already exist in the
         // scene. Re-attach PlanetOrbitObserver to each planet's AreaOfInterestComponent
         // so auto-pause works without the user clicking Generate again.
@@ -806,6 +811,7 @@ namespace NOWA
         this->currentAmbientUpper = Ogre::Vector3(0.03f, 0.03f, 0.04f);
         this->currentAmbientLower = Ogre::Vector3(0.03f, 0.03f, 0.04f);
         this->elapsedTime = 0.0f;
+        this->resolvedLandingTargetValid = false;
 
         // When simulation stops, the undo system resets all planet/moon SceneNodes back
         // to their spawn positions (t=0 state). We must reset the per-body timers to match,
@@ -962,42 +968,65 @@ namespace NOWA
         if (this->landingState == LandingState::LANDING)
         {
             const float settleHeight = 1.0f;
-            Ogre::Vector3 targetPos = this->landingBodyCentre + surfaceNormal * (this->landingBodyRadius + settleHeight);
-            Ogre::Vector3 toTarget = targetPos - shipPos;
+
+            // Resolve flat landing target once at the start of the descent
+            if (false == this->resolvedLandingTargetValid)
+            {
+                Ogre::Vector3 flatSpot;
+                if (this->findFlatLandingSpot(shipPos, surfaceNormal, this->landingBodyCentre, this->landingBodyRadius, shipGo, flatSpot))
+                {
+                    // Target is slightly above the flat spot so the ship settles onto it
+                    Ogre::Vector3 flatNormal = (flatSpot - this->landingBodyCentre).normalisedCopy();
+                    this->resolvedLandingTarget = flatSpot + flatNormal * settleHeight;
+                    this->resolvedLandingTargetValid = true;
+
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Flat landing spot resolved: " + Ogre::StringConverter::toString(this->resolvedLandingTarget));
+                }
+                else
+                {
+                    // Could not resolve — fall back to directly below ship
+                    this->resolvedLandingTarget = this->landingBodyCentre + surfaceNormal * (this->landingBodyRadius + settleHeight);
+                    this->resolvedLandingTargetValid = true;
+
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Flat spot search failed, using direct descent");
+                }
+            }
+
+            Ogre::Vector3 toTarget = this->resolvedLandingTarget - shipPos;
             float distToTarget = toTarget.length();
+
+            // Recompute surface normal at the resolved target for correct orientation
+            Ogre::Vector3 targetNormal = (this->resolvedLandingTarget - this->landingBodyCentre).normalisedCopy();
+            Ogre::Quaternion targetOrientAtSpot = MathHelper::getInstance()->computeLandingOrientation(currentOrient, targetNormal, shipGo->getDefaultDirection());
+
             Ogre::Vector3 descentVelocity = Ogre::Vector3::ZERO;
-            if (distToTarget > 0.05f && distToSurface > settleHeight * 2.0f)
+            if (distToTarget > 0.05f && distToTarget > settleHeight * 2.0f)
             {
                 const float maxDescentSpeed = 15.0f;
                 descentVelocity = toTarget.normalisedCopy() * std::min(distToTarget * 0.5f, maxDescentSpeed);
             }
             else
             {
-                // Within the settle zone the proportional velocity has dropped to near zero.
-                // applyRequiredForceForVelocity(ZERO) counteracts gravity and the ship
-                // hovers permanently without ever making physical contact.
-                // A small constant push guarantees the ship presses against the surface
-                // until notifyLandingContact() fires the LANDED transition.
-                descentVelocity = -surfaceNormal * 2.0f;
+                descentVelocity = -targetNormal * 2.0f;
             }
-            this->applyShipMovement(shipGo, descentVelocity, targetOrient, 5.0f);
+
+            this->applyShipMovement(shipGo, descentVelocity, targetOrientAtSpot, 5.0f);
 
             this->landingDebugTimer += dt;
             if (this->landingDebugTimer >= 2.0f)
             {
                 this->landingDebugTimer = 0.0f;
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING: distToSurface=" + Ogre::StringConverter::toString(distToSurface) + " distToTarget=" + Ogre::StringConverter::toString(distToTarget) +
-                                                                                       " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[UniversumComponent] LANDING: distToTarget=" + Ogre::StringConverter::toString(distToTarget) + " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
             }
 
-            // First physics contact with the body = landed. No timer needed.
             if (true == this->landingContactActive)
             {
-                this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrient, 0.0f);
+                this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrientAtSpot, 0.0f);
                 this->landingState = LandingState::LANDED;
                 this->landingDebugTimer = 0.0f;
                 this->landingContactActive = false;
-                // Unlock input so the player character can exit the ship and walk.
+                this->resolvedLandingTargetValid = false; // reset for next landing
                 this->setPlayerInputLock(false);
                 this->landingInputLocked = false;
                 this->callLandedFunction(this->landedOnBodyId, playerGOId);
@@ -1048,11 +1077,74 @@ namespace NOWA
                     if (nullptr != actComp)
                     {
                         actComp->removeCppContactCallback();
+
+                        // Snap the ship upright on takeoff: preserve only yaw,
+                        // zero out roll and pitch that may have accumulated during landing.
+                        Ogre::Quaternion currentOrient = actComp->getOrientation();
+
+                        // Extract forward from current orientation and flatten onto world XZ plane
+                        Ogre::Vector3 defaultDir = shipGo->getDefaultDirection();
+                        Ogre::Vector3 forward = currentOrient * defaultDir;
+                        forward.y = 0.0f;
+
+                        if (forward.squaredLength() < 1e-4f)
+                        {
+                            forward = defaultDir;
+                            forward.y = 0.0f;
+                            if (forward.squaredLength() < 1e-4f)
+                            {
+                                forward = Ogre::Vector3::UNIT_Z;
+                            }
+                        }
+                        forward.normalise();
+
+                        const Ogre::Vector3 worldUp = Ogre::Vector3::UNIT_Y;
+                        Ogre::Vector3 right = forward.crossProduct(worldUp);
+                        right.normalise();
+                        Ogre::Vector3 cleanUp = right.crossProduct(forward);
+                        cleanUp.normalise();
+
+                        // Map the three axes back to X/Y/Z columns based on the ship's default direction.
+                        // Column 0 = X axis (right), Column 1 = Y axis (up), Column 2 = Z axis (forward in Ogre).
+                        // We need to place our computed axes into the slots that match the default direction.
+                        Ogre::Vector3 axisX, axisY, axisZ;
+
+                        if (Ogre::Math::Abs(defaultDir.dotProduct(Ogre::Vector3::UNIT_Z)) > 0.9f)
+                        {
+                            // Default direction is +Z or -Z
+                            axisX = right;
+                            axisY = cleanUp;
+                            axisZ = forward * defaultDir.dotProduct(Ogre::Vector3::UNIT_Z); // preserve sign
+                        }
+                        else if (Ogre::Math::Abs(defaultDir.dotProduct(Ogre::Vector3::UNIT_X)) > 0.9f)
+                        {
+                            // Default direction is +X or -X
+                            axisZ = right;
+                            axisY = cleanUp;
+                            axisX = forward * defaultDir.dotProduct(Ogre::Vector3::UNIT_X); // preserve sign
+                        }
+                        else
+                        {
+                            // Fallback: treat as Z
+                            axisX = right;
+                            axisY = cleanUp;
+                            axisZ = forward;
+                        }
+
+                        Ogre::Matrix3 mat;
+                        mat.SetColumn(0, axisX);
+                        mat.SetColumn(1, axisY);
+                        mat.SetColumn(2, axisZ);
+                        Ogre::Quaternion uprightOrient;
+                        uprightOrient.FromRotationMatrix(mat);
+
+                        actComp->setOrientation(uprightOrient);
                     }
                 }
             }
             this->landingContactActive = false;
             this->landingContactTimer = 0.0f;
+            this->resolvedLandingTargetValid = false;
         }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Takeoff requested on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId));
@@ -1356,6 +1448,144 @@ namespace NOWA
         }
 
         return !anyPaused;
+    }
+
+    bool UniversumComponent::findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, GameObjectPtr shipGo, Ogre::Vector3& outTarget)
+    {
+        // Exclude the ship itself from raycasts
+        std::vector<Ogre::MovableObject*> excludeObjects;
+        if (nullptr != shipGo && nullptr != shipGo->getMovableObject())
+        {
+            excludeObjects.push_back(shipGo->getMovableObject());
+        }
+
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+
+        // Build two orthogonal tangent axes on the surface plane
+        Ogre::Vector3 tangent1 = surfaceNormal.perpendicular().normalisedCopy();
+        Ogre::Vector3 tangent2 = surfaceNormal.crossProduct(tangent1).normalisedCopy();
+
+        // Candidate 0: directly below the ship (best case — try this first)
+        struct Candidate
+        {
+            Ogre::Vector3 pos;
+            float maxSlope;
+        };
+        std::vector<Candidate> candidates;
+
+        // Center candidate
+        {
+            Ogre::Vector3 probeOrigin = bodyCentre + surfaceNormal * (bodyRadius + 50.0f);
+            // Project ship pos onto surface direction to get center probe
+            Ogre::Vector3 toShip = (shipPos - bodyCentre).normalisedCopy();
+            probeOrigin = bodyCentre + toShip * (bodyRadius + 50.0f);
+
+            Ogre::Ray ray(probeOrigin, -toShip);
+            this->landingRayQuery->setRay(ray);
+
+            Ogre::Vector3 hitPos = Ogre::Vector3::ZERO;
+            Ogre::MovableObject* obj = nullptr;
+            Ogre::Real dist = 0.0f;
+            Ogre::Vector3 hitNormal = surfaceNormal;
+
+            MathHelper::getInstance()->getRaycastFromPoint(this->landingRayQuery, camera, hitPos, (size_t&)obj, dist, hitNormal, &excludeObjects);
+
+            if (hitPos != Ogre::Vector3::ZERO)
+            {
+                float slopeDeg = Ogre::Math::ACos(Ogre::Math::Clamp(hitNormal.dotProduct(surfaceNormal), -1.0f, 1.0f)).valueDegrees();
+                candidates.push_back({hitPos, slopeDeg});
+            }
+        }
+
+        // Spiral ring candidates around the projected ship position on the surface
+        Ogre::Vector3 surfaceBase = bodyCentre + (shipPos - bodyCentre).normalisedCopy() * bodyRadius;
+
+        for (int ring = 1; ring <= LANDING_SEARCH_RINGS; ++ring)
+        {
+            float ringRadius = (LANDING_SEARCH_RADIUS / LANDING_SEARCH_RINGS) * ring;
+
+            for (int step = 0; step < LANDING_SEARCH_RING_STEPS; ++step)
+            {
+                float angle = (Ogre::Math::TWO_PI / LANDING_SEARCH_RING_STEPS) * step;
+
+                // Offset on the surface tangent plane
+                Ogre::Vector3 surfaceOffset = tangent1 * (Ogre::Math::Cos(angle) * ringRadius) + tangent2 * (Ogre::Math::Sin(angle) * ringRadius);
+
+                // Project the offset point back onto the sphere surface
+                Ogre::Vector3 probeOnSurface = (surfaceBase + surfaceOffset - bodyCentre);
+                probeOnSurface.normalise();
+                Ogre::Vector3 probeOrigin = bodyCentre + probeOnSurface * (bodyRadius + 50.0f);
+
+                Ogre::Ray ray(probeOrigin, -probeOnSurface);
+                this->landingRayQuery->setRay(ray);
+
+                Ogre::Vector3 hitPos = Ogre::Vector3::ZERO;
+                Ogre::MovableObject* obj = nullptr;
+                Ogre::Real dist = 0.0f;
+                Ogre::Vector3 hitNormal = surfaceNormal;
+
+                MathHelper::getInstance()->getRaycastFromPoint(this->landingRayQuery, camera, hitPos, (size_t&)obj, dist, hitNormal, &excludeObjects);
+
+                if (hitPos == Ogre::Vector3::ZERO)
+                {
+                    continue;
+                }
+
+                // Measure slope: angle between hit normal and ideal surface normal
+                // at this point (direction from body centre to hit)
+                Ogre::Vector3 idealNormal = (hitPos - bodyCentre).normalisedCopy();
+                float slopeDeg = Ogre::Math::ACos(Ogre::Math::Clamp(hitNormal.dotProduct(idealNormal), -1.0f, 1.0f)).valueDegrees();
+
+                candidates.push_back({hitPos, slopeDeg});
+            }
+        }
+
+        if (candidates.empty())
+        {
+            return false;
+        }
+
+        // Pick the flattest candidate within acceptable gradient,
+        // preferring closer ones (candidates are ordered center-first then by ring)
+        Ogre::Vector3 bestPos = Ogre::Vector3::ZERO;
+        float bestSlope = std::numeric_limits<float>::max();
+        bool found = false;
+
+        for (const auto& c : candidates)
+        {
+            if (c.maxSlope < LANDING_MAX_GRADIENT_DEG && c.maxSlope < bestSlope)
+            {
+                bestSlope = c.maxSlope;
+                bestPos = c.pos;
+                found = true;
+            }
+        }
+
+        // Fallback: if nothing is flat enough, use the flattest candidate anyway
+        if (false == found)
+        {
+            for (const auto& c : candidates)
+            {
+                if (c.maxSlope < bestSlope)
+                {
+                    bestSlope = c.maxSlope;
+                    bestPos = c.pos;
+                }
+            }
+            found = (bestPos != Ogre::Vector3::ZERO);
+            if (found)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[UniversumComponent] No flat spot found within " + Ogre::StringConverter::toString(LANDING_MAX_GRADIENT_DEG) + " deg, using flattest available: " + Ogre::StringConverter::toString(bestSlope) + " deg");
+            }
+        }
+
+        if (found)
+        {
+            outTarget = bestPos;
+        }
+
+        return found;
     }
 
     // ---------------------------------------------------------------
@@ -2523,6 +2753,12 @@ namespace NOWA
     void UniversumComponent::destroyUniverse(void)
     {
         this->reset();
+
+        if (nullptr != this->landingRayQuery)
+        {
+            this->gameObjectPtr->getSceneManager()->destroyQuery(this->landingRayQuery);
+            this->landingRayQuery = nullptr;
+        }
 
         // Now destroy all owned game objects.
         for (const unsigned long id : this->ownedGameObjectIds)

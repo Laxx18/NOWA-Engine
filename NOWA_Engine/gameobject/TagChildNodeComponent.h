@@ -123,9 +123,11 @@ namespace NOWA
 		 */
 		unsigned long getSourceId(void) const;
 	public:
+        static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrSourceId(void) { return "Source Id"; }
 	private:
 		Ogre::SceneNode* sourceChildNode;
+        Variant* activated;
 		Variant* sourceId;
 		Ogre::Node* sourceParentOfChildNode;
 		Ogre::Vector3 oldSourceChildPosition;

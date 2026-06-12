@@ -79,6 +79,7 @@ FutureFighterJet_0["connect"] = function(gameObject)
         attribComp:reactOnAttributeChanged(function(attributeName, attribute)
             if attributeName == "isOnPlanet" then
                 isOnPlanet = attribute:getValueBool()
+                log("reactOnAttributeChanged: " .. toString(isOnPlanet));
                 if isOnPlanet then
                     boostActive = false
                     smoothSpeed = math.min(smoothSpeed, THRUST_SPEED)

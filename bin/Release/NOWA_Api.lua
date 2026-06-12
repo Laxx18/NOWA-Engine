@@ -13765,7 +13765,7 @@ return {
 			isDeviceLocked =
 			{
 				type = "function",
-				description = "Gets wether the device is locked and no inputs are processed. Note: Actually all devices are concerned.",
+				description = "Gets wether the device is locked and no inputs are processed. Note: if lock is set, all devices are locked, else if exclusive, then the device is locked, which is not activated.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"

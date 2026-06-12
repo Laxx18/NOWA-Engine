@@ -260,16 +260,47 @@ namespace NOWA
     {
         boost::shared_ptr<EventDataInputDeviceOccupied> castEventData = boost::static_pointer_cast<EventDataInputDeviceOccupied>(eventData);
 
-        if (castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+        // Only react if the event concerns this game object's workspace
+        if (castEventData->getGameObjectId() != this->gameObjectPtr->getId())
         {
             return;
         }
 
-        // Reset to the material script defaults:
-        // exposure 0, min -2.5, max 2.5, bloom min 3 full 5
-        this->applyHdrSkyColor(Ogre::ColourValue(0.2f, 0.4f, 0.6f), 1.0f);
-        this->applyExposure(0.0f, -2.5f, 2.5f);
-        this->applyBloomThreshold(3.0f, 5.0f);
+        // The workspace has just been (re)created. Any apply calls made before
+        // this point early-returned because the workspace did not exist yet,
+        // hence the CURRENT values must be (re)applied now - never hardcoded
+        // reset defaults, which would silently neutralize the active preset.
+        this->applyCurrentValues();
+    }
+
+    void HdrEffectComponent::applyCurrentValues(void)
+    {
+        // The skyColor variant stores the PREMULTIPLIED colour (e.g. 12 24 36
+        // for bright sunny day = base 0.2 0.4 0.6 times 60) and keeps the
+        // original preset multiplier in w for display purposes. The rgb part
+        // already contains the multiplier, hence pass 1.0 here:
+        // luminance(12, 24, 36) / 0.372 = 60 = correct hdrSkyPower.
+        const Ogre::Vector4 tempSkyColor = this->skyColor->getVector4();
+        this->applyHdrSkyColor(Ogre::ColourValue(tempSkyColor.x, tempSkyColor.y, tempSkyColor.z), 1.0f);
+
+        this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
+
+        // Demo mapping: minThreshold = bloom - 2, fullThreshold = bloom
+        Ogre::Real fullThreshold = this->bloom->getReal();
+        if (fullThreshold < 0.01f)
+        {
+            fullThreshold = 0.01f;
+        }
+
+        Ogre::Real minThreshold = fullThreshold - 2.0f;
+        if (minThreshold < 0.01f)
+        {
+            minThreshold = 0.01f;
+        }
+
+        this->applyBloomThreshold(minThreshold, fullThreshold);
+
+        this->postApplySunPower();
     }
 
     void HdrEffectComponent::actualizeValue(Variant* attribute)
@@ -447,7 +478,13 @@ namespace NOWA
             OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "No node '" + this->workspaceBaseComponent->getRenderingNodeName() + "' in provided workspace ", "HdrEffectComponent::applyHdrSkyColor");
         }
 
-        ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::applyHdrSkyColor", _3(color, multiplier, node), {
+        // The clear colour only matters where the sky quad does not draw.
+        // The sky quad itself must be scaled into HDR range via hdrSkyPower,
+        // otherwise an LDR skybox (luminance ~0.3) against HDR lit geometry
+        // (luminance ~18 with sun power 97) creates an uncompressable 60:1
+        // ratio: ground burns to white, sky sinks to black.
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, color, multiplier, node]()
+        {
             const Ogre::CompositorPassVec passes = node->_getPasses();
 
             assert(passes.size() >= 1);
@@ -456,7 +493,6 @@ namespace NOWA
             Ogre::RenderPassDescriptor* renderPassDesc = pass->getRenderPassDesc();
             renderPassDesc->setClearColour(color * multiplier);
 
-            // Set the definition as well, although this isn't strictly necessary.
             Ogre::CompositorManager2* compositorManager = this->workspaceBaseComponent->getWorkspace()->getCompositorManager();
             Ogre::CompositorNodeDef* nodeDef = compositorManager->getNodeDefinitionNonConst(this->workspaceBaseComponent->getRenderingNodeName());
 
@@ -469,7 +505,44 @@ namespace NOWA
             Ogre::CompositorPassDef* passDef = passDefs[0];
 
             passDef->setAllClearColours(color * multiplier);
-        });
+
+            // Scale the sky quad into HDR range. The factor is the luminance of the
+            // preset sky colour relative to the luminance of the demo base sky colour
+            // (0.2, 0.4, 0.6), whose luminance is 0.372. For "Bright, sunny day" this
+            // yields exactly the preset multiplier 60, for night presets values << 1.
+            Ogre::MaterialPtr skyMaterial = Ogre::MaterialManager::getSingleton().getByName("NOWASkyPostprocess", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+            if (false == skyMaterial.isNull())
+            {
+                Ogre::Pass* skyPass = skyMaterial->getTechnique(0)->getPass(0);
+                Ogre::GpuProgramParametersSharedPtr psParams = skyPass->getFragmentProgramParameters();
+
+                // 0.372 = luminance of the demo base sky colour (0.2, 0.4, 0.6).
+                // skyBoxCompensation corrects for the inherent brightness of the
+                // cubemap texels relative to that base: a cubemap whose sky region
+                // averages ~0.7 luminance needs ~0.5 to land on the preset target.
+
+                const Ogre::ColourValue hdrSkyColor = color * multiplier;
+                // Play with this value:
+                const Ogre::Real skyBoxCompensation = 0.05f;
+                Ogre::Real hdrSkyPower = (0.2125f * hdrSkyColor.r + 0.7154f * hdrSkyColor.g + 0.0721f * hdrSkyColor.b) / 0.372f * skyBoxCompensation;
+                
+                // Ogre::Real hdrSkyPower = (0.2125f * hdrSkyColor.r + 0.7154f * hdrSkyColor.g + 0.0721f * hdrSkyColor.b) / 0.372f;
+                if (hdrSkyPower < 0.001f)
+                {
+                    hdrSkyPower = 0.001f;
+                }
+
+                if (nullptr != psParams->_findNamedConstantDefinition("hdrSkyPower"))
+                {
+                    psParams->setNamedConstant("hdrSkyPower", hdrSkyPower);
+                }
+                else
+                {
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[HdrEffectComponent] NOWASkyPostprocess has no 'hdrSkyPower' uniform, sky will stay LDR and break HDR exposure!");
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "HdrEffectComponent::applyHdrSkyColor");
     }
 
     void HdrEffectComponent::applyExposure(Ogre::Real exposure, Ogre::Real minAutoExposure, Ogre::Real maxAutoExposure)

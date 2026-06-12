@@ -22,13 +22,15 @@ Player["connect"] = function(gameObject)
     -- Button toggles between Land and Start (takeoff).
     landStartButton:reactOnMouseButtonClick(function()
         if landStartButton:getCaption() == "Take Off" then
+            landStartButton:setCaption("Land");
             universumComponent:requestTakeoff();
             fighterGo:getPhysicsActiveComponent():setGravitySourceCategory("");
             fighterGo:getInputDeviceComponent():setActivated(true);
             fighterGo:getPhysicsActiveComponent():setActivated(true);
+            fighterGo:getParticleFxComponent():setActivated(true);
             playerGo:setVisible(false);
             AppStateManager:getGameObjectController():activatePlayerController(true, fighterGo:getId(), true);
-            --playerGo:getPhysicsActiveComponent():setActivated(false);
+            playerGo:getPhysicsActiveComponent():setActivated(false);
         end
     end);
     

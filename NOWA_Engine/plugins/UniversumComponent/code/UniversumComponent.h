@@ -580,6 +580,8 @@ namespace NOWA
         void setupLandingState(OrbitalBody& body, unsigned long bodyGoId, float axialSpeedOverride, unsigned long playerGoId);
         bool teardownLandingState(unsigned long planetGameObjectId, unsigned long gameObjectId, OrbitalBody& body, bool isHideSurface, SolarSystem& system);
 
+        bool findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, GameObjectPtr shipGo, Ogre::Vector3& outTarget);
+
         void reset(void);
     private:
         void handleSceneParsed(EventDataPtr eventData);
@@ -674,6 +676,19 @@ namespace NOWA
 
         Ogre::Vector3 currentAmbientUpper;
         Ogre::Vector3 currentAmbientLower;
+
+        // Ray query for flat landing spot search
+        Ogre::RaySceneQuery* landingRayQuery;
+
+        // The resolved flat landing target (world space), valid once findFlatLandingSpot succeeds
+        Ogre::Vector3 resolvedLandingTarget;
+        bool resolvedLandingTargetValid;
+
+                 // Tuning
+        static constexpr float LANDING_MAX_GRADIENT_DEG = 15.0f; // max acceptable slope
+        static constexpr float LANDING_SEARCH_RADIUS = 30.0f;    // search radius on surface
+        static constexpr int LANDING_SEARCH_RINGS = 4;           // concentric rings
+        static constexpr int LANDING_SEARCH_RING_STEPS = 8;      // samples per ring
     };
 
 } // namespace NOWA

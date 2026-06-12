@@ -157,6 +157,22 @@ namespace NOWA
         return clonedCompPtr;
     }
 
+    bool AttributesComponent::connect(void)
+    {
+        GameObjectComponent::connect();
+
+        return true;
+    }
+
+    bool AttributesComponent::disconnect(void)
+    {
+        GameObjectComponent::disconnect();
+
+        this->attributeChangedClosureFunctions.clear();
+
+        return true;
+    }
+
     bool AttributesComponent::postInit(void)
     {
         return true;
@@ -825,7 +841,7 @@ namespace NOWA
 
     void AttributesComponent::reactOnAttributeChanged(luabind::object closureFunction)
     {
-        this->attributeChangedClosureFunction = closureFunction;
+        this->attributeChangedClosureFunctions.push_back(closureFunction);
     }
 
     void AttributesComponent::fireAttributeChanged(const Ogre::String& userAttributeName, Variant* attributeVariant)
@@ -834,29 +850,38 @@ namespace NOWA
         {
             return;
         }
-        if (!this->attributeChangedClosureFunction.is_valid())
+
+        auto* closureListPtr = &this->attributeChangedClosureFunctions;
+
+        if (false == closureListPtr->empty())
         {
-            return;
+            NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, userAttributeName, attributeVariant]()
+            {
+                // Copy happens HERE on the logic thread — safe for luabind::object
+                auto closures = *closureListPtr;
+
+                for (const auto& closure : closures)
+                {
+                    if (false == closure.is_valid())
+                    {
+                        continue;
+                    }
+                    try
+                    {
+                        luabind::call_function<void>(closure, userAttributeName, attributeVariant);
+                    }
+                    catch (luabind::error& error)
+                    {
+                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                        std::stringstream msg;
+                        msg << errorMsg;
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
+                            "[AttributesComponent] Caught error in 'reactOnAttributeChanged' for attribute '" + userAttributeName + "': " + Ogre::String(error.what()) + " details: " + msg.str());
+                    }
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
         }
-
-        // Capture by value for the attribute name; capture the Variant* (its lifetime is guaranteed
-        // by the component which outlives any queued logic command).
-        NOWA::AppStateManager::LogicCommand logicCommand = [this, userAttributeName, attributeVariant]()
-        {
-            try
-            {
-                luabind::call_function<void>(this->attributeChangedClosureFunction, userAttributeName, attributeVariant);
-            }
-            catch (luabind::error& error)
-            {
-                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                std::stringstream msg;
-                msg << errorMsg;
-
-                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[AttributesComponent] Caught error in 'reactOnAttributeChanged' for attribute '" + userAttributeName + "': " + Ogre::String(error.what()) + " details: " + msg.str());
-            }
-        };
-        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     // ---------------------------------------------------------------------------

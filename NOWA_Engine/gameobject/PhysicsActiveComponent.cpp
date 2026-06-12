@@ -75,6 +75,8 @@ namespace NOWA
         this->omegaForceCommand.pending.store(false);
         this->omegaForceCommand.inProgress.store(false);
 
+        this->pendingDeactivation.store(false);
+
         this->collisionType->setValue({"ConvexHull", "ConcaveHull", "Box", "Capsule", "ChamferCylinder", "Cone", "Cylinder", "Ellipsoid", "Pyramid"});
 
         /*
@@ -341,6 +343,8 @@ namespace NOWA
 
         this->releaseConstraintDirection();
         this->releaseConstraintAxis();
+
+        this->removeCppContactCallback();
 
         this->destroyLineMap();
 
@@ -841,25 +845,25 @@ namespace NOWA
     void PhysicsActiveComponent::setActivated(bool activated)
     {
         PhysicsComponent::setActivated(activated);
-
         this->activated->setValue(activated);
+
         if (false == activated)
         {
             if (nullptr != this->physicsBody)
             {
-                // Zero invMass = ndBodyKinematic treated as static.
-                // Any body pushing against it produces no movement regardless of mass difference.
-                this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
-                this->physicsBody->unFreeze();
-                this->physicsBody->freeze();
-                this->physicsBody->removeForceAndTorqueCallback();
+                // Do NOT touch mass/freeze here — Newton may be mid-step on this body.
+                // Set a flag that the force callback will consume safely inside Newton's thread.
+                this->pendingDeactivation.store(true, std::memory_order_release);
             }
         }
         else
         {
             if (nullptr != this->physicsBody)
             {
-                // Restore original mass captured in createDynamicBody.
+                // Activation is safe from logic thread since we're restoring, not zeroing.
+                // But clear any pending deactivation first.
+                this->pendingDeactivation.store(false, std::memory_order_release);
+
                 if (this->savedMass > 0.0f)
                 {
                     this->physicsBody->setMassMatrix(this->savedMass, this->savedInertia);
@@ -2869,6 +2873,20 @@ namespace NOWA
     {
         // This moveCallback is called in the physics thread!
 
+        // Consume pending deactivation — safe here because we're inside Newton's thread,
+        // no contact calculation is running concurrently on this body.
+        if (this->pendingDeactivation.load(std::memory_order_acquire))
+        {
+            this->pendingDeactivation.store(false, std::memory_order_relaxed);
+
+            // Now safe to zero mass and freeze — Newton is not mid-contact on this body
+            this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
+            this->physicsBody->unFreeze();
+            this->physicsBody->freeze();
+            this->physicsBody->removeForceAndTorqueCallback();
+            return; // Skip normal force application — body is being deactivated
+        }
+
         // Clear stale force and torque from previous substep FIRST.
         // Without this, if no command is pending this substep, Newton reuses
         // the previous substep's force/torque -- causing the body to keep
@@ -2882,9 +2900,79 @@ namespace NOWA
         Ogre::Vector3 inertia = Ogre::Vector3::ZERO;
         this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
 
+        Ogre::Real strongestGravity = 0.0f;
         Ogre::Real nearestPlanetDistance = std::numeric_limits<Ogre::Real>::max();
         GameObjectPtr nearestGravitySourceObject;
 
+        body->getMassMatrix(mass, inertia);
+
+        if (false == this->hasAttraction)
+        {
+            wholeForce *= mass;
+        }
+
+        // bigger planet take the game objects instead the moon, need to debug what the radius is
+#if 0
+        if (false == this->gravitySourceCategory->getString().empty())
+        {
+            auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->gravitySourceCategory->getString());
+
+            for (size_t i = 0; i < gravitySourceGameObjects.size(); i++)
+            {
+                Ogre::Vector3 toSource = gravitySourceGameObjects[i]->getPosition() - this->getPosition();
+                Ogre::Real squaredDist = toSource.squaredLength();
+
+                if (squaredDist < 1.0f)
+                {
+                    squaredDist = 1.0f; // guard against division by zero
+                }
+
+                // Use the planet's scale as a proxy for its radius/mass.
+                // Gravitational acceleration ~ radius³ / r²  (proportional to volume / r²)
+                // This naturally makes large planets dominate over small nearby moons.
+                Ogre::Vector3 planetScale = gravitySourceGameObjects[i]->getSize();
+                Ogre::Real planetRadius = (planetScale.x + planetScale.y + planetScale.z) / 3.0f;
+                Ogre::Real planetMassProxy = planetRadius * planetRadius * planetRadius; // ~ volume
+
+                Ogre::Real gravAccel = planetMassProxy / squaredDist;
+
+                if (gravAccel > strongestGravity)
+                {
+                    strongestGravity = gravAccel;
+                    nearestGravitySourceObject = gravitySourceGameObjects[i];
+                }
+            }
+
+            if (nullptr != nearestGravitySourceObject)
+            {
+                auto gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
+                if (nullptr != gravitySourcePhysicsComponentPtr)
+                {
+                    Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
+                    directionToPlanet.normalise();
+
+                    Ogre::Real gravityAcceleration = -this->gravity->getVector3().length();
+
+                    this->gravityDirection = -directionToPlanet;
+                    wholeForce = directionToPlanet * (mass * gravityAcceleration);
+                    this->currentGravityStrength = gravityAcceleration;
+                    this->gravityUpdated.test_and_set();
+                }
+            }
+            else
+            {
+                this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
+                this->currentGravityStrength = 0.0f;
+                this->gravityUpdated.clear();
+            }
+        }
+        else
+        {
+            this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
+            this->currentGravityStrength = 0.0f;
+            this->gravityUpdated.clear();
+        }
+#else
         body->getMassMatrix(mass, inertia);
 
         if (false == this->hasAttraction)
@@ -2930,6 +3018,13 @@ namespace NOWA
                 this->gravityUpdated.clear();
             }
         }
+        else
+        {
+            this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
+            this->currentGravityStrength = 0.0f;
+            this->gravityUpdated.clear();
+        }
+#endif
 
         // Checks if a force command is pending.
         if (this->forceCommand.pending.load())

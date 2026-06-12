@@ -27,7 +27,12 @@ namespace OgreNewt
     {
         if (m_ogreNewtBody)
         {
-            m_ogreNewtBody->onForceAndTorqueCallback(timestep, threadIndex);
+            // Copy locally — callback may null m_forcecallback during execution
+            auto cb = m_ogreNewtBody->m_forcecallback;
+            if (nullptr != cb)
+            {
+                m_ogreNewtBody->onForceAndTorqueCallback(timestep, threadIndex);
+            }
         }
     }
 }

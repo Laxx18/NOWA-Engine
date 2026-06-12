@@ -1017,6 +1017,9 @@ namespace NOWA
     {
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MyGUIItemBoxComponent::handleSpriteAnimationFinished), EventDataSpriteAnimationFinished::getStaticEventType());
 
+        this->closureFunctionRequestDropRequest.clear();
+        this->closureFunctionRequestDropAccepted.clear();
+
         // Clear sprite state
         this->pendingSprite = nullptr;
         this->spriteAnimationPending = false;
@@ -1209,21 +1212,33 @@ namespace NOWA
         {
             this->dragDropData->senderReceiverIsSame = true;
 
-            if (this->closureFunctionRequestDropRequest.is_valid())
-            {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                {
-                    try
-                    {
-                        luabind::call_function<void>(this->closureFunctionRequestDropRequest, this->dragDropData);
-                    }
-                    catch (luabind::error& error)
-                    {
-                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                        std::stringstream msg;
-                        msg << errorMsg;
+            auto dragDropDataCopy = this->dragDropData;
+            auto* closureListPtr = &this->closureFunctionRequestDropRequest;
 
-                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemRequest' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            if (false == closureListPtr->empty())
+            {
+                NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, dragDropDataCopy]()
+                {
+                    // Copy happens HERE on the logic thread — safe for luabind::object
+                    auto closures = *closureListPtr;
+
+                    for (const auto& closure : closures)
+                    {
+                        if (false == closure.is_valid())
+                        {
+                            continue;
+                        }
+                        try
+                        {
+                            luabind::call_function<void>(closure, dragDropDataCopy);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemRequest' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        }
                     }
                 };
                 NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
@@ -1238,21 +1253,33 @@ namespace NOWA
                 auto myGuiItemBoxCompPtr = NOWA::makeStrongPtr(receiverGameObjectPtr->getComponent<MyGUIItemBoxComponent>());
                 if (nullptr != myGuiItemBoxCompPtr)
                 {
-                    if (myGuiItemBoxCompPtr->closureFunctionRequestDropRequest.is_valid())
-                    {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, myGuiItemBoxCompPtr]()
-                        {
-                            try
-                            {
-                                luabind::call_function<void>(myGuiItemBoxCompPtr->closureFunctionRequestDropRequest, this->dragDropData);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
+                    auto dragDropDataCopy = this->dragDropData;
+                    auto* closureListPtr = &this->closureFunctionRequestDropAccepted;
 
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemRequest' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                    if (false == closureListPtr->empty())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, dragDropDataCopy]()
+                        {
+                            // Copy happens HERE on the logic thread — safe for luabind::object
+                            auto closures = *closureListPtr;
+
+                            for (const auto& closure : closures)
+                            {
+                                if (false == closure.is_valid())
+                                {
+                                    continue;
+                                }
+                                try
+                                {
+                                    luabind::call_function<void>(closure, dragDropDataCopy);
+                                }
+                                catch (luabind::error& error)
+                                {
+                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                    std::stringstream msg;
+                                    msg << errorMsg;
+                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                                }
                             }
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
@@ -1289,21 +1316,33 @@ namespace NOWA
             {
                 this->dragDropData->senderReceiverIsSame = true;
 
-                if (this->closureFunctionRequestDropAccepted.is_valid())
-                {
-                    NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                    {
-                        try
-                        {
-                            luabind::call_function<void>(this->closureFunctionRequestDropAccepted, this->dragDropData);
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
+                auto dragDropDataCopy = this->dragDropData;
+                auto* closureListPtr = &this->closureFunctionRequestDropAccepted;
 
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                if (false == closureListPtr->empty())
+                {
+                    NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, dragDropDataCopy]()
+                    {
+                        // Copy happens HERE on the logic thread — safe for luabind::object
+                        auto closures = *closureListPtr;
+
+                        for (const auto& closure : closures)
+                        {
+                            if (false == closure.is_valid())
+                            {
+                                continue;
+                            }
+                            try
+                            {
+                                luabind::call_function<void>(closure, dragDropDataCopy);
+                            }
+                            catch (luabind::error& error)
+                            {
+                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                std::stringstream msg;
+                                msg << errorMsg;
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                            }
                         }
                     };
                     NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
@@ -1318,21 +1357,34 @@ namespace NOWA
                     auto myGuiItemBoxCompPtr = NOWA::makeStrongPtr(receiverGameObjectPtr->getComponent<MyGUIItemBoxComponent>());
                     if (nullptr != myGuiItemBoxCompPtr)
                     {
-                        if (myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted.is_valid())
-                        {
-                            NOWA::AppStateManager::LogicCommand logicCommand = [this, myGuiItemBoxCompPtr]()
-                            {
-                                try
-                                {
-                                    luabind::call_function<void>(myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted, this->dragDropData);
-                                }
-                                catch (luabind::error& error)
-                                {
-                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                    std::stringstream msg;
-                                    msg << errorMsg;
+                        // Copy the list — it may be modified during iteration
+                        auto dragDropDataCopy = this->dragDropData;
+                        auto* closureListPtr = &myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted;
 
-                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        if (false == closureListPtr->empty())
+                        {
+                            NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, dragDropDataCopy]()
+                            {
+                                // Copy happens HERE on the logic thread — safe for luabind::object
+                                auto closures = *closureListPtr;
+
+                                for (const auto& closure : closures)
+                                {
+                                    if (false == closure.is_valid())
+                                    {
+                                        continue;
+                                    }
+                                    try
+                                    {
+                                        luabind::call_function<void>(closure, dragDropDataCopy);
+                                    }
+                                    catch (luabind::error& error)
+                                    {
+                                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                        std::stringstream msg;
+                                        msg << errorMsg;
+                                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                                    }
                                 }
                             };
                             NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
@@ -1584,13 +1636,15 @@ namespace NOWA
                 // No sprite: fire Lua callbacks immediately (original behavior)
                 if (buttonId == OIS::MB_Left)
                 {
-                    // Copy the list — it may be modified during iteration
-                    auto closures = this->mouseButtonClickClosureFunctions;
+                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-                    if (false == closures.empty())
+                    if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                         {
+                            // Copy happens HERE on the logic thread — safe for luabind::object
+                            auto closures = *closureListPtr;
+
                             for (const auto& closure : closures)
                             {
                                 if (false == closure.is_valid())
@@ -3068,12 +3122,12 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::reactOnDropItemRequest(luabind::object closureFunction)
     {
-        this->closureFunctionRequestDropRequest = closureFunction;
+        this->closureFunctionRequestDropRequest.push_back(closureFunction);
     }
 
     void MyGUIItemBoxComponent::reactOnDropItemAccepted(luabind::object closureFunction)
     {
-        this->closureFunctionRequestDropAccepted = closureFunction;
+        this->closureFunctionRequestDropAccepted.push_back(closureFunction);
     }
 
     void MyGUIItemBoxComponent::setSpriteComponentIndex(unsigned int slotIndex, int occurrenceIndex)
@@ -3145,13 +3199,15 @@ namespace NOWA
 
         if (buttonId == OIS::MB_Left)
         {
-            // Copy the list — it may be modified during iteration
-            auto closures = this->mouseButtonClickClosureFunctions;
+            auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
-            if (false == closures.empty())
+            if (false == closureListPtr->empty())
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
+                NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
                 {
+                    // Copy happens HERE on the logic thread — safe for luabind::object
+                    auto closures = *closureListPtr;
+
                     for (const auto& closure : closures)
                     {
                         if (false == closure.is_valid())
