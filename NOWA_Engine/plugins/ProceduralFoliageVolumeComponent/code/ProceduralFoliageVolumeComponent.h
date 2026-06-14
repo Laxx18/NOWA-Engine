@@ -528,6 +528,10 @@ namespace NOWA
         bool isWithinTerraBounds(const Ogre::Vector3& position, Ogre::Terra* terra) const;
 
         bool isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule);
+
+        std::vector<VegetationBatch> calculatePlanetFoliagePositions(GameObject* planetGo, Ogre::Real planetRadius, const Ogre::Vector3& planetCentre);
+
+        bool meetsPlanetCriteria(Ogre::Real heightAboveSeaLevel, const Ogre::Vector3& hitNormal, const Ogre::Vector3& outwardDir, const FoliageRule& rule) const;
     protected:
         Ogre::String name;
 
@@ -540,6 +544,7 @@ namespace NOWA
         Variant* regenerate;
         Variant* clear;
         Variant* randomizeSeed;
+
 
         // Rules
         Variant* ruleCount;
