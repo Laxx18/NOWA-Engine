@@ -1,4 +1,3 @@
-
 //Morton Order. Table generated in Python:
 //def CompactBy1( x ):
 //	x &= 0x55555555

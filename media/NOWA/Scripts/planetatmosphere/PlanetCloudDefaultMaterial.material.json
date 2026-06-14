@@ -1,0 +1,110 @@
+{
+    "comment" :
+    [
+        "PlanetAtmosphere cloud layer PBS material.",
+        "The cloud coverage texture (cloudTexSize x cloudTexSize RGBA8) is wired",
+        "programmatically into PBSM_DETAIL0 by PlanetAtmosphere::initCloudTexture().",
+        "detail_diffuse0 mode NormalNonPremul blends cloud white over the base black diffuse.",
+        "R channel of the cloud texture = cloud density [0..1] used as blend weight.",
+        "depth_write false -- clouds are transparent and behind the atmosphere shell.",
+        "cull_mode none -- visible from both outside (space) and inside (surface).",
+        "detail_weight texture not used here: cloud density drives blending directly.",
+        "Roughness 0.7: slightly glossy clouds catch directional light.",
+        "shadow_const_bias 0.001 reduces z-fighting with the planet surface."
+    ],
+
+    "samplers" :
+    {
+        "Cloud_Sampler" :
+        {
+            "min"              : "linear",
+            "mag"              : "linear",
+            "mip"              : "linear",
+            "u"                : "wrap",
+            "v"                : "wrap",
+            "w"                : "wrap",
+            "miplodbias"       : 0,
+            "max_anisotropic"  : 1,
+            "compare_function" : "disabled",
+            "border"           : [1, 1, 1, 1],
+            "min_lod"          : -3.40282e+38,
+            "max_lod"          : 3.40282e+38
+        }
+    },
+
+    "macroblocks" :
+    {
+        "Cloud_Macroblock" :
+        {
+            "scissor_test"           : false,
+            "depth_check"            : true,
+            "depth_write"            : false,
+            "depth_function"         : "less_equal",
+            "depth_bias_constant"    : 0.001,
+            "depth_bias_slope_scale" : 0,
+            "cull_mode"              : "none",
+            "polygon_mode"           : "solid"
+        }
+    },
+
+    "blendblocks" :
+    {
+        "Cloud_Blendblock" :
+        {
+            "alpha_to_coverage"      : false,
+            "blendmask"              : "rgba",
+            "separate_blend"         : false,
+            "src_blend_factor"       : "src_alpha",
+            "dst_blend_factor"       : "one_minus_src_alpha",
+            "blend_operation"        : "add",
+            "force_transparent_sort" : true
+        }
+    },
+
+    "pbs" :
+    {
+        "PlanetCloudDefaultMaterial" :
+        {
+            "macroblock"        : "Cloud_Macroblock",
+            "blendblock"        : "Cloud_Blendblock",
+            "shadow_const_bias" : 0.001,
+
+            "workflow" : "specular_fresnel",
+            "brdf"     : "default",
+
+            "roughness" : 0.7,
+
+            "fresnel" :
+            {
+                "value" : 0.02,
+                "mode"  : "coeff"
+            },
+
+            "specular" :
+            {
+                "value" : [0.05, 0.05, 0.05]
+            },
+
+            "diffuse" :
+            {
+                "value" : [1.0, 1.0, 1.0]
+            },
+
+            "transparency" :
+            {
+                "value" : 1.0,
+                "mode"  : "Transparent",
+                "use_alpha_from_textures" : true
+            },
+
+            "detail_diffuse0" :
+            {
+                "mode"    : "NormalNonPremul",
+                "offset"  : [0, 0],
+                "scale"   : [1, 1],
+                "value"   : 1.0,
+                "sampler" : "Cloud_Sampler"
+            }
+        }
+    }
+}

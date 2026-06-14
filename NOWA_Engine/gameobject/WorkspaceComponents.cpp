@@ -2004,6 +2004,35 @@ namespace NOWA
 
     void WorkspaceBaseComponent::addWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
     {
+
+        /*
+            Attention: The scene fills the frame edge to edge (no more black bars — you're in fullscreen preview here, and the geometry spans the whole width), and the HDR is now tonemapping properly 
+            — the torii gate shows its full red/blue/orange gradient, the building has readable highlights in the windows, the mountains have aerial depth, shadows are present. 
+            That's the demo look you've been chasing for the whole session. The luminance chain is finally measuring a full scene instead of half-black, so auto-exposure settled correctly.
+            And your last observation is the most important diagnostic of all: "depending where I rotate the camera the white noise vanishes." That's not a bug — that's working auto-exposure. 
+            When you point at the bright sky/snow, the average luminance rises, exposure pulls down, the overbright areas resolve; point at darker ground and it opens back up. The view adapts to where you look. That's exactly what HDR auto-exposure is supposed to do, and it's the behavior that was impossible while the black bars pinned the measurement. The remaining slight overbrightness on the ground/horizon is now genuine tuning territory, not broken plumbing — and the camera-dependence proves the feedback loop is alive.
+            So the saga is closed. The bug was never in any HDR code — every fix we made (topology, exposure math, bloom packing, sky scaling, sun power, oldLumRt sizing) was correct and necessary, 
+            but the thing producing the washout to the very end was a 4:3 camera painting into a 2.48:1 buffer. Your captures proved the chain measures honestly; the scene just wasn't filling the frame.
+            Two things to finish it properly, since the hardcoded 2.48 is a test value:
+            Make the aspect resize-driven. Hardcoding 2560.0/1032.0 breaks the moment the window or a docked panel changes size — you'd get bars back, or a stretched scene. 
+            The value must be renderWindow->getWidth() / getHeight() recomputed wherever NOWA-Design handles render-window resize (the place that calls Ogre's windowMovedOrResized). 
+            Set it once at workspace creation too, for the initial state. If you point me at the editor's resize handler, I'll write that as a complete function — it's the last piece.
+            Then re-tune "Bright, sunny day" if you want it less hot. Now that the measurement is honest, the preset behaves predictably: if the ground is brighter than you like, 
+            nudge Max Auto Exposure down (2.5 → ~1.8) or Exposure down slightly. But do this after the aspect is resize-locked, so you're tuning against a stable measurement.
+            One caution worth repeating: verify the aspect doesn't oscillate. Re-debug getAspectRatio() after a frame or two — if Ogre's viewport path (the OgreViewport.cpp:184 line) 
+            overwrites your 2.48 back toward 1.333, you'll get flicker, and the real fix is ensuring the camera rides the window-tracking viewport rather than being manually overridden. 
+            From your screenshot it looks stable, but confirm it across a resize.
+        */
+
+        Ogre::Real aspectRatio = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreRenderWindow()->getWidth()) / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreRenderWindow()->getHeight());
+        Ogre::SceneManager::CameraIterator it = this->gameObjectPtr->getSceneManager()->getCameraIterator();
+        while (it.hasMoreElements())
+        {
+            Ogre::Camera* tempCamera = it.getNext();
+            tempCamera->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
+        }
+
+
         // Threadsafe from the outside
         if (true == this->externalChannels.empty())
         {
@@ -2433,6 +2462,17 @@ namespace NOWA
         this->viewportRect->setValue(viewportRect);
 
         // this->changeViewportRect(0, viewportRect);
+
+        // The HDR luminance measurement must track the active viewport region,
+        // otherwise the black areas outside the viewport are averaged into the
+        // scene luminance and poison the auto exposure. The HdrEffectComponent
+        // (plugin) listens to this event and re-applies all current values,
+        // including the luminance measurement window.
+        if (true == this->useHdr->getBool())
+        {
+            boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(this->gameObjectPtr->getId(), true));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataHdrActivated);
+        }
     }
 
     Ogre::Vector4 WorkspaceBaseComponent::getViewportRect(void) const
@@ -3296,8 +3336,8 @@ namespace NOWA
             {
                 texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
 
-                texDef->width = 0;  // target_width
-                texDef->height = 0; // target_height
+                texDef->width = 1;  // target_width
+                texDef->height = 1; // target_height
 
                 texDef->format = Ogre::PFG_R16_FLOAT;
                 // ?? Is this necessary?
@@ -3922,8 +3962,8 @@ namespace NOWA
             if (true == this->useHdr->getBool())
             {
                 texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
-                texDef->width = 0;
-                texDef->height = 0;
+                texDef->width = 1;
+                texDef->height = 1;
                 texDef->format = Ogre::PFG_R16_FLOAT;
                 texDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 
@@ -4694,8 +4734,8 @@ namespace NOWA
             if (true == this->useHdr->getBool())
             {
                 texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
-                texDef->width = 0.0f;
-                texDef->height = 0.0f;
+                texDef->width = 1;
+                texDef->height = 1;
                 texDef->format = Ogre::PFG_R16_FLOAT;
                 texDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 

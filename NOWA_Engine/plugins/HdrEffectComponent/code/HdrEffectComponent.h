@@ -286,6 +286,8 @@ namespace NOWA
 			Scale is the same as minThreshold.
 		*/
 		void applyBloomThreshold(Ogre::Real minThreshold, Ogre::Real fullColorThreshold);
+
+		void applyLuminanceViewportRect(const Ogre::Vector4& viewportRect);
 	private:
 		void resetShining(void);
 

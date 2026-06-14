@@ -1,0 +1,83 @@
+{
+    "comment" :
+    [
+        "PlanetAtmosphere shell PBS material.",
+        "Semi-transparent additive sphere: depth_write false, cull_mode none.",
+        "Emissive carries the atmosphere halo colour (set programmatically via setAtmosphereColour).",
+        "Diffuse black so only the emissive glow contributes -- no surface shading on a halo.",
+        "Transparency is set programmatically via setAtmosphereOpacity.",
+        "Roughness/metalness irrelevant for an emissive-only material but set to sensible defaults."
+    ],
+
+    "macroblocks" :
+    {
+        "Atmosphere_Macroblock" :
+        {
+            "scissor_test"           : false,
+            "depth_check"            : true,
+            "depth_write"            : false,
+            "depth_function"         : "less_equal",
+            "depth_bias_constant"    : 0,
+            "depth_bias_slope_scale" : 0,
+            "cull_mode"              : "none",
+            "polygon_mode"           : "solid"
+        }
+    },
+
+    "blendblocks" :
+    {
+        "Atmosphere_Blendblock" :
+        {
+            "alpha_to_coverage"      : false,
+            "blendmask"              : "rgba",
+            "separate_blend"         : false,
+            "src_blend_factor"       : "src_alpha",
+            "dst_blend_factor"       : "one_minus_src_alpha",
+            "blend_operation"        : "add",
+            "force_transparent_sort" : true
+        }
+    },
+
+    "pbs" :
+    {
+        "PlanetAtmosphereDefaultMaterial" :
+        {
+            "macroblock"        : "Atmosphere_Macroblock",
+            "blendblock"        : "Atmosphere_Blendblock",
+            "shadow_const_bias" : 0.0,
+
+            "workflow" : "specular_fresnel",
+            "brdf"     : "default",
+
+            "roughness" : 0.9,
+
+            "fresnel" :
+            {
+                "value" : 0.02,
+                "mode"  : "coeff"
+            },
+
+            "specular" :
+            {
+                "value" : [0.0, 0.0, 0.0]
+            },
+
+            "diffuse" :
+            {
+                "value" : [0.0, 0.0, 0.0]
+            },
+
+            "emissive" :
+            {
+                "value" : [0.3, 0.6, 1.0]
+            },
+
+            "transparency" :
+            {
+                "value" : 0.35,
+                "mode"  : "Transparent",
+                "use_alpha_from_textures" : false
+            }
+        }
+    }
+}
