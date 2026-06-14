@@ -157,11 +157,6 @@ namespace NOWA
 
 	void TagChildNodeComponent::setActivated(bool activated)
 	{
-		if (this->activated->getBool() == activated)
-		{
-            return;
-		}
-
         this->activated->setValue(activated);
 
         if (true == activated)
