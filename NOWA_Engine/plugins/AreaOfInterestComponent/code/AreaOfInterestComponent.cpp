@@ -199,6 +199,11 @@ namespace NOWA
 
 	void AreaOfInterestComponent::handleGameObjectDeleted(EventDataPtr eventData)
 	{
+        if (AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+			return;
+        }
+
 		boost::shared_ptr<EventDataDeleteGameObject> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteGameObject>(eventData);
 		// if a game object has been deleted elsewhere remove it from the queue, in order not to work with dangling pointers
 		unsigned long id = castEventData->getGameObjectId();
@@ -487,6 +492,27 @@ namespace NOWA
 
 	void AreaOfInterestComponent::setActivated(bool activated)
     {
+        // During shutdown the logic thread is gone — execute directly instead of enqueueing
+        if (AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+            this->triggerUpdateTimer = 0.0f;
+            this->activated->setValue(activated);
+
+            if (false == activated)
+            {
+                // Clean up triggered objects directly — no Lua calls during shutdown
+                for (auto it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
+                {
+                    if (nullptr != this->triggerSphereQueryObserver)
+                    {
+                        this->triggerSphereQueryObserver->onLeave(it->second.first);
+                    }
+                    it = this->triggeredGameObjects.erase(it);
+                }
+            }
+            return;
+        }
+
         NOWA::AppStateManager::LogicCommand logicCommand = [this, activated]()
         {
             this->triggerUpdateTimer = 0.0f;

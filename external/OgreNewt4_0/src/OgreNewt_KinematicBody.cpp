@@ -35,6 +35,7 @@ KinematicBody::KinematicBody(World* world, Ogre::SceneManager* sceneManager, con
         {
             getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr);
             w.addBody(m_bodyPtr);
+            m_isInWorld = true;
             setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
             setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
         });

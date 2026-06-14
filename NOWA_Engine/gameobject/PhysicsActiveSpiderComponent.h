@@ -107,6 +107,8 @@ namespace NOWA
 
         virtual void setActivated(bool activated) override;
 
+        virtual void setGhost(bool ghost) override;
+
         // ── Static helpers ────────────────────────────────────────────────────
         static unsigned int getStaticClassId(void)
         {

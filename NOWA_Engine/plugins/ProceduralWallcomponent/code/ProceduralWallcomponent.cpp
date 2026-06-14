@@ -1520,6 +1520,11 @@ namespace NOWA
 
     void ProceduralWallComponent::scheduleSegmentOverlayUpdate(void)
     {
+        if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+            return;
+        }
+
         if (!this->segOverlayObject || !this->gameObjectPtr)
         {
             return;

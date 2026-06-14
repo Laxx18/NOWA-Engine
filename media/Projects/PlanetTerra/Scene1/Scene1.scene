@@ -34,7 +34,7 @@
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-2328.36 -2574.42 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
+		<bounds mostLeftNearPosition="-2327.92 -2574.42 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -42,8 +42,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-2327.59" y="1157.9" z="6575.05"/>
-			<rotation qw="0.918731" qx="-0.225243" qy="-0.314789" qz="-0.0781437"/>
+			<position x="-2327.07" y="1154.33" z="6572.67"/>
+			<rotation qw="0.921303" qx="-0.113598" qy="-0.368972" qz="-0.0464286"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-2323.25 1159.19 6570.51"/>
-					<property type="9" name="CameraOrientation" data="-30.3794 -36.7618 -0.117727"/>
+					<property type="9" name="CameraPosition" data="-2326.09 1150.87 6572.79"/>
+					<property type="9" name="CameraOrientation" data="-1.23893 -47.5957 -0.0983808"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -578,8 +578,8 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="3500"/>
-					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="6" name="Radius" data="4000"/>
+					<property type="6" name="UpdateThreshold" data="0.1"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
 				</userData>
@@ -689,7 +689,7 @@
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
 					<property type="6" name="Radius" data="1000"/>
-					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="6" name="UpdateThreshold" data="0.1"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
 				</userData>
@@ -832,7 +832,7 @@
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
 					<property type="6" name="Radius" data="5284.46"/>
-					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="6" name="UpdateThreshold" data="0.1"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
 				</userData>
@@ -942,7 +942,7 @@
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
 					<property type="6" name="Radius" data="1000"/>
-					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="6" name="UpdateThreshold" data="0.1"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
 				</userData>
@@ -1052,7 +1052,7 @@
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
 					<property type="6" name="Radius" data="1000"/>
-					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="6" name="UpdateThreshold" data="0.1"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
 				</userData>
@@ -1162,7 +1162,7 @@
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
 					<property type="6" name="Radius" data="1000"/>
-					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="6" name="UpdateThreshold" data="0.1"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
 				</userData>
@@ -1505,7 +1505,7 @@
 			</item>
 		</node>
 		<node name="Light (Spot)_0" id="2100318845">
-			<position x="-2317.3" y="1148.54" z="6562.57"/>
+			<position x="-2317.27" y="1148.32" z="6562.53"/>
 			<rotation qw="0.939657" qx="0.00820026" qy="-0.342007" qz="0.00298465"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Light (Spot)_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
@@ -1538,13 +1538,13 @@
 					<property type="9" name="Specular" data="1 1 1"/>
 					<property type="6" name="PowerScale" data="30"/>
 					<property type="7" name="AttenuationMode" data="Radius"/>
-					<property type="6" name="AttenuationRange" data="150"/>
+					<property type="6" name="AttenuationRange" data="46"/>
 					<property type="6" name="AttenuationConstant" data="0.5"/>
 					<property type="6" name="AttenuationLinear" data="0"/>
 					<property type="6" name="AttenuationQuadratic" data="0.5"/>
 					<property type="6" name="AttenuationRadius" data="10"/>
 					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
-					<property type="12" name="CastShadows" data="false"/>
+					<property type="12" name="CastShadows" data="true"/>
 					<property type="9" name="Size" data="30 40 1"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>

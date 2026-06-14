@@ -2043,6 +2043,37 @@ namespace NOWA
 			ms.width = width;
 			ms.height = height;
 
+			// Not working here does hang
+#if 0
+			if (nullptr == AppStateManager::getSingletonPtr())
+			{
+                return;
+			}
+
+			// Attention: this is new and only set for the active camera, what about other cameras?
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, width, height]()
+            {
+                Ogre::Real aspectRatio = static_cast<Ogre::Real>(width) / static_cast<Ogre::Real>(height);
+
+				auto gameobjectController = AppStateManager::getSingletonPtr()->getGameObjectController();
+                if (nullptr != gameobjectController)
+                {
+                    auto gameObjectPtr = gameobjectController->getGameObjectFromId(GameObjectController::MAIN_CAMERA_ID);
+
+					if (nullptr != gameObjectPtr)
+                    {
+                        Ogre::SceneManager::CameraIterator it = gameObjectPtr->getSceneManager()->getCameraIterator();
+                        while (it.hasMoreElements())
+                        {
+                            Ogre::Camera* tempCamera = it.getNext();
+                            tempCamera->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
+                        }
+                    }
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setAspectRatio");
+#endif
+
 			Win32_ResetCursorToArrow();
 			Win32_SetCursorVisible(false);
 			setMyGuiPointerVisible(true);

@@ -445,7 +445,8 @@ namespace OgreNewt
 
                 newTrigger->SetMatrix(ndGetIdentityMatrix());
                 newTrigger->SetCollisionShape(shapeCopy);
-                newTrigger->SetNotifyCallback(m_bodyNotifyPtr); // SharedPtr — correct
+                newTrigger->SetNotifyCallback(m_bodyNotifyPtr);
+                m_isInWorld = true;
                 w.addBody(m_bodyPtr);
             });
     }

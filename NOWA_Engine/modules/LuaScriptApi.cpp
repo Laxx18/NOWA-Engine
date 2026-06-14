@@ -8833,6 +8833,8 @@ namespace NOWA
 			.def("getLinearDamping", &PhysicsActiveComponent::getLinearDamping)
 			.def("setAngularDamping", &PhysicsActiveComponent::setAngularDamping)
 			.def("getAngularDamping", &PhysicsActiveComponent::getAngularDamping)
+            .def("setGhost", &PhysicsActiveComponent::setGhost)
+            .def("isGhost", &PhysicsActiveComponent::isGhost)
 			.def("getUp", &PhysicsActiveComponent::getUp)
 			.def("getRight", &PhysicsActiveComponent::getRight)
 			.def("getForward", &PhysicsActiveComponent::getForward)
@@ -8920,6 +8922,13 @@ namespace NOWA
 		AddClassToCollection("PhysicsActiveComponent", "float getLinearDamping()", "Gets the linear damping.");
 		AddClassToCollection("PhysicsActiveComponent", "void setAngularDamping(Vector3 angularDamping)", "Sets the angular damping. Range: [0, 1]");
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getAngularDamping()", "Gets the angular damping.");
+		AddClassToCollection("PhysicsActiveComponent", "void setGhost(bool ghost)",
+            "Sets the body into ghost mode. A ghost body has zero mass and no force callback so it costs nothing in the physics solver, "
+            "but it remains in the world so contact detection still fires. "
+            "Use this instead of setActivated(false) when you still need to detect collisions — "
+            "e.g. player enters ghost mode when boarding a ship but contact with the ship still triggers takeoff. "
+            "Call setGhost(false) to restore full dynamic simulation.");
+        AddClassToCollection("PhysicsActiveComponent", "bool isGhost()", "Returns true if the body is currently in ghost mode. See setGhost.");
 		AddClassToCollection("PhysicsActiveComponent", "void translate(Vector3 relativePosition)", "Sets relative position of the physics component.");
 		AddClassToCollection("PhysicsActiveComponent", "void addImpulse(Vector3 deltaVector, Vector3 offsetPosition)", "Adds an impulse at the given offset position away from the origin of the physics body.");
 		AddClassToCollection("PhysicsActiveComponent", "void setVelocity(Vector3 velocity)", "Sets the global linear velocity on the physics body. Note: This should only be used for initzialisation. Use @applyRequiredForceForVelocity in simualtion instead. Or it may be called if its a physics active kinematic body.");

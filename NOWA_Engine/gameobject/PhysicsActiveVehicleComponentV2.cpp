@@ -700,34 +700,91 @@ namespace NOWA
     void PhysicsActiveVehicleComponentV2::setActivated(bool activated)
     {
         PhysicsComponent::setActivated(activated);
-
         this->activated->setValue(activated);
+
+        if (nullptr == this->physicsBody)
+        {
+            return;
+        }
+
+        if (nullptr != this->ogreNewt && this->ogreNewt->isShuttingDown())
+        {
+            return;
+        }
 
         if (false == activated)
         {
-            if (nullptr != this->physicsBody)
+            this->physicsBody->removeForceAndTorqueCallback();
+
+            // Only remove from world if it was actually added.
+            // During createDynamicBody the body is not yet in the world —
+            // in that case just store the flag and skip, the body will
+            // simply never be added (enqueuePhysics checks m_isInWorld).
+            if (this->physicsBody->isInWorld())
             {
-                // Do NOT touch mass/freeze here — Newton may be mid-step on this body.
-                // Set a flag that the force callback will consume safely inside Newton's thread.
-                this->pendingDeactivation.store(true, std::memory_order_release);
+                this->ogreNewt->Sync();
+                this->physicsBody->removeFromWorld();
             }
         }
         else
         {
-            if (nullptr != this->physicsBody)
+            // Re-add to world if not already in it
+            if (false == this->physicsBody->isInWorld())
             {
-                // Activation is safe from logic thread since we're restoring, not zeroing.
-                // But clear any pending deactivation first.
-                this->pendingDeactivation.store(false, std::memory_order_release);
-
-                if (this->savedMass > 0.0f)
-                {
-                    this->physicsBody->setMassMatrix(this->savedMass, this->savedInertia);
-                }
-
-                // Custom force callback: base gravity + vehicle impulses
-                this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveVehicleComponentV2>(&PhysicsActiveVehicleComponentV2::vehicleMoveCallback, this);
+                this->ogreNewt->Sync();
+                this->physicsBody->addToWorld();
             }
+
+            if (this->savedMass > 0.0f)
+            {
+                this->physicsBody->setMassMatrix(this->savedMass, this->savedInertia);
+            }
+            this->physicsBody->unFreeze();
+            // Custom force callback: base gravity + vehicle impulses
+            this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveVehicleComponentV2>(&PhysicsActiveVehicleComponentV2::vehicleMoveCallback, this);
+        }
+    }
+
+    void PhysicsActiveVehicleComponentV2::setGhost(bool ghost)
+    {
+        if (nullptr == this->physicsBody)
+        {
+            return;
+        }
+
+        if (nullptr != this->ogreNewt && this->ogreNewt->isShuttingDown())
+        {
+            return;
+        }
+
+        this->ghostActive = ghost;
+
+        if (true == ghost)
+        {
+            // Remove force callback first — no more movement
+            this->physicsBody->removeForceAndTorqueCallback();
+
+            // Zero mass makes nd4 treat this as static in the solver,
+            // but the body stays in the world so contacts still fire.
+            // Safe to call from the logic thread because setMassMatrix
+            // only writes m_mass/m_invMass — not touched by CalculateContacts.
+            this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
+            this->physicsBody->unFreeze();
+            this->physicsBody->freeze();
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponentV2] Ghost ON for: " + this->gameObjectPtr->getName());
+        }
+        else
+        {
+            // Restore full dynamic simulation
+            if (this->savedMass > 0.0f)
+            {
+                this->physicsBody->setMassMatrix(this->savedMass, this->savedInertia);
+            }
+            this->physicsBody->unFreeze();
+            this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveVehicleComponentV2>(&PhysicsActiveVehicleComponentV2::moveCallback, this);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponentV2] Ghost OFF for: " + this->gameObjectPtr->getName());
         }
     }
 

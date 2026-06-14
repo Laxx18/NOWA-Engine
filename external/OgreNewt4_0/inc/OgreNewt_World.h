@@ -90,6 +90,7 @@ namespace OgreNewt
 		// ---------------------------------------------------------------------
 		bool isMainThread(void) const;
 		bool isSimulating() const;
+        bool isShuttingDown() const;
 		// ---------------------------------------------------------------------
 		// DIRECT world mutations (NO defer)
 		// Rules:
@@ -218,6 +219,7 @@ namespace OgreNewt
 		// Thread identity: thread that drives update() (main thread)
 		std::thread::id m_mainThreadId;
 		std::atomic<bool> m_isSimulating{ false };
+        std::atomic<bool> m_isShuttingDown{false};
 
 		std::atomic<unsigned int> m_nextSelfCollisionGroup{ 1 };
 

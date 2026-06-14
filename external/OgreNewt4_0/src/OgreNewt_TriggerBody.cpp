@@ -168,6 +168,7 @@ namespace OgreNewt
                 }
                 newTrigger->SetNotifyCallback(m_bodyNotifyPtr);
                 w.addBody(m_bodyPtr);
+                m_isInWorld = true;
             });
     }
 

@@ -481,6 +481,16 @@ namespace NOWA
         }
 
         this->bStall = true;
+
+		// Drain the queue before this thread exits.
+        // moodycamel::ConcurrentQueue stores per-thread producer state that is
+        // cleaned up in ThreadExitNotifier::~ThreadExitNotifier() when this thread
+        // exits. If any commands are still enqueued at that point, the cleanup
+        // callback tries to return tokens to the queue object which may already
+        // be in an inconsistent state — causing a deadlock.
+        // Draining here while the thread is still alive and the queue is fully
+        // valid avoids that entirely.
+        this->clearLogicQueue();
     }
 
 	void AppStateManager::internalChangeAppState(AppState* state, bool initial)

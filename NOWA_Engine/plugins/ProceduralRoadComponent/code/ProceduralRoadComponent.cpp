@@ -6930,6 +6930,11 @@ namespace NOWA
 
     void ProceduralRoadComponent::scheduleSegmentOverlayUpdate(void)
     {
+        if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+            return;
+        }
+
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] scheduleSegmentOverlayUpdate: segmentMode=" + Ogre::StringConverter::toString(this->getEditModeEnum() == EditMode::SEGMENT) +
                                                                                " segments=" + Ogre::StringConverter::toString(this->roadSegments.size()) + " selectedIdx=" + Ogre::StringConverter::toString(this->selectedSegmentIndex) +
                                                                                " overlayObject=" + Ogre::StringConverter::toString(this->segOverlayObject != nullptr));

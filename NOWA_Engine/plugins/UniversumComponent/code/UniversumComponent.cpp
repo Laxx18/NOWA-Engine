@@ -49,23 +49,30 @@ namespace NOWA
             return;
         }
 
-        // Always record that the player is physically inside this trigger.
         this->owner->activeTriggerOverlaps.insert(this->planetId);
 
-        if (true == this->owner->getAutoPauseOrbit())
-        {
-            // Resume whoever is currently paused (if it isn't us).
-            unsigned long currentlyPaused = this->owner->getCurrentlyPausedBodyId();
-            if (currentlyPaused != 0ul && currentlyPaused != this->planetId)
-            {
-                this->owner->resumePlanetOrbit(currentlyPaused, gameObject->getId());
-            }
-            this->owner->pausePlanetOrbit(this->planetId, gameObject->getId());
-        }
-        else
+        if (false == this->owner->getAutoPauseOrbit())
         {
             this->owner->callPlanetEnteredFunction(this->planetId, gameObject->getId());
+            return;
         }
+
+        // Never interrupt an active landing/takeoff sequence.
+        // The ship is mid-transition and AOI overlaps are transient.
+        LandingState currentState = this->owner->getLandingState();
+        if (currentState == LandingState::LANDING || currentState == LandingState::LANDED || currentState == LandingState::TAKING_OFF)
+        {
+            return;
+        }
+
+        // If already paused on a DIFFERENT body, resume it first
+        unsigned long currentlyPaused = this->owner->getCurrentlyPausedBodyId();
+        if (currentlyPaused != 0ul && currentlyPaused != this->planetId)
+        {
+            this->owner->resumePlanetOrbit(currentlyPaused, gameObject->getId());
+        }
+
+        this->owner->pausePlanetOrbit(this->planetId, gameObject->getId());
     }
 
     void UniversumComponent::PlanetOrbitObserver::onLeave(GameObject* gameObject)
@@ -75,24 +82,35 @@ namespace NOWA
             return;
         }
 
-        // Remove from the overlap set -- player has physically left this trigger.
         this->owner->activeTriggerOverlaps.erase(this->planetId);
 
-        if (true == this->owner->getAutoPauseOrbit())
+        if (false == this->owner->getAutoPauseOrbit())
         {
-            this->owner->resumePlanetOrbit(this->planetId, gameObject->getId());
+            this->owner->callPlanetLeftFunction(this->planetId, gameObject->getId());
+            return;
+        }
 
-            // After resuming, check if the player is still inside any other trigger.
-            // If so, re-pause that body (the "outer" planet the player never fully left).
+        // Never interrupt an active landing/takeoff sequence.
+        // When taking off from moon, the ship leaves the moon AOI — but we must
+        // NOT resume/reset the landing state machine. The TAKING_OFF state itself
+        // transitions to APPROACHING when clearance altitude is reached.
+        LandingState currentState = this->owner->getLandingState();
+        if (currentState == LandingState::LANDING || currentState == LandingState::LANDED || currentState == LandingState::TAKING_OFF)
+        {
+            return;
+        }
+
+        this->owner->resumePlanetOrbit(this->planetId, gameObject->getId());
+
+        // Only re-pause another body if we are fully in NONE state —
+        // never auto-pause during any active state transition.
+        if (this->owner->getLandingState() == LandingState::NONE)
+        {
             unsigned long fallbackId = this->owner->getInnermostOverlapId();
             if (fallbackId != 0ul)
             {
                 this->owner->pausePlanetOrbit(fallbackId, gameObject->getId());
             }
-        }
-        else
-        {
-            this->owner->callPlanetLeftFunction(this->planetId, gameObject->getId());
         }
     }
 
@@ -719,6 +737,17 @@ namespace NOWA
     {
         this->cachedAtmosphereComponent = nullptr;
 
+        // During destruction just unregister without touching physics or visibility.
+        // restoreAllSurfaceObjects calls setActivated(true) which hangs if Newton is gone.
+        if (AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+            this->unregisterSurfaceObjects();
+        }
+        else
+        {
+            this->restoreAllSurfaceObjects();
+        }
+
         for (SolarSystem& system : this->solarSystems)
         {
             for (OrbitalBody& planet : system.planets)
@@ -1002,8 +1031,13 @@ namespace NOWA
             Ogre::Vector3 descentVelocity = Ogre::Vector3::ZERO;
             if (distToTarget > 0.05f && distToTarget > settleHeight * 2.0f)
             {
-                const float maxDescentSpeed = 15.0f;
-                descentVelocity = toTarget.normalisedCopy() * std::min(distToTarget * 0.5f, maxDescentSpeed);
+                // Use a higher base speed and a steeper proportional ramp so the
+                // ship doesn't crawl when starting far above the surface.
+                // Minimum 5 m/s, proportional up to maxDescentSpeed.
+                const float maxDescentSpeed = 30.0f;
+                const float minDescentSpeed = 5.0f;
+                float speed = std::max(minDescentSpeed, std::min(distToTarget * 0.8f, maxDescentSpeed));
+                descentVelocity = toTarget.normalisedCopy() * speed;
             }
             else
             {
@@ -1080,6 +1114,7 @@ namespace NOWA
 
                         // Snap the ship upright on takeoff: preserve only yaw,
                         // zero out roll and pitch that may have accumulated during landing.
+#if 0
                         Ogre::Quaternion currentOrient = actComp->getOrientation();
 
                         // Extract forward from current orientation and flatten onto world XZ plane
@@ -1139,6 +1174,78 @@ namespace NOWA
                         uprightOrient.FromRotationMatrix(mat);
 
                         actComp->setOrientation(uprightOrient);
+    #else
+
+                        Ogre::Quaternion currentOrient = actComp->getOrientation();
+                        Ogre::Vector3 defaultDir = shipGo->getDefaultDirection();
+
+                        // Get actual gravity direction — on a planet surface this points toward the planet
+                        // center, not necessarily -Y
+                        Ogre::Vector3 gravityDir = actComp->getGravityDirection();
+                        if (gravityDir.isZeroLength())
+                        {
+                            gravityDir = Ogre::Vector3::NEGATIVE_UNIT_Y;
+                        }
+
+                        // World up = opposite of gravity
+                        Ogre::Vector3 worldUp = -gravityDir.normalisedCopy();
+
+                        // Extract the ship's current forward in world space
+                        Ogre::Vector3 forward = currentOrient * defaultDir;
+
+                        // Project onto the plane perpendicular to worldUp — strips roll AND pitch
+                        forward = forward - forward.dotProduct(worldUp) * worldUp;
+
+                        if (forward.squaredLength() < 1e-4f)
+                        {
+                            // Ship pointing straight up/down — try using current right axis projected
+                            Ogre::Vector3 right = currentOrient * Ogre::Vector3::UNIT_X;
+                            forward = right - right.dotProduct(worldUp) * worldUp;
+                            if (forward.squaredLength() < 1e-4f)
+                            {
+                                // Last resort — pick any stable reference
+                                Ogre::Vector3 worldRef = (Ogre::Math::Abs(worldUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
+                                forward = worldRef - worldRef.dotProduct(worldUp) * worldRef;
+                            }
+                        }
+                        forward.normalise();
+
+                        // Build clean orthogonal frame
+                        Ogre::Vector3 right = forward.crossProduct(worldUp);
+                        right.normalise();
+                        Ogre::Vector3 cleanUp = right.crossProduct(forward);
+                        cleanUp.normalise();
+
+                        // Place axes into the correct matrix columns for this ship's default direction
+                        Ogre::Vector3 axisX, axisY, axisZ;
+
+                        if (Ogre::Math::Abs(defaultDir.dotProduct(Ogre::Vector3::UNIT_Z)) > 0.9f)
+                        {
+                            axisX = right;
+                            axisY = cleanUp;
+                            axisZ = forward * defaultDir.dotProduct(Ogre::Vector3::UNIT_Z);
+                        }
+                        else if (Ogre::Math::Abs(defaultDir.dotProduct(Ogre::Vector3::UNIT_X)) > 0.9f)
+                        {
+                            axisZ = right;
+                            axisY = cleanUp;
+                            axisX = forward * defaultDir.dotProduct(Ogre::Vector3::UNIT_X);
+                        }
+                        else
+                        {
+                            axisX = right;
+                            axisY = cleanUp;
+                            axisZ = forward;
+                        }
+
+                        Ogre::Matrix3 mat;
+                        mat.SetColumn(0, axisX);
+                        mat.SetColumn(1, axisY);
+                        mat.SetColumn(2, axisZ);
+                        Ogre::Quaternion uprightOrient;
+                        uprightOrient.FromRotationMatrix(mat);
+                        actComp->setOrientation(uprightOrient);
+#endif
                     }
                 }
             }
@@ -1450,6 +1557,11 @@ namespace NOWA
         return !anyPaused;
     }
 
+    UniversumComponent::LandingState UniversumComponent::getLandingState(void) const
+    {
+        return this->landingState;
+    }
+
     bool UniversumComponent::findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, GameObjectPtr shipGo, Ogre::Vector3& outTarget)
     {
         // Exclude the ship itself from raycasts
@@ -1588,9 +1700,6 @@ namespace NOWA
         return found;
     }
 
-    // ---------------------------------------------------------------
-    // pausePlanetOrbit -- planet and moon branches unified
-    // ---------------------------------------------------------------
     void UniversumComponent::pausePlanetOrbit(unsigned long planetGameObjectId, unsigned long gameObjectId)
     {
         const unsigned long playerGoId = gameObjectId;
@@ -1609,26 +1718,45 @@ namespace NOWA
                 this->showSurfaceObjects(planet);
                 this->callPlanetEnteredFunction(planetGameObjectId, gameObjectId);
 
-                // Activate atmosphere if present on this planet.
                 {
                     GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
                     if (nullptr != planetGo)
                     {
                         this->setPlanetDynamic(planetGo, false);
-
-                        /*auto atmoComp = NOWA::makeStrongPtr(planetGo->getComponent<AtmosphereComponent>());
-                        if (nullptr != atmoComp)
-                        {
-                            this->cachedAtmosphereComponent = atmoComp.get();
-                            atmoComp->setExternalLightMode(true);
-                            atmoComp->setShowSun(false);
-                            atmoComp->setActivated(true);
-                        }
-                        else
-                        {
-                            this->cachedAtmosphereComponent = nullptr;
-                        }*/
                     }
+                }
+
+                // Disable shadow casting on all distant bodies — their geometry
+                // blows out the PSSM frustum even with small farClip on the surface
+                for (SolarSystem& sys : this->solarSystems)
+                {
+                    for (OrbitalBody& otherPlanet : sys.planets)
+                    {
+                        if (otherPlanet.gameObjectId != planetGameObjectId)
+                        {
+                            this->setBodyCastShadows(otherPlanet.gameObjectId, false, "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
+                        }
+                    }
+                    for (auto& moonPair : sys.moons)
+                    {
+                        if (moonPair.second.gameObjectId != planetGameObjectId)
+                        {
+                            this->setBodyCastShadows(moonPair.second.gameObjectId, false, "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
+                        }
+                    }
+                }
+
+                // Enable shadows with constrained far distance for surface mode
+                if (nullptr != this->cachedSunLight)
+                {
+                    Ogre::Light* light = this->cachedSunLight;
+                    Ogre::Real surfaceFarClip = this->farClipSurface->getReal();
+                    NOWA::GraphicsModule::RenderCommand cmd = [light, surfaceFarClip]()
+                    {
+                        light->setCastShadows(true);
+                        light->setShadowFarDistance(surfaceFarClip);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "UniversumComponent::pausePlanetOrbit::enableShadows");
                 }
 
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
@@ -1645,31 +1773,45 @@ namespace NOWA
 
                 OrbitalBody& moon = moonPair.second;
                 moon.orbitalPaused = true;
-                // Moons use orbitalSpeed for day/night (tidally locked assumption).
                 this->setupLandingState(moon, planetGameObjectId, moon.axialSpeed, playerGoId);
                 this->showSurfaceObjects(moon);
                 this->callPlanetEnteredFunction(planetGameObjectId, gameObjectId);
 
-                // Activate atmosphere if present on this moon.
                 {
                     GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
                     if (nullptr != moonGo)
                     {
                         this->setPlanetDynamic(moonGo, false);
-
-                        /*auto atmoComp = NOWA::makeStrongPtr(moonGo->getComponent<AtmosphereComponent>());
-                        if (nullptr != atmoComp)
-                        {
-                            this->cachedAtmosphereComponent = atmoComp.get();
-                            atmoComp->setExternalLightMode(true);
-                            atmoComp->setShowSun(false);
-                            atmoComp->setActivated(true);
-                        }
-                        else
-                        {
-                            this->cachedAtmosphereComponent = nullptr;
-                        }*/
                     }
+                }
+
+                // Disable shadow casting on all distant bodies
+                for (SolarSystem& sys : this->solarSystems)
+                {
+                    for (OrbitalBody& otherPlanet : sys.planets)
+                    {
+                        this->setBodyCastShadows(otherPlanet.gameObjectId, false, "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
+                    }
+                    for (auto& otherMoonPair : sys.moons)
+                    {
+                        if (otherMoonPair.second.gameObjectId != planetGameObjectId)
+                        {
+                            this->setBodyCastShadows(otherMoonPair.second.gameObjectId, false, "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
+                        }
+                    }
+                }
+
+                // Enable shadows with constrained far distance for surface mode
+                if (nullptr != this->cachedSunLight)
+                {
+                    Ogre::Light* light = this->cachedSunLight;
+                    Ogre::Real surfaceFarClip = this->farClipSurface->getReal();
+                    NOWA::GraphicsModule::RenderCommand cmd = [light, surfaceFarClip]()
+                    {
+                        light->setCastShadows(true);
+                        light->setShadowFarDistance(surfaceFarClip);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "UniversumComponent::pausePlanetOrbit::enableShadows");
                 }
 
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
@@ -1679,9 +1821,6 @@ namespace NOWA
         }
     }
 
-    // ---------------------------------------------------------------
-    // resumePlanetOrbit -- planet and moon branches unified
-    // ---------------------------------------------------------------
     void UniversumComponent::resumePlanetOrbit(unsigned long planetGameObjectId, unsigned long gameObjectId)
     {
         // Always reset landing state at the top regardless of which branch fires.
@@ -1716,6 +1855,33 @@ namespace NOWA
             this->landingContactTimer = 0.0f;
         }
 
+        // Restore shadow casting on all bodies and disable surface shadow mode
+        for (SolarSystem& sys : this->solarSystems)
+        {
+            for (OrbitalBody& planet : sys.planets)
+            {
+                this->setBodyCastShadows(planet.gameObjectId, true, "UniversumComponent::resumePlanetOrbit::restoreShadows");
+            }
+            for (auto& moonPair : sys.moons)
+            {
+                this->setBodyCastShadows(moonPair.second.gameObjectId, true, "UniversumComponent::resumePlanetOrbit::restoreShadows");
+            }
+            // Sun never casts shadows
+            this->setBodyCastShadows(sys.sunId, false, "UniversumComponent::resumePlanetOrbit::sunNoCastShadows");
+        }
+
+        // Disable shadows and reset far distance for space mode
+        if (nullptr != this->cachedSunLight)
+        {
+            Ogre::Light* light = this->cachedSunLight;
+            NOWA::GraphicsModule::RenderCommand cmd = [light]()
+            {
+                light->setCastShadows(false);
+                light->setShadowFarDistance(0.0f); // 0 = use scene default / disabled
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "UniversumComponent::resumePlanetOrbit::disableShadows");
+        }
+
         for (SolarSystem& system : this->solarSystems)
         {
             for (OrbitalBody& planet : system.planets)
@@ -1733,8 +1899,6 @@ namespace NOWA
 
                 this->teardownLandingState(planetGameObjectId, gameObjectId, planet, true, system);
 
-                // Snap planet back to its orbital position so orbit resumes without a jump.
-                // The planet was frozen while other bodies moved, so orbitalElapsed is stale.
                 GameObjectPtr sunGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(system.sunId);
                 if (nullptr != sunGo)
                 {
@@ -2558,6 +2722,21 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Surface objects registered and hidden.");
     }
 
+    void UniversumComponent::unregisterSurfaceObjects(void)
+    {
+        for (SolarSystem& system : this->solarSystems)
+        {
+            for (OrbitalBody& planet : system.planets)
+            {
+                planet.surfaceObjects.clear();
+            }
+            for (auto& moonPair : system.moons)
+            {
+                moonPair.second.surfaceObjects.clear();
+            }
+        }
+    }
+
     void UniversumComponent::showSurfaceObjects(OrbitalBody& body)
     {
         GameObjectPtr hostGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(body.gameObjectId);
@@ -3186,7 +3365,7 @@ namespace NOWA
                 // Atmosphere zone = planet radius * 2 (above surface but well inside orbital lane).
                 aoiRaw->getAttribute("Radius")->setValue(radius * 2.0f);
                 aoiRaw->getAttribute("Categories")->setValue(Ogre::String("All"));
-                aoiRaw->getAttribute("Update Threshold")->setValue(0.5f);
+                aoiRaw->getAttribute("Update Threshold")->setValue(0.1f);
                 aoiRaw->postInit();
                 // Attach automatic observer -- owner = UniversumComponent, deleted in destroyUniverse().
                 auto aoiComp = NOWA::makeStrongPtr(goPtr->getComponent<AreaOfInterestComponent>());
@@ -3338,7 +3517,7 @@ namespace NOWA
             {
                 aoiRaw->getAttribute("Radius")->setValue(radius * 2.0f);
                 aoiRaw->getAttribute("Categories")->setValue(Ogre::String("All"));
-                aoiRaw->getAttribute("Update Threshold")->setValue(0.5f);
+                aoiRaw->getAttribute("Update Threshold")->setValue(0.1f);
                 aoiRaw->postInit();
                 // Attach automatic observer -- owner = UniversumComponent, deleted in destroyUniverse().
                 auto aoiComp = NOWA::makeStrongPtr(goPtr->getComponent<AreaOfInterestComponent>());

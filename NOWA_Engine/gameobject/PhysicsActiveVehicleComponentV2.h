@@ -101,6 +101,8 @@ namespace NOWA
 
         virtual void setActivated(bool activated) override;
 
+        virtual void setGhost(bool ghost) override;
+
         virtual void reCreateDynamicBodyForItem(Ogre::Item* item) override;
 
         // ── Static helpers ────────────────────────────────────────────────────

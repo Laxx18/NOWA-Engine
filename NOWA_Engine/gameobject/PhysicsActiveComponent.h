@@ -511,12 +511,6 @@ namespace NOWA
 
 		void removeJointAttractorComponent(unsigned long id);
 
-		/**
-		 * @brief Sets the lua function name, to react when a game object collided with another game object.
-		 * @param[in]	onContactFunctionName		The function name to set
-		 */
-		void setOnContactFunctionName(const Ogre::String& onContactFunctionName);
-
         void setCppContactCallback(std::function<void(GameObjectPtr, const OgreNewt::ContactSnapshot&)> callback);
 
         void removeCppContactCallback(void);
@@ -526,6 +520,14 @@ namespace NOWA
 		Ogre::Vector3 getRight(void) const;
 
 		Ogre::Vector3 getForward(void) const;
+
+		// Makes the body a ghost: zero mass, no force callback, no solver cost.
+        // Unlike setActivated(false) it keeps the body in the world so contact
+        // detection still works — e.g. player touching ship triggers takeoff.
+        // Safe to call from contact solving callbacks.
+        virtual void setGhost(bool ghost);
+
+        bool isGhost(void) const;
 
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
@@ -573,7 +575,6 @@ namespace NOWA
 		Command requiredVelocityForForceCommand;
         Command jumpForceCommand;
 		Command omegaForceCommand;
-        std::atomic<bool> pendingDeactivation;
 
 		Variant* activated;
 		Variant* gravity;
@@ -627,6 +628,7 @@ namespace NOWA
 
 		Ogre::Real savedMass;
         Ogre::Vector3 savedInertia;
+        bool ghostActive;
 	};
 
 }; //namespace end

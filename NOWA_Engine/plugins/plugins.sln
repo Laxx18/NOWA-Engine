@@ -99,6 +99,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralRoadComponent", "ProceduralRoadComponent\ProceduralRoadComponent.vcxproj", "{6EB93ADC-1898-4BE7-9AEC-A04FB59C80F1}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralFoliageVolumeComponent", "ProceduralFoliageVolumeComponent\ProceduralFoliageVolumeComponent.vcxproj", "{227E4E4D-968A-457A-9503-CE7D692EB2D5}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF} = {DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralDungeonComponent", "ProceduralDungeonComponent\ProceduralDungeonComponent.vcxproj", "{99D23AEB-EF15-46AA-862C-576A5704C067}"
 EndProject

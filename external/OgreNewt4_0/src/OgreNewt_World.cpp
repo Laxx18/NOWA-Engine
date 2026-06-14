@@ -52,6 +52,10 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
 
 World::~World()
 {
+    // Signal all waiters that Newton is shutting down —
+    // any pending enqueuePhysicsAndWait must not block after this point
+    m_isShuttingDown.store(true, std::memory_order_release);
+
     Sync();
 
     // Drain dead-body queues BEFORE CleanUp() -> ndFreeListAlloc::Flush().
@@ -202,6 +206,11 @@ bool OgreNewt::World::isSimulating() const
     return m_isSimulating.load(std::memory_order_acquire);
 }
 
+bool World::isShuttingDown() const
+{
+    return m_isShuttingDown.load(std::memory_order_acquire);
+}
+
 void World::assertMainThread(void) const
 {
     ndAssert(isMainThread());
@@ -255,11 +264,12 @@ void World::addBody(const ndSharedPtr<ndBody>& bodyPtr)
 // after DeleteDeadContacts, on Newton's own thread.
 void World::destroyBody(ndSharedPtr<ndBody> bodyPtr)
 {
-    if (!bodyPtr)
+    if (m_isShuttingDown.load(std::memory_order_acquire))
     {
+        // Newton thread is gone — just drop the ref, CleanUp() handles the rest
+        m_deadBodiesFree.push_back(std::move(bodyPtr));
         return;
     }
-    m_impl->deadBodies.enqueue(std::move(bodyPtr));
 }
 
 void World::addJoint(const ndSharedPtr<ndJointBilateralConstraint>& joint)

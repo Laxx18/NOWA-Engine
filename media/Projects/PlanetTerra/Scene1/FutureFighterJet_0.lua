@@ -83,6 +83,7 @@ FutureFighterJet_0["connect"] = function(gameObject)
                 if isOnPlanet then
                     boostActive = false
                     smoothSpeed = math.min(smoothSpeed, THRUST_SPEED)
+                    targetSpeed = THRUST_SPEED
                     -- Kill blur immediately when landing
                     if boostBlurActive then
                         boostBlurActive = false

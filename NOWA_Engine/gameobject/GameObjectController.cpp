@@ -992,8 +992,11 @@ void GameObjectController::destroyContent(const std::vector<Ogre::String>& exclu
         // do not delete with iterator since the iterator changes then during the loop
         for (const auto& gameObjectPtr : this->gameObjectsList)
         {
-            gameObjectPtr->setActivated(false);
-            gameObjectPtr->disconnect();
+            // gameObjectPtr->setActivated(false);
+            if (true == this->isSimulating)
+            {
+                gameObjectPtr->disconnect();
+            }
 
             bool canDestroy = true;
             // Do not destroy game object, that are excluded from destruction (which is seldom the case and optional)
@@ -1016,8 +1019,6 @@ void GameObjectController::destroyContent(const std::vector<Ogre::String>& exclu
                 boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(gameObjectPtr->getId()));
                 AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(deleteGameObjectEvent);
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + gameObjectPtr->getName());
-
-                unsigned long it = gameObjectPtr->getId();
 
                 gameObjectPtr->destroy();
             }
@@ -1394,6 +1395,12 @@ void GameObjectController::removePlayerController(const unsigned long id)
     {
         return;
     }
+
+    if (true == this->bIsDestroying)
+    {
+        return;
+    }
+
     auto it = this->playerControllerComponentMap.find(id);
     if (it != this->playerControllerComponentMap.end())
     {

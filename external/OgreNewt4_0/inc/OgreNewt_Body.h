@@ -248,6 +248,12 @@ namespace OgreNewt
 
         void setBodyNotify(ndSharedPtr<ndBodyNotify> bodyNotifyPtr);
 
+        void removeFromWorld();
+
+        void addToWorld();
+
+        bool isInWorld() const;
+
     private:
         void dispatchContacts();
 
@@ -302,6 +308,7 @@ namespace OgreNewt
         RenderUpdateCallback m_renderUpdateCallback;
         unsigned int m_selfCollisionGroup;
 
+        std::atomic<bool> m_isInWorld;
     protected:
         static void newtonDestructor(ndBodyKinematic* body);
         static void standardForceCallback(Body* me, float timeStep, int threadIndex);

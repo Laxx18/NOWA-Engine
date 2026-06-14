@@ -505,6 +505,8 @@ namespace NOWA
          */
         void registerAndHideSurfaceObjects(void);
 
+        void unregisterSurfaceObjects(void);
+
         /**
          * @brief Shows and repositions all surface objects for the given orbital body,
          *        placing them at planetPos + planetRot * localOffset.
@@ -579,6 +581,8 @@ namespace NOWA
         void setBodyCastShadows(unsigned long bodyGoId, bool castShadows, const Ogre::String& tag);
         void setupLandingState(OrbitalBody& body, unsigned long bodyGoId, float axialSpeedOverride, unsigned long playerGoId);
         bool teardownLandingState(unsigned long planetGameObjectId, unsigned long gameObjectId, OrbitalBody& body, bool isHideSurface, SolarSystem& system);
+
+        LandingState getLandingState(void) const;
 
         bool findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, GameObjectPtr shipGo, Ogre::Vector3& outTarget);
 

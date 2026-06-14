@@ -177,7 +177,7 @@ namespace NOWA
     //    NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, positionVector);
     //}
 
-void ThirdPersonCamera::moveCamera(Ogre::Real dt)
+    void ThirdPersonCamera::moveCamera(Ogre::Real dt)
     {
         if (nullptr == this->sceneNode)
         {

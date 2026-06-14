@@ -46,7 +46,8 @@ namespace OgreNewt
         m_contactCallback(nullptr),
         m_renderUpdateCallback(nullptr),
         m_selfCollisionGroup(0),
-        m_desiredImpulseVelocity(Ogre::Vector3::ZERO)
+        m_desiredImpulseVelocity(Ogre::Vector3::ZERO),
+        m_isInWorld(false)
     {
         switch (notifyKind)
         {
@@ -75,14 +76,14 @@ namespace OgreNewt
             getNewtonBody()->SetCollisionShape(ndShapeInstance(collisionPtr->getNewtonCollision()));
         }
 
-        m_world->enqueuePhysics(
-            [this](World& w)
-            {
-                getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr); // pass SharedPtr directly
-                w.addBody(m_bodyPtr);                                // pass m_bodyPtr, not getNewtonBody()
-                setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
-                setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
-            });
+        m_world->enqueuePhysics([this](World& w)
+        {
+            getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr);
+            w.addBody(m_bodyPtr);
+            m_isInWorld = true;
+            setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
+            setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -116,7 +117,8 @@ namespace OgreNewt
         m_contactCallback(nullptr),
         m_renderUpdateCallback(nullptr),
         m_selfCollisionGroup(0),
-        m_desiredImpulseVelocity(Ogre::Vector3::ZERO)
+        m_desiredImpulseVelocity(Ogre::Vector3::ZERO),
+        m_isInWorld(false)
     {
 
         switch (notifyKind)
@@ -132,14 +134,14 @@ namespace OgreNewt
             break;
         }
 
-        m_world->enqueuePhysicsAndWait(
-            [this](World& w)
-            {
-                getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr); // pass SharedPtr directly
-                w.addBody(m_bodyPtr);                                // pass m_bodyPtr, not getNewtonBody()
-                setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
-                setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
-            });
+        m_world->enqueuePhysicsAndWait([this](World& w)
+        {
+            getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr);
+            w.addBody(m_bodyPtr);
+            m_isInWorld = true;
+            setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
+            setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -174,7 +176,8 @@ namespace OgreNewt
         m_contactCallback(nullptr),
         m_renderUpdateCallback(nullptr),
         m_selfCollisionGroup(0),
-        m_desiredImpulseVelocity(Ogre::Vector3::ZERO)
+        m_desiredImpulseVelocity(Ogre::Vector3::ZERO),
+        m_isInWorld(false)
     {
         // getNewtonBody() intentionally empty — subclass initialises them.
     }
@@ -1235,13 +1238,55 @@ namespace OgreNewt
             return;
         }
 
-        m_bodyNotifyPtr = std::move(bodyNotifyPtr); // move, not copy
+        m_bodyNotifyPtr = std::move(bodyNotifyPtr);
+
+        m_world->enqueuePhysicsAndWait([this](World& w)
+        {
+            getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr);
+        });
+    }
+
+    void Body::removeFromWorld()
+    {
+        if (false == m_isInWorld || !m_world || !m_bodyPtr)
+        {
+            return;
+        }
+
+        // During shutdown Newton is already stopped — direct manipulation is safe,
+        // no need to enqueue and wait
+        if (m_world->isShuttingDown())
+        {
+            m_world->RemoveBody(*m_bodyPtr);
+            m_isInWorld = false;
+            return;
+        }
 
         m_world->enqueuePhysicsAndWait(
             [this](World& w)
             {
-                getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr);
+                w.RemoveBody(*m_bodyPtr);
+                m_isInWorld = false;
             });
+    }
+
+    void Body::addToWorld()
+    {
+        if (true == m_isInWorld || !m_world || !m_bodyPtr)
+        {
+            return;
+        }
+
+        m_world->enqueuePhysicsAndWait([this](World& w)
+        {
+            w.AddBody(m_bodyPtr);
+            m_isInWorld = true;
+        });
+    }
+
+    bool Body::isInWorld() const
+    {
+        return m_isInWorld;
     }
 
     void Body::dispatchContacts()

@@ -32,7 +32,7 @@ local function activatePlayer()
         local shipPos    = fighterGo:getPosition();
         local shipOrient = fighterGo:getOrientation();
         -- Deactivate, so that physics are not processed
-        fighterGo:getPhysicsActiveComponent():setActivated(false);
+        fighterGo:getPhysicsActiveComponent():setGhost(true);
         fighterGo:getPhysicsActiveComponent():setGravitySourceCategory("Planets");
         fighterGo:getParticleFxComponent():setActivated(false);
         
@@ -84,6 +84,7 @@ Universum_0["connect"] = function(gameObject)
     
     fighterGo = AppStateManager:getGameObjectController():getGameObjectFromId(FIGHTER_GO_ID);
     playerGo = AppStateManager:getGameObjectController():getGameObjectFromId(PLAYER_GO_ID);
+    playerGo:getPhysicsActiveComponent():setActivated(false);
     
     local fadeWindowComponent = universum_0:getMyGUIFadeAlphaControllerComponent();
     local landStartButton     = universum_0:getMyGUIButtonComponentFromName("LandStartButton");

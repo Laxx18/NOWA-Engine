@@ -93,6 +93,7 @@ namespace OgreNewt
                 getNewtonBody()->SetMatrix(start);
                 getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr);
                 w.addBody(m_bodyPtr);
+                m_isInWorld = true;
             });
 
         setType(m_categoryId);
