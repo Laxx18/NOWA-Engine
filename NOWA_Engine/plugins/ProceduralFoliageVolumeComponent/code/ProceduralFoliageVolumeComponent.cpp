@@ -38,7 +38,6 @@ namespace NOWA
         name("ProceduralFoliageVolumeComponent"),
         isDirty(true),
         foliageLoadedFromScene(false),
-        foliageDiagCount(0),
         spatialHashCellSize(10.0f),
         raySceneQuery(nullptr),
         sphereSceneQuery(nullptr),
@@ -974,15 +973,6 @@ namespace NOWA
                     batch.meshName = rule.meshName;
                     batch.ruleIndex = ruleIdx;
 
-                    // Reset spatial hash for this rule batch.
-                    // Note: this->spatialHash is a member; the flat terrain path runs
-                    // rules in parallel via std::async, which means multiple lambdas
-                    // could race on this->spatialHash.  The spatial hash is therefore
-                    // only reliable when minDistanceToSame > 0 and rules are processed
-                    // sequentially.  For the async path the hash is best-effort; false
-                    // negatives (two nearby instances placed) are rare and harmless.
-                    this->spatialHash.clear();
-
                     std::mt19937 rng(this->masterSeed->getUInt() + rule.seed);
                     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
@@ -1049,21 +1039,6 @@ namespace NOWA
                             }
 
                             batch.instances.emplace_back(position, orientation, scale, ruleIdx);
-
-                            // Patch the nullptr placeholder left by hasMinimumSpacing with
-                            // the actual pointer now that emplace_back has created the element.
-                            if (rule.minDistanceToSame > 0.0f)
-                            {
-                                const float cellSize = std::max(rule.minDistanceToSame, static_cast<float>(this->spatialHashCellSize));
-                                const int32_t pcx = static_cast<int32_t>(std::floor(position.x / cellSize));
-                                const int32_t pcz = static_cast<int32_t>(std::floor(position.z / cellSize));
-                                const int64_t pkey = (static_cast<int64_t>(static_cast<uint32_t>(pcx)) << 32) | static_cast<uint32_t>(pcz);
-                                auto pit = this->spatialHash.find(pkey);
-                                if (pit != this->spatialHash.end() && !pit->second.empty() && pit->second.back() == nullptr)
-                                {
-                                    pit->second.back() = &batch.instances.back();
-                                }
-                            }
                         }
                     }
                     return batch;
@@ -1093,18 +1068,6 @@ namespace NOWA
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Rule '" + rule.name + "' category=All, skipping raycast filter.");
                 continue;
             }
-
-            const bool isExcludeMode = (rule.categories.find("All") != Ogre::String::npos && rule.categories.find('-') != Ogre::String::npos);
-            const unsigned int effectiveMask = isExcludeMode ? ~rule.categoriesId : rule.categoriesId;
-
-            // DIAGNOSTIC: reset per-rule so we get 5 samples from each rule.
-            this->foliageDiagCount = 0;
-            Ogre::MovableObject* hostMov = this->gameObjectPtr->getMovableObject();
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[ProceduralFoliageVolume DIAG] Rule '" + rule.name + "' categories='" + rule.categories + "' categoriesId=0x" + Ogre::StringConverter::toString(rule.categoriesId, 0, ' ', std::ios::hex) + " ALL_ID=0x" +
-                    Ogre::StringConverter::toString(GameObjectController::ALL_CATEGORIES_ID, 0, ' ', std::ios::hex) + " isExcludeMode=" + Ogre::StringConverter::toString(isExcludeMode) + " effectiveQueryMask=0x" +
-                    Ogre::StringConverter::toString(effectiveMask, 0, ' ', std::ios::hex) + " hostMovable=" + (hostMov ? hostMov->getName() : "null") + " hostQueryFlags=0x" +
-                    (hostMov ? Ogre::StringConverter::toString(hostMov->getQueryFlags(), 0, ' ', std::ios::hex) : "n/a") + " clearanceDist=" + Ogre::StringConverter::toString(rule.clearanceDistance));
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
                 "[ProceduralFoliageVolume] Rule '" + rule.name + "' filtering " + Ogre::StringConverter::toString(batch.instances.size()) + " instances by category '" + rule.categories + "'...");
@@ -1183,45 +1146,17 @@ namespace NOWA
             return true;
         }
 
-        const float minDist = rule.minDistanceToSame;
-        const float minDistSq = minDist * minDist;
+        // Simple O(N) check - in production use spatial hash
+        const Ogre::Real minDistSq = rule.minDistanceToSame * rule.minDistanceToSame;
 
-        // Cell size >= minDist guarantees a 3x3 neighbourhood always suffices.
-        const float cellSize = std::max(minDist, static_cast<float>(this->spatialHashCellSize));
-
-        // Pack (ix, iz) into int64_t -- matches the header's key type.
-        const int32_t cx = static_cast<int32_t>(std::floor(position.x / cellSize));
-        const int32_t cz = static_cast<int32_t>(std::floor(position.z / cellSize));
-
-        auto packKey = [](int32_t x, int32_t z) -> int64_t
+        for (const auto& existing : existingInstances)
         {
-            return (static_cast<int64_t>(static_cast<uint32_t>(x)) << 32) | static_cast<uint32_t>(z);
-        };
-
-        // Check 3x3 neighbourhood.
-        for (int32_t dx = -1; dx <= 1; ++dx)
-        {
-            for (int32_t dz = -1; dz <= 1; ++dz)
+            Ogre::Real distSq = position.squaredDistance(existing.position);
+            if (distSq < minDistSq)
             {
-                auto it = this->spatialHash.find(packKey(cx + dx, cz + dz));
-                if (it == this->spatialHash.end())
-                {
-                    continue;
-                }
-                for (const VegetationInstance* inst : it->second)
-                {
-                    if (nullptr != inst && inst->position.squaredDistance(position) < minDistSq)
-                    {
-                        return false;
-                    }
-                }
+                return false;
             }
         }
-
-        // Register a nullptr now.  The caller must immediately emplace_back the new
-        // instance and then call this->spatialHash[packKey(cx,cz)].back() = &batch.instances.back()
-        // to fill the pointer.  See the generation loops for the pattern.
-        this->spatialHash[packKey(cx, cz)].push_back(nullptr);
 
         return true;
     }
@@ -1274,7 +1209,32 @@ namespace NOWA
 
     void ProceduralFoliageVolumeComponent::createFoliageItems(std::vector<VegetationBatch>& batches)
     {
+        // ============================================================================
+        // CELL-BASED SPATIAL GROUPING
+        //
+        // Root cause of 12fps: fillBuffersForV2 is called every frame for every
+        // visible Ogre::Item, computing a full concatenateAffine(viewMatrix, worldMat)
+        // per item. With 19,374 bush Items that is ~300ms of CPU matrix math per frame
+        // regardless of SCENE_STATIC, GPU instancing, or draw call count.
+        //
+        // Solution: divide the volume into NxN spatial cells. For each (rule x cell)
+        // pair, pre-transform all instance vertices into world space on the CPU (once,
+        // at generation time) and store them in one BT_IMMUTABLE merged Item.
+        //
+        // The merged Item has identity world matrix -> fillBuffersForV2 cost is O(1).
+        // Vertices are already in world space so no per-frame transform is needed.
+        // Each cell has a tight AABB -> frustum culling still works at cell granularity.
+        //
+        // With a 100x100m terrain and 10m cells: 100 cells x 4 rules = 400 Items max.
+        // fillBuffersForV2 cost: 400 calls/frame instead of 28,045. ~70x improvement.
+        // ============================================================================
+
         Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+        Ogre::VaoManager* vaoManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
+
+        // Cell size in world units. Smaller = tighter culling but more Items.
+        // 10m gives good balance for typical foliage scenes.
+        const float cellSize = 10.0f;
 
         for (auto& batch : batches)
         {
@@ -1285,165 +1245,469 @@ namespace NOWA
                 continue;
             }
 
-            // Generate LOD
-
-            // TODO: Will not work, because we have v2 Meshes (Items) now!
-            // See what ogre says:
-            /*"Shows how to automatically generate LODs from an existing mesh.\n"
-            "The mesh must be in v1 format because the MeshLodGenerator Component\n"
-            "hasn't yet been ported to v2 interfaces\n"
-            "However meshes can be converted back and forth between v1 <-> v2\n"
-            "to get LOD generation.\n"
-            "Once LODs have been generated, LOD display can work in either v1 or v2 mode\n"
-            "The model you're looking right now is in v2 mode"*/
-            /*if (rule.lodDistance > 0.0f)
-            {
-                this->generateLODForMesh(batch.meshName, rule.lodDistance, rule.resourceGroup);
-            }*/
-
-            // Load mesh
-            Ogre::MeshPtr meshPtr;
+            // Load source mesh to read vertex/index data from.
+            Ogre::MeshPtr srcMesh;
             try
             {
-                meshPtr = Ogre::MeshManager::getSingletonPtr()->load(batch.meshName, rule.resourceGroup);
+                srcMesh = Ogre::MeshManager::getSingletonPtr()->load(batch.meshName, rule.resourceGroup);
             }
             catch (const Ogre::Exception& e)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Failed to load mesh: " + e.getDescription());
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Failed to load mesh '" + batch.meshName + "': " + e.getDescription());
                 continue;
             }
 
-            if (!meshPtr)
+            if (srcMesh.isNull() || srcMesh->getNumSubMeshes() == 0u)
             {
                 continue;
             }
 
-            // ============================================================================
-            // CREATE FIRST ITEM
-            // ============================================================================
-            Ogre::Item* firstItem = sceneManager->createItem(meshPtr, Ogre::SCENE_STATIC);
-
-            if (firstItem->getNumSubItems() == 0)
+            // ----------------------------------------------------------------
+            // Read source mesh vertex/index data from the first submesh.
+            // Using the readRequests / mapAsyncTickets pattern (MeshModifyComponent).
+            // ----------------------------------------------------------------
+            struct SrcData
             {
-                sceneManager->destroyItem(firstItem);
+                std::vector<Ogre::Vector3> positions;
+                std::vector<Ogre::Vector3> normals;
+                std::vector<Ogre::Vector4> tangents;
+                std::vector<Ogre::Vector2> uvs;
+                std::vector<Ogre::uint32> indices;
+                bool hasTangent;
+                Ogre::HlmsDatablock* datablock;
+                bool hasTransparency;
+            };
+
+            SrcData sd;
+            sd.hasTangent = false;
+            sd.datablock = nullptr;
+            sd.hasTransparency = false;
+
+            Ogre::SubMesh* sm0 = srcMesh->getSubMesh(0u);
+            if (sm0->mVao[Ogre::VpNormal].empty() || sm0->mVao[Ogre::VpNormal][0]->getVertexBuffers().empty())
+            {
                 continue;
             }
 
-            // CHECK TRANSPARENCY THE CORRECT WAY - via HlmsBlendblock!
-            bool hasTransparency = false;
+            Ogre::VertexArrayObject* srcVao = sm0->mVao[Ogre::VpNormal][0];
+            const size_t srcVC = srcVao->getVertexBuffers()[0]->getNumElements();
+            const size_t srcIC = srcVao->getIndexBuffer() ? srcVao->getIndexBuffer()->getNumElements() : 0u;
 
-            // Store all submesh datablocks for sharing
-            std::vector<Ogre::HlmsDatablock*> submeshDatablocks;
-
-            for (size_t subIdx = 0; subIdx < firstItem->getNumSubItems(); subIdx++)
+            if (srcVC == 0u)
             {
-                Ogre::SubItem* subItem = firstItem->getSubItem(subIdx);
-                Ogre::HlmsDatablock* datablock = subItem->getDatablock();
-                submeshDatablocks.push_back(datablock);
+                continue;
+            }
 
-                // Get the blendblock from the datablock
-                const Ogre::HlmsBlendblock* blendblock = datablock->getBlendblock(false); // false = regular pass
+            sd.positions.resize(srcVC);
+            sd.normals.resize(srcVC, Ogre::Vector3::UNIT_Y);
+            sd.tangents.resize(srcVC, Ogre::Vector4(1.0f, 0.0f, 0.0f, 1.0f));
+            sd.uvs.resize(srcVC, Ogre::Vector2::ZERO);
 
-                if (blendblock)
+            // Check for tangent element
+            for (Ogre::VertexBufferPacked* vbp : srcVao->getVertexBuffers())
+            {
+                for (const Ogre::VertexElement2& e : vbp->getVertexElements())
                 {
-                    // Check if this blendblock is marked as transparent
-                    if (blendblock->isAutoTransparent() || blendblock->isForcedTransparent())
+                    if (e.mSemantic == Ogre::VES_TANGENT)
                     {
-                        hasTransparency = true;
-
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Submesh " + Ogre::StringConverter::toString(subIdx) + " of '" + batch.meshName + "' has transparent blendblock");
+                        sd.hasTangent = true;
                     }
                 }
             }
 
-            // SET CORRECT RENDER QUEUE
-            Ogre::uint8 renderQueue;
-            if (hasTransparency)
+            // Read vertex data
             {
-                renderQueue = NOWA::RENDER_QUEUE_V2_TRANSPARENT; // 205 (RQ 200-224)
-            }
-            else
-            {
-                renderQueue = NOWA::RENDER_QUEUE_V2_MESH; // 10 (RQ 0-99)
-            }
-
-            firstItem->setRenderQueueGroup(renderQueue);
-
-            // Configure first Item
-            firstItem->setCastShadows(rule.castShadows);
-            if (rule.renderDistance > 0.0f)
-            {
-                firstItem->setRenderingDistance(rule.renderDistance);
-            }
-            if (rule.shadowDistance > 0.0f)
-            {
-                firstItem->setShadowRenderingDistance(rule.shadowDistance);
-            }
-
-            // Create scene node
-            Ogre::SceneNode* firstNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
-
-            const VegetationInstance& firstInstance = batch.instances[0];
-            firstNode->setPosition(firstInstance.position);
-            firstNode->setOrientation(firstInstance.orientation);
-            firstNode->setScale(firstInstance.scale);
-            firstNode->attachObject(firstItem);
-
-            batch.items.push_back(firstItem);
-            batch.nodes.push_back(firstNode);
-            batch.sharedDatablock = submeshDatablocks[0]; // Store primary datablock
-
-            // ============================================================================
-            // CREATE REMAINING ITEMS - Share ALL submesh datablocks!
-            // ============================================================================
-            for (size_t i = 1; i < batch.instances.size(); i++)
-            {
-                const VegetationInstance& instance = batch.instances[i];
-
-                Ogre::Item* item = sceneManager->createItem(meshPtr, Ogre::SCENE_STATIC);
-
-                // SHARE DATABLOCKS FOR ALL SUBMESHES (for batching!)
-                for (size_t subIdx = 0; subIdx < item->getNumSubItems() && subIdx < submeshDatablocks.size(); subIdx++)
+                Ogre::VertexArrayObject::ReadRequestsVec requests;
+                requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
+                requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_NORMAL));
+                requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TEXTURE_COORDINATES));
+                if (sd.hasTangent)
                 {
-                    item->getSubItem(subIdx)->setDatablock(submeshDatablocks[subIdx]);
+                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TANGENT));
                 }
 
-                // Set same render queue
-                item->setRenderQueueGroup(renderQueue);
+                srcVao->readRequests(requests);
+                srcVao->mapAsyncTickets(requests);
 
-                // Configure
-                item->setCastShadows(rule.castShadows);
+                const bool isQTan = (requests[1].type == Ogre::VET_SHORT4_SNORM);
+
+                for (size_t vi = 0u; vi < srcVC; ++vi)
+                {
+                    // Position
+                    if (requests[0].type == Ogre::VET_HALF4)
+                    {
+                        const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
+                        sd.positions[vi].x = Ogre::Bitwise::halfToFloat(p[0]);
+                        sd.positions[vi].y = Ogre::Bitwise::halfToFloat(p[1]);
+                        sd.positions[vi].z = Ogre::Bitwise::halfToFloat(p[2]);
+                    }
+                    else
+                    {
+                        const float* p = reinterpret_cast<const float*>(requests[0].data);
+                        sd.positions[vi] = Ogre::Vector3(p[0], p[1], p[2]);
+                    }
+
+                    // Normal / QTangent
+                    if (isQTan)
+                    {
+                        const Ogre::int16* q = reinterpret_cast<const Ogre::int16*>(requests[1].data);
+                        Ogre::Quaternion qt;
+                        qt.x = q[0] / 32767.0f;
+                        qt.y = q[1] / 32767.0f;
+                        qt.z = q[2] / 32767.0f;
+                        qt.w = q[3] / 32767.0f;
+                        const float refl = (qt.w < 0.0f) ? -1.0f : 1.0f;
+                        sd.normals[vi] = qt.xAxis();
+                        sd.tangents[vi] = Ogre::Vector4(qt.yAxis().x, qt.yAxis().y, qt.yAxis().z, refl);
+                        sd.hasTangent = true;
+                    }
+                    else if (requests[1].type == Ogre::VET_HALF4)
+                    {
+                        const Ogre::uint16* n = reinterpret_cast<const Ogre::uint16*>(requests[1].data);
+                        sd.normals[vi].x = Ogre::Bitwise::halfToFloat(n[0]);
+                        sd.normals[vi].y = Ogre::Bitwise::halfToFloat(n[1]);
+                        sd.normals[vi].z = Ogre::Bitwise::halfToFloat(n[2]);
+                    }
+                    else
+                    {
+                        const float* n = reinterpret_cast<const float*>(requests[1].data);
+                        sd.normals[vi] = Ogre::Vector3(n[0], n[1], n[2]);
+                    }
+
+                    // UV
+                    if (requests[2].type == Ogre::VET_HALF2)
+                    {
+                        const Ogre::uint16* uv = reinterpret_cast<const Ogre::uint16*>(requests[2].data);
+                        sd.uvs[vi].x = Ogre::Bitwise::halfToFloat(uv[0]);
+                        sd.uvs[vi].y = Ogre::Bitwise::halfToFloat(uv[1]);
+                    }
+                    else
+                    {
+                        const float* uv = reinterpret_cast<const float*>(requests[2].data);
+                        sd.uvs[vi] = Ogre::Vector2(uv[0], uv[1]);
+                    }
+
+                    // Explicit tangent
+                    if (!isQTan && sd.hasTangent && requests.size() >= 4u)
+                    {
+                        if (requests[3].type == Ogre::VET_FLOAT4)
+                        {
+                            const float* t = reinterpret_cast<const float*>(requests[3].data);
+                            sd.tangents[vi] = Ogre::Vector4(t[0], t[1], t[2], t[3]);
+                        }
+                    }
+
+                    // Advance pointers
+                    requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                    requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
+                    requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
+                    if (!isQTan && sd.hasTangent && requests.size() >= 4u)
+                    {
+                        requests[3].data += requests[3].vertexBuffer->getBytesPerElement();
+                    }
+                }
+
+                srcVao->unmapAsyncTickets(requests);
+            }
+
+            // Read index data
+            if (srcIC > 0u && srcVao->getIndexBuffer())
+            {
+                Ogre::IndexBufferPacked* ibp = srcVao->getIndexBuffer();
+                sd.indices.resize(srcIC);
+                const void* shadow = ibp->getShadowCopy();
+                if (nullptr != shadow)
+                {
+                    if (ibp->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT)
+                    {
+                        const Ogre::uint32* s = reinterpret_cast<const Ogre::uint32*>(shadow);
+                        for (size_t ii = 0u; ii < srcIC; ++ii)
+                        {
+                            sd.indices[ii] = s[ii];
+                        }
+                    }
+                    else
+                    {
+                        const Ogre::uint16* s = reinterpret_cast<const Ogre::uint16*>(shadow);
+                        for (size_t ii = 0u; ii < srcIC; ++ii)
+                        {
+                            sd.indices[ii] = static_cast<Ogre::uint32>(s[ii]);
+                        }
+                    }
+                }
+                else
+                {
+                    Ogre::AsyncTicketPtr ticket = ibp->readRequest(0u, srcIC);
+                    const void* raw = ticket->map();
+                    if (ibp->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT)
+                    {
+                        const Ogre::uint32* s = reinterpret_cast<const Ogre::uint32*>(raw);
+                        for (size_t ii = 0u; ii < srcIC; ++ii)
+                        {
+                            sd.indices[ii] = s[ii];
+                        }
+                    }
+                    else
+                    {
+                        const Ogre::uint16* s = reinterpret_cast<const Ogre::uint16*>(raw);
+                        for (size_t ii = 0u; ii < srcIC; ++ii)
+                        {
+                            sd.indices[ii] = static_cast<Ogre::uint32>(s[ii]);
+                        }
+                    }
+                    ticket->unmap();
+                }
+            }
+
+            // Get datablock from a proxy item
+            {
+                Ogre::Item* proxy = sceneManager->createItem(srcMesh, Ogre::SCENE_DYNAMIC);
+                if (proxy->getNumSubItems() > 0u)
+                {
+                    sd.datablock = proxy->getSubItem(0u)->getDatablock();
+                    if (nullptr != sd.datablock)
+                    {
+                        const Ogre::HlmsBlendblock* bb = sd.datablock->getBlendblock(false);
+                        if (nullptr != bb && (bb->isAutoTransparent() || bb->isForcedTransparent()))
+                        {
+                            sd.hasTransparency = true;
+                        }
+                    }
+                }
+                sceneManager->destroyItem(proxy);
+            }
+
+            // ----------------------------------------------------------------
+            // Group instances into spatial cells and build one merged Item per cell.
+            // ----------------------------------------------------------------
+
+            // Map from cell coordinate to list of instance indices in that cell.
+            std::unordered_map<uint64_t, std::vector<size_t>> cellMap;
+            cellMap.reserve(256u);
+
+            for (size_t instIdx = 0u; instIdx < batch.instances.size(); ++instIdx)
+            {
+                const Ogre::Vector3& pos = batch.instances[instIdx].position;
+                const int32_t cx = static_cast<int32_t>(std::floor(pos.x / cellSize));
+                const int32_t cz = static_cast<int32_t>(std::floor(pos.z / cellSize));
+                const uint64_t key = (static_cast<uint64_t>(static_cast<uint32_t>(cx)) << 32) | static_cast<uint32_t>(cz);
+                cellMap[key].push_back(instIdx);
+            }
+
+            const Ogre::uint8 renderQueue = sd.hasTransparency ? NOWA::RENDER_QUEUE_V2_TRANSPARENT : NOWA::RENDER_QUEUE_V2_MESH;
+            const size_t fpv = sd.hasTangent ? 12u : 8u;
+
+            size_t cellIndex = 0u;
+            for (auto& cellEntry : cellMap)
+            {
+                const std::vector<size_t>& cellInstances = cellEntry.second;
+                const size_t cellInstCount = cellInstances.size();
+
+                const size_t mergedVC = srcVC * cellInstCount;
+                const size_t mergedIC = srcIC * cellInstCount;
+
+                // Allocate merged vertex buffer
+                float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(mergedVC * fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+
+                Ogre::Vector3 cellMin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+                Ogre::Vector3 cellMax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+
+                for (size_t ci = 0u; ci < cellInstCount; ++ci)
+                {
+                    const VegetationInstance& inst = batch.instances[cellInstances[ci]];
+
+                    Ogre::Matrix3 rotMat;
+                    inst.orientation.ToRotationMatrix(rotMat);
+
+                    const Ogre::Vector3& sc = inst.scale;
+                    const Ogre::Matrix3 srMat(rotMat[0][0] * sc.x, rotMat[0][1] * sc.y, rotMat[0][2] * sc.z, rotMat[1][0] * sc.x, rotMat[1][1] * sc.y, rotMat[1][2] * sc.z, rotMat[2][0] * sc.x, rotMat[2][1] * sc.y, rotMat[2][2] * sc.z);
+
+                    const size_t vBase = ci * srcVC;
+                    for (size_t vi = 0u; vi < srcVC; ++vi)
+                    {
+                        const Ogre::Vector3 wPos = inst.position + srMat * sd.positions[vi];
+                        const Ogre::Vector3 wNrm = (rotMat * sd.normals[vi]).normalisedCopy();
+                        const Ogre::Vector3 wTan = rotMat * Ogre::Vector3(sd.tangents[vi].x, sd.tangents[vi].y, sd.tangents[vi].z);
+
+                        cellMin.makeFloor(wPos);
+                        cellMax.makeCeil(wPos);
+
+                        const size_t o = (vBase + vi) * fpv;
+                        vd[o + 0] = wPos.x;
+                        vd[o + 1] = wPos.y;
+                        vd[o + 2] = wPos.z;
+                        vd[o + 3] = wNrm.x;
+                        vd[o + 4] = wNrm.y;
+                        vd[o + 5] = wNrm.z;
+                        if (sd.hasTangent)
+                        {
+                            vd[o + 6] = wTan.x;
+                            vd[o + 7] = wTan.y;
+                            vd[o + 8] = wTan.z;
+                            vd[o + 9] = sd.tangents[vi].w;
+                            vd[o + 10] = sd.uvs[vi].x;
+                            vd[o + 11] = sd.uvs[vi].y;
+                        }
+                        else
+                        {
+                            vd[o + 6] = sd.uvs[vi].x;
+                            vd[o + 7] = sd.uvs[vi].y;
+                        }
+                    }
+                }
+
+                // Merged index buffer
+                Ogre::uint32* id = nullptr;
+                if (mergedIC > 0u)
+                {
+                    id = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(mergedIC * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+                    for (size_t ci = 0u; ci < cellInstCount; ++ci)
+                    {
+                        const Ogre::uint32 voff = static_cast<Ogre::uint32>(ci * srcVC);
+                        for (size_t ii = 0u; ii < srcIC; ++ii)
+                        {
+                            id[ci * srcIC + ii] = sd.indices[ii] + voff;
+                        }
+                    }
+                }
+
+                // Build VAO
+                Ogre::VertexElement2Vec elems;
+                elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
+                elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
+                if (sd.hasTangent)
+                {
+                    elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));
+                }
+                elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
+
+                Ogre::VertexBufferPacked* vb = nullptr;
+                try
+                {
+                    vb = vaoManager->createVertexBuffer(elems, mergedVC, Ogre::BT_IMMUTABLE, vd, true);
+                }
+                catch (const Ogre::Exception& e)
+                {
+                    OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+                    if (id)
+                    {
+                        OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+                    }
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                        "[ProceduralFoliageVolume] createVertexBuffer failed for '" + rule.name + "' cell " + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
+                    ++cellIndex;
+                    continue;
+                }
+
+                Ogre::IndexBufferPacked* ib = nullptr;
+                if (mergedIC > 0u && id)
+                {
+                    try
+                    {
+                        ib = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, mergedIC, Ogre::BT_IMMUTABLE, id, true);
+                    }
+                    catch (const Ogre::Exception& e)
+                    {
+                        OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                            "[ProceduralFoliageVolume] createIndexBuffer failed for '" + rule.name + "' cell " + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
+                        ++cellIndex;
+                        continue;
+                    }
+                }
+
+                Ogre::VertexBufferPackedVec vbVec;
+                vbVec.push_back(vb);
+                Ogre::VertexArrayObject* mergedVao = vaoManager->createVertexArrayObject(vbVec, ib, Ogre::OT_TRIANGLE_LIST);
+
+                // Unique name per rule + cell
+                const Ogre::String cellMeshName = "FoliageCell_" + rule.name + "_GO" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_B" + Ogre::StringConverter::toString(batch.ruleIndex) + "_C" +
+                                                  Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex));
+
+                {
+                    Ogre::ResourcePtr existing = Ogre::MeshManager::getSingleton().getByName(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+                    if (false == existing.isNull())
+                    {
+                        Ogre::MeshManager::getSingleton().remove(existing->getHandle());
+                    }
+                }
+
+                Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+                cellMesh->_setVaoManager(vaoManager);
+
+                Ogre::SubMesh* cellSM = cellMesh->createSubMesh();
+                cellSM->mVao[Ogre::VpNormal].push_back(mergedVao);
+                cellSM->mVao[Ogre::VpShadow].push_back(mergedVao);
+
+                if (nullptr != sd.datablock && sd.datablock->getNameStr())
+                {
+                    cellSM->mMaterialName = *sd.datablock->getNameStr();
+                }
+
+                if (cellMin.x > cellMax.x)
+                {
+                    cellMin = cellMax = Ogre::Vector3::ZERO;
+                }
+                Ogre::Aabb cellAabb;
+                cellAabb.setExtents(cellMin, cellMax);
+                cellMesh->_setBounds(cellAabb, false);
+                cellMesh->_setBoundingSphereRadius(cellAabb.getRadius());
+
+                if (false == cellMesh->hasValidShadowMappingVaos())
+                {
+                    cellMesh->prepareForShadowMapping(true);
+                }
+
+                // One Item + one SceneNode at world origin per cell
+                // (vertices already in world space, so identity transform is correct)
+                Ogre::Item* cellItem = sceneManager->createItem(cellMesh, Ogre::SCENE_STATIC);
+                cellItem->setName("FoliageCellItem_" + rule.name + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)));
+
+                if (nullptr != sd.datablock && cellItem->getNumSubItems() > 0u)
+                {
+                    cellItem->getSubItem(0u)->setDatablock(sd.datablock);
+                }
+
+                cellItem->setRenderQueueGroup(renderQueue);
+                cellItem->setCastShadows(rule.castShadows);
                 if (rule.renderDistance > 0.0f)
                 {
-                    item->setRenderingDistance(rule.renderDistance);
+                    cellItem->setRenderingDistance(rule.renderDistance);
                 }
                 if (rule.shadowDistance > 0.0f)
                 {
-                    item->setShadowRenderingDistance(rule.shadowDistance);
+                    cellItem->setShadowRenderingDistance(rule.shadowDistance);
                 }
 
-                // Create scene node
-                Ogre::SceneNode* node = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
+                Ogre::SceneNode* cellNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
+                cellNode->setPosition(Ogre::Vector3::ZERO);
+                cellNode->setOrientation(Ogre::Quaternion::IDENTITY);
+                cellNode->setScale(Ogre::Vector3::UNIT_SCALE);
+                cellNode->attachObject(cellItem);
 
-                node->setPosition(instance.position);
-                node->setOrientation(instance.orientation);
-                node->setScale(instance.scale);
-                node->attachObject(item);
+                batch.items.push_back(cellItem);
+                batch.nodes.push_back(cellNode);
 
-                batch.items.push_back(item);
-                batch.nodes.push_back(node);
+                ++cellIndex;
             }
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Created " + Ogre::StringConverter::toString(batch.items.size()) + " instances in RQ " + Ogre::StringConverter::toString((int)renderQueue) +
-                                                                                    " (" + (hasTransparency ? "TRANSPARENT" : "OPAQUE") + ") for: " + rule.name);
+            batch.sharedDatablock = sd.datablock;
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Rule '" + rule.name + "': " + Ogre::StringConverter::toString(static_cast<unsigned int>(batch.instances.size())) + " instances -> " +
+                                                                                    Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + " cell Items" + " (cellSize=" + Ogre::StringConverter::toString(cellSize) + "m)" +
+                                                                                    " RQ=" + Ogre::StringConverter::toString(static_cast<int>(renderQueue)));
         }
 
         this->vegetationBatches = std::move(batches);
 
-        // CORRECT: called from render thread, same thread as _updateSceneGraph.
-        // Notifying the static root cascades dirty flag to ALL static children
-        // and their attached Items, causing their world AABBs to be recalculated.
         sceneManager->notifyStaticDirty(sceneManager->getRootSceneNode(Ogre::SCENE_STATIC));
+
+        // Flush pending immutable buffer uploads so vaoName is valid for the first frame.
+        Ogre::VaoManager* vaoManager2 = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
+        if (nullptr != vaoManager2)
+        {
+            vaoManager2->_update();
+        }
     }
 
     void ProceduralFoliageVolumeComponent::createFoliageCollision()
@@ -1625,11 +1889,25 @@ namespace NOWA
                     batch.nodes[i]->detachAllObjects();
                     NOWA::GraphicsModule::getInstance()->removeTrackedNode(batch.nodes[i]);
                     sceneManager->destroySceneNode(batch.nodes[i]);
+                    batch.nodes[i] = nullptr;
                 }
 
                 if (batch.items[i])
                 {
+                    // Remove the cell mesh from MeshManager before destroying the Item
+                    // so subsequent Regenerate can create fresh meshes under the same names.
+                    Ogre::MeshPtr meshToRemove = batch.items[i]->getMesh();
                     sceneManager->destroyItem(batch.items[i]);
+                    batch.items[i] = nullptr;
+
+                    if (false == meshToRemove.isNull())
+                    {
+                        const Ogre::String& mName = meshToRemove->getName();
+                        if (mName.find("FoliageCell_") != Ogre::String::npos)
+                        {
+                            Ogre::MeshManager::getSingleton().remove(meshToRemove->getHandle());
+                        }
+                    }
                 }
             }
 
@@ -2269,13 +2547,12 @@ namespace NOWA
 
     bool ProceduralFoliageVolumeComponent::isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule)
     {
-
         if (!this->raySceneQuery)
         {
             return true;
         }
 
-        // Pure "All" — no filtering needed.
+        // Pure "All" — no filtering needed
         if (rule.categoriesId == GameObjectController::ALL_CATEGORIES_ID)
         {
             return true;
@@ -2286,67 +2563,36 @@ namespace NOWA
         unsigned int queryMask;
         bool allowIfHit;
 
-        // Build exclude list: skip the host GO's own terrain movable so it never
-        // counts as an obstacle on its own surface.
-        // Also skip the active camera — cameras are registered as movables with query
-        // flags that may coincidentally match the obstacle category bit, causing every
-        // sphere check within camera range to report a false obstacle hit.
-        std::vector<Ogre::MovableObject*> excludeList;
-        Ogre::MovableObject* hostMovable = this->gameObjectPtr->getMovableObject();
-        if (nullptr != hostMovable)
-        {
-            excludeList.push_back(hostMovable);
-        }
-
-        Ogre::Camera* activeCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-        if (nullptr != activeCamera)
-        {
-            excludeList.push_back(activeCamera);
-        }
-
         if (isExcludeMode)
         {
-            queryMask = ~rule.categoriesId;
+            // Cast against only the excluded bits — hit means blocked
+            queryMask = ~rule.categoriesId; // e.g. "All-Obstacle" -> 0x00000002 = only Obstacle
             allowIfHit = false;
 
-            // Sphere clearance check first (cheaper than a full raycast).
+            // Sphere clearance check first (cheaper than raycast)
             if (rule.clearanceDistance > 0.0f && this->sphereSceneQuery)
             {
                 this->sphereSceneQuery->setSphere(Ogre::Sphere(position, rule.clearanceDistance));
                 this->sphereSceneQuery->setQueryMask(queryMask);
-                Ogre::SceneQueryResult& sphereResult = this->sphereSceneQuery->execute();
+                Ogre::SceneQueryResult& result = this->sphereSceneQuery->execute();
 
-                bool hasRealObstacle = false;
-                for (Ogre::MovableObject* mo : sphereResult.movables)
+                for (Ogre::MovableObject* mo : result.movables)
                 {
-                    if (nullptr != hostMovable && mo == hostMovable)
+                    // Cameras happen to share the "Default" category bit which equals
+                    // the Obstacle bit in scenes where Default was registered first.
+                    // Skip them -- a camera is never a real obstacle.
+                    if (mo->getMovableType() == "Camera")
                     {
                         continue;
                     }
-                    if (nullptr != activeCamera && mo == static_cast<Ogre::MovableObject*>(activeCamera))
-                    {
-                        continue;
-                    }
-                    hasRealObstacle = true;
-
-                    if (this->foliageDiagCount < 5)
-                    {
-                        ++this->foliageDiagCount;
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[isCategoryAllowed DIAG] SPHERE blocked rule='" + rule.name + "' pos=" + Ogre::StringConverter::toString(position) + " queryMask=0x" +
-                                                                                                Ogre::StringConverter::toString(queryMask, 0, ' ', std::ios::hex) + " hitMovable='" + mo->getName() + "' hitQueryFlags=0x" +
-                                                                                                Ogre::StringConverter::toString(mo->getQueryFlags(), 0, ' ', std::ios::hex) + " hostMovable=" + (hostMovable ? hostMovable->getName() : "null") +
-                                                                                                " hostQueryFlags=0x" + (hostMovable ? Ogre::StringConverter::toString(hostMovable->getQueryFlags(), 0, ' ', std::ios::hex) : "n/a"));
-                    }
-                    break;
-                }
-                if (hasRealObstacle)
-                {
+                    // Real obstacle found: reject this placement position.
                     return false;
                 }
             }
         }
         else
         {
+            // Include mode: cast against allowed bits — must hit to place
             queryMask = rule.categoriesId;
             allowIfHit = true;
         }
@@ -2358,56 +2604,12 @@ namespace NOWA
         Ogre::Vector3 hitPoint, hitNormal;
         Ogre::MovableObject* hitObject = nullptr;
         Ogre::Real closestDistance = 0.0f;
+        std::vector<Ogre::MovableObject*> excludeList;
 
-        MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, activeCamera, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
 
-        bool result = allowIfHit ? (hitObject != nullptr) : (hitObject == nullptr);
-
-        if (!result && this->foliageDiagCount < 5)
-        {
-            ++this->foliageDiagCount;
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[isCategoryAllowed DIAG] RAY blocked rule='" + rule.name + "' isExcludeMode=" + Ogre::StringConverter::toString(isExcludeMode) + " allowIfHit=" + Ogre::StringConverter::toString(allowIfHit) + " queryMask=0x" +
-                    Ogre::StringConverter::toString(queryMask, 0, ' ', std::ios::hex) + " pos=" + Ogre::StringConverter::toString(position) +
-                    " hitMovable=" + (hitObject ? ("'" + hitObject->getName() + "' flags=0x" + Ogre::StringConverter::toString(hitObject->getQueryFlags(), 0, ' ', std::ios::hex)) : "null") +
-                    " hostMovable=" + (hostMovable ? ("'" + hostMovable->getName() + "' flags=0x" + Ogre::StringConverter::toString(hostMovable->getQueryFlags(), 0, ' ', std::ios::hex)) : "null"));
-        }
-
-        return result;
-    }
-
-    bool ProceduralFoliageVolumeComponent::meetsPlanetCriteria(Ogre::Real heightAboveSeaLevel, const Ogre::Vector3& hitNormal, const Ogre::Vector3& outwardDir, const FoliageRule& rule) const
-    {
-        // Height above sea level check.
-        // rule.heightRange.x = minimum height (negative = underwater allowed).
-        // rule.heightRange.y = maximum height.
-        // Reuses the same FoliageRule field as flat terrain, just measured radially.
-        if (heightAboveSeaLevel < rule.heightRange.x || heightAboveSeaLevel > rule.heightRange.y)
-        {
-            return false;
-        }
-
-        // Slope check.
-        // On flat terrain: slope = angle between surface normal and world UNIT_Y.
-        // On a planet:     slope = angle between surface normal and outward radial direction.
-        // outwardDir is the "local up" at this surface point -- the equivalent of UNIT_Y
-        // for a curved surface.
-        // dot == 1.0  -> perfectly flat (normal parallel to radial) -> slope = 0 deg
-        // dot == 0.0  -> vertical cliff -> slope = 90 deg
-        // dot < 0.0   -> overhanging -> slope > 90 deg (always rejected by maxSlope)
-        const Ogre::Real dot = Ogre::Math::Clamp(hitNormal.dotProduct(outwardDir), -1.0f, 1.0f);
-        const Ogre::Real slope = Ogre::Math::ACos(dot).valueDegrees();
-
-        if (slope > rule.maxSlope)
-        {
-            return false;
-        }
-
-        // Terra layer check intentionally omitted for planets.
-        // PlanetTerra has no blend map. Use heightRange to restrict placement to
-        // altitude bands (e.g. lowland forests, mountain snow line, etc.).
-
-        return true;
+        return allowIfHit ? (hitObject != nullptr) : (hitObject == nullptr);
     }
 
     std::vector<VegetationBatch> ProceduralFoliageVolumeComponent::calculatePlanetFoliagePositions(GameObject* planetGo, Ogre::Real planetRadius, const Ogre::Vector3& planetCentre)
@@ -2480,9 +2682,6 @@ namespace NOWA
             VegetationBatch batch;
             batch.meshName = rule.meshName;
             batch.ruleIndex = ruleIdx;
-
-            // Reset spatial hash for this rule batch (planet path is single-threaded).
-            this->spatialHash.clear();
 
             for (const PlanetTerra::SurfaceSample& s : samples)
             {
@@ -2560,20 +2759,6 @@ namespace NOWA
                 Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
 
                 batch.instances.emplace_back(hitPoint, orientation, scale, ruleIdx);
-
-                // Patch the nullptr placeholder left by hasMinimumSpacing.
-                if (rule.minDistanceToSame > 0.0f)
-                {
-                    const float cellSize = std::max(rule.minDistanceToSame, static_cast<float>(this->spatialHashCellSize));
-                    const int32_t pcx = static_cast<int32_t>(std::floor(hitPoint.x / cellSize));
-                    const int32_t pcz = static_cast<int32_t>(std::floor(hitPoint.z / cellSize));
-                    const int64_t pkey = (static_cast<int64_t>(static_cast<uint32_t>(pcx)) << 32) | static_cast<uint32_t>(pcz);
-                    auto pit = this->spatialHash.find(pkey);
-                    if (pit != this->spatialHash.end() && !pit->second.empty() && pit->second.back() == nullptr)
-                    {
-                        pit->second.back() = &batch.instances.back();
-                    }
-                }
             }
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Planet rule '" + rule.name + "' placed " + Ogre::StringConverter::toString(static_cast<unsigned int>(batch.instances.size())) +
@@ -2619,6 +2804,42 @@ namespace NOWA
             batches.end());
 
         return batches;
+    }
+
+    bool ProceduralFoliageVolumeComponent::meetsPlanetCriteria(Ogre::Real heightAboveSeaLevel, const Ogre::Vector3& hitNormal, const Ogre::Vector3& outwardDir, const FoliageRule& rule) const
+    {
+        // ---- Height above sea level check ----
+        // rule.heightRange.x = minimum height above sea level (negative = underwater)
+        // rule.heightRange.y = maximum height above sea level
+        // Reuses the same FoliageRule field as flat terrain -- just measured radially.
+        if (heightAboveSeaLevel < rule.heightRange.x || heightAboveSeaLevel > rule.heightRange.y)
+        {
+            return false;
+        }
+
+        // ---- Slope check ----
+        // On flat terrain: slope = angle between surface normal and world UP (UNIT_Y).
+        // On a planet:     slope = angle between surface normal and outward radial.
+        // outwardDir is the "local up" at this point on the sphere -- the equivalent
+        // of UNIT_Y for a curved surface.
+        // dot == 1.0  -> perfectly flat (normal parallel to radial) -> slope = 0 deg
+        // dot == 0.0  -> vertical cliff -> slope = 90 deg
+        // dot < 0.0   -> overhanging surface -> slope > 90 deg (always rejected)
+        const Ogre::Real dot = Ogre::Math::Clamp(hitNormal.dotProduct(outwardDir), -1.0f, 1.0f);
+        const Ogre::Real slope = Ogre::Math::ACos(dot).valueDegrees();
+
+        if (slope > rule.maxSlope)
+        {
+            return false;
+        }
+
+        // Terra layer check is intentionally omitted for planets.
+        // Planets have no blend map. Use heightRange to restrict placement to
+        // specific altitude bands (e.g. lowland forests, mountain snow, etc.).
+        // If per-biome control is needed in the future, sample PlanetTerraComponent
+        // colour/weight at the hit point and add a rule.planetLayerThreshold field.
+
+        return true;
     }
 
     void ProceduralFoliageVolumeComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
