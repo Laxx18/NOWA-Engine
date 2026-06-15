@@ -199,12 +199,12 @@ namespace NOWA
         Ogre::Vector3 playerPosition;
         Ogre::Quaternion playerOrientation;
 
-        if (nullptr != this->physicsBody)
+        /*if (nullptr != this->physicsBody)
         {
             playerPosition = this->physicsBody->getPosition();
             playerOrientation = this->physicsBody->getOrientation();
         }
-        else
+        else*/
         {
             playerPosition = this->sceneNode->_getDerivedPositionUpdated();
             playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();

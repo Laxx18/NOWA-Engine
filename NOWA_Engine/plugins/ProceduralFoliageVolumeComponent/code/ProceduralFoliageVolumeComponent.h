@@ -574,6 +574,7 @@ namespace NOWA
         bool isDirty;
 
         bool foliageLoadedFromScene;
+        int foliageDiagCount;
 
         // Spatial hash for spacing checks (optimization)
         std::unordered_map<int64_t, std::vector<VegetationInstance*>> spatialHash;

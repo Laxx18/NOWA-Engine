@@ -212,6 +212,20 @@ namespace NOWA
         void setPlanetData(const std::vector<unsigned char>& data);
 
         void setDynamic(bool dynamic);
+
+        Ogre::Real getComputedMaxRadius() const;
+
+        bool findFlatLandingVertex(const Ogre::Vector3& outwardDirWorld, float searchHalfAngleDeg, Ogre::Vector3& outWorldPos, Ogre::Vector3& outWorldNormal) const;
+
+        // Fills outSamples with surface data for every non-seam vertex that passes the
+        // slope and height filters.  worldOffset = planet GO world position.
+        // Returns false if no PlanetTerra is built yet.
+        bool collectSurfaceSamples(float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<PlanetTerra::SurfaceSample>& outSamples, Ogre::Vector3& outWorldOffset) const;
+
+        bool collectSurfaceSamplesInCone(const Ogre::Vector3& capDirWorld, float capHalfAngleDeg, float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<PlanetTerra::SurfaceSample>& outSamples,
+            Ogre::Vector3& outWorldOffset) const;
+
+        size_t getVertexCount(void) const;
     protected:
         /** @brief Left-click begins a brush stroke; captures pre-stroke snapshot for undo. */
         virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;

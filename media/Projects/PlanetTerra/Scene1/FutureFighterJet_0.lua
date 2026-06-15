@@ -76,24 +76,21 @@ FutureFighterJet_0["connect"] = function(gameObject)
     end
 
     if attribComp ~= nil then
-        attribComp:reactOnAttributeChanged(function(attributeName, attribute)
-            if attributeName == "isOnPlanet" then
-                isOnPlanet = attribute:getValueBool()
-                log("reactOnAttributeChanged: " .. toString(isOnPlanet));
-                if isOnPlanet then
-                    boostActive = false
-                    smoothSpeed = math.min(smoothSpeed, THRUST_SPEED)
-                    targetSpeed = THRUST_SPEED
-                    -- Kill blur immediately when landing
-                    if boostBlurActive then
-                        boostBlurActive = false
-                        go:getCompositorEffectRadialBlurComponent():setActivated(false)
-                    end
-                else
-                    physComp:setGravity(Vector3(0, 0, 0))
+       attribComp:reactOnAttributeChanged(function(attributeName, attribute)
+        if attributeName == "isOnPlanet" then
+            isOnPlanet = attribute:getValueBool()
+            log("reactOnAttributeChanged: " .. toString(isOnPlanet));
+            if isOnPlanet then
+                boostActive = false
+                if boostBlurActive then
+                    boostBlurActive = false
+                    go:getCompositorEffectRadialBlurComponent():setActivated(false)
                 end
+            else
+                physComp:setGravity(Vector3(0, 0, 0))
             end
-        end)
+        end
+    end)
     end
 
     physComp:setGravity(Vector3(0, 0, 0))
@@ -164,15 +161,25 @@ FutureFighterJet_0["update"] = function(dt)
     -- ----------------------------------------------------------------
     --  2. TARGET SPEED
     -- ----------------------------------------------------------------
-
+    
     local targetSpeed = 0.0
-
+    
     if jumpHeld and not isOnPlanet then
         targetSpeed = JUMP_BOOST_SPEED
         boostActive = true
         if not boostBlurActive then
             boostBlurActive = true
             go:getCompositorEffectRadialBlurComponent():setActivated(true)
+        end
+    elseif jumpHeld and isOnPlanet then
+        -- Space still held but we are in planet proximity: treat exactly like
+        -- the E-key (THRUST_SPEED) so there is no abrupt stop.
+        -- This prevents Newton tunneling while keeping smooth deceleration.
+        targetSpeed = THRUST_SPEED
+        boostActive = false
+        if boostBlurActive then
+            boostBlurActive = false
+            go:getCompositorEffectRadialBlurComponent():setActivated(false)
         end
     elseif actionHeld and runHeld and not isOnPlanet then
         targetSpeed = BOOST_SPEED

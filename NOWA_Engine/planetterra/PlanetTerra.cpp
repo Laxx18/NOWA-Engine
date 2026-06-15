@@ -682,6 +682,115 @@ namespace NOWA
         }
     }
 
+    bool PlanetTerra::findFlatLandingVertex(const Ogre::Vector3& outwardDir, float searchHalfAngleDeg, Ogre::Vector3& outLocalPos, Ogre::Vector3& outLocalNormal) const
+    {
+        if (0u == this->vertexCount)
+        {
+            return false;
+        }
+
+        const float cosHalfAngle = Ogre::Math::Cos(Ogre::Degree(searchHalfAngleDeg));
+
+        // A vertex qualifies if its base direction is within searchHalfAngleDeg of outwardDir.
+        // Among qualifying vertices, pick the one whose surface normal is most aligned with
+        // outwardDir (i.e. the flattest, least-sloped spot near the ship).
+        float bestDot = -2.0f;
+        size_t bestIdx = 0u;
+        bool found = false;
+
+        for (size_t i = 0u; i < this->vertexCount; ++i)
+        {
+            // baseDirs[i] is the unit sphere direction for this vertex — always outward.
+            const float coneDot = this->baseDirs[i].dotProduct(outwardDir);
+            if (coneDot < cosHalfAngle)
+            {
+                continue;
+            }
+
+            // normals[i] is the face-averaged surface normal, pointing outward.
+            // A flat surface has normal == baseDirs[i] (== outwardDir at this location).
+            // The dot of the vertex normal with the ideal radial direction is 1.0 for
+            // a perfectly flat surface, less for slopes.
+            const float flatnessDot = this->normals[i].dotProduct(this->baseDirs[i]);
+            if (flatnessDot > bestDot)
+            {
+                bestDot = flatnessDot;
+                bestIdx = i;
+                found = true;
+            }
+        }
+
+        if (false == found)
+        {
+            return false;
+        }
+
+        outLocalPos = this->vertices[bestIdx];   // already at radius + heightData[i]
+        outLocalNormal = this->normals[bestIdx]; // outward, accurate after recalculateNormals
+        return true;
+    }
+
+    void PlanetTerra::collectSurfaceSamples(float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<SurfaceSample>& outSamples) const
+    {
+        collectSurfaceSamplesInCone(Ogre::Vector3::ZERO, // capDir ignored when halfAngle >= 180
+            180.0f, slopeMaxDeg, heightMinLocal, heightMaxLocal, outSamples);
+    }
+
+    void PlanetTerra::collectSurfaceSamplesInCone(const Ogre::Vector3& capDir, float capHalfAngleDeg, float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<SurfaceSample>& outSamples) const
+    {
+        if (0u == this->vertexCount)
+        {
+            return;
+        }
+
+        const bool fullSphere = (capHalfAngleDeg >= 179.9f);
+        const float cosHalfAngle = fullSphere ? -1.0f : Ogre::Math::Cos(Ogre::Degree(capHalfAngleDeg));
+        const float cosSlopeMax = Ogre::Math::Cos(Ogre::Degree(Ogre::Math::Clamp(slopeMaxDeg, 0.0f, 180.0f)));
+
+        for (int v = 0; v <= this->segmentsV; ++v)
+        {
+            for (int h = 0; h < this->segmentsH; ++h) // NOTE: < not <=, skip seam duplicate
+            {
+                const size_t i = static_cast<size_t>(v * (this->segmentsH + 1) + h);
+
+                // ---- cone filter ----
+                if (false == fullSphere)
+                {
+                    if (this->baseDirs[i].dotProduct(capDir) < cosHalfAngle)
+                    {
+                        continue;
+                    }
+                }
+
+                // ---- height filter ----
+                const float vertR = this->vertices[i].length();
+                if (vertR < heightMinLocal || vertR > heightMaxLocal)
+                {
+                    continue;
+                }
+
+                // ---- slope filter ----
+                // flatness = normal · baseDirs  (1 = flat, 0 = 90-deg slope, -1 = overhanging)
+                const float flatness = this->normals[i].dotProduct(this->baseDirs[i]);
+                if (flatness < cosSlopeMax)
+                {
+                    continue;
+                }
+
+                // ---- build sample ----
+                SurfaceSample s;
+                s.localPos = this->vertices[i];
+                s.normal = this->normals[i];
+                s.uv = this->uvCoords[i];
+                s.slopeDeg = Ogre::Math::ACos(Ogre::Math::Clamp(flatness, -1.0f, 1.0f)).valueDegrees();
+
+                outSamples.push_back(s);
+            }
+        }
+    }
+
+
+
     void PlanetTerra::generateBaseSphere()
     {
         // UV sphere: (segmentsH+1) * (segmentsV+1) vertices

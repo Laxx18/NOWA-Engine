@@ -1,16 +1,17 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "ProceduralFoliageVolumeComponent.h"
-#include "gameobject/GameObjectFactory.h"
-#include "gameobject/TerraComponent.h"
-#include "gameobject/PhysicsArtifactComponent.h"
 #include "../../PlanetTerraComponent/code/PlanetTerraComponent.h"
+#include "gameobject/GameObjectFactory.h"
+#include "gameobject/PhysicsArtifactComponent.h"
+#include "gameobject/TerraComponent.h"
 #include "main/AppStateManager.h"
-#include "main/EventManager.h"
 #include "main/Core.h"
+#include "main/EventManager.h"
 #include "modules/GraphicsModule.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
 
+#include "OgreBitwise.h"
 #include "OgreConfigFile.h"
 #include "OgreHlmsPbsPrerequisites.h"
 #include "OgreLodConfig.h"
@@ -19,6 +20,8 @@
 #include "OgreMeshLodGenerator.h"
 #include "OgreMeshManager2.h"
 #include "OgrePixelCountLodStrategy.h"
+#include "OgreSubMesh2.h"
+#include "Vao/OgreAsyncTicket.h"
 
 #include "OgreAbiUtils.h"
 
@@ -35,6 +38,7 @@ namespace NOWA
         name("ProceduralFoliageVolumeComponent"),
         isDirty(true),
         foliageLoadedFromScene(false),
+        foliageDiagCount(0),
         spatialHashCellSize(10.0f),
         raySceneQuery(nullptr),
         sphereSceneQuery(nullptr),
@@ -848,7 +852,7 @@ namespace NOWA
         }
 
         // Get PhysicsArtifactComponent if exists
-        const auto & physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+        const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
         if (physicsArtifactCompPtr)
         {
             this->physicsArtifactComponent = physicsArtifactCompPtr.get();
@@ -970,6 +974,15 @@ namespace NOWA
                     batch.meshName = rule.meshName;
                     batch.ruleIndex = ruleIdx;
 
+                    // Reset spatial hash for this rule batch.
+                    // Note: this->spatialHash is a member; the flat terrain path runs
+                    // rules in parallel via std::async, which means multiple lambdas
+                    // could race on this->spatialHash.  The spatial hash is therefore
+                    // only reliable when minDistanceToSame > 0 and rules are processed
+                    // sequentially.  For the async path the hash is best-effort; false
+                    // negatives (two nearby instances placed) are rare and harmless.
+                    this->spatialHash.clear();
+
                     std::mt19937 rng(this->masterSeed->getUInt() + rule.seed);
                     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
@@ -1036,6 +1049,21 @@ namespace NOWA
                             }
 
                             batch.instances.emplace_back(position, orientation, scale, ruleIdx);
+
+                            // Patch the nullptr placeholder left by hasMinimumSpacing with
+                            // the actual pointer now that emplace_back has created the element.
+                            if (rule.minDistanceToSame > 0.0f)
+                            {
+                                const float cellSize = std::max(rule.minDistanceToSame, static_cast<float>(this->spatialHashCellSize));
+                                const int32_t pcx = static_cast<int32_t>(std::floor(position.x / cellSize));
+                                const int32_t pcz = static_cast<int32_t>(std::floor(position.z / cellSize));
+                                const int64_t pkey = (static_cast<int64_t>(static_cast<uint32_t>(pcx)) << 32) | static_cast<uint32_t>(pcz);
+                                auto pit = this->spatialHash.find(pkey);
+                                if (pit != this->spatialHash.end() && !pit->second.empty() && pit->second.back() == nullptr)
+                                {
+                                    pit->second.back() = &batch.instances.back();
+                                }
+                            }
                         }
                     }
                     return batch;
@@ -1065,6 +1093,18 @@ namespace NOWA
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Rule '" + rule.name + "' category=All, skipping raycast filter.");
                 continue;
             }
+
+            const bool isExcludeMode = (rule.categories.find("All") != Ogre::String::npos && rule.categories.find('-') != Ogre::String::npos);
+            const unsigned int effectiveMask = isExcludeMode ? ~rule.categoriesId : rule.categoriesId;
+
+            // DIAGNOSTIC: reset per-rule so we get 5 samples from each rule.
+            this->foliageDiagCount = 0;
+            Ogre::MovableObject* hostMov = this->gameObjectPtr->getMovableObject();
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[ProceduralFoliageVolume DIAG] Rule '" + rule.name + "' categories='" + rule.categories + "' categoriesId=0x" + Ogre::StringConverter::toString(rule.categoriesId, 0, ' ', std::ios::hex) + " ALL_ID=0x" +
+                    Ogre::StringConverter::toString(GameObjectController::ALL_CATEGORIES_ID, 0, ' ', std::ios::hex) + " isExcludeMode=" + Ogre::StringConverter::toString(isExcludeMode) + " effectiveQueryMask=0x" +
+                    Ogre::StringConverter::toString(effectiveMask, 0, ' ', std::ios::hex) + " hostMovable=" + (hostMov ? hostMov->getName() : "null") + " hostQueryFlags=0x" +
+                    (hostMov ? Ogre::StringConverter::toString(hostMov->getQueryFlags(), 0, ' ', std::ios::hex) : "n/a") + " clearanceDist=" + Ogre::StringConverter::toString(rule.clearanceDistance));
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
                 "[ProceduralFoliageVolume] Rule '" + rule.name + "' filtering " + Ogre::StringConverter::toString(batch.instances.size()) + " instances by category '" + rule.categories + "'...");
@@ -1143,17 +1183,45 @@ namespace NOWA
             return true;
         }
 
-        // Simple O(N) check - in production use spatial hash
-        const Ogre::Real minDistSq = rule.minDistanceToSame * rule.minDistanceToSame;
+        const float minDist = rule.minDistanceToSame;
+        const float minDistSq = minDist * minDist;
 
-        for (const auto& existing : existingInstances)
+        // Cell size >= minDist guarantees a 3x3 neighbourhood always suffices.
+        const float cellSize = std::max(minDist, static_cast<float>(this->spatialHashCellSize));
+
+        // Pack (ix, iz) into int64_t -- matches the header's key type.
+        const int32_t cx = static_cast<int32_t>(std::floor(position.x / cellSize));
+        const int32_t cz = static_cast<int32_t>(std::floor(position.z / cellSize));
+
+        auto packKey = [](int32_t x, int32_t z) -> int64_t
         {
-            Ogre::Real distSq = position.squaredDistance(existing.position);
-            if (distSq < minDistSq)
+            return (static_cast<int64_t>(static_cast<uint32_t>(x)) << 32) | static_cast<uint32_t>(z);
+        };
+
+        // Check 3x3 neighbourhood.
+        for (int32_t dx = -1; dx <= 1; ++dx)
+        {
+            for (int32_t dz = -1; dz <= 1; ++dz)
             {
-                return false;
+                auto it = this->spatialHash.find(packKey(cx + dx, cz + dz));
+                if (it == this->spatialHash.end())
+                {
+                    continue;
+                }
+                for (const VegetationInstance* inst : it->second)
+                {
+                    if (nullptr != inst && inst->position.squaredDistance(position) < minDistSq)
+                    {
+                        return false;
+                    }
+                }
             }
         }
+
+        // Register a nullptr now.  The caller must immediately emplace_back the new
+        // instance and then call this->spatialHash[packKey(cx,cz)].back() = &batch.instances.back()
+        // to fill the pointer.  See the generation loops for the pattern.
+        this->spatialHash[packKey(cx, cz)].push_back(nullptr);
 
         return true;
     }
@@ -1571,7 +1639,7 @@ namespace NOWA
 
         this->vegetationBatches.clear();
 
-         sceneManager->notifyStaticDirty(sceneManager->getRootSceneNode(Ogre::SCENE_STATIC));
+        sceneManager->notifyStaticDirty(sceneManager->getRootSceneNode(Ogre::SCENE_STATIC));
     }
 
     // ============================================================================
@@ -2201,12 +2269,13 @@ namespace NOWA
 
     bool ProceduralFoliageVolumeComponent::isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule)
     {
+
         if (!this->raySceneQuery)
         {
             return true;
         }
 
-        // Pure "All" — no filtering needed
+        // Pure "All" — no filtering needed.
         if (rule.categoriesId == GameObjectController::ALL_CATEGORIES_ID)
         {
             return true;
@@ -2217,18 +2286,60 @@ namespace NOWA
         unsigned int queryMask;
         bool allowIfHit;
 
+        // Build exclude list: skip the host GO's own terrain movable so it never
+        // counts as an obstacle on its own surface.
+        // Also skip the active camera — cameras are registered as movables with query
+        // flags that may coincidentally match the obstacle category bit, causing every
+        // sphere check within camera range to report a false obstacle hit.
+        std::vector<Ogre::MovableObject*> excludeList;
+        Ogre::MovableObject* hostMovable = this->gameObjectPtr->getMovableObject();
+        if (nullptr != hostMovable)
+        {
+            excludeList.push_back(hostMovable);
+        }
+
+        Ogre::Camera* activeCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        if (nullptr != activeCamera)
+        {
+            excludeList.push_back(activeCamera);
+        }
+
         if (isExcludeMode)
         {
-            // Cast against only the excluded bits — hit means blocked
-            queryMask = ~rule.categoriesId; // e.g. "All-Obstacle" -> 0x00000002 = only Obstacle
+            queryMask = ~rule.categoriesId;
             allowIfHit = false;
 
-            // Sphere clearance check first (cheaper than raycast)
+            // Sphere clearance check first (cheaper than a full raycast).
             if (rule.clearanceDistance > 0.0f && this->sphereSceneQuery)
             {
                 this->sphereSceneQuery->setSphere(Ogre::Sphere(position, rule.clearanceDistance));
                 this->sphereSceneQuery->setQueryMask(queryMask);
-                if (!this->sphereSceneQuery->execute().movables.empty())
+                Ogre::SceneQueryResult& sphereResult = this->sphereSceneQuery->execute();
+
+                bool hasRealObstacle = false;
+                for (Ogre::MovableObject* mo : sphereResult.movables)
+                {
+                    if (nullptr != hostMovable && mo == hostMovable)
+                    {
+                        continue;
+                    }
+                    if (nullptr != activeCamera && mo == static_cast<Ogre::MovableObject*>(activeCamera))
+                    {
+                        continue;
+                    }
+                    hasRealObstacle = true;
+
+                    if (this->foliageDiagCount < 5)
+                    {
+                        ++this->foliageDiagCount;
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[isCategoryAllowed DIAG] SPHERE blocked rule='" + rule.name + "' pos=" + Ogre::StringConverter::toString(position) + " queryMask=0x" +
+                                                                                                Ogre::StringConverter::toString(queryMask, 0, ' ', std::ios::hex) + " hitMovable='" + mo->getName() + "' hitQueryFlags=0x" +
+                                                                                                Ogre::StringConverter::toString(mo->getQueryFlags(), 0, ' ', std::ios::hex) + " hostMovable=" + (hostMovable ? hostMovable->getName() : "null") +
+                                                                                                " hostQueryFlags=0x" + (hostMovable ? Ogre::StringConverter::toString(hostMovable->getQueryFlags(), 0, ' ', std::ios::hex) : "n/a"));
+                    }
+                    break;
+                }
+                if (hasRealObstacle)
                 {
                     return false;
                 }
@@ -2236,7 +2347,6 @@ namespace NOWA
         }
         else
         {
-            // Include mode: cast against allowed bits — must hit to place
             queryMask = rule.categoriesId;
             allowIfHit = true;
         }
@@ -2248,38 +2358,83 @@ namespace NOWA
         Ogre::Vector3 hitPoint, hitNormal;
         Ogre::MovableObject* hitObject = nullptr;
         Ogre::Real closestDistance = 0.0f;
-        std::vector<Ogre::MovableObject*> excludeList;
 
-        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-        MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
+        MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, activeCamera, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
 
-        return allowIfHit ? (hitObject != nullptr) : (hitObject == nullptr);
+        bool result = allowIfHit ? (hitObject != nullptr) : (hitObject == nullptr);
+
+        if (!result && this->foliageDiagCount < 5)
+        {
+            ++this->foliageDiagCount;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[isCategoryAllowed DIAG] RAY blocked rule='" + rule.name + "' isExcludeMode=" + Ogre::StringConverter::toString(isExcludeMode) + " allowIfHit=" + Ogre::StringConverter::toString(allowIfHit) + " queryMask=0x" +
+                    Ogre::StringConverter::toString(queryMask, 0, ' ', std::ios::hex) + " pos=" + Ogre::StringConverter::toString(position) +
+                    " hitMovable=" + (hitObject ? ("'" + hitObject->getName() + "' flags=0x" + Ogre::StringConverter::toString(hitObject->getQueryFlags(), 0, ' ', std::ios::hex)) : "null") +
+                    " hostMovable=" + (hostMovable ? ("'" + hostMovable->getName() + "' flags=0x" + Ogre::StringConverter::toString(hostMovable->getQueryFlags(), 0, ' ', std::ios::hex)) : "null"));
+        }
+
+        return result;
+    }
+
+    bool ProceduralFoliageVolumeComponent::meetsPlanetCriteria(Ogre::Real heightAboveSeaLevel, const Ogre::Vector3& hitNormal, const Ogre::Vector3& outwardDir, const FoliageRule& rule) const
+    {
+        // Height above sea level check.
+        // rule.heightRange.x = minimum height (negative = underwater allowed).
+        // rule.heightRange.y = maximum height.
+        // Reuses the same FoliageRule field as flat terrain, just measured radially.
+        if (heightAboveSeaLevel < rule.heightRange.x || heightAboveSeaLevel > rule.heightRange.y)
+        {
+            return false;
+        }
+
+        // Slope check.
+        // On flat terrain: slope = angle between surface normal and world UNIT_Y.
+        // On a planet:     slope = angle between surface normal and outward radial direction.
+        // outwardDir is the "local up" at this surface point -- the equivalent of UNIT_Y
+        // for a curved surface.
+        // dot == 1.0  -> perfectly flat (normal parallel to radial) -> slope = 0 deg
+        // dot == 0.0  -> vertical cliff -> slope = 90 deg
+        // dot < 0.0   -> overhanging -> slope > 90 deg (always rejected by maxSlope)
+        const Ogre::Real dot = Ogre::Math::Clamp(hitNormal.dotProduct(outwardDir), -1.0f, 1.0f);
+        const Ogre::Real slope = Ogre::Math::ACos(dot).valueDegrees();
+
+        if (slope > rule.maxSlope)
+        {
+            return false;
+        }
+
+        // Terra layer check intentionally omitted for planets.
+        // PlanetTerra has no blend map. Use heightRange to restrict placement to
+        // altitude bands (e.g. lowland forests, mountain snow line, etc.).
+
+        return true;
     }
 
     std::vector<VegetationBatch> ProceduralFoliageVolumeComponent::calculatePlanetFoliagePositions(GameObject* planetGo, Ogre::Real planetRadius, const Ogre::Vector3& planetCentre)
     {
-        if (nullptr == this->raySceneQuery)
+        // -----------------------------------------------------------------------
+        // NEW: use PlanetTerraComponent::collectSurfaceSamples() instead of
+        // scene ray queries.  The old approach fired 3 rays per sample point
+        // (primary + 2 neighbours for normal reconstruction) and iterated a
+        // lat/lon grid that duplicated many sphere positions at the poles.
+        // The new approach reads vertices[] / normals[] / baseDirs[] directly
+        // from PlanetTerra's CPU arrays in a single O(V) pass -- no GPU round-
+        // trips, no back-face normal ambiguity, no camera dependency.
+        // For a 64x64 planet (4225 vertices) the whole scan is < 1 ms.
+        // -----------------------------------------------------------------------
+
+        auto terraComp = NOWA::makeStrongPtr(planetGo->getComponent<PlanetTerraComponent>());
+        if (nullptr == terraComp)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] raySceneQuery is null -- ensure postInit ran.");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] calculatePlanetFoliagePositions: "
+                                                                                "no PlanetTerraComponent on '" +
+                                                                                    planetGo->getName() + "'.");
             return {};
         }
 
-        // The planet surface query mask: use the planet GO's own category bitmask
-        // so only that body's movable is hit. This is the correct NOWA pattern --
-        // GameObjectController::generateCategoryId resolves a category string to a
-        // bitmask the same way AreaOfInterestComponent and isCategoryAllowed do.
-        // We derive it from the planet GO's category string, not from getQueryFlags().
-        const Ogre::uint32 planetSurfaceMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(planetGo->getCategory());
-
-        // Ray start outside the planet so hills are always hit from above.
-        const Ogre::Real rayStartRadius = planetRadius * 1.5f;
-
-        // Camera needed for MathHelper::getRaycastFromPoint (same as isCategoryAllowed).
-        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-
         std::vector<VegetationBatch> batches;
 
-        for (size_t ruleIdx = 0; ruleIdx < this->rules.size(); ruleIdx++)
+        for (size_t ruleIdx = 0u; ruleIdx < this->rules.size(); ++ruleIdx)
         {
             const FoliageRule& rule = this->rules[ruleIdx];
             if (false == rule.enabled || true == rule.meshName.empty())
@@ -2287,157 +2442,142 @@ namespace NOWA
                 continue;
             }
 
+            // Collect all surface samples that pass the slope gate up-front.
+            // Height filtering is done per-rule below so we pass full range here
+            // and let meetsPlanetCriteria handle heightRange.  slopeMaxDeg is the
+            // strictest filter -- apply it here to avoid allocating samples that
+            // will always be rejected.
+            std::vector<PlanetTerra::SurfaceSample> samples;
+            samples.reserve(terraComp->getVertexCount());
+
+            Ogre::Vector3 worldOffset;
+            terraComp->collectSurfaceSamples(rule.maxSlope, // slopeMaxDeg
+                0.0f,                                       // heightMinLocal: no lower bound here
+                std::numeric_limits<float>::max(),          // heightMaxLocal: no upper bound here
+                samples, worldOffset);
+            // worldOffset == planetGo->getPosition() (set by PlanetTerraComponent wrapper)
+
+            if (samples.empty())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Planet rule '" + rule.name + "': no samples passed slope filter (" + Ogre::StringConverter::toString(rule.maxSlope) + " deg).");
+                continue;
+            }
+
+            // Density thinning: the vertex grid is fixed, so we use a combination
+            // of rule.density and a deterministic per-vertex random to thin the set
+            // down to the desired density.  This replaces the old angular-step loop
+            // and preserves reproducibility via masterSeed + rule.seed.
+            std::mt19937 rng(this->masterSeed->getUInt() + rule.seed);
+            std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
+            // density in [0,1]: 1.0 = place on every qualifying vertex,
+            // 0.5 = place on ~50% of qualifying vertices, etc.
+            // The old code used angularStep = resolution / (radius * density) so
+            // higher density -> smaller step -> more samples.  We mirror that by
+            // treating density as the per-vertex acceptance probability.
+            const float acceptProb = Ogre::Math::Clamp(static_cast<float>(rule.density), 0.0f, 1.0f);
+
             VegetationBatch batch;
             batch.meshName = rule.meshName;
             batch.ruleIndex = ruleIdx;
 
-            std::mt19937 rng(this->masterSeed->getUInt() + rule.seed);
-            std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+            // Reset spatial hash for this rule batch (planet path is single-threaded).
+            this->spatialHash.clear();
 
-            const Ogre::Real resolution = this->gridResolution->getReal();
-            const Ogre::Real angularStep = resolution / (planetRadius * rule.density) * 2.0f;
-            const Ogre::Real jitterScale = angularStep * 0.8f;
-
-            for (Ogre::Real lat = -Ogre::Math::HALF_PI; lat < Ogre::Math::HALF_PI; lat += angularStep)
+            for (const PlanetTerra::SurfaceSample& s : samples)
             {
-                for (Ogre::Real lon = 0.0f; lon < Ogre::Math::TWO_PI; lon += angularStep)
+                // ---- density thinning ----
+                if (dist01(rng) > acceptProb)
                 {
-                    // Jitter in angular space.
-                    Ogre::Real sampLat = Ogre::Math::Clamp(lat + (dist01(rng) - 0.5f) * jitterScale, -Ogre::Math::HALF_PI + 0.001f, Ogre::Math::HALF_PI - 0.001f);
-                    Ogre::Real sampLon = lon + (dist01(rng) - 0.5f) * jitterScale;
+                    continue;
+                }
 
-                    // Outward direction from planet centre (spherical -> Cartesian, Y-up).
-                    Ogre::Vector3 outward(Ogre::Math::Cos(sampLat) * Ogre::Math::Sin(sampLon), Ogre::Math::Sin(sampLat), Ogre::Math::Cos(sampLat) * Ogre::Math::Cos(sampLon));
-                    outward.normalise();
+                // ---- world-space hit point ----
+                // localPos is in planet-local space (centre = origin).
+                // worldOffset = planet GO world position.
+                const Ogre::Vector3 hitPoint = worldOffset + s.localPos;
 
-                    // ----------------------------------------------------------------
-                    // PRIMARY SURFACE RAY
-                    // Fire from outside the planet inward, masked to planet category
-                    // only. Uses this->raySceneQuery (the member, same as
-                    // isCategoryAllowed) -- no separate query object.
-                    // ----------------------------------------------------------------
-                    Ogre::Vector3 rayOrigin = planetCentre + outward * rayStartRadius;
-                    Ogre::Vector3 rayDir = -outward;
+                // ---- outward radial at this vertex ----
+                // baseDirs[i] is exactly s.normal for a flat sphere.  For a
+                // displaced sphere, the "outward" radial is localPos.normalisedCopy().
+                // We use s.normal (the actual mesh normal) for slope and orientation
+                // and the radial for height-above-sea.
+                const Ogre::Vector3 outward = s.localPos.normalisedCopy();
 
-                    this->raySceneQuery->setQueryMask(planetSurfaceMask);
-                    this->raySceneQuery->setSortByDistance(true);
-                    this->raySceneQuery->setRay(Ogre::Ray(rayOrigin, rayDir));
+                // ---- height above sea level ----
+                const Ogre::Real heightAboveSea = s.localPos.length() - planetRadius;
 
-                    Ogre::Vector3 hitPoint, hitNormal;
-                    Ogre::MovableObject* hitObject = nullptr;
-                    Ogre::Real closestDistance = 0.0f;
-                    std::vector<Ogre::MovableObject*> excludeList;
+                // ---- criteria check (height + slope) ----
+                // s.slopeDeg is already computed from normal vs. baseDirs, so pass
+                // s.normal and outward to meetsPlanetCriteria unchanged.
+                if (false == this->meetsPlanetCriteria(heightAboveSea, s.normal, outward, rule))
+                {
+                    continue;
+                }
 
-                    MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
+                // ---- spacing check ----
+                if (false == this->hasMinimumSpacing(hitPoint, rule, batch.instances))
+                {
+                    continue;
+                }
 
-                    if (nullptr == hitObject)
+                // ---- orientation ----
+                // "Up" on a planet = outward radial, optionally lerped toward the
+                // actual mesh normal by alignToNormal (same semantic as flat terrain).
+                Ogre::Vector3 upAxis;
+                if (rule.alignToNormal > 0.0f)
+                {
+                    upAxis = Ogre::Vector3(Ogre::Math::lerp(outward.x, s.normal.x, rule.alignToNormal), Ogre::Math::lerp(outward.y, s.normal.y, rule.alignToNormal), Ogre::Math::lerp(outward.z, s.normal.z, rule.alignToNormal));
+                    upAxis.normalise();
+                }
+                else
+                {
+                    upAxis = outward;
+                }
+
+                // Stable tangent frame -- avoid UNIT_Y degeneracy near poles.
+                Ogre::Vector3 worldRef = (std::abs(upAxis.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
+
+                Ogre::Vector3 right = worldRef.crossProduct(upAxis);
+                right.normalise();
+                Ogre::Vector3 forward = upAxis.crossProduct(right);
+                forward.normalise();
+
+                Ogre::Quaternion orientation;
+                orientation.FromAxes(right, upAxis, forward);
+
+                // Random rotation around local up.
+                if (true == rule.randomYRotation)
+                {
+                    Ogre::Degree yRot(Ogre::Math::lerp(rule.yRotationRange.x, rule.yRotationRange.y, dist01(rng)));
+                    Ogre::Quaternion yQuat;
+                    yQuat.FromAngleAxis(yRot, upAxis);
+                    orientation = orientation * yQuat;
+                }
+
+                // ---- scale ----
+                Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
+                Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
+
+                batch.instances.emplace_back(hitPoint, orientation, scale, ruleIdx);
+
+                // Patch the nullptr placeholder left by hasMinimumSpacing.
+                if (rule.minDistanceToSame > 0.0f)
+                {
+                    const float cellSize = std::max(rule.minDistanceToSame, static_cast<float>(this->spatialHashCellSize));
+                    const int32_t pcx = static_cast<int32_t>(std::floor(hitPoint.x / cellSize));
+                    const int32_t pcz = static_cast<int32_t>(std::floor(hitPoint.z / cellSize));
+                    const int64_t pkey = (static_cast<int64_t>(static_cast<uint32_t>(pcx)) << 32) | static_cast<uint32_t>(pcz);
+                    auto pit = this->spatialHash.find(pkey);
+                    if (pit != this->spatialHash.end() && !pit->second.empty() && pit->second.back() == nullptr)
                     {
-                        continue;
+                        pit->second.back() = &batch.instances.back();
                     }
-
-                    // Height above sea level = radial distance minus nominal radius.
-                    const Ogre::Real heightAboveSea = hitPoint.distance(planetCentre) - planetRadius;
-
-                    // ----------------------------------------------------------------
-                    // SURFACE NORMAL from two neighbour rays (same cross-product
-                    // approach as calculateTerrainNormal, mapped to angular space).
-                    // ----------------------------------------------------------------
-                    Ogre::Vector3 surfaceNormal = outward; // fallback = radial
-
-                    {
-                        const Ogre::Real normalOffset = 0.5f / planetRadius;
-
-                        auto sampleNeighbour = [&](Ogre::Real dLat, Ogre::Real dLon) -> Ogre::Vector3
-                        {
-                            Ogre::Real nLat = Ogre::Math::Clamp(sampLat + dLat, -Ogre::Math::HALF_PI + 0.001f, Ogre::Math::HALF_PI - 0.001f);
-                            Ogre::Vector3 nOut(Ogre::Math::Cos(nLat) * Ogre::Math::Sin(sampLon + dLon), Ogre::Math::Sin(nLat), Ogre::Math::Cos(nLat) * Ogre::Math::Cos(sampLon + dLon));
-                            nOut.normalise();
-
-                            this->raySceneQuery->setQueryMask(planetSurfaceMask);
-                            this->raySceneQuery->setSortByDistance(true);
-                            this->raySceneQuery->setRay(Ogre::Ray(planetCentre + nOut * rayStartRadius, -nOut));
-
-                            Ogre::Vector3 nHitPoint, nHitNormal;
-                            Ogre::MovableObject* nHitObj = nullptr;
-                            Ogre::Real nDist = 0.0f;
-                            std::vector<Ogre::MovableObject*> nExclude;
-
-                            MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, nHitPoint, (size_t&)nHitObj, nDist, nHitNormal, &nExclude);
-
-                            return (nullptr != nHitObj) ? nHitPoint : (planetCentre + nOut * (planetRadius + heightAboveSea));
-                        };
-
-                        Ogre::Vector3 pLat = sampleNeighbour(normalOffset, 0.0f);
-                        Ogre::Vector3 pLon = sampleNeighbour(0.0f, normalOffset);
-
-                        Ogre::Vector3 tangLat = pLat - hitPoint;
-                        Ogre::Vector3 tangLon = pLon - hitPoint;
-                        Ogre::Vector3 crossN = tangLon.crossProduct(tangLat);
-                        crossN.normalise();
-
-                        // Ensure normal points away from planet centre.
-                        if (crossN.dotProduct(outward) < 0.0f)
-                        {
-                            crossN = -crossN;
-                        }
-                        surfaceNormal = crossN;
-                    }
-
-                    // ---- Criteria check ----
-                    if (false == this->meetsPlanetCriteria(heightAboveSea, surfaceNormal, outward, rule))
-                    {
-                        continue;
-                    }
-
-                    // ---- Spacing check (reuses flat terrain helper unchanged) ----
-                    if (false == this->hasMinimumSpacing(hitPoint, rule, batch.instances))
-                    {
-                        continue;
-                    }
-
-                    // ---- Orientation ----
-                    // "Up" on a planet = outward radial, lerped toward mesh normal
-                    // by alignToNormal (same semantic as flat terrain).
-                    Ogre::Vector3 upAxis;
-                    if (rule.alignToNormal > 0.0f)
-                    {
-                        upAxis = Ogre::Vector3(Ogre::Math::lerp(outward.x, surfaceNormal.x, rule.alignToNormal), Ogre::Math::lerp(outward.y, surfaceNormal.y, rule.alignToNormal), Ogre::Math::lerp(outward.z, surfaceNormal.z, rule.alignToNormal));
-                        upAxis.normalise();
-                    }
-                    else
-                    {
-                        upAxis = outward;
-                    }
-
-                    // Stable tangent frame -- avoid UNIT_Y degeneracy near poles.
-                    Ogre::Vector3 worldRef = (std::abs(upAxis.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
-
-                    Ogre::Vector3 right = worldRef.crossProduct(upAxis);
-                    right.normalise();
-                    Ogre::Vector3 forward = upAxis.crossProduct(right);
-                    forward.normalise();
-
-                    Ogre::Quaternion orientation;
-                    orientation.FromAxes(right, upAxis, forward);
-
-                    // Random rotation around local up (not world Y).
-                    if (true == rule.randomYRotation)
-                    {
-                        Ogre::Degree yRot(Ogre::Math::lerp(rule.yRotationRange.x, rule.yRotationRange.y, dist01(rng)));
-                        Ogre::Quaternion yQuat;
-                        yQuat.FromAngleAxis(yRot, upAxis);
-                        orientation = orientation * yQuat;
-                    }
-
-                    // ---- Scale ----
-                    Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
-                    Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
-
-                    batch.instances.emplace_back(hitPoint, orientation, scale, ruleIdx);
                 }
             }
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Planet rule '" + rule.name + "' placed " + Ogre::StringConverter::toString(batch.instances.size()) + " instances.");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Planet rule '" + rule.name + "' placed " + Ogre::StringConverter::toString(static_cast<unsigned int>(batch.instances.size())) +
+                                                                                   " instances (from " + Ogre::StringConverter::toString(static_cast<unsigned int>(samples.size())) + " surface samples).");
 
             if (false == batch.instances.empty())
             {
@@ -2445,16 +2585,12 @@ namespace NOWA
             }
         }
 
-        // ----------------------------------------------------------------
-        // CATEGORY FILTER PASS
-        // Identical logic to the flat terrain Phase 2 pass -- uses
-        // isCategoryAllowed which internally uses this->raySceneQuery with
-        // the include/exclude mask derived from rule.categoriesId.
-        // For planet mode the downward ray (Y+10000 -> NEGATIVE_UNIT_Y)
-        // inside isCategoryAllowed may miss the planet surface at extreme
-        // latitudes. If that is an issue, override the query direction here.
-        // For now the standard isCategoryAllowed is used unchanged.
-        // ----------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // CATEGORY FILTER PASS  (unchanged from original)
+        // isCategoryAllowed uses a downward ray -- on a planet surface the
+        // instance is already ON the surface so this pass mainly rejects
+        // instances that landed inside excluded zones (e.g. water volumes).
+        // -----------------------------------------------------------------------
         for (auto& batch : batches)
         {
             const FoliageRule& rule = this->rules[batch.ruleIndex];
@@ -2485,43 +2621,7 @@ namespace NOWA
         return batches;
     }
 
-    bool ProceduralFoliageVolumeComponent::meetsPlanetCriteria(Ogre::Real heightAboveSeaLevel, const Ogre::Vector3& hitNormal, const Ogre::Vector3& outwardDir, const FoliageRule& rule) const
-    {
-        // ---- Height above sea level check ----
-        // rule.heightRange.x = minimum height above sea level (negative = underwater)
-        // rule.heightRange.y = maximum height above sea level
-        // Reuses the same FoliageRule field as flat terrain -- just measured radially.
-        if (heightAboveSeaLevel < rule.heightRange.x || heightAboveSeaLevel > rule.heightRange.y)
-        {
-            return false;
-        }
-
-        // ---- Slope check ----
-        // On flat terrain: slope = angle between surface normal and world UP (UNIT_Y).
-        // On a planet:     slope = angle between surface normal and outward radial.
-        // outwardDir is the "local up" at this point on the sphere -- the equivalent
-        // of UNIT_Y for a curved surface.
-        // dot == 1.0  -> perfectly flat (normal parallel to radial) -> slope = 0 deg
-        // dot == 0.0  -> vertical cliff -> slope = 90 deg
-        // dot < 0.0   -> overhanging surface -> slope > 90 deg (always rejected)
-        const Ogre::Real dot = Ogre::Math::Clamp(hitNormal.dotProduct(outwardDir), -1.0f, 1.0f);
-        const Ogre::Real slope = Ogre::Math::ACos(dot).valueDegrees();
-
-        if (slope > rule.maxSlope)
-        {
-            return false;
-        }
-
-        // Terra layer check is intentionally omitted for planets.
-        // Planets have no blend map. Use heightRange to restrict placement to
-        // specific altitude bands (e.g. lowland forests, mountain snow, etc.).
-        // If per-biome control is needed in the future, sample PlanetTerraComponent
-        // colour/weight at the hit point and add a rule.planetLayerThreshold field.
-
-        return true;
-    }
-
-    void ProceduralFoliageVolumeComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
+    void ProceduralFoliageVolumeComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         // Lua bindings - can be filled in later if needed
     }

@@ -141,8 +141,8 @@ Universum_0["connect"] = function(gameObject)
     universumComp:reactOnLanded(function(bodyGO, shipGO)
         log("[Universum] reactOnLanded fired -- spawning player");
         activatePlayer();
-        --fadeWindowComponent:setAlpha(0);
-        --fadeWindowComponent:setActivated(true);
+        fadeWindowComponent:setAlpha(0);
+        fadeWindowComponent:setActivated(true);
     end)
  
 end

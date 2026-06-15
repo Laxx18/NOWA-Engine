@@ -1156,6 +1156,69 @@ namespace NOWA
         }
     }
 
+    Ogre::Real PlanetTerraComponent::getComputedMaxRadius() const
+    {
+        if (nullptr != this->planet)
+        {
+            return this->planet->getComputedMaxRadius();
+        }
+        return this->radius->getReal(); // fallback to base radius if terra not yet built
+    }
+
+    bool PlanetTerraComponent::findFlatLandingVertex(const Ogre::Vector3& outwardDirWorld, float searchHalfAngleDeg, Ogre::Vector3& outWorldPos, Ogre::Vector3& outWorldNormal) const
+    {
+        if (nullptr == this->planet)
+        {
+            return false;
+        }
+        Ogre::Vector3 localPos, localNormal;
+        if (false == this->planet->findFlatLandingVertex(outwardDirWorld, searchHalfAngleDeg, localPos, localNormal))
+        {
+            return false;
+        }
+        // PlanetTerra vertices are in local space (planet centre = origin, no rotation applied).
+        // The planet GO's scene node has world position but negligible rotation for landing purposes.
+        // Add the GO world position to convert to world space.
+        const Ogre::Vector3 planetWorldPos = this->gameObjectPtr->getPosition();
+        outWorldPos = planetWorldPos + localPos;
+        outWorldNormal = localNormal; // direction is rotation-invariant for a sphere
+        return true;
+    }
+
+    bool PlanetTerraComponent::collectSurfaceSamples(float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<PlanetTerra::SurfaceSample>& outSamples, Ogre::Vector3& outWorldOffset) const
+    {
+        if (nullptr == this->planet)
+        {
+            return false;
+        }
+        outWorldOffset = this->gameObjectPtr->getPosition();
+        this->planet->collectSurfaceSamples(slopeMaxDeg, heightMinLocal, heightMaxLocal, outSamples);
+        return true;
+    }
+
+    bool PlanetTerraComponent::collectSurfaceSamplesInCone(const Ogre::Vector3& capDirWorld, float capHalfAngleDeg, float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<PlanetTerra::SurfaceSample>& outSamples,
+        Ogre::Vector3& outWorldOffset) const
+    {
+        if (nullptr == this->planet)
+        {
+            return false;
+        }
+        outWorldOffset = this->gameObjectPtr->getPosition();
+        // capDir is already world-space and equals local-space because the planet has
+        // no rotation baked in (only position differs from local to world).
+        this->planet->collectSurfaceSamplesInCone(capDirWorld, capHalfAngleDeg, slopeMaxDeg, heightMinLocal, heightMaxLocal, outSamples);
+        return true;
+    }
+
+    size_t PlanetTerraComponent::getVertexCount(void) const
+    {
+        if (nullptr == this->planet)
+        {
+            return 0;
+        }
+        return this->planet->getVertexCount();
+    }
+
     void PlanetTerraComponent::fireUndoEvent(const std::vector<unsigned char>& oldData)
     {
         const std::vector<unsigned char> newData = this->getPlanetData();

@@ -582,9 +582,62 @@ namespace NOWA
 
     Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
     {
-        // Align local Y (ship up) with the outward surface normal.
-        // Does not depend on currentOrient so there is no feedback loop and no jitter.
-        return Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
+        //// Align local Y (ship up) with the outward surface normal.
+        //// Does not depend on currentOrient so there is no feedback loop and no jitter.
+        //return Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
+
+		// surfaceNormal: OUTWARD from planet centre (= "up" on the surface).
+        // We build a stable frame that aligns local Y with outwardUp while
+        // preserving the ship's current forward heading projected onto the surface.
+        const Ogre::Vector3 outwardUp = surfaceNormal.normalisedCopy();
+
+        // Current world-space forward of the ship.
+        Ogre::Vector3 shipForward = currentOrient * defaultDirection;
+
+        // Project onto surface tangent plane.
+        shipForward = shipForward - shipForward.dotProduct(outwardUp) * outwardUp;
+
+        if (shipForward.squaredLength() < 1e-4f)
+        {
+            // Ship pointing straight at/away from planet: pick a stable fallback.
+            Ogre::Vector3 worldRef = (Ogre::Math::Abs(outwardUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
+            shipForward = worldRef - worldRef.dotProduct(outwardUp) * outwardUp;
+        }
+        shipForward.normalise();
+
+        // right = forward x up, then recompute clean forward.
+        Ogre::Vector3 right = shipForward.crossProduct(outwardUp);
+        right.normalise();
+        Ogre::Vector3 cleanForward = outwardUp.crossProduct(right);
+        cleanForward.normalise();
+
+        // Place axes into the right matrix columns for the ship's defaultDirection.
+        // Col0=X, Col1=Y, Col2=Z. Local Y is always outwardUp.
+        Ogre::Vector3 axisX, axisY, axisZ;
+        axisY = outwardUp;
+
+        const float dotZ = defaultDirection.dotProduct(Ogre::Vector3::UNIT_Z);
+        const float dotX = defaultDirection.dotProduct(Ogre::Vector3::UNIT_X);
+
+        if (Ogre::Math::Abs(dotZ) >= Ogre::Math::Abs(dotX))
+        {
+            axisZ = cleanForward * Ogre::Math::Sign(dotZ);
+            axisX = right * Ogre::Math::Sign(dotZ);
+        }
+        else
+        {
+            axisX = cleanForward * Ogre::Math::Sign(dotX);
+            axisZ = -right * Ogre::Math::Sign(dotX);
+        }
+
+        Ogre::Matrix3 mat;
+        mat.SetColumn(0, axisX);
+        mat.SetColumn(1, axisY);
+        mat.SetColumn(2, axisZ);
+
+        Ogre::Quaternion result;
+        result.FromRotationMatrix(mat);
+        return result;
     }
 
 	Ogre::Radian MathHelper::getAngle(const Ogre::Vector3& dir1, const Ogre::Vector3& dir2, const Ogre::Vector3& norm, bool signedAngle)

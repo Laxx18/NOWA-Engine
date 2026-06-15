@@ -188,6 +188,46 @@ namespace NOWA
         const std::vector<Ogre::Vector2>& getUvCoords(void) const;
 
         void setDynamic(bool dynamic);
+
+        // Returns the world-space position of the flattest landing vertex near the given
+        // direction from planet centre.  dir must be normalised (ship-to-centre direction
+        // negated, i.e. outward from planet).  The returned position is in LOCAL space
+        // (planet centre at origin); caller must add the planet GO world position.
+        // Returns false if vertexCount == 0.
+        bool findFlatLandingVertex(const Ogre::Vector3& outwardDir, float searchHalfAngleDeg, Ogre::Vector3& outLocalPos, Ogre::Vector3& outLocalNormal) const;
+
+        // -------------------------------------------------------------------------
+        // Foliage / scatter query
+        // -------------------------------------------------------------------------
+
+        // Describes one surface sample point.  All values are in LOCAL space
+        // (planet centre = origin).  The caller (PlanetTerraComponent) converts
+        // worldPos to world space by adding the planet GO position.
+        struct EXPORTED SurfaceSample
+        {
+            Ogre::Vector3 localPos; // vertex position (radius + height) in local space
+            Ogre::Vector3 normal;   // outward surface normal, unit length
+            Ogre::Vector2 uv;       // equirectangular UV in [0,1]
+            float slopeDeg;         // angle between normal and radial direction, degrees
+            //                               0 = perfectly flat, 90 = vertical cliff
+        };
+
+        // Fills outSamples with one entry per non-seam vertex that passes the filters.
+        //
+        // slopeMaxDeg   : skip vertices steeper than this (e.g. 30 for grass, 90 for anything)
+        // heightMinLocal: skip vertices below this radius from centre (ocean floor culling)
+        // heightMaxLocal: skip vertices above this radius from centre (snow-line culling),
+        //                 pass FLT_MAX to disable
+        //
+        // The function is O(vertexCount) with no heap allocation beyond outSamples.
+        // For a 64x64 sphere that is 4225 vertices -- under 1 ms on any modern CPU.
+        // The caller owns the vector; reserve() before calling if the count is known.
+        void collectSurfaceSamples(float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<SurfaceSample>& outSamples) const;
+
+        // Same as above but restricted to a spherical cap centred on capDir.
+        // capHalfAngleDeg = 180 is equivalent to the full-planet version.
+        void collectSurfaceSamplesInCone(const Ogre::Vector3& capDir, float capHalfAngleDeg, float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<SurfaceSample>& outSamples) const;
+
     private:
         // Internal CPU helpers (MAIN THREAD)
         void generateBaseSphere();

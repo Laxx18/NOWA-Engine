@@ -2,21 +2,21 @@
 #include "UniversumComponent.h"
 
 #include "../../AreaOfInterestComponent/code/AreaOfInterestComponent.h"
+#include "../../AtmosphereComponent/code/AtmosphereComponent.h"
 #include "../../PlanetOceanComponent/code/PlanetOceanComponent.h"
 #include "../../PlanetSunComponent/code/PlanetSunComponent.h"
 #include "../../PlanetSurfaceComponent/code/PlanetSurfaceComponent.h"
 #include "../../PlanetTerraComponent/code/PlanetTerraComponent.h"
 #include "../../ProceduralPlanetComponent/code/ProceduralPlanetComponent.h"
-#include "../../AtmosphereComponent/code/AtmosphereComponent.h"
 #include "Compositor/OgreCompositorShadowNodeDef.h"
 #include "gameobject/DatablockPbsComponent.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/InputDeviceComponent.h"
 #include "gameobject/LightDirectionalComponent.h"
-#include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/PhysicsActiveComponent.h"
 #include "gameobject/PhysicsActiveKinematicComponent.h"
+#include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/PhysicsComponent.h"
-#include "gameobject/InputDeviceComponent.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
 #include "modules/LuaScriptApi.h"
@@ -36,9 +36,7 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    UniversumComponent::PlanetOrbitObserver::PlanetOrbitObserver(UniversumComponent* owner, unsigned long planetId)
-        : owner(owner),
-        planetId(planetId)
+    UniversumComponent::PlanetOrbitObserver::PlanetOrbitObserver(UniversumComponent* owner, unsigned long planetId) : owner(owner), planetId(planetId)
     {
     }
 
@@ -971,10 +969,25 @@ namespace NOWA
         {
             return;
         }
+
+        // Keep landingBodyCentre in sync with the paused body GO (it may have been
+        // teleported / snapped by snap*ToOrbit, so always read from the GO itself).
+        if (0ul != this->landedOnBodyId)
+        {
+            GameObjectPtr bodyGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->landedOnBodyId);
+            if (nullptr != bodyGo)
+            {
+                this->landingBodyCentre = bodyGo->getPosition();
+            }
+        }
+
         Ogre::Vector3 shipPos = shipGo->getPosition();
-        Ogre::Vector3 toCenter = shipPos - this->landingBodyCentre;
+        // toCenter: vector FROM ship TO planet centre (inward toward gravity).
+        Ogre::Vector3 toCenter = this->landingBodyCentre - shipPos;
         float distFromCenter = toCenter.length();
-        Ogre::Vector3 surfaceNormal = (distFromCenter > 1e-4f) ? toCenter / distFromCenter : Ogre::Vector3::UNIT_Y;
+        // surfaceNormal: OUTWARD from planet centre -- the "up" direction on the surface.
+        // Passed to computeLandingOrientation which aligns the ship's local Y with this.
+        Ogre::Vector3 surfaceNormal = (distFromCenter > 1e-4f) ? (-toCenter / distFromCenter) : Ogre::Vector3::UNIT_Y;
         float distToSurface = distFromCenter - this->landingBodyRadius;
         Ogre::Quaternion currentOrient = shipGo->getOrientation();
         Ogre::Quaternion targetOrient = MathHelper::getInstance()->computeLandingOrientation(currentOrient, surfaceNormal, shipGo->getDefaultDirection());
@@ -1002,6 +1015,7 @@ namespace NOWA
             if (false == this->resolvedLandingTargetValid)
             {
                 Ogre::Vector3 flatSpot;
+                // findFlatLandingSpot expects the outward surface normal — which surfaceNormal already is.
                 if (this->findFlatLandingSpot(shipPos, surfaceNormal, this->landingBodyCentre, this->landingBodyRadius, shipGo, flatSpot))
                 {
                     // Target is slightly above the flat spot so the ship settles onto it
@@ -1013,7 +1027,7 @@ namespace NOWA
                 }
                 else
                 {
-                    // Could not resolve — fall back to directly below ship
+                    // Fall back to the point on the surface directly below the ship.
                     this->resolvedLandingTarget = this->landingBodyCentre + surfaceNormal * (this->landingBodyRadius + settleHeight);
                     this->resolvedLandingTargetValid = true;
 
@@ -1024,7 +1038,8 @@ namespace NOWA
             Ogre::Vector3 toTarget = this->resolvedLandingTarget - shipPos;
             float distToTarget = toTarget.length();
 
-            // Recompute surface normal at the resolved target for correct orientation
+            // Recompute surface normal at the resolved target for correct orientation.
+            // OUTWARD from planet centre (= "up" on the surface at that spot).
             Ogre::Vector3 targetNormal = (this->resolvedLandingTarget - this->landingBodyCentre).normalisedCopy();
             Ogre::Quaternion targetOrientAtSpot = MathHelper::getInstance()->computeLandingOrientation(currentOrient, targetNormal, shipGo->getDefaultDirection());
 
@@ -1041,6 +1056,7 @@ namespace NOWA
             }
             else
             {
+                // Settle phase: push gently toward the surface (inward = -targetNormal).
                 descentVelocity = -targetNormal * 2.0f;
             }
 
@@ -1050,21 +1066,31 @@ namespace NOWA
             if (this->landingDebugTimer >= 2.0f)
             {
                 this->landingDebugTimer = 0.0f;
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "[UniversumComponent] LANDING: distToTarget=" + Ogre::StringConverter::toString(distToTarget) + " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING: distToTarget=" + Ogre::StringConverter::toString(distToTarget) + " distToSurface=" + Ogre::StringConverter::toString(distToSurface) +
+                                                                                       " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
             }
 
-            if (true == this->landingContactActive)
+            // Declare landed when:
+            //   (a) physics contact with the body fired, OR
+            //   (b) ship is within settleHeight of the resolved target (distance-based fallback
+            //       so landing always completes even when static body contacts are suppressed), OR
+            //   (c) ship is within a small margin above the effective surface sphere.
+            const bool contactLanded = this->landingContactActive;
+            const bool distTargetLanded = (distToTarget <= settleHeight * 1.5f);
+            const bool distSurfaceLanded = (distToSurface <= settleHeight * 2.0f);
+
+            if (contactLanded || distTargetLanded || distSurfaceLanded)
             {
                 this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrientAtSpot, 0.0f);
                 this->landingState = LandingState::LANDED;
                 this->landingDebugTimer = 0.0f;
                 this->landingContactActive = false;
-                this->resolvedLandingTargetValid = false; // reset for next landing
+                this->resolvedLandingTargetValid = false;
                 this->setPlayerInputLock(false);
                 this->landingInputLocked = false;
                 this->callLandedFunction(this->landedOnBodyId, playerGOId);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Landed on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Landed on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId) + " (contact=" + Ogre::StringConverter::toString(contactLanded) +
+                                                                                       " distTarget=" + Ogre::StringConverter::toString(distTargetLanded) + " distSurface=" + Ogre::StringConverter::toString(distSurfaceLanded) + ")");
                 return;
             }
             this->landingContactActive = false;
@@ -1079,6 +1105,7 @@ namespace NOWA
 
         if (this->landingState == LandingState::TAKING_OFF)
         {
+            // surfaceNormal is outward (away from planet), so push ship in that direction.
             this->applyShipMovement(shipGo, surfaceNormal * this->takeoffSpeed, targetOrient, 1.0f);
             if (distToSurface > this->takeoffClearanceAltitude)
             {
@@ -1174,7 +1201,7 @@ namespace NOWA
                         uprightOrient.FromRotationMatrix(mat);
 
                         actComp->setOrientation(uprightOrient);
-    #else
+#else
 
                         Ogre::Quaternion currentOrient = actComp->getOrientation();
                         Ogre::Vector3 defaultDir = shipGo->getDefaultDirection();
@@ -1259,16 +1286,26 @@ namespace NOWA
 
     void UniversumComponent::requestLanding(void)
     {
-        if (this->landingState != LandingState::APPROACHING)
+        /*if (this->landingState != LandingState::APPROACHING)
         {
             return;
-        }
+        }*/
         this->landingState = LandingState::LANDING;
         this->setPlayerInputLock(true);
         this->landingInputLocked = true;
         this->landingFired = false;
         this->landingContactActive = false;
         this->landingContactTimer = 0.0f;
+
+        // Fire the reactOnLanding callback immediately so Lua can show
+        // the approach fade-in regardless of whether APPROACHING threshold was reached.
+        if (false == this->landingFired)
+        {
+            this->landingFired = true;
+            const unsigned long playerGOId = this->playerGameObjectId->getULong();
+            this->callLandingFunction(this->landedOnBodyId, playerGOId);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] reactOnLanding fired from requestLanding for body id=" + Ogre::StringConverter::toString(this->landedOnBodyId));
+        }
 
         // Register contact callback on the ship so any collision with the
         // planet/moon surface sets the landingContactActive flag.
@@ -1414,7 +1451,6 @@ namespace NOWA
             return;
         }
 
-        
         Ogre::MovableObject* movable = bodyGo->getMovableObject();
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
@@ -1424,7 +1460,6 @@ namespace NOWA
         {
             return;
         }
-
 
         NOWA::GraphicsModule::RenderCommand cmd = [movable, castShadows]
         {
@@ -1454,8 +1489,25 @@ namespace NOWA
             auto terraComp = NOWA::makeStrongPtr(bodyGo->getComponent<PlanetTerraComponent>());
             if (nullptr != terraComp)
             {
-                this->landingBodyRadius = terraComp->getRadius();
+                // Use computedMaxRadius which equals base sphere radius + max(heightData[i]).
+                // This is the actual outermost vertex of the terrain mesh after procedural
+                // generation and any brush edits. Using just getRadius() (the base sphere)
+                // means distToSurface is too large by the hill amplitude, causing the
+                // approach threshold to fire far too late (ship visually grazes hilltops
+                // while we still report hundreds of units of altitude).
+                this->landingBodyRadius = terraComp->getComputedMaxRadius();
             }
+
+            // Scale the approach threshold with body size so the Land button fires
+            // at a comfortable altitude regardless of planet/moon size.
+            // Rule: max(80, radius * 0.04) capped at 500. For radius=2630 -> ~105 m.
+            this->landingAltitudeThreshold = Ogre::Math::Clamp(this->landingBodyRadius * 0.04f, 80.0f, 500.0f);
+
+            // Takeoff clearance = 1.5x approach threshold.
+            this->takeoffClearanceAltitude = this->landingAltitudeThreshold * 1.5f;
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] setupLandingState bodyId=" + Ogre::StringConverter::toString(bodyGoId) + " computedMaxRadius=" +
+                                                                                   Ogre::StringConverter::toString(this->landingBodyRadius) + " landingAltitudeThreshold=" + Ogre::StringConverter::toString(this->landingAltitudeThreshold));
         }
 
         this->currentFarClip = this->farClipSurface->getReal();
@@ -1564,140 +1616,65 @@ namespace NOWA
 
     bool UniversumComponent::findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, GameObjectPtr shipGo, Ogre::Vector3& outTarget)
     {
-        // Exclude the ship itself from raycasts
-        std::vector<Ogre::MovableObject*> excludeObjects;
-        if (nullptr != shipGo && nullptr != shipGo->getMovableObject())
-        {
-            excludeObjects.push_back(shipGo->getMovableObject());
-        }
+        // AAA approach: query the planet's own CPU vertex data directly.
+        // This avoids all scene ray query problems (back-face normals, winding order,
+        // OGRE query mask issues, camera dependency).  PlanetTerra keeps normals[]
+        // and vertices[] always up to date on the main thread after generation and
+        // any brush editing.  The normals are guaranteed outward by recalculateNormals().
+        //
+        //   1. Project ship direction onto the sphere to get the search cone centre.
+        //   2. Walk all vertices within a cone of searchHalfAngle degrees.
+        //   3. Pick the vertex whose normal is most aligned with its radial direction
+        //      (i.e. the flattest local surface patch).
+        //   4. Return that vertex's world position as the landing target.
 
-        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-
-        // Build two orthogonal tangent axes on the surface plane
-        Ogre::Vector3 tangent1 = surfaceNormal.perpendicular().normalisedCopy();
-        Ogre::Vector3 tangent2 = surfaceNormal.crossProduct(tangent1).normalisedCopy();
-
-        // Candidate 0: directly below the ship (best case — try this first)
-        struct Candidate
-        {
-            Ogre::Vector3 pos;
-            float maxSlope;
-        };
-        std::vector<Candidate> candidates;
-
-        // Center candidate
-        {
-            Ogre::Vector3 probeOrigin = bodyCentre + surfaceNormal * (bodyRadius + 50.0f);
-            // Project ship pos onto surface direction to get center probe
-            Ogre::Vector3 toShip = (shipPos - bodyCentre).normalisedCopy();
-            probeOrigin = bodyCentre + toShip * (bodyRadius + 50.0f);
-
-            Ogre::Ray ray(probeOrigin, -toShip);
-            this->landingRayQuery->setRay(ray);
-
-            Ogre::Vector3 hitPos = Ogre::Vector3::ZERO;
-            Ogre::MovableObject* obj = nullptr;
-            Ogre::Real dist = 0.0f;
-            Ogre::Vector3 hitNormal = surfaceNormal;
-
-            MathHelper::getInstance()->getRaycastFromPoint(this->landingRayQuery, camera, hitPos, (size_t&)obj, dist, hitNormal, &excludeObjects);
-
-            if (hitPos != Ogre::Vector3::ZERO)
-            {
-                float slopeDeg = Ogre::Math::ACos(Ogre::Math::Clamp(hitNormal.dotProduct(surfaceNormal), -1.0f, 1.0f)).valueDegrees();
-                candidates.push_back({hitPos, slopeDeg});
-            }
-        }
-
-        // Spiral ring candidates around the projected ship position on the surface
-        Ogre::Vector3 surfaceBase = bodyCentre + (shipPos - bodyCentre).normalisedCopy() * bodyRadius;
-
-        for (int ring = 1; ring <= LANDING_SEARCH_RINGS; ++ring)
-        {
-            float ringRadius = (LANDING_SEARCH_RADIUS / LANDING_SEARCH_RINGS) * ring;
-
-            for (int step = 0; step < LANDING_SEARCH_RING_STEPS; ++step)
-            {
-                float angle = (Ogre::Math::TWO_PI / LANDING_SEARCH_RING_STEPS) * step;
-
-                // Offset on the surface tangent plane
-                Ogre::Vector3 surfaceOffset = tangent1 * (Ogre::Math::Cos(angle) * ringRadius) + tangent2 * (Ogre::Math::Sin(angle) * ringRadius);
-
-                // Project the offset point back onto the sphere surface
-                Ogre::Vector3 probeOnSurface = (surfaceBase + surfaceOffset - bodyCentre);
-                probeOnSurface.normalise();
-                Ogre::Vector3 probeOrigin = bodyCentre + probeOnSurface * (bodyRadius + 50.0f);
-
-                Ogre::Ray ray(probeOrigin, -probeOnSurface);
-                this->landingRayQuery->setRay(ray);
-
-                Ogre::Vector3 hitPos = Ogre::Vector3::ZERO;
-                Ogre::MovableObject* obj = nullptr;
-                Ogre::Real dist = 0.0f;
-                Ogre::Vector3 hitNormal = surfaceNormal;
-
-                MathHelper::getInstance()->getRaycastFromPoint(this->landingRayQuery, camera, hitPos, (size_t&)obj, dist, hitNormal, &excludeObjects);
-
-                if (hitPos == Ogre::Vector3::ZERO)
-                {
-                    continue;
-                }
-
-                // Measure slope: angle between hit normal and ideal surface normal
-                // at this point (direction from body centre to hit)
-                Ogre::Vector3 idealNormal = (hitPos - bodyCentre).normalisedCopy();
-                float slopeDeg = Ogre::Math::ACos(Ogre::Math::Clamp(hitNormal.dotProduct(idealNormal), -1.0f, 1.0f)).valueDegrees();
-
-                candidates.push_back({hitPos, slopeDeg});
-            }
-        }
-
-        if (candidates.empty())
+        GameObjectPtr bodyGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->landedOnBodyId);
+        if (nullptr == bodyGo)
         {
             return false;
         }
 
-        // Pick the flattest candidate within acceptable gradient,
-        // preferring closer ones (candidates are ordered center-first then by ring)
-        Ogre::Vector3 bestPos = Ogre::Vector3::ZERO;
-        float bestSlope = std::numeric_limits<float>::max();
+        auto terraComp = NOWA::makeStrongPtr(bodyGo->getComponent<PlanetTerraComponent>());
+        if (nullptr == terraComp)
+        {
+            return false;
+        }
+
+        // outwardDir: unit vector from planet centre toward the ship (= ship's "up").
+        // This is the cone centre for the vertex search.
+        const Ogre::Vector3 outwardDir = (shipPos - bodyCentre).normalisedCopy();
+
+        // Start with a 20-degree cone and widen if no vertex is found (very steep terrain).
+        // 20 degrees covers a generous patch — on a radius-2618 sphere each degree is
+        // about 46 world units, so 20 deg = ~920 unit diameter search area.
+        const float searchAngles[] = {20.0f, 35.0f, 60.0f};
+        const int numAngles = static_cast<int>(sizeof(searchAngles) / sizeof(searchAngles[0]));
+
+        Ogre::Vector3 bestWorldPos = Ogre::Vector3::ZERO;
+        Ogre::Vector3 bestWorldNormal = surfaceNormal;
         bool found = false;
 
-        for (const auto& c : candidates)
+        for (int ai = 0; ai < numAngles && false == found; ++ai)
         {
-            if (c.maxSlope < LANDING_MAX_GRADIENT_DEG && c.maxSlope < bestSlope)
-            {
-                bestSlope = c.maxSlope;
-                bestPos = c.pos;
-                found = true;
-            }
-        }
-
-        // Fallback: if nothing is flat enough, use the flattest candidate anyway
-        if (false == found)
-        {
-            for (const auto& c : candidates)
-            {
-                if (c.maxSlope < bestSlope)
-                {
-                    bestSlope = c.maxSlope;
-                    bestPos = c.pos;
-                }
-            }
-            found = (bestPos != Ogre::Vector3::ZERO);
+            found = terraComp->findFlatLandingVertex(outwardDir, searchAngles[ai], bestWorldPos, bestWorldNormal);
             if (found)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "[UniversumComponent] No flat spot found within " + Ogre::StringConverter::toString(LANDING_MAX_GRADIENT_DEG) + " deg, using flattest available: " + Ogre::StringConverter::toString(bestSlope) + " deg");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] findFlatLandingSpot: vertex found at angle=" + Ogre::StringConverter::toString(searchAngles[ai]) +
+                                                                                       " pos=" + Ogre::StringConverter::toString(bestWorldPos) + " normal=" + Ogre::StringConverter::toString(bestWorldNormal));
             }
         }
 
-        if (found)
+        if (false == found)
         {
-            outTarget = bestPos;
+            // Absolute fallback: project ship radial direction onto surface sphere.
+            // This gives a geographically correct position even with no vertex data.
+            bestWorldPos = bodyCentre + outwardDir * bodyRadius;
+            bestWorldNormal = outwardDir;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] findFlatLandingSpot: no vertex in 60-deg cone, using radial projection");
         }
 
-        return found;
+        outTarget = bestWorldPos;
+        return true; // always returns a valid position now
     }
 
     void UniversumComponent::pausePlanetOrbit(unsigned long planetGameObjectId, unsigned long gameObjectId)
@@ -1723,6 +1700,40 @@ namespace NOWA
                     if (nullptr != planetGo)
                     {
                         this->setPlanetDynamic(planetGo, false);
+                    }
+                }
+
+                // Also pause all moons orbiting this planet so they cannot
+                // collide with the ship/player or exit their AOI unexpectedly
+                // while the player is on the surface.
+                for (auto& moonPair : system.moons)
+                {
+                    // moonPair.first is the parent planet index; find which index this planet is.
+                    // We match by iterating planets to find the index.
+                    size_t planetIdx = 0u;
+                    bool foundIdx = false;
+                    for (size_t pi = 0u; pi < system.planets.size(); ++pi)
+                    {
+                        if (system.planets[pi].gameObjectId == planetGameObjectId)
+                        {
+                            planetIdx = pi;
+                            foundIdx = true;
+                            break;
+                        }
+                    }
+                    if (false == foundIdx || moonPair.first != planetIdx)
+                    {
+                        continue;
+                    }
+                    if (false == moonPair.second.orbitalPaused)
+                    {
+                        moonPair.second.orbitalPaused = true;
+                        GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
+                        if (nullptr != moonGo)
+                        {
+                            this->setPlanetDynamic(moonGo, false);
+                        }
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Moon id=" + Ogre::StringConverter::toString(moonPair.second.gameObjectId) + " also paused while player is on parent planet.");
                     }
                 }
 
@@ -1782,6 +1793,42 @@ namespace NOWA
                     if (nullptr != moonGo)
                     {
                         this->setPlanetDynamic(moonGo, false);
+                    }
+                }
+
+                // Also pause the parent planet (and all sibling moons of this moon) so
+                // they cannot collide with the frozen moon while the player is on its surface.
+                const size_t parentIdx = moonPair.first;
+                if (parentIdx < system.planets.size())
+                {
+                    OrbitalBody& parentPlanet = system.planets[parentIdx];
+                    if (false == parentPlanet.orbitalPaused)
+                    {
+                        parentPlanet.orbitalPaused = true;
+                        GameObjectPtr parentGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(parentPlanet.gameObjectId);
+                        if (nullptr != parentGo)
+                        {
+                            this->setPlanetDynamic(parentGo, false);
+                        }
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Parent planet id=" + Ogre::StringConverter::toString(parentPlanet.gameObjectId) + " also paused while player is on moon.");
+                    }
+
+                    // Pause all sibling moons of this parent as well
+                    for (auto& siblingPair : system.moons)
+                    {
+                        if (siblingPair.first == parentIdx && siblingPair.second.gameObjectId != planetGameObjectId)
+                        {
+                            if (false == siblingPair.second.orbitalPaused)
+                            {
+                                siblingPair.second.orbitalPaused = true;
+                                GameObjectPtr siblingGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(siblingPair.second.gameObjectId);
+                                if (nullptr != siblingGo)
+                                {
+                                    this->setPlanetDynamic(siblingGo, false);
+                                }
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Sibling moon id=" + Ogre::StringConverter::toString(siblingPair.second.gameObjectId) + " also paused while player is on moon.");
+                            }
+                        }
                     }
                 }
 
@@ -1905,6 +1952,40 @@ namespace NOWA
                     this->snapPlanetToOrbit(planet, sunGo->getPosition());
                 }
 
+                // Resume all moons of this planet that were force-paused during landing.
+                size_t planetIdx = 0u;
+                bool foundIdx = false;
+                for (size_t pi = 0u; pi < system.planets.size(); ++pi)
+                {
+                    if (system.planets[pi].gameObjectId == planetGameObjectId)
+                    {
+                        planetIdx = pi;
+                        foundIdx = true;
+                        break;
+                    }
+                }
+                if (true == foundIdx)
+                {
+                    for (auto& moonPair : system.moons)
+                    {
+                        if (moonPair.first != planetIdx)
+                        {
+                            continue;
+                        }
+                        if (true == moonPair.second.orbitalPaused)
+                        {
+                            moonPair.second.orbitalPaused = false;
+                            GameObjectPtr moonGo2 = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
+                            if (nullptr != moonGo2)
+                            {
+                                this->setPlanetDynamic(moonGo2, true);
+                            }
+                            this->snapMoonToOrbit(moonPair.second, planet);
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Moon id=" + Ogre::StringConverter::toString(moonPair.second.gameObjectId) + " resumed after player left parent planet.");
+                        }
+                    }
+                }
+
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Orbital motion resumed for planet id=" + Ogre::StringConverter::toString(planetGameObjectId));
                 return;
             }
@@ -1930,6 +2011,43 @@ namespace NOWA
                 if (parentIdx < system.planets.size())
                 {
                     this->snapMoonToOrbit(moon, system.planets[parentIdx]);
+
+                    // Resume the parent planet that was frozen when we landed on this moon.
+                    OrbitalBody& parentPlanet = system.planets[parentIdx];
+                    if (true == parentPlanet.orbitalPaused)
+                    {
+                        parentPlanet.orbitalPaused = false;
+                        GameObjectPtr parentGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(parentPlanet.gameObjectId);
+                        if (nullptr != parentGo)
+                        {
+                            this->setPlanetDynamic(parentGo, true);
+                        }
+                        GameObjectPtr sunGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(system.sunId);
+                        if (nullptr != sunGo)
+                        {
+                            this->snapPlanetToOrbit(parentPlanet, sunGo->getPosition());
+                        }
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Parent planet id=" + Ogre::StringConverter::toString(parentPlanet.gameObjectId) + " resumed after player left moon.");
+                    }
+
+                    // Resume sibling moons of this parent that were force-paused.
+                    for (auto& siblingPair : system.moons)
+                    {
+                        if (siblingPair.first == parentIdx && siblingPair.second.gameObjectId != planetGameObjectId)
+                        {
+                            if (true == siblingPair.second.orbitalPaused)
+                            {
+                                siblingPair.second.orbitalPaused = false;
+                                GameObjectPtr siblingGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(siblingPair.second.gameObjectId);
+                                if (nullptr != siblingGo)
+                                {
+                                    this->setPlanetDynamic(siblingGo, true);
+                                }
+                                this->snapMoonToOrbit(siblingPair.second, parentPlanet);
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Sibling moon id=" + Ogre::StringConverter::toString(siblingPair.second.gameObjectId) + " resumed after player left moon.");
+                            }
+                        }
+                    }
                 }
 
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Orbital motion resumed for moon id=" + Ogre::StringConverter::toString(planetGameObjectId));
@@ -3180,7 +3298,7 @@ namespace NOWA
             // Use goPtr->setRenderDistance to go through the proper enqueue path.
             // Pass a large value -- 0 means "skip" in setRenderDistance.
             goPtr->setRenderDistance(1000000u);
-           
+
             goPtr->setLodDistance(this->sunRadius->getReal() * 6.0f);
         }
 
@@ -3636,7 +3754,7 @@ namespace NOWA
     void UniversumComponent::handleSceneParsed(EventDataPtr eventData)
     {
         // Does not work, its still to early and design state not ready, but maybe works in direct scenario
-        
+
         // Fire camera speed event so DesignState sets the editor camera speed correctly,
         // matching what generateUniverse() would have posted.
         // Formula mirrors generateUniverse: max orbital dist * 0.1 / 10s.
@@ -4110,49 +4228,46 @@ namespace NOWA
         return Ogre::StringConverter::toString(instance->getSunLightGameObjectId());
     }
 
-    void UniversumComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
+    void UniversumComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)
-        [
-           luabind::class_<UniversumComponent, GameObjectComponent>("UniversumComponent")
-            .def("setRandomSeed", &UniversumComponent::setRandomSeed)
-            .def("getRandomSeed", &UniversumComponent::getRandomSeed)
-            .def("setSolarSystemCount", &UniversumComponent::setSolarSystemCount)
-            .def("getSolarSystemCount", &UniversumComponent::getSolarSystemCount)
-            .def("setUseMoons", &UniversumComponent::setUseMoons)
-            .def("getUseMoons", &UniversumComponent::getUseMoons)
-            .def("setUseMotion", &UniversumComponent::setUseMotion)
-            .def("getUseMotion", &UniversumComponent::getUseMotion)
-            .def("setUseOcean", &UniversumComponent::setUseOcean)
-            .def("getUseOcean", &UniversumComponent::getUseOcean)
-            .def("setOceanProbability", &UniversumComponent::setOceanProbability)
-            .def("getOceanProbability", &UniversumComponent::getOceanProbability)
-            .def("setSunRadius", &UniversumComponent::setSunRadius)
-            .def("getSunRadius", &UniversumComponent::getSunRadius)
-            .def("setPlanetRadiusMin", &UniversumComponent::setPlanetRadiusMin)
-            .def("getPlanetRadiusMin", &UniversumComponent::getPlanetRadiusMin)
-            .def("setPlanetRadiusMax", &UniversumComponent::setPlanetRadiusMax)
-            .def("getPlanetRadiusMax", &UniversumComponent::getPlanetRadiusMax)
-            .def("setPlayerGameObjectId", &internalSetPlayerGameObjectId)
-            .def("getPlayerGameObjectId", &internalGetPlayerGameObjectId)
-            .def("setCameraGameObjectId", &internalSetCameraGameObjectId)
-            .def("getCameraGameObjectId", &internalGetCameraGameObjectId)
-            .def("setSunLightGameObjectId", &internalSetSunLightGameObjectId)
-            .def("getSunLightGameObjectId", &internalGetSunLightGameObjectId)
-            .def("pausePlanetOrbit", &UniversumComponent::pausePlanetOrbit)
-            .def("resumePlanetOrbit", &UniversumComponent::resumePlanetOrbit)
-            .def("computeGravity", &UniversumComponent::computeGravity)
-            .def("setAutoPauseOrbit", &UniversumComponent::setAutoPauseOrbit)
-            .def("getAutoPauseOrbit", &UniversumComponent::getAutoPauseOrbit)
-            .def("reactOnPlanetEntered", &UniversumComponent::reactOnPlanetEntered)
-            .def("reactOnPlanetLeft", &UniversumComponent::reactOnPlanetLeft)
-            .def("reactOnLanding", &UniversumComponent::reactOnLanding)
-            .def("reactOnLanded", &UniversumComponent::reactOnLanded)
-            .def("requestLanding", &UniversumComponent::requestLanding)
-            .def("requestTakeoff", &UniversumComponent::requestTakeoff)
-                
-            .def("reactOnUniverseGenerated", &UniversumComponent::reactOnUniverseGenerated)
-        ];
+        module(lua)[luabind::class_<UniversumComponent, GameObjectComponent>("UniversumComponent")
+                .def("setRandomSeed", &UniversumComponent::setRandomSeed)
+                .def("getRandomSeed", &UniversumComponent::getRandomSeed)
+                .def("setSolarSystemCount", &UniversumComponent::setSolarSystemCount)
+                .def("getSolarSystemCount", &UniversumComponent::getSolarSystemCount)
+                .def("setUseMoons", &UniversumComponent::setUseMoons)
+                .def("getUseMoons", &UniversumComponent::getUseMoons)
+                .def("setUseMotion", &UniversumComponent::setUseMotion)
+                .def("getUseMotion", &UniversumComponent::getUseMotion)
+                .def("setUseOcean", &UniversumComponent::setUseOcean)
+                .def("getUseOcean", &UniversumComponent::getUseOcean)
+                .def("setOceanProbability", &UniversumComponent::setOceanProbability)
+                .def("getOceanProbability", &UniversumComponent::getOceanProbability)
+                .def("setSunRadius", &UniversumComponent::setSunRadius)
+                .def("getSunRadius", &UniversumComponent::getSunRadius)
+                .def("setPlanetRadiusMin", &UniversumComponent::setPlanetRadiusMin)
+                .def("getPlanetRadiusMin", &UniversumComponent::getPlanetRadiusMin)
+                .def("setPlanetRadiusMax", &UniversumComponent::setPlanetRadiusMax)
+                .def("getPlanetRadiusMax", &UniversumComponent::getPlanetRadiusMax)
+                .def("setPlayerGameObjectId", &internalSetPlayerGameObjectId)
+                .def("getPlayerGameObjectId", &internalGetPlayerGameObjectId)
+                .def("setCameraGameObjectId", &internalSetCameraGameObjectId)
+                .def("getCameraGameObjectId", &internalGetCameraGameObjectId)
+                .def("setSunLightGameObjectId", &internalSetSunLightGameObjectId)
+                .def("getSunLightGameObjectId", &internalGetSunLightGameObjectId)
+                .def("pausePlanetOrbit", &UniversumComponent::pausePlanetOrbit)
+                .def("resumePlanetOrbit", &UniversumComponent::resumePlanetOrbit)
+                .def("computeGravity", &UniversumComponent::computeGravity)
+                .def("setAutoPauseOrbit", &UniversumComponent::setAutoPauseOrbit)
+                .def("getAutoPauseOrbit", &UniversumComponent::getAutoPauseOrbit)
+                .def("reactOnPlanetEntered", &UniversumComponent::reactOnPlanetEntered)
+                .def("reactOnPlanetLeft", &UniversumComponent::reactOnPlanetLeft)
+                .def("reactOnLanding", &UniversumComponent::reactOnLanding)
+                .def("reactOnLanded", &UniversumComponent::reactOnLanded)
+                .def("requestLanding", &UniversumComponent::requestLanding)
+                .def("requestTakeoff", &UniversumComponent::requestTakeoff)
+
+                .def("reactOnUniverseGenerated", &UniversumComponent::reactOnUniverseGenerated)];
 
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "class inherits GameObjectComponent", UniversumComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void setRandomSeed(uint seed)", "Sets the random seed for reproducible universe generation.");
@@ -4198,7 +4313,7 @@ namespace NOWA
             "Starts the takeoff autopilot. "
             "Locks input immediately and drives the ship to the surface. "
             "For testing without a button: call this directly inside reactOnLanded.");
-        
+
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnUniverseGenerated(func closure())",
             "Registers a Lua closure called once after generateUniverse() completes successfully. "
             "Use this to read planet ids, set up your player spawn point, configure gravity sources, etc.");

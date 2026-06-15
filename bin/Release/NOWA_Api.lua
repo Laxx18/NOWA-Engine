@@ -24505,6 +24505,22 @@ return {
 				returns = "(Vector3)",
 				valuetype = "Vector3"
 			},
+			setGhost =
+			{
+				type = "method",
+				description = "Sets the body into ghost mode. A ghost body has zero mass and no force callback so it costs nothing in the physics solver, but it remains in the world so contact detection still fires. Use this instead of setActivated(false) when you still need to detect collisions — e.g. player enters ghost mode when boarding a ship but contact with the ship still triggers takeoff. Call setGhost(false) to restore full dynamic simulation.",
+				args = "(boolean ghost)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isGhost =
+			{
+				type = "function",
+				description = "Returns true if the body is currently in ghost mode. See setGhost.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			translate =
 			{
 				type = "method",
