@@ -680,6 +680,9 @@
     <ClInclude Include="planetatmosphere\PlanetAtmosphere.h">
       <Filter>planetatmosphere</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\WindComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1246,6 +1249,9 @@
     </ClCompile>
     <ClCompile Include="planetatmosphere\PlanetAtmosphere.cpp">
       <Filter>planetatmosphere</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\WindComponent.cpp">
+      <Filter>gameobject</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

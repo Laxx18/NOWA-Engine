@@ -11173,6 +11173,30 @@ return {
 				args = "(string name)",
 				returns = "(WaterFoamEffectComponent)",
 				valuetype = "WaterFoamEffectComponent"
+			},
+			getWindComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurrence index, since a game object may have this component several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(WindComponent)",
+				valuetype = "WindComponent"
+			},
+			getWindComponent =
+			{
+				type = "function",
+				description = "Gets the component. Use this if the game object has this component only once.",
+				args = "()",
+				returns = "(WindComponent)",
+				valuetype = "WindComponent"
+			},
+			getWindComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by its custom name.",
+				args = "(string name)",
+				returns = "(WindComponent)",
+				valuetype = "WindComponent"
 			}
 		}
 	},
@@ -12997,6 +13021,14 @@ return {
 				args = "(WaterFoamEffectComponent other)",
 				returns = "(WaterFoamEffectComponent)",
 				valuetype = "WaterFoamEffectComponent"
+			},
+			castWindComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(WindComponent other)",
+				returns = "(WindComponent)",
+				valuetype = "WindComponent"
 			}
 		}
 	},
@@ -34303,6 +34335,79 @@ return {
 			OVERLAPPED =
 			{
 				type = "value"
+			}
+		}
+	},
+	WindComponent =
+	{
+		type = "class",
+		description = "Usage: Controls global wind parameters (strength, direction, frequency) for all objects using the HlmsWind shader (HLMS_USER0). Only one WindComponent per scene is necessary. Wind-aware components such as ProceduralFoliageVolumeComponent automatically detect and use this component.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this component is active. If deactivated, wind parameters are frozen at their current values.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setWindStrength =
+			{
+				type = "method",
+				description = "Sets the overall wind displacement strength applied to all Wind HLMS objects. 0 = no movement. 0.5 = gentle breeze. 2.0 = strong storm. Typical range: 0..2. Example: windComp:setWindStrength(1.5) -- strong wind",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWindStrength =
+			{
+				type = "function",
+				description = "Gets the current wind strength. Returns a value in the range 0..5.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWindDirection =
+			{
+				type = "method",
+				description = "Sets the dominant world-space wind direction (automatically normalized). (1,0,0) = east, (-1,0,0) = west, (0,0,1) = south, (0,0,-1) = north. The Y component has no visual effect on ground-level vegetation. Example: windComp:setWindDirection(Vector3(1, 0, 0.5)) -- east-southeast wind",
+				args = "(Vector3 direction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWindDirection =
+			{
+				type = "function",
+				description = "Gets the current normalized wind direction vector.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setWindFrequency =
+			{
+				type = "method",
+				description = "Sets the animation speed of the 3D Perlin noise turbulence field. 1.0 = default neutral speed. Higher values produce rapid fluttering. Typical range: 0.1 (very slow, lazy sway) to 5.0 (rapid gusty turbulence). Example: windComp:setWindFrequency(2.0) -- faster turbulence",
+				args = "(number frequency)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWindFrequency =
+			{
+				type = "function",
+				description = "Gets the current wind frequency (turbulence animation speed).",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},

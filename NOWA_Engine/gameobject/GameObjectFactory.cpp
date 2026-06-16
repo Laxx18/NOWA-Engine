@@ -79,6 +79,7 @@
 #include "MyGUIControllerComponents.h"
 #include "MyGUIMiniMapComponent.h"
 #include "BackgroundScrollComponent.h"
+#include "WindComponent.h"
 
 #include "modules/RakNetModule.h"
 #include "main/Events.h"
@@ -130,6 +131,7 @@ namespace NOWA
 		this->componentFactory.registerClass<WorkspaceCustomComponent>(WorkspaceCustomComponent::getStaticClassId(), WorkspaceCustomComponent::getStaticClassName());
 
 		this->componentFactory.registerClass<BackgroundScrollComponent>(BackgroundScrollComponent::getStaticClassId(), BackgroundScrollComponent::getStaticClassName());
+        this->componentFactory.registerClass<WindComponent>(WindComponent::getStaticClassId(), WindComponent::getStaticClassName());
 
 		// Compositor Effects Comonents
 		this->componentFactory.registerClass<CompositorEffectBloomComponent>(CompositorEffectBloomComponent::getStaticClassId(), CompositorEffectBloomComponent::getStaticClassName());

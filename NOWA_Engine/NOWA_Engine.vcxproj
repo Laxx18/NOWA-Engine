@@ -285,6 +285,7 @@
     <ClInclude Include="gameobject\TransformComponent.h" />
     <ClInclude Include="gameobject\VehicleDrivingManipulation.h" />
     <ClInclude Include="gameobject\WallComponentBase.h" />
+    <ClInclude Include="gameobject\WindComponent.h" />
     <ClInclude Include="gameobject\WorkspaceComponents.h" />
     <ClInclude Include="ki\Edge.h" />
     <ClInclude Include="ki\FormationBehavior.h" />
@@ -500,6 +501,7 @@
     <ClCompile Include="gameobject\Tire.cpp" />
     <ClCompile Include="gameobject\TransformComponent.cpp" />
     <ClCompile Include="gameobject\VehicleDrivingManipulation.cpp" />
+    <ClCompile Include="gameobject\WindComponent.cpp" />
     <ClCompile Include="gameobject\WorkspaceComponents.cpp" />
     <ClCompile Include="ki\Edge.cpp" />
     <ClCompile Include="ki\FormationBehavior.cpp" />

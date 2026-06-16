@@ -970,8 +970,7 @@ namespace NOWA
             return;
         }
 
-        // Keep landingBodyCentre in sync with the paused body GO (it may have been
-        // teleported / snapped by snap*ToOrbit, so always read from the GO itself).
+        // Keep landingBodyCentre in sync with the paused body GO
         if (0ul != this->landedOnBodyId)
         {
             GameObjectPtr bodyGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->landedOnBodyId);
@@ -982,11 +981,8 @@ namespace NOWA
         }
 
         Ogre::Vector3 shipPos = shipGo->getPosition();
-        // toCenter: vector FROM ship TO planet centre (inward toward gravity).
         Ogre::Vector3 toCenter = this->landingBodyCentre - shipPos;
         float distFromCenter = toCenter.length();
-        // surfaceNormal: OUTWARD from planet centre -- the "up" direction on the surface.
-        // Passed to computeLandingOrientation which aligns the ship's local Y with this.
         Ogre::Vector3 surfaceNormal = (distFromCenter > 1e-4f) ? (-toCenter / distFromCenter) : Ogre::Vector3::UNIT_Y;
         float distToSurface = distFromCenter - this->landingBodyRadius;
         Ogre::Quaternion currentOrient = shipGo->getOrientation();
@@ -1015,71 +1011,52 @@ namespace NOWA
             if (false == this->resolvedLandingTargetValid)
             {
                 Ogre::Vector3 flatSpot;
-                // findFlatLandingSpot expects the outward surface normal — which surfaceNormal already is.
                 if (this->findFlatLandingSpot(shipPos, surfaceNormal, this->landingBodyCentre, this->landingBodyRadius, shipGo, flatSpot))
                 {
-                    // Target is slightly above the flat spot so the ship settles onto it
                     Ogre::Vector3 flatNormal = (flatSpot - this->landingBodyCentre).normalisedCopy();
+                    float flatSpotDistFromCentre = (flatSpot - this->landingBodyCentre).length();
                     this->resolvedLandingTarget = flatSpot + flatNormal * settleHeight;
                     this->resolvedLandingTargetValid = true;
 
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Flat landing spot resolved: " + Ogre::StringConverter::toString(this->resolvedLandingTarget));
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                        "[UniversumComponent] LANDING resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) + " flatSpot=" + Ogre::StringConverter::toString(flatSpot) + " flatSpotDistFromCentre=" +
+                            Ogre::StringConverter::toString(flatSpotDistFromCentre) + " bodyRadius=" + Ogre::StringConverter::toString(this->landingBodyRadius) + " bodyCentre=" + Ogre::StringConverter::toString(this->landingBodyCentre) +
+                            " shipPos=" + Ogre::StringConverter::toString(shipPos) + " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) + " distToSurface=" + Ogre::StringConverter::toString(distToSurface));
                 }
                 else
                 {
-                    // Fall back to the point on the surface directly below the ship.
                     this->resolvedLandingTarget = this->landingBodyCentre + surfaceNormal * (this->landingBodyRadius + settleHeight);
                     this->resolvedLandingTargetValid = true;
-
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Flat spot search failed, using direct descent");
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING fallback resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) +
+                                                                                           " bodyCentre=" + Ogre::StringConverter::toString(this->landingBodyCentre) + " bodyRadius=" + Ogre::StringConverter::toString(this->landingBodyRadius) +
+                                                                                           " surfaceNormal=" + Ogre::StringConverter::toString(surfaceNormal) + " shipPos=" + Ogre::StringConverter::toString(shipPos) +
+                                                                                           " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) + " distToSurface=" + Ogre::StringConverter::toString(distToSurface));
                 }
             }
 
             Ogre::Vector3 toTarget = this->resolvedLandingTarget - shipPos;
             float distToTarget = toTarget.length();
 
-            // Recompute surface normal at the resolved target for correct orientation.
-            // OUTWARD from planet centre (= "up" on the surface at that spot).
             Ogre::Vector3 targetNormal = (this->resolvedLandingTarget - this->landingBodyCentre).normalisedCopy();
             Ogre::Quaternion targetOrientAtSpot = MathHelper::getInstance()->computeLandingOrientation(currentOrient, targetNormal, shipGo->getDefaultDirection());
 
-            Ogre::Vector3 descentVelocity = Ogre::Vector3::ZERO;
-            if (distToTarget > 0.05f && distToTarget > settleHeight * 2.0f)
-            {
-                // Use a higher base speed and a steeper proportional ramp so the
-                // ship doesn't crawl when starting far above the surface.
-                // Minimum 5 m/s, proportional up to maxDescentSpeed.
-                const float maxDescentSpeed = 30.0f;
-                const float minDescentSpeed = 5.0f;
-                float speed = std::max(minDescentSpeed, std::min(distToTarget * 0.8f, maxDescentSpeed));
-                descentVelocity = toTarget.normalisedCopy() * speed;
-            }
-            else
-            {
-                // Settle phase: push gently toward the surface (inward = -targetNormal).
-                descentVelocity = -targetNormal * 2.0f;
-            }
-
-            this->applyShipMovement(shipGo, descentVelocity, targetOrientAtSpot, 5.0f);
+            // Check landing completion FIRST — before applying any velocity
+            const bool contactLanded = this->landingContactActive;
+            const bool distTargetLanded = (distToTarget <= settleHeight * 2.0f);
 
             this->landingDebugTimer += dt;
-            if (this->landingDebugTimer >= 2.0f)
+            if (this->landingDebugTimer >= 1.0f)
             {
                 this->landingDebugTimer = 0.0f;
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING: distToTarget=" + Ogre::StringConverter::toString(distToTarget) + " distToSurface=" + Ogre::StringConverter::toString(distToSurface) +
-                                                                                       " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[UniversumComponent] LANDING tick:"
+                    " shipPos=" +
+                        Ogre::StringConverter::toString(shipPos) + " resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) + " distToTarget=" + Ogre::StringConverter::toString(distToTarget) +
+                        " distToSurface=" + Ogre::StringConverter::toString(distToSurface) + " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) + " bodyRadius=" + Ogre::StringConverter::toString(this->landingBodyRadius) +
+                        " bodyCentre=" + Ogre::StringConverter::toString(this->landingBodyCentre) + " contactLanded=" + Ogre::StringConverter::toString(contactLanded) + " distTargetLanded=" + Ogre::StringConverter::toString(distTargetLanded));
             }
 
-            // Declare landed when:
-            //   (a) physics contact with the body fired, OR
-            //   (b) ship is within settleHeight of the resolved target (distance-based fallback
-            //       so landing always completes even when static body contacts are suppressed), OR
-            //   (c) ship is within a small margin above the effective surface sphere.
-            const bool contactLanded = this->landingContactActive;
-            const bool distTargetLanded = (distToTarget <= settleHeight * 1.5f);
-            const bool distSurfaceLanded = (distToSurface <= settleHeight * 2.0f);
-
-            if (contactLanded || distTargetLanded || distSurfaceLanded)
+            if (contactLanded || distTargetLanded)
             {
                 this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrientAtSpot, 0.0f);
                 this->landingState = LandingState::LANDED;
@@ -1089,10 +1066,29 @@ namespace NOWA
                 this->setPlayerInputLock(false);
                 this->landingInputLocked = false;
                 this->callLandedFunction(this->landedOnBodyId, playerGOId);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Landed on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId) + " (contact=" + Ogre::StringConverter::toString(contactLanded) +
-                                                                                       " distTarget=" + Ogre::StringConverter::toString(distTargetLanded) + " distSurface=" + Ogre::StringConverter::toString(distSurfaceLanded) + ")");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDED on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId) + " shipPos=" + Ogre::StringConverter::toString(shipPos) +
+                                                                                       " resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) + " distToTarget=" + Ogre::StringConverter::toString(distToTarget) +
+                                                                                       " distToSurface=" + Ogre::StringConverter::toString(distToSurface) + " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) +
+                                                                                       " bodyRadius=" + Ogre::StringConverter::toString(this->landingBodyRadius) + " contact=" + Ogre::StringConverter::toString(contactLanded) +
+                                                                                       " distTarget=" + Ogre::StringConverter::toString(distTargetLanded));
                 return;
             }
+
+            // Apply descent velocity only when not yet at target
+            Ogre::Vector3 descentVelocity = Ogre::Vector3::ZERO;
+            if (distToTarget > 0.05f && distToTarget > settleHeight * 2.0f)
+            {
+                const float maxDescentSpeed = 30.0f;
+                const float minDescentSpeed = 5.0f;
+                float speed = std::max(minDescentSpeed, std::min(distToTarget * 0.8f, maxDescentSpeed));
+                descentVelocity = toTarget.normalisedCopy() * speed;
+            }
+            else
+            {
+                descentVelocity = -targetNormal * 2.0f;
+            }
+
+            this->applyShipMovement(shipGo, descentVelocity, targetOrientAtSpot, 5.0f);
             this->landingContactActive = false;
             return;
         }
@@ -1105,7 +1101,6 @@ namespace NOWA
 
         if (this->landingState == LandingState::TAKING_OFF)
         {
-            // surfaceNormal is outward (away from planet), so push ship in that direction.
             this->applyShipMovement(shipGo, surfaceNormal * this->takeoffSpeed, targetOrient, 1.0f);
             if (distToSurface > this->takeoffClearanceAltitude)
             {
@@ -1324,6 +1319,8 @@ namespace NOWA
                         {
                             if (nullptr != otherGo && otherGo->getId() == bodyId)
                             {
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                                    "[UniversumComponent] contactCallback fired for body id=" + Ogre::StringConverter::toString(bodyId) + " landingState=" + Ogre::StringConverter::toString(static_cast<unsigned int>(this->landingState)));
                                 this->landingContactActive = true;
                             }
                         });
@@ -1332,46 +1329,36 @@ namespace NOWA
         }
     }
 
-    void UniversumComponent::callLandingFunction(unsigned long bodyId, unsigned long shipId)
-    {
-        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->landingClosureFunction.is_valid())
-        {
-            return;
-        }
-        NOWA::AppStateManager::LogicCommand cmd = [this, bodyId, shipId]()
-        {
-            try
-            {
-                auto ctrl = AppStateManager::getSingletonPtr()->getGameObjectController();
-                auto bodyGo = ctrl->getGameObjectFromId(bodyId);
-                auto shipGo = ctrl->getGameObjectFromId(shipId);
-                luabind::call_function<void>(this->landingClosureFunction, bodyGo, shipGo);
-            }
-            catch (luabind::error& e)
-            {
-                luabind::object errMsg(luabind::from_stack(e.state(), -1));
-                std::stringstream ss;
-                ss << errMsg;
-                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] Lua error in reactOnLanding: " + Ogre::String(e.what()) + " details: " + ss.str());
-            }
-        };
-        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
-    }
-
     void UniversumComponent::callLandedFunction(unsigned long bodyId, unsigned long shipId)
     {
         if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->landedClosureFunction.is_valid())
         {
             return;
         }
+
         NOWA::AppStateManager::LogicCommand cmd = [this, bodyId, shipId]()
         {
             try
             {
                 auto ctrl = AppStateManager::getSingletonPtr()->getGameObjectController();
-                auto bodyGo = ctrl->getGameObjectFromId(bodyId);
-                auto shipGo = ctrl->getGameObjectFromId(shipId);
-                luabind::call_function<void>(this->landedClosureFunction, bodyGo, shipGo);
+                // Pass raw pointers — never GameObjectPtr to Lua (shared_ptr lifetime bug)
+                auto bodyGameObjectPtr = ctrl->getGameObjectFromId(bodyId);
+                auto shipGameObjectPtr = ctrl->getGameObjectFromId(shipId);
+
+                GameObject* bodyGameObject = nullptr;
+                GameObject* shipGameObject = nullptr;
+
+                if (nullptr != bodyGameObjectPtr)
+                {
+                    bodyGameObject = bodyGameObjectPtr.get();
+                }
+
+                if (nullptr != shipGameObjectPtr)
+                {
+                    shipGameObject = shipGameObjectPtr.get();
+                }
+
+                luabind::call_function<void>(this->landedClosureFunction, bodyGameObject, shipGameObject);
             }
             catch (luabind::error& e)
             {
@@ -1379,6 +1366,48 @@ namespace NOWA
                 std::stringstream ss;
                 ss << errMsg;
                 Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] Lua error in reactOnLanded: " + Ogre::String(e.what()) + " details: " + ss.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+    }
+
+    void UniversumComponent::callLandingFunction(unsigned long bodyId, unsigned long shipId)
+    {
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->landingClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        NOWA::AppStateManager::LogicCommand cmd = [this, bodyId, shipId]()
+        {
+            try
+            {
+                auto ctrl = AppStateManager::getSingletonPtr()->getGameObjectController();
+                // Pass raw pointers — never GameObjectPtr to Lua (shared_ptr lifetime bug)
+                auto bodyGameObjectPtr = ctrl->getGameObjectFromId(bodyId);
+                auto shipGameObjectPtr = ctrl->getGameObjectFromId(shipId);
+
+                GameObject* bodyGameObject = nullptr;
+                GameObject* shipGameObject = nullptr;
+
+                if (nullptr != bodyGameObjectPtr)
+                {
+                    bodyGameObject = bodyGameObjectPtr.get();
+                }
+
+                if (nullptr != shipGameObjectPtr)
+                {
+                    shipGameObject = shipGameObjectPtr.get();
+                }
+
+                luabind::call_function<void>(this->landingClosureFunction, bodyGameObject, shipGameObject);
+            }
+            catch (luabind::error& e)
+            {
+                luabind::object errMsg(luabind::from_stack(e.state(), -1));
+                std::stringstream ss;
+                ss << errMsg;
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] Lua error in reactOnLanding: " + Ogre::String(e.what()) + " details: " + ss.str());
             }
         };
         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
@@ -1616,18 +1645,6 @@ namespace NOWA
 
     bool UniversumComponent::findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, GameObjectPtr shipGo, Ogre::Vector3& outTarget)
     {
-        // AAA approach: query the planet's own CPU vertex data directly.
-        // This avoids all scene ray query problems (back-face normals, winding order,
-        // OGRE query mask issues, camera dependency).  PlanetTerra keeps normals[]
-        // and vertices[] always up to date on the main thread after generation and
-        // any brush editing.  The normals are guaranteed outward by recalculateNormals().
-        //
-        //   1. Project ship direction onto the sphere to get the search cone centre.
-        //   2. Walk all vertices within a cone of searchHalfAngle degrees.
-        //   3. Pick the vertex whose normal is most aligned with its radial direction
-        //      (i.e. the flattest local surface patch).
-        //   4. Return that vertex's world position as the landing target.
-
         GameObjectPtr bodyGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->landedOnBodyId);
         if (nullptr == bodyGo)
         {
@@ -1640,13 +1657,8 @@ namespace NOWA
             return false;
         }
 
-        // outwardDir: unit vector from planet centre toward the ship (= ship's "up").
-        // This is the cone centre for the vertex search.
         const Ogre::Vector3 outwardDir = (shipPos - bodyCentre).normalisedCopy();
 
-        // Start with a 20-degree cone and widen if no vertex is found (very steep terrain).
-        // 20 degrees covers a generous patch — on a radius-2618 sphere each degree is
-        // about 46 world units, so 20 deg = ~920 unit diameter search area.
         const float searchAngles[] = {20.0f, 35.0f, 60.0f};
         const int numAngles = static_cast<int>(sizeof(searchAngles) / sizeof(searchAngles[0]));
 
@@ -1659,22 +1671,35 @@ namespace NOWA
             found = terraComp->findFlatLandingVertex(outwardDir, searchAngles[ai], bestWorldPos, bestWorldNormal);
             if (found)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] findFlatLandingSpot: vertex found at angle=" + Ogre::StringConverter::toString(searchAngles[ai]) +
-                                                                                       " pos=" + Ogre::StringConverter::toString(bestWorldPos) + " normal=" + Ogre::StringConverter::toString(bestWorldNormal));
+                float distFromCentre = (bestWorldPos - bodyCentre).length();
+                if (distFromCentre < bodyRadius * 0.9f)
+                {
+                    // Vertex is inside the planet sphere — valley or transform issue.
+                    // Fall back to radial projection on the nominal sphere.
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] findFlatLandingSpot: vertex inside sphere "
+                                                                                       "(dist=" +
+                                                                                           Ogre::StringConverter::toString(distFromCentre) + " vs radius=" + Ogre::StringConverter::toString(bodyRadius) + "), using radial projection");
+                    bestWorldPos = bodyCentre + outwardDir * bodyRadius;
+                    bestWorldNormal = outwardDir;
+                }
+                else
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] findFlatLandingSpot: vertex found at angle=" + Ogre::StringConverter::toString(searchAngles[ai]) +
+                                                                                           " pos=" + Ogre::StringConverter::toString(bestWorldPos) + " normal=" + Ogre::StringConverter::toString(bestWorldNormal));
+                }
             }
         }
 
         if (false == found)
         {
-            // Absolute fallback: project ship radial direction onto surface sphere.
-            // This gives a geographically correct position even with no vertex data.
+            // Absolute fallback: radial projection onto nominal sphere.
             bestWorldPos = bodyCentre + outwardDir * bodyRadius;
             bestWorldNormal = outwardDir;
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] findFlatLandingSpot: no vertex in 60-deg cone, using radial projection");
         }
 
         outTarget = bestWorldPos;
-        return true; // always returns a valid position now
+        return true; // always returns a valid position
     }
 
     void UniversumComponent::pausePlanetOrbit(unsigned long planetGameObjectId, unsigned long gameObjectId)
@@ -4114,8 +4139,22 @@ namespace NOWA
             {
                 auto gameObjectController = AppStateManager::getSingletonPtr()->getGameObjectController();
 
-                auto planetGameObject = gameObjectController->getGameObjectFromId(planetId);
-                auto enteringGameObject = gameObjectController->getGameObjectFromId(enteringGoId);
+                auto planetGameObjectPtr = gameObjectController->getGameObjectFromId(planetId);
+                auto enteringGameObjectPtr = gameObjectController->getGameObjectFromId(enteringGoId);
+
+                GameObject* planetGameObject = nullptr;
+                GameObject* enteringGameObject = nullptr;
+
+                if (nullptr != planetGameObjectPtr)
+                {
+                    planetGameObject = planetGameObjectPtr.get();
+                }
+
+                if (nullptr != enteringGameObjectPtr)
+                {
+                    enteringGameObject = enteringGameObjectPtr.get();
+                }
+
                 luabind::call_function<void>(this->planetEnteredClosureFunction, planetGameObject, enteringGameObject);
             }
             catch (luabind::error& error)
@@ -4141,8 +4180,22 @@ namespace NOWA
             {
                 auto gameObjectController = AppStateManager::getSingletonPtr()->getGameObjectController();
 
-                auto planetGameObject = gameObjectController->getGameObjectFromId(planetId);
-                auto enteringGameObject = gameObjectController->getGameObjectFromId(enteringGoId);
+                auto planetGameObjectPtr = gameObjectController->getGameObjectFromId(planetId);
+                auto enteringGameObjectPtr = gameObjectController->getGameObjectFromId(enteringGoId);
+
+                GameObject* planetGameObject = nullptr;
+                GameObject* enteringGameObject = nullptr;
+
+                if (nullptr != planetGameObjectPtr)
+                {
+                    planetGameObject = planetGameObjectPtr.get();
+                }
+
+                if (nullptr != enteringGameObjectPtr)
+                {
+                    enteringGameObject = enteringGameObjectPtr.get();
+                }
+
                 luabind::call_function<void>(this->planetLeftClosureFunction, planetGameObject, enteringGameObject);
             }
             catch (luabind::error& error)

@@ -585,8 +585,8 @@ namespace NOWA
 		int dayTimeCurrentMinutes;
 		bool hasLoaded;
 		Ogre::Vector3 oldLightDirection;
-        bool externalLightMode = false;
-        Ogre::Vector3 cachedExternalSunDir = Ogre::Vector3::UNIT_Y;
+        bool externalLightMode;
+        Ogre::Vector3 cachedExternalSunDir;
 	};
 
 }; // namespace end

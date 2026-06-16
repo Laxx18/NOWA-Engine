@@ -23,6 +23,7 @@ namespace Ogre
 namespace NOWA
 {
     class PhysicsArtifactComponent;
+    class WindComponent;
 
     /**
      * @struct FoliageRule
@@ -79,6 +80,16 @@ namespace NOWA
         Ogre::Real collisionRadius; // Trunk/stem radius in meters
         Ogre::Real collisionHeight; // Height of collision cylinder
 
+        // ========== Procedural Grass ==========
+        // When useProceduralGrass = true the meshName is ignored.
+        // Geometry is generated on the CPU as cross-quad blades so no .mesh file is needed.
+        // The blades use the HlmsWind datablock (HLMS_USER0) automatically, so they sway
+        // whenever a WindComponent is present in the scene.
+        bool useProceduralGrass;    // true = cross-quad blade generation instead of mesh
+        Ogre::Real bladeWidth;      // Half-width of one grass blade in meters (default 0.15)
+        Ogre::Real bladeHeight;     // Height of one grass blade in meters (default 0.5)
+        Ogre::String grassMaterialName; // Wind HLMS datablock name (must exist in resources)
+
         FoliageRule() :
             enabled(true),
             density(1.0f),
@@ -104,7 +115,11 @@ namespace NOWA
             clearanceDistance(0.0f), // 0 = disabled
             collisionEnabled(false),
             collisionRadius(0.3f), // 30cm default trunk
-            collisionHeight(2.0f) // 2m default height
+            collisionHeight(2.0f), // 2m default height
+            useProceduralGrass(false),
+            bladeWidth(0.15f),
+            bladeHeight(0.5f),
+            grassMaterialName("ProceduralGrassMaterial")
         {
         }
     };
@@ -361,6 +376,18 @@ namespace NOWA
 
         void setRuleCollisionHeight(unsigned int index, Ogre::Real height);
         Ogre::Real getRuleCollisionHeight(unsigned int index) const;
+
+        void setRuleUseProceduralGrass(unsigned int index, bool useGrass);
+        bool getRuleUseProceduralGrass(unsigned int index) const;
+
+        void setRuleBladeWidth(unsigned int index, Ogre::Real width);
+        Ogre::Real getRuleBladeWidth(unsigned int index) const;
+
+        void setRuleBladeHeight(unsigned int index, Ogre::Real height);
+        Ogre::Real getRuleBladeHeight(unsigned int index) const;
+
+        void setRuleGrassMaterialName(unsigned int index, const Ogre::String& materialName);
+        Ogre::String getRuleGrassMaterialName(unsigned int index) const;
     public:
         static const Ogre::String AttrRegenerate(void)
         {
@@ -463,6 +490,22 @@ namespace NOWA
         {
             return "Rule Collision Height ";
         }
+        static const Ogre::String AttrRuleUseProceduralGrass(void)
+        {
+            return "Rule Use Procedural Grass ";
+        }
+        static const Ogre::String AttrRuleBladeWidth(void)
+        {
+            return "Rule Blade Width ";
+        }
+        static const Ogre::String AttrRuleBladeHeight(void)
+        {
+            return "Rule Blade Height ";
+        }
+        static const Ogre::String AttrRuleGrassMaterialName(void)
+        {
+            return "Rule Grass Material ";
+        }
     protected:
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         /**
@@ -506,6 +549,15 @@ namespace NOWA
         void createFoliageItems(std::vector<VegetationBatch>& batches);
 
         void createFoliageCollision(void);
+
+        /**
+         * @brief Generate procedural cross-quad grass geometry for one rule batch.
+         *        Called from createFoliageItems when rule.useProceduralGrass == true.
+         *        Grass blades are grouped into 10m spatial cells (same as mesh foliage)
+         *        so frustum culling and render distance work correctly.
+         *        Blades use the Wind HLMS datablock so they sway when a WindComponent exists.
+         */
+        void createGrassItems(VegetationBatch& batch, const FoliageRule& rule);
 
         /**
          * @brief Generate LOD for mesh (render thread)
@@ -569,11 +621,22 @@ namespace NOWA
         std::vector<Variant*> ruleCollisionRadius;
         std::vector<Variant*> ruleCollisionHeight;
 
+        // Procedural grass per-rule Variant arrays
+        std::vector<Variant*> ruleUseProceduralGrass;
+        std::vector<Variant*> ruleBladeWidths;
+        std::vector<Variant*> ruleBladeHeights;
+        std::vector<Variant*> ruleGrassMaterialNames;
+
         // Runtime state
         std::vector<VegetationBatch> vegetationBatches; // Render thread only after creation!
         bool isDirty;
 
         bool foliageLoadedFromScene;
+
+        // WindComponent pointer -- resolved once in postInit, used by grass sway logic.
+        // Weak reference: if the WindComponent is removed from the scene the pointer
+        // becomes stale; we re-resolve it at the next regenerate call.
+        WindComponent* windComponent;
 
         // Spatial hash for spacing checks (optimization)
         std::unordered_map<int64_t, std::vector<VegetationInstance*>> spatialHash;

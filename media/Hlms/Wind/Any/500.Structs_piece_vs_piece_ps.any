@@ -1,10 +1,11 @@
 @piece( custom_passBuffer )
-	//Fog
-	midf4 fogParams;
-	midf4 fogColor;
-	//wind
+	// Wind parameters - 2x float4 = 32 bytes, 16-byte aligned for D3D11.
+	// float4 0: windStrength, globalTime, windFrequency, padding
+	// float4 1: windDirection.xyz, padding
 	midf windStrength;
 	midf globalTime;
-	midf padding0;
-	midf padding1;
+	midf windFrequency;
+	midf _windPad0;
+	midf3 windDirection;
+	midf _windPad1;
 @end

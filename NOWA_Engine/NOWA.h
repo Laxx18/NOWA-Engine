@@ -151,6 +151,7 @@ extern "C"
 #include "gameObject/LensFlareComponent.h"
 #include "gameObject/BackgroundScrollComponent.h"
 #include "gameobject/CrowdComponent.h"
+#include "gameobject/WindComponent.h"
 
 namespace NOWA
 {
@@ -169,6 +170,7 @@ namespace NOWA
 	typedef boost::shared_ptr<NavMeshComponent> NavMeshComponentCompPtr;
 	typedef boost::shared_ptr<NavMeshTerraComponent> NavMeshTerraComponentCompPtr;
 	typedef boost::shared_ptr<CrowdComponent> CrowdComponentCompPtr;
+    typedef boost::shared_ptr<WindComponent> WindComponentCompPtr;
 	typedef boost::shared_ptr<SoundComponent> SoundCompPtr;
 	typedef boost::shared_ptr<SimpleSoundComponent> SimpleSoundCompPtr;
 	typedef boost::shared_ptr<SpawnComponent> SpawnCompPtr;

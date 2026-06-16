@@ -5,12 +5,24 @@
 @end
 
 
-@piece( custom_vs_preTransform  )
+@piece( custom_vs_preTransform )
 	@property(wind_enabled)
 
-		midf windFactor = 1.0 - input.uv0.y; 
-		midf random = texPerlinNoise.SampleLevel(texPerlinNoiseSampler, 0.2 * worldPos.xyz + midf3_c(0.3, 0.3, 0.3) * passBuf.globalTime, 0).xyz - midf3_c(0.2, 0.2, 0.2);
-		worldPos.xyz += random * windFactor * passBuf.windStrength;
+		// windFactor: 0 at blade root (uv.y = 1), 1 at blade tip (uv.y = 0).
+		// This keeps roots planted and lets tips sway freely.
+		midf windFactor = 1.0 - input.uv0.y;
+
+		// Sample 3D Perlin noise at world position + animated time offset.
+		// windFrequency controls how fast the noise field moves (animation speed).
+		midf3 noiseCoord = 0.2 * worldPos.xyz + midf3_c(1.0, 0.3, 1.0) * passBuf.globalTime * passBuf.windFrequency;
+		midf3 noise = texPerlinNoise.SampleLevel(texPerlinNoiseSampler, noiseCoord, 0).xyz
+		              - midf3_c(0.2, 0.2, 0.2);
+
+		// Combine: directional lean (constant component) + turbulent noise.
+		// The directional lean gives the impression of a persistent wind.
+		// The noise adds organic variation so blades don't all move identically.
+		midf3 windDisplace = passBuf.windDirection * 0.3 + noise;
+		worldPos.xyz += windDisplace * windFactor * passBuf.windStrength;
 
 	@end
 @end

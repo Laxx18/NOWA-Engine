@@ -25,8 +25,30 @@
 
 #include "OgreAbiUtils.h"
 
+#include "gameobject/WindComponent.h"
+
 #include <future>
 #include <random>
+
+// Dummy ManualResourceLoader for procedurally generated foliage cell meshes.
+// These meshes are built entirely in memory and never need reloading from disk.
+// Providing a loader suppresses Ogre's "no manual loader provided" warning which
+// fires when createManual() is called without one.
+namespace
+{
+    class FoliageCellMeshLoader : public Ogre::ManualResourceLoader
+    {
+    public:
+        void prepareResource(Ogre::Resource* resource) override
+        {
+        }
+        void loadResource(Ogre::Resource* resource) override
+        {
+        }
+    };
+
+    FoliageCellMeshLoader gFoliageCellMeshLoader;
+}
 
 namespace NOWA
 {
@@ -39,6 +61,7 @@ namespace NOWA
         isDirty(true),
         foliageLoadedFromScene(false),
         spatialHashCellSize(10.0f),
+        windComponent(nullptr),
         raySceneQuery(nullptr),
         sphereSceneQuery(nullptr),
         physicsArtifactComponent(nullptr),
@@ -160,11 +183,14 @@ namespace NOWA
             this->ruleCollisionEnabled.resize(count);
             this->ruleCollisionRadius.resize(count);
             this->ruleCollisionHeight.resize(count);
+            this->ruleUseProceduralGrass.resize(count, nullptr);
+            this->ruleBladeWidths.resize(count, nullptr);
+            this->ruleBladeHeights.resize(count, nullptr);
+            this->ruleGrassMaterialNames.resize(count, nullptr);
         }
 
         this->masterSeed->setConstraints(0u, UINT32_MAX);
         this->gridResolution->setConstraints(0.1f, 10.0f);
-        this->ruleCount->setConstraints(0u, 20u);
 
         // Load each rule's properties
         for (size_t i = 0; i < count; i++)
@@ -441,8 +467,78 @@ namespace NOWA
                     this->ruleCollisionHeight[i]->setConstraints(0.1f, 20.0f);
                 }
                 this->ruleCollisionHeight[i]->setValue(height);
-                this->ruleCollisionHeight[i]->addUserData(GameObject::AttrActionSeparator());
                 this->rules[i].collisionHeight = height;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+
+            // ---------- Procedural Grass ----------
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRuleUseProceduralGrass() + Ogre::StringConverter::toString(i))
+            {
+                bool useGrass = XMLConverter::getAttribBool(propertyElement, "data");
+                if (i >= static_cast<int>(this->ruleUseProceduralGrass.size()))
+                {
+                    this->ruleUseProceduralGrass.resize(i + 1, nullptr);
+                }
+                if (nullptr == this->ruleUseProceduralGrass[i])
+                {
+                    this->ruleUseProceduralGrass[i] = new Variant(AttrRuleUseProceduralGrass() + Ogre::StringConverter::toString(i), false, this->attributes);
+                    this->ruleUseProceduralGrass[i]->setDescription("If true, generates procedural cross-quad grass blades instead of loading a mesh. "
+                                                                    "Rule Mesh Name is ignored. Blades use the Wind HLMS datablock and sway when a WindComponent exists.");
+                }
+                this->ruleUseProceduralGrass[i]->setValue(useGrass);
+                this->rules[i].useProceduralGrass = useGrass;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRuleBladeWidth() + Ogre::StringConverter::toString(i))
+            {
+                Ogre::Real bw = XMLConverter::getAttribReal(propertyElement, "data");
+                if (i >= static_cast<int>(this->ruleBladeWidths.size()))
+                {
+                    this->ruleBladeWidths.resize(i + 1, nullptr);
+                }
+                if (nullptr == this->ruleBladeWidths[i])
+                {
+                    this->ruleBladeWidths[i] = new Variant(AttrRuleBladeWidth() + Ogre::StringConverter::toString(i), 0.15f, this->attributes);
+                    this->ruleBladeWidths[i]->setDescription("Half-width of one grass blade in meters. Wider blades look lush, narrower look fine.");
+                    this->ruleBladeWidths[i]->setConstraints(0.01f, 2.0f);
+                }
+                this->ruleBladeWidths[i]->setValue(bw);
+                this->rules[i].bladeWidth = bw;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRuleBladeHeight() + Ogre::StringConverter::toString(i))
+            {
+                Ogre::Real bh = XMLConverter::getAttribReal(propertyElement, "data");
+                if (i >= static_cast<int>(this->ruleBladeHeights.size()))
+                {
+                    this->ruleBladeHeights.resize(i + 1, nullptr);
+                }
+                if (nullptr == this->ruleBladeHeights[i])
+                {
+                    this->ruleBladeHeights[i] = new Variant(AttrRuleBladeHeight() + Ogre::StringConverter::toString(i), 0.5f, this->attributes);
+                    this->ruleBladeHeights[i]->setDescription("Height of one grass blade in meters.");
+                    this->ruleBladeHeights[i]->setConstraints(0.05f, 5.0f);
+                }
+                this->ruleBladeHeights[i]->setValue(bh);
+                this->rules[i].bladeHeight = bh;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i))
+            {
+                Ogre::String mat = XMLConverter::getAttrib(propertyElement, "data");
+                if (i >= static_cast<int>(this->ruleGrassMaterialNames.size()))
+                {
+                    this->ruleGrassMaterialNames.resize(i + 1, nullptr);
+                }
+                if (nullptr == this->ruleGrassMaterialNames[i])
+                {
+                    this->ruleGrassMaterialNames[i] = new Variant(AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i), Ogre::String("ProceduralGrassMaterial"), this->attributes);
+                    this->ruleGrassMaterialNames[i]->setDescription("Wind HLMS datablock name for grass blades (must be registered as HLMS_USER0). "
+                                                                    "Create this datablock in your materials scripts and assign it here.");
+                }
+                this->ruleGrassMaterialNames[i]->setValue(mat);
+                this->ruleGrassMaterialNames[i]->addUserData(GameObject::AttrActionSeparator());
+                this->rules[i].grassMaterialName = mat;
                 propertyElement = propertyElement->next_sibling("property");
             }
         }
@@ -465,6 +561,24 @@ namespace NOWA
         if (nullptr == this->sphereSceneQuery)
         {
             this->sphereSceneQuery = this->gameObjectPtr->getSceneManager()->createSphereQuery(Ogre::Sphere(), GameObjectController::ALL_CATEGORIES_ID);
+        }
+
+        // Resolve WindComponent: find the first one in the scene.
+        // Used to enable grass sway via HlmsWind when a WindComponent is present.
+        // The pointer is cached here and re-resolved on each regenerate call in case
+        // the WindComponent is added or removed after this component initializes.
+        {
+            auto windCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WindComponent>());
+            if (nullptr != windCompPtr)
+            {
+                this->windComponent = windCompPtr.get();
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolumeComponent] Found WindComponent -- grass blades will sway.");
+            }
+            else
+            {
+                this->windComponent = nullptr;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolumeComponent] No WindComponent found -- grass blades will be static.");
+            }
         }
 
         if (true == this->foliageLoadedFromScene)
@@ -648,6 +762,22 @@ namespace NOWA
                 {
                     this->setRuleCollisionHeight(i, attribute->getReal());
                 }
+                else if (AttrRuleUseProceduralGrass() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleUseProceduralGrass(i, attribute->getBool());
+                }
+                else if (AttrRuleBladeWidth() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleBladeWidth(i, attribute->getReal());
+                }
+                else if (AttrRuleBladeHeight() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleBladeHeight(i, attribute->getReal());
+                }
+                else if (AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleGrassMaterialName(i, attribute->getString());
+                }
             }
         }
     }
@@ -809,6 +939,34 @@ namespace NOWA
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleCollisionHeight() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleCollisionHeight[i]->getReal())));
             propertiesXML->append_node(propertyXML);
+
+            // Procedural Grass
+            if (i < static_cast<int>(this->ruleUseProceduralGrass.size()) && nullptr != this->ruleUseProceduralGrass[i])
+            {
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "12")); // bool
+                propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRuleUseProceduralGrass() + Ogre::StringConverter::toString(i))));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleUseProceduralGrass[i]->getBool())));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+                propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRuleBladeWidth() + Ogre::StringConverter::toString(i))));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleBladeWidths[i]->getReal())));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+                propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRuleBladeHeight() + Ogre::StringConverter::toString(i))));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleBladeHeights[i]->getReal())));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "7")); // String
+                propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i))));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleGrassMaterialNames[i]->getString())));
+                propertiesXML->append_node(propertyXML);
+            }
         }
     }
 
@@ -961,7 +1119,7 @@ namespace NOWA
         {
             const FoliageRule& rule = this->rules[ruleIdx];
 
-            if (false == rule.enabled || true == rule.meshName.empty())
+            if (false == rule.enabled || (true == rule.meshName.empty() && false == rule.useProceduralGrass))
             {
                 continue;
             }
@@ -1251,6 +1409,16 @@ namespace NOWA
 
             if (true == batch.instances.empty())
             {
+                continue;
+            }
+
+            // Branch: procedural grass uses a completely different geometry path.
+            // No source mesh is loaded -- cross-quad blades are generated on the CPU
+            // and placed into the same cell-based BT_IMMUTABLE Item structure so
+            // frustum culling and render distance work identically to mesh foliage.
+            if (true == rule.useProceduralGrass)
+            {
+                this->createGrassItems(batch, rule);
                 continue;
             }
 
@@ -1565,6 +1733,25 @@ namespace NOWA
                     }
                 }
 
+                // Vertices are in world space. Now compute cell centre from AABB
+                // and subtract it from all positions to get local-space vertices.
+                // The scene node will be placed at cellCentre so the math is correct.
+                // This makes setRenderingDistance measure camera-to-node correctly.
+                if (cellMin.x > cellMax.x)
+                {
+                    cellMin = cellMax = Ogre::Vector3::ZERO;
+                }
+                const Ogre::Vector3 cellCentre = (cellMin + cellMax) * 0.5f;
+
+                for (size_t vi = 0u; vi < mergedVC; ++vi)
+                {
+                    const size_t o = vi * fpv;
+                    vd[o + 0] -= cellCentre.x;
+                    vd[o + 1] -= cellCentre.y;
+                    vd[o + 2] -= cellCentre.z;
+                    // Normals, tangents, UVs are directional -- no translation.
+                }
+
                 // Merged index buffer
                 Ogre::uint32* id = nullptr;
                 if (mergedIC > 0u)
@@ -1641,7 +1828,7 @@ namespace NOWA
                     }
                 }
 
-                Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+                Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &gFoliageCellMeshLoader);
                 cellMesh->_setVaoManager(vaoManager);
 
                 Ogre::SubMesh* cellSM = cellMesh->createSubMesh();
@@ -1653,22 +1840,17 @@ namespace NOWA
                     cellSM->mMaterialName = *sd.datablock->getNameStr();
                 }
 
-                if (cellMin.x > cellMax.x)
-                {
-                    cellMin = cellMax = Ogre::Vector3::ZERO;
-                }
-                Ogre::Aabb cellAabb;
-                cellAabb.setExtents(cellMin, cellMax);
-                cellMesh->_setBounds(cellAabb, false);
-                cellMesh->_setBoundingSphereRadius(cellAabb.getRadius());
+                // Bounds are in local space (vertices already centred at cellCentre).
+                Ogre::Aabb localAabb;
+                localAabb.setExtents(cellMin - cellCentre, cellMax - cellCentre);
+                cellMesh->_setBounds(localAabb, false);
+                cellMesh->_setBoundingSphereRadius(localAabb.getRadius());
 
                 if (false == cellMesh->hasValidShadowMappingVaos())
                 {
                     cellMesh->prepareForShadowMapping(true);
                 }
 
-                // One Item + one SceneNode at world origin per cell
-                // (vertices already in world space, so identity transform is correct)
                 Ogre::Item* cellItem = sceneManager->createItem(cellMesh, Ogre::SCENE_STATIC);
                 cellItem->setName("FoliageCellItem_" + rule.name + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)));
 
@@ -1678,29 +1860,17 @@ namespace NOWA
                 }
 
                 cellItem->setRenderQueueGroup(renderQueue);
-
-                // Shadow casting is disabled for merged cell Items intentionally.
-                //
-                // Reason 1 - Correctness: each cell contains dozens of pre-transformed
-                // instances merged into one mesh. The cell AABB covers a 10x10m area,
-                // so Ogre submits the ENTIRE cell to the shadow pass even when only a
-                // fraction of it would cast shadows onto visible geometry. This makes
-                // the shadow pass render the same 10000+ triangles per cell that the
-                // main pass does -- doubling the GPU cost for no visual benefit, since
-                // merged-cell shadow silhouettes look identical to per-instance ones.
-                //
-                // Reason 2 - Performance: Colour Pass #7 (shadow atlas) cost 15ms in
-                // profiling, almost entirely from shadow geometry. Disabling foliage
-                // cell shadows brings this to ~2ms.
-                //
-                // If per-foliage-instance shadows are needed in the future, the right
-                // approach is a dedicated shadow imposter pass or per-instance Items
-                // with a short shadowRenderingDistance (e.g. 10m from camera).
                 cellItem->setCastShadows(false);
-                // setShadowRenderingDistance not needed since shadow casting is disabled.
+
+                // Apply render distance -- now works correctly because the node is
+                // at cellCentre so Ogre measures camera-to-node, not camera-to-origin.
+                if (rule.renderDistance > 0.0f)
+                {
+                    cellItem->setRenderingDistance(rule.renderDistance);
+                }
 
                 Ogre::SceneNode* cellNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
-                cellNode->setPosition(Ogre::Vector3::ZERO);
+                cellNode->setPosition(cellCentre);
                 cellNode->setOrientation(Ogre::Quaternion::IDENTITY);
                 cellNode->setScale(Ogre::Vector3::UNIT_SCALE);
                 cellNode->attachObject(cellItem);
@@ -1728,6 +1898,298 @@ namespace NOWA
         {
             vaoManager2->_update();
         }
+    }
+
+    void ProceduralFoliageVolumeComponent::createGrassItems(VegetationBatch& batch, const FoliageRule& rule)
+    {
+        // ============================================================================
+        // PROCEDURAL GRASS GENERATION
+        //
+        // Generates cross-quad grass blades directly on the CPU -- no source mesh.
+        // Each placement point from calculateFoliagePositions() produces two
+        // axis-aligned quads crossed at 90 degrees (the classic "X" grass blade).
+        //
+        // Cross-quad UV layout (matches wind shader):
+        //   Bottom vertices: uv.y = 1.0  -> windFactor = 1 - 1 = 0 (rooted, no sway)
+        //   Top vertices:    uv.y = 0.0  -> windFactor = 1 - 0 = 1 (tip, full sway)
+        //
+        // Blades are grouped into 10m spatial cells -- same as mesh foliage -- so
+        // setRenderingDistance, frustum culling, and AABB queries all work correctly.
+        //
+        // The Wind HLMS datablock (HLMS_USER0) is used if windComponent is present,
+        // falling back to a standard PBS datablock if not.
+        // ============================================================================
+
+        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+        Ogre::VaoManager* vaoManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
+
+        const float cellSize = 10.0f;
+        const float bw = rule.bladeWidth;  // half-width of one blade
+        const float bh = rule.bladeHeight; // full height of one blade
+
+        // Vertex format per blade vertex: position (3) + normal (3) + uv (2) = 8 floats.
+        // Each cross-quad blade = 2 quads x 4 vertices = 8 vertices.
+        // Each quad = 2 triangles = 6 indices. Cross-quad = 12 indices.
+        const size_t floatsPerVertex = 8u;
+        const size_t vertsPerBlade = 8u;
+        const size_t idxPerBlade = 12u;
+
+        // Resolve Wind HLMS datablock for swaying grass.
+        // Re-resolve WindComponent here in case it was added after postInit.
+        if (nullptr == this->windComponent)
+        {
+            auto windCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WindComponent>());
+            if (nullptr != windCompPtr)
+            {
+                this->windComponent = windCompPtr.get();
+            }
+        }
+
+        // Get the datablock: Wind HLMS if WindComponent exists, otherwise PBS fallback.
+        Ogre::HlmsDatablock* grassDatablock = nullptr;
+        {
+            if (nullptr != this->windComponent)
+            {
+                Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+                Ogre::Hlms* hlmsWind = hlmsManager->getHlms(Ogre::HLMS_USER0);
+                if (nullptr != hlmsWind)
+                {
+                    grassDatablock = hlmsWind->getDatablock(rule.grassMaterialName);
+                }
+            }
+            if (nullptr == grassDatablock)
+            {
+                // Fallback: try PBS
+                Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+                Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
+                if (nullptr != hlmsPbs)
+                {
+                    grassDatablock = hlmsPbs->getDatablock(rule.grassMaterialName);
+                }
+            }
+            if (nullptr == grassDatablock)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralFoliageVolume] Grass rule '" + rule.name + "': datablock '" + rule.grassMaterialName + "' not found. " + "Grass will not be created. Create a Wind HLMS datablock with this name.");
+                return;
+            }
+        }
+
+        // Group instance positions into spatial cells.
+        std::unordered_map<uint64_t, std::vector<size_t>> cellMap;
+        cellMap.reserve(256u);
+
+        for (size_t instIdx = 0u; instIdx < batch.instances.size(); ++instIdx)
+        {
+            const Ogre::Vector3& pos = batch.instances[instIdx].position;
+            const int32_t cx = static_cast<int32_t>(std::floor(pos.x / cellSize));
+            const int32_t cz = static_cast<int32_t>(std::floor(pos.z / cellSize));
+            const uint64_t key = (static_cast<uint64_t>(static_cast<uint32_t>(cx)) << 32) | static_cast<uint32_t>(cz);
+            cellMap[key].push_back(instIdx);
+        }
+
+        const Ogre::uint8 renderQueue = NOWA::RENDER_QUEUE_V2_MESH;
+        size_t cellIndex = 0u;
+
+        for (auto& cellEntry : cellMap)
+        {
+            const std::vector<size_t>& cellInstances = cellEntry.second;
+            const size_t bladesInCell = cellInstances.size();
+
+            const size_t totalVerts = bladesInCell * vertsPerBlade;
+            const size_t totalIdx = bladesInCell * idxPerBlade;
+
+            float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(totalVerts * floatsPerVertex * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+            Ogre::uint32* id = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(totalIdx * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+
+            Ogre::Vector3 cellMin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+            Ogre::Vector3 cellMax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+
+            for (size_t bi = 0u; bi < bladesInCell; ++bi)
+            {
+                const VegetationInstance& inst = batch.instances[cellInstances[bi]];
+                const Ogre::Vector3& p = inst.position;
+
+                // Random rotation around Y for this blade, derived from position so it's
+                // deterministic across regenerations without storing per-blade state.
+                const float angle = static_cast<float>(std::fmod(p.x * 127.1f + p.z * 311.7f, Ogre::Math::TWO_PI));
+                const float ca = std::cos(angle);
+                const float sa = std::sin(angle);
+
+                // Build 2 crossed quads. q=0 aligned to angle, q=1 rotated 90 degrees.
+                // Each quad: bottom-left, bottom-right, top-right, top-left.
+                const Ogre::uint32 vBase = static_cast<Ogre::uint32>(bi * vertsPerBlade);
+
+                for (int q = 0; q < 2; ++q)
+                {
+                    const float qa = angle + q * Ogre::Math::HALF_PI;
+                    const float cq = std::cos(qa) * bw;
+                    const float sq = std::sin(qa) * bw;
+
+                    // 4 vertices per quad: [0]=bottom-left, [1]=bottom-right, [2]=top-right, [3]=top-left
+                    for (int v = 0; v < 4; ++v)
+                    {
+                        const float side = (v == 0 || v == 3) ? -1.0f : 1.0f; // -1=left, +1=right
+                        const float vTop = (v == 2 || v == 3) ? 1.0f : 0.0f;  // 1=top, 0=bottom
+
+                        // World-space blade vertex position.
+                        const float wx = p.x + cq * side;
+                        const float wy = p.y + bh * vTop;
+                        const float wz = p.z + sq * side;
+
+                        cellMin.makeFloor(Ogre::Vector3(wx, wy, wz));
+                        cellMax.makeCeil(Ogre::Vector3(wx, wy, wz));
+
+                        const size_t o = (bi * vertsPerBlade + q * 4 + v) * floatsPerVertex;
+                        // Position
+                        vd[o + 0] = wx;
+                        vd[o + 1] = wy;
+                        vd[o + 2] = wz;
+                        // Normal (up -- wind shader does not use normals for blades)
+                        vd[o + 3] = 0.0f;
+                        vd[o + 4] = 1.0f;
+                        vd[o + 5] = 0.0f;
+                        // UV: u = left(0) or right(1), v = bottom(1) or top(0)
+                        // uv.y = 1 at bottom -> windFactor = 0 (rooted)
+                        // uv.y = 0 at top    -> windFactor = 1 (full sway)
+                        vd[o + 6] = (side < 0.0f) ? 0.0f : 1.0f;
+                        vd[o + 7] = (vTop > 0.0f) ? 0.0f : 1.0f;
+                    }
+
+                    // 2 triangles for this quad: [0,1,2] and [0,2,3]
+                    const size_t ii = (bi * idxPerBlade) + q * 6;
+                    const Ogre::uint32 qv = vBase + static_cast<Ogre::uint32>(q * 4);
+                    id[ii + 0] = qv + 0;
+                    id[ii + 1] = qv + 1;
+                    id[ii + 2] = qv + 2;
+                    id[ii + 3] = qv + 0;
+                    id[ii + 4] = qv + 2;
+                    id[ii + 5] = qv + 3;
+                }
+            }
+
+            // Compute cell centre and convert vertices to local space.
+            if (cellMin.x > cellMax.x)
+            {
+                cellMin = cellMax = Ogre::Vector3::ZERO;
+            }
+            const Ogre::Vector3 cellCentre = (cellMin + cellMax) * 0.5f;
+
+            for (size_t vi = 0u; vi < totalVerts; ++vi)
+            {
+                const size_t o = vi * floatsPerVertex;
+                vd[o + 0] -= cellCentre.x;
+                vd[o + 1] -= cellCentre.y;
+                vd[o + 2] -= cellCentre.z;
+            }
+
+            // Build VAO.
+            Ogre::VertexElement2Vec elems;
+            elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
+            elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
+            elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
+
+            Ogre::VertexBufferPacked* vb = nullptr;
+            try
+            {
+                vb = vaoManager->createVertexBuffer(elems, totalVerts, Ogre::BT_IMMUTABLE, vd, true);
+            }
+            catch (const Ogre::Exception& e)
+            {
+                OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+                OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralFoliageVolume] Grass createVertexBuffer failed for rule '" + rule.name + "' cell " + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
+                ++cellIndex;
+                continue;
+            }
+
+            Ogre::IndexBufferPacked* ib = nullptr;
+            try
+            {
+                ib = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, totalIdx, Ogre::BT_IMMUTABLE, id, true);
+            }
+            catch (const Ogre::Exception& e)
+            {
+                OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralFoliageVolume] Grass createIndexBuffer failed for rule '" + rule.name + "' cell " + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
+                ++cellIndex;
+                continue;
+            }
+
+            Ogre::VertexBufferPackedVec vbVec;
+            vbVec.push_back(vb);
+            Ogre::VertexArrayObject* mergedVao = vaoManager->createVertexArrayObject(vbVec, ib, Ogre::OT_TRIANGLE_LIST);
+
+            // Unique mesh name.
+            const Ogre::String cellMeshName =
+                "GrassCell_" + rule.name + "_GO" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_B" + Ogre::StringConverter::toString(batch.ruleIndex) + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex));
+
+            {
+                Ogre::ResourcePtr existing = Ogre::MeshManager::getSingleton().getByName(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+                if (false == existing.isNull())
+                {
+                    Ogre::MeshManager::getSingleton().remove(existing->getHandle());
+                }
+            }
+
+            Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &gFoliageCellMeshLoader);
+            cellMesh->_setVaoManager(vaoManager);
+
+            Ogre::SubMesh* cellSM = cellMesh->createSubMesh();
+            cellSM->mVao[Ogre::VpNormal].push_back(mergedVao);
+            cellSM->mVao[Ogre::VpShadow].push_back(mergedVao);
+
+            if (nullptr != grassDatablock && grassDatablock->getNameStr())
+            {
+                cellSM->mMaterialName = *grassDatablock->getNameStr();
+            }
+
+            // Local-space bounds (vertices already centred at cellCentre).
+            Ogre::Aabb localAabb;
+            localAabb.setExtents(cellMin - cellCentre, cellMax - cellCentre);
+            cellMesh->_setBounds(localAabb, false);
+            cellMesh->_setBoundingSphereRadius(localAabb.getRadius());
+
+            if (false == cellMesh->hasValidShadowMappingVaos())
+            {
+                cellMesh->prepareForShadowMapping(true);
+            }
+
+            Ogre::Item* cellItem = sceneManager->createItem(cellMesh, Ogre::SCENE_STATIC);
+            cellItem->setName("GrassCellItem_" + rule.name + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)));
+
+            if (nullptr != grassDatablock && cellItem->getNumSubItems() > 0u)
+            {
+                cellItem->getSubItem(0u)->setDatablock(grassDatablock);
+            }
+
+            cellItem->setRenderQueueGroup(renderQueue);
+            cellItem->setCastShadows(false); // Grass never casts shadows.
+
+            if (rule.renderDistance > 0.0f)
+            {
+                cellItem->setRenderingDistance(rule.renderDistance);
+            }
+
+            Ogre::SceneNode* cellNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
+            cellNode->setPosition(cellCentre);
+            cellNode->setOrientation(Ogre::Quaternion::IDENTITY);
+            cellNode->setScale(Ogre::Vector3::UNIT_SCALE);
+            cellNode->attachObject(cellItem);
+
+            batch.items.push_back(cellItem);
+            batch.nodes.push_back(cellNode);
+
+            ++cellIndex;
+        }
+
+        batch.sharedDatablock = grassDatablock;
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Grass rule '" + rule.name + "': " + Ogre::StringConverter::toString(static_cast<unsigned int>(batch.instances.size())) + " blades -> " +
+                                                                                Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + " cell Items" + " wind=" + (nullptr != this->windComponent ? "YES" : "NO") +
+                                                                                " material=" + rule.grassMaterialName);
     }
 
     void ProceduralFoliageVolumeComponent::createFoliageCollision()
@@ -1923,7 +2385,7 @@ namespace NOWA
                     if (false == meshToRemove.isNull())
                     {
                         const Ogre::String& mName = meshToRemove->getName();
-                        if (mName.find("FoliageCell_") != Ogre::String::npos)
+                        if (mName.find("FoliageCell_") != Ogre::String::npos || mName.find("GrassCell_") != Ogre::String::npos)
                         {
                             Ogre::MeshManager::getSingleton().remove(meshToRemove->getHandle());
                         }
@@ -2005,6 +2467,10 @@ namespace NOWA
             this->ruleCollisionEnabled.resize(count);
             this->ruleCollisionRadius.resize(count);
             this->ruleCollisionHeight.resize(count);
+            this->ruleUseProceduralGrass.resize(count, nullptr);
+            this->ruleBladeWidths.resize(count, nullptr);
+            this->ruleBladeHeights.resize(count, nullptr);
+            this->ruleGrassMaterialNames.resize(count, nullptr);
 
             // Initialize new variants with SENSIBLE DEFAULTS
             for (size_t i = oldSize; i < count; i++)
@@ -2137,8 +2603,29 @@ namespace NOWA
                 this->ruleCollisionHeight[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionHeight() + Ogre::StringConverter::toString(i), defaultColHeight, this->attributes);
                 this->ruleCollisionHeight[i]->setDescription("Collision cylinder height. Trees: 3-5m (trunk height), Bushes: 0.5-1.5m.");
                 this->ruleCollisionHeight[i]->setConstraints(0.1f, 20.0f);
-                this->ruleCollisionHeight[i]->addUserData(GameObject::AttrActionSeparator());
                 this->rules[i].collisionHeight = defaultColHeight;
+
+                // Procedural Grass
+                this->ruleUseProceduralGrass[i] = new Variant(AttrRuleUseProceduralGrass() + Ogre::StringConverter::toString(i), false, this->attributes);
+                this->ruleUseProceduralGrass[i]->setDescription("If true, generates procedural cross-quad grass blades instead of loading a mesh. "
+                                                                "Rule Mesh Name is ignored. Blades use the Wind HLMS datablock and sway when a WindComponent exists.");
+                this->rules[i].useProceduralGrass = false;
+
+                this->ruleBladeWidths[i] = new Variant(AttrRuleBladeWidth() + Ogre::StringConverter::toString(i), 0.15f, this->attributes);
+                this->ruleBladeWidths[i]->setDescription("Half-width of one grass blade in meters. Wider = lush, narrower = fine grass.");
+                this->ruleBladeWidths[i]->setConstraints(0.01f, 2.0f);
+                this->rules[i].bladeWidth = 0.15f;
+
+                this->ruleBladeHeights[i] = new Variant(AttrRuleBladeHeight() + Ogre::StringConverter::toString(i), 0.5f, this->attributes);
+                this->ruleBladeHeights[i]->setDescription("Height of one grass blade in meters.");
+                this->ruleBladeHeights[i]->setConstraints(0.05f, 5.0f);
+                this->rules[i].bladeHeight = 0.5f;
+
+                this->ruleGrassMaterialNames[i] = new Variant(AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i), Ogre::String("ProceduralGrassMaterial"), this->attributes);
+                this->ruleGrassMaterialNames[i]->setDescription("Wind HLMS datablock name for grass blades (HLMS_USER0). "
+                                                                "Must be registered in your materials scripts.");
+                this->rules[i].grassMaterialName = "ProceduralGrassMaterial";
+                this->ruleGrassMaterialNames[i]->addUserData(GameObject::AttrActionSeparator());
             }
         }
         else if (count < oldSize)
@@ -2161,6 +2648,10 @@ namespace NOWA
             this->eraseVariants(this->ruleCollisionEnabled, count);
             this->eraseVariants(this->ruleCollisionRadius, count);
             this->eraseVariants(this->ruleCollisionHeight, count);
+            this->eraseVariants(this->ruleUseProceduralGrass, count);
+            this->eraseVariants(this->ruleBladeWidths, count);
+            this->eraseVariants(this->ruleBladeHeights, count);
+            this->eraseVariants(this->ruleGrassMaterialNames, count);
 
             this->rules.resize(count);
         }
@@ -2521,6 +3012,94 @@ namespace NOWA
         return this->ruleCollisionHeight[index]->getReal();
     }
 
+    void ProceduralFoliageVolumeComponent::setRuleUseProceduralGrass(unsigned int index, bool useGrass)
+    {
+        if (index >= this->rules.size() || index >= this->ruleUseProceduralGrass.size())
+        {
+            return;
+        }
+        if (nullptr != this->ruleUseProceduralGrass[index])
+        {
+            this->ruleUseProceduralGrass[index]->setValue(useGrass);
+        }
+        this->rules[index].useProceduralGrass = useGrass;
+    }
+
+    bool ProceduralFoliageVolumeComponent::getRuleUseProceduralGrass(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return false;
+        }
+        return this->rules[index].useProceduralGrass;
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleBladeWidth(unsigned int index, Ogre::Real width)
+    {
+        if (index >= this->rules.size() || index >= this->ruleBladeWidths.size())
+        {
+            return;
+        }
+        if (nullptr != this->ruleBladeWidths[index])
+        {
+            this->ruleBladeWidths[index]->setValue(width);
+        }
+        this->rules[index].bladeWidth = width;
+    }
+
+    Ogre::Real ProceduralFoliageVolumeComponent::getRuleBladeWidth(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 0.15f;
+        }
+        return this->rules[index].bladeWidth;
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleBladeHeight(unsigned int index, Ogre::Real height)
+    {
+        if (index >= this->rules.size() || index >= this->ruleBladeHeights.size())
+        {
+            return;
+        }
+        if (nullptr != this->ruleBladeHeights[index])
+        {
+            this->ruleBladeHeights[index]->setValue(height);
+        }
+        this->rules[index].bladeHeight = height;
+    }
+
+    Ogre::Real ProceduralFoliageVolumeComponent::getRuleBladeHeight(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 0.5f;
+        }
+        return this->rules[index].bladeHeight;
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleGrassMaterialName(unsigned int index, const Ogre::String& materialName)
+    {
+        if (index >= this->rules.size() || index >= this->ruleGrassMaterialNames.size())
+        {
+            return;
+        }
+        if (nullptr != this->ruleGrassMaterialNames[index])
+        {
+            this->ruleGrassMaterialNames[index]->setValue(materialName);
+        }
+        this->rules[index].grassMaterialName = materialName;
+    }
+
+    Ogre::String ProceduralFoliageVolumeComponent::getRuleGrassMaterialName(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return "ProceduralGrassMaterial";
+        }
+        return this->rules[index].grassMaterialName;
+    }
+
     // Helper function
     std::vector<int> ProceduralFoliageVolumeComponent::parseTerraLayers(const Ogre::String& layersStr)
     {
@@ -2659,7 +3238,7 @@ namespace NOWA
         for (size_t ruleIdx = 0u; ruleIdx < this->rules.size(); ++ruleIdx)
         {
             const FoliageRule& rule = this->rules[ruleIdx];
-            if (false == rule.enabled || true == rule.meshName.empty())
+            if (false == rule.enabled || (true == rule.meshName.empty() && false == rule.useProceduralGrass))
             {
                 continue;
             }
