@@ -167,6 +167,12 @@ namespace NOWA
             if (false == isStalled && false == this->isWorkspaceTransitioning() && false == isSceneLoading)
             {
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
+
+                // Execute closures AFTER renderOneFrame so RenderingMetrics are
+                // populated when closures read them (e.g. DesignState::updateInfo).
+                // Node/bone/datablock interpolation already ran in updateAllTransforms
+                // above before renderOneFrame, so visual correctness is preserved.
+                this->updateAndExecuteClosures();
             }
         }
 
@@ -1706,7 +1712,8 @@ namespace NOWA
         cmd.isRemoval = true;
         cmd.fireAndForget = false;
         cmd.isUpdate = false;
-        bool success = this->closureQueue.enqueue(this->producerToken, std::move(cmd));;
+        bool success = this->closureQueue.enqueue(this->producerToken, std::move(cmd));
+        ;
 
         if (false == success)
         {
@@ -2383,8 +2390,9 @@ namespace NOWA
             trackedDatablock.applyFunc(result);
         }
 
-        // Update and execute all closures - completely lock-free
-        this->updateAndExecuteClosures();
+        // Note: updateAndExecuteClosures() is no longer called here.
+        // It is called explicitly after renderOneFrame() in the render loop
+        // so that closures reading RenderingMetrics see populated values.
     }
 
     void GraphicsModule::calculateInterpolationWeight(void)

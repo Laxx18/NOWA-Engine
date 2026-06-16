@@ -741,7 +741,11 @@ namespace NOWA
             }
 
             this->hlmsWind = dynamic_cast<HlmsWind*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0));
-            hlmsWind->setup(this->gameObjectPtr->getSceneManager());
+            this->hlmsWind->setup(this->gameObjectPtr->getSceneManager());
+
+            // Make directional shadow maps static -- they only rebuild when
+            // markDirectionalShadowMapsDirty() is called explicitly.
+            this->initializeStaticShadowMaps();
 
             boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(gameObjectPtr->getId(), false));
             AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataHdrActivated);
@@ -2937,6 +2941,61 @@ namespace NOWA
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::destroyPccSystem");
+    }
+
+    void WorkspaceBaseComponent::initializeStaticShadowMaps()
+    {
+        if (nullptr == this->workspace)
+        {
+            return;
+        }
+
+        Ogre::CompositorShadowNode* shadowNode = this->workspace->findShadowNode(WorkspaceModule::getInstance()->shadowNodeName);
+
+        if (nullptr == shadowNode)
+        {
+            return;
+        }
+
+        // Mark all shadow maps as static. After this call Ogre will NOT
+        // re-render any shadow map unless setStaticShadowMapDirty() is called.
+        // We immediately mark them all dirty once so the first frame renders
+        // correct shadows, then they stay frozen until the sun moves.
+        const size_t numShadowMaps = shadowNode->getNumShadowCastingLights();
+        for (size_t i = 0; i < numShadowMaps; ++i)
+        {
+            // true = also update linked shadow maps (shared atlas entries)
+            shadowNode->setStaticShadowMapDirty(static_cast<Ogre::uint32>(i), true);
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+            "[WorkspaceBaseComponent] Static shadow maps initialized for: " + this->gameObjectPtr->getName() + " (" + Ogre::StringConverter::toString(static_cast<unsigned int>(numShadowMaps)) + " shadow maps)");
+    }
+
+    void WorkspaceBaseComponent::markDirectionalShadowMapsDirty()
+    {
+        if (nullptr == this->workspace)
+        {
+            return;
+        }
+
+        Ogre::CompositorShadowNode* shadowNode = this->workspace->findShadowNode(WorkspaceModule::getInstance()->shadowNodeName);
+
+        if (nullptr == shadowNode)
+        {
+            return;
+        }
+
+        // Only mark the PSSM directional splits (shadow maps 0, 1, 2) dirty.
+        // Shadow maps 3 and 4 (spot/point lights) stay static unless those
+        // lights also move.
+        // Pass true to the last parameter to avoid O(N^2) re-linking behavior
+        // when marking multiple maps at once.
+        shadowNode->setStaticShadowMapDirty(0, false);
+        shadowNode->setStaticShadowMapDirty(1, false);
+        shadowNode->setStaticShadowMapDirty(2, true); // true on last one to finalize
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Directional shadow maps marked dirty.");
     }
 
     bool WorkspaceBaseComponent::getUseOcean(void) const

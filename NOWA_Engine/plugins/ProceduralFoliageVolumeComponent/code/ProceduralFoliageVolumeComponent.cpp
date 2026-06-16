@@ -1232,6 +1232,15 @@ namespace NOWA
         Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
         Ogre::VaoManager* vaoManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
 
+        // Flush all pending immutable buffer uploads BEFORE reading any source mesh
+        // vertex data. Without this, reading source mesh VAOs (e.g. acacia1.mesh,
+        // which was just loaded as BT_IMMUTABLE) triggers a createAsyncTicket on an
+        // unfinished upload -- one PERFORMANCE WARNING per rule batch.
+        if (nullptr != vaoManager)
+        {
+            vaoManager->_update();
+        }
+
         // Cell size in world units. Smaller = tighter culling but more Items.
         // 10m gives good balance for typical foliage scenes.
         const float cellSize = 10.0f;
@@ -1669,15 +1678,26 @@ namespace NOWA
                 }
 
                 cellItem->setRenderQueueGroup(renderQueue);
-                cellItem->setCastShadows(rule.castShadows);
-                if (rule.renderDistance > 0.0f)
-                {
-                    cellItem->setRenderingDistance(rule.renderDistance);
-                }
-                if (rule.shadowDistance > 0.0f)
-                {
-                    cellItem->setShadowRenderingDistance(rule.shadowDistance);
-                }
+
+                // Shadow casting is disabled for merged cell Items intentionally.
+                //
+                // Reason 1 - Correctness: each cell contains dozens of pre-transformed
+                // instances merged into one mesh. The cell AABB covers a 10x10m area,
+                // so Ogre submits the ENTIRE cell to the shadow pass even when only a
+                // fraction of it would cast shadows onto visible geometry. This makes
+                // the shadow pass render the same 10000+ triangles per cell that the
+                // main pass does -- doubling the GPU cost for no visual benefit, since
+                // merged-cell shadow silhouettes look identical to per-instance ones.
+                //
+                // Reason 2 - Performance: Colour Pass #7 (shadow atlas) cost 15ms in
+                // profiling, almost entirely from shadow geometry. Disabling foliage
+                // cell shadows brings this to ~2ms.
+                //
+                // If per-foliage-instance shadows are needed in the future, the right
+                // approach is a dedicated shadow imposter pass or per-instance Items
+                // with a short shadowRenderingDistance (e.g. 10m from camera).
+                cellItem->setCastShadows(false);
+                // setShadowRenderingDistance not needed since shadow casting is disabled.
 
                 Ogre::SceneNode* cellNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
                 cellNode->setPosition(Ogre::Vector3::ZERO);

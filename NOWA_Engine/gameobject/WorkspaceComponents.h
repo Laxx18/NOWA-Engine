@@ -246,6 +246,13 @@ namespace NOWA
 		void setParallaxCorrectedCubemap(Ogre::ParallaxCorrectedCubemapAuto* pcc);
 
 		void destroyPccSystem(void);
+
+		// Call once after workspace creation to make shadow maps static.
+        void initializeStaticShadowMaps();
+
+        // Call when the directional light direction changes (from LightDirectionalComponent).
+        // Only marks the PSSM splits dirty -- spot/point light maps stay static.
+        void markDirectionalShadowMapsDirty();
 	public:
 		static const Ogre::String AttrBackgroundColor(void) { return "Background Color"; }
 		static const Ogre::String AttrViewportRect(void) { return "Viewport Rect"; }

@@ -3,6 +3,8 @@
 #include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
+#include "modules/WorkspaceModule.h"
+#include "WorkspaceComponents.h"
 
 namespace NOWA
 {
@@ -189,6 +191,12 @@ namespace NOWA
 							// Actualize the ambient light, when the direction changed
 							this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(),
 								this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere(), -this->light->getDirection()/* * Ogre::Vector3::UNIT_Y * 0.2f*/);
+
+							WorkspaceBaseComponent* workspaceComp = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+                            if (nullptr != workspaceComp)
+                            {
+                                workspaceComp->markDirectionalShadowMapsDirty();
+                            }
 						};
 						Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 						NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);

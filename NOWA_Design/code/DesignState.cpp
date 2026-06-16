@@ -239,6 +239,9 @@ void DesignState::createScene(void)
 
 	this->initializeModules(false, false);
 
+	// Enable metrics!
+    Ogre::Root::getSingletonPtr()->getRenderSystem()->setMetricsRecordingEnabled(true);
+
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());

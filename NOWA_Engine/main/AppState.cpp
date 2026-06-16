@@ -354,6 +354,9 @@ namespace NOWA
 				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_PARTICLE_STUFF, Ogre::RenderQueue::Modes::PARTICLE_SYSTEM);
 				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_PARTICLE_STUFF, sortMode);
 
+				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT, Ogre::RenderQueue::Modes::PARTICLE_SYSTEM);
+                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT, sortMode);
+
 				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_LEGACY, Ogre::RenderQueue::Modes::V1_LEGACY);
 				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_LEGACY, sortMode);
 
@@ -364,9 +367,7 @@ namespace NOWA
 				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V1_OBJECTS_ALWAYS_IN_FOREGROUND, sortMode);
 
 				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V2_TRANSPARENT, Ogre::RenderQueue::Modes::FAST);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_TRANSPARENT,
-                    sortMode // Back-to-front depth sorting
-                );
+                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_TRANSPARENT, sortMode);
 
 				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_GIZMO, Ogre::RenderQueue::Modes::V1_FAST);
 				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_GIZMO, sortMode);
