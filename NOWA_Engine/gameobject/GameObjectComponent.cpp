@@ -107,6 +107,11 @@ namespace NOWA
 		return true;
 	}
 
+	bool GameObjectComponent::lateInit(void)
+    {
+        return true;
+    }
+
 	void GameObjectComponent::cloneBase(const GameObjectCompPtr& otherGameObjectCompPtr)
 	{
 		otherGameObjectCompPtr->setReferenceId(this->referenceId->getULong());

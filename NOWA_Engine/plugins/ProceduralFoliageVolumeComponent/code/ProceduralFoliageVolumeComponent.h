@@ -11,6 +11,7 @@ GPL v3
 #include "OgrePlugin.h"
 #include "gameobject/GameObjectComponent.h"
 #include "gameobject/GameObjectController.h"
+#include "main/Events.h"
 #include <unordered_map>
 #include <vector>
 
@@ -74,6 +75,14 @@ namespace NOWA
 
         Ogre::String categories; // e.g. "All" or "All-House" or "Ground"
         unsigned int categoriesId;
+        // Bit(s) explicitly excluded via "-Name" tokens in categories, e.g.
+        // "All-Obstacle" -> the Obstacle category bit alone. Computed the same
+        // way as GameObjectPlaceComponent::parseExcludedCategories: walk every
+        // "-Name" token and OR its generateCategoryId(name) result in. Used to
+        // actively search FOR obstacles to reject a position, since
+        // categoriesId itself (the "All minus Obstacle" mask) makes obstacles
+        // invisible to a query using it directly as the query mask.
+        unsigned int excludedCategoryId;
         Ogre::Real clearanceDistance;
 
         bool collisionEnabled;      // Enable physics collision
@@ -89,6 +98,20 @@ namespace NOWA
         Ogre::Real bladeWidth;      // Half-width of one grass blade in meters (default 0.15)
         Ogre::Real bladeHeight;     // Height of one grass blade in meters (default 0.5)
         Ogre::String grassMaterialName; // Wind HLMS datablock name (must exist in resources)
+
+        // ========== Procedural Tree (per-branch leaf sway) ==========
+        // When useProceduralTree = true, meshName is STILL used (unlike grass,
+        // which generates geometry from scratch). Instead, this enables an
+        // additional processing pass during createFoliageItems: any submesh
+        // identified as "leaves" (see isLeavesSubMesh) gets its vertices
+        // clustered into pseudo-branches at cell-build time, and a per-vertex
+        // branchId+phase attribute is baked into the merged cell mesh so the
+        // Wind HLMS can sway each branch independently and out of phase with
+        // its neighbours, rather than the whole canopy moving as one rigid
+        // unit. Trunk/bark submeshes are never affected -- they stay rigid.
+        bool useProceduralTree;          // true = enable per-branch sway clustering for leaves submeshes
+        int treeBranchClusterCount;      // Number of pseudo-branches to cluster leaf vertices into (default 8)
+        Ogre::Real treeSwayStrength;     // Multiplier on branch sway displacement (default 1.0)
 
         FoliageRule() :
             enabled(true),
@@ -112,6 +135,7 @@ namespace NOWA
             useClusterLOD(false),
             categories("All"), // Default: grow everywhere
             categoriesId(GameObjectController::ALL_CATEGORIES_ID), // Default: all categories
+            excludedCategoryId(0), // Default: nothing explicitly excluded
             clearanceDistance(0.0f), // 0 = disabled
             collisionEnabled(false),
             collisionRadius(0.3f), // 30cm default trunk
@@ -119,7 +143,10 @@ namespace NOWA
             useProceduralGrass(false),
             bladeWidth(0.15f),
             bladeHeight(0.5f),
-            grassMaterialName("ProceduralGrassMaterial")
+            grassMaterialName("GrassMaterial"),
+            useProceduralTree(false),
+            treeBranchClusterCount(8),
+            treeSwayStrength(1.0f)
         {
         }
     };
@@ -232,6 +259,31 @@ namespace NOWA
          * @see		GameObjectComponent::postInit
          */
         virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::lateInit
+         *
+         * Regenerates foliage that was loaded from a saved scene. Must run here
+         * rather than in postInit(), because lateInit() is only called after
+         * EVERY GameObject in the scene has completed its own postInit() -- see
+         * DotSceneImportModule::postInitData(). This guarantees obstacle
+         * GameObjects (category "Obstacle") have registered their category bits
+         * before isCategoryAllowed() queries them during regeneration.
+         *
+         * Called exactly once, never again on subsequent play/stop cycles.
+         */
+        virtual bool lateInit(void) override;
+
+        /**
+         * @brief One-shot handler for EventDataSceneParsed. Fires once the
+         *        engine itself considers the scene fully valid and
+         *        renderable (see DesignState::handleSceneValid for the
+         *        engine-side counterpart). This is the actual trigger point
+         *        for regenerating foliage loaded from a saved scene -- not
+         *        lateInit() itself. Removes its own listener immediately so
+         *        it never fires again.
+         */
+        void handleSceneParsed(NOWA::EventDataPtr eventData);
 
         /**
          * @see		GameObjectComponent::connect
@@ -388,6 +440,15 @@ namespace NOWA
 
         void setRuleGrassMaterialName(unsigned int index, const Ogre::String& materialName);
         Ogre::String getRuleGrassMaterialName(unsigned int index) const;
+
+        void setRuleUseProceduralTree(unsigned int index, bool useTree);
+        bool getRuleUseProceduralTree(unsigned int index) const;
+
+        void setRuleTreeBranchClusterCount(unsigned int index, int clusterCount);
+        int getRuleTreeBranchClusterCount(unsigned int index) const;
+
+        void setRuleTreeSwayStrength(unsigned int index, Ogre::Real swayStrength);
+        Ogre::Real getRuleTreeSwayStrength(unsigned int index) const;
     public:
         static const Ogre::String AttrRegenerate(void)
         {
@@ -506,6 +567,18 @@ namespace NOWA
         {
             return "Rule Grass Material ";
         }
+        static const Ogre::String AttrRuleUseProceduralTree(void)
+        {
+            return "Rule Use Procedural Tree ";
+        }
+        static const Ogre::String AttrRuleTreeBranchClusterCount(void)
+        {
+            return "Rule Tree Branch Cluster Count ";
+        }
+        static const Ogre::String AttrRuleTreeSwayStrength(void)
+        {
+            return "Rule Tree Sway Strength ";
+        }
     protected:
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         /**
@@ -581,6 +654,58 @@ namespace NOWA
 
         bool isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule);
 
+        /**
+         * @brief Parses every "-Name" token out of a categories string (e.g.
+         *        "All-Obstacle" -> "Obstacle") and ORs together
+         *        generateCategoryId(name) for each one. Mirrors
+         *        GameObjectPlaceComponent::parseExcludedCategories exactly.
+         *        Used to get the bit(s) to actively search FOR when rejecting
+         *        a placement position, since categoriesId itself (the
+         *        "All minus excluded" mask) makes excluded objects invisible
+         *        to a query that uses it directly as the query mask.
+         */
+        unsigned int parseExcludedCategoryId(const Ogre::String& categories);
+
+        /**
+         * @brief Determines whether a submesh should be treated as "leaves"
+         *        for the purposes of useProceduralTree per-branch sway
+         *        clustering. Combines the transparency signal (now including
+         *        alpha_test/alpha_hash, not just real alpha blending) with
+         *        datablock name pattern matching, since neither signal alone
+         *        is reliable on every tree asset -- see implementation for
+         *        the specific false-positive case this resolves.
+         * @param[in] hasTransparency Whether the submesh's blendblock or
+         *            alpha test/hashing settings indicate transparency.
+         * @param[in] datablock The submesh's datablock (may be nullptr).
+         * @return true if this submesh should get branch-sway treatment.
+         */
+        bool isLeavesSubMesh(bool hasTransparency, Ogre::HlmsDatablock* datablock);
+
+        /**
+         * @brief Clusters leaf-submesh vertex positions into pseudo-branches
+         *        for per-branch wind sway (useProceduralTree). Pure spatial
+         *        clustering -- no Blender re-export or pre-baked branch data
+         *        required. Operates on LOCAL-space positions of a single
+         *        source mesh submesh, so the result is identical for every
+         *        instance of that mesh and only needs to be computed once
+         *        per source mesh (not per cell, not per instance).
+         *
+         * Algorithm: simple greedy farthest-point seeding followed by one
+         * nearest-centroid assignment pass (a lightweight single-iteration
+         * k-means, sufficient for visually plausible branch grouping --
+         * exact optimality does not matter for a wind sway effect).
+         *
+         * @param[in]  positions Local-space vertex positions of the leaves submesh.
+         * @param[in]  clusterCount Number of pseudo-branches to create (rule.treeBranchClusterCount).
+         * @param[out] outBranchIds Per-vertex branch index in [0, clusterCount).
+         * @param[out] outBranchPivots Per-branch centroid position (local space), size == clusterCount.
+         */
+        void clusterLeafVerticesIntoBranches(
+            const std::vector<Ogre::Vector3>& positions,
+            int clusterCount,
+            std::vector<int>& outBranchIds,
+            std::vector<Ogre::Vector3>& outBranchPivots);
+
         std::vector<VegetationBatch> calculatePlanetFoliagePositions(GameObject* planetGo, Ogre::Real planetRadius, const Ogre::Vector3& planetCentre);
 
         bool meetsPlanetCriteria(Ogre::Real heightAboveSeaLevel, const Ogre::Vector3& hitNormal, const Ogre::Vector3& outwardDir, const FoliageRule& rule) const;
@@ -626,6 +751,11 @@ namespace NOWA
         std::vector<Variant*> ruleBladeWidths;
         std::vector<Variant*> ruleBladeHeights;
         std::vector<Variant*> ruleGrassMaterialNames;
+
+        // Procedural tree per-rule Variant arrays
+        std::vector<Variant*> ruleUseProceduralTree;
+        std::vector<Variant*> ruleTreeBranchClusterCounts;
+        std::vector<Variant*> ruleTreeSwayStrengths;
 
         // Runtime state
         std::vector<VegetationBatch> vegetationBatches; // Render thread only after creation!

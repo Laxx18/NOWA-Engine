@@ -86,31 +86,35 @@ void DesignState::enter(void)
 	this->mouseTopTimer = 0.0f;
 	this->selectedGameObject = nullptr;
 
-	ENQUEUE_RENDER_COMMAND_WAIT("DesignState::enter",
-	{
-		// Register the tree control
-		MyGUI::FactoryManager & factory = MyGUI::FactoryManager::getInstance();
-		std::string widgetCategory = MyGUI::WidgetManager::getInstance().getCategoryName();
+	NOWA::GraphicsModule::RenderCommand renderCommand = []()
+    {
+        // Register the tree control
+        MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
+        std::string widgetCategory = MyGUI::WidgetManager::getInstance().getCategoryName();
 
-		// MyGUI::ResourceManager::getInstance().load("FrameworkFonts.xml");
-		// MyGUI::ResourceManager::getInstance().load("NOWA_Design_Font.xml"); // does crash
-		MyGUI::ResourceManager::getInstance().load("TreeControlSkin.xml");
-		MyGUI::ResourceManager::getInstance().load("TreeControlTemplate.xml");
-		factory.registerFactory<MyGUI::TreeControl>(widgetCategory);
-		factory.registerFactory<MyGUI::TreeControlItem>(widgetCategory);
+        // MyGUI::ResourceManager::getInstance().load("FrameworkFonts.xml");
+        // MyGUI::ResourceManager::getInstance().load("NOWA_Design_Font.xml"); // does crash
+        MyGUI::ResourceManager::getInstance().load("TreeControlSkin.xml");
+        MyGUI::ResourceManager::getInstance().load("TreeControlTemplate.xml");
+        factory.registerFactory<MyGUI::TreeControl>(widgetCategory);
+        factory.registerFactory<MyGUI::TreeControlItem>(widgetCategory);
 
-		// MyGUI::ResourceManager::getInstance().load("HyperTextFonts.xml");
-		MyGUI::ResourceManager::getInstance().load("HyperTextSkins.xml");
-		factory.registerFactory<MyGUI::HyperTextBox>(widgetCategory);
-		factory.registerFactory<MyGUI::WrapPanel>(widgetCategory);
-		factory.registerFactory<MyGUI::StackPanel>(widgetCategory);
-		factory.registerFactory<MyGUI::ScrollViewPanel>(widgetCategory);
+        // MyGUI::ResourceManager::getInstance().load("HyperTextFonts.xml");
+        MyGUI::ResourceManager::getInstance().load("HyperTextSkins.xml");
+        factory.registerFactory<MyGUI::HyperTextBox>(widgetCategory);
+        factory.registerFactory<MyGUI::WrapPanel>(widgetCategory);
+        factory.registerFactory<MyGUI::StackPanel>(widgetCategory);
+        factory.registerFactory<MyGUI::ScrollViewPanel>(widgetCategory);
 
-		MyGUI::ResourceManager::getInstance().load("SliderTemplate.xml");
-		factory.registerFactory<MyGUI::Slider>(widgetCategory);
+        MyGUI::ResourceManager::getInstance().load("SliderTemplate.xml");
+        factory.registerFactory<MyGUI::Slider>(widgetCategory);
 
-		MyGUIHelper::getInstance()->initToolTipData();
-	});
+        MyGUIHelper::getInstance()->initToolTipData();
+
+// TODO: Just for testing, deactivate again!
+        // NOWA::GraphicsModule::getInstance()->enableDebugVisualization(true);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::enter");
 
 	this->createScene();
 }

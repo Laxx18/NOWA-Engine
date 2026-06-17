@@ -187,6 +187,9 @@ namespace NOWA
             this->ruleBladeWidths.resize(count, nullptr);
             this->ruleBladeHeights.resize(count, nullptr);
             this->ruleGrassMaterialNames.resize(count, nullptr);
+            this->ruleUseProceduralTree.resize(count, nullptr);
+            this->ruleTreeBranchClusterCounts.resize(count, nullptr);
+            this->ruleTreeSwayStrengths.resize(count, nullptr);
         }
 
         this->masterSeed->setConstraints(0u, UINT32_MAX);
@@ -409,6 +412,7 @@ namespace NOWA
                 this->ruleCategories[i]->setValue(cats);
                 this->rules[i].categories = cats;
                 this->rules[i].categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(cats);
+                this->rules[i].excludedCategoryId = this->parseExcludedCategoryId(cats);
                 propertyElement = propertyElement->next_sibling("property");
             }
 
@@ -532,13 +536,69 @@ namespace NOWA
                 }
                 if (nullptr == this->ruleGrassMaterialNames[i])
                 {
-                    this->ruleGrassMaterialNames[i] = new Variant(AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i), Ogre::String("ProceduralGrassMaterial"), this->attributes);
+                    this->ruleGrassMaterialNames[i] = new Variant(AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i), Ogre::String("SwayingGrass1Material"), this->attributes);
                     this->ruleGrassMaterialNames[i]->setDescription("Wind HLMS datablock name for grass blades (must be registered as HLMS_USER0). "
                                                                     "Create this datablock in your materials scripts and assign it here.");
                 }
                 this->ruleGrassMaterialNames[i]->setValue(mat);
-                this->ruleGrassMaterialNames[i]->addUserData(GameObject::AttrActionSeparator());
                 this->rules[i].grassMaterialName = mat;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+
+            // ---------- Procedural Tree (per-branch leaf sway) ----------
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRuleUseProceduralTree() + Ogre::StringConverter::toString(i))
+            {
+                bool useTree = XMLConverter::getAttribBool(propertyElement, "data");
+                if (i >= static_cast<int>(this->ruleUseProceduralTree.size()))
+                {
+                    this->ruleUseProceduralTree.resize(i + 1, nullptr);
+                }
+                if (nullptr == this->ruleUseProceduralTree[i])
+                {
+                    this->ruleUseProceduralTree[i] = new Variant(AttrRuleUseProceduralTree() + Ogre::StringConverter::toString(i), false, this->attributes);
+                    this->ruleUseProceduralTree[i]->setDescription("If true, leaf submeshes (identified automatically) are clustered into "
+                                                                   "pseudo-branches at cell-build time and swayed independently via the Wind HLMS, instead of the whole canopy moving as one rigid unit. "
+                                                                   "Trunk/bark submeshes are never affected.");
+                }
+                this->ruleUseProceduralTree[i]->setValue(useTree);
+                this->rules[i].useProceduralTree = useTree;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRuleTreeBranchClusterCount() + Ogre::StringConverter::toString(i))
+            {
+                int clusterCount = Ogre::StringConverter::parseInt(XMLConverter::getAttrib(propertyElement, "data"));
+                if (i >= static_cast<int>(this->ruleTreeBranchClusterCounts.size()))
+                {
+                    this->ruleTreeBranchClusterCounts.resize(i + 1, nullptr);
+                }
+                if (nullptr == this->ruleTreeBranchClusterCounts[i])
+                {
+                    this->ruleTreeBranchClusterCounts[i] = new Variant(AttrRuleTreeBranchClusterCount() + Ogre::StringConverter::toString(i), 8, this->attributes);
+                    this->ruleTreeBranchClusterCounts[i]->setDescription("Number of pseudo-branches to cluster leaf vertices into. "
+                                                                         "More clusters give finer-grained, more natural-looking independent motion, at a small extra per-vertex cost.");
+                    this->ruleTreeBranchClusterCounts[i]->setConstraints(1, 64);
+                }
+                this->ruleTreeBranchClusterCounts[i]->setValue(clusterCount);
+                this->rules[i].treeBranchClusterCount = clusterCount;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRuleTreeSwayStrength() + Ogre::StringConverter::toString(i))
+            {
+                Ogre::Real sway = XMLConverter::getAttribReal(propertyElement, "data");
+                if (i >= static_cast<int>(this->ruleTreeSwayStrengths.size()))
+                {
+                    this->ruleTreeSwayStrengths.resize(i + 1, nullptr);
+                }
+                if (nullptr == this->ruleTreeSwayStrengths[i])
+                {
+                    this->ruleTreeSwayStrengths[i] = new Variant(AttrRuleTreeSwayStrength() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+                    this->ruleTreeSwayStrengths[i]->setDescription("Multiplier on per-branch sway displacement. 1.0 is the default amount; "
+                                                                   "higher values exaggerate the motion, lower values make it subtler.");
+                    this->ruleTreeSwayStrengths[i]->setConstraints(0.0f, 5.0f);
+                }
+                this->ruleTreeSwayStrengths[i]->setValue(sway);
+                this->ruleTreeSwayStrengths[i]->addUserData(GameObject::AttrActionSeparator());
+                this->rules[i].treeSwayStrength = sway;
                 propertyElement = propertyElement->next_sibling("property");
             }
         }
@@ -583,10 +643,72 @@ namespace NOWA
 
         if (true == this->foliageLoadedFromScene)
         {
-            this->regenerateFoliage();
+            // Foliage loaded from a saved scene is NOT regenerated here.
+            // postInit() runs once per GameObject during scene load, but other
+            // GameObjects (e.g. obstacles like Wall_0, container_0) may not have
+            // completed their own postInit() yet, so their category bits are not
+            // guaranteed to be registered in the scene query structures. Querying
+            // isCategoryAllowed() here can silently find no obstacles -- foliage
+            // gets placed right through buildings.
+            //
+            // lateInit() (below) is called once, after EVERY GameObject in the
+            // scene has finished postInit() -- see DotSceneImportModule::
+            // postInitData(). That is the correct, safe point to regenerate
+            // foliage loaded from a saved scene.
         }
 
         return true;
+    }
+
+    bool ProceduralFoliageVolumeComponent::lateInit(void)
+    {
+        // Called exactly once, after every GameObject in the scene has completed
+        // postInit() -- never again on subsequent play/stop (connect/disconnect)
+        // cycles. All obstacle categories are guaranteed to be registered by now,
+        // so isCategoryAllowed() queries here are reliable.
+        if (true == this->foliageLoadedFromScene)
+        {
+            this->foliageLoadedFromScene = false;
+
+            // Delays the visibility to prevent any transform jumps, if set in lua afterwards
+            /*NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(5.0f));
+            auto ptrFunction = [this]()
+            //
+            // Empirically confirmed: calling regenerateFoliage() synchronously
+            // from lateInit() creates every grass/foliage Item correctly --
+            // identical item counts, node attachment, visible=true, and
+            // correct AABB bounds compared to a later manual "Regenerate"
+            // button press -- yet the foliage is invisible on the first
+            // rendered frame after scene load and stays invisible
+            // indefinitely. The exact Ogre-internal reason was never fully
+            // confirmed; what matters is that something about the scene not
+            // yet being in a fully valid/renderable state at lateInit() time
+            // is the cause.
+            //
+            // Rather than guess at a delay duration, listen for the engine's
+            // own EventDataSceneParsed event (see DesignState::handleSceneParsed)
+            // which fires once the scene has actually reached a valid,
+            // renderable state. One-shot: remove the listener the moment it
+            // fires so this never runs again on subsequent scene loads of a
+            // different scene, or if EventDataSceneValid is posted more than
+            // once in a session.
+            // ------------------------------------------------------------------*/
+
+            AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralFoliageVolumeComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
+        }
+
+        return true;
+    }
+
+    void ProceduralFoliageVolumeComponent::handleSceneParsed(NOWA::EventDataPtr eventData)
+    {
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralFoliageVolumeComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
+
+        GraphicsModule::getInstance()->enqueueAndWait([this]()
+            {
+                this->regenerateFoliage();
+            },
+            "ProceduralFoliageVolumeComponent::handleSceneValid_Regenerate");
     }
 
     bool ProceduralFoliageVolumeComponent::connect(void)
@@ -616,6 +738,13 @@ namespace NOWA
     void ProceduralFoliageVolumeComponent::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
+
+        // Safety: if this component is removed before EventDataSceneValid
+        // ever fires (e.g. deleted in the editor while a scene is still
+        // loading), remove the listener so no dangling delegate remains
+        // registered. removeListener is a no-op if already removed by
+        // handleSceneValid itself, so this is always safe to call.
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralFoliageVolumeComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
 
         this->physicsArtifactComponent = nullptr;
 
@@ -777,6 +906,20 @@ namespace NOWA
                 else if (AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i) == attribute->getName())
                 {
                     this->setRuleGrassMaterialName(i, attribute->getString());
+                }
+                else if (AttrRuleUseProceduralTree() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleUseProceduralTree(i, attribute->getBool());
+                }
+                else if (AttrRuleTreeBranchClusterCount() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    // NOTE: getInt() assumed to exist on Variant by analogy with
+                    // getBool()/getReal()/getString() -- verify if this fails to compile.
+                    this->setRuleTreeBranchClusterCount(i, attribute->getInt());
+                }
+                else if (AttrRuleTreeSwayStrength() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleTreeSwayStrength(i, attribute->getReal());
                 }
             }
         }
@@ -965,6 +1108,28 @@ namespace NOWA
                 propertyXML->append_attribute(doc.allocate_attribute("type", "7")); // String
                 propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i))));
                 propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleGrassMaterialNames[i]->getString())));
+                propertiesXML->append_node(propertyXML);
+            }
+
+            // Procedural Tree (per-branch leaf sway)
+            if (i < static_cast<int>(this->ruleUseProceduralTree.size()) && nullptr != this->ruleUseProceduralTree[i])
+            {
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "12")); // bool
+                propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRuleUseProceduralTree() + Ogre::StringConverter::toString(i))));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleUseProceduralTree[i]->getBool())));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "2")); // Unsigned int (cluster count is always non-negative)
+                propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRuleTreeBranchClusterCount() + Ogre::StringConverter::toString(i))));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleTreeBranchClusterCounts[i]->getInt())));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+                propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRuleTreeSwayStrength() + Ogre::StringConverter::toString(i))));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleTreeSwayStrengths[i]->getReal())));
                 propertiesXML->append_node(propertyXML);
             }
         }
@@ -1439,453 +1604,580 @@ namespace NOWA
                 continue;
             }
 
-            // ----------------------------------------------------------------
-            // Read source mesh vertex/index data from the first submesh.
-            // Using the readRequests / mapAsyncTickets pattern (MeshModifyComponent).
-            // ----------------------------------------------------------------
-            struct SrcData
-            {
-                std::vector<Ogre::Vector3> positions;
-                std::vector<Ogre::Vector3> normals;
-                std::vector<Ogre::Vector4> tangents;
-                std::vector<Ogre::Vector2> uvs;
-                std::vector<Ogre::uint32> indices;
-                bool hasTangent;
-                Ogre::HlmsDatablock* datablock;
-                bool hasTransparency;
-            };
+            const unsigned short numSubMeshes = srcMesh->getNumSubMeshes();
 
-            SrcData sd;
-            sd.hasTangent = false;
-            sd.datablock = nullptr;
-            sd.hasTransparency = false;
-
-            Ogre::SubMesh* sm0 = srcMesh->getSubMesh(0u);
-            if (sm0->mVao[Ogre::VpNormal].empty() || sm0->mVao[Ogre::VpNormal][0]->getVertexBuffers().empty())
-            {
-                continue;
-            }
-
-            Ogre::VertexArrayObject* srcVao = sm0->mVao[Ogre::VpNormal][0];
-            const size_t srcVC = srcVao->getVertexBuffers()[0]->getNumElements();
-            const size_t srcIC = srcVao->getIndexBuffer() ? srcVao->getIndexBuffer()->getNumElements() : 0u;
-
-            if (srcVC == 0u)
-            {
-                continue;
-            }
-
-            sd.positions.resize(srcVC);
-            sd.normals.resize(srcVC, Ogre::Vector3::UNIT_Y);
-            sd.tangents.resize(srcVC, Ogre::Vector4(1.0f, 0.0f, 0.0f, 1.0f));
-            sd.uvs.resize(srcVC, Ogre::Vector2::ZERO);
-
-            // Check for tangent element
-            for (Ogre::VertexBufferPacked* vbp : srcVao->getVertexBuffers())
-            {
-                for (const Ogre::VertexElement2& e : vbp->getVertexElements())
-                {
-                    if (e.mSemantic == Ogre::VES_TANGENT)
-                    {
-                        sd.hasTangent = true;
-                    }
-                }
-            }
-
-            // Read vertex data
-            {
-                Ogre::VertexArrayObject::ReadRequestsVec requests;
-                requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-                requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_NORMAL));
-                requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TEXTURE_COORDINATES));
-                if (sd.hasTangent)
-                {
-                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TANGENT));
-                }
-
-                srcVao->readRequests(requests);
-                srcVao->mapAsyncTickets(requests);
-
-                const bool isQTan = (requests[1].type == Ogre::VET_SHORT4_SNORM);
-
-                for (size_t vi = 0u; vi < srcVC; ++vi)
-                {
-                    // Position
-                    if (requests[0].type == Ogre::VET_HALF4)
-                    {
-                        const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
-                        sd.positions[vi].x = Ogre::Bitwise::halfToFloat(p[0]);
-                        sd.positions[vi].y = Ogre::Bitwise::halfToFloat(p[1]);
-                        sd.positions[vi].z = Ogre::Bitwise::halfToFloat(p[2]);
-                    }
-                    else
-                    {
-                        const float* p = reinterpret_cast<const float*>(requests[0].data);
-                        sd.positions[vi] = Ogre::Vector3(p[0], p[1], p[2]);
-                    }
-
-                    // Normal / QTangent
-                    if (isQTan)
-                    {
-                        const Ogre::int16* q = reinterpret_cast<const Ogre::int16*>(requests[1].data);
-                        Ogre::Quaternion qt;
-                        qt.x = q[0] / 32767.0f;
-                        qt.y = q[1] / 32767.0f;
-                        qt.z = q[2] / 32767.0f;
-                        qt.w = q[3] / 32767.0f;
-                        const float refl = (qt.w < 0.0f) ? -1.0f : 1.0f;
-                        sd.normals[vi] = qt.xAxis();
-                        sd.tangents[vi] = Ogre::Vector4(qt.yAxis().x, qt.yAxis().y, qt.yAxis().z, refl);
-                        sd.hasTangent = true;
-                    }
-                    else if (requests[1].type == Ogre::VET_HALF4)
-                    {
-                        const Ogre::uint16* n = reinterpret_cast<const Ogre::uint16*>(requests[1].data);
-                        sd.normals[vi].x = Ogre::Bitwise::halfToFloat(n[0]);
-                        sd.normals[vi].y = Ogre::Bitwise::halfToFloat(n[1]);
-                        sd.normals[vi].z = Ogre::Bitwise::halfToFloat(n[2]);
-                    }
-                    else
-                    {
-                        const float* n = reinterpret_cast<const float*>(requests[1].data);
-                        sd.normals[vi] = Ogre::Vector3(n[0], n[1], n[2]);
-                    }
-
-                    // UV
-                    if (requests[2].type == Ogre::VET_HALF2)
-                    {
-                        const Ogre::uint16* uv = reinterpret_cast<const Ogre::uint16*>(requests[2].data);
-                        sd.uvs[vi].x = Ogre::Bitwise::halfToFloat(uv[0]);
-                        sd.uvs[vi].y = Ogre::Bitwise::halfToFloat(uv[1]);
-                    }
-                    else
-                    {
-                        const float* uv = reinterpret_cast<const float*>(requests[2].data);
-                        sd.uvs[vi] = Ogre::Vector2(uv[0], uv[1]);
-                    }
-
-                    // Explicit tangent
-                    if (!isQTan && sd.hasTangent && requests.size() >= 4u)
-                    {
-                        if (requests[3].type == Ogre::VET_FLOAT4)
-                        {
-                            const float* t = reinterpret_cast<const float*>(requests[3].data);
-                            sd.tangents[vi] = Ogre::Vector4(t[0], t[1], t[2], t[3]);
-                        }
-                    }
-
-                    // Advance pointers
-                    requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-                    requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
-                    requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
-                    if (!isQTan && sd.hasTangent && requests.size() >= 4u)
-                    {
-                        requests[3].data += requests[3].vertexBuffer->getBytesPerElement();
-                    }
-                }
-
-                srcVao->unmapAsyncTickets(requests);
-            }
-
-            // Read index data
-            if (srcIC > 0u && srcVao->getIndexBuffer())
-            {
-                Ogre::IndexBufferPacked* ibp = srcVao->getIndexBuffer();
-                sd.indices.resize(srcIC);
-                const void* shadow = ibp->getShadowCopy();
-                if (nullptr != shadow)
-                {
-                    if (ibp->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT)
-                    {
-                        const Ogre::uint32* s = reinterpret_cast<const Ogre::uint32*>(shadow);
-                        for (size_t ii = 0u; ii < srcIC; ++ii)
-                        {
-                            sd.indices[ii] = s[ii];
-                        }
-                    }
-                    else
-                    {
-                        const Ogre::uint16* s = reinterpret_cast<const Ogre::uint16*>(shadow);
-                        for (size_t ii = 0u; ii < srcIC; ++ii)
-                        {
-                            sd.indices[ii] = static_cast<Ogre::uint32>(s[ii]);
-                        }
-                    }
-                }
-                else
-                {
-                    Ogre::AsyncTicketPtr ticket = ibp->readRequest(0u, srcIC);
-                    const void* raw = ticket->map();
-                    if (ibp->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT)
-                    {
-                        const Ogre::uint32* s = reinterpret_cast<const Ogre::uint32*>(raw);
-                        for (size_t ii = 0u; ii < srcIC; ++ii)
-                        {
-                            sd.indices[ii] = s[ii];
-                        }
-                    }
-                    else
-                    {
-                        const Ogre::uint16* s = reinterpret_cast<const Ogre::uint16*>(raw);
-                        for (size_t ii = 0u; ii < srcIC; ++ii)
-                        {
-                            sd.indices[ii] = static_cast<Ogre::uint32>(s[ii]);
-                        }
-                    }
-                    ticket->unmap();
-                }
-            }
-
-            // Get datablock from a proxy item
+            // Create one proxy item once per source mesh to read all per-submesh
+            // datablocks (trunk bark, leaves, etc.) in one pass.
+            std::vector<Ogre::HlmsDatablock*> subMeshDatablocks(numSubMeshes, nullptr);
+            std::vector<bool> subMeshHasTransparency(numSubMeshes, false);
             {
                 Ogre::Item* proxy = sceneManager->createItem(srcMesh, Ogre::SCENE_DYNAMIC);
-                if (proxy->getNumSubItems() > 0u)
+                for (unsigned short si = 0u; si < numSubMeshes && si < proxy->getNumSubItems(); ++si)
                 {
-                    sd.datablock = proxy->getSubItem(0u)->getDatablock();
-                    if (nullptr != sd.datablock)
+                    Ogre::HlmsDatablock* db = proxy->getSubItem(si)->getDatablock();
+                    subMeshDatablocks[si] = db;
+                    if (nullptr != db)
                     {
-                        const Ogre::HlmsBlendblock* bb = sd.datablock->getBlendblock(false);
-                        if (nullptr != bb && (bb->isAutoTransparent() || bb->isForcedTransparent()))
+                        const Ogre::HlmsBlendblock* bb = db->getBlendblock(false);
+                        bool isCutoutOrBlended = (nullptr != bb && (bb->isAutoTransparent() || bb->isForcedTransparent()));
+
+                        Ogre::HlmsPbsDatablock* pbsDb = dynamic_cast<Ogre::HlmsPbsDatablock*>(db);
+                        if (nullptr != pbsDb)
                         {
-                            sd.hasTransparency = true;
+                            if (pbsDb->getAlphaTest() != Ogre::CMPF_ALWAYS_PASS || true == pbsDb->getAlphaHashing())
+                            {
+                                isCutoutOrBlended = true;
+                            }
                         }
+
+                        subMeshHasTransparency[si] = isCutoutOrBlended;
+
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Mesh '" + batch.meshName + "' submesh " + Ogre::StringConverter::toString(si) + " datablock='" +
+                                                                                                (db->getNameStr() ? *db->getNameStr() : Ogre::String("<unnamed>")) + "' transparent=" + (subMeshHasTransparency[si] ? "YES" : "NO"));
+                    }
+                    else
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                            "[ProceduralFoliageVolume] Mesh '" + batch.meshName + "' submesh " + Ogre::StringConverter::toString(si) + " has NO DATABLOCK -- will render with PBS default (often appears white/overbright).");
                     }
                 }
                 sceneManager->destroyItem(proxy);
             }
 
+            size_t totalCellsForRule = 0u;
+
             // ----------------------------------------------------------------
-            // Group instances into spatial cells and build one merged Item per cell.
+            // Read source mesh vertex/index data from the first submesh.
+            // A merged cell mesh can only carry one material per SubMesh, so each
+            // source submesh becomes its own independent set of cell Items. This
+            // is required for multi-material meshes like trees (trunk + leaves)
+            // or mushrooms (cap + stem) -- without this, only submesh 0 would be
+            // visible and the rest (e.g. the trunk) would silently disappear.
             // ----------------------------------------------------------------
-
-            // Map from cell coordinate to list of instance indices in that cell.
-            std::unordered_map<uint64_t, std::vector<size_t>> cellMap;
-            cellMap.reserve(256u);
-
-            for (size_t instIdx = 0u; instIdx < batch.instances.size(); ++instIdx)
+            for (unsigned short subMeshIdx = 0u; subMeshIdx < numSubMeshes; ++subMeshIdx)
             {
-                const Ogre::Vector3& pos = batch.instances[instIdx].position;
-                const int32_t cx = static_cast<int32_t>(std::floor(pos.x / cellSize));
-                const int32_t cz = static_cast<int32_t>(std::floor(pos.z / cellSize));
-                const uint64_t key = (static_cast<uint64_t>(static_cast<uint32_t>(cx)) << 32) | static_cast<uint32_t>(cz);
-                cellMap[key].push_back(instIdx);
-            }
-
-            const Ogre::uint8 renderQueue = sd.hasTransparency ? NOWA::RENDER_QUEUE_V2_TRANSPARENT : NOWA::RENDER_QUEUE_V2_MESH;
-            const size_t fpv = sd.hasTangent ? 12u : 8u;
-
-            size_t cellIndex = 0u;
-            for (auto& cellEntry : cellMap)
-            {
-                const std::vector<size_t>& cellInstances = cellEntry.second;
-                const size_t cellInstCount = cellInstances.size();
-
-                const size_t mergedVC = srcVC * cellInstCount;
-                const size_t mergedIC = srcIC * cellInstCount;
-
-                // Allocate merged vertex buffer
-                float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(mergedVC * fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
-
-                Ogre::Vector3 cellMin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-                Ogre::Vector3 cellMax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
-
-                for (size_t ci = 0u; ci < cellInstCount; ++ci)
+                // ----------------------------------------------------------------
+                // Read source mesh vertex/index data from this submesh.
+                // Using the readRequests / mapAsyncTickets pattern (MeshModifyComponent).
+                // ----------------------------------------------------------------
+                struct SrcData
                 {
-                    const VegetationInstance& inst = batch.instances[cellInstances[ci]];
+                    std::vector<Ogre::Vector3> positions;
+                    std::vector<Ogre::Vector3> normals;
+                    std::vector<Ogre::Vector4> tangents;
+                    std::vector<Ogre::Vector2> uvs;
+                    std::vector<Ogre::uint32> indices;
+                    bool hasTangent;
+                    Ogre::HlmsDatablock* datablock;
+                    bool hasTransparency;
+                    bool isLeaves;                   // true if useProceduralTree + isLeavesSubMesh
+                    std::vector<float> branchPhases; // per-vertex sway phase offset, only valid if isLeaves
+                    std::vector<int> branchIds;      // per-vertex branch index, only valid if isLeaves
+                };
 
-                    Ogre::Matrix3 rotMat;
-                    inst.orientation.ToRotationMatrix(rotMat);
+                SrcData sd;
+                sd.hasTangent = false;
+                sd.datablock = subMeshDatablocks[subMeshIdx];
+                sd.hasTransparency = subMeshHasTransparency[subMeshIdx];
+                sd.isLeaves = (true == rule.useProceduralTree) && this->isLeavesSubMesh(sd.hasTransparency, sd.datablock);
 
-                    const Ogre::Vector3& sc = inst.scale;
-                    const Ogre::Matrix3 srMat(rotMat[0][0] * sc.x, rotMat[0][1] * sc.y, rotMat[0][2] * sc.z, rotMat[1][0] * sc.x, rotMat[1][1] * sc.y, rotMat[1][2] * sc.z, rotMat[2][0] * sc.x, rotMat[2][1] * sc.y, rotMat[2][2] * sc.z);
-
-                    const size_t vBase = ci * srcVC;
-                    for (size_t vi = 0u; vi < srcVC; ++vi)
-                    {
-                        const Ogre::Vector3 wPos = inst.position + srMat * sd.positions[vi];
-                        const Ogre::Vector3 wNrm = (rotMat * sd.normals[vi]).normalisedCopy();
-                        const Ogre::Vector3 wTan = rotMat * Ogre::Vector3(sd.tangents[vi].x, sd.tangents[vi].y, sd.tangents[vi].z);
-
-                        cellMin.makeFloor(wPos);
-                        cellMax.makeCeil(wPos);
-
-                        const size_t o = (vBase + vi) * fpv;
-                        vd[o + 0] = wPos.x;
-                        vd[o + 1] = wPos.y;
-                        vd[o + 2] = wPos.z;
-                        vd[o + 3] = wNrm.x;
-                        vd[o + 4] = wNrm.y;
-                        vd[o + 5] = wNrm.z;
-                        if (sd.hasTangent)
-                        {
-                            vd[o + 6] = wTan.x;
-                            vd[o + 7] = wTan.y;
-                            vd[o + 8] = wTan.z;
-                            vd[o + 9] = sd.tangents[vi].w;
-                            vd[o + 10] = sd.uvs[vi].x;
-                            vd[o + 11] = sd.uvs[vi].y;
-                        }
-                        else
-                        {
-                            vd[o + 6] = sd.uvs[vi].x;
-                            vd[o + 7] = sd.uvs[vi].y;
-                        }
-                    }
-                }
-
-                // Vertices are in world space. Now compute cell centre from AABB
-                // and subtract it from all positions to get local-space vertices.
-                // The scene node will be placed at cellCentre so the math is correct.
-                // This makes setRenderingDistance measure camera-to-node correctly.
-                if (cellMin.x > cellMax.x)
+                Ogre::SubMesh* sm0 = srcMesh->getSubMesh(subMeshIdx);
+                if (sm0->mVao[Ogre::VpNormal].empty() || sm0->mVao[Ogre::VpNormal][0]->getVertexBuffers().empty())
                 {
-                    cellMin = cellMax = Ogre::Vector3::ZERO;
-                }
-                const Ogre::Vector3 cellCentre = (cellMin + cellMax) * 0.5f;
-
-                for (size_t vi = 0u; vi < mergedVC; ++vi)
-                {
-                    const size_t o = vi * fpv;
-                    vd[o + 0] -= cellCentre.x;
-                    vd[o + 1] -= cellCentre.y;
-                    vd[o + 2] -= cellCentre.z;
-                    // Normals, tangents, UVs are directional -- no translation.
-                }
-
-                // Merged index buffer
-                Ogre::uint32* id = nullptr;
-                if (mergedIC > 0u)
-                {
-                    id = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(mergedIC * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
-                    for (size_t ci = 0u; ci < cellInstCount; ++ci)
-                    {
-                        const Ogre::uint32 voff = static_cast<Ogre::uint32>(ci * srcVC);
-                        for (size_t ii = 0u; ii < srcIC; ++ii)
-                        {
-                            id[ci * srcIC + ii] = sd.indices[ii] + voff;
-                        }
-                    }
-                }
-
-                // Build VAO
-                Ogre::VertexElement2Vec elems;
-                elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
-                elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
-                if (sd.hasTangent)
-                {
-                    elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));
-                }
-                elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
-
-                Ogre::VertexBufferPacked* vb = nullptr;
-                try
-                {
-                    vb = vaoManager->createVertexBuffer(elems, mergedVC, Ogre::BT_IMMUTABLE, vd, true);
-                }
-                catch (const Ogre::Exception& e)
-                {
-                    OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
-                    if (id)
-                    {
-                        OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
-                    }
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                        "[ProceduralFoliageVolume] createVertexBuffer failed for '" + rule.name + "' cell " + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
-                    ++cellIndex;
                     continue;
                 }
 
-                Ogre::IndexBufferPacked* ib = nullptr;
-                if (mergedIC > 0u && id)
+                Ogre::VertexArrayObject* srcVao = sm0->mVao[Ogre::VpNormal][0];
+                const size_t srcVC = srcVao->getVertexBuffers()[0]->getNumElements();
+                const size_t srcIC = srcVao->getIndexBuffer() ? srcVao->getIndexBuffer()->getNumElements() : 0u;
+
+                if (srcVC == 0u)
                 {
+                    continue;
+                }
+
+                sd.positions.resize(srcVC);
+                sd.normals.resize(srcVC, Ogre::Vector3::UNIT_Y);
+                sd.tangents.resize(srcVC, Ogre::Vector4(1.0f, 0.0f, 0.0f, 1.0f));
+                sd.uvs.resize(srcVC, Ogre::Vector2::ZERO);
+
+                // Check for tangent element
+                for (Ogre::VertexBufferPacked* vbp : srcVao->getVertexBuffers())
+                {
+                    for (const Ogre::VertexElement2& e : vbp->getVertexElements())
+                    {
+                        if (e.mSemantic == Ogre::VES_TANGENT)
+                        {
+                            sd.hasTangent = true;
+                        }
+                    }
+                }
+
+                // Read vertex data
+                {
+                    Ogre::VertexArrayObject::ReadRequestsVec requests;
+                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
+                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_NORMAL));
+                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TEXTURE_COORDINATES));
+                    if (sd.hasTangent)
+                    {
+                        requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TANGENT));
+                    }
+
+                    srcVao->readRequests(requests);
+                    srcVao->mapAsyncTickets(requests);
+
+                    const bool isQTan = (requests[1].type == Ogre::VET_SHORT4_SNORM);
+
+                    for (size_t vi = 0u; vi < srcVC; ++vi)
+                    {
+                        // Position
+                        if (requests[0].type == Ogre::VET_HALF4)
+                        {
+                            const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
+                            sd.positions[vi].x = Ogre::Bitwise::halfToFloat(p[0]);
+                            sd.positions[vi].y = Ogre::Bitwise::halfToFloat(p[1]);
+                            sd.positions[vi].z = Ogre::Bitwise::halfToFloat(p[2]);
+                        }
+                        else
+                        {
+                            const float* p = reinterpret_cast<const float*>(requests[0].data);
+                            sd.positions[vi] = Ogre::Vector3(p[0], p[1], p[2]);
+                        }
+
+                        // Normal / QTangent
+                        if (isQTan)
+                        {
+                            const Ogre::int16* q = reinterpret_cast<const Ogre::int16*>(requests[1].data);
+                            Ogre::Quaternion qt;
+                            qt.x = q[0] / 32767.0f;
+                            qt.y = q[1] / 32767.0f;
+                            qt.z = q[2] / 32767.0f;
+                            qt.w = q[3] / 32767.0f;
+                            const float refl = (qt.w < 0.0f) ? -1.0f : 1.0f;
+                            sd.normals[vi] = qt.xAxis();
+                            sd.tangents[vi] = Ogre::Vector4(qt.yAxis().x, qt.yAxis().y, qt.yAxis().z, refl);
+                            sd.hasTangent = true;
+                        }
+                        else if (requests[1].type == Ogre::VET_HALF4)
+                        {
+                            const Ogre::uint16* n = reinterpret_cast<const Ogre::uint16*>(requests[1].data);
+                            sd.normals[vi].x = Ogre::Bitwise::halfToFloat(n[0]);
+                            sd.normals[vi].y = Ogre::Bitwise::halfToFloat(n[1]);
+                            sd.normals[vi].z = Ogre::Bitwise::halfToFloat(n[2]);
+                        }
+                        else
+                        {
+                            const float* n = reinterpret_cast<const float*>(requests[1].data);
+                            sd.normals[vi] = Ogre::Vector3(n[0], n[1], n[2]);
+                        }
+
+                        // UV
+                        if (requests[2].type == Ogre::VET_HALF2)
+                        {
+                            const Ogre::uint16* uv = reinterpret_cast<const Ogre::uint16*>(requests[2].data);
+                            sd.uvs[vi].x = Ogre::Bitwise::halfToFloat(uv[0]);
+                            sd.uvs[vi].y = Ogre::Bitwise::halfToFloat(uv[1]);
+                        }
+                        else
+                        {
+                            const float* uv = reinterpret_cast<const float*>(requests[2].data);
+                            sd.uvs[vi] = Ogre::Vector2(uv[0], uv[1]);
+                        }
+
+                        // Explicit tangent
+                        if (!isQTan && sd.hasTangent && requests.size() >= 4u)
+                        {
+                            if (requests[3].type == Ogre::VET_FLOAT4)
+                            {
+                                const float* t = reinterpret_cast<const float*>(requests[3].data);
+                                sd.tangents[vi] = Ogre::Vector4(t[0], t[1], t[2], t[3]);
+                            }
+                        }
+
+                        // Advance pointers
+                        requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                        requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
+                        requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
+                        if (!isQTan && sd.hasTangent && requests.size() >= 4u)
+                        {
+                            requests[3].data += requests[3].vertexBuffer->getBytesPerElement();
+                        }
+                    }
+
+                    srcVao->unmapAsyncTickets(requests);
+                }
+
+                // ----------------------------------------------------------------
+                // Branch clustering for per-branch leaf sway (useProceduralTree).
+                // Computed once here per source mesh submesh -- the result is
+                // identical for every instance of this mesh, since clustering
+                // operates purely on local-space vertex positions which never
+                // change between instances (only world position/rotation/scale
+                // differ per instance, applied later during cell merging).
+                // ----------------------------------------------------------------
+                if (true == sd.isLeaves)
+                {
+                    std::vector<int> branchIds;
+                    std::vector<Ogre::Vector3> branchPivots;
+                    this->clusterLeafVerticesIntoBranches(sd.positions, rule.treeBranchClusterCount, branchIds, branchPivots);
+
+                    sd.branchIds = branchIds;
+                    sd.branchPhases.resize(sd.positions.size(), 0.0f);
+
+                    // Derive a deterministic, hashed-looking phase offset per
+                    // branch from its ID alone, so neighbouring branches do
+                    // not sway in lockstep. The multiplier is an arbitrary
+                    // irrational-ish constant chosen only to avoid an obvious
+                    // repeating pattern across small branch ID ranges.
+                    for (size_t vi = 0u; vi < sd.positions.size(); ++vi)
+                    {
+                        const int branchId = branchIds[vi];
+                        sd.branchPhases[vi] = static_cast<float>(branchId) * 2.39996f;
+                    }
+
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Mesh '" + batch.meshName + "' submesh " + Ogre::StringConverter::toString(subMeshIdx) + " clustered into " +
+                                                                                            Ogre::StringConverter::toString(rule.treeBranchClusterCount) + " branches for per-branch sway (useProceduralTree).");
+                }
+
+                // Read index data
+                if (srcIC > 0u && srcVao->getIndexBuffer())
+                {
+                    Ogre::IndexBufferPacked* ibp = srcVao->getIndexBuffer();
+                    sd.indices.resize(srcIC);
+                    const void* shadow = ibp->getShadowCopy();
+                    if (nullptr != shadow)
+                    {
+                        if (ibp->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT)
+                        {
+                            const Ogre::uint32* s = reinterpret_cast<const Ogre::uint32*>(shadow);
+                            for (size_t ii = 0u; ii < srcIC; ++ii)
+                            {
+                                sd.indices[ii] = s[ii];
+                            }
+                        }
+                        else
+                        {
+                            const Ogre::uint16* s = reinterpret_cast<const Ogre::uint16*>(shadow);
+                            for (size_t ii = 0u; ii < srcIC; ++ii)
+                            {
+                                sd.indices[ii] = static_cast<Ogre::uint32>(s[ii]);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Ogre::AsyncTicketPtr ticket = ibp->readRequest(0u, srcIC);
+                        const void* raw = ticket->map();
+                        if (ibp->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT)
+                        {
+                            const Ogre::uint32* s = reinterpret_cast<const Ogre::uint32*>(raw);
+                            for (size_t ii = 0u; ii < srcIC; ++ii)
+                            {
+                                sd.indices[ii] = s[ii];
+                            }
+                        }
+                        else
+                        {
+                            const Ogre::uint16* s = reinterpret_cast<const Ogre::uint16*>(raw);
+                            for (size_t ii = 0u; ii < srcIC; ++ii)
+                            {
+                                sd.indices[ii] = static_cast<Ogre::uint32>(s[ii]);
+                            }
+                        }
+                        ticket->unmap();
+                    }
+                }
+
+                // ----------------------------------------------------------------
+                // Group instances into spatial cells and build one merged Item per cell.
+                // Cell grouping is identical for every submesh of this rule (same
+                // instance positions), so the spatial partition itself is unaffected
+                // by which submesh we are currently merging.
+                // ----------------------------------------------------------------
+
+                // Map from cell coordinate to list of instance indices in that cell.
+                std::unordered_map<uint64_t, std::vector<size_t>> cellMap;
+                cellMap.reserve(256u);
+
+                for (size_t instIdx = 0u; instIdx < batch.instances.size(); ++instIdx)
+                {
+                    const Ogre::Vector3& pos = batch.instances[instIdx].position;
+                    const int32_t cx = static_cast<int32_t>(std::floor(pos.x / cellSize));
+                    const int32_t cz = static_cast<int32_t>(std::floor(pos.z / cellSize));
+                    const uint64_t key = (static_cast<uint64_t>(static_cast<uint32_t>(cx)) << 32) | static_cast<uint32_t>(cz);
+                    cellMap[key].push_back(instIdx);
+                }
+
+                const Ogre::uint8 renderQueue = sd.hasTransparency ? NOWA::RENDER_QUEUE_V2_TRANSPARENT : NOWA::RENDER_QUEUE_V2_MESH;
+                // Layout: position(3) + normal(3) + [tangent(4)] + uv(2) + [branchId+phase(2)]
+                const size_t baseFpv = sd.hasTangent ? 12u : 8u;
+                const size_t branchFpv = (true == sd.isLeaves) ? 2u : 0u;
+                const size_t fpv = baseFpv + branchFpv;
+
+                size_t cellIndex = 0u;
+                for (auto& cellEntry : cellMap)
+                {
+                    const std::vector<size_t>& cellInstances = cellEntry.second;
+                    const size_t cellInstCount = cellInstances.size();
+
+                    const size_t mergedVC = srcVC * cellInstCount;
+                    const size_t mergedIC = srcIC * cellInstCount;
+
+                    // Allocate merged vertex buffer
+                    float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(mergedVC * fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+
+                    Ogre::Vector3 cellMin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+                    Ogre::Vector3 cellMax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+
+                    for (size_t ci = 0u; ci < cellInstCount; ++ci)
+                    {
+                        const VegetationInstance& inst = batch.instances[cellInstances[ci]];
+
+                        Ogre::Matrix3 rotMat;
+                        inst.orientation.ToRotationMatrix(rotMat);
+
+                        const Ogre::Vector3& sc = inst.scale;
+                        const Ogre::Matrix3 srMat(rotMat[0][0] * sc.x, rotMat[0][1] * sc.y, rotMat[0][2] * sc.z, rotMat[1][0] * sc.x, rotMat[1][1] * sc.y, rotMat[1][2] * sc.z, rotMat[2][0] * sc.x, rotMat[2][1] * sc.y, rotMat[2][2] * sc.z);
+
+                        const size_t vBase = ci * srcVC;
+                        for (size_t vi = 0u; vi < srcVC; ++vi)
+                        {
+                            const Ogre::Vector3 wPos = inst.position + srMat * sd.positions[vi];
+                            const Ogre::Vector3 wNrm = (rotMat * sd.normals[vi]).normalisedCopy();
+                            const Ogre::Vector3 wTan = rotMat * Ogre::Vector3(sd.tangents[vi].x, sd.tangents[vi].y, sd.tangents[vi].z);
+
+                            cellMin.makeFloor(wPos);
+                            cellMax.makeCeil(wPos);
+
+                            const size_t o = (vBase + vi) * fpv;
+                            vd[o + 0] = wPos.x;
+                            vd[o + 1] = wPos.y;
+                            vd[o + 2] = wPos.z;
+                            vd[o + 3] = wNrm.x;
+                            vd[o + 4] = wNrm.y;
+                            vd[o + 5] = wNrm.z;
+                            if (sd.hasTangent)
+                            {
+                                vd[o + 6] = wTan.x;
+                                vd[o + 7] = wTan.y;
+                                vd[o + 8] = wTan.z;
+                                vd[o + 9] = sd.tangents[vi].w;
+                                vd[o + 10] = sd.uvs[vi].x;
+                                vd[o + 11] = sd.uvs[vi].y;
+                            }
+                            else
+                            {
+                                vd[o + 6] = sd.uvs[vi].x;
+                                vd[o + 7] = sd.uvs[vi].y;
+                            }
+
+                            if (true == sd.isLeaves)
+                            {
+                                // branchId is stored as a plain float (small
+                                // integer, exact in float32 well below the
+                                // mantissa precision limit for any sane
+                                // cluster count) -- the shader reads it back
+                                // and rounds, or uses it directly as a hash
+                                // input, so no special encoding is needed.
+                                vd[o + baseFpv + 0] = static_cast<float>(sd.branchIds[vi]);
+                                vd[o + baseFpv + 1] = sd.branchPhases[vi];
+                            }
+                        }
+                    }
+
+                    // Vertices are in world space. Now compute cell centre from AABB
+                    // and subtract it from all positions to get local-space vertices.
+                    // The scene node will be placed at cellCentre so the math is correct.
+                    // This makes setRenderingDistance measure camera-to-node correctly.
+                    if (cellMin.x > cellMax.x)
+                    {
+                        cellMin = cellMax = Ogre::Vector3::ZERO;
+                    }
+                    const Ogre::Vector3 cellCentre = (cellMin + cellMax) * 0.5f;
+
+                    for (size_t vi = 0u; vi < mergedVC; ++vi)
+                    {
+                        const size_t o = vi * fpv;
+                        vd[o + 0] -= cellCentre.x;
+                        vd[o + 1] -= cellCentre.y;
+                        vd[o + 2] -= cellCentre.z;
+                        // Normals, tangents, UVs are directional -- no translation.
+                    }
+
+                    // Merged index buffer
+                    Ogre::uint32* id = nullptr;
+                    if (mergedIC > 0u)
+                    {
+                        id = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(mergedIC * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+                        for (size_t ci = 0u; ci < cellInstCount; ++ci)
+                        {
+                            const Ogre::uint32 voff = static_cast<Ogre::uint32>(ci * srcVC);
+                            for (size_t ii = 0u; ii < srcIC; ++ii)
+                            {
+                                id[ci * srcIC + ii] = sd.indices[ii] + voff;
+                            }
+                        }
+                    }
+
+                    // Build VAO
+                    Ogre::VertexElement2Vec elems;
+                    elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
+                    elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
+                    if (sd.hasTangent)
+                    {
+                        elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));
+                    }
+                    elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
+                    if (true == sd.isLeaves)
+                    {
+                        // Repurposed semantic: this geometry is never skinned,
+                        // so VES_BLEND_WEIGHTS carries (branchId, branchPhase)
+                        // instead of real bone weights. See
+                        // useProceduralTree / clusterLeafVerticesIntoBranches
+                        // and the matching HlmsWind shader changes that
+                        // consume this attribute for per-branch sway.
+                        elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_BLEND_WEIGHTS));
+                    }
+
+                    Ogre::VertexBufferPacked* vb = nullptr;
                     try
                     {
-                        ib = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, mergedIC, Ogre::BT_IMMUTABLE, id, true);
+                        vb = vaoManager->createVertexBuffer(elems, mergedVC, Ogre::BT_IMMUTABLE, vd, true);
                     }
                     catch (const Ogre::Exception& e)
                     {
-                        OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                            "[ProceduralFoliageVolume] createIndexBuffer failed for '" + rule.name + "' cell " + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
+                        OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+                        if (id)
+                        {
+                            OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+                        }
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] createVertexBuffer failed for '" + rule.name + "' submesh " + Ogre::StringConverter::toString(subMeshIdx) + " cell " +
+                                                                                                Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
                         ++cellIndex;
                         continue;
                     }
-                }
 
-                Ogre::VertexBufferPackedVec vbVec;
-                vbVec.push_back(vb);
-                Ogre::VertexArrayObject* mergedVao = vaoManager->createVertexArrayObject(vbVec, ib, Ogre::OT_TRIANGLE_LIST);
-
-                // Unique name per rule + cell
-                const Ogre::String cellMeshName = "FoliageCell_" + rule.name + "_GO" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_B" + Ogre::StringConverter::toString(batch.ruleIndex) + "_C" +
-                                                  Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex));
-
-                {
-                    Ogre::ResourcePtr existing = Ogre::MeshManager::getSingleton().getByName(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-                    if (false == existing.isNull())
+                    Ogre::IndexBufferPacked* ib = nullptr;
+                    if (mergedIC > 0u && id)
                     {
-                        Ogre::MeshManager::getSingleton().remove(existing->getHandle());
+                        try
+                        {
+                            ib = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, mergedIC, Ogre::BT_IMMUTABLE, id, true);
+                        }
+                        catch (const Ogre::Exception& e)
+                        {
+                            OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] createIndexBuffer failed for '" + rule.name + "' submesh " + Ogre::StringConverter::toString(subMeshIdx) + " cell " +
+                                                                                                    Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
+                            ++cellIndex;
+                            continue;
+                        }
                     }
+
+                    Ogre::VertexBufferPackedVec vbVec;
+                    vbVec.push_back(vb);
+                    Ogre::VertexArrayObject* mergedVao = vaoManager->createVertexArrayObject(vbVec, ib, Ogre::OT_TRIANGLE_LIST);
+
+                    // Unique name per rule + cell
+                    // so trunk and leaves (or any other per-material part) never collide.
+                    const Ogre::String cellMeshName = "FoliageCell_" + rule.name + "_GO" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_B" + Ogre::StringConverter::toString(batch.ruleIndex) + "_S" +
+                                                      Ogre::StringConverter::toString(static_cast<unsigned int>(subMeshIdx)) + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex));
+
+                    {
+                        Ogre::ResourcePtr existing = Ogre::MeshManager::getSingleton().getByName(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+                        if (false == existing.isNull())
+                        {
+                            Ogre::MeshManager::getSingleton().remove(existing->getHandle());
+                        }
+                    }
+
+                    Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &gFoliageCellMeshLoader);
+                    cellMesh->_setVaoManager(vaoManager);
+
+                    Ogre::SubMesh* cellSM = cellMesh->createSubMesh();
+                    cellSM->mVao[Ogre::VpNormal].push_back(mergedVao);
+                    cellSM->mVao[Ogre::VpShadow].push_back(mergedVao);
+
+                    if (nullptr != sd.datablock && sd.datablock->getNameStr())
+                    {
+                        cellSM->mMaterialName = *sd.datablock->getNameStr();
+                    }
+
+                    // Bounds are in local space (vertices already centred at cellCentre).
+                    Ogre::Aabb localAabb;
+                    localAabb.setExtents(cellMin - cellCentre, cellMax - cellCentre);
+                    cellMesh->_setBounds(localAabb, false);
+                    cellMesh->_setBoundingSphereRadius(localAabb.getRadius());
+
+                    if (false == cellMesh->hasValidShadowMappingVaos())
+                    {
+                        cellMesh->prepareForShadowMapping(true);
+                    }
+
+                    Ogre::Item* cellItem = sceneManager->createItem(cellMesh, Ogre::SCENE_STATIC);
+                    cellItem->setName("FoliageCellItem_" + rule.name + "_S" + Ogre::StringConverter::toString(static_cast<unsigned int>(subMeshIdx)) + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)));
+
+                    if (nullptr != sd.datablock && cellItem->getNumSubItems() > 0u)
+                    {
+                        cellItem->getSubItem(0u)->setDatablock(sd.datablock);
+                    }
+
+                    cellItem->setRenderQueueGroup(renderQueue);
+                    cellItem->setCastShadows(false);
+
+                    // Apply render distance -- now works correctly because the node is
+                    // at cellCentre so Ogre measures camera-to-node, not camera-to-origin.
+                    if (rule.renderDistance > 0.0f)
+                    {
+                        cellItem->setRenderingDistance(rule.renderDistance);
+                    }
+
+                    Ogre::SceneNode* cellNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
+                    cellNode->setPosition(cellCentre);
+                    cellNode->setOrientation(Ogre::Quaternion::IDENTITY);
+                    cellNode->setScale(Ogre::Vector3::UNIT_SCALE);
+                    cellNode->attachObject(cellItem);
+
+                    // CRITICAL: notifyStaticDirty(Node*) only marks the NODE
+                    // transform as dirty (mStaticMinDepthLevelDirty). It does
+                    // NOT set mStaticEntitiesDirty, which is the flag that
+                    // queues SCENE_STATIC's entity memory manager for
+                    // updateAllBounds() on the next updateSceneGraph() pass.
+                    // Without this call, a newly created static Item's world
+                    // AABB is never (re)computed, so the renderer's frustum
+                    // culling uses a stale/default AABB and the Item is
+                    // silently culled out of every view -- even though it is
+                    // correctly attached, visible=true, and reports a sane
+                    // bounding box from our own _setBounds() call above.
+                    // This is exactly the bug that made foliage loaded from a
+                    // saved scene invisible on the very first rendered frame,
+                    // while a later manual "Regenerate" (well after the first
+                    // frame, with mStaticEntitiesDirty already churned by
+                    // other scene activity) happened to work.
+                    sceneManager->notifyStaticAabbDirty(cellItem);
+
+                    batch.items.push_back(cellItem);
+                    batch.nodes.push_back(cellNode);
+
+                    ++cellIndex;
                 }
 
-                Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &gFoliageCellMeshLoader);
-                cellMesh->_setVaoManager(vaoManager);
-
-                Ogre::SubMesh* cellSM = cellMesh->createSubMesh();
-                cellSM->mVao[Ogre::VpNormal].push_back(mergedVao);
-                cellSM->mVao[Ogre::VpShadow].push_back(mergedVao);
-
-                if (nullptr != sd.datablock && sd.datablock->getNameStr())
+                if (nullptr == batch.sharedDatablock)
                 {
-                    cellSM->mMaterialName = *sd.datablock->getNameStr();
+                    batch.sharedDatablock = sd.datablock;
                 }
 
-                // Bounds are in local space (vertices already centred at cellCentre).
-                Ogre::Aabb localAabb;
-                localAabb.setExtents(cellMin - cellCentre, cellMax - cellCentre);
-                cellMesh->_setBounds(localAabb, false);
-                cellMesh->_setBoundingSphereRadius(localAabb.getRadius());
+                totalCellsForRule += cellIndex;
 
-                if (false == cellMesh->hasValidShadowMappingVaos())
-                {
-                    cellMesh->prepareForShadowMapping(true);
-                }
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Rule '" + rule.name + "' submesh " + Ogre::StringConverter::toString(subMeshIdx) + ": " +
+                                                                                        Ogre::StringConverter::toString(static_cast<unsigned int>(batch.instances.size())) + " instances -> " +
+                                                                                        Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + " cell Items" + " (cellSize=" + Ogre::StringConverter::toString(cellSize) + "m)" +
+                                                                                        " RQ=" + Ogre::StringConverter::toString(static_cast<int>(renderQueue)));
+            } // end for each submesh
 
-                Ogre::Item* cellItem = sceneManager->createItem(cellMesh, Ogre::SCENE_STATIC);
-                cellItem->setName("FoliageCellItem_" + rule.name + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)));
-
-                if (nullptr != sd.datablock && cellItem->getNumSubItems() > 0u)
-                {
-                    cellItem->getSubItem(0u)->setDatablock(sd.datablock);
-                }
-
-                cellItem->setRenderQueueGroup(renderQueue);
-                cellItem->setCastShadows(false);
-
-                // Apply render distance -- now works correctly because the node is
-                // at cellCentre so Ogre measures camera-to-node, not camera-to-origin.
-                if (rule.renderDistance > 0.0f)
-                {
-                    cellItem->setRenderingDistance(rule.renderDistance);
-                }
-
-                Ogre::SceneNode* cellNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
-                cellNode->setPosition(cellCentre);
-                cellNode->setOrientation(Ogre::Quaternion::IDENTITY);
-                cellNode->setScale(Ogre::Vector3::UNIT_SCALE);
-                cellNode->attachObject(cellItem);
-
-                batch.items.push_back(cellItem);
-                batch.nodes.push_back(cellNode);
-
-                ++cellIndex;
-            }
-
-            batch.sharedDatablock = sd.datablock;
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Rule '" + rule.name + "': " + Ogre::StringConverter::toString(static_cast<unsigned int>(batch.instances.size())) + " instances -> " +
-                                                                                    Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + " cell Items" + " (cellSize=" + Ogre::StringConverter::toString(cellSize) + "m)" +
-                                                                                    " RQ=" + Ogre::StringConverter::toString(static_cast<int>(renderQueue)));
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Rule '" + rule.name + "': " + Ogre::StringConverter::toString(static_cast<unsigned int>(numSubMeshes)) + " submeshes, " +
+                                                                                    Ogre::StringConverter::toString(static_cast<unsigned int>(totalCellsForRule)) + " total cell Items created.");
         }
 
         this->vegetationBatches = std::move(batches);
@@ -1897,6 +2189,34 @@ namespace NOWA
         if (nullptr != vaoManager2)
         {
             vaoManager2->_update();
+        }
+
+        // Diagnostic: verify the scene graph state right after creation, so
+        // load path and button-press path can be compared for any difference
+        // in actual attached item/node counts vs what the batches claim.
+        {
+            size_t totalItems = 0u;
+            size_t totalNodesWithObjects = 0u;
+            size_t totalVisibleItems = 0u;
+            for (const auto& batch : this->vegetationBatches)
+            {
+                totalItems += batch.items.size();
+                for (size_t bi = 0u; bi < batch.items.size(); ++bi)
+                {
+                    if (nullptr != batch.nodes[bi] && batch.nodes[bi]->numAttachedObjects() > 0u)
+                    {
+                        ++totalNodesWithObjects;
+                    }
+                    if (nullptr != batch.items[bi] && true == batch.items[bi]->getVisible())
+                    {
+                        ++totalVisibleItems;
+                    }
+                }
+            }
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[ProceduralFoliageVolume][DIAG-VERIFY] After createFoliageItems: batches=" + Ogre::StringConverter::toString(static_cast<unsigned int>(this->vegetationBatches.size())) +
+                    " totalItems=" + Ogre::StringConverter::toString(static_cast<unsigned int>(totalItems)) + " totalNodesWithObjects=" + Ogre::StringConverter::toString(static_cast<unsigned int>(totalNodesWithObjects)) + " totalVisibleItems=" +
+                    Ogre::StringConverter::toString(static_cast<unsigned int>(totalVisibleItems)) + " rootStaticChildCount=" + Ogre::StringConverter::toString(sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->numChildren()));
         }
     }
 
@@ -2178,6 +2498,26 @@ namespace NOWA
             cellNode->setOrientation(Ogre::Quaternion::IDENTITY);
             cellNode->setScale(Ogre::Vector3::UNIT_SCALE);
             cellNode->attachObject(cellItem);
+
+            // CRITICAL: see the matching comment in createFoliageItems above.
+            // notifyStaticDirty(Node*) alone does not refresh this Item's
+            // world AABB; without notifyStaticAabbDirty, the renderer's
+            // frustum culling uses a stale AABB and silently culls grass out
+            // of every view on the very first rendered frame after scene load.
+            sceneManager->notifyStaticAabbDirty(cellItem);
+
+            // Diagnostic: log the first 3 cells of this rule in detail so the
+            // load path and button-press path can be compared directly --
+            // world position, visibility, attachment, and bounds.
+            if (cellIndex < 3u)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralFoliageVolume][DIAG-GRASS] Rule '" + rule.name + "' cell " + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + " cellCentre=" + Ogre::StringConverter::toString(cellCentre) + " nodePos=" +
+                        Ogre::StringConverter::toString(cellNode->getPosition()) + " nodeAttachedObjects=" + Ogre::StringConverter::toString(cellNode->numAttachedObjects()) + " itemVisible=" + Ogre::String(cellItem->getVisible() ? "YES" : "NO") +
+                        " itemRQ=" + Ogre::StringConverter::toString(static_cast<int>(cellItem->getRenderQueueGroup())) + " bladesInCell=" + Ogre::StringConverter::toString(static_cast<unsigned int>(bladesInCell)) +
+                        " datablockName=" + (nullptr != grassDatablock && grassDatablock->getNameStr() ? *grassDatablock->getNameStr() : Ogre::String("<null>")) + " sceneNodeQueryFlags=" + Ogre::StringConverter::toString(cellItem->getQueryFlags()) +
+                        " localAabbMin=" + Ogre::StringConverter::toString(localAabb.getMinimum()) + " localAabbMax=" + Ogre::StringConverter::toString(localAabb.getMaximum()) + " isStatic=" + Ogre::String(cellNode->isStatic() ? "YES" : "NO"));
+            }
 
             batch.items.push_back(cellItem);
             batch.nodes.push_back(cellNode);
@@ -2471,6 +2811,9 @@ namespace NOWA
             this->ruleBladeWidths.resize(count, nullptr);
             this->ruleBladeHeights.resize(count, nullptr);
             this->ruleGrassMaterialNames.resize(count, nullptr);
+            this->ruleUseProceduralTree.resize(count, nullptr);
+            this->ruleTreeBranchClusterCounts.resize(count, nullptr);
+            this->ruleTreeSwayStrengths.resize(count, nullptr);
 
             // Initialize new variants with SENSIBLE DEFAULTS
             for (size_t i = oldSize; i < count; i++)
@@ -2578,6 +2921,7 @@ namespace NOWA
                                                         "'Ground' = only on Ground category.");
                 this->rules[i].categories = "All";
                 this->rules[i].categoriesId = GameObjectController::ALL_CATEGORIES_ID;
+                this->rules[i].excludedCategoryId = 0; // "All" has no excluded tokens
 
                 // Clearance Distance
                 this->ruleClearanceDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i), (i == 0) ? 5.0f : 1.0f, this->attributes); // trees need more clearance than bushes
@@ -2621,11 +2965,27 @@ namespace NOWA
                 this->ruleBladeHeights[i]->setConstraints(0.05f, 5.0f);
                 this->rules[i].bladeHeight = 0.5f;
 
-                this->ruleGrassMaterialNames[i] = new Variant(AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i), Ogre::String("ProceduralGrassMaterial"), this->attributes);
+                this->ruleGrassMaterialNames[i] = new Variant(AttrRuleGrassMaterialName() + Ogre::StringConverter::toString(i), Ogre::String("SwayingGrass1Material"), this->attributes);
                 this->ruleGrassMaterialNames[i]->setDescription("Wind HLMS datablock name for grass blades (HLMS_USER0). "
                                                                 "Must be registered in your materials scripts.");
-                this->rules[i].grassMaterialName = "ProceduralGrassMaterial";
-                this->ruleGrassMaterialNames[i]->addUserData(GameObject::AttrActionSeparator());
+                this->rules[i].grassMaterialName = "GrassMaterial";
+
+                // Procedural Tree (per-branch leaf sway)
+                this->ruleUseProceduralTree[i] = new Variant(AttrRuleUseProceduralTree() + Ogre::StringConverter::toString(i), false, this->attributes);
+                this->ruleUseProceduralTree[i]->setDescription("If true, leaf submeshes are clustered into pseudo-branches at cell-build time "
+                                                               "and swayed independently via the Wind HLMS. Trunk/bark submeshes are never affected.");
+                this->rules[i].useProceduralTree = false;
+
+                this->ruleTreeBranchClusterCounts[i] = new Variant(AttrRuleTreeBranchClusterCount() + Ogre::StringConverter::toString(i), 8, this->attributes);
+                this->ruleTreeBranchClusterCounts[i]->setDescription("Number of pseudo-branches to cluster leaf vertices into.");
+                this->ruleTreeBranchClusterCounts[i]->setConstraints(1, 64);
+                this->rules[i].treeBranchClusterCount = 8;
+
+                this->ruleTreeSwayStrengths[i] = new Variant(AttrRuleTreeSwayStrength() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+                this->ruleTreeSwayStrengths[i]->setDescription("Multiplier on per-branch sway displacement. 1.0 is the default amount.");
+                this->ruleTreeSwayStrengths[i]->setConstraints(0.0f, 5.0f);
+                this->ruleTreeSwayStrengths[i]->addUserData(GameObject::AttrActionSeparator());
+                this->rules[i].treeSwayStrength = 1.0f;
             }
         }
         else if (count < oldSize)
@@ -2652,6 +3012,9 @@ namespace NOWA
             this->eraseVariants(this->ruleBladeWidths, count);
             this->eraseVariants(this->ruleBladeHeights, count);
             this->eraseVariants(this->ruleGrassMaterialNames, count);
+            this->eraseVariants(this->ruleUseProceduralTree, count);
+            this->eraseVariants(this->ruleTreeBranchClusterCounts, count);
+            this->eraseVariants(this->ruleTreeSwayStrengths, count);
 
             this->rules.resize(count);
         }
@@ -2922,6 +3285,7 @@ namespace NOWA
 
         // Resolve category string -> bitmask ID (same as AreaOfInterestComponent)
         this->rules[index].categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
+        this->rules[index].excludedCategoryId = this->parseExcludedCategoryId(categories);
     }
 
     Ogre::String ProceduralFoliageVolumeComponent::getRuleCategories(unsigned int index) const
@@ -3095,9 +3459,75 @@ namespace NOWA
     {
         if (index >= this->rules.size())
         {
-            return "ProceduralGrassMaterial";
+            return "SwayingGrass1Material";
         }
         return this->rules[index].grassMaterialName;
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleUseProceduralTree(unsigned int index, bool useTree)
+    {
+        if (index >= this->rules.size() || index >= this->ruleUseProceduralTree.size())
+        {
+            return;
+        }
+        if (nullptr != this->ruleUseProceduralTree[index])
+        {
+            this->ruleUseProceduralTree[index]->setValue(useTree);
+        }
+        this->rules[index].useProceduralTree = useTree;
+    }
+
+    bool ProceduralFoliageVolumeComponent::getRuleUseProceduralTree(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return false;
+        }
+        return this->rules[index].useProceduralTree;
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleTreeBranchClusterCount(unsigned int index, int clusterCount)
+    {
+        if (index >= this->rules.size() || index >= this->ruleTreeBranchClusterCounts.size())
+        {
+            return;
+        }
+        if (nullptr != this->ruleTreeBranchClusterCounts[index])
+        {
+            this->ruleTreeBranchClusterCounts[index]->setValue(clusterCount);
+        }
+        this->rules[index].treeBranchClusterCount = clusterCount;
+    }
+
+    int ProceduralFoliageVolumeComponent::getRuleTreeBranchClusterCount(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 8;
+        }
+        return this->rules[index].treeBranchClusterCount;
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleTreeSwayStrength(unsigned int index, Ogre::Real swayStrength)
+    {
+        if (index >= this->rules.size() || index >= this->ruleTreeSwayStrengths.size())
+        {
+            return;
+        }
+        if (nullptr != this->ruleTreeSwayStrengths[index])
+        {
+            this->ruleTreeSwayStrengths[index]->setValue(swayStrength);
+        }
+        this->rules[index].treeSwayStrength = swayStrength;
+    }
+
+    Ogre::Real ProceduralFoliageVolumeComponent::getRuleTreeSwayStrength(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 1.0f;
+        }
+        return this->rules[index].treeSwayStrength;
     }
 
     // Helper function
@@ -3140,8 +3570,204 @@ namespace NOWA
         const Ogre::Real maxZ = terrainOrigin.z + xzDimensions.y;
 
         // Check bounds with margin to avoid edge cases
-        const Ogre::Real margin = 1.0f;
+        const Ogre::Real margin = 0.0f;
         return (position.x >= minX + margin && position.x <= maxX - margin && position.z >= minZ + margin && position.z <= maxZ - margin);
+    }
+
+    bool ProceduralFoliageVolumeComponent::isLeavesSubMesh(bool hasTransparency, Ogre::HlmsDatablock* datablock)
+    {
+        // A submesh is treated as "leaves" (eligible for per-branch sway
+        // clustering when useProceduralTree is enabled) using both the
+        // transparency signal and the datablock name, since neither one is
+        // reliable alone on every asset:
+        //   - Some bark/trunk datablocks report transparent=YES from
+        //     isAutoTransparent()/isForcedTransparent() despite having no
+        //     alpha properties at all (confirmed on this project's birch
+        //     bark datablock) -- a false positive for "is leaves".
+        //   - Some leaves datablocks use alpha_test/alpha_hash rather than
+        //     real blending, which the original transparency check missed
+        //     entirely (confirmed on this project's leaves_fall datablock,
+        //     fixed above by also checking getAlphaTest()/getAlphaHashing()).
+        //
+        // Resolution: if the datablock name explicitly identifies the
+        // material as bark/trunk/branch/wood, treat it as NOT leaves
+        // regardless of the transparency signal -- this overrides the bark
+        // false positive. Otherwise, fall back to the transparency signal
+        // (now including alpha_test/alpha_hash) OR a "leaf"/"leaves" name
+        // match.
+        if (nullptr != datablock && nullptr != datablock->getNameStr())
+        {
+            Ogre::String lowerName = *datablock->getNameStr();
+            Ogre::StringUtil::toLowerCase(lowerName);
+
+            if (lowerName.find("leaf") != Ogre::String::npos)
+            {
+                return true;
+            }
+
+            if (lowerName.find("bark") != Ogre::String::npos || lowerName.find("trunk") != Ogre::String::npos || lowerName.find("branch") != Ogre::String::npos || lowerName.find("wood") != Ogre::String::npos)
+            {
+                return false;
+            }
+        }
+
+        return hasTransparency;
+    }
+
+    void ProceduralFoliageVolumeComponent::clusterLeafVerticesIntoBranches(const std::vector<Ogre::Vector3>& positions, int clusterCount, std::vector<int>& outBranchIds, std::vector<Ogre::Vector3>& outBranchPivots)
+    {
+        const size_t vertexCount = positions.size();
+        outBranchIds.assign(vertexCount, 0);
+        outBranchPivots.clear();
+
+        if (clusterCount < 1)
+        {
+            clusterCount = 1;
+        }
+
+        if (0u == vertexCount)
+        {
+            outBranchPivots.resize(static_cast<size_t>(clusterCount), Ogre::Vector3::ZERO);
+            return;
+        }
+
+        // If there are fewer vertices than requested clusters, clamp so every
+        // cluster is guaranteed to get at least a seed vertex.
+        if (static_cast<size_t>(clusterCount) > vertexCount)
+        {
+            clusterCount = static_cast<int>(vertexCount);
+        }
+
+        outBranchPivots.reserve(static_cast<size_t>(clusterCount));
+
+        // ------------------------------------------------------------------
+        // Step 1: greedy farthest-point seeding.
+        // Start with the first vertex as seed 0. Each subsequent seed is the
+        // vertex farthest (by squared distance) from ALL previously chosen
+        // seeds combined (using the minimum distance to any existing seed,
+        // maximised across candidates). This spreads seeds across the
+        // canopy's actual shape rather than clumping them, without the cost
+        // or complexity of true k-means++ random sampling -- deterministic
+        // results are preferable here anyway, since the same source mesh
+        // should always cluster identically.
+        // ------------------------------------------------------------------
+        std::vector<size_t> seedIndices;
+        seedIndices.reserve(static_cast<size_t>(clusterCount));
+        seedIndices.push_back(0u);
+
+        std::vector<float> bestDistSq(vertexCount, std::numeric_limits<float>::max());
+
+        while (seedIndices.size() < static_cast<size_t>(clusterCount))
+        {
+            const Ogre::Vector3& lastSeed = positions[seedIndices.back()];
+
+            size_t farthestIdx = 0u;
+            float farthestDistSq = -1.0f;
+
+            for (size_t vi = 0u; vi < vertexCount; ++vi)
+            {
+                const float distSq = (positions[vi] - lastSeed).squaredLength();
+                if (distSq < bestDistSq[vi])
+                {
+                    bestDistSq[vi] = distSq;
+                }
+
+                if (bestDistSq[vi] > farthestDistSq)
+                {
+                    farthestDistSq = bestDistSq[vi];
+                    farthestIdx = vi;
+                }
+            }
+
+            seedIndices.push_back(farthestIdx);
+        }
+
+        for (size_t si = 0u; si < seedIndices.size(); ++si)
+        {
+            outBranchPivots.push_back(positions[seedIndices[si]]);
+        }
+
+        // ------------------------------------------------------------------
+        // Step 2: single nearest-centroid assignment pass.
+        // One pass is sufficient for this use case -- we are grouping leaves
+        // into plausible branch clusters for a wind sway effect, not
+        // computing an exact optimal partition. A full iterative k-means
+        // refinement would only marginally change which leaves move
+        // together and is not worth the extra cost at cell-build time.
+        // ------------------------------------------------------------------
+        for (size_t vi = 0u; vi < vertexCount; ++vi)
+        {
+            int bestCluster = 0;
+            float bestDist = std::numeric_limits<float>::max();
+
+            for (int ci = 0; ci < clusterCount; ++ci)
+            {
+                const float distSq = (positions[vi] - outBranchPivots[static_cast<size_t>(ci)]).squaredLength();
+                if (distSq < bestDist)
+                {
+                    bestDist = distSq;
+                    bestCluster = ci;
+                }
+            }
+
+            outBranchIds[vi] = bestCluster;
+        }
+
+        // ------------------------------------------------------------------
+        // Step 3: recompute each pivot as the true centroid of its assigned
+        // vertices (rather than leaving it at the seed vertex position).
+        // This gives a more representative rotation pivot per branch -- the
+        // seed was only useful for spreading clusters apart in step 1.
+        // ------------------------------------------------------------------
+        std::vector<Ogre::Vector3> centroidSum(static_cast<size_t>(clusterCount), Ogre::Vector3::ZERO);
+        std::vector<size_t> centroidCount(static_cast<size_t>(clusterCount), 0u);
+
+        for (size_t vi = 0u; vi < vertexCount; ++vi)
+        {
+            const int branchId = outBranchIds[vi];
+            centroidSum[static_cast<size_t>(branchId)] += positions[vi];
+            centroidCount[static_cast<size_t>(branchId)] += 1u;
+        }
+
+        for (int ci = 0; ci < clusterCount; ++ci)
+        {
+            if (centroidCount[static_cast<size_t>(ci)] > 0u)
+            {
+                outBranchPivots[static_cast<size_t>(ci)] = centroidSum[static_cast<size_t>(ci)] / static_cast<float>(centroidCount[static_cast<size_t>(ci)]);
+            }
+        }
+    }
+
+    unsigned int ProceduralFoliageVolumeComponent::parseExcludedCategoryId(const Ogre::String& categories)
+    {
+        unsigned int excludedCategoryId = 0;
+
+        // Walk the categories string and collect every token that is preceded
+        // by '-'. E.g. "All-Obstacle" -> excluded tokens: "Obstacle"
+        // Exact mirror of GameObjectPlaceComponent::parseExcludedCategories.
+        Ogre::String token;
+        bool nextIsExcluded = false;
+
+        for (size_t i = 0u; i <= categories.size(); ++i)
+        {
+            const char c = (i < categories.size()) ? categories[i] : '\0';
+
+            if (c == '+' || c == '-' || c == '\0')
+            {
+                if (false == token.empty() && true == nextIsExcluded)
+                {
+                    excludedCategoryId |= AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(token);
+                }
+                token.clear();
+                nextIsExcluded = (c == '-');
+            }
+            else
+            {
+                token += c;
+            }
+        }
+
+        return excludedCategoryId;
     }
 
     bool ProceduralFoliageVolumeComponent::isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule)
@@ -3157,58 +3783,85 @@ namespace NOWA
             return true;
         }
 
-        const bool isExcludeMode = (rule.categories.find("All") != Ogre::String::npos && rule.categories.find('-') != Ogre::String::npos);
+        // ------------------------------------------------------------------
+        // Mirrors GameObjectPlaceComponent::checkExcludedCategoryOverlap,
+        // which is confirmed working: do NOT rely on RaySceneQuery /
+        // SphereSceneQuery setQueryMask() filtering at all. Query broadly
+        // (default mask = everything) and check each hit's category bit
+        // manually via getQueryFlags() & rule.categoriesId in code. This
+        // sidesteps any ambiguity in how generateCategoryId() resolves
+        // "All-Obstacle" into a bitmask and whether that bitmask is meant
+        // to be inverted before being handed to setQueryMask -- we just
+        // check the bit ourselves, the same way the proven working code
+        // already does it.
+        //
+        // Everything here runs on the render thread via enqueueAndWait,
+        // matching checkExcludedCategoryOverlap, since scene queries
+        // (RaySceneQuery::execute / SphereSceneQuery::execute) must not be
+        // called from the logic/loading thread.
+        // ------------------------------------------------------------------
 
-        unsigned int queryMask;
-        bool allowIfHit;
-
-        if (isExcludeMode)
+        if (0u == rule.excludedCategoryId)
         {
-            // Cast against only the excluded bits — hit means blocked
-            queryMask = ~rule.categoriesId; // e.g. "All-Obstacle" -> 0x00000002 = only Obstacle
-            allowIfHit = false;
-
-            // Sphere clearance check first (cheaper than raycast)
-            if (rule.clearanceDistance > 0.0f && this->sphereSceneQuery)
-            {
-                this->sphereSceneQuery->setSphere(Ogre::Sphere(position, rule.clearanceDistance));
-                this->sphereSceneQuery->setQueryMask(queryMask);
-                Ogre::SceneQueryResult& result = this->sphereSceneQuery->execute();
-
-                for (Ogre::MovableObject* mo : result.movables)
-                {
-                    // Cameras happen to share the "Default" category bit which equals
-                    // the Obstacle bit in scenes where Default was registered first.
-                    // Skip them -- a camera is never a real obstacle.
-                    if (mo->getMovableType() == "Camera")
-                    {
-                        continue;
-                    }
-                    // Real obstacle found: reject this placement position.
-                    return false;
-                }
-            }
-        }
-        else
-        {
-            // Include mode: cast against allowed bits — must hit to place
-            queryMask = rule.categoriesId;
-            allowIfHit = true;
+            // No "-Name" exclusion token in this rule's category string
+            // (e.g. a pure include-list like "Ground") -- nothing to reject.
+            return true;
         }
 
-        this->raySceneQuery->setQueryMask(queryMask);
+        this->raySceneQuery->setQueryMask(rule.excludedCategoryId);
         this->raySceneQuery->setSortByDistance(true);
         this->raySceneQuery->setRay(Ogre::Ray(Ogre::Vector3(position.x, 10000.0f, position.z), Ogre::Vector3::NEGATIVE_UNIT_Y));
 
-        Ogre::Vector3 hitPoint, hitNormal;
-        Ogre::MovableObject* hitObject = nullptr;
-        Ogre::Real closestDistance = 0.0f;
-        std::vector<Ogre::MovableObject*> excludeList;
+        if (rule.clearanceDistance > 0.0f && nullptr != this->sphereSceneQuery)
+        {
+            this->sphereSceneQuery->setQueryMask(rule.excludedCategoryId);
+            this->sphereSceneQuery->setSphere(Ogre::Sphere(position, rule.clearanceDistance));
+        }
 
-        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-        MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
+        auto obstacleFound = std::make_shared<bool>(false);
+        Ogre::RaySceneQuery* rayQuery = this->raySceneQuery;
+        Ogre::SphereSceneQuery* sphereQuery = this->sphereSceneQuery;
+        const Ogre::Real clearanceDistance = rule.clearanceDistance;
 
-        return allowIfHit ? (hitObject != nullptr) : (hitObject == nullptr);
+        GraphicsModule::getInstance()->enqueueAndWait([obstacleFound, rayQuery, sphereQuery, clearanceDistance]()
+        {
+            // Cast against only the excluded bits — hit means blocked
+            // STRING down to just the Obstacle bit (it parses "All" minus the
+            // named exclusions itself -- see GameObjectController::
+            if (clearanceDistance > 0.0f && nullptr != sphereQuery)
+            {
+                Ogre::SceneQueryResult& result = sphereQuery->execute();
+                for (Ogre::MovableObject* mo : result.movables)
+                {
+                    if (nullptr != mo && mo->getMovableType() != "Camera")
+                    {
+                        *obstacleFound = true;
+                        break;
+                    }
+                }
+                sphereQuery->clearResults();
+                if (true == *obstacleFound)
+                {
+                    return;
+                }
+            }
+
+            // getRaycastFromPoint already skips MovableType "Camera"
+            // internally and does proper triangle-level intersection
+            // against Items / Terra / ManualObject -- the camera
+            // parameter itself is unused in its body, so nullptr is safe.
+            Ogre::Vector3 hitPoint, hitNormal;
+            Ogre::MovableObject* hitObject = nullptr;
+            Ogre::Real closestDistance = 0.0f;
+            std::vector<Ogre::MovableObject*> excludeList;
+
+            MathHelper::getInstance()->getRaycastFromPoint(rayQuery, nullptr, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
+
+            *obstacleFound = (nullptr != hitObject);
+        }, "ProceduralFoliageVolumeComponent::isCategoryAllowed");
+
+        // Position is allowed only if NO obstacle was found.
+        return (false == *obstacleFound);
     }
 
     std::vector<VegetationBatch> ProceduralFoliageVolumeComponent::calculatePlanetFoliagePositions(GameObject* planetGo, Ogre::Real planetRadius, const Ogre::Vector3& planetCentre)
@@ -3395,12 +4048,10 @@ namespace NOWA
             batch.instances = std::move(filtered);
         }
 
-        batches.erase(std::remove_if(batches.begin(), batches.end(),
-                          [](const VegetationBatch& b)
-                          {
-                              return b.instances.empty();
-                          }),
-            batches.end());
+        batches.erase(std::remove_if(batches.begin(), batches.end(), [](const VegetationBatch& b)
+                    {
+                        return b.instances.empty();
+                    }), batches.end());
 
         return batches;
     }

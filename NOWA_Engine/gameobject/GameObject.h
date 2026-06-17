@@ -98,6 +98,13 @@ namespace NOWA
 		bool postInit(void);
 
 		/**
+         * @brief Calls lateInit() on every component attached to this GameObject.
+         *        Must only be invoked after ALL GameObjects in the scene have
+         *        completed postInit() -- see DotSceneImportModule::postInitData().
+         */
+        bool lateInit(void);
+
+		/**
 		 * @brief		Connects a game object when all game objects and components are already post-initialized and available. This can be called manually by the @GameObjectController
 		 *				e.g. to start a simulation. Everything is ready and will be connected.
 		 * @param[in]	cloned			if set to true, this connection should be used to get the target game object by its prior id, since it has been cloned
@@ -584,6 +591,19 @@ namespace NOWA
 		void setLodDistance(Ogre::Real lodDistance);
 
 		/**
+         * @brief Sets the lod levels.
+         * @param[in] lodLevels The lod levels to set.
+         * @note	Can be used for example for @TerraComponent to control internal terra lod reduction steps.
+         */
+		void setLodLevels(unsigned int lodLevels);
+
+		/**
+         * @brief  Gets the lod levels.
+         * @return lodLevels The lod levels to get.
+         */
+		unsigned int getLodLevels(void) const;
+
+		/**
 		 * @brief  Gets the lod distance in meters til which the game object vertex count will be reduced.
 		 * @return renderDistance The lod distance to get.
 		 */
@@ -1018,8 +1038,6 @@ namespace NOWA
 		// Is necessary, because there is an event, which is sent to all listener, that this game object has been made global at runtime, in order to cut/paste potential resources to the corresponding folder
 		// This function is only called in actualizeValue and may not be called on other places! Please call the official @setGlobal(...) if desired.
 		void setInternalAttributeGlobal(bool isGlobal);
-
-		void setLodLevels(unsigned int lodLevels);
 
 		/**
 		 * @brief		Sets whether this game object should be visible during loading the game object. This is necessary because camera component has dummy entity, which else would always be visible on undo etc.

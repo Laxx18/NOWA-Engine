@@ -387,6 +387,9 @@ namespace NOWA
 			this->orientation->setValue(worldDeg);
 		}
 
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+        //     "[CameraMove] Set camera position to: " + Ogre::StringConverter::toString(this->camera->getPosition()) + " derived position: " + Ogre::StringConverter::toString(this->camera->getDerivedPosition()));
+
 		// small debounce for editor responsiveness
 		this->timeSinceLastUpdate = 0.05f;
 	}

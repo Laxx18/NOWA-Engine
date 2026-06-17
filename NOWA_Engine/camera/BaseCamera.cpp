@@ -228,7 +228,7 @@ namespace NOWA
             Ogre::Vector3 worldMove = this->getOrientation() * moveValue;
             Ogre::Vector3 newPosition = this->getPosition() + worldMove;
 
-            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPosition);
+            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPosition, false);
         }
     }
 
@@ -341,7 +341,7 @@ namespace NOWA
             Ogre::Quaternion newOrientation = yawRotation * pitchRotation * rollRotation * currentOrientation;
 
             // Use the thread-safe update method just like moveCamera does
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, newOrientation);
+            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, newOrientation, false);
         }
 
         this->lastValue = rotationValue;

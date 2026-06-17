@@ -1101,37 +1101,6 @@ namespace NOWA
 		 * @param visible true to make the pointer visible, false to hide it.
 		 */
 		void setMyGuiPointerVisible(bool visible);
-	public:
-
-		enum PhysicsType
-		{
-			TERRAINTYPE = 0,
-			PLAYERTYPE = 1,
-			ENEMYTYYPE,
-			STATICOBJECTTYPE,
-			DYNAMICOBJECTTYPE,
-			BOXTYPE,
-			CAPSULETYPE,
-			CHAMFERCYLINDERTYPE,
-			CONETYPE,
-			CONVEXHULLTYPE,
-			CYLINDERTYPE,
-			ELLIPSOIDTYPE,
-			PYRAMIDTYPE,
-			BULLETTYPE,
-			BUILDINGINTERNTYPE,
-			TREETYPE,
-			DOORTYPE,
-			PLATETYPE,
-			BALLTYPE
-		};
-
-		//Ogre Type
-		enum eQueryFlags
-		{
-			UNUSEDMASK = 1 << 0,
-			GAMEOBJECTMASK = 1 << 1
-		};
 
     public:
         // Static crash handling — callable before Core singleton exists (e.g. from WinMain)

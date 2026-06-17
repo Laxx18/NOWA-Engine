@@ -133,6 +133,13 @@ namespace Ogre
         Ogre::String            m_currentBlendWeightImageName;
         Ogre::String            m_currentHeightMapImageName;
         Ogre::Image2            m_blendWeightImage;
+        // World-space radius (approx) of the innermost LOD-0 ring, independent of
+        // vertex density (m_basePixelDimension) and terrain world size. Smaller
+        // values mean LOD increases sooner as the camera moves; larger values keep
+        // high detail over a wider area before stepping down.
+        // Default chosen to roughly match typical small-to-medium terrain footprints;
+        // tune per terrain via setLodRing0WorldSize().
+        float m_lodRing0WorldSize;
 
         void destroyHeightmapTexture(void);
 
@@ -367,6 +374,25 @@ namespace Ogre
 
         Ogre::String getBlendWeightTextureName(void) const;
 
+        void setLodRing0WorldSize(float worldSize);
+
+        float getLodRing0WorldSize() const;
+
+        //-----------------------------------------------------------------------------------
+        // computeAutoLodRing0WorldSize
+        //
+        // Automatically derives a sensible LOD-0 ring world size from:
+        //   - effective visible distance = min(farClipDistance, renderDistance)
+        //   - desired number of LOD steps before reaching that visible distance
+        //   - terrain's own world-space footprint (LOD-0 must stay a small
+        //     fraction of the terrain, or higher LOD rings have no room to exist)
+        //
+        // Formula: ring0 = effectiveDistance / 2^desiredLodLevels
+        // Then clamp ring0 to at most (terrainSize / 2^minRingsThatMustFit) so the
+        // terrain always has room for at least a few LOD steps regardless of how
+        // the camera's farClip/renderDistance are configured.
+        //-----------------------------------------------------------------------------------
+        float computeAutoLodRing0WorldSize(float effectiveVisibleDistance, uint32 desiredLodLevels) const;
     public:
         Ogre::uint32 mHlmsTerraIndex;
     };

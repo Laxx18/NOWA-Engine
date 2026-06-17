@@ -900,13 +900,13 @@ namespace NOWA
             return false;
         }
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockPbsComponent::preReadDatablock", _1(&success), {
-            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-            if (nullptr != item)
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(
+            [this, &success]()
             {
+                Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
                 success = this->readDatablockItem(item);
-            }
-        });
+            },
+            "DatablockPbsComponent::preReadDatablock");
 
         if (false == success)
         {
@@ -951,6 +951,7 @@ namespace NOWA
 
         // Store also the original name
         Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
+        this->gameObjectPtr->actualizeDatablockName(originalDataBlockName, this->subItemIndex->getUInt());
 
         /*if ("Missing" == originalDataBlockName)
         return false;*/
@@ -1062,9 +1063,51 @@ namespace NOWA
 
         this->setEmissiveColor(this->emissiveColor->getVector3());
 
-        this->setDiffuseTextureName(this->diffuseTextureName->getString());
+        // Attention: When the data block has just been (re-)cloned for the current sub item index (this->newlyCreated is true),
+        // the texture name variants below still hold stale values from whatever sub item was read before (or the constructor
+        // defaults). Passing those stale strings into the setters would force-apply the wrong texture onto the freshly cloned
+        // data block, because internalSetTextureName() only re-reads the real texture from the data block when it receives an
+        // empty string while newlyCreated is true. So an empty string must be passed here in that case, letting
+        // internalSetTextureName() read the actual texture straight from this->datablock. If newlyCreated is false (e.g. values
+        // were just loaded from XML for this exact sub item), the stored variant value is authored data and must be kept.
+        Ogre::String diffuseTextureNameToApply = this->diffuseTextureName->getString();
+        Ogre::String normalTextureNameToApply = this->normalTextureName->getString();
+        Ogre::String specularTextureNameToApply = this->specularTextureName->getString();
+        Ogre::String metallicTextureNameToApply = this->metallicTextureName->getString();
+        Ogre::String roughnessTextureNameToApply = this->roughnessTextureName->getString();
+        Ogre::String detailWeightTextureNameToApply = this->detailWeightTextureName->getString();
+        Ogre::String detail0TextureNameToApply = this->detail0TextureName->getString();
+        Ogre::String detail1TextureNameToApply = this->detail1TextureName->getString();
+        Ogre::String detail2TextureNameToApply = this->detail2TextureName->getString();
+        Ogre::String detail3TextureNameToApply = this->detail3TextureName->getString();
+        Ogre::String detail0NMTextureNameToApply = this->detail0NMTextureName->getString();
+        Ogre::String detail1NMTextureNameToApply = this->detail1NMTextureName->getString();
+        Ogre::String detail2NMTextureNameToApply = this->detail2NMTextureName->getString();
+        Ogre::String detail3NMTextureNameToApply = this->detail3NMTextureName->getString();
+        Ogre::String emissiveTextureNameToApply = this->emissiveTextureName->getString();
 
-        this->setNormalTextureName(this->normalTextureName->getString());
+        if (true == this->newlyCreated)
+        {
+            diffuseTextureNameToApply.clear();
+            normalTextureNameToApply.clear();
+            specularTextureNameToApply.clear();
+            metallicTextureNameToApply.clear();
+            roughnessTextureNameToApply.clear();
+            detailWeightTextureNameToApply.clear();
+            detail0TextureNameToApply.clear();
+            detail1TextureNameToApply.clear();
+            detail2TextureNameToApply.clear();
+            detail3TextureNameToApply.clear();
+            detail0NMTextureNameToApply.clear();
+            detail1NMTextureNameToApply.clear();
+            detail2NMTextureNameToApply.clear();
+            detail3NMTextureNameToApply.clear();
+            emissiveTextureNameToApply.clear();
+        }
+
+        this->setDiffuseTextureName(diffuseTextureNameToApply);
+
+        this->setNormalTextureName(normalTextureNameToApply);
 
         this->setNormalMapWeight(this->normalMapWeight->getReal());
 
@@ -1072,41 +1115,44 @@ namespace NOWA
 
         this->setClearCoatRoughness(this->clearCoatRoughness->getReal());
 
-        this->setSpecularTextureName(this->specularTextureName->getString());
+        this->setSpecularTextureName(specularTextureNameToApply);
 
-        this->setMetallicTextureName(this->metallicTextureName->getString());
+        this->setMetallicTextureName(metallicTextureNameToApply);
 
-        this->setRoughnessTextureName(this->roughnessTextureName->getString());
+        this->setRoughnessTextureName(roughnessTextureNameToApply);
 
-        this->setDetailWeightTextureName(this->detailWeightTextureName->getString());
+        this->setDetailWeightTextureName(detailWeightTextureNameToApply);
 
-        this->setDetail0TextureName(this->detail0TextureName->getString());
+        this->setDetail0TextureName(detail0TextureNameToApply);
 
         this->setBlendMode0(this->blendMode0->getListSelectedValue());
 
-        this->setDetail1TextureName(this->detail1TextureName->getString());
+        this->setDetail1TextureName(detail1TextureNameToApply);
 
         this->setBlendMode1(this->blendMode1->getListSelectedValue());
 
-        this->setDetail2TextureName(this->detail2TextureName->getString());
+        this->setDetail2TextureName(detail2TextureNameToApply);
 
         this->setBlendMode2(this->blendMode2->getListSelectedValue());
 
-        this->setDetail3TextureName(this->detail3TextureName->getString());
+        this->setDetail3TextureName(detail3TextureNameToApply);
 
         this->setBlendMode3(this->blendMode3->getListSelectedValue());
 
-        this->setDetail0NMTextureName(this->detail0NMTextureName->getString());
+        this->setDetail0NMTextureName(detail0NMTextureNameToApply);
 
-        this->setDetail1NMTextureName(this->detail1NMTextureName->getString());
+        this->setDetail1NMTextureName(detail1NMTextureNameToApply);
 
-        this->setDetail2NMTextureName(this->detail2NMTextureName->getString());
+        this->setDetail2NMTextureName(detail2NMTextureNameToApply);
 
-        this->setDetail3NMTextureName(this->detail3NMTextureName->getString());
+        this->setDetail3NMTextureName(detail3NMTextureNameToApply);
 
+        // Reflection texture is intentionally excluded from the newlyCreated-clear logic above: it goes through its own
+        // dynamic-cubemap-vs-static-texture handling in setReflectionTextureName() / internalSetTextureName(), which does not
+        // rely on the "empty string while newlyCreated" convention used by the other texture slots.
         this->setReflectionTextureName(this->reflectionTextureName->getListSelectedValue());
 
-        this->setEmissiveTextureName(this->emissiveTextureName->getString());
+        this->setEmissiveTextureName(emissiveTextureNameToApply);
         // Attention: Metallic?? Is that new?
         // this->emissiveTextureName->setValue(this->getPbsTextureName(datablock, Ogre::PbsTextureTypes::PBSM_METALLIC));
 
@@ -1928,7 +1974,8 @@ namespace NOWA
 
         if (nullptr != this->gameObjectPtr)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockPbsComponent::setSubItemIndex", _1(&subItemIndex), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, &subItemIndex]()
+            {
                 // Two data block components with the same item index can not exist
                 for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
                 {
@@ -1975,7 +2022,9 @@ namespace NOWA
 
                     this->alreadyCloned = false;
                 }
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::setSubItemIndex");
+
             this->preReadDatablock();
 
             this->oldSubIndex = subItemIndex;

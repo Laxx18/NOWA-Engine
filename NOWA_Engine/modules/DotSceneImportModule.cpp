@@ -469,8 +469,10 @@ namespace NOWA
 
         std::vector<GameObject*> clampGameObjects;
 
+        auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+
         // Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
-        for (auto it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
+        for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
         {
             const auto gameObjectPtr = it->second;
             if (gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID && gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
@@ -494,6 +496,36 @@ namespace NOWA
                 // If everything is loaded, perform raycast for y clamping for each game object, which has the corresponding attribute activated
                 clampGameObject->performRaycastForYClamping();
             }
+        }
+
+        // ========================================================================
+        // LATE INIT PHASE
+        //
+        // At this point EVERY GameObject in the scene (including MainCamera,
+        // MainLight, MainGameObject) has completed postInit(). Every component on
+        // every GameObject is guaranteed to exist. This is the correct, safe place
+        // for components that need to query OTHER GameObjects' components,
+        // categories, or physics/collision shapes -- which are not reliably
+        // available during a single GameObject's own postInit(), since GameObjects
+        // are initialized in an arbitrary order and a sibling's postInit() may not
+        // have run yet.
+        //
+        // Example: ProceduralFoliageVolumeComponent must query obstacle categories
+        // (Wall_0, container_0, etc.) when regenerating foliage loaded from a saved
+        // scene. If this query ran during its own postInit(), those obstacles might
+        // not have registered their categories yet, silently breaking the filter.
+        //
+        // lateInit() is called exactly once here, never again on subsequent
+        // play/stop (connect/disconnect) cycles.
+        // ========================================================================
+        this->notifyPostInitPhase("LateInit phase", totalGO, totalGO);
+
+        gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+
+        for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
+        {
+            const auto gameObjectPtr = it->second;
+            gameObjectPtr->lateInit();
         }
 
         if (AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements() && true == this->projectParameter.hasRecast)
@@ -956,7 +988,11 @@ namespace NOWA
         pElement = xmlRoot->first_node("environment");
         if (pElement)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processEnvironment", _1(&pElement), { this->processEnvironment(pElement); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, &pElement]()
+            {
+                this->processEnvironment(pElement);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processEnvironment");
         }
 
         // Process OgreNewt
@@ -970,7 +1006,11 @@ namespace NOWA
         pElement = xmlRoot->first_node("OgreRecast");
         if (nullptr != pElement)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processScene2", _1(&pElement), { this->processOgreRecast(pElement); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, &pElement]()
+            {
+                this->processOgreRecast(pElement);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processOgreRecast");
         }
 
         // Process nodes (?)
@@ -1366,8 +1406,11 @@ namespace NOWA
         Ogre::SceneNode* pNode = 0;
         if (true == name.empty())
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode", _2(parent, &pNode),
-                { pNode = (parent != nullptr) ? parent->createChildSceneNode(Ogre::SCENE_STATIC) : this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, parent, &pNode]()
+            {
+                pNode = (parent != nullptr) ? parent->createChildSceneNode(Ogre::SCENE_STATIC) : this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processNode");
         }
         else
         {
@@ -1425,10 +1468,12 @@ namespace NOWA
             {
                 // Must not set values, because node does not exist and game object does also not exist and must be created!
                 justSetValues = false;
-                ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode1", _3(parent, name, &pNode), {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, parent, name, &pNode]()
+                {
                     pNode = (parent != nullptr) ? parent->createChildSceneNode(Ogre::SCENE_STATIC) : this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
                     pNode->setName(name);
-                });
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processNode");
             }
         }
 
@@ -1442,21 +1487,33 @@ namespace NOWA
         pElement = xmlNode->first_node("position");
         if (pElement)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode2", _2(pElement, &pNode), { pNode->setPosition(XMLConverter::parseVector3(pElement)); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [pElement, &pNode]()
+            {
+                pNode->setPosition(XMLConverter::parseVector3(pElement));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processNode2");
         }
 
         // Rotation (?)
         pElement = xmlNode->first_node("rotation");
         if (pElement)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode3", _2(pElement, &pNode), { pNode->setOrientation(XMLConverter::parseQuaternion(pElement)); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [pElement, &pNode]()
+            {
+                pNode->setOrientation(XMLConverter::parseQuaternion(pElement));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processNode3");
         }
 
         // Scale (?)
         pElement = xmlNode->first_node("scale");
         if (pElement)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode4", _2(pElement, &pNode), { pNode->setScale(XMLConverter::parseVector3(pElement)); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [pElement, &pNode]()
+            {
+                pNode->setScale(XMLConverter::parseVector3(pElement));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processNode4");
         }
 
         // callback to react on postload
@@ -1594,7 +1651,6 @@ namespace NOWA
 
                     // Create Item
                     item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
-                    item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
                     item->setName(name);
                     item->setCastShadows(castShadows);
 

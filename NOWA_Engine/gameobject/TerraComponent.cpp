@@ -62,6 +62,7 @@ namespace NOWA
 		lightId(new Variant(TerraComponent::AttrLightId(), static_cast<unsigned long>(0), this->attributes, true)),
 		cameraId(new Variant(TerraComponent::AttrCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
 		basePixelDimension(new Variant(TerraComponent::AttrBasePixelDimension(), static_cast<unsigned int>(64), this->attributes, true)),
+        lodRing0WorldSize(new Variant(TerraComponent::AttrLodRing0WorldSize(), 10.0f, this->attributes)),
 		strength(new Variant(TerraComponent::AttrStrength(), 50, this->attributes)),
 		brushSize(new Variant(TerraComponent::AttrBrushSize(), static_cast<int>(64), this->attributes)),
 		brushIntensity(new Variant(TerraComponent::AttrBrushIntensity(), static_cast<int>(255), this->attributes)),
@@ -104,6 +105,9 @@ namespace NOWA
 		this->imageLayer->addUserData(GameObject::AttrActionNoUndo());
 
 		this->basePixelDimension->setDescription("Lower values makes LOD very aggressive. Higher values less aggressive. Must be power of 2.");
+        this->lodRing0WorldSize->setDescription("World-space size of the innermost (highest detail) LOD ring. "
+                                                "Set to 0 to auto-calculate from terrain size, camera far clip distance, "
+                                                "and render distance. Set to a positive value to override manually.");
 	}
 
 	TerraComponent::~TerraComponent()
@@ -146,9 +150,14 @@ namespace NOWA
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BasePixelDimension")
 		{
-			this->basePixelDimension->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+			this->basePixelDimension->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LodRing0WorldSize")
+        {
+            this->lodRing0WorldSize->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
 		this->terraLoadedFromFile = true;
 		
@@ -234,33 +243,40 @@ namespace NOWA
 	}
 
 	void TerraComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (nullptr != this->terra && false == notSimulating)
-		{
-			//Force update the shadow map every frame to avoid the feeling we're "cheating" the
-			//user in this sample with higher framerates than what he may encounter in many of
-			//his possible uses.
-			const float lightEpsilon = 0.0f;
-			if (nullptr != this->sunLight)
-			{
-				auto closureFunction = [this, lightEpsilon](Ogre::Real renderDt)
-				{
-					this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
-				};
-				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
-				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-			}
-			else
-			{
-				auto closureFunction = [this, lightEpsilon](Ogre::Real renderDt)
-				{
-					this->terra->update(Ogre::Vector3::ZERO, lightEpsilon);
-				};
-				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
-				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-			}
-		}
-	}
+    {
+        if (nullptr != this->terra)
+        {
+            const float lightEpsilon = 0.0f;
+            if (nullptr != this->sunLight)
+            {
+                auto closureFunction = [this, lightEpsilon](Ogre::Real renderDt)
+                {
+                    // Attention: TerraWorkspaceListener hijacks Terra's internal camera pointer during
+                    // shadow-casting passes for non-directional lights (passPreExecute swaps it to the
+                    // shadow camera, then passSceneAfterShadowMaps restores it to nullptr, never back to
+                    // the main camera). Since this closure runs after renderOneFrame() has already executed
+                    // those shadow passes for this frame, Terra's camera is left as nullptr (or, with no
+                    // non-directional shadow casters, untouched) by the time we get here. Re-assert the main
+                    // camera before update() so Terra's LOD/cell recalculation runs against the camera that
+                    // is actually used for the main scene render, not whatever the listener last left it as.
+                    this->terra->setCamera(this->usedCamera);
+                    this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
+                };
+                Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+                NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+            }
+            else
+            {
+                auto closureFunction = [this, lightEpsilon](Ogre::Real renderDt)
+                {
+                    this->terra->setCamera(this->usedCamera);
+                    this->terra->update(Ogre::Vector3::ZERO, lightEpsilon);
+                };
+                Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+                NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+            }
+        }
+    }
 	
 	void TerraComponent::destroyTerra(void)
 	{
@@ -323,7 +339,59 @@ namespace NOWA
                 }
             }
         }, "TerraComponent::destroyTerra");
-	}
+    }
+
+    void TerraComponent::applyLodRing0WorldSize(void)
+    {
+        if (nullptr == this->terra || nullptr == this->usedCamera)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[TerraComponent] applyLodRing0WorldSize: terra=" + Ogre::String(nullptr == this->terra ? "NULL" : "valid") + " usedCamera=" + Ogre::String(nullptr == this->usedCamera ? "NULL" : "valid"));
+            return;
+        }
+
+        float ring0Size = this->lodRing0WorldSize->getReal();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] applyLodRing0WorldSize: configured value=" + Ogre::StringConverter::toString(ring0Size));
+
+        if (ring0Size <= 0.0f)
+        {
+            float farClip = this->usedCamera->getFarClipDistance();
+            float renderDist = static_cast<float>(this->gameObjectPtr->getAttribute(GameObject::AttrRenderDistance())->getInt());
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[TerraComponent] auto mode: farClip=" + Ogre::StringConverter::toString(farClip) + " renderDist=" + Ogre::StringConverter::toString(renderDist) + " terraXZDim=" + Ogre::StringConverter::toString(this->terra->getXZDimensions()));
+
+            float effectiveVisibleDistance;
+            if (farClip > 0.0f && renderDist > 0.0f)
+            {
+                effectiveVisibleDistance = std::min(farClip, renderDist);
+            }
+            else if (farClip > 0.0f)
+            {
+                effectiveVisibleDistance = farClip;
+            }
+            else if (renderDist > 0.0f)
+            {
+                effectiveVisibleDistance = renderDist;
+            }
+            else
+            {
+                effectiveVisibleDistance = std::max(this->terra->getXZDimensions().x, this->terra->getXZDimensions().y);
+            }
+
+            const Ogre::uint32 desiredLodLevels = std::max(1u, this->gameObjectPtr->getLodLevels());
+
+            ring0Size = this->terra->computeAutoLodRing0WorldSize(effectiveVisibleDistance, desiredLodLevels);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Auto LOD ring0 world size computed: " + Ogre::StringConverter::toString(ring0Size) + " (effectiveVisibleDistance=" +
+                                                                                    Ogre::StringConverter::toString(effectiveVisibleDistance) + ", desiredLodLevels=" + Ogre::StringConverter::toString(desiredLodLevels) + ")");
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Calling terra->setLodRing0WorldSize(" + Ogre::StringConverter::toString(ring0Size) + ")");
+
+        this->terra->setLodRing0WorldSize(ring0Size);
+    }
 
 	void TerraComponent::handleSwitchCamera(NOWA::EventDataPtr eventData)
 	{
@@ -520,6 +588,7 @@ namespace NOWA
                 {
                     this->terra->setBrushName(this->brush->getListSelectedValue());
                     this->terra->update(Ogre::Vector3::ZERO, 0.0f);
+                    this->applyLodRing0WorldSize();
                 }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TerraComponent::createTerra");
@@ -920,6 +989,10 @@ namespace NOWA
 		{
 			this->setBasePixelDimension(attribute->getUInt());
 		}
+        else if (TerraComponent::AttrLodRing0WorldSize() == attribute->getName())
+        {
+            this->setLodRing0WorldSize(attribute->getReal());
+        }
 		else if (TerraComponent::AttrStrength() == attribute->getName())
 		{
 			this->setStrength(attribute->getInt());
@@ -988,7 +1061,13 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "BasePixelDimension"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->basePixelDimension->getUInt())));
 		propertiesXML->append_node(propertyXML);
-	
+
+		propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "LodRing0WorldSize"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lodRing0WorldSize->getReal())));
+        propertiesXML->append_node(propertyXML);
+
 		if (false == this->gameObjectPtr->getGlobal())
 		{
 			this->terra->saveTextures(Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName(), Core::getSingletonPtr()->getSceneName());
@@ -1285,7 +1364,18 @@ namespace NOWA
 	std::vector<Ogre::String> TerraComponent::getAllImageLayer(void) const
 	{
 		return this->imageLayer->getList();
-	}
+    }
+
+    void TerraComponent::setLodRing0WorldSize(Ogre::Real value)
+    {
+        this->lodRing0WorldSize->setValue(value);
+        this->applyLodRing0WorldSize();
+    }
+
+    Ogre::Real TerraComponent::getLodRing0WorldSize(void) const
+    {
+        return this->lodRing0WorldSize->getReal();
+    }
 	
 	Ogre::Terra* TerraComponent::getTerra(void) const
 	{

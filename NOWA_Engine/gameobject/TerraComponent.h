@@ -155,6 +155,10 @@ namespace NOWA
 
 		std::vector<Ogre::String> getAllImageLayer(void) const;
 
+		void setLodRing0WorldSize(Ogre::Real value);
+
+        Ogre::Real getLodRing0WorldSize(void) const;
+
 		Ogre::Terra* getTerra(void) const;
 
 		void createTerra(void);
@@ -206,6 +210,7 @@ namespace NOWA
 		static const Ogre::String AttrLightId(void) { return "Light Id"; }
 		static const Ogre::String AttrCameraId(void) { return "Camera Id"; }
 		static const Ogre::String AttrBasePixelDimension(void) { return "Base Pixel Dimension"; }
+        static const Ogre::String AttrLodRing0WorldSize(void) { return "Lod Ring 0 World Size"; }
 		static const Ogre::String AttrStrength(void) { return "Strength"; }
 		static const Ogre::String AttrBrush(void) { return "Brush"; }
 		static const Ogre::String AttrBrushSize(void) { return "Brush Size"; }
@@ -213,6 +218,7 @@ namespace NOWA
 		static const Ogre::String AttrImageLayer(void) { return "Image Layer"; }
 	private:
 		void destroyTerra(void);
+        void applyLodRing0WorldSize(void);
 		void handleSwitchCamera(NOWA::EventDataPtr eventData);
 		void handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData);
 	private:
@@ -222,6 +228,7 @@ namespace NOWA
 		Variant* lightId;
 		Variant* cameraId;
 		Variant* basePixelDimension;
+        Variant* lodRing0WorldSize;
 		Variant* strength;
 		Variant* brush;
 		Variant* brushSize;

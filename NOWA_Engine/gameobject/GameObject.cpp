@@ -773,7 +773,6 @@ namespace NOWA
 			if (false == std::get<COMPONENT>(this->gameObjectComponents[i])->postInit())
 			{
 				this->deleteComponentByIndex(i);
-				// return true;
 			}
 			else
 			{
@@ -786,14 +785,30 @@ namespace NOWA
 			}
 		}
 
+		return true;
+    }
+
+    bool GameObject::lateInit(void)
+    {
+        for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectComponents.size());)
+        {
+            if (false == std::get<COMPONENT>(this->gameObjectComponents[i])->lateInit())
+            {
+                this->deleteComponentByIndex(i);
+            }
+            else
+            {
+                i++;
+            }
+        }
+
 		// Cache frequently-looked-up component raw pointers once, after all components are alive.
         // getComponent<T>() scans + locks; these avoid that cost on every hot-path call.
         this->cachedLuaScriptComponent = NOWA::makeStrongPtr(this->getComponent<LuaScriptComponent>()).get();
         this->cachedAiLuaComponent = NOWA::makeStrongPtr(this->getComponent<AiLuaComponent>()).get();
         this->cachedAiLuaGoalComponent = NOWA::makeStrongPtr(this->getComponent<AiLuaGoalComponent>()).get();
-
-		return true;
-	}
+        return true;
+    }
 
 	void GameObject::resetVariants(void)
     {
@@ -1186,6 +1201,10 @@ namespace NOWA
 		{
 			this->setLodDistance(attribute->getReal());
 		}
+        else if (GameObject::AttrLodLevels() == attribute->getName())
+        {
+            this->setLodLevels(attribute->getReal());
+        }
 		else if (GameObject::AttrShadowDistance() == attribute->getName())
 		{
 			this->setShadowRenderingDistance(attribute->getUInt());
@@ -2317,7 +2336,12 @@ namespace NOWA
 		this->lodLevels->setReadOnly(false);
 		this->lodLevels->setValue(lodLevels);
 		this->lodLevels->setReadOnly(true);
-	}
+    }
+
+    unsigned int GameObject::getLodLevels(void) const
+    {
+        return this->lodLevels->getUInt();
+    }
 	
 	bool GameObject::getGlobal(void) const
 	{
