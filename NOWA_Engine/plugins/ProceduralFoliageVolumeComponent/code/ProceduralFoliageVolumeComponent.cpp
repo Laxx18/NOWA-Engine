@@ -310,11 +310,11 @@ namespace NOWA
                 {
                     this->ruleTerraLayers[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i), Ogre::String("255,255,255,255"), this->attributes);
                     this->ruleTerraLayers[i]->setDescription("Terra layer thresholds, one per RGBA blend channel (e.g. 0,255,0,0). "
-                        "Each value is a MAXIMUM allowed paint amount on that channel (layers[i] <= threshold). "
-                        "Terrain brushes have soft alpha falloff, so a channel that is meant to stay unpainted rarely sits at "
-                        "a clean 0 -- a faint trace of the underlying layer often bleeds through. If foliage seems to be "
-                        "missing inside an area you painted, try relaxing the ceiling slightly (e.g. 254 instead of 0) on the "
-                        "channels that should otherwise be empty, to tolerate that bleed-through.");
+                                                             "Each value is a MAXIMUM allowed paint amount on that channel (layers[i] <= threshold). "
+                                                             "Terrain brushes have soft alpha falloff, so a channel that is meant to stay unpainted rarely sits at "
+                                                             "a clean 0 -- a faint trace of the underlying layer often bleeds through. If foliage seems to be "
+                                                             "missing inside an area you painted, try relaxing the ceiling slightly (e.g. 254 instead of 0) on the "
+                                                             "channels that should otherwise be empty, to tolerate that bleed-through.");
                 }
                 this->ruleTerraLayers[i]->setValue(layers);
                 this->rules[i].terraLayerThresholds = this->parseTerraLayers(layers);
@@ -2893,11 +2893,11 @@ namespace NOWA
                 // Terra Layers — all layers allowed
                 this->ruleTerraLayers[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i), Ogre::String("255,255,255,255"), this->attributes);
                 this->ruleTerraLayers[i]->setDescription("Layer thresholds, one per RGBA blend channel. Each value is a MAXIMUM "
-                    "allowed paint amount on that channel (layers[i] <= threshold). 255 = no restriction. "
-                    "Terrain brushes have soft alpha falloff, so a channel meant to stay unpainted rarely sits at a clean 0 -- "
-                    "the underlying layer often bleeds through faintly. If foliage seems to be missing inside a painted area, "
-                    "relax the ceiling slightly (e.g. 254,255,0,0 instead of 0,255,0,0) on the channels that should otherwise "
-                    "be empty.");
+                                                         "allowed paint amount on that channel (layers[i] <= threshold). 255 = no restriction. "
+                                                         "Terrain brushes have soft alpha falloff, so a channel meant to stay unpainted rarely sits at a clean 0 -- "
+                                                         "the underlying layer often bleeds through faintly. If foliage seems to be missing inside a painted area, "
+                                                         "relax the ceiling slightly (e.g. 254,255,0,0 instead of 0,255,0,0) on the channels that should otherwise "
+                                                         "be empty.");
                 this->rules[i].terraLayerThresholds = this->parseTerraLayers("255,255,255,255");
 
                 // Scale Range — slight variation around 1.0

@@ -1,0 +1,63 @@
+// Ocean BRDF Declarations - CORRECTED
+// Matches the PBS signature but properly handles diffuse/PI division
+
+@piece( DeclareBRDF )
+//Ocean BRDF - Water-optimized
+INLINE midf3 BRDF( midf3 lightDir, midf3 lightDiffuse, midf3 lightSpecular, PixelData pixelData PASSBUF_ARG_DECL )
+{
+	midf3 halfWay = normalize( lightDir + pixelData.viewDir );
+	midf NdotL = saturate( dot( pixelData.normal, lightDir ) );
+	midf NdotH = saturate( dot( pixelData.normal, halfWay ) );
+	midf VdotH = saturate( dot( pixelData.viewDir, halfWay ) );
+
+	midf sqR = pixelData.roughness * pixelData.roughness;
+
+	//Geometric/Visibility term (Smith GGX Height-Correlated)
+	@property( GGX_height_correlated )
+		midf Lambda_GGXV = NdotL * sqrt( (-pixelData.NdotV * sqR + pixelData.NdotV) * pixelData.NdotV + sqR );
+		midf Lambda_GGXL = pixelData.NdotV * sqrt( (-NdotL * sqR + NdotL) * NdotL + sqR );
+
+		midf G = _h( 0.5 ) / (( Lambda_GGXV + Lambda_GGXL + _h( 1e-6f ) ) * _h( 3.141592654 ));
+	@end @property( !GGX_height_correlated )
+		midf k = pixelData.roughness * _h( 0.5 );
+		midf g_v = pixelData.NdotV / (pixelData.NdotV * (_h( 1.0 ) - k) + k);
+		midf g_l = NdotL / (NdotL * (_h( 1.0 ) - k) + k);
+		midf G = g_v * g_l * _h( 0.25 );
+	@end
+
+	//Roughness/Distribution/NDF term (GGX)
+	const midf f = ( NdotH * sqR - NdotH ) * NdotH + _h( 1.0 );
+	midf R = sqR / (f * f + _h( 1e-6f ));
+
+	const midf RG = R * G;
+
+	//Fresnel (Schlick approximation)
+	float_fresnel fresnelS = pixelData.F0 + pow( _h( 1.0 ) - VdotH, _h( 5.0 ) ) * (_h( 1.0 ) - pixelData.F0);
+
+	//Specular term
+	midf3 Rs = ( fresnelS * RG ) * pixelData.specular.xyz;
+
+	//Diffuse BRDF (Normalized Disney) - Apply 1/PI here!
+	midf3 kD = pixelData.diffuse.xyz;
+	
+	midf energyBias	= pixelData.perceptualRoughness * _h( 0.5 );
+	midf energyFactor	= lerp( _h( 1.0 ), _h( 1.0 / 1.51 ), pixelData.perceptualRoughness );
+	midf fd90			= energyBias + _h( 2.0 ) * VdotH * VdotH * pixelData.perceptualRoughness;
+	midf lightScatter	= _h( 1.0 ) + (fd90 - _h( 1.0 )) * pow( _h( 1.0 ) - NdotL, _h( 5.0 ) );
+	midf viewScatter	= _h( 1.0 ) + (fd90 - _h( 1.0 )) * pow( _h( 1.0 ) - pixelData.NdotV, _h( 5.0 ) );
+
+	@property( fresnel_separate_diffuse )
+		midf fresnelD = _h( 1.0f ) - fresnelS;
+	@end @property( !fresnel_separate_diffuse )
+		midf fresnelD = _h( 1.0f );
+	@end
+
+	midf3 Rd = (lightScatter * viewScatter * energyFactor * fresnelD) * kD;
+
+	@property( !fresnel_separate_diffuse )
+		return NdotL * (Rs * lightSpecular + Rd * lightDiffuse);
+	@end @property( fresnel_separate_diffuse )
+		return NdotL * (Rs * lightSpecular + Rd * lightDiffuse * (_h( 1.0 ) - fresnelS));
+	@end
+}
+@end

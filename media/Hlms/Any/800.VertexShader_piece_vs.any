@@ -1,0 +1,258 @@
+// Ocean Vertex Shader - No shadow casting or receiving
+
+@piece( DefaultOceanHeaderVS )
+	// START UNIFORM DECLARATION
+	@insertpiece( PassStructDecl )
+	@insertpiece( OceanInstanceStructDecl )
+	@insertpiece( AtmosphereNprSkyStructDecl )
+	@insertpiece( custom_vs_uniformStructDeclaration )
+	// END UNIFORM DECLARATION
+
+	@insertpiece( DeclAtmosphereNprSkyFuncs )
+@end
+
+@piece( VertexOceanTransform )
+	// Lighting is in view space
+	outVs.pos = mul( float4(worldPos.xyz, 1.0f), passBuf.view ).xyz;
+	@property( !hlms_dual_paraboloid_mapping )
+		outVs.gl_Position = mul( float4(worldPos.xyz, 1.0f), passBuf.viewProj );
+	@else
+		// Dual Paraboloid Mapping
+		outVs.gl_Position.w	= 1.0f;
+		outVs.gl_Position.xyz = outVs.pos;
+		float L = length( outVs.gl_Position.xyz );
+		outVs.gl_Position.z	+= 1.0f;
+		outVs.gl_Position.xy /= outVs.gl_Position.z;
+		outVs.gl_Position.z	= (L - NearPlane) / (FarPlane - NearPlane);
+	@end
+@end
+
+// Ocean doesn't receive or cast shadows
+@undefpiece( DoShadowReceiveVS )
+@piece( DoShadowReceiveVS )
+    // Ocean doesn't receive shadows - empty
+@end
+
+//-----------------------------------------------------------------------------
+//		BODY CODE
+//-----------------------------------------------------------------------------
+
+@piece( DefaultOceanBodyVS )
+	CellData cellData = cellDataArray[inVs_drawId];
+
+	uint pointInLine = uint(inVs_vertexId) % cellData.numVertsPerLine.x;
+	pointInLine = uint(clamp( int(pointInLine) - 1, 0, int(cellData.numVertsPerLine.x - 3u) ));
+
+	uint2 uVertexPos;
+	uVertexPos.x = pointInLine >> 1u;
+	uVertexPos.y = (pointInLine & 0x01u) == 0u ? 1u : 0u;
+	uVertexPos.y += uint(inVs_vertexId) / cellData.numVertsPerLine.x;
+
+	@property( use_skirts )
+		bool isSkirt = pointInLine <= 1u || pointInLine >= (cellData.numVertsPerLine.x - 4u) || 
+					   uVertexPos.y == 0u || uVertexPos.y == (cellData.numVertsPerLine.z + 2u);
+
+		uVertexPos.x = uint( max( int(uVertexPos.x) - 1, 0 ) );
+		uVertexPos.x = min( uVertexPos.x, ((cellData.numVertsPerLine.x - 7u) >> 1u) );
+
+		uVertexPos.y = uint( max( int(uVertexPos.y) - 1, 0 ) );
+		uVertexPos.y = min( uVertexPos.y, cellData.numVertsPerLine.z );
+	@end
+
+	uint lodLevel = cellData.numVertsPerLine.y;
+	uVertexPos = uVertexPos << lodLevel;
+
+	uVertexPos.xy = uint2( clamp( int2(uVertexPos.xy) + cellData.xzTexPosBounds.xy,
+						   int2( 0, 0 ), cellData.xzTexPosBounds.zw ) );
+
+	float3 worldPos;
+	worldPos.xz = float2( uVertexPos.xy ) * cellData.scale.xz + cellData.pos.xz;
+
+	// ===== Ocean wave parameters =====
+	float timer = cellData.oceanTime.x;
+	float timeScale = cellData.oceanTime.y;
+	float freqScale = cellData.oceanTime.z;
+	float chaosPacked = cellData.oceanTime.w;
+	bool  isUnderwater = chaosPacked < 0.0f;
+	float chaos = abs(chaosPacked);
+
+	outVs.wavesIntensity = timeScale;
+
+	// ----------------------------------------------------
+	// UV scale
+	// ----------------------------------------------------
+	float uvScale = asfloat( cellData.numVertsPerLine.w );
+	uvScale *= freqScale;
+
+	// ----------------------------------------------------
+	// Texture depth constant
+	// ----------------------------------------------------
+	const float TEXTURE_DEPTH = 128.0f;
+
+	// ----------------------------------------------------
+	// Chaos - slower frequencies
+	// ----------------------------------------------------
+	float chaosA = sin( timer * 0.00173f ) * chaos;
+	float chaosB = sin( timer * 0.00127f + 1.0f ) * chaos;
+	float chaosC = sin( timer * 0.00089f + 2.0f ) * chaos;
+	float chaosD = sin( timer * 0.00061f + 3.0f ) * chaos;
+
+	// ----------------------------------------------------
+	// UV generation WITH SMOOTH BLENDING
+	// ----------------------------------------------------
+	float s, c;
+
+	// UV1
+	float rot = 0.48f + chaosA * 0.25f;
+	s = sin(rot); c = cos(rot);
+	outVs.uv1.xy = float2( c * worldPos.x + s * worldPos.z, -s * worldPos.x + c * worldPos.z ) * 0.24f * uvScale;
+
+	float z1_raw = timer * 0.08f;
+	float z1 = fmod(z1_raw, TEXTURE_DEPTH);
+	float z1_frac = frac(z1_raw / TEXTURE_DEPTH);
+	outVs.uv1.z = z1;
+
+	float h1_curr = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv1.xy, z1), 0 ).z;
+	float h1_next = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv1.xy, fmod(z1 + 1.0f, TEXTURE_DEPTH)), 0 ).z;
+	float h1 = lerp(h1_curr, h1_next, smoothstep(0.9f, 1.0f, z1_frac));
+
+	// UV2
+	rot = 0.17f + chaosB * 0.23f;
+	s = sin(rot); c = cos(rot);
+	outVs.uv2.xy = float2( c * worldPos.x + s * worldPos.z, -s * worldPos.x + c * worldPos.z ) * 0.08f * uvScale;
+
+	float z2_raw = timer * 0.076f;
+	float z2 = fmod(z2_raw, TEXTURE_DEPTH);
+	float z2_frac = frac(z2_raw / TEXTURE_DEPTH);
+	outVs.uv2.z = z2;
+
+	float h2_curr = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv2.xy, z2), 0 ).z;
+	float h2_next = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv2.xy, fmod(z2 + 1.0f, TEXTURE_DEPTH)), 0 ).z;
+	float h2 = lerp(h2_curr, h2_next, smoothstep(0.9f, 1.0f, z2_frac));
+
+	// UV3
+	rot = 0.09f + chaosC * 0.21f;
+	s = sin(rot); c = cos(rot);
+	outVs.uv3.xy = float2(c * worldPos.x + s * worldPos.z, -s * worldPos.x + c * worldPos.z ) * 0.17f * uvScale;
+
+	float z3_raw = timer * 0.069f;
+	float z3 = fmod(z3_raw, TEXTURE_DEPTH);
+	float z3_frac = frac(z3_raw / TEXTURE_DEPTH);
+	outVs.uv3.z = z3;
+
+	float h3_curr = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv3.xy, z3), 0 ).z;
+	float h3_next = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv3.xy, fmod(z3 + 1.0f, TEXTURE_DEPTH)), 0 ).z;
+	float h3 = lerp(h3_curr, h3_next, smoothstep(0.9f, 1.0f, z3_frac));
+
+	// UV4
+	outVs.uv4.xy = worldPos.xz * 0.3f * uvScale;
+
+	float z4_raw = timer * 0.063f;
+	float z4 = fmod(z4_raw, TEXTURE_DEPTH);
+	float z4_frac = frac(z4_raw / TEXTURE_DEPTH);
+	outVs.uv4.z = z4;
+
+	float h4_curr = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv4.xy, z4), 0 ).z;
+	float h4_next = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv4.xy, fmod(z4 + 1.0f, TEXTURE_DEPTH)), 0 ).z;
+	float h4 = lerp(h4_curr, h4_next, smoothstep(0.9f, 1.0f, z4_frac));
+
+	outVs.blendWeight = OGRE_SampleLevel( blendMap, samplerState@value(blendMap), outVs.uv1.xy * 0.1f, 0 ).xyz;
+
+	float height = lerp( lerp(h1, h2, outVs.blendWeight.x), lerp(h3, h4, outVs.blendWeight.z), outVs.blendWeight.y );
+
+	worldPos.y = (height * 3.0f - 1.7f) * uvScale;
+	worldPos.y = worldPos.y * cellData.scale.y + cellData.pos.y;
+
+	@property( use_skirts )
+		if( isSkirt && !isUnderwater )
+			worldPos.y = cellData.pos.y - 10000.0f;
+	@end
+
+	outVs.waveHeight = pow( height, 6.0f ) * 4.0f;
+
+	// ===== UV0 for texture mapping =====
+	float invWidth = rcp( float(cellData.xzTexPosBounds.z + 1) );
+	outVs.uv0.xy = float2( uVertexPos.xy ) * float2( invWidth, cellData.scale.w );
+
+	// ===== World position output =====
+	outVs.wpos = worldPos.xyz;
+
+	// ===== Transform to view/clip space =====
+	@insertpiece( VertexOceanTransform )
+	
+	// ===== World-space wave normal from height field =====
+
+	// Small step in grid space (LOD-aware)
+	float stepXZ = cellData.scale.x;
+
+	// Sample neighboring heights (same logic as main height)
+	float heightL = height;
+
+	// X offset
+	{
+		uint2 uvL = uVertexPos.xy;
+		uvL.x = max( int(uvL.x) - 1, 0 );
+		float hL = OGRE_SampleLevel(
+			terrainData, samplerState@value(terrainData),
+			float3( (float2(uvL) * cellData.scale.xz + cellData.pos.xz) * 0.24f * uvScale,
+					fmod( timer * 0.08f, 128.0f ) ),
+			0 ).z;
+		heightL = lerp( hL, height, 0.5f );
+	}
+
+	// Z offset
+	float heightD = height;
+	{
+		uint2 uvD = uVertexPos.xy;
+		uvD.y = max( int(uvD.y) - 1, 0 );
+		float hD = OGRE_SampleLevel(
+			terrainData, samplerState@value(terrainData),
+			float3( (float2(uvD) * cellData.scale.xz + cellData.pos.xz) * 0.24f * uvScale,
+					fmod( timer * 0.08f, 128.0f ) ),
+			0 ).z;
+		heightD = lerp( hD, height, 0.5f );
+	}
+
+	// Height gradients
+	float dX = (height - heightL) * cellData.scale.y;
+	float dZ = (height - heightD) * cellData.scale.y;
+
+	// Build world-space normal
+	float3 normalWS = normalize( float3( -dX, 1.0f, -dZ ) );
+
+	// Convert to view space
+	outVs.normal = normalize( mul( normalWS, toFloat3x3( passBuf.view ) ) );
+
+	// ===== No shadow calculations =====
+	@insertpiece( DoShadowReceiveVS )
+
+	// ===== Atmosphere/fog =====
+	@insertpiece( DoAtmosphereNprSky )
+
+	// ===== Light masking =====
+	@property( syntax == metal || lower_gpu_overhead )
+		@property( hlms_fine_light_mask || hlms_forwardplus_fine_light_mask )
+			outVs.objLightMask = 0xFFFFFFFFu;
+		@end
+
+		@property( use_planar_reflections )
+			#error "Unimplemented Feature: Using Ocean with Planar Reflections"
+		@end
+	@else
+		@property( !lower_gpu_overhead )
+			outVs.drawId = inVs_drawId;
+		@end
+	@end
+
+	@property( hlms_use_prepass_msaa > 1 )
+		outVs.zwDepth.xy = outVs_Position.zw;
+	@end
+
+	@property( hlms_global_clip_planes )
+		outVs_clipDistance0 = dot( float4( worldPos.xyz, 1.0 ), passBuf.clipPlane0.xyzw );
+	@end
+
+	@property( hlms_instanced_stereo )
+		outVs_viewportIndex	= int( inVs_stereoDrawId & 0x01u );
+	@end
+@end

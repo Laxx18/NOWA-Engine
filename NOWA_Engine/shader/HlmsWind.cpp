@@ -1,227 +1,127 @@
-#include "NOWAPrecompiled.h"
-#include "HlmsWind.h"
+#ifndef HLMS_WIND_H
+#define HLMS_WIND_H
+
+#include "CommandBuffer/OgreCbTexture.h"
+#include "CommandBuffer/OgreCommandBuffer.h"
+#include "OgreHlmsListener.h"
+#include "OgreHlmsPbs.h"
+#include "defines.h"
 
 namespace NOWA
 {
-    HlmsWindListener::HlmsWindListener() : windStrength(0.5f), globalTime(0.0f), windFrequency(1.0f), windDirection(Ogre::Vector3(1.0f, 0.0f, 0.0f))
+    // Maximum number of simultaneous interactors (players/objects pushing foliage).
+    // Matches the interactors[4] array in 500_Structs_piece_vs_piece_ps.any.
+    // Increasing this requires changing the shader struct AND the pass buffer size.
+    static const int WIND_MAX_INTERACTORS = 4;
+
+    /**
+     * @brief One interactor slot: a world-space XZ position with a radius of
+     *        influence and a push strength. The vertex shader pushes foliage
+     *        vertices away from this position with quadratic falloff.
+     */
+    struct WindInteractor
     {
-    }
+        float worldX;   // World space X position of the interactor
+        float worldZ;   // World space Z position of the interactor
+        float radius;   // Radius of influence in world units
+        float strength; // Peak push magnitude at centre (e.g. 0.5 - 2.0)
+    };
 
-    void HlmsWindListener::setTime(Ogre::Real time)
+    class EXPORTED HlmsWindListener : public Ogre::HlmsListener
     {
-        this->globalTime = time;
-    }
+    public:
+        HlmsWindListener();
 
-    void HlmsWindListener::addTime(Ogre::Real time)
+        virtual ~HlmsWindListener() = default;
+
+        void setTime(Ogre::Real time);
+
+        void addTime(Ogre::Real time);
+
+        /**
+         * @brief Replaces the active interactor list for this frame.
+         *        Call once per frame from the logic thread before rendering.
+         *        The list is copied immediately so the caller does not need to
+         *        keep it alive past this call.
+         * @param[in] interactors Active interactors, at most WIND_MAX_INTERACTORS.
+         *        Excess entries beyond WIND_MAX_INTERACTORS are silently ignored.
+         */
+        void setInteractors(const std::vector<WindInteractor>& interactors);
+
+        /**
+         * @brief Clears all active interactors (no foliage push this frame).
+         */
+        void clearInteractors();
+
+        virtual Ogre::uint32 getPassBufferSize(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager) const;
+
+        virtual float* preparePassBuffer(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager, float* passBufferPtr);
+
+    private:
+        Ogre::Real windStrength;
+        Ogre::Real globalTime;
+
+        // Active interactors for the current frame.
+        // Written from the logic thread via setInteractors(), read from the
+        // render thread in preparePassBuffer(). Access is safe because
+        // preparePassBuffer is called after the logic thread has submitted
+        // its frame (same ordering as WindComponent::update -> addTime).
+        WindInteractor activeInteractors[WIND_MAX_INTERACTORS];
+        int activeInteractorCount;
+    };
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    class EXPORTED HlmsWind : public Ogre::HlmsPbs
     {
-        this->globalTime += time;
-    }
+    public:
+        HlmsWind(Ogre::Archive* dataFolder, Ogre::ArchiveVec* libraryFolders);
 
-    void HlmsWindListener::setWindStrength(Ogre::Real strength)
-    {
-        this->windStrength = strength;
-    }
+        virtual ~HlmsWind() = default;
 
-    Ogre::Real HlmsWindListener::getWindStrength() const
-    {
-        return this->windStrength;
-    }
+        void addTime(float time);
 
-    void HlmsWindListener::setWindDirection(const Ogre::Vector3& direction)
-    {
-        this->windDirection = direction.normalisedCopy();
-    }
+        void setup(Ogre::SceneManager* sceneManager);
 
-    const Ogre::Vector3& HlmsWindListener::getWindDirection() const
-    {
-        return this->windDirection;
-    }
+        void shutdown(Ogre::SceneManager* sceneManager);
 
-    void HlmsWindListener::setWindFrequency(Ogre::Real frequency)
-    {
-        this->windFrequency = frequency;
-    }
+        /**
+         * @brief Sets the active interactor list for this frame.
+         *        Forwards directly to HlmsWindListener::setInteractors.
+         *        Call from the logic thread (e.g. ProceduralFoliageVolumeComponent
+         *        updateTrackedClosure or a dedicated WindInteractionComponent).
+         */
+        void setInteractors(const std::vector<WindInteractor>& interactors);
 
-    Ogre::Real HlmsWindListener::getWindFrequency() const
-    {
-        return this->windFrequency;
-    }
+        /**
+         * @brief Clears all active interactors.
+         */
+        void clearInteractors();
 
-    Ogre::uint32 HlmsWindListener::getPassBufferSize(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager) const
-    {
-        Ogre::uint32 size = 0;
+        PropertiesMergeStatus notifyPropertiesMergedPreGenerationStep(size_t tid, Ogre::PiecesMap* inOutPieces);
 
-        if (!casterPass)
-        {
-            // float4 0: windStrength, globalTime, windFrequency, pad
-            // float4 1: windDirection.xyz, pad
-            // Total: 8 floats = 32 bytes, 16-byte aligned.
-            size += sizeof(float) * 8;
-        }
-        return size;
-    }
+        Ogre::uint32 fillBuffersForV1(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer);
 
-    float* HlmsWindListener::preparePassBuffer(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager, float* passBufferPtr)
-    {
-        if (!casterPass)
-        {
-            // float4 0: windStrength, globalTime, windFrequency, padding
-            *passBufferPtr++ = this->windStrength;
-            *passBufferPtr++ = this->globalTime;
-            *passBufferPtr++ = this->windFrequency;
-            *passBufferPtr++ = 0.0f;
-            // float4 1: windDirection.xyz, padding
-            *passBufferPtr++ = this->windDirection.x;
-            *passBufferPtr++ = this->windDirection.y;
-            *passBufferPtr++ = this->windDirection.z;
-            *passBufferPtr++ = 0.0f;
-        }
-        return passBufferPtr;
-    }
+        Ogre::uint32 fillBuffersForV2(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer);
 
-    /////////////////////////////////////////////////////////////////////////////////////
+        Ogre::uint32 fillBuffersFor(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer, bool isV1);
 
-    HlmsWind::HlmsWind(Ogre::Archive* dataFolder, Ogre::ArchiveVec* libraryFolders) : Ogre::HlmsPbs(dataFolder, libraryFolders), noiseSamplerBlock(nullptr), noiseTexture(nullptr)
-    {
-        mType = Ogre::HLMS_USER0;
-        mTypeName = "Wind";
-        mTypeNameStr = "Wind";
+    public:
+        static void getDefaultPaths(Ogre::String& outDataFolderPath, Ogre::StringVector& outLibraryFoldersPaths);
 
-        setListener(&this->windListener);
+    private:
+        void calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces) override;
 
-        mReservedTexSlots = 2u;
-    }
+        void loadTexturesAndSamplers(Ogre::SceneManager* sceneManager);
 
-    void HlmsWind::addTime(float time)
-    {
-        this->windListener.addTime(time);
-    }
+    private:
+        HlmsWindListener windListener;
 
-    void HlmsWind::setWindStrength(float strength)
-    {
-        this->windListener.setWindStrength(strength);
-    }
+        Ogre::HlmsSamplerblock const* noiseSamplerBlock;
 
-    float HlmsWind::getWindStrength() const
-    {
-        return this->windListener.getWindStrength();
-    }
-
-    void HlmsWind::setWindDirection(const Ogre::Vector3& direction)
-    {
-        this->windListener.setWindDirection(direction);
-    }
-
-    const Ogre::Vector3& HlmsWind::getWindDirection() const
-    {
-        return this->windListener.getWindDirection();
-    }
-
-    void HlmsWind::setWindFrequency(float frequency)
-    {
-        this->windListener.setWindFrequency(frequency);
-    }
-
-    float HlmsWind::getWindFrequency() const
-    {
-        return this->windListener.getWindFrequency();
-    }
-
-    void HlmsWind::setup(Ogre::SceneManager* sceneManager)
-    {
-        this->loadTexturesAndSamplers(sceneManager);
-    }
-
-    void HlmsWind::shutdown(Ogre::SceneManager* sceneManager)
-    {
-        Ogre::TextureGpuManager* textureManager = sceneManager->getDestinationRenderSystem()->getTextureGpuManager();
-        textureManager->destroyTexture(this->noiseTexture);
-        this->noiseTexture = nullptr;
-
-        Ogre::Root::getSingleton().getHlmsManager()->destroySamplerblock(this->noiseSamplerBlock);
-        this->noiseSamplerBlock = nullptr;
-    }
-
-    Ogre::Hlms::PropertiesMergeStatus HlmsWind::notifyPropertiesMergedPreGenerationStep(size_t tid, Ogre::PiecesMap* inOutPieces)
-    {
-        PropertiesMergeStatus status = HlmsPbs::notifyPropertiesMergedPreGenerationStep(tid, inOutPieces);
-
-        if (status == PropertiesMergeStatusError)
-        {
-            return status;
-        }
-
-        setTextureReg(tid, Ogre::VertexShader, "texPerlinNoise", 14);
-
-        return status;
-    }
-
-    Ogre::uint32 HlmsWind::fillBuffersForV1(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer)
-    {
-        return fillBuffersFor(cache, queuedRenderable, casterPass, lastCacheHash, commandBuffer, true);
-    }
-
-    Ogre::uint32 HlmsWind::fillBuffersForV2(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer)
-    {
-        return fillBuffersFor(cache, queuedRenderable, casterPass, lastCacheHash, commandBuffer, false);
-    }
-
-    Ogre::uint32 HlmsWind::fillBuffersFor(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer, bool isV1)
-    {
-        *commandBuffer->addCommand<Ogre::CbTexture>() = Ogre::CbTexture(14, const_cast<Ogre::TextureGpu*>(this->noiseTexture), this->noiseSamplerBlock);
-
-        return Ogre::HlmsPbs::fillBuffersFor(cache, queuedRenderable, casterPass, lastCacheHash, commandBuffer, isV1);
-    }
-
-    void HlmsWind::getDefaultPaths(Ogre::String& outDataFolderPath, Ogre::StringVector& outLibraryFoldersPaths)
-    {
-        // We need to know what RenderSystem is currently in use, as the
-        // name of the compatible shading language is part of the path
-        Ogre::RenderSystem* renderSystem = Ogre::Root::getSingleton().getRenderSystem();
-        Ogre::String shaderSyntax = "GLSL";
-        if (renderSystem->getName() == "Direct3D11 Rendering Subsystem")
-        {
-            shaderSyntax = "HLSL";
-        }
-        else if (renderSystem->getName() == "Metal Rendering Subsystem")
-        {
-            shaderSyntax = "Metal";
-        }
-
-        // Fill the library folder paths with the relevant folders
-        outLibraryFoldersPaths.clear();
-        outLibraryFoldersPaths.push_back("Hlms/Common/" + shaderSyntax);
-        outLibraryFoldersPaths.push_back("Hlms/Common/Any");
-        outLibraryFoldersPaths.push_back("Hlms/Pbs/Any");
-        outLibraryFoldersPaths.push_back("Hlms/Pbs/Any/Main");
-        outLibraryFoldersPaths.push_back("Hlms/Wind/Any");
-
-        // Fill the data folder path
-        outDataFolderPath = "Hlms/pbs/" + shaderSyntax;
-    }
-
-    void HlmsWind::calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces)
-    {
-        HlmsPbs::calculateHashForPreCreate(renderable, inOutPieces);
-        setProperty(kNoTid, "wind_enabled", 1);
-    }
-
-    void HlmsWind::loadTexturesAndSamplers(Ogre::SceneManager* sceneManager)
-    {
-        Ogre::TextureGpuManager* textureManager = sceneManager->getDestinationRenderSystem()->getTextureGpuManager();
-
-        Ogre::HlmsSamplerblock samplerblock;
-        samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
-        samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
-        samplerblock.mW = Ogre::TextureAddressingMode::TAM_WRAP;
-        samplerblock.mMaxAnisotropy = 8;
-        samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
-        this->noiseSamplerBlock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getSamplerblock(samplerblock);
-
-        this->noiseTexture =
-            textureManager->createOrRetrieveTexture("windNoise.dds", Ogre::GpuPageOutStrategy::Discard, Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB, Ogre::TextureTypes::Type3D, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-
-        this->noiseTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-    }
+        Ogre::TextureGpu* noiseTexture;
+    };
 
 }; // namespace end
+
+#endif

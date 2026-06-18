@@ -261,17 +261,6 @@ namespace NOWA
         virtual bool postInit(void) override;
 
         /**
-         * @brief One-shot handler for EventDataSceneParsed. Fires once the
-         *        engine itself considers the scene fully valid and
-         *        renderable for the
-         *        engine-side counterpart). This is the actual trigger point
-         *        for regenerating foliage loaded from a saved scene -- not
-         *        lateInit() itself. Removes its own listener immediately so
-         *        it never fires again.
-         */
-        void handleSceneParsed(NOWA::EventDataPtr eventData);
-
-        /**
          * @see		GameObjectComponent::connect
          */
         virtual bool connect(void) override;
@@ -565,7 +554,7 @@ namespace NOWA
         {
             return "Rule Tree Sway Strength ";
         }
-    protected:
+    private:
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         /**
          * @brief Main generation function (runs on main thread)
@@ -725,7 +714,21 @@ namespace NOWA
         std::vector<VegetationBatch> calculatePlanetFoliagePositions(GameObject* planetGo, Ogre::Real planetRadius, const Ogre::Vector3& planetCentre);
 
         bool meetsPlanetCriteria(Ogre::Real heightAboveSeaLevel, const Ogre::Vector3& hitNormal, const Ogre::Vector3& outwardDir, const FoliageRule& rule) const;
-    protected:
+
+    private:
+        /**
+         * @brief One-shot handler for EventDataSceneParsed. Fires once the
+         *        engine itself considers the scene fully valid and
+         *        renderable for the
+         *        engine-side counterpart). This is the actual trigger point
+         *        for regenerating foliage loaded from a saved scene -- not
+         *        lateInit() itself. Removes its own listener immediately so
+         *        it never fires again.
+         */
+        void handleSceneParsed(NOWA::EventDataPtr eventData);
+
+        void handleGeometryChanged(NOWA::EventDataPtr eventData);
+    private:
         Ogre::String name;
 
         // Volume settings
