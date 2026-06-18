@@ -3097,7 +3097,14 @@ void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
                 this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
                 MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
                 MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
-                this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
+
+				Ogre::String fileType = "*";
+                if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileType()))
+                {
+                    fileType = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionFileType());
+                }
+
+                this->showFileOpenDialog("FileOpen", "*." + fileType, resourceGroupName);
             }
             else
             {
@@ -3785,7 +3792,14 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
             this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
             MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
             MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
-            this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
+
+			Ogre::String fileType = "*";
+            if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileType()))
+            {
+                fileType = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionFileType());
+            }
+
+            this->showFileOpenDialog("FileOpen", "*." + fileType, resourceGroupName);
         }
         // LuaScript
         else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))

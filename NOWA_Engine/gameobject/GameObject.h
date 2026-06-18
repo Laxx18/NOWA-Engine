@@ -988,6 +988,7 @@ namespace NOWA
 		static const Ogre::String AttrActionForceSet(void) { return "ForceSet"; }
 		static const Ogre::String AttrActionMultiLine(void) { return "MultiLine"; }
 		static const Ogre::String AttrActionFileOpenDialog(void) { return "FileOpenDialog"; }
+        static const Ogre::String AttrActionFileType(void) { return "FileType"; }
 		static const Ogre::String AttrActionSeparator(void) { return "Separator"; }
 		static const Ogre::String AttrActionLabel(void) { return "Label"; }
 		static const Ogre::String AttrActionImage(void) { return "Image"; }

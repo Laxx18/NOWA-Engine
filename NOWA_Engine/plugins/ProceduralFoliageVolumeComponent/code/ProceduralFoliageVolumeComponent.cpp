@@ -244,6 +244,7 @@ namespace NOWA
                 {
                     this->ruleMeshNames[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleMeshName() + Ogre::StringConverter::toString(i), Ogre::String(), this->attributes);
                     this->ruleMeshNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
+                    this->ruleMeshNames[i]->addUserData(GameObject::AttrActionFileType(), "mesh");
                     this->ruleMeshNames[i]->setDescription("Mesh for this vegetation type.");
                 }
                 this->ruleMeshNames[i]->setValue(meshName);
@@ -2868,6 +2869,7 @@ namespace NOWA
                 // Rule Mesh Name
                 this->ruleMeshNames[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleMeshName() + Ogre::StringConverter::toString(i), Ogre::String(), this->attributes);
                 this->ruleMeshNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
+                this->ruleMeshNames[i]->addUserData(GameObject::AttrActionFileType(), "mesh");
                 this->ruleMeshNames[i]->setDescription("3D mesh file for this vegetation (.mesh).");
 
                 // Rule Density
@@ -3621,7 +3623,7 @@ namespace NOWA
             Ogre::String lowerName = *datablock->getNameStr();
             Ogre::StringUtil::toLowerCase(lowerName);
 
-            if (lowerName.find("leaf") != Ogre::String::npos)
+            if (lowerName.find("leaf") != Ogre::String::npos || lowerName.find("leaves") != Ogre::String::npos || lowerName.find("twig") != Ogre::String::npos || lowerName.find("peacock") != Ogre::String::npos)
             {
                 return true;
             }
