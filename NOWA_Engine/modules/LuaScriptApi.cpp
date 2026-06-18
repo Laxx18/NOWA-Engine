@@ -8642,43 +8642,6 @@ namespace NOWA
 		AddClassToCollection("LightAreaComponent", "bool getDoubleSided()", "Gets whether the light lits in both directions (positive & negative sides of the plane) or if only towards one.");
 	}
 
-	void bindFogComponent(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<FogComponent, GameObjectComponent>("FogComponent")
-				// .def("getClassName", &FogComponent::getClassName)
-			.def("getParentClassName", &FogComponent::getParentClassName)
-			.def("setActivated", &FogComponent::setActivated)
-			.def("isActivated", &FogComponent::isActivated)
-			.def("setFogMode", &FogComponent::setFogMode)
-			.def("getFogMode", &FogComponent::getFogMode)
-			.def("setColor", &FogComponent::setColor)
-			.def("getColor", &FogComponent::getColor)
-			.def("setExpDensity", &FogComponent::setExpDensity)
-			.def("getExpDensity", &FogComponent::getExpDensity)
-			.def("setLinearStart", &FogComponent::setLinearStart)
-			.def("getLinearStart", &FogComponent::getLinearStart)
-			.def("setLinearEnd", &FogComponent::setLinearEnd)
-			.def("getLinearEnd", &FogComponent::getLinearEnd)
-			];
-		AddClassToCollection("FogComponent", "class inherits GameObjectComponent", "Creates fog for the scene.");
-		// AddClassToCollection("FogComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("FogComponent", "number getClassId()", "Gets the class id of this component.");
-		AddClassToCollection("FogComponent", "void setActivated(bool activated)", "Sets whether fog is active or not.");
-		AddClassToCollection("FogComponent", "bool isActivated()", "Gets whether fog is active or not.");
-		AddClassToCollection("FogComponent", "void setFogMode(String mode)", "Sets the fog mode. Possible values are: 'Linear', 'Exponential', 'Exponential 2'");
-		AddClassToCollection("FogComponent", "String getFogMode()", "Gets the fog mode.");
-		AddClassToCollection("FogComponent", "void setColor(Vector3 color)", "Sets the color (r, g, b) of the fog. Either set this to the same as your viewport background color, or to blend in with a skybox.");
-		AddClassToCollection("FogComponent", "Vector3 getColor()", "Gets the diffuse color (r, g, b) of the fog.");
-		AddClassToCollection("FogComponent", "void setExpDensity(float expDensity)", "The density of the fog in 'Exponential' or 'Exponential 2' mode, as a value between 0 and 1. The default is 0.001. ");
-		AddClassToCollection("FogComponent", "float getExpDensity()", "Gets the density of the fog in 'Exponential' or 'Exponential 2' mode.");
-		AddClassToCollection("FogComponent", "void setLinearStart(float linearStart)", "Sets the distance in world units at which linear fog starts to encroach. Only applicable if mode is 'Linear'.");
-		AddClassToCollection("FogComponent", "float getLinearStart()", "Gets the distance in world units at which linear fog starts to encroach. Only applicable if mode is 'Linear'.");
-		AddClassToCollection("FogComponent", "void setLinearEnd(float linearEnd)", "Sets ths distance in world units at which linear fog becomes completely opaque. Only applicable if mode is 'Linear'.");
-		AddClassToCollection("FogComponent", "float getLinearEnd()", "Gets ths distance in world units at which linear fog becomes completely opaque. Only applicable if mode is 'Linear'.");
-	}
-
 	void bindFadeComponent(lua_State* lua)
 	{
 		module(lua)
@@ -8697,7 +8660,7 @@ namespace NOWA
 		AddClassToCollection("FadeComponent", "void setActivated(bool activated)", "Activates the fading effect.");
 		AddClassToCollection("FadeComponent", "bool isActivated()", "Gets whether fading is active or not.");
 		AddClassToCollection("FadeComponent", "void setFadeMode(String mode)", "Sets the fade mode. Possible values are: 'FadeIn', 'FadeOut'");
-		AddClassToCollection("FadeComponent", "String getFogMode()", "Gets the fog mode.");
+		AddClassToCollection("FadeComponent", "String getFadeMode()", "Gets the fade mode.");
 		AddClassToCollection("FadeComponent", "void setDurationSec(float durationSec)", "Sets the duration in seconds for the fading.");
 		AddClassToCollection("FadeComponent", "float getDurationSec()", "Gets the duration in seconds.");
 		AddClassToCollection("FadeComponent", "void reactOnFadeCompleted(func closure)", "Sets whether to react at the moment when fade has completed.");
@@ -11818,7 +11781,6 @@ namespace NOWA
 				bindOgreNewt(this->lua);
 				bindJointHandlers(this->lua);
 				bindLightComponents(this->lua);
-				bindFogComponent(this->lua);
 				bindFadeComponent(this->lua);
 				bindPhysicsComponent(this->lua);
 				bindPhysicsActiveComponent(this->lua);

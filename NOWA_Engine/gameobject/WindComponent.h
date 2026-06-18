@@ -1,125 +1,159 @@
-#ifndef HLMS_WIND_H
-#define HLMS_WIND_H
+#ifndef WIND_COMPONENT_H
+#define WIND_COMPONENT_H
 
-#include "CommandBuffer/OgreCbTexture.h"
-#include "CommandBuffer/OgreCommandBuffer.h"
-#include "OgreHlmsListener.h"
-#include "OgreHlmsPbs.h"
-#include "defines.h"
+#include "GameObjectComponent.h"
 
 namespace NOWA
 {
-    // Maximum number of simultaneous interactors (players/objects pushing foliage).
-    // Matches the interactors[4] array in 500_Structs_piece_vs_piece_ps.any.
-    // Increasing this requires changing the shader struct AND the pass buffer size.
-    static const int WIND_MAX_INTERACTORS = 4;
-
     /**
-     * @brief One interactor slot: a world-space XZ position with a radius of
-     *        influence and a push strength. The vertex shader pushes foliage
-     *        vertices away from this position with quadratic falloff.
+     * @class WindComponent
+     * @brief Controls global wind parameters for the HlmsWind shader system.
+     *
+     * Place this component on any game object in the scene to activate wind-driven
+     * vertex displacement for all objects that use a Wind HLMS datablock (HLMS_USER0).
+     * Typical use: grass blades, foliage, cloth.
+     *
+     * Only one WindComponent should exist per scene. ProceduralFoliageVolumeComponent
+     * and other wind-aware components automatically find and use it via the
+     * GameObjectController.
+     *
+     * Wind is always independent of AtmosphereComponent and CompositorEffectComponents.
      */
-    struct WindInteractor
-    {
-        float worldX;   // World space X position of the interactor
-        float worldZ;   // World space Z position of the interactor
-        float radius;   // Radius of influence in world units
-        float strength; // Peak push magnitude at centre (e.g. 0.5 - 2.0)
-    };
-
-    class EXPORTED HlmsWindListener : public Ogre::HlmsListener
+    class EXPORTED WindComponent : public GameObjectComponent
     {
     public:
-        HlmsWindListener();
-
-        virtual ~HlmsWindListener() = default;
-
-        void setTime(Ogre::Real time);
-
-        void addTime(Ogre::Real time);
-
-        /**
-         * @brief Replaces the active interactor list for this frame.
-         *        Call once per frame from the logic thread before rendering.
-         *        The list is copied immediately so the caller does not need to
-         *        keep it alive past this call.
-         * @param[in] interactors Active interactors, at most WIND_MAX_INTERACTORS.
-         *        Excess entries beyond WIND_MAX_INTERACTORS are silently ignored.
-         */
-        void setInteractors(const std::vector<WindInteractor>& interactors);
-
-        /**
-         * @brief Clears all active interactors (no foliage push this frame).
-         */
-        void clearInteractors();
-
-        virtual Ogre::uint32 getPassBufferSize(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager) const;
-
-        virtual float* preparePassBuffer(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager, float* passBufferPtr);
-
-    private:
-        Ogre::Real windStrength;
-        Ogre::Real globalTime;
-
-        // Active interactors for the current frame.
-        // Written from the logic thread via setInteractors(), read from the
-        // render thread in preparePassBuffer(). Access is safe because
-        // preparePassBuffer is called after the logic thread has submitted
-        // its frame (same ordering as WindComponent::update -> addTime).
-        WindInteractor activeInteractors[WIND_MAX_INTERACTORS];
-        int activeInteractorCount;
-    };
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    class EXPORTED HlmsWind : public Ogre::HlmsPbs
-    {
-    public:
-        HlmsWind(Ogre::Archive* dataFolder, Ogre::ArchiveVec* libraryFolders);
-
-        virtual ~HlmsWind() = default;
-
-        void addTime(float time);
-
-        void setup(Ogre::SceneManager* sceneManager);
-
-        void shutdown(Ogre::SceneManager* sceneManager);
-
-        /**
-         * @brief Sets the active interactor list for this frame.
-         *        Forwards directly to HlmsWindListener::setInteractors.
-         *        Call from the logic thread (e.g. ProceduralFoliageVolumeComponent
-         *        updateTrackedClosure or a dedicated WindInteractionComponent).
-         */
-        void setInteractors(const std::vector<WindInteractor>& interactors);
-
-        /**
-         * @brief Clears all active interactors.
-         */
-        void clearInteractors();
-
-        PropertiesMergeStatus notifyPropertiesMergedPreGenerationStep(size_t tid, Ogre::PiecesMap* inOutPieces);
-
-        Ogre::uint32 fillBuffersForV1(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer);
-
-        Ogre::uint32 fillBuffersForV2(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer);
-
-        Ogre::uint32 fillBuffersFor(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer, bool isV1);
+        typedef boost::shared_ptr<NOWA::WindComponent> WindCompPtr;
 
     public:
-        static void getDefaultPaths(Ogre::String& outDataFolderPath, Ogre::StringVector& outLibraryFoldersPaths);
+        WindComponent();
+
+        virtual ~WindComponent();
+
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        virtual bool postInit(void) override;
+
+        virtual void onRemoveComponent(void) override;
+
+        virtual bool connect(void) override;
+
+        virtual bool disconnect(void) override;
+
+        virtual Ogre::String getClassName(void) const override;
+
+        virtual Ogre::String getParentClassName(void) const override;
+
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("WindComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "WindComponent";
+        }
+
+        /**
+         * @see GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        /**
+         * @see GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: Controls global wind parameters (strength, direction, frequency) "
+                   "for all objects using the HlmsWind shader (HLMS_USER0). "
+                   "Only one WindComponent per scene is necessary. "
+                   "Wind-aware components such as ProceduralFoliageVolumeComponent automatically "
+                   "detect and use this component.";
+        }
+
+        static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::CUSTOM;
+            desc.displayName = "Wind";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = false;
+            desc.autoComponents = {WindComponent::getStaticClassName()};
+            return desc;
+        }
+
+        /**
+         * @see GameObjectComponent::update
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+
+        /**
+         * @see GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @brief Sets the overall wind strength.
+         * @param strength Wind displacement scale. 0 = no wind. Typical range 0..2.
+         *                 Values above 1 produce strong storm-like movement.
+         */
+        void setWindStrength(Ogre::Real strength);
+
+        /**
+         * @brief Gets the overall wind strength.
+         */
+        Ogre::Real getWindStrength(void) const;
+
+        /**
+         * @brief Sets the dominant wind direction in world space.
+         * @param direction World-space direction vector. Automatically normalized.
+         *                  Use (1,0,0) for east wind, (-1,0,0) for west, etc.
+         *                  The Y component is ignored for ground-level vegetation.
+         */
+        void setWindDirection(const Ogre::Vector3& direction);
+
+        /**
+         * @brief Gets the dominant wind direction.
+         */
+        Ogre::Vector3 getWindDirection(void) const;
+
+        /**
+         * @brief Sets how fast the 3D noise field animates (turbulence speed).
+         * @param frequency Animation speed multiplier. 1.0 = default. Higher values
+         *                  produce more rapid turbulent variation between blades.
+         *                  Typical range 0.1..5.0.
+         */
+        void setWindFrequency(Ogre::Real frequency);
+
+        /**
+         * @brief Gets the wind frequency.
+         */
+        Ogre::Real getWindFrequency(void) const;
+
+    public:
+        static const Ogre::String AttrWindStrength(void)
+        {
+            return "Wind Strength";
+        }
+        static const Ogre::String AttrWindDirection(void)
+        {
+            return "Wind Direction";
+        }
+        static const Ogre::String AttrWindFrequency(void)
+        {
+            return "Wind Frequency";
+        }
 
     private:
-        void calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces) override;
-
-        void loadTexturesAndSamplers(Ogre::SceneManager* sceneManager);
+        void applyToHlmsWind(void);
 
     private:
-        HlmsWindListener windListener;
-
-        Ogre::HlmsSamplerblock const* noiseSamplerBlock;
-
-        Ogre::TextureGpu* noiseTexture;
+        Variant* windStrength;
+        Variant* windDirection;
+        Variant* windFrequency;
     };
 
 }; // namespace end

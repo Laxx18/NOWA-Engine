@@ -535,9 +535,6 @@
     <ClInclude Include="shader\HlmsWind.h">
       <Filter>shader</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\FogComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="main\ScriptEvent.h">
       <Filter>main</Filter>
     </ClInclude>
@@ -558,9 +555,6 @@
     </ClInclude>
     <ClInclude Include="gameobject\ValueBarComponent.h">
       <Filter>gameobject</Filter>
-    </ClInclude>
-    <ClInclude Include="shader\HlmsFog.h">
-      <Filter>shader</Filter>
     </ClInclude>
     <ClInclude Include="utilities\LuaObserver.h">
       <Filter>utilities</Filter>
@@ -1129,9 +1123,6 @@
     <ClCompile Include="shader\HlmsWind.cpp">
       <Filter>shader</Filter>
     </ClCompile>
-    <ClCompile Include="gameobject\FogComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
     <ClCompile Include="main\ScriptEvent.cpp">
       <Filter>main</Filter>
     </ClCompile>
@@ -1152,9 +1143,6 @@
     </ClCompile>
     <ClCompile Include="gameobject\ValueBarComponent.cpp">
       <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="shader\HlmsFog.cpp">
-      <Filter>shader</Filter>
     </ClCompile>
     <ClCompile Include="utilities\LuaObserver.cpp">
       <Filter>utilities</Filter>

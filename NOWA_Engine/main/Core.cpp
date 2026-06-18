@@ -29,7 +29,6 @@
 
 #include "OgreHlmsTerra.h"
 #include "shader/HlmsWind.h"
-#include "shader/HlmsFog.h"
 
 // Lua console
 #include "console/LuaConsole.h"

@@ -727,7 +727,6 @@ namespace NOWA
          */
         void handleSceneParsed(NOWA::EventDataPtr eventData);
 
-        void handleGeometryChanged(NOWA::EventDataPtr eventData);
     private:
         Ogre::String name;
 

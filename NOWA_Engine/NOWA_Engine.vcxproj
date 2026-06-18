@@ -229,7 +229,6 @@
     <ClInclude Include="gameobject\ValueBarComponent.h" />
     <ClInclude Include="gameobject\ExitComponent.h" />
     <ClInclude Include="gameobject\FadeComponent.h" />
-    <ClInclude Include="gameobject\FogComponent.h" />
     <ClInclude Include="gameobject\GameObjectComponent.h" />
     <ClInclude Include="gameobject\GameObjectTitleComponent.h" />
     <ClInclude Include="gameobject\GenericFactory.h" />
@@ -356,7 +355,6 @@
     <ClInclude Include="planetterra\PlanetTerra.h" />
     <ClInclude Include="res\resource.h" />
     <ClInclude Include="shader\HlmsBaseListenerContainer.h" />
-    <ClInclude Include="shader\HlmsFog.h" />
     <ClInclude Include="shader\HlmsWind.h" />
     <ClInclude Include="utilities\AnimationBlenderV2.h" />
     <ClInclude Include="utilities\AnimationSerializer.h" />
@@ -447,7 +445,6 @@
     <ClCompile Include="gameobject\ValueBarComponent.cpp" />
     <ClCompile Include="gameobject\ExitComponent.cpp" />
     <ClCompile Include="gameobject\FadeComponent.cpp" />
-    <ClCompile Include="gameobject\FogComponent.cpp" />
     <ClCompile Include="gameobject\GameObject.cpp" />
     <ClCompile Include="gameobject\GameObjectComponent.cpp" />
     <ClCompile Include="gameobject\GameObjectController.cpp" />
@@ -572,7 +569,6 @@
     <ClCompile Include="planetsun\PlanetSun.cpp" />
     <ClCompile Include="planetterra\PlanetTerra.cpp" />
     <ClCompile Include="shader\HlmsBaseListenerContainer.cpp" />
-    <ClCompile Include="shader\HlmsFog.cpp" />
     <ClCompile Include="shader\HlmsWind.cpp" />
     <ClCompile Include="utilities\AnimationBlenderV2.cpp" />
     <ClCompile Include="utilities\AnimationSerializer.cpp" />

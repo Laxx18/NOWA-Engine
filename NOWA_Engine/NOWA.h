@@ -113,7 +113,6 @@ extern "C"
 #include "gameobject/LightSpotComponent.h"
 #include "gameobject/LightPointComponent.h"
 #include "gameobject/LightAreaComponent.h"
-#include "gameobject/FogComponent.h"
 #include "gameobject/FadeComponent.h"
 #include "gameobject/NodeComponent.h"
 #include "gameobject/NodeTrackComponent.h"
@@ -193,7 +192,6 @@ namespace NOWA
 	typedef boost::shared_ptr<LightSpotComponent> LightSpotCompPtr;
 	typedef boost::shared_ptr<LightPointComponent> LightPointCompPtr;
 	typedef boost::shared_ptr<LightAreaComponent> LightAreaCompPtr;
-	typedef boost::shared_ptr<FogComponent> FogCompPtr;
 	typedef boost::shared_ptr<FadeComponent> FadeCompPtr;
 	typedef boost::shared_ptr<NodeComponent> NodeCompPtr;
 	typedef boost::shared_ptr<NodeTrackComponent> NodeTrackCompPtr;
@@ -264,7 +262,6 @@ namespace NOWA
 	typedef boost::shared_ptr<CompositorEffectSharpenEdgesComponent> CompositorEffectSharpenEdgesCompPtr;
     typedef boost::shared_ptr<CompositorEffectCartoonComponent> CompositorEffectCartoonCompPtr;
     typedef boost::shared_ptr<CompositorEffectVolumetricLightComponent> CompositorEffectVolumetricLightCompPtr;
-    typedef boost::shared_ptr<CompositorEffectFogComponent> CompositorEffectFogCompPtr;
     typedef boost::shared_ptr<CompositorEffectLightShaftsComponent> CompositorEffectLightShaftsCompPtr;
     typedef boost::shared_ptr<CompositorEffectDepthOfFieldComponent> CompositorEffectDepthOfFieldCompPtr;
     typedef boost::shared_ptr<CompositorEffectOutlineComponent> CompositorEffectOutlineCompPtr;

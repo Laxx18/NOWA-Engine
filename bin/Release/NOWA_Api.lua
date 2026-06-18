@@ -4262,127 +4262,6 @@ return {
 			}
 		}
 	},
-	CompositorEffectFogComponent =
-	{
-		type = "class",
-		description = "Requirements: A camera component must exist. The workspace must provide a depthTexture output channel. Uses the scene depth buffer to compute per pixel fog.  Supports two independent fog layers:  Depth fog: Exponential fog based on camera distance. Useful for atmospheric haze and distant object fading.  Height fog: Exponential fog based on world space height. Useful for ground mist, valleys and low lying fog.  Both fog layers can be combined freely. Setting a fog density to 0 disables that layer.  Camera matrices and projection data are updated per frame through the tracked closure system without game thread stalls.",
-		inherits = "GameObjectComponent",
-		childs = 
-		{
-			setDepthFogDensity =
-			{
-				type = "method",
-				description = "Sets the density/intensity of the distance based fog effect.",
-				args = "(number density)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getDepthFogDensity =
-			{
-				type = "function",
-				description = "Gets the current distance fog density.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setDepthFogStart =
-			{
-				type = "method",
-				description = "Sets the world distance at which depth fog begins.",
-				args = "(number start)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getDepthFogStart =
-			{
-				type = "function",
-				description = "Gets the depth fog start distance.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setHeightFogDensity =
-			{
-				type = "method",
-				description = "Sets the density/intensity of the height based fog effect.",
-				args = "(number density)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getHeightFogDensity =
-			{
-				type = "function",
-				description = "Gets the current height fog density.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setHeightFogStart =
-			{
-				type = "method",
-				description = "Sets the world height where height fog begins.",
-				args = "(number startHeight)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getHeightFogStart =
-			{
-				type = "function",
-				description = "Gets the height fog start height.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setHeightFogEnd =
-			{
-				type = "method",
-				description = "Sets the world height where height fog fully fades out.",
-				args = "(number endHeight)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getHeightFogEnd =
-			{
-				type = "function",
-				description = "Gets the height fog end height.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setFogColor =
-			{
-				type = "method",
-				description = "Sets the fog RGB color.",
-				args = "(Vector3 color)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getFogColor =
-			{
-				type = "function",
-				description = "Gets the current fog RGB color.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			setFogSkyBlend =
-			{
-				type = "method",
-				description = "Sets how much the fog blends with the sky color. 0 = only fog color, 1 = fully blended with sky.",
-				args = "(number blend)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getFogSkyBlend =
-			{
-				type = "function",
-				description = "Gets the sky blend factor.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			}
-		}
-	},
 	CompositorEffectGlassComponent =
 	{
 		type = "class",
@@ -7148,10 +7027,10 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getFogMode =
+			getFadeMode =
 			{
 				type = "function",
-				description = "Gets the fog mode.",
+				description = "Gets the fade mode.",
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
@@ -7243,111 +7122,6 @@ return {
 				args = "(number width, number height)",
 				returns = "(nil)",
 				valuetype = "nil"
-			}
-		}
-	},
-	FogComponent =
-	{
-		type = "class",
-		description = "Creates fog for the scene.",
-		inherits = "GameObjectComponent",
-		childs = 
-		{
-			setActivated =
-			{
-				type = "method",
-				description = "Sets whether fog is active or not.",
-				args = "(boolean activated)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			isActivated =
-			{
-				type = "function",
-				description = "Gets whether fog is active or not.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setFogMode =
-			{
-				type = "method",
-				description = "Sets the fog mode. Possible values are: 'Linear', 'Exponential', 'Exponential 2'",
-				args = "(string mode)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getFogMode =
-			{
-				type = "function",
-				description = "Gets the fog mode.",
-				args = "()",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			setColor =
-			{
-				type = "method",
-				description = "Sets the color (r, g, b) of the fog. Either set this to the same as your viewport background color, or to blend in with a skybox.",
-				args = "(Vector3 color)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getColor =
-			{
-				type = "function",
-				description = "Gets the diffuse color (r, g, b) of the fog.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			setExpDensity =
-			{
-				type = "method",
-				description = "The density of the fog in 'Exponential' or 'Exponential 2' mode, as a value between 0 and 1. The default is 0.001. ",
-				args = "(number expDensity)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getExpDensity =
-			{
-				type = "function",
-				description = "Gets the density of the fog in 'Exponential' or 'Exponential 2' mode.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setLinearStart =
-			{
-				type = "method",
-				description = "Sets the distance in world units at which linear fog starts to encroach. Only applicable if mode is 'Linear'.",
-				args = "(number linearStart)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getLinearStart =
-			{
-				type = "function",
-				description = "Gets the distance in world units at which linear fog starts to encroach. Only applicable if mode is 'Linear'.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setLinearEnd =
-			{
-				type = "method",
-				description = "Sets ths distance in world units at which linear fog becomes completely opaque. Only applicable if mode is 'Linear'.",
-				args = "(number linearEnd)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getLinearEnd =
-			{
-				type = "function",
-				description = "Gets ths distance in world units at which linear fog becomes completely opaque. Only applicable if mode is 'Linear'.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
 			}
 		}
 	},
@@ -9950,22 +9724,6 @@ return {
 				returns = "(CompositorEffectDepthOfFieldComponent)",
 				valuetype = "CompositorEffectDepthOfFieldComponent"
 			},
-			getCompositorEffectFogComponent =
-			{
-				type = "function",
-				description = "Gets the CompositorEffectFogComponent.",
-				args = "()",
-				returns = "(CompositorEffectFogComponent)",
-				valuetype = "CompositorEffectFogComponent"
-			},
-			getCompositorEffectFogComponentFromName =
-			{
-				type = "function",
-				description = "Gets the CompositorEffectFogComponent by name.",
-				args = "(string name)",
-				returns = "(CompositorEffectFogComponent)",
-				valuetype = "CompositorEffectFogComponent"
-			},
 			getCompositorEffectLaplaceComponent =
 			{
 				type = "function",
@@ -12541,14 +12299,6 @@ return {
 				args = "(CompositorEffectDepthOfFieldComponent other)",
 				returns = "(CompositorEffectDepthOfFieldComponent)",
 				valuetype = "CompositorEffectDepthOfFieldComponent"
-			},
-			castCompositorEffectFogComponent =
-			{
-				type = "function",
-				description = "Casts for Lua auto completion.",
-				args = "(CompositorEffectFogComponent other)",
-				returns = "(CompositorEffectFogComponent)",
-				valuetype = "CompositorEffectFogComponent"
 			},
 			castCompositorEffectLaplaceComponent =
 			{

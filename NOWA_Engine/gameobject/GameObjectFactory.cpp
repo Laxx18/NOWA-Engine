@@ -42,7 +42,6 @@
 #include "LightSpotComponent.h"
 #include "LightPointComponent.h"
 #include "LightAreaComponent.h"
-#include "FogComponent.h"
 #include "FadeComponent.h"
 #include "NodeComponent.h"
 #include "NodeTrackComponent.h"
@@ -143,7 +142,6 @@ namespace NOWA
 		this->componentFactory.registerClass<CompositorEffectSharpenEdgesComponent>(CompositorEffectSharpenEdgesComponent::getStaticClassId(), CompositorEffectSharpenEdgesComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectCartoonComponent>(CompositorEffectCartoonComponent::getStaticClassId(), CompositorEffectCartoonComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectVolumetricLightComponent>(CompositorEffectVolumetricLightComponent::getStaticClassId(), CompositorEffectVolumetricLightComponent::getStaticClassName());
-        this->componentFactory.registerClass<CompositorEffectFogComponent>(CompositorEffectFogComponent::getStaticClassId(), CompositorEffectFogComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectLightShaftsComponent>(CompositorEffectLightShaftsComponent::getStaticClassId(), CompositorEffectLightShaftsComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectDepthOfFieldComponent>(CompositorEffectDepthOfFieldComponent::getStaticClassId(), CompositorEffectDepthOfFieldComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectOutlineComponent>(CompositorEffectOutlineComponent::getStaticClassId(), CompositorEffectOutlineComponent::getStaticClassName());
@@ -176,8 +174,6 @@ namespace NOWA
 		this->componentFactory.registerClass<LightSpotComponent>(LightSpotComponent::getStaticClassId(), LightSpotComponent::getStaticClassName());
 		this->componentFactory.registerClass<LightPointComponent>(LightPointComponent::getStaticClassId(), LightPointComponent::getStaticClassName());
 		this->componentFactory.registerClass<LightAreaComponent>(LightAreaComponent::getStaticClassId(), LightAreaComponent::getStaticClassName());
-
-		this->componentFactory.registerClass<FogComponent>(FogComponent::getStaticClassId(), FogComponent::getStaticClassName());
 		this->componentFactory.registerClass<FadeComponent>(FadeComponent::getStaticClassId(), FadeComponent::getStaticClassName());
 
 		// Physics components
