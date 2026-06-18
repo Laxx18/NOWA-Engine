@@ -34,18 +34,6 @@ namespace NOWA
 		virtual bool postInit(void);
 
 		/**
-         * @brief Called once, after EVERY GameObject in the scene has completed
-         *        postInit(). At this point all components on all GameObjects are
-         *        guaranteed to exist and be fully initialized -- safe to query other
-         *        GameObjects' components, categories, physics shapes, etc.
-         *        Default implementation does nothing; override only if needed.
-         *        NOTE: unlike postInit(), this is NOT called again on every
-         *        play/stop (connect/disconnect) cycle -- it fires exactly once,
-         *        right after the initial scene load completes.
-         */
-        virtual bool lateInit(void);
-
-		/**
 		 * @brief		This function is called when when all game objects and components are already post-initialized and available. It can be used to connect data with other objects.
 		 * @param[in]	cloned			if set to true, this connection should be used to get the target game object by its prior id, since it has been cloned
 		 * @return		success			true, if the connection did work, else false

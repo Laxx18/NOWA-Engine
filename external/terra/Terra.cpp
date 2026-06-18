@@ -928,7 +928,7 @@ namespace Ogre
         camCenter.x = (camCenter.x / cellSize.x) * cellSize.x;
         camCenter.z = (camCenter.z / cellSize.z) * cellSize.z;
 
-        static int logCounter = 0;
+        /*static int logCounter = 0;
         if (++logCounter % 60 == 0)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
@@ -941,7 +941,7 @@ namespace Ogre
                 " basePixelDimension=" + Ogre::StringConverter::toString(basePixelDimension) +
                 " camCenter.x=" + Ogre::StringConverter::toString(camCenter.x) +
                 " camCenter.z=" + Ogre::StringConverter::toString(camCenter.z));
-        }
+        }*/
 
         uint32 currentLod = 0;
 

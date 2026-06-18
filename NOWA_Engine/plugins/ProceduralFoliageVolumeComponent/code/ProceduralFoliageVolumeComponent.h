@@ -261,23 +261,9 @@ namespace NOWA
         virtual bool postInit(void) override;
 
         /**
-         * @see		GameObjectComponent::lateInit
-         *
-         * Regenerates foliage that was loaded from a saved scene. Must run here
-         * rather than in postInit(), because lateInit() is only called after
-         * EVERY GameObject in the scene has completed its own postInit() -- see
-         * DotSceneImportModule::postInitData(). This guarantees obstacle
-         * GameObjects (category "Obstacle") have registered their category bits
-         * before isCategoryAllowed() queries them during regeneration.
-         *
-         * Called exactly once, never again on subsequent play/stop cycles.
-         */
-        virtual bool lateInit(void) override;
-
-        /**
          * @brief One-shot handler for EventDataSceneParsed. Fires once the
          *        engine itself considers the scene fully valid and
-         *        renderable (see DesignState::handleSceneValid for the
+         *        renderable for the
          *        engine-side counterpart). This is the actual trigger point
          *        for regenerating foliage loaded from a saved scene -- not
          *        lateInit() itself. Removes its own listener immediately so
@@ -705,6 +691,36 @@ namespace NOWA
             int clusterCount,
             std::vector<int>& outBranchIds,
             std::vector<Ogre::Vector3>& outBranchPivots);
+
+        /**
+         * @brief Derives the expected "Swaying" Wind HLMS datablock name for
+         *        a given original PBS datablock name, per the naming
+         *        convention documented in SwayingTreeLeavesMaterials.material:
+         *        the original full datablock name with the literal suffix
+         *        "Swaying" appended, no other transformation. Example:
+         *        "/dural/plants/trees/birch/texture/leaves_fall" becomes
+         *        "/dural/plants/trees/birch/texture/leaves_fallSwaying".
+         * @param[in] originalDatablockName The original PBS datablock's name.
+         * @return The expected Swaying datablock name to look up.
+         */
+        Ogre::String getSwayingDatablockName(const Ogre::String& originalDatablockName) const;
+
+        /**
+         * @brief Looks up the Swaying Wind HLMS datablock matching a leaves
+         *        submesh's original datablock, per getSwayingDatablockName.
+         *        Requires a WindComponent to be present in the scene (same
+         *        gating as procedural grass) -- there is no point swapping
+         *        to a Wind datablock if nothing will drive the sway uniform.
+         *        Returns nullptr (with a logged warning) if no WindComponent
+         *        exists, or if no matching Swaying datablock was authored
+         *        for this particular leaves texture -- per-branch sway is
+         *        opt-in per tree texture, not automatic for every tree
+         *        asset. The caller should keep the original datablock
+         *        unchanged when this returns nullptr.
+         * @param[in] originalDatablock The leaves submesh's original PBS datablock.
+         * @return The matching Wind datablock, or nullptr if unavailable.
+         */
+        Ogre::HlmsDatablock* resolveSwayingLeavesDatablock(Ogre::HlmsDatablock* originalDatablock);
 
         std::vector<VegetationBatch> calculatePlanetFoliagePositions(GameObject* planetGo, Ogre::Real planetRadius, const Ogre::Vector3& planetCentre);
 

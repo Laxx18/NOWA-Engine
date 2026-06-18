@@ -6,7 +6,6 @@
 #include "gameobject/TerraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
-#include "main/EventManager.h"
 #include "modules/GraphicsModule.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
@@ -309,7 +308,12 @@ namespace NOWA
                 if (nullptr == this->ruleTerraLayers[i])
                 {
                     this->ruleTerraLayers[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i), Ogre::String("255,255,255,255"), this->attributes);
-                    this->ruleTerraLayers[i]->setDescription("Terra layer thresholds (e.g., 255,200,0,0).");
+                    this->ruleTerraLayers[i]->setDescription("Terra layer thresholds, one per RGBA blend channel (e.g. 0,255,0,0). "
+                        "Each value is a MAXIMUM allowed paint amount on that channel (layers[i] <= threshold). "
+                        "Terrain brushes have soft alpha falloff, so a channel that is meant to stay unpainted rarely sits at "
+                        "a clean 0 -- a faint trace of the underlying layer often bleeds through. If foliage seems to be "
+                        "missing inside an area you painted, try relaxing the ceiling slightly (e.g. 254 instead of 0) on the "
+                        "channels that should otherwise be empty, to tolerate that bleed-through.");
                 }
                 this->ruleTerraLayers[i]->setValue(layers);
                 this->rules[i].terraLayerThresholds = this->parseTerraLayers(layers);
@@ -655,44 +659,7 @@ namespace NOWA
             // scene has finished postInit() -- see DotSceneImportModule::
             // postInitData(). That is the correct, safe point to regenerate
             // foliage loaded from a saved scene.
-        }
-
-        return true;
-    }
-
-    bool ProceduralFoliageVolumeComponent::lateInit(void)
-    {
-        // Called exactly once, after every GameObject in the scene has completed
-        // postInit() -- never again on subsequent play/stop (connect/disconnect)
-        // cycles. All obstacle categories are guaranteed to be registered by now,
-        // so isCategoryAllowed() queries here are reliable.
-        if (true == this->foliageLoadedFromScene)
-        {
             this->foliageLoadedFromScene = false;
-
-            // Delays the visibility to prevent any transform jumps, if set in lua afterwards
-            /*NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(5.0f));
-            auto ptrFunction = [this]()
-            //
-            // Empirically confirmed: calling regenerateFoliage() synchronously
-            // from lateInit() creates every grass/foliage Item correctly --
-            // identical item counts, node attachment, visible=true, and
-            // correct AABB bounds compared to a later manual "Regenerate"
-            // button press -- yet the foliage is invisible on the first
-            // rendered frame after scene load and stays invisible
-            // indefinitely. The exact Ogre-internal reason was never fully
-            // confirmed; what matters is that something about the scene not
-            // yet being in a fully valid/renderable state at lateInit() time
-            // is the cause.
-            //
-            // Rather than guess at a delay duration, listen for the engine's
-            // own EventDataSceneParsed event (see DesignState::handleSceneParsed)
-            // which fires once the scene has actually reached a valid,
-            // renderable state. One-shot: remove the listener the moment it
-            // fires so this never runs again on subsequent scene loads of a
-            // different scene, or if EventDataSceneValid is posted more than
-            // once in a session.
-            // ------------------------------------------------------------------*/
 
             AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralFoliageVolumeComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
         }
@@ -704,11 +671,12 @@ namespace NOWA
     {
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralFoliageVolumeComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
 
-        GraphicsModule::getInstance()->enqueueAndWait([this]()
+        GraphicsModule::getInstance()->enqueueAndWait(
+            [this]()
             {
                 this->regenerateFoliage();
             },
-            "ProceduralFoliageVolumeComponent::handleSceneValid_Regenerate");
+            "ProceduralFoliageVolumeComponent::handleSceneParsed");
     }
 
     bool ProceduralFoliageVolumeComponent::connect(void)
@@ -1443,6 +1411,24 @@ namespace NOWA
         }
 
         // Terra layer check
+        //
+        // Each threshold is a per-channel MAXIMUM allowed paint value:
+        // layers[i] <= threshold must hold for every channel.
+        //
+        // In practice, terrain brushes have soft alpha falloff, so even a
+        // "fully painted" spot rarely reaches a clean 255 on the target
+        // channel -- the previous layer's paint often still shines through
+        // faintly underneath. This is why a threshold of exactly 255 on the
+        // layers that should stay clear of paint (e.g. "0,255,0,0" meaning
+        // "only place where channel 1 is painted") can end up rejecting
+        // almost the whole brushed area: the lingering few units of bleed-
+        // through on the other channels push them just over a strict 0
+        // ceiling. Using a slightly relaxed ceiling on the "should be
+        // unpainted" channels (e.g. 254 instead of 0) tolerates this
+        // bleed-through and gives full coverage of the actual painted
+        // patch. Tune this per terrain/brush as needed -- there is no
+        // universal correct value, it depends on brush hardness and how
+        // many overlapping strokes were painted.
         if (terra && rule.terraLayerThresholds.size() == 4)
         {
             std::vector<int> layers = terra->getLayerAt(position);
@@ -1618,6 +1604,15 @@ namespace NOWA
                     subMeshDatablocks[si] = db;
                     if (nullptr != db)
                     {
+                        // Real alpha blending (e.g. scene_blend alpha_blend) sets
+                        // isAutoTransparent()/isForcedTransparent() on the
+                        // blendblock. Cutout materials using alpha_test or
+                        // alpha_hash instead (very common for leaves -- see
+                        // PlantsAlpha_Blendblock/leaves_fall in this project)
+                        // do NOT set either of those, so both signals must be
+                        // checked or cutout leaves get silently misclassified
+                        // as opaque (confirmed: birch leaves_fall reported
+                        // transparent=NO with the blendblock check alone).
                         const Ogre::HlmsBlendblock* bb = db->getBlendblock(false);
                         bool isCutoutOrBlended = (nullptr != bb && (bb->isAutoTransparent() || bb->isForcedTransparent()));
 
@@ -2120,7 +2115,25 @@ namespace NOWA
 
                     if (nullptr != sd.datablock && cellItem->getNumSubItems() > 0u)
                     {
-                        cellItem->getSubItem(0u)->setDatablock(sd.datablock);
+                        // For leaves submeshes with useProceduralTree enabled,
+                        // try to swap to the matching Swaying Wind datablock
+                        // so the baked branchId/phase VES_BLEND_WEIGHTS
+                        // attribute actually gets consumed for sway. Falls
+                        // back to the original (rigid) PBS datablock if no
+                        // matching Swaying variant has been authored for
+                        // this leaves texture, or if no WindComponent exists
+                        // in the scene -- see resolveSwayingLeavesDatablock.
+                        Ogre::HlmsDatablock* finalDatablock = sd.datablock;
+                        if (true == sd.isLeaves)
+                        {
+                            Ogre::HlmsDatablock* swayingDatablock = this->resolveSwayingLeavesDatablock(sd.datablock);
+                            if (nullptr != swayingDatablock)
+                            {
+                                finalDatablock = swayingDatablock;
+                            }
+                        }
+
+                        cellItem->getSubItem(0u)->setDatablock(finalDatablock);
                     }
 
                     cellItem->setRenderQueueGroup(renderQueue);
@@ -2826,13 +2839,15 @@ namespace NOWA
                 //                    density=0.20 -> step=10m (~100 groundcover/100x100m)
                 // The pattern scales by index: trees(0), shrubs(1), small shrubs(2), groundcover(3+)
                 // -----------------------------------------------------------------------
-                static const float densityByIndex[] = {0.05f, 0.10f, 1.0f, 2.0f, 3.0f};
-                static const float minSpacingByIndex[] = {8.0f, 3.0f, 2.0f, 1.5f, 1.0f};
-                static const float lodDistByIndex[] = {80.0f, 60.0f, 50.0f, 30.0f, 25.0f};
-                static const float renderDistByIndex[] = {100.0f, 80.0f, 70.0f, 60.0f, 50.0f};
+                static const float densityByIndex[] = {7.0f, 0.10f, 1.0f, 2.0f, 3.0f};
+                static const float minSpacingByIndex[] = {0.01f, 3.0f, 2.0f, 1.5f, 1.0f};
+                static const float lodDistByIndex[] = {40.0f, 60.0f, 50.0f, 30.0f, 25.0f};
+                static const float renderDistByIndex[] = {60.0f, 80.0f, 70.0f, 60.0f, 50.0f};
                 static const float shadowDistByIndex[] = {60.0f, 40.0f, 30.0f, 0.0f, 0.0f};
-                static const bool collisionByIndex[] = {true, false, false, false, false};
-                static const bool castShadowsByIndex[] = {true, false, false, false, false};
+                static const float clearanceDistanceByIndex[] = {0.01f, 1.0f, 5.0f, 5.0f, 5.0f};
+                static const bool collisionByIndex[] = {false, false, false, false, false};
+                static const bool castShadowsByIndex[] = {false, false, false, false, false};
+                static const bool proceduralGrassByIndex[] = {true, false, false, false, false};
 
                 const size_t clampedIdx = std::min(i, static_cast<size_t>(4));
 
@@ -2841,8 +2856,10 @@ namespace NOWA
                 const Ogre::Real defaultLodDist = lodDistByIndex[clampedIdx];
                 const Ogre::Real defaultRenderDist = renderDistByIndex[clampedIdx];
                 const Ogre::Real defaultShadowDist = shadowDistByIndex[clampedIdx];
+                const Ogre::Real defaultClearanceDistance = clearanceDistanceByIndex[clampedIdx];
                 const bool defaultCollision = collisionByIndex[clampedIdx];
                 const bool defaultCastShadows = castShadowsByIndex[clampedIdx];
+                const bool defaultUseProceduralGrass = proceduralGrassByIndex[clampedIdx];
 
                 // Rule Name
                 this->ruleNames[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleName() + Ogre::StringConverter::toString(i), Ogre::String("Vegetation_" + Ogre::StringConverter::toString(i)), this->attributes);
@@ -2873,8 +2890,12 @@ namespace NOWA
 
                 // Terra Layers — all layers allowed
                 this->ruleTerraLayers[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i), Ogre::String("255,255,255,255"), this->attributes);
-                this->ruleTerraLayers[i]->setDescription("Layer thresholds (0-255 per channel). 255,255,255,255 = all layers. "
-                                                         "255,255,255,0 = layers 1-3 allowed, layer 4 blocked.");
+                this->ruleTerraLayers[i]->setDescription("Layer thresholds, one per RGBA blend channel. Each value is a MAXIMUM "
+                    "allowed paint amount on that channel (layers[i] <= threshold). 255 = no restriction. "
+                    "Terrain brushes have soft alpha falloff, so a channel meant to stay unpainted rarely sits at a clean 0 -- "
+                    "the underlying layer often bleeds through faintly. If foliage seems to be missing inside a painted area, "
+                    "relax the ceiling slightly (e.g. 254,255,0,0 instead of 0,255,0,0) on the channels that should otherwise "
+                    "be empty.");
                 this->rules[i].terraLayerThresholds = this->parseTerraLayers("255,255,255,255");
 
                 // Scale Range — slight variation around 1.0
@@ -2927,7 +2948,7 @@ namespace NOWA
                 this->ruleClearanceDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i), (i == 0) ? 5.0f : 1.0f, this->attributes); // trees need more clearance than bushes
                 this->ruleClearanceDistances[i]->setDescription("Buffer zone around excluded objects (meters). Trees: 4-6m, Bushes: 1-2m, 0 = disabled.");
                 this->ruleClearanceDistances[i]->setConstraints(0.0f, 50.0f);
-                this->rules[i].clearanceDistance = (i == 0) ? 5.0f : 1.0f;
+                this->rules[i].clearanceDistance = defaultClearanceDistance;
 
                 // Collision Enabled — only for trees (index 0) by default
                 this->ruleCollisionEnabled[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionEnabled() + Ogre::StringConverter::toString(i), defaultCollision, this->attributes);
@@ -2953,7 +2974,7 @@ namespace NOWA
                 this->ruleUseProceduralGrass[i] = new Variant(AttrRuleUseProceduralGrass() + Ogre::StringConverter::toString(i), false, this->attributes);
                 this->ruleUseProceduralGrass[i]->setDescription("If true, generates procedural cross-quad grass blades instead of loading a mesh. "
                                                                 "Rule Mesh Name is ignored. Blades use the Wind HLMS datablock and sway when a WindComponent exists.");
-                this->rules[i].useProceduralGrass = false;
+                this->rules[i].useProceduralGrass = defaultUseProceduralGrass;
 
                 this->ruleBladeWidths[i] = new Variant(AttrRuleBladeWidth() + Ogre::StringConverter::toString(i), 0.15f, this->attributes);
                 this->ruleBladeWidths[i]->setDescription("Half-width of one grass blade in meters. Wider = lush, narrower = fine grass.");
@@ -3738,6 +3759,56 @@ namespace NOWA
         }
     }
 
+    Ogre::String ProceduralFoliageVolumeComponent::getSwayingDatablockName(const Ogre::String& originalDatablockName) const
+    {
+        // Naming convention: original name + literal "Swaying" suffix, no
+        // other transformation. See SwayingTreeLeavesMaterials.material for
+        // the full rationale and authored examples.
+        return originalDatablockName + "Swaying";
+    }
+
+    Ogre::HlmsDatablock* ProceduralFoliageVolumeComponent::resolveSwayingLeavesDatablock(Ogre::HlmsDatablock* originalDatablock)
+    {
+        if (nullptr == originalDatablock || nullptr == originalDatablock->getNameStr())
+        {
+            return nullptr;
+        }
+
+        if (nullptr == this->windComponent)
+        {
+            // Same gating as procedural grass: no WindComponent in the scene
+            // means nothing will ever drive the sway uniform, so there is no
+            // point swapping to a Wind datablock at all.
+            return nullptr;
+        }
+
+        const Ogre::String swayingName = this->getSwayingDatablockName(*originalDatablock->getNameStr());
+
+        Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+        Ogre::Hlms* hlmsWind = hlmsManager->getHlms(Ogre::HLMS_USER0);
+        if (nullptr == hlmsWind)
+        {
+            return nullptr;
+        }
+
+        Ogre::HlmsDatablock* swayingDatablock = hlmsWind->getDatablock(swayingName);
+        if (nullptr == swayingDatablock)
+        {
+            // Per-branch sway is opt-in per tree texture, not automatic for
+            // every tree asset -- this is expected and not an error if the
+            // person simply has not authored a Swaying variant for this
+            // particular leaves texture yet. Log at a lower severity than
+            // LML_CRITICAL would suggest, but use the same logger calling
+            // convention as the rest of this file for consistency.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] useProceduralTree: no Swaying Wind datablock '" + swayingName + "' found for leaves datablock '" + *originalDatablock->getNameStr() +
+                                                                                    "'. Leaves will not sway -- create this datablock in a .material script " +
+                                                                                    "(see SwayingTreeLeavesMaterials.material) if per-branch sway is wanted for this texture.");
+            return nullptr;
+        }
+
+        return swayingDatablock;
+    }
+
     unsigned int ProceduralFoliageVolumeComponent::parseExcludedCategoryId(const Ogre::String& categories)
     {
         unsigned int excludedCategoryId = 0;
@@ -3784,21 +3855,21 @@ namespace NOWA
         }
 
         // ------------------------------------------------------------------
-        // Mirrors GameObjectPlaceComponent::checkExcludedCategoryOverlap,
-        // which is confirmed working: do NOT rely on RaySceneQuery /
-        // SphereSceneQuery setQueryMask() filtering at all. Query broadly
-        // (default mask = everything) and check each hit's category bit
-        // manually via getQueryFlags() & rule.categoriesId in code. This
-        // sidesteps any ambiguity in how generateCategoryId() resolves
-        // "All-Obstacle" into a bitmask and whether that bitmask is meant
-        // to be inverted before being handed to setQueryMask -- we just
-        // check the bit ourselves, the same way the proven working code
-        // already does it.
+        // rule.categoriesId (from generateCategoryId) is the "All minus
+        // excluded" mask -- e.g. "All-Obstacle" -> every bit except Obstacle.
+        // Using that mask directly as setQueryMask would make Obstacle
+        // objects INVISIBLE to the query (they are filtered out by Ogre's
+        // own mask check before we ever see them), so it cannot be used to
+        // detect whether an obstacle is present.
         //
-        // Everything here runs on the render thread via enqueueAndWait,
-        // matching checkExcludedCategoryOverlap, since scene queries
-        // (RaySceneQuery::execute / SphereSceneQuery::execute) must not be
-        // called from the logic/loading thread.
+        // Instead, rule.excludedCategoryId holds just the excluded bit(s)
+        // themselves (parsed via parseExcludedCategoryId, mirroring
+        // GameObjectPlaceComponent::parseExcludedCategories). We query WITH
+        // that mask -- so the query can ONLY return objects that ARE
+        // obstacles -- and reject the position if anything is found at all.
+        // This is the same approach GameObjectPlaceComponent::
+        // checkExcludedCategoryOverlap uses (excludedCategoryId as the
+        // search target, not categoriesId).
         // ------------------------------------------------------------------
 
         if (0u == rule.excludedCategoryId)
@@ -3823,42 +3894,44 @@ namespace NOWA
         Ogre::SphereSceneQuery* sphereQuery = this->sphereSceneQuery;
         const Ogre::Real clearanceDistance = rule.clearanceDistance;
 
-        GraphicsModule::getInstance()->enqueueAndWait([obstacleFound, rayQuery, sphereQuery, clearanceDistance]()
-        {
-            // Cast against only the excluded bits — hit means blocked
-            // STRING down to just the Obstacle bit (it parses "All" minus the
-            // named exclusions itself -- see GameObjectController::
-            if (clearanceDistance > 0.0f && nullptr != sphereQuery)
+        GraphicsModule::getInstance()->enqueueAndWait(
+            [obstacleFound, rayQuery, sphereQuery, clearanceDistance]()
             {
-                Ogre::SceneQueryResult& result = sphereQuery->execute();
-                for (Ogre::MovableObject* mo : result.movables)
+                // Cast against only the excluded bits — hit means blocked
+                // STRING down to just the Obstacle bit (it parses "All" minus the
+                // named exclusions itself -- see GameObjectController::
+                if (clearanceDistance > 0.0f && nullptr != sphereQuery)
                 {
-                    if (nullptr != mo && mo->getMovableType() != "Camera")
+                    Ogre::SceneQueryResult& result = sphereQuery->execute();
+                    for (Ogre::MovableObject* mo : result.movables)
                     {
-                        *obstacleFound = true;
-                        break;
+                        if (nullptr != mo && mo->getMovableType() != "Camera")
+                        {
+                            *obstacleFound = true;
+                            break;
+                        }
+                    }
+                    sphereQuery->clearResults();
+                    if (true == *obstacleFound)
+                    {
+                        return;
                     }
                 }
-                sphereQuery->clearResults();
-                if (true == *obstacleFound)
-                {
-                    return;
-                }
-            }
 
-            // getRaycastFromPoint already skips MovableType "Camera"
-            // internally and does proper triangle-level intersection
-            // against Items / Terra / ManualObject -- the camera
-            // parameter itself is unused in its body, so nullptr is safe.
-            Ogre::Vector3 hitPoint, hitNormal;
-            Ogre::MovableObject* hitObject = nullptr;
-            Ogre::Real closestDistance = 0.0f;
-            std::vector<Ogre::MovableObject*> excludeList;
+                // getRaycastFromPoint already skips MovableType "Camera"
+                // internally and does proper triangle-level intersection
+                // against Items / Terra / ManualObject -- the camera
+                // parameter itself is unused in its body, so nullptr is safe.
+                Ogre::Vector3 hitPoint, hitNormal;
+                Ogre::MovableObject* hitObject = nullptr;
+                Ogre::Real closestDistance = 0.0f;
+                std::vector<Ogre::MovableObject*> excludeList;
 
-            MathHelper::getInstance()->getRaycastFromPoint(rayQuery, nullptr, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
+                MathHelper::getInstance()->getRaycastFromPoint(rayQuery, nullptr, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
 
-            *obstacleFound = (nullptr != hitObject);
-        }, "ProceduralFoliageVolumeComponent::isCategoryAllowed");
+                *obstacleFound = (nullptr != hitObject);
+            },
+            "ProceduralFoliageVolumeComponent::isCategoryAllowed");
 
         // Position is allowed only if NO obstacle was found.
         return (false == *obstacleFound);
@@ -4048,10 +4121,12 @@ namespace NOWA
             batch.instances = std::move(filtered);
         }
 
-        batches.erase(std::remove_if(batches.begin(), batches.end(), [](const VegetationBatch& b)
-                    {
-                        return b.instances.empty();
-                    }), batches.end());
+        batches.erase(std::remove_if(batches.begin(), batches.end(),
+                          [](const VegetationBatch& b)
+                          {
+                              return b.instances.empty();
+                          }),
+            batches.end());
 
         return batches;
     }

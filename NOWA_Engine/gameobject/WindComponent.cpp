@@ -15,9 +15,9 @@ namespace NOWA
 
     WindComponent::WindComponent() :
         GameObjectComponent(),
-        windStrength(new Variant(WindComponent::AttrWindStrength(), 0.5f, this->attributes)),
+        windStrength(new Variant(WindComponent::AttrWindStrength(), 0.1f, this->attributes)),
         windDirection(new Variant(WindComponent::AttrWindDirection(), Ogre::Vector3(1.0f, 0.0f, 0.0f), this->attributes)),
-        windFrequency(new Variant(WindComponent::AttrWindFrequency(), 1.0f, this->attributes))
+        windFrequency(new Variant(WindComponent::AttrWindFrequency(), 0.2f, this->attributes))
     {
         this->windStrength->setConstraints(0.0f, 5.0f);
         this->windFrequency->setConstraints(0.1f, 10.0f);

@@ -498,36 +498,6 @@ namespace NOWA
             }
         }
 
-        // ========================================================================
-        // LATE INIT PHASE
-        //
-        // At this point EVERY GameObject in the scene (including MainCamera,
-        // MainLight, MainGameObject) has completed postInit(). Every component on
-        // every GameObject is guaranteed to exist. This is the correct, safe place
-        // for components that need to query OTHER GameObjects' components,
-        // categories, or physics/collision shapes -- which are not reliably
-        // available during a single GameObject's own postInit(), since GameObjects
-        // are initialized in an arbitrary order and a sibling's postInit() may not
-        // have run yet.
-        //
-        // Example: ProceduralFoliageVolumeComponent must query obstacle categories
-        // (Wall_0, container_0, etc.) when regenerating foliage loaded from a saved
-        // scene. If this query ran during its own postInit(), those obstacles might
-        // not have registered their categories yet, silently breaking the filter.
-        //
-        // lateInit() is called exactly once here, never again on subsequent
-        // play/stop (connect/disconnect) cycles.
-        // ========================================================================
-        this->notifyPostInitPhase("LateInit phase", totalGO, totalGO);
-
-        gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-
-        for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
-        {
-            const auto gameObjectPtr = it->second;
-            gameObjectPtr->lateInit();
-        }
-
         if (AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements() && true == this->projectParameter.hasRecast)
         {
             // wrong transform values at this early stage

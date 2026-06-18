@@ -98,13 +98,6 @@ namespace NOWA
 		bool postInit(void);
 
 		/**
-         * @brief Calls lateInit() on every component attached to this GameObject.
-         *        Must only be invoked after ALL GameObjects in the scene have
-         *        completed postInit() -- see DotSceneImportModule::postInitData().
-         */
-        bool lateInit(void);
-
-		/**
 		 * @brief		Connects a game object when all game objects and components are already post-initialized and available. This can be called manually by the @GameObjectController
 		 *				e.g. to start a simulation. Everything is ready and will be connected.
 		 * @param[in]	cloned			if set to true, this connection should be used to get the target game object by its prior id, since it has been cloned

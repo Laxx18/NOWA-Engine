@@ -3349,7 +3349,22 @@ namespace NOWA
                 Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
                 {
-                    // Render Scene OPAQUE V2 (RQ 0-94)
+                    // Render Scene: everything from RQ 0 up to (but not including) RENDER_QUEUE_GIZMO
+                    // (252), in ONE pass.
+                    //
+                    // Attention (performance fix): this used to be split into four separate PASS_SCENE
+                    // definitions (OPAQUE V2 0-99, OPAQUE V1 100-199, TRANSPARENT V2 200-224,
+                    // TRANSPARENT V1 225-255), all sharing identical mShadowNode/store-action settings and
+                    // differing only in mUpdateLodLists (true on the first, false on the rest) and the SSAO
+                    // normals-gbuffer flag. Ogre's own render queue already sorts opaque front-to-back and
+                    // transparent back-to-front correctly within a single PASS_SCENE regardless of how many
+                    // separate passes wrap around it (see Ogre's own samples, which use a single
+                    // rq_first/no-rq_last render_scene pass for everything past the opaque-vs-sky split).
+                    // Each removed pass boundary was paying full per-frame compositor pass-transition and
+                    // validation overhead for no benefit; merging restores a leaner structure identical in
+                    // spirit to the fix already applied to WorkspaceSkyComponent. Unlike the sky component,
+                    // there is no sky quad here, so there is no "before/after sky" boundary requirement at
+                    // all -- everything except the gizmo/overlay range collapses into this single pass.
                     {
                         Ogre::CompositorPassSceneDef* passScene;
                         auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -3371,6 +3386,9 @@ namespace NOWA
                             passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
                         }
 
+                        // Kept exactly as the original first pass: this pass both clears AND renders, since
+                        // there is no separate dedicated PASS_CLEAR in this workspace (unlike
+                        // WorkspaceSkyComponent, which clears in its own pass before the sky quad).
                         passScene->setAllLoadActions(Ogre::LoadAction::Clear);
 
                         // Store depth if we need depth texture (for SSAO or generic use)
@@ -3387,7 +3405,7 @@ namespace NOWA
                         // otherwise shadow atlas may be read as Undefined at startup / after invalidation.
                         passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
 
-                        passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Opaque_V2_Pass_Scene";
+                        passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Pass_Scene";
                         passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
                         if (true == this->useSSAO->getBool())
@@ -3397,14 +3415,20 @@ namespace NOWA
                         }
 
                         passScene->mIncludeOverlays = false;
+
+                        // Computed once for the full RQ range, correctly, instead of once-true-then-false
+                        // across four narrower passes.
                         passScene->mUpdateLodLists = true;
 
-                        // Render only v2 opaque range in this pass
+                        // Render everything up to (not including) RENDER_QUEUE_GIZMO = 252
                         passScene->mFirstRQ = 0;
-                        passScene->mLastRQ = 99;
+                        passScene->mLastRQ = 251;
                     }
 
-                    // Render Scene OPAQUE V1 (RQ 100-199) so v1::Entity is NOT drawn in transparent pass
+                    // Render Scene: gizmo / always-in-foreground / overlay range (RQ 252-255).
+                    // Kept as its own pass since depth/stencil and overlay handling for this range can
+                    // legitimately differ from the main scene pass (e.g. editor gizmos drawing regardless
+                    // of depth), mirroring the same split kept in WorkspaceSkyComponent.
                     {
                         Ogre::CompositorPassSceneDef* passScene;
                         auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -3417,80 +3441,8 @@ namespace NOWA
 
                         passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
-                        passScene->mFirstRQ = 100;
-                        passScene->mLastRQ = 199;
-
-                        if (true == this->useSSAO->getBool())
-                        {
-                            passScene->mGenNormalsGBuf = true;
-                            passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
-                        }
-
-                        passScene->mUpdateLodLists = false;
-
-                        passScene->setAllLoadActions(Ogre::LoadAction::Load);
-                        passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-                        passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                        passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                        passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Opaque_V1_Pass_Scene";
-
-                        if (true == this->usePlanarReflection->getBool())
-                        {
-                            passScene->mIdentifier = 25001;
-                        }
-                    }
-
-                    // Render Scene TRANSPARENT V2 (RQ 200-224) for alpha-blended ParticleFX2 etc.
-                    {
-                        Ogre::CompositorPassSceneDef* passScene;
-                        auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                        passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                        passScene->mIncludeOverlays = false;
-
-                        passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-                        passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-
-                        passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                        // FAST-high range. Render after v1 opaque
-                        passScene->mFirstRQ = 200;
-                        passScene->mLastRQ = 224;
-
-                        // Do NOT generate normals for transparency; it can corrupt SSAO / normals buffer.
-                        passScene->mGenNormalsGBuf = false;
-
-                        passScene->mUpdateLodLists = false;
-
-                        passScene->setAllLoadActions(Ogre::LoadAction::Load);
-                        passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-                        passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                        passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                        passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Transparent_V2_Pass_Scene";
-
-                        if (true == this->usePlanarReflection->getBool())
-                        {
-                            passScene->mIdentifier = 25001;
-                        }
-                    }
-
-                    // Render Scene TRANSPARENT V1 (RQ 225-255, after sky)
-                    {
-                        Ogre::CompositorPassSceneDef* passScene;
-                        auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                        passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                        passScene->mIncludeOverlays = false;
-
-                        passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-                        passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-
-                        passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                        passScene->mFirstRQ = 225;
-                        passScene->mLastRQ = 255; // Covers all remaining queues including GIZMO and MAX
+                        passScene->mFirstRQ = 252; // RENDER_QUEUE_GIZMO
+                        passScene->mLastRQ = 255;  // RENDER_QUEUE_MAX
 
                         passScene->mGenNormalsGBuf = false;
                         passScene->mUpdateLodLists = false;
@@ -3500,7 +3452,7 @@ namespace NOWA
                         passScene->mStoreActionDepth = Ogre::StoreAction::Store;
                         passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-                        passScene->mProfilingId = "NOWA_Sky_After_Pbs_Transparent_V1_Pass_Scene";
+                        passScene->mProfilingId = "NOWA_Pbs_Gizmo_Overlay_Pass_Scene";
 
                         if (true == this->usePlanarReflection->getBool())
                         {
@@ -3508,7 +3460,7 @@ namespace NOWA
                         }
                     }
 
-                    // ===== ADD OVERLAY PASS FOR PCC =====
+                    // ===== ADD OVERLAY PASS FOR PCC ===== (unchanged, unrelated to this merge)
                     // When PCC is active, we need a separate pass for overlays (RQ 251+)
                     if (true == this->usePCC->getBool())
                     {
@@ -3992,44 +3944,21 @@ namespace NOWA
                     passClear->mProfilingId = "NOWA_Sky_Clear_Pass_Clear";
                 }
 
-                // Render Scene (RQ 0-1, before sky)
-                {
-                    Ogre::CompositorPassSceneDef* passScene;
-                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                    if (true == this->canUseReflection)
-                    {
-                        passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
-                    }
-
-                    // We already cleared in PASS_CLEAR
-                    passScene->setAllLoadActions(Ogre::LoadAction::Load);
-
-                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                    if (true == this->useSSAO->getBool())
-                    {
-                        passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
-                        passScene->mGenNormalsGBuf = true;
-                    }
-
-                    if (true == this->usePlanarReflection->getBool())
-                    {
-                        passScene->mIdentifier = 25001;
-                    }
-
-                    passScene->mProfilingId = "NOWA_Sky_Render_Scene_Before_Sky_Pass_Scene";
-                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                    passScene->mIncludeOverlays = false;
-                    passScene->mUpdateLodLists = true;
-
-                    passScene->mFirstRQ = 0;
-                    passScene->mLastRQ = 1;
-                }
+                // Attention (performance fix): there used to be a dedicated "Render Scene RQ 0-1, before
+                // sky" PASS_SCENE here. Nothing in NOWA::eRenderQueues is ever assigned to RQ 0 or RQ 1
+                // (the lowest queue actually used is RENDER_QUEUE_V2_MESH = 10), so that pass always
+                // rendered zero objects -- it existed purely as an empty compositor pass boundary, paying
+                // full per-frame pass-transition/validation overhead for no visible content whatsoever.
+                // Removed entirely. The sky quad now goes directly after the clear pass, matching Ogre's
+                // own Tutorial_Sky compositor script structure (clear -> sky quad -> one scene pass for
+                // everything else -> overlays), instead of splitting the scene into five separate
+                // PASS_SCENE definitions (before-sky, opaque V2, opaque V1, transparent, transparent V1)
+                // that all shared identical shadow-node/store-action settings and differed only in
+                // mUpdateLodLists and SSAO normals-gbuffer flags. Ogre's own render queue already sorts
+                // opaque front-to-back and transparent back-to-front correctly within a single PASS_SCENE
+                // regardless of how many separate passes wrap around it; splitting by RQ band only matters
+                // when pass-level settings genuinely need to differ between bands, which was not the case
+                // here beyond what is preserved below (the gizmo/overlay range still gets its own pass).
 
                 // Quad pass (Sky)
                 {
@@ -4054,12 +3983,20 @@ namespace NOWA
                     passQuad->mProfilingId = "NOWA_Sky_Pass_Quad";
                 }
 
-                // Render Scene OPAQUE V2 (RQ 2-94, after sky)
+                // Render Scene: everything after the sky, RQ 2 up to (but not including)
+                // RENDER_QUEUE_GIZMO (252), in ONE pass instead of four.
                 // IMPORTANT: This is the FIRST pass that uses shadows => must NOT be SHADOW_NODE_REUSE
+                // (kept exactly as in the original "opaque V2" pass, since this replaces it as the first
+                // shadow-consuming pass of the frame).
                 {
                     Ogre::CompositorPassSceneDef* passScene;
                     auto pass = targetDef->addPass(Ogre::PASS_SCENE);
                     passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+                    if (true == this->canUseReflection)
+                    {
+                        passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
+                    }
 
                     passScene->mIncludeOverlays = false;
 
@@ -4072,7 +4009,7 @@ namespace NOWA
                     passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
                     passScene->mFirstRQ = 2;
-                    passScene->mLastRQ = 99;
+                    passScene->mLastRQ = 251; // Up to (not including) RENDER_QUEUE_GIZMO = 252
 
                     passScene->setAllLoadActions(Ogre::LoadAction::Load);
                     passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
@@ -4085,9 +4022,11 @@ namespace NOWA
                         passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
                     }
 
+                    // Computed once for the full RQ range, correctly, instead of once-true-then-false
+                    // across four narrower passes.
                     passScene->mUpdateLodLists = true;
 
-                    passScene->mProfilingId = "NOWA_Sky_After_Sky_Opaque_V2_Pass_Scene";
+                    passScene->mProfilingId = "NOWA_Sky_After_Sky_Pass_Scene";
 
                     if (true == this->usePlanarReflection->getBool())
                     {
@@ -4095,7 +4034,10 @@ namespace NOWA
                     }
                 }
 
-                // Render Scene OPAQUE V1 (RQ 100-199, after sky)
+                // Render Scene: gizmo / always-in-foreground / overlay range (RQ 252-255).
+                // Kept as its own pass since depth/stencil and overlay handling for this range can
+                // legitimately differ from the main scene pass (e.g. editor gizmos drawing regardless of
+                // depth), mirroring Ogre's own dedicated final "Overlays" pass in Tutorial_Sky.
                 {
                     Ogre::CompositorPassSceneDef* passScene;
                     auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -4108,45 +4050,8 @@ namespace NOWA
 
                     passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
-                    passScene->mFirstRQ = 100;
-                    passScene->mLastRQ = 199;
-
-                    passScene->setAllLoadActions(Ogre::LoadAction::Load);
-                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                    if (true == this->useSSAO->getBool())
-                    {
-                        passScene->mGenNormalsGBuf = true;
-                        passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
-                    }
-
-                    passScene->mUpdateLodLists = false;
-
-                    passScene->mProfilingId = "NOWA_Sky_After_Sky_Opaque_V1_Pass_Scene";
-
-                    if (true == this->usePlanarReflection->getBool())
-                    {
-                        passScene->mIdentifier = 25001;
-                    }
-                }
-
-                // Render Scene TRANSPARENT (FAST-high) (RQ 200-224, after sky)
-                {
-                    Ogre::CompositorPassSceneDef* passScene;
-                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                    passScene->mIncludeOverlays = false;
-
-                    passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-                    passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-
-                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                    passScene->mFirstRQ = 200;
-                    passScene->mLastRQ = 224;
+                    passScene->mFirstRQ = 252; // RENDER_QUEUE_GIZMO
+                    passScene->mLastRQ = 255;  // RENDER_QUEUE_MAX
 
                     passScene->mGenNormalsGBuf = false;
                     passScene->mUpdateLodLists = false;
@@ -4156,7 +4061,7 @@ namespace NOWA
                     passScene->mStoreActionDepth = Ogre::StoreAction::Store;
                     passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-                    passScene->mProfilingId = "NOWA_Sky_After_Sky_Transparent_Pass_Scene";
+                    passScene->mProfilingId = "NOWA_Sky_Gizmo_Overlay_Pass_Scene";
 
                     if (true == this->usePlanarReflection->getBool())
                     {
@@ -4164,39 +4069,7 @@ namespace NOWA
                     }
                 }
 
-                // Render Scene TRANSPARENT V1 (RQ 225-255, after sky)
-                {
-                    Ogre::CompositorPassSceneDef* passScene;
-                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                    passScene->mIncludeOverlays = false;
-
-                    passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-                    passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-
-                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                    passScene->mFirstRQ = 225;
-                    passScene->mLastRQ = 255; // Covers all remaining queues including GIZMO and MAX
-
-                    passScene->mGenNormalsGBuf = false;
-                    passScene->mUpdateLodLists = false;
-
-                    passScene->setAllLoadActions(Ogre::LoadAction::Load);
-                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                    passScene->mProfilingId = "NOWA_Sky_After_Sky_Transparent_V1_Pass_Scene";
-
-                    if (true == this->usePlanarReflection->getBool())
-                    {
-                        passScene->mIdentifier = 25001;
-                    }
-                }
-
-                // ===== ADD OVERLAY PASS FOR PCC =====
+                // ===== ADD OVERLAY PASS FOR PCC ===== (unchanged, unrelated to this merge)
                 if (true == this->usePCC->getBool())
                 {
                     Ogre::CompositorPassSceneDef* overlayPass = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
@@ -4764,44 +4637,14 @@ namespace NOWA
                     passClear->mProfilingId = "NOWA_Background_Clear_Pass_Clear";
                 }
 
-                // Render Scene (RQ 0-1, before background) - LOAD, do NOT clear again
-                {
-                    Ogre::CompositorPassSceneDef* passScene;
-                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                    if (true == this->canUseReflection)
-                    {
-                        passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
-                    }
-
-                    passScene->setAllLoadActions(Ogre::LoadAction::Load);
-
-                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-
-                    if (true == this->useSSAO->getBool())
-                    {
-                        passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
-                        passScene->mGenNormalsGBuf = true;
-                    }
-
-                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                    passScene->mFirstRQ = 0;
-                    passScene->mLastRQ = 1;
-
-                    if (true == this->usePlanarReflection->getBool())
-                    {
-                        passScene->mIdentifier = 25001;
-                    }
-
-                    passScene->mProfilingId = "NOWA_Background_Before_Background_Pass_Scene";
-                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                    passScene->mIncludeOverlays = false;
-                    passScene->mUpdateLodLists = true;
-                }
+                // Attention (performance fix): there used to be a dedicated "Render Scene RQ 0-1, before
+                // background" PASS_SCENE here. Nothing in NOWA::eRenderQueues is ever assigned to RQ 0 or
+                // RQ 1 (the lowest queue actually used is RENDER_QUEUE_V2_MESH = 10), so that pass always
+                // rendered zero objects -- it existed purely as an empty compositor pass boundary, paying
+                // full per-frame pass-transition/validation overhead for no visible content whatsoever.
+                // Removed entirely, exactly like the analogous fix already applied to
+                // WorkspaceSkyComponent and WorkspacePbsComponent. The background quad now goes directly
+                // after the clear pass.
 
                 // Quad pass Background
                 {
@@ -4823,11 +4666,26 @@ namespace NOWA
                     passQuad->mProfilingId = "NOWABackgroundScroll_Pass_Quad";
                 }
 
-                // Render Scene OPAQUE V2 (RQ 2-94, after background)
+                // Render Scene: everything after the background, RQ 2 up to (but not including)
+                // RENDER_QUEUE_GIZMO (252), in ONE pass.
+                //
+                // Attention (performance fix): this used to be split into four separate PASS_SCENE
+                // definitions (OPAQUE V2 2-99, OPAQUE V1 100-199, TRANSPARENT 200-224,
+                // TRANSPARENT V1 225-255), all sharing identical mShadowNode/store-action settings and
+                // differing only in mUpdateLodLists (true on the first, false on the rest) and the SSAO
+                // normals-gbuffer flag. Ogre's own render queue already sorts opaque front-to-back and
+                // transparent back-to-front correctly within a single PASS_SCENE regardless of how many
+                // separate passes wrap around it. Merged into one pass, matching the identical fix already
+                // applied to WorkspaceSkyComponent.
                 {
                     Ogre::CompositorPassSceneDef* passScene;
                     auto pass = targetDef->addPass(Ogre::PASS_SCENE);
                     passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+                    if (true == this->canUseReflection)
+                    {
+                        passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
+                    }
 
                     passScene->mIncludeOverlays = false;
 
@@ -4837,7 +4695,7 @@ namespace NOWA
                     passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
                     passScene->mFirstRQ = 2;
-                    passScene->mLastRQ = 99;
+                    passScene->mLastRQ = 251; // Up to (not including) RENDER_QUEUE_GIZMO = 252
 
                     if (true == this->useSSAO->getBool())
                     {
@@ -4845,6 +4703,8 @@ namespace NOWA
                         passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
                     }
 
+                    // Computed once for the full RQ range, correctly, instead of once-true-then-false
+                    // across four narrower passes.
                     passScene->mUpdateLodLists = true;
 
                     passScene->setAllLoadActions(Ogre::LoadAction::Load);
@@ -4852,7 +4712,7 @@ namespace NOWA
                     passScene->mStoreActionDepth = Ogre::StoreAction::Store;
                     passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-                    passScene->mProfilingId = "NOWA_Background_After_Background_Opaque_V2_Pass_Scene";
+                    passScene->mProfilingId = "NOWA_Background_After_Background_Pass_Scene";
 
                     if (true == this->usePlanarReflection->getBool())
                     {
@@ -4860,7 +4720,10 @@ namespace NOWA
                     }
                 }
 
-                // Render Scene OPAQUE V1 (RQ 100-199, after background)
+                // Render Scene: gizmo / always-in-foreground / overlay range (RQ 252-255).
+                // Kept as its own pass since depth/stencil and overlay handling for this range can
+                // legitimately differ from the main scene pass, mirroring the same split kept in
+                // WorkspaceSkyComponent and WorkspacePbsComponent.
                 {
                     Ogre::CompositorPassSceneDef* passScene;
                     auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -4873,45 +4736,8 @@ namespace NOWA
 
                     passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
-                    passScene->mFirstRQ = 100;
-                    passScene->mLastRQ = 199;
-
-                    if (true == this->useSSAO->getBool())
-                    {
-                        passScene->mGenNormalsGBuf = true;
-                        passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
-                    }
-
-                    passScene->mUpdateLodLists = false;
-
-                    passScene->setAllLoadActions(Ogre::LoadAction::Load);
-                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                    passScene->mProfilingId = "NOWA_Background_After_Background_Opaque_V1_Pass_Scene";
-
-                    if (true == this->usePlanarReflection->getBool())
-                    {
-                        passScene->mIdentifier = 25001;
-                    }
-                }
-
-                // Render Scene TRANSPARENT (FAST-high) (RQ 200-249, after background)
-                {
-                    Ogre::CompositorPassSceneDef* passScene;
-                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                    passScene->mIncludeOverlays = false;
-
-                    passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-                    passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-
-                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                    passScene->mFirstRQ = 200;
-                    passScene->mLastRQ = 224;
+                    passScene->mFirstRQ = 252; // RENDER_QUEUE_GIZMO
+                    passScene->mLastRQ = 255;  // RENDER_QUEUE_MAX
 
                     passScene->mGenNormalsGBuf = false;
                     passScene->mUpdateLodLists = false;
@@ -4921,7 +4747,7 @@ namespace NOWA
                     passScene->mStoreActionDepth = Ogre::StoreAction::Store;
                     passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-                    passScene->mProfilingId = "NOWA_Background_After_Background_Transparent_Pass_Scene";
+                    passScene->mProfilingId = "NOWA_Background_Gizmo_Overlay_Pass_Scene";
 
                     if (true == this->usePlanarReflection->getBool())
                     {
@@ -4929,39 +4755,7 @@ namespace NOWA
                     }
                 }
 
-                // Render Scene TRANSPARENT V1 (RQ 225-224, after sky)
-                {
-                    Ogre::CompositorPassSceneDef* passScene;
-                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                    passScene->mIncludeOverlays = false;
-
-                    passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-                    passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-
-                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                    passScene->mFirstRQ = 225;
-                    passScene->mLastRQ = 255; // Covers all remaining queues including GIZMO and MAX
-
-                    passScene->mGenNormalsGBuf = false;
-                    passScene->mUpdateLodLists = false;
-
-                    passScene->setAllLoadActions(Ogre::LoadAction::Load);
-                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                    passScene->mProfilingId = "NOWA_Sky_After_Background_Transparent_V1_Pass_Scene";
-
-                    if (true == this->usePlanarReflection->getBool())
-                    {
-                        passScene->mIdentifier = 25001;
-                    }
-                }
-
-                // ===== ADD OVERLAY PASS FOR PCC =====
+                // ===== ADD OVERLAY PASS FOR PCC ===== (unchanged, unrelated to this merge)
                 if (true == this->usePCC->getBool())
                 {
                     Ogre::CompositorPassSceneDef* overlayPass = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
