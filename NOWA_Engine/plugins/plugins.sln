@@ -139,6 +139,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetSurfaceComponent", "P
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetAtmosphereComponent", "PlanetAtmosphereComponent\PlanetAtmosphereComponent.vcxproj", "{308C9914-5476-4C5C-B66F-50A21D896E73}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WindInteractionComponent", "WindInteractionComponent\WindInteractionComponent.vcxproj", "{1B202DF0-9ECF-49BD-B812-2B6086552EC7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -389,6 +391,10 @@ Global
 		{308C9914-5476-4C5C-B66F-50A21D896E73}.Debug|x64.Build.0 = Debug|x64
 		{308C9914-5476-4C5C-B66F-50A21D896E73}.Release|x64.ActiveCfg = Release|x64
 		{308C9914-5476-4C5C-B66F-50A21D896E73}.Release|x64.Build.0 = Release|x64
+		{1B202DF0-9ECF-49BD-B812-2B6086552EC7}.Debug|x64.ActiveCfg = Debug|x64
+		{1B202DF0-9ECF-49BD-B812-2B6086552EC7}.Debug|x64.Build.0 = Debug|x64
+		{1B202DF0-9ECF-49BD-B812-2B6086552EC7}.Release|x64.ActiveCfg = Release|x64
+		{1B202DF0-9ECF-49BD-B812-2B6086552EC7}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -3,8 +3,9 @@
 
 namespace NOWA
 {
-    HlmsWindListener::HlmsWindListener() : windStrength(0.5f), globalTime(0.0f), windFrequency(1.0f), windDirection(Ogre::Vector3(1.0f, 0.0f, 0.0f))
+    HlmsWindListener::HlmsWindListener() : windStrength(0.5f), globalTime(0.0f), windFrequency(1.0f), windDirection(Ogre::Vector3(1.0f, 0.0f, 0.0f)), activeInteractorCount(0)
     {
+        memset(this->activeInteractors, 0, sizeof(this->activeInteractors));
     }
 
     void HlmsWindListener::setTime(Ogre::Real time)
@@ -47,16 +48,56 @@ namespace NOWA
         return this->windFrequency;
     }
 
+    void HlmsWindListener::setInteractors(const std::vector<WindInteractor>& interactors)
+    {
+        this->activeInteractorCount = static_cast<int>(std::min(static_cast<int>(interactors.size()), WIND_MAX_INTERACTORS));
+
+        for (int i = 0; i < this->activeInteractorCount; ++i)
+        {
+            this->activeInteractors[i] = interactors[static_cast<size_t>(i)];
+        }
+
+        for (int i = this->activeInteractorCount; i < WIND_MAX_INTERACTORS; ++i)
+        {
+            this->activeInteractors[i] = WindInteractor{0.0f, 0.0f, 0.0f, 0.0f};
+        }
+    }
+
+    void HlmsWindListener::clearInteractors()
+    {
+        this->activeInteractorCount = 0;
+        memset(this->activeInteractors, 0, sizeof(this->activeInteractors));
+    }
+
+    void HlmsWindListener::addInteractor(float worldX, float worldZ, float radius, float strength)
+    {
+        if (this->activeInteractorCount >= WIND_MAX_INTERACTORS)
+        {
+            return;
+        }
+        this->activeInteractors[this->activeInteractorCount].worldX = worldX;
+        this->activeInteractors[this->activeInteractorCount].worldZ = worldZ;
+        this->activeInteractors[this->activeInteractorCount].radius = radius;
+        this->activeInteractors[this->activeInteractorCount].strength = strength;
+        ++this->activeInteractorCount;
+    }
+
     Ogre::uint32 HlmsWindListener::getPassBufferSize(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager) const
     {
         Ogre::uint32 size = 0;
 
         if (!casterPass)
         {
-            // float4 0: windStrength, globalTime, windFrequency, pad
-            // float4 1: windDirection.xyz, pad
-            // Total: 8 floats = 32 bytes, 16-byte aligned.
-            size += sizeof(float) * 8;
+            // Original: float4 0 (windStrength, globalTime, windFrequency, pad)
+            //           float4 1 (windDirection.xyz, pad)
+            //           = 32 bytes
+            // New:      float4 2 (interactorCount, pad, pad, pad)
+            //           float4 3..10 (worldX, worldZ, radius, strength) x WIND_MAX_INTERACTORS
+            //           = 16 + (16 * WIND_MAX_INTERACTORS) bytes extra
+            // Total with WIND_MAX_INTERACTORS=8: 32 + 16 + 128 = 176 bytes
+            size += sizeof(float) * 8;                        // original 2x float4
+            size += sizeof(float) * 4;                        // interactorCount float4
+            size += sizeof(float) * 4 * WIND_MAX_INTERACTORS; // interactor slots
         }
         return size;
     }
@@ -65,16 +106,29 @@ namespace NOWA
     {
         if (!casterPass)
         {
-            // float4 0: windStrength, globalTime, windFrequency, padding
+            // float4 0: windStrength, globalTime, windFrequency, padding  (unchanged)
             *passBufferPtr++ = this->windStrength;
             *passBufferPtr++ = this->globalTime;
             *passBufferPtr++ = this->windFrequency;
             *passBufferPtr++ = 0.0f;
-            // float4 1: windDirection.xyz, padding
+            // float4 1: windDirection.xyz, padding  (unchanged)
             *passBufferPtr++ = this->windDirection.x;
             *passBufferPtr++ = this->windDirection.y;
             *passBufferPtr++ = this->windDirection.z;
             *passBufferPtr++ = 0.0f;
+            // float4 2: interactorCount, pad, pad, pad
+            *passBufferPtr++ = static_cast<float>(this->activeInteractorCount);
+            *passBufferPtr++ = 0.0f;
+            *passBufferPtr++ = 0.0f;
+            *passBufferPtr++ = 0.0f;
+            // float4 3..6: interactor slots (worldX, worldZ, radius, strength)
+            for (int i = 0; i < WIND_MAX_INTERACTORS; ++i)
+            {
+                *passBufferPtr++ = this->activeInteractors[i].worldX;
+                *passBufferPtr++ = this->activeInteractors[i].worldZ;
+                *passBufferPtr++ = this->activeInteractors[i].radius;
+                *passBufferPtr++ = this->activeInteractors[i].strength;
+            }
         }
         return passBufferPtr;
     }
@@ -125,6 +179,21 @@ namespace NOWA
     float HlmsWind::getWindFrequency() const
     {
         return this->windListener.getWindFrequency();
+    }
+
+    void HlmsWind::setInteractors(const std::vector<WindInteractor>& interactors)
+    {
+        this->windListener.setInteractors(interactors);
+    }
+
+    void HlmsWind::clearInteractors()
+    {
+        this->windListener.clearInteractors();
+    }
+
+    void HlmsWind::addInteractor(float worldX, float worldZ, float radius, float strength)
+    {
+        this->windListener.addInteractor(worldX, worldZ, radius, strength);
     }
 
     void HlmsWind::setup(Ogre::SceneManager* sceneManager)
@@ -204,6 +273,14 @@ namespace NOWA
     {
         HlmsPbs::calculateHashForPreCreate(renderable, inOutPieces);
         setProperty(kNoTid, "wind_enabled", 1);
+
+        // Drives the interactors[] array size in 500_Structs_piece_vs_piece_ps.any
+        // and the loop bound check in 800_VertexShader_piece_vs.any via @value().
+        // Changing WIND_MAX_INTERACTORS in HlmsWind.h and recompiling regenerates
+        // the shader with the matching array size automatically -- no manual
+        // edits to the .any files needed, and the C++ pass buffer layout and the
+        // shader struct layout can never drift out of sync.
+        setProperty(kNoTid, "wind_max_interactors", WIND_MAX_INTERACTORS);
     }
 
     void HlmsWind::loadTexturesAndSamplers(Ogre::SceneManager* sceneManager)

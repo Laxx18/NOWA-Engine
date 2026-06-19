@@ -199,7 +199,7 @@ namespace NOWA
         {
             if (this->ruleDensities[i])
             {
-                this->ruleDensities[i]->setConstraints(0.01f, 10.0f);
+                this->ruleDensities[i]->setConstraints(0.01f, 20.0f);
             }
 
             if (this->ruleMaxSlopes[i])
@@ -270,6 +270,7 @@ namespace NOWA
                     this->ruleDensities[i]->setDescription("Instances per m * m (0.01 - 10.0).");
                 }
                 this->ruleDensities[i]->setValue(density);
+                this->ruleDensities[i]->setConstraints(0.01f, 20.0f);
                 this->rules[i].density = density;
                 propertyElement = propertyElement->next_sibling("property");
             }
@@ -298,6 +299,7 @@ namespace NOWA
                     this->ruleMaxSlopes[i]->setDescription("Maximum slope angle in degrees (0-90).");
                 }
                 this->ruleMaxSlopes[i]->setValue(maxSlope);
+                this->ruleMaxSlopes[i]->setConstraints(0.0f, 90.0f);
                 this->rules[i].maxSlope = maxSlope;
                 propertyElement = propertyElement->next_sibling("property");
             }
@@ -1108,6 +1110,7 @@ namespace NOWA
     {
         if (actionId == "ProceduralFoliageVolumeComponent.Regenerate")
         {
+            this->clearFoliage();
             this->regenerateFoliage();
             return true;
         }
@@ -1311,15 +1314,37 @@ namespace NOWA
                             Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
                             Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
 
-                            Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
-                            if (rule.alignToNormal > 0.0f)
+                            Ogre::Quaternion orientation;
                             {
-                                Ogre::Vector3 up(Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.x, normal.x, rule.alignToNormal), Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.y, normal.y, rule.alignToNormal),
-                                    Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.z, normal.z, rule.alignToNormal));
+                                // Always build a real, explicit basis -- never leave orientation
+                                // as IDENTITY. For mesh-based foliage (trees), IDENTITY would be
+                                // harmless since the source mesh's own local Z axis already means
+                                // "up" with no rotation applied. But createGrassItems extracts its
+                                // up/right/forward axes directly from this orientation's matrix
+                                // columns (see bladeUp/bladeRight/bladeForward), and IDENTITY's
+                                // columns are just (1,0,0)/(0,1,0)/(0,0,1) -- which only means
+                                // "world Y is up" if alignToNormal's lerp target is also exactly
+                                // world Y, NOT in general. Building the basis unconditionally
+                                // (defaulting "up" to world UNIT_Y when alignToNormal is 0, exactly
+                                // matching IDENTITY's effective up direction) keeps trees behaving
+                                // identically to before while making grass's column-read always
+                                // correct, regardless of whether alignToNormal is used.
+                                Ogre::Vector3 up = (rule.alignToNormal > 0.0f) ? Ogre::Vector3(Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.x, normal.x, rule.alignToNormal), Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.y, normal.y, rule.alignToNormal),
+                                                                                     Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.z, normal.z, rule.alignToNormal))
+                                                                               : Ogre::Vector3::UNIT_Y;
                                 up.normalise();
                                 Ogre::Vector3 right = up.perpendicular();
                                 Ogre::Vector3 forward = right.crossProduct(up);
-                                orientation.FromAxes(right, up, forward);
+                                // Tree meshes in this project grow along local Z (0,0,1), not
+                                // local Y. Ogre::Quaternion::FromAxes(x, y, z) places its 2nd
+                                // argument into the Y column and its 3rd into the Z column
+                                // (confirmed from OgreQuaternion.cpp source) -- so the
+                                // alignment axis must go in the 3rd slot (forward/Z), not the
+                                // 2nd slot (up/Y), or the mesh ends up tilted ~90 degrees from
+                                // the intended alignment direction. This was subtle on gentle
+                                // flat-terrain slopes but glaringly visible on a sphere where
+                                // "up" varies continuously.
+                                orientation.FromAxes(right, forward, up);
                             }
 
                             if (rule.randomYRotation)
@@ -1896,12 +1921,18 @@ namespace NOWA
                 std::unordered_map<uint64_t, std::vector<size_t>> cellMap;
                 cellMap.reserve(256u);
 
+                // 21 bits per axis (range +/-1,048,575 cells) comfortably
+                // covers any realistic world or planet size in one 63-bit key.
+                static const int32_t CELL_BIN_MASK = 0x1FFFFF;   // 21 bits
+                static const int32_t CELL_BIN_OFFSET = 0x100000; // bias to keep values non-negative before masking
+
                 for (size_t instIdx = 0u; instIdx < batch.instances.size(); ++instIdx)
                 {
                     const Ogre::Vector3& pos = batch.instances[instIdx].position;
-                    const int32_t cx = static_cast<int32_t>(std::floor(pos.x / cellSize));
-                    const int32_t cz = static_cast<int32_t>(std::floor(pos.z / cellSize));
-                    const uint64_t key = (static_cast<uint64_t>(static_cast<uint32_t>(cx)) << 32) | static_cast<uint32_t>(cz);
+                    const int32_t cx = (static_cast<int32_t>(std::floor(pos.x / cellSize)) + CELL_BIN_OFFSET) & CELL_BIN_MASK;
+                    const int32_t cy = (static_cast<int32_t>(std::floor(pos.y / cellSize)) + CELL_BIN_OFFSET) & CELL_BIN_MASK;
+                    const int32_t cz = (static_cast<int32_t>(std::floor(pos.z / cellSize)) + CELL_BIN_OFFSET) & CELL_BIN_MASK;
+                    const uint64_t key = (static_cast<uint64_t>(cx) << 42) | (static_cast<uint64_t>(cy) << 21) | static_cast<uint64_t>(cz);
                     cellMap[key].push_back(instIdx);
                 }
 
@@ -2147,6 +2178,8 @@ namespace NOWA
                         cellItem->setRenderingDistance(rule.renderDistance);
                     }
 
+                    cellItem->setQueryFlags(this->gameObjectPtr->getCategoryId());
+
                     Ogre::SceneNode* cellNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
                     cellNode->setPosition(cellCentre);
                     cellNode->setOrientation(Ogre::Quaternion::IDENTITY);
@@ -2313,12 +2346,19 @@ namespace NOWA
         std::unordered_map<uint64_t, std::vector<size_t>> cellMap;
         cellMap.reserve(256u);
 
+        // 21 bits per axis (range +/-1,048,575 cells, i.e. +/-10,485,750
+        // world units at cellSize=10) comfortably covers any realistic
+        // world or planet size in a single 63-bit key.
+        static const int32_t CELL_BIN_MASK = 0x1FFFFF;   // 21 bits
+        static const int32_t CELL_BIN_OFFSET = 0x100000; // bias to keep values non-negative before masking
+
         for (size_t instIdx = 0u; instIdx < batch.instances.size(); ++instIdx)
         {
             const Ogre::Vector3& pos = batch.instances[instIdx].position;
-            const int32_t cx = static_cast<int32_t>(std::floor(pos.x / cellSize));
-            const int32_t cz = static_cast<int32_t>(std::floor(pos.z / cellSize));
-            const uint64_t key = (static_cast<uint64_t>(static_cast<uint32_t>(cx)) << 32) | static_cast<uint32_t>(cz);
+            const int32_t cx = (static_cast<int32_t>(std::floor(pos.x / cellSize)) + CELL_BIN_OFFSET) & CELL_BIN_MASK;
+            const int32_t cy = (static_cast<int32_t>(std::floor(pos.y / cellSize)) + CELL_BIN_OFFSET) & CELL_BIN_MASK;
+            const int32_t cz = (static_cast<int32_t>(std::floor(pos.z / cellSize)) + CELL_BIN_OFFSET) & CELL_BIN_MASK;
+            const uint64_t key = (static_cast<uint64_t>(cx) << 42) | (static_cast<uint64_t>(cy) << 21) | static_cast<uint64_t>(cz);
             cellMap[key].push_back(instIdx);
         }
 
@@ -2346,9 +2386,33 @@ namespace NOWA
 
                 // Random rotation around Y for this blade, derived from position so it's
                 // deterministic across regenerations without storing per-blade state.
+                // hardcoding world Y as "up". On flat terrain inst.orientation's
+                // Y axis already equals world UNIT_Y (or the slope-aligned
+                // normal), so this produces identical results to before. On a
+                // planet inst.orientation's Y axis is the outward radial at
+                // that point on the sphere -- using it here is what makes
+                // grass actually stand upright relative to the curved surface
+                // instead of all blades growing straight up in world Y
+                // regardless of where on the sphere they are.
+                //
+                // bladeUp    = local "up" the blade grows along (was world Y)
+                // bladeRight/bladeForward = local horizontal plane the blade's
+                //              random yaw rotation is applied within (was the
+                //              world X/Z plane)
+                // ------------------------------------------------------------
+                Ogre::Matrix3 instRotMat;
+                inst.orientation.ToRotationMatrix(instRotMat);
+                const Ogre::Vector3 bladeRight(instRotMat[0][0], instRotMat[1][0], instRotMat[2][0]);
+                const Ogre::Vector3 bladeForward(instRotMat[0][2], instRotMat[1][2], instRotMat[2][2]);
+                const Ogre::Vector3 bladeUp(instRotMat[0][2], instRotMat[1][2], instRotMat[2][2]);
+
+                // Random rotation of the cross-quad within the blade's own
+                // local horizontal plane, derived from position so it stays
+                // deterministic across regenerations without storing
+                // per-blade state. Same formula as before -- only the plane
+                // it's applied within has changed (local right/forward
+                // instead of always world X/Z).
                 const float angle = static_cast<float>(std::fmod(p.x * 127.1f + p.z * 311.7f, Ogre::Math::TWO_PI));
-                const float ca = std::cos(angle);
-                const float sa = std::sin(angle);
 
                 // Build 2 crossed quads. q=0 aligned to angle, q=1 rotated 90 degrees.
                 // Each quad: bottom-left, bottom-right, top-right, top-left.
@@ -2360,6 +2424,11 @@ namespace NOWA
                     const float cq = std::cos(qa) * bw;
                     const float sq = std::sin(qa) * bw;
 
+                    // In-plane offset direction for this quad, expressed in
+                    // the blade's own local right/forward basis instead of
+                    // world X/Z.
+                    const Ogre::Vector3 quadOffsetDir = bladeRight * cq + bladeForward * sq;
+
                     // 4 vertices per quad: [0]=bottom-left, [1]=bottom-right, [2]=top-right, [3]=top-left
                     for (int v = 0; v < 4; ++v)
                     {
@@ -2367,22 +2436,26 @@ namespace NOWA
                         const float vTop = (v == 2 || v == 3) ? 1.0f : 0.0f;  // 1=top, 0=bottom
 
                         // World-space blade vertex position.
-                        const float wx = p.x + cq * side;
-                        const float wy = p.y + bh * vTop;
-                        const float wz = p.z + sq * side;
+                        // the blade's local horizontal plane, height along
+                        // the blade's local up axis (the surface normal /
+                        // radial direction) instead of always world Y.
+                        const Ogre::Vector3 worldVertex = p + quadOffsetDir * side + bladeUp * (bh * vTop);
 
-                        cellMin.makeFloor(Ogre::Vector3(wx, wy, wz));
-                        cellMax.makeCeil(Ogre::Vector3(wx, wy, wz));
+                        cellMin.makeFloor(worldVertex);
+                        cellMax.makeCeil(worldVertex);
 
                         const size_t o = (bi * vertsPerBlade + q * 4 + v) * floatsPerVertex;
                         // Position
-                        vd[o + 0] = wx;
-                        vd[o + 1] = wy;
-                        vd[o + 2] = wz;
+                        vd[o + 0] = worldVertex.x;
+                        vd[o + 1] = worldVertex.y;
+                        vd[o + 2] = worldVertex.z;
                         // Normal (up -- wind shader does not use normals for blades)
-                        vd[o + 3] = 0.0f;
-                        vd[o + 4] = 1.0f;
-                        vd[o + 5] = 0.0f;
+                        // The wind shader does not actually use this for lighting
+                        // on cross-quad grass, but it should still be correct
+                        // rather than silently wrong on curved surfaces.
+                        vd[o + 3] = bladeUp.x;
+                        vd[o + 4] = bladeUp.y;
+                        vd[o + 5] = bladeUp.z;
                         // UV: u = left(0) or right(1), v = bottom(1) or top(0)
                         // uv.y = 1 at bottom -> windFactor = 0 (rooted)
                         // uv.y = 0 at top    -> windFactor = 1 (full sway)
@@ -2506,6 +2579,8 @@ namespace NOWA
             {
                 cellItem->setRenderingDistance(rule.renderDistance);
             }
+
+            cellItem->setQueryFlags(this->gameObjectPtr->getCategoryId());
 
             Ogre::SceneNode* cellNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
             cellNode->setPosition(cellCentre);
@@ -2876,7 +2951,7 @@ namespace NOWA
                 this->ruleDensities[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleDensity() + Ogre::StringConverter::toString(i), defaultDensity, this->attributes);
                 this->ruleDensities[i]->setDescription("Placement density. Trees: 0.05-0.10, Shrubs: 0.10-0.20, Ground cover: 0.20-0.50. "
                                                        "Step size = gridResolution / density, so lower = sparser.");
-                this->ruleDensities[i]->setConstraints(0.01f, 10.0f);
+                this->ruleDensities[i]->setConstraints(0.01f, 20.0f);
                 this->rules[i].density = defaultDensity;
 
                 // Height Range — unlimited by default
@@ -3106,7 +3181,7 @@ namespace NOWA
         {
             return;
         }
-        density = Ogre::Math::Clamp(density, 0.01f, 10.0f);
+        density = Ogre::Math::Clamp(density, 0.01f, 20.0f);
         this->ruleDensities[index]->setValue(density);
         this->rules[index].density = density;
     }
@@ -4004,7 +4079,37 @@ namespace NOWA
             // The old code used angularStep = resolution / (radius * density) so
             // higher density -> smaller step -> more samples.  We mirror that by
             // treating density as the per-vertex acceptance probability.
-            const float acceptProb = Ogre::Math::Clamp(static_cast<float>(rule.density), 0.0f, 1.0f);
+            // count: a full-sphere sample set has (segmentsV+1)*segmentsH
+            // entries (see PlanetTerra::collectSurfaceSamplesInCone).
+            float estimatedSegmentsH = std::sqrt(static_cast<float>(samples.size()));
+            if (estimatedSegmentsH < 1.0f)
+            {
+                estimatedSegmentsH = 1.0f;
+            }
+            const float approxCellWorldSize = (Ogre::Math::TWO_PI * planetRadius) / estimatedSegmentsH;
+            const float jitterRadius = approxCellWorldSize * 0.5f;
+
+            // density now means "desired sub-instances per mesh cell" rather
+            // than a [0,1] probability. A density of 1.0 keeps the old
+            // one-instance-per-vertex behaviour exactly (placeCount==1,
+            // jitter offset of zero on that single instance is harmless).
+            // Fractional remainders are resolved probabilistically so the
+            // long-run average still matches a non-integer density value
+            // (e.g. density=2.5 places 2 instances always, plus a 3rd with
+            // 50% probability per vertex).
+            const float rawDensity = std::max(0.0f, static_cast<float>(rule.density));
+            const int placeCountBase = static_cast<int>(std::floor(rawDensity));
+            const float placeCountFraction = rawDensity - static_cast<float>(placeCountBase);
+
+            // ---- TEMPORARY DIAGNOSTIC ----
+            // Count exactly why samples get rejected, since the log showed
+            // only ~40% of samples surviving despite density=10 clamping
+            // acceptProb to 1.0 (which should accept 100%).
+            size_t diagRejectedByDensity = 0u;
+            size_t diagRejectedByCriteria = 0u;
+            size_t diagRejectedBySpacing = 0u;
+            size_t diagAccepted = 0u;
+            // ---- END TEMPORARY DIAGNOSTIC ----
 
             VegetationBatch batch;
             batch.meshName = rule.meshName;
@@ -4013,83 +4118,190 @@ namespace NOWA
             for (const PlanetTerra::SurfaceSample& s : samples)
             {
                 // ---- density thinning ----
-                if (dist01(rng) > acceptProb)
+                int placeCount = placeCountBase;
+                if (dist01(rng) < placeCountFraction)
                 {
+                    ++placeCount;
+                }
+
+                if (placeCount <= 0)
+                {
+                    ++diagRejectedByDensity;
                     continue;
                 }
 
                 // ---- world-space hit point ----
                 // localPos is in planet-local space (centre = origin).
                 // worldOffset = planet GO world position.
-                const Ogre::Vector3 hitPoint = worldOffset + s.localPos;
 
                 // ---- outward radial at this vertex ----
+                const Ogre::Vector3 baseOutward = s.localPos.normalisedCopy();
+                Ogre::Vector3 jitterRef = (std::abs(baseOutward.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
+                Ogre::Vector3 jitterRight = jitterRef.crossProduct(baseOutward);
+                jitterRight.normalise();
+                Ogre::Vector3 jitterForward = baseOutward.crossProduct(jitterRight);
+                jitterForward.normalise();
                 // baseDirs[i] is exactly s.normal for a flat sphere.  For a
-                // displaced sphere, the "outward" radial is localPos.normalisedCopy().
-                // We use s.normal (the actual mesh normal) for slope and orientation
-                // and the radial for height-above-sea.
-                const Ogre::Vector3 outward = s.localPos.normalisedCopy();
-
-                // ---- height above sea level ----
-                const Ogre::Real heightAboveSea = s.localPos.length() - planetRadius;
-
-                // ---- criteria check (height + slope) ----
-                // s.slopeDeg is already computed from normal vs. baseDirs, so pass
-                // s.normal and outward to meetsPlanetCriteria unchanged.
-                if (false == this->meetsPlanetCriteria(heightAboveSea, s.normal, outward, rule))
+                for (int subInst = 0; subInst < placeCount; ++subInst)
                 {
-                    continue;
+                    // displaced sphere, the "outward" radial is localPos.normalisedCopy().
+                    // We use s.normal (the actual mesh normal) for slope and orientation
+                    // and the radial for height-above-sea.
+                    // jittered within the estimated local cell footprint.
+                    Ogre::Vector3 jitteredLocalPos = s.localPos;
+                    Ogre::Vector3 jitteredNormal = s.normal;
+                    if (subInst > 0)
+                    {
+                        const float jx = (dist01(rng) - 0.5f) * 2.0f * jitterRadius;
+                        const float jz = (dist01(rng) - 0.5f) * 2.0f * jitterRadius;
+                        const Ogre::Vector3 jitterDirUnnormalised = s.localPos + jitterRight * jx + jitterForward * jz;
+                        // Re-project onto the sphere/displaced surface radius so
+                        // jittered points stay on the surface rather than
+                        // floating off at a flat-tangent-plane offset. This is
+                        // an approximation (true terrain displacement at the
+                        // jittered position is not resampled), acceptable for
+                        // foliage placement jitter at this scale.
+                        // old radius-snap approximation caused foliage to
+                        // visibly float above or sink below the surface on
+                        // bumpy/hilly terrain, since nearby points on a
+                        // displaced planet can have meaningfully different
+                        // radii from the original sample vertex.
+                        Ogre::Vector3 sampledLocalPos;
+                        Ogre::Vector3 sampledNormal;
+                        /*if (true == terraComp->sampleHeightAndNormalAtDirection(jitterDirUnnormalised, sampledLocalPos, sampledNormal))
+                        {
+                            jitteredLocalPos = sampledLocalPos;
+                            jitteredNormal = sampledNormal;
+                        }
+                        else*/
+                        {
+                            // Fallback to the old approximation only if the
+                            // real sample somehow fails (e.g. degenerate
+                            // direction) -- should be rare.
+                            const float originalRadius = s.localPos.length();
+                            jitteredLocalPos = jitterDirUnnormalised;
+                            jitteredLocalPos.normalise();
+                            jitteredLocalPos *= originalRadius;
+                        }
+                    }
+
+                    const Ogre::Vector3 hitPoint = worldOffset + jitteredLocalPos;
+
+                    // ---- outward radial at this (possibly jittered) point ----
+                    const Ogre::Vector3 outward = jitteredLocalPos.normalisedCopy();
+
+                    // ---- height above sea level ----
+                    const Ogre::Real heightAboveSea = jitteredLocalPos.length() - planetRadius;
+
+                    // ---- criteria check (height + slope) ----
+                    // s.slopeDeg is already computed from normal vs. baseDirs, so pass
+                    // s.normal and outward to meetsPlanetCriteria unchanged.
+                    if (false == this->meetsPlanetCriteria(heightAboveSea, s.normal, outward, rule))
+                    {
+                        ++diagRejectedByCriteria;
+                        continue;
+                    }
+
+                    // ---- spacing check ----
+                    if (false == this->hasMinimumSpacing(hitPoint, rule, batch.instances))
+                    {
+                        ++diagRejectedBySpacing;
+                        continue;
+                    }
+
+                    ++diagAccepted;
+
+                    // ---- orientation ----
+                    // "Up" on a planet = outward radial, optionally lerped toward the
+                    // actual mesh normal by alignToNormal (same semantic as flat terrain).
+                    Ogre::Vector3 upAxis;
+                    if (rule.alignToNormal > 0.0f)
+                    {
+                        upAxis = Ogre::Vector3(Ogre::Math::lerp(outward.x, s.normal.x, rule.alignToNormal), Ogre::Math::lerp(outward.y, s.normal.y, rule.alignToNormal), Ogre::Math::lerp(outward.z, s.normal.z, rule.alignToNormal));
+                        upAxis.normalise();
+                    }
+                    else
+                    {
+                        upAxis = outward;
+                    }
+
+                    // Stable tangent frame -- avoid UNIT_Y degeneracy near poles.
+                    Ogre::Vector3 worldRef = (std::abs(upAxis.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
+
+                    Ogre::Vector3 right = worldRef.crossProduct(upAxis);
+                    right.normalise();
+                    Ogre::Vector3 forward = upAxis.crossProduct(right);
+                    forward.normalise();
+
+                    Ogre::Quaternion orientation;
+                    // Tree meshes in this project grow along local Z (0,0,1), not
+                    // local Y -- see the matching fix and comment in the flat-terrain
+                    // orientation code above. upAxis (the planet-radial direction)
+                    // must go in the 3rd FromAxes slot (forward/Z column), not the
+                    // 2nd slot (up/Y column), or every tree ends up tilted ~90
+                    // degrees from the surface normal -- this was the exact bug
+                    // causing trees to lie sideways on the planet surface.
+                    orientation.FromAxes(right, forward, upAxis);
+
+                    // ---- TEMPORARY DIAGNOSTIC ----
+                    // Verify the basis fed into FromAxes is actually orthonormal
+                    // and right-handed, and verify the resulting quaternion's
+                    // local Z axis (via ToRotationMatrix column 2) actually equals
+                    // upAxis -- if it doesn't, FromAxes/the basis itself is wrong,
+                    // not just a column-order issue. Logs only the first 5 hits.
+                    static int orientDiagCount = 0;
+                    if (orientDiagCount < 5)
+                    {
+                        ++orientDiagCount;
+                        const Ogre::Real dotRF = right.dotProduct(forward);
+                        const Ogre::Real dotRU = right.dotProduct(upAxis);
+                        const Ogre::Real dotFU = forward.dotProduct(upAxis);
+                        const Ogre::Vector3 crossRF = right.crossProduct(forward);
+                        const Ogre::Real handedness = crossRF.dotProduct(upAxis); // should be +1 if (right,forward,upAxis) is right-handed in that order
+
+                        Ogre::Matrix3 checkMat;
+                        orientation.ToRotationMatrix(checkMat);
+                        const Ogre::Vector3 resultZ(checkMat[0][2], checkMat[1][2], checkMat[2][2]);
+                        const Ogre::Vector3 resultY(checkMat[0][1], checkMat[1][1], checkMat[2][1]);
+                        const Ogre::Vector3 resultX(checkMat[0][0], checkMat[1][0], checkMat[2][0]);
+
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume][DIAG-ORIENT] upAxis=" + Ogre::StringConverter::toString(upAxis) + " right=" + Ogre::StringConverter::toString(right) +
+                                                                                                " forward=" + Ogre::StringConverter::toString(forward) + " dot(r,f)=" + Ogre::StringConverter::toString(dotRF) +
+                                                                                                " dot(r,u)=" + Ogre::StringConverter::toString(dotRU) + " dot(f,u)=" + Ogre::StringConverter::toString(dotFU) +
+                                                                                                " handedness(should be ~1)=" + Ogre::StringConverter::toString(handedness) + " resultMat.col0(X)=" + Ogre::StringConverter::toString(resultX) +
+                                                                                                " resultMat.col1(Y)=" + Ogre::StringConverter::toString(resultY) + " resultMat.col2(Z, should equal upAxis)=" + Ogre::StringConverter::toString(resultZ));
+                    }
+                    // ---- END TEMPORARY DIAGNOSTIC ----
+
+                    // Random rotation around local up.
+                    if (true == rule.randomYRotation)
+                    {
+                        Ogre::Degree yRot(Ogre::Math::lerp(rule.yRotationRange.x, rule.yRotationRange.y, dist01(rng)));
+                        Ogre::Quaternion yQuat;
+                        yQuat.FromAngleAxis(yRot, upAxis);
+                        orientation = orientation * yQuat;
+                    }
+
+                    // ---- scale ----
+                    Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
+                    Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
+
+                    batch.instances.emplace_back(hitPoint, orientation, scale, ruleIdx);
                 }
-
-                // ---- spacing check ----
-                if (false == this->hasMinimumSpacing(hitPoint, rule, batch.instances))
-                {
-                    continue;
-                }
-
-                // ---- orientation ----
-                // "Up" on a planet = outward radial, optionally lerped toward the
-                // actual mesh normal by alignToNormal (same semantic as flat terrain).
-                Ogre::Vector3 upAxis;
-                if (rule.alignToNormal > 0.0f)
-                {
-                    upAxis = Ogre::Vector3(Ogre::Math::lerp(outward.x, s.normal.x, rule.alignToNormal), Ogre::Math::lerp(outward.y, s.normal.y, rule.alignToNormal), Ogre::Math::lerp(outward.z, s.normal.z, rule.alignToNormal));
-                    upAxis.normalise();
-                }
-                else
-                {
-                    upAxis = outward;
-                }
-
-                // Stable tangent frame -- avoid UNIT_Y degeneracy near poles.
-                Ogre::Vector3 worldRef = (std::abs(upAxis.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
-
-                Ogre::Vector3 right = worldRef.crossProduct(upAxis);
-                right.normalise();
-                Ogre::Vector3 forward = upAxis.crossProduct(right);
-                forward.normalise();
-
-                Ogre::Quaternion orientation;
-                orientation.FromAxes(right, upAxis, forward);
-
-                // Random rotation around local up.
-                if (true == rule.randomYRotation)
-                {
-                    Ogre::Degree yRot(Ogre::Math::lerp(rule.yRotationRange.x, rule.yRotationRange.y, dist01(rng)));
-                    Ogre::Quaternion yQuat;
-                    yQuat.FromAngleAxis(yRot, upAxis);
-                    orientation = orientation * yQuat;
-                }
-
-                // ---- scale ----
-                Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
-                Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
-
-                batch.instances.emplace_back(hitPoint, orientation, scale, ruleIdx);
-            }
+            } // end for each surface sample
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Planet rule '" + rule.name + "' placed " + Ogre::StringConverter::toString(static_cast<unsigned int>(batch.instances.size())) +
                                                                                    " instances (from " + Ogre::StringConverter::toString(static_cast<unsigned int>(samples.size())) + " surface samples).");
+
+            // ---- TEMPORARY DIAGNOSTIC ----
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[ProceduralFoliageVolume][DIAG-REJECT] rule='" + rule.name + "' placeCountBase=" + Ogre::StringConverter::toString(placeCountBase) + " placeCountFraction=" + Ogre::StringConverter::toString(placeCountFraction) +
+                    " approxCellWorldSize=" + Ogre::StringConverter::toString(approxCellWorldSize) + " totalSamples=" + Ogre::StringConverter::toString(static_cast<unsigned int>(samples.size())) + " rejectedByDensity=" +
+                    Ogre::StringConverter::toString(static_cast<unsigned int>(diagRejectedByDensity)) + " rejectedByCriteria(height/slope)=" + Ogre::StringConverter::toString(static_cast<unsigned int>(diagRejectedByCriteria)) +
+                    " rejectedBySpacing=" + Ogre::StringConverter::toString(static_cast<unsigned int>(diagRejectedBySpacing)) + " accepted=" + Ogre::StringConverter::toString(static_cast<unsigned int>(diagAccepted)) +
+                    " minDistanceToSame=" + Ogre::StringConverter::toString(rule.minDistanceToSame) + " minDistanceToOther=" + Ogre::StringConverter::toString(rule.minDistanceToOther) + " maxSlope=" + Ogre::StringConverter::toString(rule.maxSlope) +
+                    " heightRange=" + Ogre::StringConverter::toString(rule.heightRange.x) + ".." + Ogre::StringConverter::toString(rule.heightRange.y));
+            // ---- END TEMPORARY DIAGNOSTIC ----
 
             if (false == batch.instances.empty())
             {

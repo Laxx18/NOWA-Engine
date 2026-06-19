@@ -24,5 +24,37 @@
 		midf3 windDisplace = passBuf.windDirection * 0.3 + noise;
 		worldPos.xyz += windDisplace * windFactor * passBuf.windStrength;
 
+		// ----------------------------------------------------------------
+		// WindInteractionComponent: push foliage away from nearby GameObjects.
+		// Runs only when at least one interactor is active (interactorCount > 0).
+		// Each slot: .x = worldX, .y = worldZ, .z = radius, .w = strength
+		// Displacement is XZ-only and scaled by windFactor (tips move more).
+		// Quadratic falloff: full push at centre, zero at radius edge.
+		// The ambient wind above is completely unaffected by this block.
+		//
+		// numInteractors is clamped to @value(wind_max_interactors) -- the
+		// compiled array size -- as a safety net in case interactorCount in
+		// the pass buffer is ever stale relative to a freshly compiled
+		// shader (e.g. right after changing WIND_MAX_INTERACTORS and
+		// recompiling, before the next setInteractors/clearInteractors call
+		// has run). Without this clamp a stale higher count would read past
+		// the end of the interactors[] array.
+		// ----------------------------------------------------------------
+		int numInteractors = min(int(passBuf.interactorCount), @value(wind_max_interactors));
+		for (int i = 0; i < numInteractors; ++i)
+		{
+			midf4 slot = passBuf.interactors[i];
+			midf2 toVertex = midf2_c(worldPos.x - slot.x, worldPos.z - slot.y);
+			midf dist = length(toVertex);
+			if (dist < slot.z && dist > midf_c(0.001))
+			{
+				midf2 pushDir = toVertex / dist;
+				midf t = midf_c(1.0) - dist / slot.z;
+				midf pushMag = t * t * slot.w * windFactor;
+				worldPos.x += pushDir.x * pushMag;
+				worldPos.z += pushDir.y * pushMag;
+			}
+		}
+
 	@end
 @end

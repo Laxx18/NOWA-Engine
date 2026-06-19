@@ -860,40 +860,32 @@ namespace NOWA
     {
         this->setStartTime(this->startTime->getString());
 
-        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+        // Stop the animation closure — atmosphere object stays alive so sky keeps rendering
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-        id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
-        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
-
-        if (nullptr != this->atmosphereNpr)
+        if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
         {
-            this->update(0.016f, false);
+            Ogre::Light* light = nullptr;
+            if (nullptr != this->lightDirectionalComponent)
+            {
+                light = this->lightDirectionalComponent->getOgreLight();
+            }
+
+            if (nullptr != light)
+            {
+                Ogre::Vector3 oldDir = this->oldLightDirection;
+                NOWA::GraphicsModule::RenderCommand cmd = [light, oldDir]()
+                {
+                    light->setDirection(oldDir);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::disconnect");
+            }
         }
 
-		if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
-        {
-			// Guard: lightDirectionalComponent or its light may already be destroyed
-			// during scene teardown. Capture a nullable raw pointer and check inside.
-			Ogre::Light* light = nullptr;
-			if (nullptr != this->lightDirectionalComponent)
-			{
-				light = this->lightDirectionalComponent->getOgreLight();
-			}
-
-			if (nullptr != light)
-			{
-				Ogre::Vector3 oldDir = this->oldLightDirection;
-				NOWA::GraphicsModule::RenderCommand cmd = [light, oldDir]()
-				{
-                
-					light->setDirection(oldDir);
-				};
-				NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::disconnect");
-			}
-		}
-
-        this->resetAtmosphere();
+        // Do NOT call resetAtmosphere() here — that destroys atmosphereNpr and turns off
+        // the sky, leaving a black screen in the editor. resetAtmosphere() is only called
+        // from onRemoveComponent() when the component is actually being destroyed.
 
         return true;
     }
@@ -903,15 +895,6 @@ namespace NOWA
 		if (false == notSimulating && true == this->activated->getBool())
 		{
 			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-
-			auto closureFunction = [this, sceneManager](Ogre::Real renderDt)
-				{
-					sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere(),
-						sceneManager->getAmbientLightLowerHemisphere(),
-						sceneManager->getAmbientLightHemisphereDir());
-				};
-			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
-			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 
 			// Calculate stabilization factor BEFORE modifying timeOfDay
 			Ogre::Real stabilisationFactor = 1.0f;  // Default
@@ -948,10 +931,12 @@ namespace NOWA
 			this->azimuth += this->timeMultiplicator->getReal() * dt;
 			this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
-			auto closureFunction2 = [sunDir = Ogre::Vector3(/* computed below */), atmosphereTime01 = float(0.0f), atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(),
+			auto closureFunction = [sunDir = Ogre::Vector3(/* computed below */), atmosphereTime01 = float(0.0f), atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(),
                                         lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(), defaultDir = this->lightDirectionalComponent->getOwner()->getDefaultDirection(), externalLightMode = this->externalLightMode,
                                         cachedSunDir = this->cachedExternalSunDir, timeOfDay = this->timeOfDay, azimuth = this->azimuth](Ogre::Real renderDt) mutable
             {
+                sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere(), sceneManager->getAmbientLightLowerHemisphere(), sceneManager->getAmbientLightHemisphereDir());
+
                 // Everything is a local copy — no this, no dangling pointers
                 Ogre::Vector3 sd;
                 if (false == externalLightMode)
@@ -983,6 +968,8 @@ namespace NOWA
                     atmosphereNpr->_update(sceneManager, camera);
                 }
             };
+            Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 
 			if (true == this->bShowDebugData)
 			{
@@ -1064,10 +1051,7 @@ namespace NOWA
 
     void AtmosphereComponent::resetAtmosphere(void)
     {
-        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
-        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
-
-        id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
         if (nullptr == this->atmosphereNpr)
@@ -1384,6 +1368,11 @@ namespace NOWA
     {
         this->activated->setValue(activated);
 
+        // Always purge any in-flight closure FIRST — it holds a raw pointer
+        // to the old atmosphereNpr and must never run after the delete below.
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
         if (true == this->activated->getBool())
         {
             NOWA::GraphicsModule::RenderCommand cmd = [this]()
@@ -1447,7 +1436,6 @@ namespace NOWA
         }
         else
         {
-            // Disable sky rendering state first, then tear down
             if (nullptr != this->atmosphereNpr)
             {
                 Ogre::AtmosphereNpr* atmosphereNpr = this->atmosphereNpr;
@@ -1459,23 +1447,13 @@ namespace NOWA
 
                 NOWA::GraphicsModule::RenderCommand cmd = [atmosphereNpr, sceneManager, ogreLight, restoreDir]()
                 {
-                    // Turn off sky so Ogre stops rendering the sky pass
                     atmosphereNpr->setSky(sceneManager, false);
-                    // Detach from light so the light no longer drives atmosphere updates
                     atmosphereNpr->setLight(nullptr);
-                    // Restore original light direction
                     ogreLight->setDirection(restoreDir);
                     delete atmosphereNpr;
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setActivated_off");
             }
-
-            // Remove render-thread closures so update() stops submitting work
-            Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
-            NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
-
-            id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
-            NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
         }
     }
 

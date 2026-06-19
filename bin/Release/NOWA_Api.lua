@@ -10955,6 +10955,30 @@ return {
 				args = "(string name)",
 				returns = "(WindComponent)",
 				valuetype = "WindComponent"
+			},
+			getWindInteractionComponent =
+			{
+				type = "function",
+				description = "Gets the WindInteractionComponent. Use when the game object has exactly one.",
+				args = "()",
+				returns = "(WindInteractionComponent)",
+				valuetype = "WindInteractionComponent"
+			},
+			getWindInteractionComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the WindInteractionComponent by occurrence index, for game objects with multiple instances of this component.",
+				args = "(number occurrenceIndex)",
+				returns = "(WindInteractionComponent)",
+				valuetype = "WindInteractionComponent"
+			},
+			getWindInteractionComponentFromName =
+			{
+				type = "function",
+				description = "Gets the WindInteractionComponent by its component name.",
+				args = "(string name)",
+				returns = "(WindInteractionComponent)",
+				valuetype = "WindInteractionComponent"
 			}
 		}
 	},
@@ -12779,6 +12803,14 @@ return {
 				args = "(WindComponent other)",
 				returns = "(WindComponent)",
 				valuetype = "WindComponent"
+			},
+			castWindInteractionComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from a function for Lua auto completion.",
+				args = "(WindInteractionComponent other)",
+				returns = "(WindInteractionComponent)",
+				valuetype = "WindInteractionComponent"
 			}
 		}
 	},
@@ -34155,6 +34187,63 @@ return {
 			{
 				type = "function",
 				description = "Gets the current wind frequency (turbulence animation speed).",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
+	WindInteractionComponent =
+	{
+		type = "class",
+		description = "Usage: Attach to any moving GameObject (player, enemy, vehicle) to push nearby Wind-shader foliage aside as it moves. Requires a WindComponent in the scene for ambient sway. Tune Radius (world units, 0.1-20) and Strength (0.0-5.0, typical 0.2-2.0). Up to 4 WindInteractionComponents can be active simultaneously.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the foliage interaction. When deactivated no push is sent to the Wind shader.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the foliage interaction is currently active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRadius =
+			{
+				type = "method",
+				description = "Sets the radius of influence around this GameObject in world units (0.1 - 20.0). All Wind-shader foliage within this radius is pushed away as the object moves.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRadius =
+			{
+				type = "function",
+				description = "Gets the current radius of influence in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setStrength =
+			{
+				type = "method",
+				description = "Sets the peak push magnitude at the centre of influence (0.0 - 5.0). Falls off quadratically to zero at the radius edge. Typical range: 0.2 - 2.0.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getStrength =
+			{
+				type = "function",
+				description = "Gets the current peak push magnitude.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"

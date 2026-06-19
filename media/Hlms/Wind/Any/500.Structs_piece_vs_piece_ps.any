@@ -8,4 +8,14 @@
 	midf _windPad0;
 	midf3 windDirection;
 	midf _windPad1;
+	// Interactor slots (WindInteractionComponent) - appended after existing wind data.
+	// float4 2: interactorCount, pad, pad, pad
+	// float4 3..N: (worldX, worldZ, radius, strength) per interactor slot.
+	// Array size driven by WIND_MAX_INTERACTORS in HlmsWind.h via @value() --
+	// change that constant and recompile to resize, never edit the number below by hand.
+	midf interactorCount;
+	midf _intPad0;
+	midf _intPad1;
+	midf _intPad2;
+	midf4 interactors[@value(wind_max_interactors)];
 @end
