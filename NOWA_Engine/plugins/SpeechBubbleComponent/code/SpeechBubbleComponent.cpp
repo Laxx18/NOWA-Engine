@@ -654,10 +654,10 @@ namespace NOWA
 			this->indices += 3;
 
 			std::vector<Ogre::Vector3> points(3);
-			for (Ogre::Real theta = 0; theta <= 2 * Math::PI; theta += Math::PI / accuracy)
+			for (Ogre::Real theta = 0; theta <= 2 * Ogre::Math::PI; theta += Ogre::Math::PI / accuracy)
 			{
 				points[0] = Ogre::Vector3(0.0f, 0.0f, 0.0f);
-				points[1] = Ogre::Vector3(this->currentCaptionWidth * Ogre::Math::Cos(theta - Math::PI / accuracy), (this->currentCaptionHeight * 0.5f) + this->currentCaptionHeight * 0.7f * Ogre::Math::Sin(theta - Math::PI / accuracy), 0.0f);
+				points[1] = Ogre::Vector3(this->currentCaptionWidth * Ogre::Math::Cos(theta - Ogre::Math::PI / accuracy), (this->currentCaptionHeight * 0.5f) + this->currentCaptionHeight * 0.7f * Ogre::Math::Sin(theta - Ogre::Math::PI / accuracy), 0.0f);
 				points[2] = Ogre::Vector3(this->currentCaptionWidth * Ogre::Math::Cos(theta), (this->currentCaptionHeight * 0.5f) + this->currentCaptionHeight * 0.7f * Ogre::Math::Sin(theta), 0.0f);
 
 				this->manualObject->position(p + (o * (so * (sp + points[0]))));

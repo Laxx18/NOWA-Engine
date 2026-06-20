@@ -130,52 +130,52 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectTitleComponent] Init game object title component for game object: " + this->gameObjectPtr->getName());
 
-		ENQUEUE_RENDER_COMMAND("GameObjectTitleComponent::~postInit",
-		{
-			Ogre::NameValuePairList params;
-			params["name"] = Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_MovableText";
-			params["Caption"] = this->caption->getString();
-			params["fontName"] = this->fontName->getString();
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            Ogre::NameValuePairList params;
+            params["name"] = Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_MovableText";
+            params["Caption"] = this->caption->getString();
+            params["fontName"] = this->fontName->getString();
 
-			this->movableText = new MovableText(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC),
-				this->gameObjectPtr->getSceneManager(), &params);
+            this->movableText = new MovableText(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->gameObjectPtr->getSceneManager(), &params);
 
-			Ogre::String tempCaption = replaceAll(this->caption->getString(), "\\n", "\n");
-			if (true != tempCaption.empty())
-			{
-				this->movableText->setCaption(tempCaption);
-			}
-			// this->movableText->setFontName(this->fontName->getString());
-			this->movableText->setCharacterHeight(this->charHeight->getReal());
-			this->movableText->showOnTop(this->alwaysPresent->getBool());
-			Ogre::ColourValue colorValue(this->color->getVector4().x, this->color->getVector4().y, this->color->getVector4().z, this->color->getVector4().w);
-			this->movableText->setColor(colorValue);
+            Ogre::String tempCaption = replaceAll(this->caption->getString(), "\\n", "\n");
+            if (true != tempCaption.empty())
+            {
+                this->movableText->setCaption(tempCaption);
+            }
+            // this->movableText->setFontName(this->fontName->getString());
+            this->movableText->setCharacterHeight(this->charHeight->getReal());
+            this->movableText->showOnTop(this->alwaysPresent->getBool());
+            Ogre::ColourValue colorValue(this->color->getVector4().x, this->color->getVector4().y, this->color->getVector4().z, this->color->getVector4().w);
+            this->movableText->setColor(colorValue);
 
-			// this->movableText->setTextYOffset(this->yOffset->getReal());
-			int h = static_cast<int>(this->alignment->getVector2().x);
-			int v = static_cast<int>(this->alignment->getVector2().y);
-			this->movableText->setTextAlignment(static_cast<MovableText::HorizontalAlignment>(h), static_cast<MovableText::VerticalAlignment>(v));
+            // this->movableText->setTextYOffset(this->yOffset->getReal());
+            int h = static_cast<int>(this->alignment->getVector2().x);
+            int v = static_cast<int>(this->alignment->getVector2().y);
+            this->movableText->setTextAlignment(static_cast<MovableText::HorizontalAlignment>(h), static_cast<MovableText::VerticalAlignment>(v));
 
-			this->movableText->setQueryFlags(0 << 0);
+            this->movableText->setQueryFlags(0 << 0);
 
-			// Create child of node, because when lookAtCamera is set to on, only the text may be orientated, not the whole game object
-			this->textNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
-			this->textNode->attachObject(this->movableText);
-			NOWA::GraphicsModule::getInstance()->addTrackedNode(this->textNode);
+            // Create child of node, because when lookAtCamera is set to on, only the text may be orientated, not the whole game object
+            this->textNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
+            this->textNode->attachObject(this->movableText);
+            NOWA::GraphicsModule::getInstance()->addTrackedNode(this->textNode);
 
-			// Ogre::Vector3 p = this->gameObjectPtr->getPosition();
-			Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
+            // Ogre::Vector3 p = this->gameObjectPtr->getPosition();
+            Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
 
-			Ogre::Vector3 sp = this->offsetPosition->getVector3();
-			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+            Ogre::Vector3 sp = this->offsetPosition->getVector3();
+            Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
-			this->movableText->setTextYOffset(0.0f);
+            this->movableText->setTextYOffset(0.0f);
 
-			// Note: Order is really important! First set orientation, then position, else strange side effects do occur!
-			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
+            // Note: Order is really important! First set orientation, then position, else strange side effects do occur!
+            // NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
 
+			this->movableText->getParentSceneNode()->setOrientation(so);
 
-			/*
+            /*
             The bug is in postInit and setOffsetPosition / setOffsetOrientation. The textNode is a child of gameObjectPtr->getSceneNode(),
             so its position must be set in local space relative to the parent.
             But the code passes the world position p + (o * so * sp) to updateNodePosition, which sets local position. This means:
@@ -183,10 +183,13 @@ namespace NOWA
                    = p + (p + o*so*sp)
                    = 2p + offset   <- WRONG, doubles with distance from origin
             */
-			// NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)));
+            //// NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)));
 
-			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), o * (so * sp));
-		});
+            // NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), o * (so * sp));
+
+			this->movableText->getParentSceneNode()->setPosition(o * (so * sp));
+        };
+        GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObjectTitleComponent::postInit");
 
 		return true;
 	}
@@ -416,10 +419,11 @@ namespace NOWA
 		this->fontName->setValue(fontName);
 		if (this->movableText)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObjectTitleComponent::setFontName", _1(fontName),
-			{
-				this->movableText->setFontName(fontName);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, fontName]()
+            {
+                this->movableText->setFontName(fontName);
+            };
+            GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObjectTitleComponent::setFontName");
 		}
 	}
 
@@ -454,10 +458,11 @@ namespace NOWA
 		Ogre::ColourValue colourValue(this->color->getVector4().x, this->color->getVector4().y, this->color->getVector4().z, this->color->getVector4().w);
 		if (this->movableText)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObjectTitleComponent::setAlwaysPresent", _1(alwaysPresent),
-			{
-				this->movableText->showOnTop(alwaysPresent);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, alwaysPresent]()
+            {
+                this->movableText->showOnTop(alwaysPresent);
+            };
+            GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObjectTitleComponent::setAlwaysPresent");
 		}
 	}
 

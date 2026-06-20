@@ -1210,6 +1210,26 @@ namespace NOWA
         return true;
     }
 
+    bool PlanetTerraComponent::sampleHeightAndNormalAtDirection(const Ogre::Vector3& dirWorld, Ogre::Vector3& outWorldPos, Ogre::Vector3& outWorldNormal) const
+    {
+        if (nullptr == this->planet)
+        {
+            return false;
+        }
+        Ogre::Vector3 localPos, localNormal;
+        if (false == this->planet->sampleHeightAndNormalAtDirection(dirWorld, localPos, localNormal))
+        {
+            return false;
+        }
+        // PlanetTerra vertices are in local space (planet centre = origin, no
+        // rotation applied) -- same convention as findFlatLandingVertex and
+        // collectSurfaceSamples.
+        const Ogre::Vector3 planetWorldPos = this->gameObjectPtr->getPosition();
+        outWorldPos = planetWorldPos + localPos;
+        outWorldNormal = localNormal; // direction is rotation-invariant for a sphere
+        return true;
+    }
+
     size_t PlanetTerraComponent::getVertexCount(void) const
     {
         if (nullptr == this->planet)

@@ -228,6 +228,20 @@ namespace NOWA
         // capHalfAngleDeg = 180 is equivalent to the full-planet version.
         void collectSurfaceSamplesInCone(const Ogre::Vector3& capDir, float capHalfAngleDeg, float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<SurfaceSample>& outSamples) const;
 
+        // Bilinearly samples heightData and the surface normal at an arbitrary
+        // direction from planet centre, instead of snapping to the nearest
+        // existing mesh vertex. Used by foliage placement to support density
+        // higher than the underlying mesh's vertex resolution: jittered
+        // sub-instance positions are resampled here against the true
+        // displaced terrain, rather than approximated at the parent vertex's
+        // radius (which caused foliage to float/sink on bumpy planets).
+        // O(1) grid sample -- safe to call many times per generation pass.
+        // dirWorld need not be normalised. Returns false if vertexCount == 0
+        // or the topology is degenerate. outLocalPos/outLocalNormal are in
+        // LOCAL space (planet centre = origin), same convention as
+        // findFlatLandingVertex/collectSurfaceSamples.
+        bool sampleHeightAndNormalAtDirection(const Ogre::Vector3& dirWorld, Ogre::Vector3& outLocalPos, Ogre::Vector3& outLocalNormal) const;
+
     private:
         // Internal CPU helpers (MAIN THREAD)
         void generateBaseSphere();

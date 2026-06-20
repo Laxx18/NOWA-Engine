@@ -45,16 +45,15 @@ namespace NOWA
 	*/
 	enum eRenderQueues
 	{
+        RENDER_QUEUE_EARLY_FIRST = 0,
 		RENDER_QUEUE_V2_MESH = 10, // E.g. Ogre::ManualObject, Item
 		RENDER_QUEUE_TERRA = 11, // Terra v2
 		RENDER_QUEUE_DISTORTION = 16, // fast
-		RENDER_QUEUE_V1_MESH = 110, // E.g. Ogre::Entity
 		RENDER_QUEUE_PARTICLE_STUFF = 155,
 		RENDER_QUEUE_LEGACY = 156,
         RENDER_QUEUE_PARTICLE_TRANSPARENT = 203,
-        RENDER_QUEUE_V2_TRANSPARENT = 205, // Transparent V2 (200-224 range)
+        RENDER_QUEUE_V2_TRANSPARENT = 213, // Moved after atmosphere sky (RQ 212, hardcoded in Ogre's AtmosphereNpr) so transparent foliage/objects always draw after the sky, avoiding any depth-test race between the two
 		RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND = 220, // E.g. Ogre::ManualObject, Item
-		RENDER_QUEUE_V1_OBJECTS_ALWAYS_IN_FOREGROUND = 230, // E.g. Ogre::v1::ManualObject, Ogre::v1::Overlay
 		RENDER_QUEUE_GIZMO = 252,
 		RENDER_QUEUE_MAX = 254 // E.g. Ogre::v1::Overlay
 	};

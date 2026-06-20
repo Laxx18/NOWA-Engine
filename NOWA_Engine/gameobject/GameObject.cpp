@@ -161,14 +161,7 @@ namespace NOWA
 		// Note: referenceId will not be cloned, because its to special. The designer must adapt each time the ids!
 		this->referenceId = new Variant(GameObject::AttrReferenceId(), static_cast<unsigned long>(0), this->attributes, false);
 
-		// if (NOWA::ITEM == type || NOWA::PLANE == type || NOWA::MIRROR == type || NOWA::LIGHT_AREA == type)
-		{
-			this->renderQueueIndex = new Variant(GameObject::AttrRenderQueueIndex(), static_cast<unsigned int>(NOWA::RENDER_QUEUE_V2_MESH), this->attributes, false);
-		}
-		// else
-		// {
-		// 	this->renderQueueIndex = new Variant(GameObject::AttrRenderQueueIndex(), static_cast<unsigned int>(NOWA::RENDER_QUEUE_V1_MESH), this->attributes, false);
-		// }
+		this->renderQueueIndex = new Variant(GameObject::AttrRenderQueueIndex(), static_cast<unsigned int>(NOWA::RENDER_QUEUE_V2_MESH), this->attributes, false);
         this->renderDistance = new Variant(GameObject::AttrRenderDistance(), static_cast<unsigned int>(Core::getSingletonPtr()->getGlobalRenderDistance()), this->attributes, false);
         this->lodDistance = new Variant(GameObject::AttrLodDistance(), static_cast<unsigned int>(Core::getSingletonPtr()->getGlobalRenderDistance()), this->attributes, false);
 		this->lodLevels = new Variant(GameObject::AttrLodLevels(), 4, this->attributes, false);

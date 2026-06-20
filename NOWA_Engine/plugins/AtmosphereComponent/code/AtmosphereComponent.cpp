@@ -1054,6 +1054,11 @@ namespace NOWA
         Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
+		if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+		{
+            return;
+		}
+
         if (nullptr == this->atmosphereNpr)
         {
             return;

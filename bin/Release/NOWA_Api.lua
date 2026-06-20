@@ -23192,38 +23192,6 @@ return {
 				returns = "(number)",
 				valuetype = "number"
 			},
-			setOceanSize =
-			{
-				type = "method",
-				description = "Sets ocean size.",
-				args = "(Vector2 size)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getOceanSize =
-			{
-				type = "function",
-				description = "Gets ocean size.",
-				args = "()",
-				returns = "(Vector2)",
-				valuetype = "Vector2"
-			},
-			setOceanCenter =
-			{
-				type = "method",
-				description = "Sets ocean center.",
-				args = "(Vector3 center)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getOceanCenter =
-			{
-				type = "function",
-				description = "Gets ocean center.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
 			setReflectionStrength =
 			{
 				type = "method",
@@ -31416,7 +31384,7 @@ return {
 	SplitScreenComponent =
 	{
 		type = "class",
-		description = "Usage: Can be used to render a workspace in a split screen texture. Example: 2 player vertical split : geometry1 0.5 0 0.5 1 geometry2 0 0 0.5 1 Example: 2 player horizonal split: geometry1 0 0.5 1 0.5 geometry2 0 0 1 0.5 Example: 3 player vertical split: geometry1 0 0 0.3333 1 geometry2 0.3333 0 0.3333 1 geometry3 0.6666 0 0.3333 1 Example: 4 player vertical/horizontal split: geometry1 0 0.5 0.5 0.5 geometry2 0.5 0.5 0.5 0.5 geometry3 0 0 0.5 0.5  geometry4 0.5 0 0.5 0.5 ",
+		description = "Usage: Can be used to render a workspace in a split screen texture. Must be placed under the n-th created camera. Example: 2 player vertical split : geometry1 0.5 0 0.5 1 geometry2 0 0 0.5 1 Example: 2 player horizonal split: geometry1 0 0.5 1 0.5 geometry2 0 0 1 0.5 Example: 3 player vertical split: geometry1 0 0 0.3333 1 geometry2 0.3333 0 0.3333 1 geometry3 0.6666 0 0.3333 1 Example: 4 player vertical/horizontal split: geometry1 0 0.5 0.5 0.5 geometry2 0.5 0.5 0.5 0.5 geometry3 0 0 0.5 0.5  geometry4 0.5 0 0.5 0.5 ",
 		inherits = "GameObjectComponent",
 		childs = 
 		{

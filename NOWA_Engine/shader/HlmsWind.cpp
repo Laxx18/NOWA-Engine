@@ -3,7 +3,12 @@
 
 namespace NOWA
 {
-    HlmsWindListener::HlmsWindListener() : windStrength(0.5f), globalTime(0.0f), windFrequency(1.0f), windDirection(Ogre::Vector3(1.0f, 0.0f, 0.0f)), activeInteractorCount(0)
+    HlmsWindListener::HlmsWindListener()
+        : windStrength(0.5f),
+        globalTime(0.0f),
+        windFrequency(1.0f),
+        windDirection(Ogre::Vector3(1.0f, 0.0f, 0.0f)),
+        activeInteractorCount(0)
     {
         memset(this->activeInteractors, 0, sizeof(this->activeInteractors));
     }
@@ -273,14 +278,40 @@ namespace NOWA
     {
         HlmsPbs::calculateHashForPreCreate(renderable, inOutPieces);
         setProperty(kNoTid, "wind_enabled", 1);
-
-        // Drives the interactors[] array size in 500_Structs_piece_vs_piece_ps.any
-        // and the loop bound check in 800_VertexShader_piece_vs.any via @value().
-        // Changing WIND_MAX_INTERACTORS in HlmsWind.h and recompiling regenerates
-        // the shader with the matching array size automatically -- no manual
-        // edits to the .any files needed, and the C++ pass buffer layout and the
-        // shader struct layout can never drift out of sync.
         setProperty(kNoTid, "wind_max_interactors", WIND_MAX_INTERACTORS);
+
+        // AtmosphereNpr::preparePassHash() injects HlmsBaseProp::Fog=1 on every pass.
+        // For cutout (alpha_hash / alpha_test) Wind materials this corrupts the alpha
+        // discard logic and produces black billboard silhouettes against the sky.
+        // Baking Fog=0 into the shader hash here forces a fog-free variant for all
+        // cutout Wind materials — preparePassHash cannot override a property that is
+        // already locked into the compiled shader's cache key.
+        const Ogre::int32 hasAlphaHash = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaHash);
+        const Ogre::int32 hasAlphaTest = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaTest);
+        const Ogre::int32 hasAlphaBlend = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaBlend);
+
+        if (hasAlphaHash != 0 || (hasAlphaTest != 0 && hasAlphaBlend == 0))
+        {
+            // Cutout foliage: suppress fog so atmosphere does not touch the alpha path
+            setProperty(kNoTid, Ogre::HlmsBaseProp::Fog, 0);
+        }
+    }
+
+    void HlmsWind::calculateHashForPreCaster(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces, const Ogre::PiecesMap* normalPassPieces)
+    {
+        HlmsPbs::calculateHashForPreCaster(renderable, inOutPieces, normalPassPieces);
+        setProperty(kNoTid, "wind_enabled", 1);
+        setProperty(kNoTid, "wind_max_interactors", WIND_MAX_INTERACTORS);
+
+        // Same fog suppression for shadow caster pass
+        const Ogre::int32 hasAlphaHash = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaHash);
+        const Ogre::int32 hasAlphaTest = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaTest);
+        const Ogre::int32 hasAlphaBlend = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaBlend);
+
+        if (hasAlphaHash != 0 || (hasAlphaTest != 0 && hasAlphaBlend == 0))
+        {
+            setProperty(kNoTid, Ogre::HlmsBaseProp::Fog, 0);
+        }
     }
 
     void HlmsWind::loadTexturesAndSamplers(Ogre::SceneManager* sceneManager)

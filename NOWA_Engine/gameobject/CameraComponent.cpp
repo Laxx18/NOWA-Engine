@@ -625,26 +625,31 @@ namespace NOWA
 				// this->setCameraOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(desiredWorldOrientation));
 
 				auto workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
-				if (nullptr != workspaceBaseCompPtr)
-				{
-					// if ("MainCamera" == this->camera->getName())
-					{
-						this->baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-						// ATTENTION: Since even there is another camera behavior, the base camera behavior would be used sometimes, hence this changes here
-						// So that only a base camera is created, if there no other behavior for this game object
-						if (nullptr == this->baseCamera)
-						{
-							this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
-							AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
-							AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
-						}
+                if (nullptr != workspaceBaseCompPtr)
+                {
+                    // if ("MainCamera" == this->camera->getName())
+                    {
+                        this->baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+                        // ATTENTION: Since even there is another camera behavior, the base camera behavior would be used sometimes, hence this changes here
+                        // So that only a base camera is created, if there no other behavior for this game object
+                        if (nullptr == this->baseCamera)
+                        {
+                            this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+                            AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
+                            AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
+                        }
+                    }
 
-						WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
-					}
+                    // Create and switch workspace -- must run BEFORE setPrimaryWorkspace below, so that
+                    // workspaceBaseCompPtr->getWorkspace() (read inside setPrimaryWorkspace) returns the
+                    // actual, just-created workspace instead of a stale/null one.
+                    workspaceBaseCompPtr->createWorkspace();
 
-					// Create and switch workspace
-					workspaceBaseCompPtr->createWorkspace();
-				}
+                    // if ("MainCamera" == this->camera->getName())
+                    {
+                        WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
+                    }
+                }
 				else
 				{
 					this->active->setValue(false);

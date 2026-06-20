@@ -2815,11 +2815,11 @@ namespace NOWA
                 // Change render queue index, so that other game objects can be rendered correctly after this transparent game object
                 if (this->transparency->getReal() < 1.0f)
                 {
-                    this->gameObjectPtr->setRenderQueueIndex(10);
+                    this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_MESH);
                 }
                 else
                 {
-                    this->gameObjectPtr->setRenderQueueIndex(1);
+                    this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_TRANSPARENT);
                 }
             }
             else

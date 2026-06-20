@@ -1310,41 +1310,66 @@ namespace NOWA
                             {
                                 continue;
                             }
-
+#if 0
                             Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
                             Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
 
                             Ogre::Quaternion orientation;
+                            
+                            // Always build a real, explicit basis -- never leave orientation
+                            // as IDENTITY. For mesh-based foliage (trees), IDENTITY would be
+                            // harmless since the source mesh's own local Z axis already means
+                            // "up" with no rotation applied. But createGrassItems extracts its
+                            // up/right/forward axes directly from this orientation's matrix
+                            // columns (see bladeUp/bladeRight/bladeForward), and IDENTITY's
+                            // columns are just (1,0,0)/(0,1,0)/(0,0,1) -- which only means
+                            // "world Y is up" if alignToNormal's lerp target is also exactly
+                            // world Y, NOT in general. Building the basis unconditionally
+                            // (defaulting "up" to world UNIT_Y when alignToNormal is 0, exactly
+                            // matching IDENTITY's effective up direction) keeps trees behaving
+                            // identically to before while making grass's column-read always
+                            // correct, regardless of whether alignToNormal is used.
+                            Ogre::Vector3 up = (rule.alignToNormal > 0.0f) ? Ogre::Vector3(Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.x, normal.x, rule.alignToNormal), Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.y, normal.y, rule.alignToNormal),
+                                                                                    Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.z, normal.z, rule.alignToNormal))
+                                                                            : Ogre::Vector3::UNIT_Y;
+                            up.normalise();
+                            Ogre::Vector3 right = up.perpendicular();
+                            Ogre::Vector3 forward = right.crossProduct(up);
+                            // Tree meshes in this project grow along local Z (0,0,1), not
+                            // local Y. Ogre::Quaternion::FromAxes(x, y, z) places its 2nd
+                            // argument into the Y column and its 3rd into the Z column
+                            // (confirmed from OgreQuaternion.cpp source) -- so the
+                            // alignment axis must go in the 3rd slot (forward/Z), not the
+                            // 2nd slot (up/Y), or the mesh ends up tilted ~90 degrees from
+                            // the intended alignment direction. This was subtle on gentle
+                            // flat-terrain slopes but glaringly visible on a sphere where
+                            // "up" varies continuously.
+                            orientation.FromAxes(right, forward, up);
+                            
+
+                            if (rule.randomYRotation)
                             {
-                                // Always build a real, explicit basis -- never leave orientation
-                                // as IDENTITY. For mesh-based foliage (trees), IDENTITY would be
-                                // harmless since the source mesh's own local Z axis already means
-                                // "up" with no rotation applied. But createGrassItems extracts its
-                                // up/right/forward axes directly from this orientation's matrix
-                                // columns (see bladeUp/bladeRight/bladeForward), and IDENTITY's
-                                // columns are just (1,0,0)/(0,1,0)/(0,0,1) -- which only means
-                                // "world Y is up" if alignToNormal's lerp target is also exactly
-                                // world Y, NOT in general. Building the basis unconditionally
-                                // (defaulting "up" to world UNIT_Y when alignToNormal is 0, exactly
-                                // matching IDENTITY's effective up direction) keeps trees behaving
-                                // identically to before while making grass's column-read always
-                                // correct, regardless of whether alignToNormal is used.
-                                Ogre::Vector3 up = (rule.alignToNormal > 0.0f) ? Ogre::Vector3(Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.x, normal.x, rule.alignToNormal), Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.y, normal.y, rule.alignToNormal),
-                                                                                     Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.z, normal.z, rule.alignToNormal))
-                                                                               : Ogre::Vector3::UNIT_Y;
+                                Ogre::Degree yRot(Ogre::Math::lerp(rule.yRotationRange.x, rule.yRotationRange.y, dist01(rng)));
+                                Ogre::Quaternion yQuat;
+                                // Rotate around the terrain normal (local up), not world UNIT_Y.
+                                // On a flat terrain both are the same, but on a sphere UNIT_Y is wrong
+                                // for any surface point that isn't exactly at the north pole.
+                                yQuat.FromAngleAxis(yRot, up);
+                                orientation = orientation * yQuat;
+                            }
+#else
+                            Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
+                            Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
+
+                            Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
+                            if (rule.alignToNormal > 0.0f)
+                            {
+                                Ogre::Vector3 up(Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.x, normal.x, rule.alignToNormal), Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.y, normal.y, rule.alignToNormal),
+                                    Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.z, normal.z, rule.alignToNormal));
                                 up.normalise();
                                 Ogre::Vector3 right = up.perpendicular();
                                 Ogre::Vector3 forward = right.crossProduct(up);
-                                // Tree meshes in this project grow along local Z (0,0,1), not
-                                // local Y. Ogre::Quaternion::FromAxes(x, y, z) places its 2nd
-                                // argument into the Y column and its 3rd into the Z column
-                                // (confirmed from OgreQuaternion.cpp source) -- so the
-                                // alignment axis must go in the 3rd slot (forward/Z), not the
-                                // 2nd slot (up/Y), or the mesh ends up tilted ~90 degrees from
-                                // the intended alignment direction. This was subtle on gentle
-                                // flat-terrain slopes but glaringly visible on a sphere where
-                                // "up" varies continuously.
-                                orientation.FromAxes(right, forward, up);
+                                orientation.FromAxes(right, up, forward);
                             }
 
                             if (rule.randomYRotation)
@@ -1354,6 +1379,7 @@ namespace NOWA
                                 yQuat.FromAngleAxis(yRot, Ogre::Vector3::UNIT_Y);
                                 orientation = orientation * yQuat;
                             }
+#endif
 
                             batch.instances.emplace_back(position, orientation, scale, ruleIdx);
                         }
@@ -2362,7 +2388,38 @@ namespace NOWA
             cellMap[key].push_back(instIdx);
         }
 
-        const Ogre::uint8 renderQueue = NOWA::RENDER_QUEUE_V2_MESH;
+        //const Ogre::HlmsBlendblock* bb = grassDatablock->getBlendblock(false);
+        //bool isCutoutOrBlended = (nullptr != bb && (bb->isAutoTransparent() || bb->isForcedTransparent()));
+
+        // Ogre::HlmsPbsDatablock* pbsDb = static_cast<Ogre::HlmsPbsDatablock*>(grassDatablock);
+        //if (nullptr != pbsDb)
+        //{
+        //    const Ogre::HlmsBlendblock* bb = pbsDb->getBlendblock();
+        //    isCutoutOrBlended = bb->mIsTransparent != 0; // real blend only -> stays in opaque queue otherwise
+
+        //    // Guarantee a clean cutout regardless of the .material / custom Wind Hlms:
+        //    // signature: setAlphaTest(CompareFunction, bool shadowCasterOnly=false, bool useAlphaHash=false)
+        //    pbsDb->setAlphaTest(Ogre::CMPF_GREATER_EQUAL, /*shadowCasterOnly*/ false, /*useAlphaHash*/ false);
+        //    pbsDb->setAlphaTestThreshold(0.5f); // tune 0.3–0.6 for foliage edges
+        //}
+
+        //// const Ogre::uint8 renderQueue = NOWA::RENDER_QUEUE_V2_MESH;
+        //const Ogre::uint8 renderQueue = isCutoutOrBlended ? RENDER_QUEUE_V2_TRANSPARENT : NOWA::RENDER_QUEUE_V2_MESH;
+
+        bool isCutoutOrBlended = false;
+
+        Ogre::HlmsPbsDatablock* pbsDb = static_cast<Ogre::HlmsPbsDatablock*>(grassDatablock);
+        if (nullptr != pbsDb)
+        {
+            // Keep alpha_hash — it's correct for foliage, don't override it here.
+            // The material already declares: alpha_hash yes
+            // Forcing setAlphaTest() here overrides the material and breaks the hash pattern.
+            // Only set the blendblock check for queue assignment:
+            const Ogre::HlmsBlendblock* bb = pbsDb->getBlendblock();
+            isCutoutOrBlended = bb->mIsTransparent != 0;
+        }
+        const Ogre::uint8 renderQueue = isCutoutOrBlended ? RENDER_QUEUE_V2_TRANSPARENT : NOWA::RENDER_QUEUE_V2_MESH;
+
         size_t cellIndex = 0u;
 
         for (auto& cellEntry : cellMap)
@@ -2386,33 +2443,9 @@ namespace NOWA
 
                 // Random rotation around Y for this blade, derived from position so it's
                 // deterministic across regenerations without storing per-blade state.
-                // hardcoding world Y as "up". On flat terrain inst.orientation's
-                // Y axis already equals world UNIT_Y (or the slope-aligned
-                // normal), so this produces identical results to before. On a
-                // planet inst.orientation's Y axis is the outward radial at
-                // that point on the sphere -- using it here is what makes
-                // grass actually stand upright relative to the curved surface
-                // instead of all blades growing straight up in world Y
-                // regardless of where on the sphere they are.
-                //
-                // bladeUp    = local "up" the blade grows along (was world Y)
-                // bladeRight/bladeForward = local horizontal plane the blade's
-                //              random yaw rotation is applied within (was the
-                //              world X/Z plane)
-                // ------------------------------------------------------------
-                Ogre::Matrix3 instRotMat;
-                inst.orientation.ToRotationMatrix(instRotMat);
-                const Ogre::Vector3 bladeRight(instRotMat[0][0], instRotMat[1][0], instRotMat[2][0]);
-                const Ogre::Vector3 bladeForward(instRotMat[0][2], instRotMat[1][2], instRotMat[2][2]);
-                const Ogre::Vector3 bladeUp(instRotMat[0][2], instRotMat[1][2], instRotMat[2][2]);
-
-                // Random rotation of the cross-quad within the blade's own
-                // local horizontal plane, derived from position so it stays
-                // deterministic across regenerations without storing
-                // per-blade state. Same formula as before -- only the plane
-                // it's applied within has changed (local right/forward
-                // instead of always world X/Z).
                 const float angle = static_cast<float>(std::fmod(p.x * 127.1f + p.z * 311.7f, Ogre::Math::TWO_PI));
+                const float ca = std::cos(angle);
+                const float sa = std::sin(angle);
 
                 // Build 2 crossed quads. q=0 aligned to angle, q=1 rotated 90 degrees.
                 // Each quad: bottom-left, bottom-right, top-right, top-left.
@@ -2424,11 +2457,6 @@ namespace NOWA
                     const float cq = std::cos(qa) * bw;
                     const float sq = std::sin(qa) * bw;
 
-                    // In-plane offset direction for this quad, expressed in
-                    // the blade's own local right/forward basis instead of
-                    // world X/Z.
-                    const Ogre::Vector3 quadOffsetDir = bladeRight * cq + bladeForward * sq;
-
                     // 4 vertices per quad: [0]=bottom-left, [1]=bottom-right, [2]=top-right, [3]=top-left
                     for (int v = 0; v < 4; ++v)
                     {
@@ -2436,26 +2464,22 @@ namespace NOWA
                         const float vTop = (v == 2 || v == 3) ? 1.0f : 0.0f;  // 1=top, 0=bottom
 
                         // World-space blade vertex position.
-                        // the blade's local horizontal plane, height along
-                        // the blade's local up axis (the surface normal /
-                        // radial direction) instead of always world Y.
-                        const Ogre::Vector3 worldVertex = p + quadOffsetDir * side + bladeUp * (bh * vTop);
+                        const float wx = p.x + cq * side;
+                        const float wy = p.y + bh * vTop;
+                        const float wz = p.z + sq * side;
 
-                        cellMin.makeFloor(worldVertex);
-                        cellMax.makeCeil(worldVertex);
+                        cellMin.makeFloor(Ogre::Vector3(wx, wy, wz));
+                        cellMax.makeCeil(Ogre::Vector3(wx, wy, wz));
 
                         const size_t o = (bi * vertsPerBlade + q * 4 + v) * floatsPerVertex;
                         // Position
-                        vd[o + 0] = worldVertex.x;
-                        vd[o + 1] = worldVertex.y;
-                        vd[o + 2] = worldVertex.z;
+                        vd[o + 0] = wx;
+                        vd[o + 1] = wy;
+                        vd[o + 2] = wz;
                         // Normal (up -- wind shader does not use normals for blades)
-                        // The wind shader does not actually use this for lighting
-                        // on cross-quad grass, but it should still be correct
-                        // rather than silently wrong on curved surfaces.
-                        vd[o + 3] = bladeUp.x;
-                        vd[o + 4] = bladeUp.y;
-                        vd[o + 5] = bladeUp.z;
+                        vd[o + 3] = 0.0f;
+                        vd[o + 4] = 1.0f;
+                        vd[o + 5] = 0.0f;
                         // UV: u = left(0) or right(1), v = bottom(1) or top(0)
                         // uv.y = 1 at bottom -> windFactor = 0 (rooted)
                         // uv.y = 0 at top    -> windFactor = 1 (full sway)

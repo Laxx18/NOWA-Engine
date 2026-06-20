@@ -107,7 +107,9 @@ namespace NOWA
         static void getDefaultPaths(Ogre::String& outDataFolderPath, Ogre::StringVector& outLibraryFoldersPaths);
 
     private:
-        void calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces) override;
+        virtual void calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces) override;
+
+        virtual void calculateHashForPreCaster(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces, const Ogre::PiecesMap* normalPassPieces) override;
 
         void loadTexturesAndSamplers(Ogre::SceneManager* sceneManager);
 

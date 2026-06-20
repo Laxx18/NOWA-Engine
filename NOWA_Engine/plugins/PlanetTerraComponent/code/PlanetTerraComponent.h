@@ -225,6 +225,17 @@ namespace NOWA
         bool collectSurfaceSamplesInCone(const Ogre::Vector3& capDirWorld, float capHalfAngleDeg, float slopeMaxDeg, float heightMinLocal, float heightMaxLocal, std::vector<PlanetTerra::SurfaceSample>& outSamples,
             Ogre::Vector3& outWorldOffset) const;
 
+        // Bilinearly samples the terrain height/normal at an arbitrary world
+        // direction from the planet centre, rather than snapping to the
+        // nearest existing mesh vertex. Used by foliage placement to jitter
+        // instance positions within a mesh cell (for density higher than the
+        // underlying mesh's vertex resolution) while keeping them correctly
+        // rooted on the true displaced surface. Returns false if no
+        // PlanetTerra is built yet. outWorldPos/outWorldNormal are in world
+        // space (world offset already applied), unlike the local-space
+        // SurfaceSample fields above.
+        bool sampleHeightAndNormalAtDirection(const Ogre::Vector3& dirWorld, Ogre::Vector3& outWorldPos, Ogre::Vector3& outWorldNormal) const;
+
         size_t getVertexCount(void) const;
     protected:
         /** @brief Left-click begins a brush stroke; captures pre-stroke snapshot for undo. */

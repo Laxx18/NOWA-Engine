@@ -789,7 +789,103 @@ namespace NOWA
         }
     }
 
+    bool PlanetTerra::sampleHeightAndNormalAtDirection(const Ogre::Vector3& dirWorld, Ogre::Vector3& outLocalPos, Ogre::Vector3& outLocalNormal) const
+    {
+        // Bilinearly interpolates heightData (and the corresponding surface
+        // normal) at an arbitrary world direction, rather than snapping to
+        // the nearest existing mesh vertex. This is used by foliage placement
+        // (ProceduralFoliageVolumeComponent::calculatePlanetFoliagePositions)
+        // when jittering instance positions within a mesh cell for higher-
+        // than-vertex-resolution density -- without this, jittered points
+        // were re-projected at the ORIGINAL sample vertex's radius rather
+        // than the true displaced height at the jittered position, causing
+        // foliage to visibly float above or sink below the actual terrain
+        // surface on bumpy/hilly planets.
+        //
+        // This is a direct grid bilinear sample (cheap, O(1)) rather than the
+        // O(vertexCount) linear scan in findFlatLandingVertex -- safe to call
+        // many times per foliage generation pass.
+        if (0u == this->vertexCount || this->segmentsH <= 0 || this->segmentsV <= 0)
+        {
+            return false;
+        }
 
+        Ogre::Vector3 dir = dirWorld;
+        dir.normalise();
+
+        // Invert the exact mapping used in generateBaseSphere:
+        //   dir.y = cos(phi)                       -> phi   = acos(dir.y)
+        //   dir.x = sin(phi)*cos(theta)
+        //   dir.z = sin(phi)*sin(theta)             -> theta = atan2(dir.z, dir.x)
+        const float phi = Ogre::Math::ACos(Ogre::Math::Clamp(dir.y, -1.0f, 1.0f)).valueRadians();
+        float theta = Ogre::Math::ATan2(dir.z, dir.x).valueRadians();
+        if (theta < 0.0f)
+        {
+            theta += Ogre::Math::TWO_PI;
+        }
+
+        // Continuous grid coordinates (fractional row/column).
+        const float vf = (phi / Ogre::Math::PI) * static_cast<float>(this->segmentsV);
+        const float hf = (theta / Ogre::Math::TWO_PI) * static_cast<float>(this->segmentsH);
+
+        int v0 = static_cast<int>(std::floor(vf));
+        int h0 = static_cast<int>(std::floor(hf));
+        v0 = std::max(0, std::min(v0, this->segmentsV - 1));
+
+        // Wrap horizontally (theta is cyclic); rows do not wrap (poles are hard edges).
+        const int hWrapDivisor = this->segmentsH;
+        int h0w = ((h0 % hWrapDivisor) + hWrapDivisor) % hWrapDivisor;
+        int h1w = (h0w + 1) % hWrapDivisor;
+        int v1 = std::min(v0 + 1, this->segmentsV);
+
+        const float tV = Ogre::Math::Clamp(vf - static_cast<float>(v0), 0.0f, 1.0f);
+        const float tH = Ogre::Math::Clamp(hf - static_cast<float>(h0), 0.0f, 1.0f);
+
+        const size_t i00 = static_cast<size_t>(v0 * (this->segmentsH + 1) + h0w);
+        const size_t i10 = static_cast<size_t>(v0 * (this->segmentsH + 1) + h1w);
+        const size_t i01 = static_cast<size_t>(v1 * (this->segmentsH + 1) + h0w);
+        const size_t i11 = static_cast<size_t>(v1 * (this->segmentsH + 1) + h1w);
+
+        if (i00 >= this->vertexCount || i10 >= this->vertexCount || i01 >= this->vertexCount || i11 >= this->vertexCount)
+        {
+            return false;
+        }
+
+        // Bilinear blend of height displacement.
+        const float h00 = this->heightData[i00];
+        const float h10 = this->heightData[i10];
+        const float h01 = this->heightData[i01];
+        const float h11 = this->heightData[i11];
+        const float hTop = Ogre::Math::lerp(h00, h10, tH);
+        const float hBottom = Ogre::Math::lerp(h01, h11, tH);
+        const float blendedHeight = Ogre::Math::lerp(hTop, hBottom, tV);
+
+        // Bilinear blend of the surface normal (renormalised after blending --
+        // linear blending of unit vectors is an approximation but adequate at
+        // the sub-mesh-cell jitter distances this is used for). Component-wise
+        // lerp is used explicitly rather than assuming a Vector3 overload of
+        // Ogre::Math::lerp exists.
+        const Ogre::Vector3& n00 = this->normals[i00];
+        const Ogre::Vector3& n10 = this->normals[i10];
+        const Ogre::Vector3& n01 = this->normals[i01];
+        const Ogre::Vector3& n11 = this->normals[i11];
+        Ogre::Vector3 nTop(Ogre::Math::lerp(n00.x, n10.x, tH), Ogre::Math::lerp(n00.y, n10.y, tH), Ogre::Math::lerp(n00.z, n10.z, tH));
+        Ogre::Vector3 nBottom(Ogre::Math::lerp(n01.x, n11.x, tH), Ogre::Math::lerp(n01.y, n11.y, tH), Ogre::Math::lerp(n01.z, n11.z, tH));
+        Ogre::Vector3 blendedNormal(Ogre::Math::lerp(nTop.x, nBottom.x, tV), Ogre::Math::lerp(nTop.y, nBottom.y, tV), Ogre::Math::lerp(nTop.z, nBottom.z, tV));
+        if (blendedNormal.squaredLength() < 1e-12f)
+        {
+            blendedNormal = dir; // degenerate fallback
+        }
+        blendedNormal.normalise();
+
+        // Reconstruct local position: base radius (sphere radius) + blended
+        // height displacement, along the queried direction -- matching how
+        // rebuildGeometryFromHeight places vertices (radius + heightData[i])
+        // along baseDirs[i].
+        outLocalPos = dir * (this->radius + blendedHeight);
+        outLocalNormal = blendedNormal;
+        return true;
+    }
 
     void PlanetTerra::generateBaseSphere()
     {

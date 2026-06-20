@@ -176,12 +176,6 @@ namespace NOWA
 		void setWaveChaos(Ogre::Real chaos);
 		Ogre::Real getWaveChaos(void) const;
 
-		void setOceanSize(const Ogre::Vector2& size);
-		Ogre::Vector2 getOceanSize(void) const;
-
-		void setOceanCenter(const Ogre::Vector3& center);
-		Ogre::Vector3 getOceanCenter(void) const;
-
 		void setReflectionStrength(Ogre::Real v);
 		Ogre::Real getReflectionStrength(void) const;
 
@@ -251,16 +245,6 @@ namespace NOWA
 		{
 			return "Wave Chaos";
 		}
-
-		static const Ogre::String AttrOceanSize(void)
-		{
-			return "Ocean Size";
-		}
-		static const Ogre::String AttrOceanCenter(void)
-		{
-			return "Ocean Center";
-		}
-
 		static const Ogre::String AttrReflectionStrength(void)
 		{
 			return "Reflection Strength";
@@ -303,9 +287,6 @@ namespace NOWA
 		Variant* waveTimeScale;
 		Variant* waveFrequencyScale;
 		Variant* waveChaos;
-
-		Variant* oceanSize;
-		Variant* oceanCenter;
 
 		Variant* reflectionStrength;
 		Variant* baseRoughness;

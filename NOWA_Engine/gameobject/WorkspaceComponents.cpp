@@ -753,9 +753,13 @@ namespace NOWA
 
             this->updateShadowGlobalBias();
         };
-
         Ogre::String message = "WorkspaceBaseComponent::createWorkspace for: " + name;
         GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), message.data());
+
+        if (nullptr != this->cameraComponent)
+        {
+            WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
+        }
 
         return true;
     }
@@ -800,12 +804,6 @@ namespace NOWA
                     if (true == this->canUseReflection)
                     {
                         externalInputTextureId = 2;
-                    }
-
-                    Ogre::TextureGpu* nullTex = textureManager->findTextureNoThrow("DummyTerraNull");
-                    if (nullptr != nullTex)
-                    {
-                        textureManager->destroyTexture(nullTex);
                     }
 
                     if (this->workspace->getExternalRenderTargets().size() > externalInputTextureId)
@@ -2037,6 +2035,10 @@ namespace NOWA
             position = 0;
         }
         this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), this->externalChannels, this->cameraComponent->getCamera(), this->workspaceName, true, position);
+
+        // WorkspaceModule::getInstance()->logLiveNodeGraph(this->workspace, "Sky after create");
+
+        // WorkspaceModule::getInstance()->logAllCompositorNodeDefinitions();
     }
 
     Ogre::String WorkspaceBaseComponent::getDistortionNode(void) const
@@ -2454,6 +2456,11 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setSuperSampling(Ogre::Real superSampling)
     {
+        if (this->superSampling->getReal() == superSampling)
+        {
+            return;
+        }
+
         if (superSampling <= 0.0f)
         {
             superSampling = 1.0f;
@@ -2501,6 +2508,11 @@ namespace NOWA
             });
         }
 
+        if (this->useHdr->getBool() == useHdr)
+        {
+            return;
+        }
+
         this->createWorkspace();
     }
 
@@ -2511,6 +2523,12 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setUseReflection(bool useReflection)
     {
+        if (false == useReflection)
+        {
+            this->canUseReflection = false;
+            this->reflectionCameraGameObjectId->setValue(static_cast<unsigned long>(0));
+        }
+
         if (this->useReflection->getBool() == useReflection)
         {
             return;
@@ -2519,11 +2537,6 @@ namespace NOWA
 
         this->reflectionCameraGameObjectId->setVisible(useReflection);
 
-        if (false == useReflection)
-        {
-            this->canUseReflection = false;
-            this->reflectionCameraGameObjectId->setValue(static_cast<unsigned long>(0));
-        }
 
         this->createWorkspace();
     }
@@ -2535,12 +2548,17 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setUseSSAO(bool useSSAO)
     {
-        this->useSSAO->setValue(useSSAO);
-
         if (true == useSSAO)
         {
             this->createSSAONoiseTexture();
         }
+
+        if (this->useSSAO->getBool() == useSSAO)
+        {
+            return;
+        }
+
+        this->useSSAO->setValue(useSSAO);
 
         this->createWorkspace();
     }
@@ -2552,6 +2570,11 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setUseDistortion(bool useDistortion)
     {
+        if (this->useDistortion->getBool() == useDistortion)
+        {
+            return;
+        }
+
         this->useDistortion->setValue(useDistortion);
 
         this->createWorkspace();
@@ -2564,6 +2587,11 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setUseMSAA(bool useMSAA)
     {
+        if (this->useMSAA->getBool() == useMSAA)
+        {
+            return;
+        }
+
         this->useMSAA->setValue(useMSAA);
 
         this->createWorkspace();
@@ -2576,6 +2604,11 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setUsePlanarReflection(bool usePlanarReflection)
     {
+        if (this->usePlanarReflection->getBool() == usePlanarReflection)
+        {
+            return;
+        }
+
         this->usePlanarReflection->setValue(usePlanarReflection);
 
         bool hasAnyMirror = false;
@@ -2598,6 +2631,10 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setUseTerra(bool useTerra)
     {
+        if (this->useTerra == useTerra)
+        {
+            return;
+        }
         this->useTerra = useTerra;
 
         this->createWorkspace();
@@ -2619,6 +2656,11 @@ namespace NOWA
         else
         {
             this->oceanComponent = nullptr;
+        }
+
+        if (this->useOcean == useOcean)
+        {
+            return;
         }
 
         this->createWorkspace();
@@ -2918,6 +2960,11 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setUsePCC(bool usePCC)
     {
+        if (this->usePCC->getBool() == usePCC)
+        {
+            return;
+        }
+
         this->usePCC->setValue(usePCC);
 
         if (nullptr != this->workspace)
@@ -2933,6 +2980,11 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setReflectionCameraGameObjectId(unsigned long reflectionCameraGameObjectId)
     {
+        if (this->reflectionCameraGameObjectId->getULong() == reflectionCameraGameObjectId)
+        {
+            return;
+        }
+
         this->reflectionCameraGameObjectId->setValue(reflectionCameraGameObjectId);
 
         if (true == this->useReflection->getBool())
@@ -3349,22 +3401,15 @@ namespace NOWA
                 Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
                 {
-                    // Render Scene: everything from RQ 0 up to (but not including) RENDER_QUEUE_GIZMO
-                    // (252), in ONE pass.
-                    //
-                    // Attention (performance fix): this used to be split into four separate PASS_SCENE
-                    // definitions (OPAQUE V2 0-99, OPAQUE V1 100-199, TRANSPARENT V2 200-224,
-                    // TRANSPARENT V1 225-255), all sharing identical mShadowNode/store-action settings and
-                    // differing only in mUpdateLodLists (true on the first, false on the rest) and the SSAO
-                    // normals-gbuffer flag. Ogre's own render queue already sorts opaque front-to-back and
-                    // transparent back-to-front correctly within a single PASS_SCENE regardless of how many
-                    // separate passes wrap around it (see Ogre's own samples, which use a single
-                    // rq_first/no-rq_last render_scene pass for everything past the opaque-vs-sky split).
-                    // Each removed pass boundary was paying full per-frame compositor pass-transition and
-                    // validation overhead for no benefit; merging restores a leaner structure identical in
-                    // spirit to the fix already applied to WorkspaceSkyComponent. Unlike the sky component,
-                    // there is no sky quad here, so there is no "before/after sky" boundary requirement at
-                    // all -- everything except the gizmo/overlay range collapses into this single pass.
+                    // Render Scene OPAQUE (RQ 0-2)
+                    // Matches Ogre's own Tutorial_TerrainRenderingNode / TutorialSky_PostprocessRenderingNode
+                    // pattern (rq_first 0, rq_last 2) -- this is the genuinely necessary split: it is the
+                    // FIRST pass that uses shadows, so it must NOT be SHADOW_NODE_REUSE (the shadow atlas
+                    // may be Undefined at startup / after invalidation), and it is the only pass that needs
+                    // load=Clear, mGenNormalsGBuf, and mUpdateLodLists=true. V1-specific handling removed --
+                    // v1::Entity is no longer used by this project, so the old separate "Opaque V1 (RQ
+                    // 100-199)" pass that existed only to keep v1 objects out of the transparent pass is
+                    // dead weight now; if any v1 zombies remain they will render in the merged pass below.
                     {
                         Ogre::CompositorPassSceneDef* passScene;
                         auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -3386,18 +3431,13 @@ namespace NOWA
                             passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
                         }
 
-                        // Kept exactly as the original first pass: this pass both clears AND renders, since
-                        // there is no separate dedicated PASS_CLEAR in this workspace (unlike
-                        // WorkspaceSkyComponent, which clears in its own pass before the sky quad).
                         passScene->setAllLoadActions(Ogre::LoadAction::Clear);
 
-                        // Store depth if we need depth texture (for SSAO or generic use)
                         passScene->mStoreActionDepth = Ogre::StoreAction::Store;
                         passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
                         if (true == this->usePlanarReflection->getBool())
                         {
-                            // Used to identify this pass wants planar reflections
                             passScene->mIdentifier = 25001;
                         }
 
@@ -3405,30 +3445,36 @@ namespace NOWA
                         // otherwise shadow atlas may be read as Undefined at startup / after invalidation.
                         passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
 
-                        passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Pass_Scene";
+                        passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Opaque_Pass_Scene";
                         passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
                         if (true == this->useSSAO->getBool())
                         {
-                            // Generate normals only for opaque geometry (recommended)
                             passScene->mGenNormalsGBuf = true;
                         }
 
                         passScene->mIncludeOverlays = false;
-
-                        // Computed once for the full RQ range, correctly, instead of once-true-then-false
-                        // across four narrower passes.
                         passScene->mUpdateLodLists = true;
 
-                        // Render everything up to (not including) RENDER_QUEUE_GIZMO = 252
+                        // Matches Ogre's own rq_first 0 / rq_last 2 -- this is the actual reserved
+                        // "pre-everything-else" range (Ocean and similar early/background geometry live
+                        // here), not dead space. Confirmed against Ogre's stock TutorialSky_
+                        // PostprocessRenderingNode and Tutorial_TerrainRenderingNode samples.
                         passScene->mFirstRQ = 0;
-                        passScene->mLastRQ = 251;
+                        passScene->mLastRQ = 2;
                     }
 
-                    // Render Scene: gizmo / always-in-foreground / overlay range (RQ 252-255).
-                    // Kept as its own pass since depth/stencil and overlay handling for this range can
-                    // legitimately differ from the main scene pass (e.g. editor gizmos drawing regardless
-                    // of depth), mirroring the same split kept in WorkspaceSkyComponent.
+                    // Render Scene EVERYTHING ELSE (RQ 3-251): opaque meshes, transparent, V2
+                    // objects-always-in-foreground -- merged into one pass. The old 3-way split
+                    // (Opaque V1, Transparent V2, Transparent V1) existed only to keep v1::Entity
+                    // separated from v2 transparency and to vary mGenNormalsGBuf/mUpdateLodLists
+                    // per band; since v1::Entity is no longer used and mGenNormalsGBuf/
+                    // mUpdateLodLists were already false/false identically across all three of
+                    // those passes, splitting them bought nothing but extra pass-boundary
+                    // overhead (each PASS_SCENE execution causes every active Hlms type to push
+                    // and map a new pass-buffer slot -- confirmed from Ogre-Next's own
+                    // HlmsPbs::preparePassBuffer, mPassBuffers[mCurrentPassBuffer++] -- so 4
+                    // passes meant up to 4x the per-frame pass-buffer churn compared to 1).
                     {
                         Ogre::CompositorPassSceneDef* passScene;
                         auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -3441,9 +3487,16 @@ namespace NOWA
 
                         passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
-                        passScene->mFirstRQ = 252; // RENDER_QUEUE_GIZMO
-                        passScene->mLastRQ = 255;  // RENDER_QUEUE_MAX
+                        // Covers everything after the reserved 0-2 range, up to (not including)
+                        // RENDER_QUEUE_GIZMO = 252, which the PCC overlay pass below handles
+                        // separately when active.
+                        passScene->mFirstRQ = 3;
+                        passScene->mLastRQ = 251;
 
+                        // Do NOT generate normals or update LOD lists here -- this matches what
+                        // all three of the original split passes already agreed on (none of
+                        // them set these to true), so merging changes nothing behaviourally,
+                        // only removes redundant pass boundaries.
                         passScene->mGenNormalsGBuf = false;
                         passScene->mUpdateLodLists = false;
 
@@ -3452,7 +3505,7 @@ namespace NOWA
                         passScene->mStoreActionDepth = Ogre::StoreAction::Store;
                         passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-                        passScene->mProfilingId = "NOWA_Pbs_Gizmo_Overlay_Pass_Scene";
+                        passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Rest_Pass_Scene";
 
                         if (true == this->usePlanarReflection->getBool())
                         {
@@ -3683,7 +3736,9 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    WorkspaceSkyComponent::WorkspaceSkyComponent() : WorkspaceBaseComponent(), skyBoxName(new Variant(WorkspaceSkyComponent::AttrSkyBoxName(), this->attributes))
+    WorkspaceSkyComponent::WorkspaceSkyComponent()
+        : WorkspaceBaseComponent(),
+        skyBoxName(new Variant(WorkspaceSkyComponent::AttrSkyBoxName(), this->attributes))
     {
         Ogre::StringVectorPtr skyNames = Ogre::ResourceGroupManager::getSingleton().findResourceNames("Skies", "*.dds");
         std::vector<Ogre::String> compatibleSkyNames(skyNames.getPointer()->size() + 1);
@@ -3922,45 +3977,58 @@ namespace NOWA
             {
                 Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
-                // Clear Pass
+                // Render Scene (RQ 0-1, before sky) -- clear folded directly into this pass's
+                // load action instead of a separate PASS_CLEAR, mirroring WorkspacePbsComponent's
+                // first pass (which proved this works correctly there). The old separate
+                // PASS_CLEAR existed purely to set mClearColour once and store it, immediately
+                // followed by this pass loading what was just cleared -- one fewer pass boundary
+                // for identical behaviour.
                 {
-                    Ogre::CompositorPassClearDef* passClear;
-                    auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
-                    passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
+                    Ogre::CompositorPassSceneDef* passScene;
+                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
 
-                    passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f) * 60.0f;
+                    if (true == this->canUseReflection)
+                    {
+                        passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
+                    }
+
+                    passScene->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f) * 60.0f;
 
                     if (true == this->useSSAO->getBool())
                     {
                         // Clear the normals buffer to a neutral value
-                        passClear->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
-                        passClear->mStoreActionColour[1] = Ogre::StoreAction::Store;
+                        passScene->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
+                        passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+                        passScene->mGenNormalsGBuf = true;
                     }
 
-                    passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
-                    passClear->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passClear->mStoreActionStencil = Ogre::StoreAction::Store;
+                    passScene->setAllLoadActions(Ogre::LoadAction::Clear);
 
-                    passClear->mProfilingId = "NOWA_Sky_Clear_Pass_Clear";
+                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+                    passScene->mStoreActionStencil = Ogre::StoreAction::Store;
+
+                    if (true == this->usePlanarReflection->getBool())
+                    {
+                        passScene->mIdentifier = 25001;
+                    }
+
+                    passScene->mProfilingId = "NOWA_Sky_Render_Scene_Before_Sky_Pass_Scene";
+                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+                    passScene->mIncludeOverlays = false;
+                    passScene->mUpdateLodLists = true;
+
+                    passScene->mFirstRQ = 0;
+                    passScene->mLastRQ = 1;
                 }
 
-                // Attention (performance fix): there used to be a dedicated "Render Scene RQ 0-1, before
-                // sky" PASS_SCENE here. Nothing in NOWA::eRenderQueues is ever assigned to RQ 0 or RQ 1
-                // (the lowest queue actually used is RENDER_QUEUE_V2_MESH = 10), so that pass always
-                // rendered zero objects -- it existed purely as an empty compositor pass boundary, paying
-                // full per-frame pass-transition/validation overhead for no visible content whatsoever.
-                // Removed entirely. The sky quad now goes directly after the clear pass, matching Ogre's
-                // own Tutorial_Sky compositor script structure (clear -> sky quad -> one scene pass for
-                // everything else -> overlays), instead of splitting the scene into five separate
-                // PASS_SCENE definitions (before-sky, opaque V2, opaque V1, transparent, transparent V1)
-                // that all shared identical shadow-node/store-action settings and differed only in
-                // mUpdateLodLists and SSAO normals-gbuffer flags. Ogre's own render queue already sorts
-                // opaque front-to-back and transparent back-to-front correctly within a single PASS_SCENE
-                // regardless of how many separate passes wrap around it; splitting by RQ band only matters
-                // when pass-level settings genuinely need to differ between bands, which was not the case
-                // here beyond what is preserved below (the gizmo/overlay range still gets its own pass).
-
-                // Quad pass (Sky)
+                // Quad pass (Sky) -- must remain its own pass: it sits strictly between the
+                // "before sky" RQ range and the "after sky" RQ range, which a single merged
+                // PASS_SCENE cannot express (a PASS_SCENE has one contiguous RQ range; the
+                // sky quad needs to execute at a specific point IN BETWEEN two RQ bands, not
+                // restricted to a queue range itself).
                 {
                     Ogre::CompositorPassQuadDef* passQuad;
                     auto pass = targetDef->addPass(Ogre::PASS_QUAD);
@@ -3983,11 +4051,16 @@ namespace NOWA
                     passQuad->mProfilingId = "NOWA_Sky_Pass_Quad";
                 }
 
-                // Render Scene: everything after the sky, RQ 2 up to (but not including)
-                // RENDER_QUEUE_GIZMO (252), in ONE pass instead of four.
-                // IMPORTANT: This is the FIRST pass that uses shadows => must NOT be SHADOW_NODE_REUSE
-                // (kept exactly as in the original "opaque V2" pass, since this replaces it as the first
-                // shadow-consuming pass of the frame).
+                // Render Scene: everything after the sky, RQ 2 up to and including
+                // RENDER_QUEUE_MAX (255), in ONE pass instead of two. The old separate
+                // "gizmo/overlay (RQ 252-255)" pass had IDENTICAL load/store settings to this
+                // pass (setAllLoadActions(Load), StoreOrResolve colour, Store depth, DontCare
+                // stencil, SHADOW_NODE_REUSE) -- the only differences were mGenNormalsGBuf/
+                // mUpdateLodLists, both already false for that range here too. No actual
+                // behavioural difference justified a separate pass boundary; merging removes
+                // one more pass-buffer map/unmap cycle per frame per active Hlms type
+                // (see HlmsPbs::preparePassBuffer / mPassBuffers[mCurrentPassBuffer++]).
+                // IMPORTANT: This is the FIRST pass that uses shadows => must NOT be SHADOW_NODE_REUSE.
                 {
                     Ogre::CompositorPassSceneDef* passScene;
                     auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -4009,7 +4082,7 @@ namespace NOWA
                     passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
                     passScene->mFirstRQ = 2;
-                    passScene->mLastRQ = 251; // Up to (not including) RENDER_QUEUE_GIZMO = 252
+                    passScene->mLastRQ = 255; // Was split at 251/252 -- merged, see comment above.
 
                     passScene->setAllLoadActions(Ogre::LoadAction::Load);
                     passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
@@ -4023,45 +4096,10 @@ namespace NOWA
                     }
 
                     // Computed once for the full RQ range, correctly, instead of once-true-then-false
-                    // across four narrower passes.
+                    // across multiple narrower passes.
                     passScene->mUpdateLodLists = true;
 
                     passScene->mProfilingId = "NOWA_Sky_After_Sky_Pass_Scene";
-
-                    if (true == this->usePlanarReflection->getBool())
-                    {
-                        passScene->mIdentifier = 25001;
-                    }
-                }
-
-                // Render Scene: gizmo / always-in-foreground / overlay range (RQ 252-255).
-                // Kept as its own pass since depth/stencil and overlay handling for this range can
-                // legitimately differ from the main scene pass (e.g. editor gizmos drawing regardless of
-                // depth), mirroring Ogre's own dedicated final "Overlays" pass in Tutorial_Sky.
-                {
-                    Ogre::CompositorPassSceneDef* passScene;
-                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                    passScene->mIncludeOverlays = false;
-
-                    passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-                    passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-
-                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                    passScene->mFirstRQ = 252; // RENDER_QUEUE_GIZMO
-                    passScene->mLastRQ = 255;  // RENDER_QUEUE_MAX
-
-                    passScene->mGenNormalsGBuf = false;
-                    passScene->mUpdateLodLists = false;
-
-                    passScene->setAllLoadActions(Ogre::LoadAction::Load);
-                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                    passScene->mProfilingId = "NOWA_Sky_Gizmo_Overlay_Pass_Scene";
 
                     if (true == this->usePlanarReflection->getBool())
                     {
@@ -4615,38 +4653,55 @@ namespace NOWA
             {
                 Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
-                // Clear Pass
+                // Render Scene (RQ 0-1, before background) -- clear folded directly into this
+                // pass's load action instead of a separate PASS_CLEAR, same fix already applied
+                // to WorkspaceSkyComponent. The old separate PASS_CLEAR existed purely to set
+                // mClearColour once and store it, immediately followed by this pass loading
+                // what was just cleared -- one fewer pass boundary for identical behaviour.
                 {
-                    Ogre::CompositorPassClearDef* passClear;
-                    auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
-                    passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
+                    Ogre::CompositorPassSceneDef* passScene;
+                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
 
-                    passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f) * 60.0f;
+                    if (true == this->canUseReflection)
+                    {
+                        passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
+                    }
+
+                    passScene->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f) * 60.0f;
 
                     if (true == this->useSSAO->getBool())
                     {
                         // Clear the normals buffer to a neutral value
-                        passClear->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
-                        passClear->mStoreActionColour[1] = Ogre::StoreAction::Store;
+                        passScene->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
+                        passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+                        passScene->mGenNormalsGBuf = true;
                     }
 
-                    passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
-                    passClear->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passClear->mStoreActionStencil = Ogre::StoreAction::Store;
+                    passScene->setAllLoadActions(Ogre::LoadAction::Clear);
 
-                    passClear->mProfilingId = "NOWA_Background_Clear_Pass_Clear";
+                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+                    passScene->mStoreActionStencil = Ogre::StoreAction::Store;
+
+                    passScene->mFirstRQ = 0;
+                    passScene->mLastRQ = 1;
+
+                    if (true == this->usePlanarReflection->getBool())
+                    {
+                        passScene->mIdentifier = 25001;
+                    }
+
+                    passScene->mProfilingId = "NOWA_Background_Before_Background_Pass_Scene";
+                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+                    passScene->mIncludeOverlays = false;
+                    passScene->mUpdateLodLists = true;
                 }
 
-                // Attention (performance fix): there used to be a dedicated "Render Scene RQ 0-1, before
-                // background" PASS_SCENE here. Nothing in NOWA::eRenderQueues is ever assigned to RQ 0 or
-                // RQ 1 (the lowest queue actually used is RENDER_QUEUE_V2_MESH = 10), so that pass always
-                // rendered zero objects -- it existed purely as an empty compositor pass boundary, paying
-                // full per-frame pass-transition/validation overhead for no visible content whatsoever.
-                // Removed entirely, exactly like the analogous fix already applied to
-                // WorkspaceSkyComponent and WorkspacePbsComponent. The background quad now goes directly
-                // after the clear pass.
-
-                // Quad pass Background
+                // Quad pass Background -- must remain its own pass: it sits strictly between the
+                // "before background" RQ range and the "after background" RQ range, the same
+                // structural requirement as the sky quad in WorkspaceSkyComponent.
                 {
                     Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
                     passQuad->mMaterialName = "NOWABackgroundScroll";
@@ -4666,17 +4721,16 @@ namespace NOWA
                     passQuad->mProfilingId = "NOWABackgroundScroll_Pass_Quad";
                 }
 
-                // Render Scene: everything after the background, RQ 2 up to (but not including)
-                // RENDER_QUEUE_GIZMO (252), in ONE pass.
-                //
-                // Attention (performance fix): this used to be split into four separate PASS_SCENE
-                // definitions (OPAQUE V2 2-99, OPAQUE V1 100-199, TRANSPARENT 200-224,
-                // TRANSPARENT V1 225-255), all sharing identical mShadowNode/store-action settings and
-                // differing only in mUpdateLodLists (true on the first, false on the rest) and the SSAO
-                // normals-gbuffer flag. Ogre's own render queue already sorts opaque front-to-back and
-                // transparent back-to-front correctly within a single PASS_SCENE regardless of how many
-                // separate passes wrap around it. Merged into one pass, matching the identical fix already
-                // applied to WorkspaceSkyComponent.
+                // Render Scene: everything after the background, RQ 2 up to and including
+                // RENDER_QUEUE_MAX (255), in ONE pass instead of two. The old separate
+                // "gizmo/overlay (RQ 252-255)" pass had IDENTICAL load/store settings to this
+                // pass (setAllLoadActions(Load), StoreOrResolve colour, Store depth, DontCare
+                // stencil, SHADOW_NODE_REUSE) -- the only differences were mGenNormalsGBuf/
+                // mUpdateLodLists, both already false for that range here too. No actual
+                // behavioural difference justified a separate pass boundary; merging removes
+                // one more pass-buffer map/unmap cycle per frame per active Hlms type. Same
+                // fix already applied to WorkspaceSkyComponent (confirmed: restored 400fps there).
+                // IMPORTANT: This is the FIRST pass that uses shadows => must NOT be SHADOW_NODE_REUSE.
                 {
                     Ogre::CompositorPassSceneDef* passScene;
                     auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -4690,12 +4744,15 @@ namespace NOWA
                     passScene->mIncludeOverlays = false;
 
                     passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-                    passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+                    // FIX: do NOT reuse here, atlas may be Undefined at startup / after invalidation.
+                    // If your Ogre has SHADOW_NODE_RECALCULATE, you can set it explicitly.
+                    // passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_RECALCULATE;
 
                     passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
                     passScene->mFirstRQ = 2;
-                    passScene->mLastRQ = 251; // Up to (not including) RENDER_QUEUE_GIZMO = 252
+                    passScene->mLastRQ = 255; // Was split at 251/252 -- merged, see comment above.
 
                     if (true == this->useSSAO->getBool())
                     {
@@ -4704,7 +4761,7 @@ namespace NOWA
                     }
 
                     // Computed once for the full RQ range, correctly, instead of once-true-then-false
-                    // across four narrower passes.
+                    // across multiple narrower passes.
                     passScene->mUpdateLodLists = true;
 
                     passScene->setAllLoadActions(Ogre::LoadAction::Load);
@@ -4713,41 +4770,6 @@ namespace NOWA
                     passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
                     passScene->mProfilingId = "NOWA_Background_After_Background_Pass_Scene";
-
-                    if (true == this->usePlanarReflection->getBool())
-                    {
-                        passScene->mIdentifier = 25001;
-                    }
-                }
-
-                // Render Scene: gizmo / always-in-foreground / overlay range (RQ 252-255).
-                // Kept as its own pass since depth/stencil and overlay handling for this range can
-                // legitimately differ from the main scene pass, mirroring the same split kept in
-                // WorkspaceSkyComponent and WorkspacePbsComponent.
-                {
-                    Ogre::CompositorPassSceneDef* passScene;
-                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                    passScene->mIncludeOverlays = false;
-
-                    passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-                    passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-
-                    passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-                    passScene->mFirstRQ = 252; // RENDER_QUEUE_GIZMO
-                    passScene->mLastRQ = 255;  // RENDER_QUEUE_MAX
-
-                    passScene->mGenNormalsGBuf = false;
-                    passScene->mUpdateLodLists = false;
-
-                    passScene->setAllLoadActions(Ogre::LoadAction::Load);
-                    passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-                    passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-                    passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-                    passScene->mProfilingId = "NOWA_Background_Gizmo_Overlay_Pass_Scene";
 
                     if (true == this->usePlanarReflection->getBool())
                     {

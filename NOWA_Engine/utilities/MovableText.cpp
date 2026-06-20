@@ -1,706 +1,582 @@
 /**
-* File: MovableText.cpp
-*
-* description: This create create a billboarding object that display a text.
-*
-* @author	2003 by cTh see gavocanov@rambler.ru
-* @update	2006 by barraq see nospam@barraquand.com
-* @update	2012 to work with newer versions of OGRE by MindCalamity <mindcalamity@gmail.com>
-*	- See "Notes" on: http://www.ogre3d.org/tikiwiki/tiki-editpage.php?page=MovableText
-*/
-
+ * File: MovableText.cpp
+ *
+ * Ported from v1 geometry to Ogre-Next v2 VAO.
+ *
+ * Key design decisions:
+ *  - MovableText is both MovableObject and Renderable (mRenderables.push_back(this)).
+ *  - getWorldTransforms() is verbatim from original — billboard via world matrix
+ *    override, parent node is never rotated.
+ *  - getRenderOperation() throws ERR_NOT_IMPLEMENTED exactly like ManualObject2.
+ *    Safe because setDatablock() and _updateHlmsMacroblock() are only called at
+ *    the END of _setupGeometry() AFTER the VAO is in mVaos[] — so calculateHashFor()
+ *    always takes the V2 path via getVaos() and never reaches getRenderOperation().
+ *  - _setupGeometry() builds a VAO (pos3+uv2, BT_IMMUTABLE, no index buffer).
+ *  - _notifyAttached() triggers _setupGeometry() on first attach.
+ *  - Colour is set via HlmsUnlitDatablock::setColour() — no per-vertex colour buffer.
+ */
 
 #include "NOWAPrecompiled.h"
 #include "MovableText.h"
 #include "OgreHlms.h"
 #include "OgreHlmsManager.h"
 #include "OgreHlmsUnlitDatablock.h"
+#include "OgreMeshManager2.h"
+#include "Vao/OgreVaoManager.h"
+#include "Vao/OgreVertexArrayObject.h"
 #include "modules/GraphicsModule.h"
 
-using namespace Ogre;
-
-#define POS_TEX_BINDING    0
-#define COLOUR_BINDING     1
-
-#define UV_MIN		0
-#define UV_MAX		1.0f
-#define UV_RANGE	UV_MAX - UV_MIN
+#define UV_MIN 0.0f
+#define UV_MAX 1.0f
+#define UV_RANGE (UV_MAX - UV_MIN)
 
 namespace
 {
-	Ogre::String type = "MovableText";
+    Ogre::String sMovableTextType = "MovableText";
 }
 
 namespace NOWA
 {
 
-	MovableText::MovableText(IdType id, ObjectMemoryManager* objectMemoryManager, SceneManager* sceneManager, const NameValuePairList* params)
-		: MovableObject(id, objectMemoryManager, sceneManager, RENDER_QUEUE_V1_OBJECTS_ALWAYS_IN_FOREGROUND)
-		, mpCam(nullptr)
-		, mpFont(nullptr)
-		, mpHlmsDatablock(nullptr)
-		, mName("")
-		, mCaption(" ")
-		// , mFontName("BarthowheelRegular")
-		// , mFontName("BlueHighway-8")
-		, mFontName("BlueHighway")
-		, mCharHeight(1.0f)
-		, mColor(ColourValue::White)
-		, mTimeUntilNextToggle(0)
-		, mSpaceWidth(0)
-		, mUpdateColors(true)
-		, mOnTop(false)
-		, mHorizontalAlignment(H_LEFT)
-		, mVerticalAlignment(V_BELOW)
-		, mGlobalTranslation(0.0)
-		, mLocalTranslation(0.0)
-		, yOffset(0.0f)
-	{
-		if (params != 0)
-		{
-			NameValuePairList::const_iterator ni;
-
-			ni = params->find("name");
-			if (ni != params->end())
-			{
-				mName = ni->second;
-			}
-
-			ni = params->find("caption");
-			if (ni != params->end())
-			{
-				mCaption = ni->second;
-			}
-
-			ni = params->find("fontName");
-			if (ni != params->end())
-			{
-				mFontName = ni->second;
-			}
-		}
-
-		assert(mName != "" && "Trying to create MovableText without name");
-
-		mRenderOp.vertexData = nullptr;
-		this->setFontName(mFontName);
-		this->_setupGeometry();
-		this->setCastShadows(false);
-
-		// Add the MovableText object to the renderables queue (MovableObject)
-		mRenderables.push_back(this);
-	}
-
-	MovableText::~MovableText()
-	{
-		if (mpHlmsDatablock != nullptr)
-		{
-			this->_setNullDatablock();
-			mpHlmsDatablock->getCreator()->destroyDatablock(mpHlmsDatablock->getName());
-			mpHlmsDatablock = nullptr;
-		}
-		if (mRenderOp.vertexData)
-			delete mRenderOp.vertexData;
-	}
-
-#if 0
-	void MovableText::setFontName(const String& fontName)
-	{
-		String hlmsDatablockName = mName + "Datablock";
-
-		HlmsDatablock* currentDatablock = Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(hlmsDatablockName);
-		if (currentDatablock != nullptr)
-		{
-			currentDatablock->getCreator()->destroyDatablock(currentDatablock->getName());
-		}
-
-		if (mFontName != fontName || mpHlmsDatablock == nullptr || !mpFont)
-		{
-			mFontName = fontName;
-
-			mpFont = (Font*)FontManager::getSingleton().getByName(mFontName).getPointer();
-			if (!mpFont)
-				throw Exception(Exception::ERR_ITEM_NOT_FOUND, "Could not find font " + fontName, "MovableText::setFontName");
-
-			mpFont->load();
-			if (mpHlmsDatablock != nullptr)
-			{
-				mpHlmsDatablock->getCreator()->destroyDatablock(mpHlmsDatablock->getName());
-				mpHlmsDatablock = nullptr;
-			}
-
-			// Get font HLMS datablock
-			HlmsDatablock* fontDatablock = mpFont->getHlmsDatablock();
-
-			// Create a datablock for the MovableText
-			const HlmsBlendblock* hlmsBlendblock = Root::getSingleton().getHlmsManager()->getBlendblock(*fontDatablock->getBlendblock());
-
-			mpHlmsDatablock = fontDatablock->getCreator()->createDatablock(hlmsDatablockName, hlmsDatablockName, HlmsMacroblock(), *hlmsBlendblock, HlmsParamVec(), false);
-			// reinterpret_cast<HlmsUnlitDatablock*>(mpHlmsDatablock)->setUseColour(true);
-
-			reinterpret_cast<HlmsUnlitDatablock*>(mpHlmsDatablock)->setTexture(0, reinterpret_cast<HlmsUnlitDatablock*>(fontDatablock)->getTexture(0));
-
-			_updateHlmsMacroblock();
-
-			mNeedUpdate = true;
-		}
-	}
-#endif
-
-	void MovableText::setFontName(const String& fontName)
-	{
-		Ogre::String hlmsDatablockName = mName + "Datablock";
-
-		Ogre::HlmsDatablock* currentDatablock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(hlmsDatablockName);
-		if (nullptr != currentDatablock)
-		{
-			currentDatablock->getCreator()->destroyDatablock(currentDatablock->getName());
-		}
-
-		if (mFontName != fontName || mpHlmsDatablock == nullptr || !mpFont)
-		{
-			mFontName = fontName;
-
-			mpFont = (Ogre::Font*)Ogre::FontManager::getSingleton().getByName(mFontName).getPointer();
-			if (!mpFont)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage("[MovableText]: Could not find font " + fontName);
-				throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not find font " + fontName, "MovableText::setFontName");
-			}
-
-			mpFont->load();
-			if (nullptr != mpHlmsDatablock)
-			{
-				mpHlmsDatablock->getCreator()->destroyDatablock(mpHlmsDatablock->getName());
-				mpHlmsDatablock = nullptr;
-			}
-
-			// Get font HLMS datablock
-			Ogre::HlmsDatablock* fontDatablock = mpFont->getHlmsDatablock();
-
-			// Create a datablock for the MovableText
-			const Ogre::HlmsBlendblock* hlmsBlendblock = Root::getSingleton().getHlmsManager()->getBlendblock(*fontDatablock->getBlendblock());
-
-			mpHlmsDatablock = fontDatablock->getCreator()->createDatablock(hlmsDatablockName, hlmsDatablockName,
-				HlmsMacroblock(), *hlmsBlendblock, HlmsParamVec(), false);
-
-			reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setUseColour(true);
-			reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setTexture(0, reinterpret_cast<Ogre::HlmsUnlitDatablock*>(fontDatablock)->getTexture(0));
-
-			//Need to reset swizzle here or it will be broken colouring.
-			reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setTextureSwizzle(0, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK,
-				Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::G_MASK);
-
-			_updateHlmsMacroblock();
-
-			mNeedUpdate = true;
-		}
-	}
-
-	void MovableText::setCaption(const String& caption)
-	{
-		if (caption != mCaption)
-		{
-			mCaption = caption;
-			mNeedUpdate = true;
-		}
-	}
-
-	void MovableText::setColor(const ColourValue& color)
-	{
-		if (color != mColor)
-		{
-			mColor = color;
-			mUpdateColors = true;
-		}
-	}
-
-	void MovableText::setCharacterHeight(Real height)
-	{
-		if (height != mCharHeight)
-		{
-			mCharHeight = height;
-			mNeedUpdate = true;
-		}
-	}
-
-	void MovableText::setSpaceWidth(Real width)
-	{
-		if (width != mSpaceWidth)
-		{
-			mSpaceWidth = width;
-			mNeedUpdate = true;
-		}
-	}
-
-	void MovableText::setTextAlignment(const HorizontalAlignment& horizontalAlignment, const VerticalAlignment& verticalAlignment)
-	{
-		if (mHorizontalAlignment != horizontalAlignment)
-		{
-			mHorizontalAlignment = horizontalAlignment;
-			mNeedUpdate = true;
-		}
-		if (mVerticalAlignment != verticalAlignment)
-		{
-			mVerticalAlignment = verticalAlignment;
-			mNeedUpdate = true;
-		}
-	}
-
-	void MovableText::setGlobalTranslation(Vector3 trans)
-	{
-		mGlobalTranslation = trans;
-	}
-
-	void MovableText::setLocalTranslation(Vector3 trans)
-	{
-		mLocalTranslation = trans;
-	}
-
-	void MovableText::showOnTop(bool show)
-	{
-		if (mOnTop != show && mpHlmsDatablock != nullptr)
-		{
-			mOnTop = show;
-			_updateHlmsMacroblock();
-		}
-	}
-
-	void MovableText::forceUpdate(void)
-	{
-		mNeedUpdate = true;
-		_setupGeometry();
-	}
-
-	void MovableText::setTextYOffset(Ogre::Real yOffset)
-	{
-		this->yOffset = yOffset;
-		mNeedUpdate = true;
-	}
-
-	void MovableText::_updateHlmsMacroblock()
-	{
-		assert(mpHlmsDatablock);
-
-		HlmsMacroblock macroblockOptions;
-		macroblockOptions.mCullMode = CULL_NONE;
-		macroblockOptions.mDepthCheck = !mOnTop;
-		macroblockOptions.mDepthBiasConstant = 1.0f;
-		macroblockOptions.mDepthBiasSlopeScale = 1.0f;
-		macroblockOptions.mDepthWrite = mOnTop;
-
-		const HlmsMacroblock* hlmsMacroblock = Root::getSingletonPtr()->getHlmsManager()->getMacroblock(macroblockOptions);
-		mpHlmsDatablock->setMacroblock(*hlmsMacroblock);
-	}
-
-	void MovableText::_setupGeometry()
-	{
-		assert(mpFont);
-		assert(mpHlmsDatablock);
-
-		unsigned int vertexCount = static_cast<unsigned int>(mCaption.size() * 6);
-
-		if (mRenderOp.vertexData)
-		{
-			// Removed this test as it causes problems when replacing a caption
-			// of the same size: replacing "Hello" with "hello"
-			// as well as when changing the text alignment
-			//if (mRenderOp.vertexData->vertexCount != vertexCount)
-			{
-				delete mRenderOp.vertexData;
-				mRenderOp.vertexData = nullptr;
-				mUpdateColors = true;
-			}
-		}
-
-		if (!mRenderOp.vertexData)
-			mRenderOp.vertexData = new v1::VertexData(nullptr);
-
-		mRenderOp.indexData = 0;
-		mRenderOp.vertexData->vertexStart = 0;
-		mRenderOp.vertexData->vertexCount = vertexCount;
-		mRenderOp.operationType = OperationType::OT_TRIANGLE_LIST;
-		mRenderOp.useIndexes = false;
-
-		v1::VertexDeclaration* decl = mRenderOp.vertexData->vertexDeclaration;
-		v1::VertexBufferBinding* bind = mRenderOp.vertexData->vertexBufferBinding;
-		size_t offset = 0;
-
-		// create/bind positions/tex.ccord. buffer
-		if (!decl->findElementBySemantic(VES_POSITION))
-			decl->addElement(POS_TEX_BINDING, offset, VET_FLOAT3, VES_POSITION);
-
-		offset += v1::VertexElement::getTypeSize(VET_FLOAT3);
-
-		if (!decl->findElementBySemantic(VES_TEXTURE_COORDINATES))
-			decl->addElement(POS_TEX_BINDING, offset, Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES, 0);
-
-		v1::HardwareVertexBufferSharedPtr ptbuf = v1::HardwareBufferManager::getSingleton().createVertexBuffer(decl->getVertexSize(POS_TEX_BINDING),
-			mRenderOp.vertexData->vertexCount,
-			v1::HardwareBuffer::HBU_DYNAMIC_WRITE_ONLY);
-		bind->setBinding(POS_TEX_BINDING, ptbuf);
-
-		// Colours - store these in a separate buffer because they change less often
-		if (!decl->findElementBySemantic(VES_DIFFUSE))
-			decl->addElement(COLOUR_BINDING, 0, VET_COLOUR, VES_DIFFUSE);
-
-		v1::HardwareVertexBufferSharedPtr cbuf = v1::HardwareBufferManager::getSingleton().createVertexBuffer(decl->getVertexSize(COLOUR_BINDING),
-			mRenderOp.vertexData->vertexCount,
-			v1::HardwareBuffer::HBU_DYNAMIC_WRITE_ONLY);
-		bind->setBinding(COLOUR_BINDING, cbuf);
-
-		float* pPCBuff = static_cast<float*>(ptbuf->lock(v1::HardwareBuffer::HBL_DISCARD));
-
-		float largestWidth = 0;
-		float left = UV_MIN;
-		float top = UV_MAX;
-
-		Real spaceWidth = mSpaceWidth;
-		// Derive space width from a capital A
-		if (spaceWidth == 0)
-			spaceWidth = mpFont->getGlyphAspectRatio('A') * mCharHeight * UV_RANGE;
-
-		// for calculation of AABB
-		Ogre::Vector3 min = Ogre::Vector3(0, 0, 0);
-		Ogre::Vector3 max = Ogre::Vector3(1, 1, 1);
-		Ogre::Vector3 currPos;
-		float maxSquaredRadius = 0.0f;
-		bool first = true;
-
-		// Use iterator
-		String::iterator i, iend;
-		iend = mCaption.end();
-		bool newLine = true;
-		Real len = 0.0f;
-
-		Real verticalOffset = 0;
-		switch (mVerticalAlignment)
-		{
-		case MovableText::V_ABOVE:
-			verticalOffset = this->yOffset + (UV_RANGE / 2) * mCharHeight;
-			break;
-		case MovableText::V_CENTER:
-			verticalOffset = (UV_RANGE / 4) * mCharHeight;
-			break;
-		case MovableText::V_BELOW:
-			verticalOffset = 0;
-			break;
-		}
-		// Raise the first line of the caption
-		top += verticalOffset;
-		for (i = mCaption.begin(); i != iend; ++i)
-		{
-			if (*i == '\n')
-				top += verticalOffset * UV_RANGE;
-		}
-
-		for (i = mCaption.begin(); i != iend; ++i)
-		{
-			if (newLine)
-			{
-				len = 0.0f;
-				for (String::iterator j = i; j != iend && *j != '\n'; j++)
-				{
-					if (*j == ' ')
-						len += spaceWidth;
-					else
-						len += mpFont->getGlyphAspectRatio((unsigned char)*j) * mCharHeight * UV_RANGE;
-				}
-				newLine = false;
-			}
-
-			if (*i == '\n')
-			{
-				left = UV_MIN;
-				top -= mCharHeight * UV_RANGE;
-				newLine = true;
-
-				// Bugfix by Wladimir Lukutin - thanks :)
-				// Also reduce tri count
-				mRenderOp.vertexData->vertexCount -= 6;
-				// Bugfix end.
-
-				continue;
-			}
-
-			if (*i == ' ')
-			{
-				// Just leave a gap, no tris
-				left += spaceWidth;
-				// Also reduce tri count
-				mRenderOp.vertexData->vertexCount -= 6;
-				continue;
-			}
-
-			Real horiz_height = mpFont->getGlyphAspectRatio((unsigned char)*i);
-			Real u1, u2, v1, v2;
-			Ogre::Font::UVRect utmp;
-			utmp = mpFont->getGlyphTexCoords((unsigned char)*i);
-			u1 = utmp.left;
-			u2 = utmp.right;
-			v1 = utmp.top;
-			v2 = utmp.bottom;
-
-			// each vert is (x, y, z, u, v)
-			//-------------------------------------------------------------------------------------
-			// First tri
-			//
-			// Upper left
-			if (mHorizontalAlignment == MovableText::H_LEFT)
-				*pPCBuff++ = left;
-			else
-				*pPCBuff++ = left - (len / 2);
-			*pPCBuff++ = top;
-			*pPCBuff++ = 0;
-			*pPCBuff++ = u1;
-			*pPCBuff++ = v1;
-
-			// Deal with bounds
-			if (mHorizontalAlignment == MovableText::H_LEFT)
-				currPos = Ogre::Vector3(left, top, UV_MIN);
-			else
-				currPos = Ogre::Vector3(left - (len / 2), top, UV_MIN);
-			if (first)
-			{
-				min = max = currPos;
-				maxSquaredRadius = currPos.squaredLength();
-				first = false;
-			}
-			else
-			{
-				min.makeFloor(currPos);
-				max.makeCeil(currPos);
-				maxSquaredRadius = std::max(maxSquaredRadius, currPos.squaredLength());
-			}
-
-			top -= mCharHeight * UV_RANGE;
-
-			// Bottom left
-			if (mHorizontalAlignment == MovableText::H_LEFT)
-				*pPCBuff++ = left;
-			else
-				*pPCBuff++ = left - (len / 2);
-			*pPCBuff++ = top;
-			*pPCBuff++ = 0;
-			*pPCBuff++ = u1;
-			*pPCBuff++ = v2;
-
-			// Deal with bounds
-			if (mHorizontalAlignment == MovableText::H_LEFT)
-				currPos = Ogre::Vector3(left, top, UV_MIN);
-			else
-				currPos = Ogre::Vector3(left - (len / 2), top, UV_MIN);
-			min.makeFloor(currPos);
-			max.makeCeil(currPos);
-			maxSquaredRadius = std::max(maxSquaredRadius, currPos.squaredLength());
-
-			top += mCharHeight * UV_RANGE;
-			left += horiz_height * mCharHeight * UV_RANGE;
-
-			// Top right
-			if (mHorizontalAlignment == MovableText::H_LEFT)
-				*pPCBuff++ = left;
-			else
-				*pPCBuff++ = left - (len / 2);
-			*pPCBuff++ = top;
-			*pPCBuff++ = 0;
-			*pPCBuff++ = u2;
-			*pPCBuff++ = v1;
-			//-------------------------------------------------------------------------------------
-
-			// Deal with bounds
-			if (mHorizontalAlignment == MovableText::H_LEFT)
-				currPos = Ogre::Vector3(left, top, UV_MIN);
-			else
-				currPos = Ogre::Vector3(left - (len / 2), top, UV_MIN);
-			min.makeFloor(currPos);
-			max.makeCeil(currPos);
-			maxSquaredRadius = std::max(maxSquaredRadius, currPos.squaredLength());
-
-			//-------------------------------------------------------------------------------------
-			// Second tri
-			//
-			// Top right (again)
-			if (mHorizontalAlignment == MovableText::H_LEFT)
-				*pPCBuff++ = left;
-			else
-				*pPCBuff++ = left - (len / 2);
-			*pPCBuff++ = top;
-			*pPCBuff++ = 0;
-			*pPCBuff++ = u2;
-			*pPCBuff++ = v1;
-
-			currPos = Ogre::Vector3(left, top, UV_MIN);
-			min.makeFloor(currPos);
-			max.makeCeil(currPos);
-			maxSquaredRadius = std::max(maxSquaredRadius, currPos.squaredLength());
-
-			top -= mCharHeight * UV_RANGE;
-			left -= horiz_height * mCharHeight * UV_RANGE;
-
-			// Bottom left (again)
-			if (mHorizontalAlignment == MovableText::H_LEFT)
-				*pPCBuff++ = left;
-			else
-				*pPCBuff++ = left - (len / 2);
-			*pPCBuff++ = top;
-			*pPCBuff++ = 0;
-			*pPCBuff++ = u1;
-			*pPCBuff++ = v2;
-
-			currPos = Ogre::Vector3(left, top, UV_MIN);
-			min.makeFloor(currPos);
-			max.makeCeil(currPos);
-			maxSquaredRadius = std::max(maxSquaredRadius, currPos.squaredLength());
-
-			left += horiz_height * mCharHeight * UV_RANGE;
-
-			// Bottom right
-			if (mHorizontalAlignment == MovableText::H_LEFT)
-				*pPCBuff++ = left;
-			else
-				*pPCBuff++ = left - (len / 2);
-			*pPCBuff++ = top;
-			*pPCBuff++ = 0;
-			*pPCBuff++ = u2;
-			*pPCBuff++ = v2;
-			//-------------------------------------------------------------------------------------
-
-			currPos = Ogre::Vector3(left, top, UV_MIN);
-			min.makeFloor(currPos);
-			max.makeCeil(currPos);
-			maxSquaredRadius = std::max(maxSquaredRadius, currPos.squaredLength());
-
-			// Go back up with top
-			top += mCharHeight * UV_RANGE;
-
-			float currentWidth = (left + UV_MAX) / UV_RANGE - 0;
-			if (currentWidth > largestWidth)
-				largestWidth = currentWidth;
-		}
-
-		// Unlock vertex buffer
-		ptbuf->unlock();
-
-		// update AABB/Sphere radius
-		Aabb aabb = Ogre::Aabb::newFromExtents(min, max);
-		float radius = Ogre::Math::Sqrt(maxSquaredRadius);
-		mObjectData.mLocalAabb->setFromAabb(aabb, mObjectData.mIndex);
-		mObjectData.mWorldAabb->setFromAabb(aabb, mObjectData.mIndex);
-		mObjectData.mLocalRadius[mObjectData.mIndex] = radius;
-		mObjectData.mWorldRadius[mObjectData.mIndex] = radius;
-
-
-		if (mUpdateColors)
-			this->_updateColors();
-
-		mNeedUpdate = false;
-
-		this->setDatablock(mpHlmsDatablock);
-	}
-
-	void MovableText::_updateColors(void)
-	{
-		assert(mpFont);
-		assert(mpHlmsDatablock);
-
-		// Convert to system-specific
-		RGBA color;
-		Root::getSingleton().convertColourValue(mColor, &color);
-
-		//uint8 val8;
-		//// Blue
-		//val8 = static_cast<uint8>(mColor.b * 255);
-		//color = val8 << 24;
-
-		//// Green
-		//val8 = static_cast<uint8>(mColor.g * 255);
-		//color += val8 << 16;
-
-		//// Red
-		//val8 = static_cast<uint8>(mColor.r * 255);
-		//color += val8 << 8;
-
-		//// Alpha
-		//val8 = static_cast<uint8>(mColor.a * 255);
-		//color += val8;
-
-		v1::HardwareVertexBufferSharedPtr vbuf = mRenderOp.vertexData->vertexBufferBinding->getBuffer(COLOUR_BINDING);
-		RGBA* pDest = static_cast<RGBA*>(vbuf->lock(v1::HardwareBuffer::HBL_DISCARD));
-		for (int i = 0; i < (int)mRenderOp.vertexData->vertexCount; ++i)
-			*pDest++ = color;
-		vbuf->unlock();
-
-		mUpdateColors = false;
-	}
-
-	void MovableText::getWorldTransforms(Matrix4* xform) const
-	{
-		if (this->isVisible() && mpCam)
-		{
-			Matrix3 rot3x3, scale3x3 = Matrix3::IDENTITY;
-
-			// store rotation in a matrix
-			mpCam->getDerivedOrientation().ToRotationMatrix(rot3x3);
-
-			// parent node position
-			Vector3 ppos = mParentNode->_getDerivedPosition() + Vector3::UNIT_Y * mGlobalTranslation;
-			ppos += rot3x3 * mLocalTranslation;
-
-			// apply scale
-			scale3x3[0][0] = mParentNode->_getDerivedScale().x / 2;
-			scale3x3[1][1] = mParentNode->_getDerivedScale().y / 2;
-			scale3x3[2][2] = mParentNode->_getDerivedScale().z / 2;
-
-			// apply all transforms to xform       
-			*xform = (rot3x3 * scale3x3);
-			xform->setTrans(ppos);
-		}
-	}
-
-	void MovableText::getRenderOperation(v1::RenderOperation& op, bool casterPass)
-	{
-		if (this->isVisible())
-		{
-			if (mNeedUpdate)
-				this->_setupGeometry();
-			if (mUpdateColors)
-				this->_updateColors();
-		}
-		op = mRenderOp;
-	}
-
-	void MovableText::_updateRenderQueue(RenderQueue* queue, Camera* camera, const Camera* lodCamera)
-	{
-		if (this->isVisible())
-		{
-			if (mNeedUpdate)
-				this->_setupGeometry();
-			if (mUpdateColors)
-				this->_updateColors();
-
-			mpCam = camera;
-		}
-	}
-
-	void MovableText::update(Ogre::Real dt)
-	{
-
-	}
-
-	//-----------------------------------------------------------------------
-	const String& MovableTextFactory::getType(void) const
-	{
-		return type;
-	}
-	//-----------------------------------------------------------------------
-	MovableObject* MovableTextFactory::createInstanceImpl(IdType id, ObjectMemoryManager* objectMemoryManager, SceneManager* sceneManager, const NameValuePairList* params)
-	{
-		return OGRE_NEW MovableText(id, objectMemoryManager, sceneManager, params);
-	}
-	//-----------------------------------------------------------------------
-	void MovableTextFactory::destroyInstance(MovableObject* obj)
-	{
-		OGRE_DELETE obj;
-	}
-
-}; // namespace end
+    // ============================================================================
+    //  Constructor / Destructor
+    // ============================================================================
+
+    MovableText::MovableText(Ogre::IdType id, Ogre::ObjectMemoryManager* objectMemoryManager, Ogre::SceneManager* sceneManager, const Ogre::NameValuePairList* params) :
+        Ogre::MovableObject(id, objectMemoryManager, sceneManager, RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND),
+        mpCam(nullptr),
+        mpFont(nullptr),
+        mpHlmsDatablock(nullptr),
+        mName(""),
+        mCaption(" "),
+        mFontName("BlueHighway"),
+        mCharHeight(1.0f),
+        mColor(Ogre::ColourValue::White),
+        mSpaceWidth(0.0f),
+        mNeedUpdate(true),
+        mOnTop(false),
+        mHorizontalAlignment(H_LEFT),
+        mVerticalAlignment(V_BELOW),
+        mGlobalTranslation(Ogre::Vector3::ZERO),
+        mLocalTranslation(Ogre::Vector3::ZERO),
+        yOffset(0.0f),
+        mVertexBuffer(nullptr),
+        mVaoManager(nullptr)
+    {
+        if (params)
+        {
+            auto ni = params->find("name");
+            if (ni != params->end())
+            {
+                mName = ni->second;
+            }
+
+            ni = params->find("caption");
+            if (ni != params->end())
+            {
+                mCaption = ni->second;
+            }
+
+            ni = params->find("fontName");
+            if (ni != params->end())
+            {
+                mFontName = ni->second;
+            }
+        }
+
+        assert(!mName.empty() && "Trying to create MovableText without name");
+
+        mVaoManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
+
+        this->setFontName(mFontName);
+        this->setCastShadows(false);
+
+        // Register as renderable so SceneManager finds it — same as original
+        mRenderables.push_back(this);
+    }
+
+    MovableText::~MovableText()
+    {
+        _destroyGeometry();
+
+        if (mpHlmsDatablock)
+        {
+            this->_setNullDatablock();
+            mpHlmsDatablock->getCreator()->destroyDatablock(mpHlmsDatablock->getName());
+            mpHlmsDatablock = nullptr;
+        }
+    }
+
+    // ============================================================================
+    //  VAO cleanup
+    // ============================================================================
+
+    void MovableText::_destroyGeometry()
+    {
+        if (!mVaos[Ogre::VpNormal].empty())
+        {
+            Ogre::VertexArrayObject* vao = mVaos[Ogre::VpNormal][0];
+            Ogre::VertexBufferPackedVec vbVec = vao->getVertexBuffers();
+            mVaoManager->destroyVertexArrayObject(vao);
+            for (auto* vb : vbVec)
+            {
+                mVaoManager->destroyVertexBuffer(vb);
+            }
+            mVaos[Ogre::VpNormal].clear();
+            mVaos[Ogre::VpShadow].clear();
+            mVertexBuffer = nullptr;
+        }
+    }
+
+    // ============================================================================
+    //  Macroblock
+    // ============================================================================
+
+    void MovableText::_updateHlmsMacroblock()
+    {
+        assert(mpHlmsDatablock);
+        Ogre::HlmsMacroblock mb;
+        mb.mCullMode = Ogre::CULL_NONE;
+        mb.mDepthCheck = !mOnTop;
+        mb.mDepthBiasConstant = 1.0f;
+        mb.mDepthBiasSlopeScale = 1.0f;
+        mb.mDepthWrite = mOnTop;
+        const Ogre::HlmsMacroblock* hlmsMb = Ogre::Root::getSingletonPtr()->getHlmsManager()->getMacroblock(mb);
+        mpHlmsDatablock->setMacroblock(*hlmsMb);
+    }
+
+    // ============================================================================
+    //  Font / datablock
+    // ============================================================================
+
+    void MovableText::setFontName(const Ogre::String& fontName)
+    {
+        Ogre::String hlmsDatablockName = mName + "Datablock";
+
+        Ogre::HlmsDatablock* currentDatablock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(hlmsDatablockName);
+        if (nullptr != currentDatablock)
+        {
+            currentDatablock->getCreator()->destroyDatablock(currentDatablock->getName());
+        }
+
+        if (mFontName != fontName || !mpHlmsDatablock || !mpFont)
+        {
+            mFontName = fontName;
+
+            mpFont = static_cast<Ogre::Font*>(Ogre::FontManager::getSingleton().getByName(mFontName).getPointer());
+            if (!mpFont)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage("[MovableText]: Could not find font " + fontName);
+                throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not find font " + fontName, "MovableText::setFontName");
+            }
+            mpFont->load();
+
+            if (nullptr != mpHlmsDatablock)
+            {
+                mpHlmsDatablock->getCreator()->destroyDatablock(mpHlmsDatablock->getName());
+                mpHlmsDatablock = nullptr;
+            }
+
+            Ogre::HlmsDatablock* fontDatablock = mpFont->getHlmsDatablock();
+            const Ogre::HlmsBlendblock* hlmsBlendblock = Ogre::Root::getSingleton().getHlmsManager()->getBlendblock(*fontDatablock->getBlendblock());
+
+            mpHlmsDatablock = fontDatablock->getCreator()->createDatablock(hlmsDatablockName, hlmsDatablockName, Ogre::HlmsMacroblock(), *hlmsBlendblock, Ogre::HlmsParamVec(), false);
+
+            reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setUseColour(true);
+            reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setTexture(0, reinterpret_cast<Ogre::HlmsUnlitDatablock*>(fontDatablock)->getTexture(0));
+            reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setTextureSwizzle(0, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::G_MASK);
+
+            // NOTE: Do NOT call _updateHlmsMacroblock() or setDatablock() here.
+            // Both trigger flushRenderables() -> calculateHashFor() -> getRenderOperation()
+            // which crashes because the VAO does not exist yet at this point.
+            // Both are called at the end of _setupGeometry() after the VAO is built.
+            mNeedUpdate = true;
+        }
+    }
+
+    // ============================================================================
+    //  Geometry rebuild
+    // ============================================================================
+
+    void MovableText::_setupGeometry()
+    {
+        assert(mpFont);
+        assert(mpHlmsDatablock);
+        assert(mVaoManager);
+
+        // ── Build CPU vertex data: float3 pos + float2 uv (5 floats/vert) ────
+        std::vector<float> cpuVerts;
+        cpuVerts.reserve(mCaption.size() * 6u * 5u);
+
+        float left = UV_MIN;
+        float top = UV_MAX;
+
+        Ogre::Real spaceWidth = mSpaceWidth;
+        if (spaceWidth == 0.0f)
+        {
+            spaceWidth = mpFont->getGlyphAspectRatio('A') * mCharHeight * UV_RANGE;
+        }
+
+        Ogre::Vector3 bmin(std::numeric_limits<float>::max());
+        Ogre::Vector3 bmax(-std::numeric_limits<float>::max());
+        float maxSqRadius = 0.0f;
+        bool first = true;
+        size_t actualVerts = 0;
+
+        // Vertical offset — verbatim from original
+        Ogre::Real verticalOffset = 0.0f;
+        switch (mVerticalAlignment)
+        {
+        case V_ABOVE:
+            verticalOffset = yOffset + (UV_RANGE / 2.0f) * mCharHeight;
+            break;
+        case V_CENTER:
+            verticalOffset = (UV_RANGE / 4.0f) * mCharHeight;
+            break;
+        case V_BELOW:
+            verticalOffset = 0.0f;
+            break;
+        }
+        top += verticalOffset;
+        for (auto ch : mCaption)
+        {
+            if (ch == '\n')
+            {
+                top += verticalOffset * UV_RANGE;
+            }
+        }
+
+        auto trackPos = [&](float x, float y)
+        {
+            Ogre::Vector3 p(x, y, UV_MIN);
+            if (first)
+            {
+                bmin = bmax = p;
+                maxSqRadius = p.squaredLength();
+                first = false;
+            }
+            else
+            {
+                bmin.makeFloor(p);
+                bmax.makeCeil(p);
+                maxSqRadius = std::max(maxSqRadius, p.squaredLength());
+            }
+        };
+
+        auto pushVert = [&](float x, float y, float u, float v)
+        {
+            cpuVerts.push_back(x);
+            cpuVerts.push_back(y);
+            cpuVerts.push_back(0.0f);
+            cpuVerts.push_back(u);
+            cpuVerts.push_back(v);
+            trackPos(x, y);
+            ++actualVerts;
+        };
+
+        bool newLine = true;
+        Ogre::Real len = 0.0f;
+
+        for (auto it = mCaption.begin(); it != mCaption.end(); ++it)
+        {
+            if (newLine)
+            {
+                len = 0.0f;
+                for (auto jt = it; jt != mCaption.end() && *jt != '\n'; ++jt)
+                {
+                    if (*jt == ' ')
+                    {
+                        len += spaceWidth;
+                    }
+                    else
+                    {
+                        len += mpFont->getGlyphAspectRatio((unsigned char)*jt) * mCharHeight * UV_RANGE;
+                    }
+                }
+                newLine = false;
+            }
+
+            if (*it == '\n')
+            {
+                left = UV_MIN;
+                top -= mCharHeight * UV_RANGE;
+                newLine = true;
+                continue;
+            }
+
+            if (*it == ' ')
+            {
+                left += spaceWidth;
+                continue;
+            }
+
+            const float horiz = mpFont->getGlyphAspectRatio((unsigned char)*it);
+            Ogre::Font::UVRect uv = mpFont->getGlyphTexCoords((unsigned char)*it);
+
+            const float xL = (mHorizontalAlignment == H_LEFT) ? left : left - (len / 2.0f);
+            const float xR = xL + horiz * mCharHeight * UV_RANGE;
+            const float yT = top;
+            const float yB = top - mCharHeight * UV_RANGE;
+
+            // tri 0: upper-left, bottom-left, top-right
+            pushVert(xL, yT, uv.left, uv.top);
+            pushVert(xL, yB, uv.left, uv.bottom);
+            pushVert(xR, yT, uv.right, uv.top);
+            // tri 1: top-right, bottom-left, bottom-right
+            pushVert(xR, yT, uv.right, uv.top);
+            pushVert(xL, yB, uv.left, uv.bottom);
+            pushVert(xR, yB, uv.right, uv.bottom);
+
+            top += mCharHeight * UV_RANGE;
+            left += horiz * mCharHeight * UV_RANGE;
+        }
+
+        if (actualVerts == 0)
+        {
+            mNeedUpdate = false;
+            return;
+        }
+
+        // ── Destroy old VAO before rebuilding ─────────────────────────────────
+        _destroyGeometry();
+
+        // ── Upload vertex buffer ──────────────────────────────────────────────
+        Ogre::VertexElement2Vec elements;
+        elements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
+        elements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
+
+        const size_t vertBytes = actualVerts * 5u * sizeof(float);
+        float* gpuBuf = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(vertBytes, Ogre::MEMCATEGORY_GEOMETRY));
+        memcpy(gpuBuf, cpuVerts.data(), vertBytes);
+
+        try
+        {
+            mVertexBuffer = mVaoManager->createVertexBuffer(elements, actualVerts, Ogre::BT_IMMUTABLE, gpuBuf, true /*keepAsShadow*/);
+        }
+        catch (Ogre::Exception& e)
+        {
+            OGRE_FREE_SIMD(gpuBuf, Ogre::MEMCATEGORY_GEOMETRY);
+            Ogre::LogManager::getSingletonPtr()->logMessage("[MovableText] createVertexBuffer failed: " + e.getDescription(), Ogre::LML_CRITICAL);
+            return;
+        }
+
+        // ── Build VAO (no index buffer — vertices already expanded) ──────────
+        Ogre::VertexBufferPackedVec vbVec;
+        vbVec.push_back(mVertexBuffer);
+
+        Ogre::VertexArrayObject* vao = mVaoManager->createVertexArrayObject(vbVec, nullptr, Ogre::OT_TRIANGLE_LIST);
+
+        mVaos[Ogre::VpNormal].push_back(vao);
+        mVaos[Ogre::VpShadow].push_back(vao);
+
+        // ── AABB — verbatim from original ─────────────────────────────────────
+        if (first)
+        {
+            bmin = Ogre::Vector3(0.0f);
+            bmax = Ogre::Vector3(1.0f);
+        }
+        Ogre::Aabb aabb = Ogre::Aabb::newFromExtents(bmin, bmax);
+        float radius = Ogre::Math::Sqrt(maxSqRadius);
+
+        mObjectData.mLocalAabb->setFromAabb(aabb, mObjectData.mIndex);
+        mObjectData.mWorldAabb->setFromAabb(aabb, mObjectData.mIndex);
+        mObjectData.mLocalRadius[mObjectData.mIndex] = radius;
+        mObjectData.mWorldRadius[mObjectData.mIndex] = radius;
+
+        // ── VAO is now in mVaos[] — safe to call _updateHlmsMacroblock() and
+        //    setDatablock() because calculateHashFor() will take the V2 path. ─
+        _updateHlmsMacroblock();
+        this->setDatablock(mpHlmsDatablock);
+        reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setColour(mColor);
+
+        mNeedUpdate = false;
+    }
+
+    // ============================================================================
+    //  _notifyAttached — build geometry as soon as we have a parent node
+    // ============================================================================
+
+    void MovableText::_notifyAttached(Ogre::Node* parent)
+    {
+        Ogre::MovableObject::_notifyAttached(parent);
+
+        if (parent && mNeedUpdate && mpFont && mpHlmsDatablock)
+        {
+            _setupGeometry();
+        }
+        else if (!parent)
+        {
+            _destroyGeometry();
+        }
+    }
+
+    // ============================================================================
+    //  _updateRenderQueue — verbatim from original
+    // ============================================================================
+
+    void MovableText::_updateRenderQueue(Ogre::RenderQueue* /*queue*/, Ogre::Camera* camera, const Ogre::Camera* /*lodCamera*/)
+    {
+        if (this->isVisible())
+        {
+            if (mNeedUpdate)
+            {
+                this->_setupGeometry();
+            }
+
+            mpCam = camera;
+        }
+    }
+
+    // ============================================================================
+    //  getWorldTransforms — verbatim from original
+    // ============================================================================
+
+    void MovableText::getWorldTransforms(Ogre::Matrix4* xform) const
+    {
+        if (this->isVisible() && mpCam)
+        {
+            Ogre::Matrix3 rot3x3, scale3x3 = Ogre::Matrix3::IDENTITY;
+
+            mpCam->getDerivedOrientation().ToRotationMatrix(rot3x3);
+
+            Ogre::Vector3 ppos = mParentNode->_getDerivedPosition() + Ogre::Vector3::UNIT_Y * mGlobalTranslation;
+            ppos += rot3x3 * mLocalTranslation;
+
+            scale3x3[0][0] = mParentNode->_getDerivedScale().x / 2.0f;
+            scale3x3[1][1] = mParentNode->_getDerivedScale().y / 2.0f;
+            scale3x3[2][2] = mParentNode->_getDerivedScale().z / 2.0f;
+
+            *xform = Ogre::Matrix4(rot3x3 * scale3x3);
+            xform->setTrans(ppos);
+        }
+    }
+
+    // ============================================================================
+    //  getRenderOperation — throws like ManualObject2.
+    //  Never reached during normal operation because setDatablock() and
+    //  _updateHlmsMacroblock() are only called after mVaos[] is populated,
+    //  so calculateHashFor() always takes the V2 path via getVaos().
+    // ============================================================================
+
+    void MovableText::getRenderOperation(Ogre::v1::RenderOperation& /*op*/, bool /*casterPass*/)
+    {
+        OGRE_EXCEPT(Ogre::Exception::ERR_NOT_IMPLEMENTED,
+            "MovableText does not implement getRenderOperation. "
+            "Do not place it in a v1-compatible render queue.",
+            "MovableText::getRenderOperation");
+    }
+
+    // ============================================================================
+    //  Public setters — verbatim from original
+    // ============================================================================
+
+    void MovableText::setCaption(const Ogre::String& caption)
+    {
+        if (caption != mCaption)
+        {
+            mCaption = caption;
+            mNeedUpdate = true;
+        }
+    }
+
+    void MovableText::setColor(const Ogre::ColourValue& color)
+    {
+        if (color != mColor)
+        {
+            mColor = color;
+            if (mpHlmsDatablock)
+            {
+                reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setColour(mColor);
+            }
+        }
+    }
+
+    void MovableText::setCharacterHeight(Ogre::Real h)
+    {
+        if (h != mCharHeight)
+        {
+            mCharHeight = h;
+            mNeedUpdate = true;
+        }
+    }
+
+    void MovableText::setSpaceWidth(Ogre::Real w)
+    {
+        if (w != mSpaceWidth)
+        {
+            mSpaceWidth = w;
+            mNeedUpdate = true;
+        }
+    }
+
+    void MovableText::setTextAlignment(const HorizontalAlignment& h, const VerticalAlignment& v)
+    {
+        if (mHorizontalAlignment != h)
+        {
+            mHorizontalAlignment = h;
+            mNeedUpdate = true;
+        }
+        if (mVerticalAlignment != v)
+        {
+            mVerticalAlignment = v;
+            mNeedUpdate = true;
+        }
+    }
+
+    void MovableText::setGlobalTranslation(Ogre::Vector3 t)
+    {
+        mGlobalTranslation = t;
+    }
+    void MovableText::setLocalTranslation(Ogre::Vector3 t)
+    {
+        mLocalTranslation = t;
+    }
+
+    void MovableText::showOnTop(bool show)
+    {
+        if (mOnTop != show && mpHlmsDatablock)
+        {
+            mOnTop = show;
+            // _updateHlmsMacroblock calls setMacroblock -> flushRenderables -> calculateHashFor.
+            // Safe here because showOnTop() is only called after _setupGeometry() has run
+            // and the VAO is already in mVaos[].
+            _updateHlmsMacroblock();
+        }
+    }
+
+    void MovableText::setTextYOffset(Ogre::Real offset)
+    {
+        yOffset = offset;
+        mNeedUpdate = true;
+    }
+
+    void MovableText::forceUpdate(void)
+    {
+        mNeedUpdate = true;
+        _setupGeometry();
+    }
+
+    void MovableText::update(Ogre::Real /*dt*/)
+    {
+    }
+
+    // ============================================================================
+    //  Factory
+    // ============================================================================
+
+    const Ogre::String& MovableTextFactory::getType() const
+    {
+        return sMovableTextType;
+    }
+
+    Ogre::MovableObject* MovableTextFactory::createInstanceImpl(Ogre::IdType id, Ogre::ObjectMemoryManager* mem, Ogre::SceneManager* sm, const Ogre::NameValuePairList* params)
+    {
+        return OGRE_NEW MovableText(id, mem, sm, params);
+    }
+
+    void MovableTextFactory::destroyInstance(Ogre::MovableObject* obj)
+    {
+        OGRE_DELETE obj;
+    }
+
+} // namespace NOWA

@@ -1,178 +1,163 @@
 /**
-* File: MovableText.h
-*
-* Description: This creates a billboarding object that display a text.
-* Note: This object must have a dedicated scene node since it will rotate it to face the camera (OGRE 2.1)
-*
-* @author	2003 by cTh see gavocanov@rambler.ru
-* @update	2006 by barraq see nospam@barraquand.com
-* @update	2012 to work with newer versions of OGRE by MindCalamity <mindcalamity@gmail.com>
-* @update	2015 to work on OGRE 2.1 (but not on older versions anymore) by Jayray <jeremy.richert1@gmail.com>
-*	- See "Notes" on: http://www.ogre3d.org/tikiwiki/tiki-editpage.php?page=MovableText
-*/
+ * File: MovableText.h
+ *
+ * Description: This creates a billboarding object that displays text.
+ *              Ported from v1 geometry to Ogre-Next v2 VAO.
+ *              Billboard transform via getWorldTransforms() — parent node never rotated.
+ *
+ * @author  2003 by cTh see gavocanov@rambler.ru
+ * @update  2006 by barraq see nospam@barraquand.com
+ * @update  2012 by MindCalamity <mindcalamity@gmail.com>
+ * @update  2015 for OGRE 2.1 by Jayray <jeremy.richert1@gmail.com>
+ * @update  2026 v2 VAO rewrite for Ogre-Next by NOWA-Engine
+ */
 
 #ifndef __include_MovableText_H__
 #define __include_MovableText_H__
 
-#include "defines.h"
-#include "OgreMovableObject.h"
 #include "OgreFontManager.h"
-
-using namespace Ogre;
+#include "OgreMovableObject.h"
+#include "defines.h"
 
 namespace NOWA
 {
 
-	class EXPORTED MovableText : public MovableObject, public Renderable
-	{
-		// Allow MovableTextFactory full access
-		friend class MovableTextFactory;
+    class EXPORTED MovableText : public Ogre::MovableObject, public Ogre::Renderable
+    {
+        friend class MovableTextFactory;
 
-		/******************************** MovableText data ****************************/
-	public:
-		enum HorizontalAlignment
-		{
-			H_LEFT, H_CENTER
-		};
-		enum VerticalAlignment
-		{
-			V_BELOW, V_ABOVE, V_CENTER
-		};
-	public:
-		MovableText(IdType id, ObjectMemoryManager *objectMemoryManager, SceneManager *sceneManager, const NameValuePairList* params);
+    public:
+        enum HorizontalAlignment
+        {
+            H_LEFT,
+            H_CENTER
+        };
+        enum VerticalAlignment
+        {
+            V_BELOW,
+            V_ABOVE,
+            V_CENTER
+        };
 
-	protected:
-		String					mFontName;
-		String					mName;
-		String					mCaption;
-		HorizontalAlignment		mHorizontalAlignment;
-		VerticalAlignment		mVerticalAlignment;
+    public:
+        MovableText(Ogre::IdType id, Ogre::ObjectMemoryManager* objectMemoryManager, Ogre::SceneManager* sceneManager, const Ogre::NameValuePairList* params);
+        virtual ~MovableText();
 
-		ColourValue				mColor;
-		v1::RenderOperation		mRenderOp;
-		LightList				mLList;
+        // Setters
+        void setFontName(const Ogre::String& fontName);
+        void setCaption(const Ogre::String& caption);
+        void setColor(const Ogre::ColourValue& color);
+        void setCharacterHeight(Ogre::Real height);
+        void setSpaceWidth(Ogre::Real width);
+        void setTextAlignment(const HorizontalAlignment& h, const VerticalAlignment& v);
+        void setGlobalTranslation(Ogre::Vector3 trans);
+        void setLocalTranslation(Ogre::Vector3 trans);
+        void showOnTop(bool show = true);
+        void setTextYOffset(Ogre::Real yOffset);
+        void forceUpdate(void);
+        void update(Ogre::Real dt);
 
-		Real					mCharHeight;
-		Real					mSpaceWidth;
+        // Getters
+        const Ogre::String& getFontName() const
+        {
+            return mFontName;
+        }
+        const Ogre::String& getCaption() const
+        {
+            return mCaption;
+        }
+        const Ogre::ColourValue& getColor() const
+        {
+            return mColor;
+        }
+        Ogre::Real getCharacterHeight() const
+        {
+            return mCharHeight;
+        }
+        Ogre::Real getSpaceWidth() const
+        {
+            return mSpaceWidth;
+        }
+        Ogre::Vector3 getGlobalTranslation() const
+        {
+            return mGlobalTranslation;
+        }
+        Ogre::Vector3 getLocalTranslation() const
+        {
+            return mLocalTranslation;
+        }
+        bool getShowOnTop() const
+        {
+            return mOnTop;
+        }
 
-		bool					mNeedUpdate;
-		bool					mUpdateColors;
-		bool					mOnTop;
-		Ogre::Real				yOffset;
+    protected:
+        void _setupGeometry();
+        void _destroyGeometry();
+        void _updateHlmsMacroblock();
 
-		Real					mTimeUntilNextToggle;
+        // MovableObject
+        const Ogre::String& getMovableType(void) const override
+        {
+            static Ogre::String t = "MovableText";
+            return t;
+        }
+        void _updateRenderQueue(Ogre::RenderQueue* queue, Ogre::Camera* camera, const Ogre::Camera* lodCamera) override;
+        void _notifyAttached(Ogre::Node* parent) override;
 
-		Vector3					mGlobalTranslation;
-		Vector3					mLocalTranslation;
+        // Renderable
+        void getWorldTransforms(Ogre::Matrix4* xform) const override;
+        void getRenderOperation(Ogre::v1::RenderOperation& op, bool casterPass) override;
+        const Ogre::LightList& getLights(void) const override
+        {
+            return mLList;
+        }
 
-		Camera					*mpCam;
-		Font					*mpFont;
-		HlmsDatablock			*mpHlmsDatablock;
+    private:
+        Ogre::String mFontName;
+        Ogre::String mName;
+        Ogre::String mCaption;
+        HorizontalAlignment mHorizontalAlignment;
+        VerticalAlignment mVerticalAlignment;
 
-		/******************************** public methods ******************************/
-	public:
-		virtual ~MovableText();
+        Ogre::ColourValue mColor;
+        Ogre::LightList mLList;
 
-		// Set settings
-		void setFontName(const String &fontName);
-		void setCaption(const String &caption);
-		void setColor(const ColourValue &color);
-		void setCharacterHeight(Real height);
-		void setSpaceWidth(Real width);
-		void setTextAlignment(const HorizontalAlignment& horizontalAlignment, const VerticalAlignment& verticalAlignment);
-		void setGlobalTranslation(Vector3 trans);
-		void setLocalTranslation(Vector3 trans);
-		void showOnTop(bool show = true);
-		void forceUpdate(void);
+        Ogre::Real mCharHeight;
+        Ogre::Real mSpaceWidth;
+        bool mNeedUpdate;
+        bool mOnTop;
+        Ogre::Real yOffset;
 
-		// Get settings
-		const String& getFontName()	const
-		{
-			return mFontName;
-		}
+        Ogre::Vector3 mGlobalTranslation;
+        Ogre::Vector3 mLocalTranslation;
 
-		const String & getCaption() const
-		{
-			return mCaption;
-		}
+        Ogre::Camera* mpCam;
+        Ogre::Font* mpFont;
+        Ogre::HlmsDatablock* mpHlmsDatablock;
 
-		const ColourValue& getColor() const
-		{
-			return mColor;
-		}
+        // v2 VAO resources
+        Ogre::VertexArrayObjectArray mVaos[2]; // [VpNormal], [VpShadow]
+        Ogre::VertexBufferPacked* mVertexBuffer;
+        Ogre::VaoManager* mVaoManager;
+    };
 
-		Real getCharacterHeight() const
-		{
-			return mCharHeight;
-		}
+    class EXPORTED MovableTextFactory : public Ogre::MovableObjectFactory
+    {
+    protected:
+        Ogre::MovableObject* createInstanceImpl(Ogre::IdType id, Ogre::ObjectMemoryManager* objectMemoryManager, Ogre::SceneManager* sceneManager, const Ogre::NameValuePairList* params = nullptr) override;
 
-		Real getSpaceWidth() const
-		{
-			return mSpaceWidth;
-		}
+    public:
+        MovableTextFactory()
+        {
+        }
+        ~MovableTextFactory()
+        {
+        }
+        const Ogre::String& getType() const override;
+        void destroyInstance(Ogre::MovableObject* obj) override;
+    };
 
-		Vector3	getGlobalTranslation() const
-		{
-			return mGlobalTranslation;
-		}
-
-		Vector3	getLocalTranslation() const
-		{
-			return mLocalTranslation;
-		}
-
-		bool getShowOnTop() const
-		{
-			return mOnTop;
-		}
-
-		void setTextYOffset(Ogre::Real yOffset);
-
-		void update(Ogre::Real dt);
-
-		/******************************** protected methods and overload **************/
-	protected:
-
-		// from MovableText, create the object
-		void						_setupGeometry();
-		void						_updateColors();
-		void                        _updateHlmsMacroblock();
-
-		// from MovableObject
-		const   String&				getMovableType(void) const
-		{
-			static Ogre::String movType = "MovableText"; return movType;
-		};
-
-		void						_updateRenderQueue(RenderQueue* queue, Camera *camera, const Camera *lodCamera);
-
-		// from Renderable
-		void						getWorldTransforms(Matrix4 *xform) const;
-		void						getRenderOperation(v1::RenderOperation& op, bool casterPass) override;
-		const   LightList&			getLights(void) const
-		{
-			return mLList;
-		};
-	};
-
-	/** Factory object for creating MovableText instances */
-	class EXPORTED MovableTextFactory : public MovableObjectFactory
-	{
-	protected:
-		virtual MovableObject* createInstanceImpl(IdType id, ObjectMemoryManager *objectMemoryManager, SceneManager *sceneManager, const NameValuePairList* params = 0);
-	public:
-		MovableTextFactory()
-		{
-		}
-		~MovableTextFactory()
-		{
-		}
-
-		const String& getType() const;
-		void destroyInstance(MovableObject* obj);
-
-	};
-
-}; // namespace end
+} // namespace NOWA
 
 #endif

@@ -41,9 +41,6 @@ namespace NOWA
 		waveFrequencyScale(new Variant(OceanEffectComponent::AttrWaveFrequencyScale(), 1.0f, this->attributes)),
 		waveChaos(new Variant(OceanEffectComponent::AttrWaveChaos(), 0.10f, this->attributes)),
 
-		oceanSize(new Variant(OceanEffectComponent::AttrOceanSize(), Ogre::Vector2(4000.0f, 4000.0f), this->attributes)),
-		oceanCenter(new Variant(OceanEffectComponent::AttrOceanCenter(), Ogre::Vector3(0.0f, 0.0f, 0.0f), this->attributes)),
-
 		reflectionStrength(new Variant(OceanEffectComponent::AttrReflectionStrength(), 1.0f, this->attributes)),
 		baseRoughness(new Variant(OceanEffectComponent::AttrBaseRoughness(), 0.06f, this->attributes)),
 		foamRoughness(new Variant(OceanEffectComponent::AttrFoamRoughness(), 0.35f, this->attributes)),
@@ -175,18 +172,6 @@ namespace NOWA
 			this->waveChaos->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OceanSize")
-		{
-			this->oceanSize->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OceanCenter")
-		{
-			this->oceanCenter->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ReflectionStrength")
 		{
 			this->reflectionStrength->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
@@ -343,14 +328,6 @@ namespace NOWA
 		{
 			this->setWaveChaos(attribute->getReal());
 		}
-		else if (OceanEffectComponent::AttrOceanSize() == attribute->getName())
-		{
-			this->setOceanSize(attribute->getVector2());
-		}
-		else if (OceanEffectComponent::AttrOceanCenter() == attribute->getName())
-		{
-			this->setOceanCenter(attribute->getVector3());
-		}
 		else if (OceanEffectComponent::AttrReflectionStrength() == attribute->getName())
 		{
 			this->setReflectionStrength(attribute->getReal());
@@ -452,9 +429,6 @@ namespace NOWA
 		writeR("WaveFrequencyScale", this->waveFrequencyScale->getReal());
 		writeR("WaveChaos", this->waveChaos->getReal());
 
-		writeV2("OceanSize", this->oceanSize->getVector2());
-		writeV3("OceanCenter", this->oceanCenter->getVector3());
-
 		writeR("ReflectionStrength", this->reflectionStrength->getReal());
 		writeR("BaseRoughness", this->baseRoughness->getReal());
 		writeR("FoamRoughness", this->foamRoughness->getReal());
@@ -502,9 +476,6 @@ namespace NOWA
 		this->oceanComponent->setWaveTimeScale(this->waveTimeScale->getReal());
 		this->oceanComponent->setWaveFrequencyScale(this->waveFrequencyScale->getReal());
 		this->oceanComponent->setWaveChaos(this->waveChaos->getReal());
-
-		this->oceanComponent->setOceanSize(this->oceanSize->getVector2());
-		this->oceanComponent->setOceanCenter(this->oceanCenter->getVector3());
 
 		this->oceanComponent->setReflectionStrength(this->reflectionStrength->getReal());
 		this->oceanComponent->setBaseRoughness(this->baseRoughness->getReal());
@@ -711,30 +682,6 @@ namespace NOWA
 		return this->waveChaos->getReal();
 	}
 
-	void OceanEffectComponent::setOceanSize(const Ogre::Vector2& v)
-	{
-		this->oceanSize->setValue(v);
-		this->markCustom();
-		if (nullptr != this->oceanComponent) this->oceanComponent->setOceanSize(v);
-	}
-
-	Ogre::Vector2 OceanEffectComponent::getOceanSize(void) const
-	{
-		return this->oceanSize->getVector2();
-	}
-
-	void OceanEffectComponent::setOceanCenter(const Ogre::Vector3& v)
-	{
-		this->oceanCenter->setValue(v);
-		this->markCustom();
-		if (nullptr != this->oceanComponent) this->oceanComponent->setOceanCenter(v);
-	}
-
-	Ogre::Vector3 OceanEffectComponent::getOceanCenter(void) const
-	{
-		return this->oceanCenter->getVector3();
-	}
-
 	void OceanEffectComponent::setReflectionStrength(Ogre::Real v)
 	{
 		this->reflectionStrength->setValue(v);
@@ -868,11 +815,6 @@ namespace NOWA
 			.def("setWaveChaos", &OceanEffectComponent::setWaveChaos)
 			.def("getWaveChaos", &OceanEffectComponent::getWaveChaos)
 
-			.def("setOceanSize", &OceanEffectComponent::setOceanSize)
-			.def("getOceanSize", &OceanEffectComponent::getOceanSize)
-			.def("setOceanCenter", &OceanEffectComponent::setOceanCenter)
-			.def("getOceanCenter", &OceanEffectComponent::getOceanCenter)
-
 			.def("setReflectionStrength", &OceanEffectComponent::setReflectionStrength)
 			.def("getReflectionStrength", &OceanEffectComponent::getReflectionStrength)
 			.def("setBaseRoughness", &OceanEffectComponent::setBaseRoughness)
@@ -933,11 +875,6 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("OceanEffectComponent", "float getWaveFrequencyScale()", "Gets wave frequency scale.");
 		LuaScriptApi::getInstance()->addClassToCollection("OceanEffectComponent", "void setWaveChaos(float chaos)", "Sets wave chaos.");
 		LuaScriptApi::getInstance()->addClassToCollection("OceanEffectComponent", "float getWaveChaos()", "Gets wave chaos.");
-
-		LuaScriptApi::getInstance()->addClassToCollection("OceanEffectComponent", "void setOceanSize(Vector2 size)", "Sets ocean size.");
-		LuaScriptApi::getInstance()->addClassToCollection("OceanEffectComponent", "Vector2 getOceanSize()", "Gets ocean size.");
-		LuaScriptApi::getInstance()->addClassToCollection("OceanEffectComponent", "void setOceanCenter(Vector3 center)", "Sets ocean center.");
-		LuaScriptApi::getInstance()->addClassToCollection("OceanEffectComponent", "Vector3 getOceanCenter()", "Gets ocean center.");
 
 		LuaScriptApi::getInstance()->addClassToCollection("OceanEffectComponent", "void setReflectionStrength(float v)", "Sets reflection strength.");
 		LuaScriptApi::getInstance()->addClassToCollection("OceanEffectComponent", "float getReflectionStrength()", "Gets reflection strength.");

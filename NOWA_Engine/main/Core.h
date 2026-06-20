@@ -958,18 +958,6 @@ namespace NOWA
 		int getCryptKey(void) const;
 
 		/**
-		 * @brief Query whether the engine uses entity types by default when creating game objects.
-		 * @return true if entity type is used by default; false to use item type.
-		 */
-		bool getUseEntityType(void) const;
-
-		/**
-		 * @brief Set whether game objects are created via entity type or item type by default.
-		 * @param useEntityType true to use entity type by default.
-		 */
-		void setUseEntityType(bool useEntityType);
-
-		/**
 		 * @brief Encode all project-related files using the configured crypt key (used for obfuscation).
 		 */
 		void encodeAllFiles(void);

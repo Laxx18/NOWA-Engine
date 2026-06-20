@@ -508,6 +508,11 @@ namespace Ogre
         bool casterPass, uint32 lastCacheHash,
         CommandBuffer* commandBuffer, bool isV1)
     {
+        if (0 == mCurrentPassBuffer)
+        {
+            return 0;
+        }
+
         assert(
             dynamic_cast<const HlmsTerraDatablock*>(queuedRenderable.renderable->getDatablock()));
         const HlmsTerraDatablock* datablock =

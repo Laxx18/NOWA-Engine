@@ -2821,13 +2821,8 @@ namespace NOWA
                     else
                     {
                         // Last resort: show it as v1 Entity
-                        this->tempPlaceMovableObject = this->sceneManager->createEntity(v1Mesh);
-                        this->tempPlaceMovableObject->setName("PlaceEntity");
-                        this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
-                        this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V1_MESH);
-
-                        Ogre::String path;
-                        DeployResourceModule::getInstance()->tagResource(meshName, v1Mesh->getGroup(), path);
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[EditorManager] Could create item for mesh: " + meshName);
+                        // throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[EditorManager] Could create item for mesh: " + meshName + "\n", "NOWA");
                     }
                 }
             }

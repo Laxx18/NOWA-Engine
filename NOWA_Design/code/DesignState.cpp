@@ -1668,10 +1668,7 @@ void DesignState::updateInfo(Ogre::Real dt)
 			}*/
 
 			const Ogre::FrameStats* frameStats = NOWA::Core::getSingletonPtr()->getOgreRoot()->getFrameStats();
-			// Does not work in 2.1
-			// const Ogre::RenderTarget::FrameStats& stats = NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getStatistics();
-
-			const RenderingMetrics& metrics = Ogre::Root::getSingletonPtr()->getRenderSystem()->getMetrics();
+			const Ogre::RenderingMetrics& metrics = Ogre::Root::getSingletonPtr()->getRenderSystem()->getMetrics();
 
 			float avgTime = frameStats->getAvgTime();
 			char m[64];  // Increase buffer size

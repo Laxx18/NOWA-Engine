@@ -233,6 +233,8 @@ namespace NOWA
 
     bool DotSceneImportModule::parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight, DotSceneImportModule::IsceneLoaderCallback* sceneLoaderCallback)
     {
+        GraphicsModule::getInstance()->clearAllClosures();
+        
         // Note: No crypted flag used, because if its a usual scene and shall be crypted, the whole project and all scene files will be crypted from the outside at once and also decoded at once.
         bool success = true;
 
@@ -1224,13 +1226,6 @@ namespace NOWA
                 {
                     this->projectParameter.renderDistance = XMLConverter::getAttribReal(subElement, "renderDistance", Core::getSingletonPtr()->getGlobalRenderDistance());
                     NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
-                }
-
-                subElement = pElement->first_node("useV2Item");
-                if (subElement)
-                {
-                    this->projectParameter.useV2Item = XMLConverter::getAttribBool(subElement, "value");
-                    Core::getSingletonPtr()->setUseEntityType(!this->projectParameter.useV2Item);
                 }
             }
         }

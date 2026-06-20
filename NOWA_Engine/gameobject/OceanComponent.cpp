@@ -274,6 +274,7 @@ namespace NOWA
 		// this->gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrMeshName())->setVisible(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrScale())->setVisible(false);
+        this->gameObjectPtr->getAttribute(GameObject::AttrPosition())->setVisible(false);
 
 		this->gameObjectPtr->getAttribute(GameObject::AttrCastShadows())->setVisible(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
@@ -376,8 +377,8 @@ namespace NOWA
 				}
 
 				// Create ocean
-				this->ocean = new Ogre::Ocean(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC),
-					this->gameObjectPtr->getSceneManager(), 0, Ogre::Root::getSingletonPtr()->getCompositorManager2(), this->usedCamera);
+				this->ocean = new Ogre::Ocean(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->gameObjectPtr->getSceneManager(),
+                    NOWA::RENDER_QUEUE_EARLY_FIRST, Ogre::Root::getSingletonPtr()->getCompositorManager2(), this->usedCamera);
 
 				this->ocean->setCastShadows(false);
 				this->ocean->setName(this->gameObjectPtr->getName());

@@ -87,6 +87,10 @@ namespace NOWA
 		void setSplitScreenScenarioActive(bool splitScreenScenarioActive);
 
 		bool getSplitScreenScenarioActive(void) const;
+
+		void logAllCompositorNodeDefinitions(void);
+
+		void logLiveNodeGraph(Ogre::CompositorWorkspace* workspace, const Ogre::String& label);
 	public:
 		static WorkspaceModule* getInstance();
 		const Ogre::String workspaceNamePbs = "NOWAPbsWorkspace";
