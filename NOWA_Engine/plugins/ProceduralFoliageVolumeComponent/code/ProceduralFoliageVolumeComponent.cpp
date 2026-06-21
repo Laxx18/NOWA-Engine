@@ -26,6 +26,8 @@
 
 #include "gameobject/WindComponent.h"
 
+#include <cstdio>
+#include <fstream>
 #include <future>
 #include <random>
 
@@ -47,6 +49,34 @@ namespace
     };
 
     FoliageCellMeshLoader gFoliageCellMeshLoader;
+
+    // ------------------------------------------------------------------
+    // Small helpers for ProceduralFoliageVolumeComponent::computeRulesChecksum.
+    // 64-bit variant of boost::hash_combine: folds value into seed in a way
+    // that is sensitive to both the value and its position, so e.g. two
+    // rules with their density and maxSlope swapped do not collide.
+    // ------------------------------------------------------------------
+
+    inline void foliageHashCombine(uint64_t& seed, uint64_t value)
+    {
+        seed ^= value + 0x9E3779B97F4A7C15ULL + (seed << 6) + (seed >> 2);
+    }
+
+    inline uint64_t foliageHashReal(Ogre::Real value)
+    {
+        // Quantized to 3 decimal places (millimeters / thousandths of a
+        // degree) before hashing. This is purely a cache-invalidation
+        // checksum, not the stored data itself, so float jitter from e.g.
+        // a slightly different compiler optimisation level must not cause
+        // a false "stale cache" result on an otherwise unchanged rule.
+        return static_cast<uint64_t>(std::llround(static_cast<double>(value) * 1000.0));
+    }
+
+    inline uint64_t foliageHashString(const Ogre::String& value)
+    {
+        std::hash<Ogre::String> hasher;
+        return static_cast<uint64_t>(hasher(value));
+    }
 }
 
 namespace NOWA
@@ -698,7 +728,7 @@ namespace NOWA
         GraphicsModule::getInstance()->enqueueAndWait(
             [this]()
             {
-                this->regenerateFoliage();
+                this->loadOrGenerateFoliage();
             },
             "ProceduralFoliageVolumeComponent::handleSceneParsed");
     }
@@ -766,6 +796,15 @@ namespace NOWA
 
         // Destroy all vegetation (blocking)
         this->clearFoliage();
+
+        // NOTE: deliberately NOT deleting the binary foliage cache file here.
+        // onRemoveComponent() fires not only when the user explicitly deletes
+        // this component in the editor, but also during normal scene
+        // teardown/engine shutdown (every component gets torn down the same
+        // way). Deleting the cache here would wipe it on every clean exit,
+        // defeating the entire point of caching. The cache is only ever
+        // deleted from the explicit "Clear" action and from
+        // regenerateFoliage() (which immediately writes a fresh one).
 
         boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
@@ -1142,13 +1181,21 @@ namespace NOWA
     {
         if (actionId == "ProceduralFoliageVolumeComponent.Regenerate")
         {
-            this->clearFoliage();
+            // regenerateFoliage() also deletes+rewrites the cache itself, but
+            // deleting it here too means the cache is gone for the whole
+            // duration of the (potentially slow) recompute, not just at the
+            // very end -- avoids a window where a crash mid-regenerate could
+            // leave a stale cache that still looks valid.
+            this->clearFoliage(true);
             this->regenerateFoliage();
             return true;
         }
         else if (actionId == "ProceduralFoliageVolumeComponent.Clear")
         {
-            this->clearFoliage();
+            // Explicit user intent: "I do not want this vegetation." Without
+            // deleting the cache file, the next scene load would silently
+            // regenerate the exact same foliage the user just removed.
+            this->clearFoliage(true);
             return true;
         }
         else if (actionId == "ProceduralFoliageVolumeComponent.RandomizeSeed")
@@ -1186,8 +1233,12 @@ namespace NOWA
             this->physicsArtifactComponent->getAttribute(PhysicsArtifactComponent::AttrSerialize())->setVisible(false);
         }
 
-        // Clear existing
-        this->clearFoliage();
+        // Clear existing. This is the explicit "something changed" entry
+        // point (Regenerate button, RandomizeSeed) -- always throw away any
+        // existing cache file here too, so a crash or interruption mid-
+        // generation never leaves a stale cache lying around that
+        // loadOrGenerateFoliage() might mistakenly trust later.
+        this->clearFoliage(true);
 
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -1199,6 +1250,11 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] No instances generated.");
             return;
         }
+
+        // Persist the freshly computed instances to disk before handing the
+        // data off to the render thread, so the next scene load can skip
+        // calculateFoliagePositions() entirely.
+        this->saveFoliageDataToFile(batches);
 
         // Send to render thread
         this->createFoliageOnRenderThread(std::move(batches));
@@ -1214,6 +1270,85 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Generated " + Ogre::StringConverter::toString(totalInstances) + " instances from " + Ogre::StringConverter::toString(this->rules.size()) +
                                                                                 " rules. Took: " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s");
+
+        this->isDirty = false;
+    }
+
+    void ProceduralFoliageVolumeComponent::loadOrGenerateFoliage()
+    {
+        if (!this->gameObjectPtr)
+        {
+            return;
+        }
+
+        if (true == this->rules.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] No rules defined, skipping generation.");
+            return;
+        }
+
+        // Get PhysicsArtifactComponent if exists
+        const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+        if (physicsArtifactCompPtr)
+        {
+            this->physicsArtifactComponent = physicsArtifactCompPtr.get();
+            this->physicsArtifactComponent->getAttribute(PhysicsArtifactComponent::AttrSerialize())->setValue(false);
+            this->physicsArtifactComponent->getAttribute(PhysicsArtifactComponent::AttrSerialize())->setVisible(false);
+        }
+
+        // Clear existing (e.g. if this is being called again on a hot-reloaded scene)
+        this->clearFoliage();
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        std::vector<VegetationBatch> batches;
+        bool loadedFromCache = this->loadFoliageDataFromFile(batches);
+
+        if (false == loadedFromCache)
+        {
+            // No valid cache on disk (first ever generation, stale checksum,
+            // missing/corrupt file, or version mismatch) -- fall back to the
+            // full, expensive computation, then write a fresh cache so the
+            // NEXT scene load can take the fast path.
+            batches = this->calculateFoliagePositions();
+
+            if (true == batches.empty())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] No instances generated.");
+                return;
+            }
+
+            this->saveFoliageDataToFile(batches);
+        }
+
+        // Send to render thread
+        this->createFoliageOnRenderThread(std::move(batches));
+
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+        size_t totalInstances = 0;
+        for (const auto& batch : this->vegetationBatches)
+        {
+            totalInstances += batch.items.size();
+        }
+
+        Ogre::String actionDescription;
+        Ogre::String cacheSuffix;
+
+        if (true == loadedFromCache)
+        {
+            actionDescription = "Loaded ";
+            cacheSuffix = " (from disk cache)";
+        }
+        else
+        {
+            actionDescription = "Generated ";
+            cacheSuffix = "";
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] " + actionDescription + Ogre::StringConverter::toString(totalInstances) + " instances from " +
+                                                                                Ogre::StringConverter::toString(this->rules.size()) + " rules. Took: " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s" + cacheSuffix);
 
         this->isDirty = false;
     }
@@ -1424,6 +1559,305 @@ namespace NOWA
             batches.end());
 
         return batches;
+    }
+
+    // ============================================================================
+    // BINARY FOLIAGE DISK CACHE
+    // ============================================================================
+
+    Ogre::String ProceduralFoliageVolumeComponent::getFoliageDataFilePath(void) const
+    {
+        Ogre::String projectFilePath;
+
+        if (false == this->gameObjectPtr->getGlobal())
+        {
+            projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
+        }
+        else
+        {
+            projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+        }
+
+        // Create filename based on GameObject ID for uniqueness
+        Ogre::String filename = "Foliage_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + ".foliagedata";
+
+        return projectFilePath + "/" + filename;
+    }
+
+    uint64_t ProceduralFoliageVolumeComponent::computeRulesChecksum(void) const
+    {
+        // Fixed FNV-1a style offset basis as the starting seed, purely so
+        // an empty/default configuration does not hash to 0.
+        uint64_t checksum = 1469598103934665603ULL;
+
+        foliageHashCombine(checksum, static_cast<uint64_t>(this->masterSeed->getUInt()));
+        foliageHashCombine(checksum, foliageHashReal(this->gridResolution->getReal()));
+
+        Ogre::Vector4 bounds = this->volumeBounds->getVector4();
+        foliageHashCombine(checksum, foliageHashReal(bounds.x));
+        foliageHashCombine(checksum, foliageHashReal(bounds.y));
+        foliageHashCombine(checksum, foliageHashReal(bounds.z));
+        foliageHashCombine(checksum, foliageHashReal(bounds.w));
+
+        // Planet mode uses an entirely different placement algorithm
+        // (spherical raycast + 3D cell binning instead of the flat Terra
+        // grid), driven by the planet's radius and centre, so fold those
+        // in too -- otherwise moving/resizing the planet would silently
+        // keep using a cache computed for the old geometry.
+        auto planetTerraComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PlanetTerraComponent>());
+        if (nullptr != planetTerraComp)
+        {
+            foliageHashCombine(checksum, foliageHashReal(planetTerraComp->getRadius()));
+
+            Ogre::Vector3 planetCentre = this->gameObjectPtr->getPosition();
+            foliageHashCombine(checksum, foliageHashReal(planetCentre.x));
+            foliageHashCombine(checksum, foliageHashReal(planetCentre.y));
+            foliageHashCombine(checksum, foliageHashReal(planetCentre.z));
+        }
+
+        foliageHashCombine(checksum, static_cast<uint64_t>(this->rules.size()));
+
+        for (const FoliageRule& rule : this->rules)
+        {
+            foliageHashCombine(checksum, foliageHashString(rule.name));
+            foliageHashCombine(checksum, foliageHashString(rule.meshName));
+            foliageHashCombine(checksum, static_cast<uint64_t>(rule.enabled));
+            foliageHashCombine(checksum, foliageHashReal(rule.density));
+            foliageHashCombine(checksum, static_cast<uint64_t>(rule.seed));
+            foliageHashCombine(checksum, foliageHashReal(rule.minDistanceToSame));
+            foliageHashCombine(checksum, foliageHashReal(rule.minDistanceToOther));
+            foliageHashCombine(checksum, foliageHashReal(rule.scaleRange.x));
+            foliageHashCombine(checksum, foliageHashReal(rule.scaleRange.y));
+            foliageHashCombine(checksum, static_cast<uint64_t>(rule.uniformScale));
+            foliageHashCombine(checksum, foliageHashReal(rule.heightRange.x));
+            foliageHashCombine(checksum, foliageHashReal(rule.heightRange.y));
+            foliageHashCombine(checksum, foliageHashReal(rule.maxSlope));
+
+            for (int threshold : rule.terraLayerThresholds)
+            {
+                foliageHashCombine(checksum, static_cast<uint64_t>(threshold));
+            }
+
+            foliageHashCombine(checksum, static_cast<uint64_t>(rule.categoriesId));
+            foliageHashCombine(checksum, static_cast<uint64_t>(rule.excludedCategoryId));
+            foliageHashCombine(checksum, foliageHashReal(rule.clearanceDistance));
+            foliageHashCombine(checksum, foliageHashReal(rule.alignToNormal));
+            foliageHashCombine(checksum, static_cast<uint64_t>(rule.randomYRotation));
+            foliageHashCombine(checksum, foliageHashReal(rule.yRotationRange.x));
+            foliageHashCombine(checksum, foliageHashReal(rule.yRotationRange.y));
+            foliageHashCombine(checksum, static_cast<uint64_t>(rule.useProceduralGrass));
+            foliageHashCombine(checksum, foliageHashReal(rule.bladeWidth));
+            foliageHashCombine(checksum, foliageHashReal(rule.bladeHeight));
+            foliageHashCombine(checksum, static_cast<uint64_t>(rule.useProceduralTree));
+            foliageHashCombine(checksum, static_cast<uint64_t>(rule.treeBranchClusterCount));
+            foliageHashCombine(checksum, foliageHashReal(rule.treeSwayStrength));
+        }
+
+        return checksum;
+    }
+
+    bool ProceduralFoliageVolumeComponent::saveFoliageDataToFile(const std::vector<VegetationBatch>& batches)
+    {
+        const Ogre::String filePath = this->getFoliageDataFilePath();
+
+        std::ofstream outFile(filePath.c_str(), std::ios::binary);
+        if (false == outFile.is_open())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Could not open foliage cache file for writing: " + filePath);
+            return false;
+        }
+
+        const char magic[4] = {'F', 'O', 'L', 'I'};
+        const uint32_t version = ProceduralFoliageVolumeComponent::FOLIAGE_CACHE_VERSION;
+        const uint64_t checksum = this->computeRulesChecksum();
+        const uint32_t batchCount = static_cast<uint32_t>(batches.size());
+
+        outFile.write(magic, sizeof(magic));
+        outFile.write(reinterpret_cast<const char*>(&version), sizeof(version));
+        outFile.write(reinterpret_cast<const char*>(&checksum), sizeof(checksum));
+        outFile.write(reinterpret_cast<const char*>(&batchCount), sizeof(batchCount));
+
+        for (const VegetationBatch& batch : batches)
+        {
+            const uint32_t meshNameLength = static_cast<uint32_t>(batch.meshName.size());
+            outFile.write(reinterpret_cast<const char*>(&meshNameLength), sizeof(meshNameLength));
+            if (meshNameLength > 0)
+            {
+                outFile.write(batch.meshName.c_str(), meshNameLength);
+            }
+
+            const uint64_t ruleIndex = static_cast<uint64_t>(batch.ruleIndex);
+            outFile.write(reinterpret_cast<const char*>(&ruleIndex), sizeof(ruleIndex));
+
+            const uint64_t instanceCount = static_cast<uint64_t>(batch.instances.size());
+            outFile.write(reinterpret_cast<const char*>(&instanceCount), sizeof(instanceCount));
+
+            for (const VegetationInstance& instance : batch.instances)
+            {
+                const float posData[3] = {instance.position.x, instance.position.y, instance.position.z};
+                const float rotData[4] = {instance.orientation.w, instance.orientation.x, instance.orientation.y, instance.orientation.z};
+                const float scaleData[3] = {instance.scale.x, instance.scale.y, instance.scale.z};
+                const uint64_t instanceRuleIndex = static_cast<uint64_t>(instance.ruleIndex);
+
+                outFile.write(reinterpret_cast<const char*>(posData), sizeof(posData));
+                outFile.write(reinterpret_cast<const char*>(rotData), sizeof(rotData));
+                outFile.write(reinterpret_cast<const char*>(scaleData), sizeof(scaleData));
+                outFile.write(reinterpret_cast<const char*>(&instanceRuleIndex), sizeof(instanceRuleIndex));
+            }
+        }
+
+        if (false == outFile.good())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Error occurred while writing foliage cache file: " + filePath);
+            outFile.close();
+            return false;
+        }
+
+        outFile.close();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Saved foliage cache (" + Ogre::StringConverter::toString(batchCount) + " batches) to: " + filePath);
+
+        return true;
+    }
+
+    bool ProceduralFoliageVolumeComponent::loadFoliageDataFromFile(std::vector<VegetationBatch>& outBatches)
+    {
+        const Ogre::String filePath = this->getFoliageDataFilePath();
+
+        std::ifstream inFile(filePath.c_str(), std::ios::binary);
+        if (false == inFile.is_open())
+        {
+            // No cache file yet -- this is the normal first-time-ever-generated
+            // case, not an error.
+            return false;
+        }
+
+        char magic[4] = {0, 0, 0, 0};
+        inFile.read(magic, sizeof(magic));
+
+        if (false == inFile.good() || magic[0] != 'F' || magic[1] != 'O' || magic[2] != 'L' || magic[3] != 'I')
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Foliage cache file has an invalid header, ignoring: " + filePath);
+            return false;
+        }
+
+        uint32_t version = 0;
+        inFile.read(reinterpret_cast<char*>(&version), sizeof(version));
+
+        if (false == inFile.good() || version != ProceduralFoliageVolumeComponent::FOLIAGE_CACHE_VERSION)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Foliage cache file version mismatch, ignoring: " + filePath);
+            return false;
+        }
+
+        uint64_t storedChecksum = 0;
+        inFile.read(reinterpret_cast<char*>(&storedChecksum), sizeof(storedChecksum));
+
+        if (false == inFile.good() || storedChecksum != this->computeRulesChecksum())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Foliage cache file is stale (rules/volume/seed changed since it was written), ignoring: " + filePath);
+            return false;
+        }
+
+        uint32_t batchCount = 0;
+        inFile.read(reinterpret_cast<char*>(&batchCount), sizeof(batchCount));
+
+        if (false == inFile.good())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Foliage cache file is truncated/corrupt, ignoring: " + filePath);
+            return false;
+        }
+
+        std::vector<VegetationBatch> loadedBatches;
+        loadedBatches.reserve(batchCount);
+
+        for (uint32_t bi = 0u; bi < batchCount; ++bi)
+        {
+            uint32_t meshNameLength = 0;
+            inFile.read(reinterpret_cast<char*>(&meshNameLength), sizeof(meshNameLength));
+
+            if (false == inFile.good())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Foliage cache file is truncated/corrupt while reading batch header, ignoring: " + filePath);
+                return false;
+            }
+
+            VegetationBatch batch;
+
+            if (meshNameLength > 0)
+            {
+                std::vector<char> nameBuffer(meshNameLength);
+                inFile.read(nameBuffer.data(), meshNameLength);
+
+                if (false == inFile.good())
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Foliage cache file is truncated/corrupt while reading mesh name, ignoring: " + filePath);
+                    return false;
+                }
+
+                batch.meshName.assign(nameBuffer.data(), meshNameLength);
+            }
+
+            uint64_t ruleIndex = 0;
+            inFile.read(reinterpret_cast<char*>(&ruleIndex), sizeof(ruleIndex));
+            batch.ruleIndex = static_cast<size_t>(ruleIndex);
+
+            uint64_t instanceCount = 0;
+            inFile.read(reinterpret_cast<char*>(&instanceCount), sizeof(instanceCount));
+
+            if (false == inFile.good())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Foliage cache file is truncated/corrupt while reading instance count, ignoring: " + filePath);
+                return false;
+            }
+
+            batch.instances.reserve(static_cast<size_t>(instanceCount));
+
+            for (uint64_t ii = 0u; ii < instanceCount; ++ii)
+            {
+                float posData[3] = {0.0f, 0.0f, 0.0f};
+                float rotData[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+                float scaleData[3] = {1.0f, 1.0f, 1.0f};
+                uint64_t instanceRuleIndex = 0;
+
+                inFile.read(reinterpret_cast<char*>(posData), sizeof(posData));
+                inFile.read(reinterpret_cast<char*>(rotData), sizeof(rotData));
+                inFile.read(reinterpret_cast<char*>(scaleData), sizeof(scaleData));
+                inFile.read(reinterpret_cast<char*>(&instanceRuleIndex), sizeof(instanceRuleIndex));
+
+                if (false == inFile.good())
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Foliage cache file is truncated/corrupt while reading instance data, ignoring: " + filePath);
+                    return false;
+                }
+
+                Ogre::Vector3 position(posData[0], posData[1], posData[2]);
+                Ogre::Quaternion orientation(rotData[0], rotData[1], rotData[2], rotData[3]);
+                Ogre::Vector3 scale(scaleData[0], scaleData[1], scaleData[2]);
+
+                batch.instances.emplace_back(position, orientation, scale, static_cast<size_t>(instanceRuleIndex));
+            }
+
+            loadedBatches.push_back(std::move(batch));
+        }
+
+        inFile.close();
+
+        outBatches = std::move(loadedBatches);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Loaded foliage cache (" + Ogre::StringConverter::toString(batchCount) + " batches) from: " + filePath);
+
+        return true;
+    }
+
+    void ProceduralFoliageVolumeComponent::deleteFoliageDataFile(void)
+    {
+        const Ogre::String filePath = this->getFoliageDataFilePath();
+
+        // std::remove is a no-op (returns non-zero, which we deliberately
+        // ignore) if the file does not exist, so this is always safe to call
+        // unconditionally.
+        std::remove(filePath.c_str());
     }
 
     // ============================================================================
@@ -2760,7 +3194,7 @@ namespace NOWA
     // CLEANUP
     // ============================================================================
 
-    void ProceduralFoliageVolumeComponent::clearFoliage()
+    void ProceduralFoliageVolumeComponent::clearFoliage(bool deleteCacheFile)
     {
         GraphicsModule::getInstance()->enqueueAndWait(
             [this]()
@@ -2772,6 +3206,11 @@ namespace NOWA
         if (this->physicsArtifactComponent && this->physicsArtifactComponent->getBody())
         {
             this->physicsArtifactComponent->destroyBody();
+        }
+
+        if (true == deleteCacheFile)
+        {
+            this->deleteFoliageDataFile();
         }
     }
 

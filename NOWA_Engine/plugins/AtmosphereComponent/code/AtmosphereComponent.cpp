@@ -105,9 +105,9 @@ namespace NOWA
 				this->fogBreakFalloffs[i]->setConstraints(0.01f, 1.0f);
 				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 6.0f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f , this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f , this->attributes);
 				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
 				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
 				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
@@ -156,9 +156,9 @@ namespace NOWA
 				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
 				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i),  12.0f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(1.0f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f , this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f , this->attributes);
 				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
 				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
 				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
@@ -207,9 +207,9 @@ namespace NOWA
 				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
 				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i),  8.0f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f , this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f , this->attributes);
 				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
 				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
 				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
@@ -412,9 +412,9 @@ namespace NOWA
 				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
 				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i),  10.0f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f , this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f , this->attributes);
 				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
 				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
 				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
@@ -941,7 +941,7 @@ namespace NOWA
                 Ogre::Vector3 sd;
                 if (false == externalLightMode)
                 {
-                    const float sunAngle = timeOfDay * Ogre::Math::PI;
+                    const float sunAngle = timeOfDay ;
                     const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
                     sd = (Ogre::Quaternion(Ogre::Radian(azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy();
 

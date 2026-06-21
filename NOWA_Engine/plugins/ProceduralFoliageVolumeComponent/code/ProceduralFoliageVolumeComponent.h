@@ -36,10 +36,10 @@ namespace NOWA
     struct FoliageRule
     {
         // ========== Identity ==========
-        Ogre::String name;     // "Oak_Forest", "Alpine_Grass"
-        Ogre::String meshName; // "Oak01.mesh"
+        Ogre::String name;                                                                       // "Oak_Forest", "Alpine_Grass"
+        Ogre::String meshName;                                                                   // "Oak01.mesh"
         Ogre::String resourceGroup = Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME; // "Objects"
-        bool enabled;          // Can disable rule without deleting
+        bool enabled;                                                                            // Can disable rule without deleting
 
         // ========== Density & Distribution ==========
         Ogre::Real density;            // Instances per m^2 (0.01 - 10.0)
@@ -94,9 +94,9 @@ namespace NOWA
         // Geometry is generated on the CPU as cross-quad blades so no .mesh file is needed.
         // The blades use the HlmsWind datablock (HLMS_USER0) automatically, so they sway
         // whenever a WindComponent is present in the scene.
-        bool useProceduralGrass;    // true = cross-quad blade generation instead of mesh
-        Ogre::Real bladeWidth;      // Half-width of one grass blade in meters (default 0.15)
-        Ogre::Real bladeHeight;     // Height of one grass blade in meters (default 0.5)
+        bool useProceduralGrass;        // true = cross-quad blade generation instead of mesh
+        Ogre::Real bladeWidth;          // Half-width of one grass blade in meters (default 0.15)
+        Ogre::Real bladeHeight;         // Height of one grass blade in meters (default 0.5)
         Ogre::String grassMaterialName; // Wind HLMS datablock name (must exist in resources)
 
         // ========== Procedural Tree (per-branch leaf sway) ==========
@@ -109,9 +109,9 @@ namespace NOWA
         // Wind HLMS can sway each branch independently and out of phase with
         // its neighbours, rather than the whole canopy moving as one rigid
         // unit. Trunk/bark submeshes are never affected -- they stay rigid.
-        bool useProceduralTree;          // true = enable per-branch sway clustering for leaves submeshes
-        int treeBranchClusterCount;      // Number of pseudo-branches to cluster leaf vertices into (default 8)
-        Ogre::Real treeSwayStrength;     // Multiplier on branch sway displacement (default 1.0)
+        bool useProceduralTree;      // true = enable per-branch sway clustering for leaves submeshes
+        int treeBranchClusterCount;  // Number of pseudo-branches to cluster leaf vertices into (default 8)
+        Ogre::Real treeSwayStrength; // Multiplier on branch sway displacement (default 1.0)
 
         FoliageRule() :
             enabled(true),
@@ -133,10 +133,10 @@ namespace NOWA
             yRotationRange(Ogre::Vector2(0.0f, 360.0f)),
             cullDistance(0.0f),
             useClusterLOD(false),
-            categories("All"), // Default: grow everywhere
+            categories("All"),                                     // Default: grow everywhere
             categoriesId(GameObjectController::ALL_CATEGORIES_ID), // Default: all categories
-            excludedCategoryId(0), // Default: nothing explicitly excluded
-            clearanceDistance(0.0f), // 0 = disabled
+            excludedCategoryId(0),                                 // Default: nothing explicitly excluded
+            clearanceDistance(0.0f),                               // 0 = disabled
             collisionEnabled(false),
             collisionRadius(0.3f), // 30cm default trunk
             collisionHeight(2.0f), // 2m default height
@@ -310,7 +310,7 @@ namespace NOWA
          */
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-         virtual Ogre::String getClassName(void) const override
+        virtual Ogre::String getClassName(void) const override
         {
             return "ProceduralFoliageVolumeComponent";
         }
@@ -399,7 +399,7 @@ namespace NOWA
 
         void setRuleCollisionEnabled(unsigned int index, bool enabled);
         bool getRuleCollisionEnabled(unsigned int index) const;
-        
+
         void setRuleCollisionRadius(unsigned int index, Ogre::Real radius);
         Ogre::Real getRuleCollisionRadius(unsigned int index) const;
 
@@ -426,6 +426,7 @@ namespace NOWA
 
         void setRuleTreeSwayStrength(unsigned int index, Ogre::Real swayStrength);
         Ogre::Real getRuleTreeSwayStrength(unsigned int index) const;
+
     public:
         static const Ogre::String AttrRegenerate(void)
         {
@@ -560,22 +561,110 @@ namespace NOWA
         {
             return "Rule Tree Sway Strength ";
         }
+
     private:
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         /**
-         * @brief Main generation function (runs on main thread)
+         * @brief Main generation function (runs on main thread). Always
+         *        ignores and overwrites any existing binary foliage cache
+         *        file -- this is the explicit "something changed, recompute
+         *        everything" entry point (Regenerate button, RandomizeSeed).
          */
         void regenerateFoliage();
 
         /**
-         * @brief Clear all vegetation (blocking, waits for render thread)
+         * @brief Entry point used when foliage may already have been
+         *        computed for this GameObject in a previous session (called
+         *        from handleSceneParsed on scene load). Loads VegetationInstance
+         *        data from the binary cache file if one exists and is still
+         *        valid (see computeRulesChecksum), skipping the expensive
+         *        calculateFoliagePositions()/calculatePlanetFoliagePositions()
+         *        pass entirely. Falls back to a full computation and writes
+         *        a fresh cache file if no valid cache exists.
          */
-        void clearFoliage();
+        void loadOrGenerateFoliage();
+
+        /**
+         * @brief Clear all vegetation (blocking, waits for render thread).
+         *        Does NOT touch the binary cache file -- callers decide
+         *        whether the cache should survive (regenerateFoliage
+         *        overwrites it right after, onRemoveComponent/Clear delete
+         *        it explicitly).
+         */
+        /**
+         * @brief Clear all vegetation (blocking, waits for render thread).
+         * @param[in] deleteCacheFile If true, also deletes the binary
+         *            foliage cache file for this GameObject. Pass true from
+         *            explicit user-facing actions (the Clear button, the
+         *            Regenerate path) where the cache should not silently
+         *            bring the cleared/superseded foliage back on next
+         *            scene load. Pass false (the default) from internal/
+         *            lifecycle call sites -- onRemoveComponent() fires on
+         *            normal scene teardown/engine exit too, and
+         *            loadOrGenerateFoliage() calls this right BEFORE
+         *            reading the cache file, so deleting it there would be
+         *            self-defeating.
+         */
+        void clearFoliage(bool deleteCacheFile = false);
 
         /**
          * @brief Calculate positions for all rules (parallel, main thread)
          */
         std::vector<VegetationBatch> calculateFoliagePositions();
+
+        // ========== Binary Foliage Disk Cache ==========
+        // calculateFoliagePositions()/calculatePlanetFoliagePositions() are
+        // expensive (per-rule grid raycasts against Terra, or spherical
+        // raycasts + 3D cell binning for planets). Once computed, the
+        // resulting VegetationInstance data is deterministic for a given
+        // set of rules/volume/seed, so it is cached to disk and only
+        // recomputed when something that affects the output actually
+        // changed, or the user explicitly clicks Regenerate.
+
+        /**
+         * @brief Returns the path to this GameObject's binary foliage cache
+         *        file, following the same project/scene-folder convention as
+         *        ProceduralWallComponent::getWallDataFilePath.
+         */
+        Ogre::String getFoliageDataFilePath(void) const;
+
+        /**
+         * @brief Writes the given batches' VegetationInstance data (position,
+         *        orientation, scale, ruleIndex) to the binary cache file,
+         *        prefixed with a checksum of every rule/volume/seed parameter
+         *        that affects generation, so a stale cache can be detected
+         *        and ignored later.
+         * @return true on success.
+         */
+        bool saveFoliageDataToFile(const std::vector<VegetationBatch>& batches);
+
+        /**
+         * @brief Reads VegetationInstance data back from the binary cache
+         *        file, if one exists and its stored checksum still matches
+         *        the current rules/volume/seed configuration.
+         * @param[out] outBatches Filled with the loaded batches on success.
+         *             Left untouched on failure.
+         * @return true if a valid, up-to-date cache was loaded; false if the
+         *         file is missing, corrupt, version-mismatched, or stale, in
+         *         which case the caller must fall back to
+         *         calculateFoliagePositions().
+         */
+        bool loadFoliageDataFromFile(std::vector<VegetationBatch>& outBatches);
+
+        /**
+         * @brief Deletes this GameObject's binary foliage cache file, if it
+         *        exists. Safe to call even when no file is present.
+         */
+        void deleteFoliageDataFile(void);
+
+        /**
+         * @brief Computes a checksum over every rule/volume/seed/planet
+         *        parameter that affects calculateFoliagePositions()'s or
+         *        calculatePlanetFoliagePositions()'s output, used to detect
+         *        a stale cache file after the user edits a rule without
+         *        explicitly clicking Regenerate.
+         */
+        uint64_t computeRulesChecksum(void) const;
 
         /**
          * @brief Check if position meets rule's terrain criteria
@@ -681,11 +770,7 @@ namespace NOWA
          * @param[out] outBranchIds Per-vertex branch index in [0, clusterCount).
          * @param[out] outBranchPivots Per-branch centroid position (local space), size == clusterCount.
          */
-        void clusterLeafVerticesIntoBranches(
-            const std::vector<Ogre::Vector3>& positions,
-            int clusterCount,
-            std::vector<int>& outBranchIds,
-            std::vector<Ogre::Vector3>& outBranchPivots);
+        void clusterLeafVerticesIntoBranches(const std::vector<Ogre::Vector3>& positions, int clusterCount, std::vector<int>& outBranchIds, std::vector<Ogre::Vector3>& outBranchPivots);
 
         /**
          * @brief Derives the expected "Swaying" Wind HLMS datablock name for
@@ -737,15 +822,14 @@ namespace NOWA
         Ogre::String name;
 
         // Volume settings
-        Variant* volumeBounds;      // AABB bounds
-        Variant* masterSeed;        // Master seed for reproducibility
-        Variant* gridResolution;    // Sample grid resolution (meters)
+        Variant* volumeBounds;   // AABB bounds
+        Variant* masterSeed;     // Master seed for reproducibility
+        Variant* gridResolution; // Sample grid resolution (meters)
 
         // Actions
         Variant* regenerate;
         Variant* clear;
         Variant* randomizeSeed;
-
 
         // Rules
         Variant* ruleCount;
@@ -785,6 +869,12 @@ namespace NOWA
         // Runtime state
         std::vector<VegetationBatch> vegetationBatches; // Render thread only after creation!
         bool isDirty;
+
+        // Binary cache format version written/expected by saveFoliageDataToFile/
+        // loadFoliageDataFromFile. Bump this whenever that on-disk layout
+        // changes, so old cache files are detected as version-mismatched and
+        // ignored instead of being misread.
+        static const unsigned int FOLIAGE_CACHE_VERSION = 1;
 
         bool foliageLoadedFromScene;
 
