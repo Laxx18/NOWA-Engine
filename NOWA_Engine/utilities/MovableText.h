@@ -113,6 +113,10 @@ namespace NOWA
             return mLList;
         }
 
+        // NOTE: getVaos() is NOT overridden here.
+        // Ogre's Renderable base class returns mVaoPerLod[vertexPass] from getVaos().
+        // We populate mVaoPerLod directly in _setupGeometry() so Ogre finds our VAO.
+
     private:
         Ogre::String mFontName;
         Ogre::String mName;
@@ -136,9 +140,8 @@ namespace NOWA
         Ogre::Font* mpFont;
         Ogre::HlmsDatablock* mpHlmsDatablock;
 
-        // v2 VAO resources
-        Ogre::VertexArrayObjectArray mVaos[2]; // [VpNormal], [VpShadow]
-        Ogre::VertexBufferPacked* mVertexBuffer;
+        // v2 VAO — stored in Renderable::mVaoPerLod (base class member)
+        // mVaoPerLod[VpNormal] and mVaoPerLod[VpShadow] are populated in _setupGeometry()
         Ogre::VaoManager* mVaoManager;
     };
 

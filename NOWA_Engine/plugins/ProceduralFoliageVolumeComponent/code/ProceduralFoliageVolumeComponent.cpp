@@ -170,6 +170,7 @@ namespace NOWA
             this->ruleDensities.resize(count);
             this->ruleHeightRanges.resize(count);
             this->ruleMaxSlopes.resize(count);
+            this->ruleAlignToNormals.resize(count);
             this->ruleTerraLayers.resize(count);
             this->ruleScaleRanges.resize(count);
             this->ruleMinSpacings.resize(count);
@@ -205,6 +206,11 @@ namespace NOWA
             if (this->ruleMaxSlopes[i])
             {
                 this->ruleMaxSlopes[i]->setConstraints(0.0f, 90.0f);
+            }
+
+            if (this->ruleAlignToNormals[i])
+            {
+                this->ruleAlignToNormals[i]->setConstraints(0.0f, 1.0f);
             }
 
             if (this->ruleMinSpacings[i])
@@ -301,6 +307,21 @@ namespace NOWA
                 this->ruleMaxSlopes[i]->setValue(maxSlope);
                 this->ruleMaxSlopes[i]->setConstraints(0.0f, 90.0f);
                 this->rules[i].maxSlope = maxSlope;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+
+            // Rule Align To Normal
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleAlignToNormal() + Ogre::StringConverter::toString(i)))
+            {
+                Ogre::Real alignToNormal = XMLConverter::getAttribReal(propertyElement, "data");
+                if (nullptr == this->ruleAlignToNormals[i])
+                {
+                    this->ruleAlignToNormals[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleAlignToNormal() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+                    this->ruleAlignToNormals[i]->setDescription("How much to align placement to the terrain/planet surface normal (0 = world up / planet-radial only, 1 = fully follow the local surface normal). Range 0-1.");
+                    this->ruleAlignToNormals[i]->setConstraints(0.0f, 1.0f);
+                }
+                this->ruleAlignToNormals[i]->setValue(alignToNormal);
+                this->rules[i].alignToNormal = alignToNormal;
                 propertyElement = propertyElement->next_sibling("property");
             }
 
@@ -814,6 +835,10 @@ namespace NOWA
                 {
                     this->setRuleMaxSlope(i, attribute->getReal());
                 }
+                else if (ProceduralFoliageVolumeComponent::AttrRuleAlignToNormal() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleAlignToNormal(i, attribute->getReal());
+                }
                 else if (ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i) == attribute->getName())
                 {
                     this->setRuleTerraLayers(i, attribute->getString());
@@ -968,6 +993,13 @@ namespace NOWA
             propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleMaxSlope() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleMaxSlopes[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
+
+            // Rule Align To Normal
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleAlignToNormal() + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleAlignToNormals[i]->getReal())));
             propertiesXML->append_node(propertyXML);
 
             // Rule Terra Layers
@@ -1310,54 +1342,7 @@ namespace NOWA
                             {
                                 continue;
                             }
-#if 0
-                            Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
-                            Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
 
-                            Ogre::Quaternion orientation;
-                            
-                            // Always build a real, explicit basis -- never leave orientation
-                            // as IDENTITY. For mesh-based foliage (trees), IDENTITY would be
-                            // harmless since the source mesh's own local Z axis already means
-                            // "up" with no rotation applied. But createGrassItems extracts its
-                            // up/right/forward axes directly from this orientation's matrix
-                            // columns (see bladeUp/bladeRight/bladeForward), and IDENTITY's
-                            // columns are just (1,0,0)/(0,1,0)/(0,0,1) -- which only means
-                            // "world Y is up" if alignToNormal's lerp target is also exactly
-                            // world Y, NOT in general. Building the basis unconditionally
-                            // (defaulting "up" to world UNIT_Y when alignToNormal is 0, exactly
-                            // matching IDENTITY's effective up direction) keeps trees behaving
-                            // identically to before while making grass's column-read always
-                            // correct, regardless of whether alignToNormal is used.
-                            Ogre::Vector3 up = (rule.alignToNormal > 0.0f) ? Ogre::Vector3(Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.x, normal.x, rule.alignToNormal), Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.y, normal.y, rule.alignToNormal),
-                                                                                    Ogre::Math::lerp(Ogre::Vector3::UNIT_Y.z, normal.z, rule.alignToNormal))
-                                                                            : Ogre::Vector3::UNIT_Y;
-                            up.normalise();
-                            Ogre::Vector3 right = up.perpendicular();
-                            Ogre::Vector3 forward = right.crossProduct(up);
-                            // Tree meshes in this project grow along local Z (0,0,1), not
-                            // local Y. Ogre::Quaternion::FromAxes(x, y, z) places its 2nd
-                            // argument into the Y column and its 3rd into the Z column
-                            // (confirmed from OgreQuaternion.cpp source) -- so the
-                            // alignment axis must go in the 3rd slot (forward/Z), not the
-                            // 2nd slot (up/Y), or the mesh ends up tilted ~90 degrees from
-                            // the intended alignment direction. This was subtle on gentle
-                            // flat-terrain slopes but glaringly visible on a sphere where
-                            // "up" varies continuously.
-                            orientation.FromAxes(right, forward, up);
-                            
-
-                            if (rule.randomYRotation)
-                            {
-                                Ogre::Degree yRot(Ogre::Math::lerp(rule.yRotationRange.x, rule.yRotationRange.y, dist01(rng)));
-                                Ogre::Quaternion yQuat;
-                                // Rotate around the terrain normal (local up), not world UNIT_Y.
-                                // On a flat terrain both are the same, but on a sphere UNIT_Y is wrong
-                                // for any surface point that isn't exactly at the north pole.
-                                yQuat.FromAngleAxis(yRot, up);
-                                orientation = orientation * yQuat;
-                            }
-#else
                             Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
                             Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
 
@@ -1379,7 +1364,6 @@ namespace NOWA
                                 yQuat.FromAngleAxis(yRot, Ogre::Vector3::UNIT_Y);
                                 orientation = orientation * yQuat;
                             }
-#endif
 
                             batch.instances.emplace_back(position, orientation, scale, ruleIdx);
                         }
@@ -2388,24 +2372,6 @@ namespace NOWA
             cellMap[key].push_back(instIdx);
         }
 
-        //const Ogre::HlmsBlendblock* bb = grassDatablock->getBlendblock(false);
-        //bool isCutoutOrBlended = (nullptr != bb && (bb->isAutoTransparent() || bb->isForcedTransparent()));
-
-        // Ogre::HlmsPbsDatablock* pbsDb = static_cast<Ogre::HlmsPbsDatablock*>(grassDatablock);
-        //if (nullptr != pbsDb)
-        //{
-        //    const Ogre::HlmsBlendblock* bb = pbsDb->getBlendblock();
-        //    isCutoutOrBlended = bb->mIsTransparent != 0; // real blend only -> stays in opaque queue otherwise
-
-        //    // Guarantee a clean cutout regardless of the .material / custom Wind Hlms:
-        //    // signature: setAlphaTest(CompareFunction, bool shadowCasterOnly=false, bool useAlphaHash=false)
-        //    pbsDb->setAlphaTest(Ogre::CMPF_GREATER_EQUAL, /*shadowCasterOnly*/ false, /*useAlphaHash*/ false);
-        //    pbsDb->setAlphaTestThreshold(0.5f); // tune 0.3–0.6 for foliage edges
-        //}
-
-        //// const Ogre::uint8 renderQueue = NOWA::RENDER_QUEUE_V2_MESH;
-        //const Ogre::uint8 renderQueue = isCutoutOrBlended ? RENDER_QUEUE_V2_TRANSPARENT : NOWA::RENDER_QUEUE_V2_MESH;
-
         bool isCutoutOrBlended = false;
 
         Ogre::HlmsPbsDatablock* pbsDb = static_cast<Ogre::HlmsPbsDatablock*>(grassDatablock);
@@ -2908,6 +2874,7 @@ namespace NOWA
             this->ruleDensities.resize(count);
             this->ruleHeightRanges.resize(count);
             this->ruleMaxSlopes.resize(count);
+            this->ruleAlignToNormals.resize(count);
             this->ruleTerraLayers.resize(count);
             this->ruleScaleRanges.resize(count);
             this->ruleMinSpacings.resize(count);
@@ -2988,6 +2955,12 @@ namespace NOWA
                 this->ruleMaxSlopes[i]->setDescription("Hard maximum slope angle in degrees. Acts as a fast rejection before slopeRange check.");
                 this->ruleMaxSlopes[i]->setConstraints(0.0f, 90.0f);
                 this->rules[i].maxSlope = 45.0f;
+
+                // Align To Normal — fully follow the surface normal/planet radial by default
+                this->ruleAlignToNormals[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleAlignToNormal() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+                this->ruleAlignToNormals[i]->setDescription("How much to align placement to the terrain/planet surface normal (0 = world up / planet-radial only, 1 = fully follow the local surface normal). Range 0-1.");
+                this->ruleAlignToNormals[i]->setConstraints(0.0f, 1.0f);
+                this->rules[i].alignToNormal = 1.0f;
 
                 // Terra Layers — all layers allowed
                 this->ruleTerraLayers[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i), Ogre::String("255,255,255,255"), this->attributes);
@@ -3118,6 +3091,7 @@ namespace NOWA
             this->eraseVariants(this->ruleDensities, count);
             this->eraseVariants(this->ruleHeightRanges, count);
             this->eraseVariants(this->ruleMaxSlopes, count);
+            this->eraseVariants(this->ruleAlignToNormals, count);
             this->eraseVariants(this->ruleTerraLayers, count);
             this->eraseVariants(this->ruleScaleRanges, count);
             this->eraseVariants(this->ruleMinSpacings, count);
@@ -3256,6 +3230,26 @@ namespace NOWA
             return 90.0f;
         }
         return this->ruleMaxSlopes[index]->getReal();
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleAlignToNormal(unsigned int index, Ogre::Real alignToNormal)
+    {
+        if (index >= this->rules.size())
+        {
+            return;
+        }
+        alignToNormal = Ogre::Math::Clamp(alignToNormal, 0.0f, 1.0f);
+        this->ruleAlignToNormals[index]->setValue(alignToNormal);
+        this->rules[index].alignToNormal = alignToNormal;
+    }
+
+    Ogre::Real ProceduralFoliageVolumeComponent::getRuleAlignToNormal(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 1.0f;
+        }
+        return this->ruleAlignToNormals[index]->getReal();
     }
 
     void ProceduralFoliageVolumeComponent::setRuleTerraLayers(unsigned int index, const Ogre::String& layers)

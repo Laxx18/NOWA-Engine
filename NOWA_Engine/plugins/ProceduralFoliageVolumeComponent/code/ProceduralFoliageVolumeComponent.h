@@ -366,6 +366,8 @@ namespace NOWA
         Ogre::Vector2 getRuleHeightRange(unsigned int index) const;
 
         void setRuleMaxSlope(unsigned int index, Ogre::Real maxSlope);
+        void setRuleAlignToNormal(unsigned int index, Ogre::Real alignToNormal);
+        Ogre::Real getRuleAlignToNormal(unsigned int index) const;
         Ogre::Real getRuleMaxSlope(unsigned int index) const;
 
         void setRuleTerraLayers(unsigned int index, const Ogre::String& layers);
@@ -473,6 +475,10 @@ namespace NOWA
         static const Ogre::String AttrRuleMaxSlope(void)
         {
             return "Rule Max Slope ";
+        }
+        static const Ogre::String AttrRuleAlignToNormal(void)
+        {
+            return "Rule Align To Normal ";
         }
         static const Ogre::String AttrRuleTerraLayers(void)
         {
@@ -751,6 +757,7 @@ namespace NOWA
         std::vector<Variant*> ruleDensities;
         std::vector<Variant*> ruleHeightRanges;
         std::vector<Variant*> ruleMaxSlopes;
+        std::vector<Variant*> ruleAlignToNormals;
         std::vector<Variant*> ruleTerraLayers;
         std::vector<Variant*> ruleScaleRanges;
         std::vector<Variant*> ruleMinSpacings;

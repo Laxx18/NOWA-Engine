@@ -227,6 +227,31 @@ namespace NOWA
 
         setTextureReg(tid, Ogre::VertexShader, "texPerlinNoise", 14);
 
+        // After all properties are merged (renderable + pass), enforce consistency
+        // between hlms_fog and atmosky_npr for alpha_hash / cutout Wind materials.
+        //
+        // AtmosphereNpr::preparePassHash() always sets BOTH hlms_fog=1 and atmosky_npr=slot
+        // as a pair. For alpha_hash grass this corrupts the alpha discard. We suppress both
+        // together here — after the merge — so the generated shader is always consistent:
+        // either both are present (transparent Wind objects that want fog) or both are absent
+        // (cutout/opaque Wind objects that must not have fog touch their alpha path).
+        //
+        // Suppressing only Fog while leaving atmosky_npr would declare AtmoSettings cbuffer
+        // but skip the @property(hlms_fog) block that uses it → undeclared identifier error.
+        // Suppressing only atmosky_npr while leaving Fog would reference atmoSettings in the
+        // fog block without the cbuffer declaration → same error.
+        // Both must always match.
+        const Ogre::int32 hasAlphaHash = getProperty(tid, Ogre::HlmsBaseProp::AlphaHash);
+        const Ogre::int32 hasAlphaTest = getProperty(tid, Ogre::HlmsBaseProp::AlphaTest);
+        const Ogre::int32 hasAlphaBlend = getProperty(tid, Ogre::HlmsBaseProp::AlphaBlend);
+        const Ogre::int32 hasFog = getProperty(tid, Ogre::HlmsBaseProp::Fog);
+
+        if (hasFog != 0 && (hasAlphaHash != 0 || (hasAlphaTest != 0 && hasAlphaBlend == 0)))
+        {
+            setProperty(tid, Ogre::HlmsBaseProp::Fog, 0);
+            setProperty(tid, "atmosky_npr", 0);
+        }
+
         return status;
     }
 
@@ -279,22 +304,8 @@ namespace NOWA
         HlmsPbs::calculateHashForPreCreate(renderable, inOutPieces);
         setProperty(kNoTid, "wind_enabled", 1);
         setProperty(kNoTid, "wind_max_interactors", WIND_MAX_INTERACTORS);
-
-        // AtmosphereNpr::preparePassHash() injects HlmsBaseProp::Fog=1 on every pass.
-        // For cutout (alpha_hash / alpha_test) Wind materials this corrupts the alpha
-        // discard logic and produces black billboard silhouettes against the sky.
-        // Baking Fog=0 into the shader hash here forces a fog-free variant for all
-        // cutout Wind materials — preparePassHash cannot override a property that is
-        // already locked into the compiled shader's cache key.
-        const Ogre::int32 hasAlphaHash = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaHash);
-        const Ogre::int32 hasAlphaTest = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaTest);
-        const Ogre::int32 hasAlphaBlend = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaBlend);
-
-        if (hasAlphaHash != 0 || (hasAlphaTest != 0 && hasAlphaBlend == 0))
-        {
-            // Cutout foliage: suppress fog so atmosphere does not touch the alpha path
-            setProperty(kNoTid, Ogre::HlmsBaseProp::Fog, 0);
-        }
+        // No fog manipulation here — done in notifyPropertiesMergedPreGenerationStep
+        // after pass properties are merged in, where the full picture is visible.
     }
 
     void HlmsWind::calculateHashForPreCaster(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces, const Ogre::PiecesMap* normalPassPieces)
@@ -302,16 +313,6 @@ namespace NOWA
         HlmsPbs::calculateHashForPreCaster(renderable, inOutPieces, normalPassPieces);
         setProperty(kNoTid, "wind_enabled", 1);
         setProperty(kNoTid, "wind_max_interactors", WIND_MAX_INTERACTORS);
-
-        // Same fog suppression for shadow caster pass
-        const Ogre::int32 hasAlphaHash = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaHash);
-        const Ogre::int32 hasAlphaTest = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaTest);
-        const Ogre::int32 hasAlphaBlend = getProperty(kNoTid, Ogre::HlmsBaseProp::AlphaBlend);
-
-        if (hasAlphaHash != 0 || (hasAlphaTest != 0 && hasAlphaBlend == 0))
-        {
-            setProperty(kNoTid, Ogre::HlmsBaseProp::Fog, 0);
-        }
     }
 
     void HlmsWind::loadTexturesAndSamplers(Ogre::SceneManager* sceneManager)

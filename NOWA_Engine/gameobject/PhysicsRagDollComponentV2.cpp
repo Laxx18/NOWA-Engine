@@ -1838,20 +1838,20 @@ namespace NOWA
                 boneLocalPos = invParentOri * (skelPos - parentDerivedPos);
                 boneLocalOri = invParentOri * skelOri;
 
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[applyRagdollStateToModel] Bone: " + ragBone->getName() + " | parentBone: " + parentBone->getName() +
+                /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[applyRagdollStateToModel] Bone: " + ragBone->getName() + " | parentBone: " + parentBone->getName() +
                                                                                        " | bodyWorldPos: " + Ogre::StringConverter::toString(bodyWorldPos) + " | bodyWorldOri: " + Ogre::StringConverter::toString(bodyWorldOri) +
                                                                                        " | parentDerivedPos: " + Ogre::StringConverter::toString(parentDerivedPos) + " | parentDerivedOri: " + Ogre::StringConverter::toString(parentDerivedOri) +
                                                                                        " | skelPos: " + Ogre::StringConverter::toString(skelPos) + " | skelOri: " + Ogre::StringConverter::toString(skelOri) +
-                                                                                       " | boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) + " | boneLocalOri: " + Ogre::StringConverter::toString(boneLocalOri));
+                                                                                       " | boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) + " | boneLocalOri: " + Ogre::StringConverter::toString(boneLocalOri));*/
             }
             else
             {
                 boneLocalPos = skelPos;
                 boneLocalOri = skelOri;
 
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[applyRagdollStateToModel] Bone: " + ragBone->getName() + " | ROOT BONE (no parent)" + " | bodyWorldPos: " + Ogre::StringConverter::toString(bodyWorldPos) +
+                /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[applyRagdollStateToModel] Bone: " + ragBone->getName() + " | ROOT BONE (no parent)" + " | bodyWorldPos: " + Ogre::StringConverter::toString(bodyWorldPos) +
                                                                                        " | bodyWorldOri: " + Ogre::StringConverter::toString(bodyWorldOri) + " | boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) +
-                                                                                       " | boneLocalOri: " + Ogre::StringConverter::toString(boneLocalOri));
+                                                                                       " | boneLocalOri: " + Ogre::StringConverter::toString(boneLocalOri));*/
             }
 
             bone->setPosition(boneLocalPos);

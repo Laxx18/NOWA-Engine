@@ -5,15 +5,18 @@
  *
  * Key design decisions:
  *  - MovableText is both MovableObject and Renderable (mRenderables.push_back(this)).
+ *  - VAO is stored in Renderable::mVaoPerLod (the base class member that Ogre's
+ *    calculateHashFor checks via getVaos()). Do NOT use a custom mVaos array —
+ *    Ogre ignores it and always reads mVaoPerLod.
+ *  - _updateHlmsMacroblock() and setDatablock() are called only at the END of
+ *    _setupGeometry(), after the VAO is in mVaoPerLod. This guarantees that
+ *    calculateHashFor() takes the V2 path and never calls getRenderOperation().
+ *  - getRenderOperation() throws like ManualObject2 — it is never reached in
+ *    normal operation.
  *  - getWorldTransforms() is verbatim from original — billboard via world matrix
  *    override, parent node is never rotated.
- *  - getRenderOperation() throws ERR_NOT_IMPLEMENTED exactly like ManualObject2.
- *    Safe because setDatablock() and _updateHlmsMacroblock() are only called at
- *    the END of _setupGeometry() AFTER the VAO is in mVaos[] — so calculateHashFor()
- *    always takes the V2 path via getVaos() and never reaches getRenderOperation().
- *  - _setupGeometry() builds a VAO (pos3+uv2, BT_IMMUTABLE, no index buffer).
  *  - _notifyAttached() triggers _setupGeometry() on first attach.
- *  - Colour is set via HlmsUnlitDatablock::setColour() — no per-vertex colour buffer.
+ *  - Colour via HlmsUnlitDatablock::setColour() — no per-vertex colour buffer.
  */
 
 #include "NOWAPrecompiled.h"
@@ -43,7 +46,7 @@ namespace NOWA
     // ============================================================================
 
     MovableText::MovableText(Ogre::IdType id, Ogre::ObjectMemoryManager* objectMemoryManager, Ogre::SceneManager* sceneManager, const Ogre::NameValuePairList* params) :
-        Ogre::MovableObject(id, objectMemoryManager, sceneManager, RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND),
+        Ogre::MovableObject(id, objectMemoryManager, sceneManager, RENDER_QUEUE_V2_MESH),
         mpCam(nullptr),
         mpFont(nullptr),
         mpHlmsDatablock(nullptr),
@@ -60,7 +63,6 @@ namespace NOWA
         mGlobalTranslation(Ogre::Vector3::ZERO),
         mLocalTranslation(Ogre::Vector3::ZERO),
         yOffset(0.0f),
-        mVertexBuffer(nullptr),
         mVaoManager(nullptr)
     {
         if (params)
@@ -108,23 +110,22 @@ namespace NOWA
     }
 
     // ============================================================================
-    //  VAO cleanup
+    //  VAO cleanup — clears mVaoPerLod (base class member Ogre reads via getVaos)
     // ============================================================================
 
     void MovableText::_destroyGeometry()
     {
-        if (!mVaos[Ogre::VpNormal].empty())
+        if (!mVaoPerLod[Ogre::VpNormal].empty())
         {
-            Ogre::VertexArrayObject* vao = mVaos[Ogre::VpNormal][0];
+            Ogre::VertexArrayObject* vao = mVaoPerLod[Ogre::VpNormal][0];
             Ogre::VertexBufferPackedVec vbVec = vao->getVertexBuffers();
             mVaoManager->destroyVertexArrayObject(vao);
             for (auto* vb : vbVec)
             {
                 mVaoManager->destroyVertexBuffer(vb);
             }
-            mVaos[Ogre::VpNormal].clear();
-            mVaos[Ogre::VpShadow].clear();
-            mVertexBuffer = nullptr;
+            mVaoPerLod[Ogre::VpNormal].clear();
+            mVaoPerLod[Ogre::VpShadow].clear();
         }
     }
 
@@ -186,10 +187,11 @@ namespace NOWA
             reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setTexture(0, reinterpret_cast<Ogre::HlmsUnlitDatablock*>(fontDatablock)->getTexture(0));
             reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setTextureSwizzle(0, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::G_MASK);
 
-            // NOTE: Do NOT call _updateHlmsMacroblock() or setDatablock() here.
-            // Both trigger flushRenderables() -> calculateHashFor() -> getRenderOperation()
-            // which crashes because the VAO does not exist yet at this point.
-            // Both are called at the end of _setupGeometry() after the VAO is built.
+            // Do NOT call _updateHlmsMacroblock() or setDatablock() here.
+            // Both trigger flushRenderables() -> calculateHashFor() -> getVaos().
+            // mVaoPerLod is empty at this point — Ogre would fall into the V1 path
+            // and call getRenderOperation(), crashing. Both calls are deferred to
+            // _setupGeometry() where mVaoPerLod is populated first.
             mNeedUpdate = true;
         }
     }
@@ -327,7 +329,6 @@ namespace NOWA
             pushVert(xL, yB, uv.left, uv.bottom);
             pushVert(xR, yB, uv.right, uv.bottom);
 
-            top += mCharHeight * UV_RANGE;
             left += horiz * mCharHeight * UV_RANGE;
         }
 
@@ -349,9 +350,10 @@ namespace NOWA
         float* gpuBuf = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(vertBytes, Ogre::MEMCATEGORY_GEOMETRY));
         memcpy(gpuBuf, cpuVerts.data(), vertBytes);
 
+        Ogre::VertexBufferPacked* vertexBuffer = nullptr;
         try
         {
-            mVertexBuffer = mVaoManager->createVertexBuffer(elements, actualVerts, Ogre::BT_IMMUTABLE, gpuBuf, true /*keepAsShadow*/);
+            vertexBuffer = mVaoManager->createVertexBuffer(elements, actualVerts, Ogre::BT_IMMUTABLE, gpuBuf, true /*keepAsShadow*/);
         }
         catch (Ogre::Exception& e)
         {
@@ -360,14 +362,15 @@ namespace NOWA
             return;
         }
 
-        // ── Build VAO (no index buffer — vertices already expanded) ──────────
+        // ── Build VAO and store in mVaoPerLod — the base class member that
+        //    Ogre::Renderable::getVaos() returns and calculateHashFor() checks. ─
         Ogre::VertexBufferPackedVec vbVec;
-        vbVec.push_back(mVertexBuffer);
+        vbVec.push_back(vertexBuffer);
 
         Ogre::VertexArrayObject* vao = mVaoManager->createVertexArrayObject(vbVec, nullptr, Ogre::OT_TRIANGLE_LIST);
 
-        mVaos[Ogre::VpNormal].push_back(vao);
-        mVaos[Ogre::VpShadow].push_back(vao);
+        mVaoPerLod[Ogre::VpNormal].push_back(vao);
+        mVaoPerLod[Ogre::VpShadow].push_back(vao);
 
         // ── AABB — verbatim from original ─────────────────────────────────────
         if (first)
@@ -383,8 +386,9 @@ namespace NOWA
         mObjectData.mLocalRadius[mObjectData.mIndex] = radius;
         mObjectData.mWorldRadius[mObjectData.mIndex] = radius;
 
-        // ── VAO is now in mVaos[] — safe to call _updateHlmsMacroblock() and
-        //    setDatablock() because calculateHashFor() will take the V2 path. ─
+        // ── mVaoPerLod is now populated — safe to call _updateHlmsMacroblock()
+        //    and setDatablock(). calculateHashFor() will take the V2 path because
+        //    getVaos(VpNormal) (= mVaoPerLod[VpNormal]) is no longer empty. ────
         _updateHlmsMacroblock();
         this->setDatablock(mpHlmsDatablock);
         reinterpret_cast<Ogre::HlmsUnlitDatablock*>(mpHlmsDatablock)->setColour(mColor);
@@ -453,9 +457,8 @@ namespace NOWA
 
     // ============================================================================
     //  getRenderOperation — throws like ManualObject2.
-    //  Never reached during normal operation because setDatablock() and
-    //  _updateHlmsMacroblock() are only called after mVaos[] is populated,
-    //  so calculateHashFor() always takes the V2 path via getVaos().
+    //  Never reached because mVaoPerLod is always populated before setDatablock()
+    //  is called, so calculateHashFor() always takes the V2 path.
     // ============================================================================
 
     void MovableText::getRenderOperation(Ogre::v1::RenderOperation& /*op*/, bool /*casterPass*/)
@@ -537,9 +540,8 @@ namespace NOWA
         if (mOnTop != show && mpHlmsDatablock)
         {
             mOnTop = show;
-            // _updateHlmsMacroblock calls setMacroblock -> flushRenderables -> calculateHashFor.
-            // Safe here because showOnTop() is only called after _setupGeometry() has run
-            // and the VAO is already in mVaos[].
+            // Safe here: showOnTop() is only called after _setupGeometry() has run
+            // and mVaoPerLod is already populated.
             _updateHlmsMacroblock();
         }
     }
