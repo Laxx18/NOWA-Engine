@@ -272,8 +272,10 @@ namespace NOWA
         {
             this->workerThread.join();
         }
-
-        this->physicsActiveComponent->destroyCollision();
+        if (false == this->gameObjectPtr->hasComponent("PhysicsActiveVehicleComponentV2"))
+        {
+            this->physicsActiveComponent->destroyCollision();
+        }
 
         if (this->originalItem != nullptr)
         {
@@ -283,7 +285,10 @@ namespace NOWA
             // old == editableItem, keep alive for next connect
 
             // Rebuild physics from original BEFORE nulling the pointer
-            this->physicsActiveComponent->reCreateDynamicBodyForItem(this->originalItem);
+            if (false == this->gameObjectPtr->hasComponent("PhysicsActiveVehicleComponentV2"))
+            {
+                this->physicsActiveComponent->reCreateDynamicBodyForItem(this->originalItem);
+            }
             this->originalItem = nullptr;
         }
 

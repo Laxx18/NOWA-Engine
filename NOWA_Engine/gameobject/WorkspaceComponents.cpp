@@ -756,6 +756,7 @@ namespace NOWA
         Ogre::String message = "WorkspaceBaseComponent::createWorkspace for: " + name;
         GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), message.data());
 
+// TODO: Check if -> and condition this->involvedInSplitScreen is necessary!
         if (nullptr != this->cameraComponent)
         {
             WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
@@ -923,10 +924,12 @@ namespace NOWA
     {
         if (nullptr != this->workspace)
         {
-            ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::nullWorkspace", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 this->compositorManager->removeWorkspace(this->workspace);
                 this->workspace = nullptr;
-            });
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::nullWorkspace");
         }
     }
 
@@ -1871,7 +1874,8 @@ namespace NOWA
         {
             if (false == this->compositorManager->hasNodeDefinition(this->distortionNode))
             {
-                ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createDistortionNode", {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                {
                     Ogre::CompositorNodeDef* compositorNodeDefinition = compositorManager->addNodeDefinition(this->distortionNode);
 
                     // rt_output is the new in texture, instead of like in the script in 2 rt_output whichs is externally connected
@@ -1913,7 +1917,8 @@ namespace NOWA
 
                     compositorNodeDefinition->mapOutputChannel(0, "rt_output");
                     compositorNodeDefinition->mapOutputChannel(1, "rt0");
-                });
+                };
+                GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::createDistortionNode");
             }
         }
     }
@@ -2131,7 +2136,8 @@ namespace NOWA
             return;
         }
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::initializeHdr", _1(fsaa), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, fsaa]()
+        {
             Ogre::String preprocessorDefines = "MSAA_INITIALIZED=1,";
 
             preprocessorDefines += "MSAA_SUBSAMPLE_WEIGHT=";
@@ -2154,7 +2160,8 @@ namespace NOWA
             pass->getFragmentProgram()->reload();
             // Restore manual & auto params to the newly compiled shader
             pass->getFragmentProgramParameters()->copyConstantsFrom(*oldParams);
-        });
+        };
+        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::initializeHdr");
     }
 
     void WorkspaceBaseComponent::initializeSmaa(PresetQuality quality, EdgeDetectionMode edgeDetectionMode)
@@ -2280,7 +2287,8 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setDataBlockPbsReflectionTextureName(GameObject* gameObject, const Ogre::String& textureName)
     {
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setDataBlockPbsReflectionTextureName", _2(gameObject, textureName), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObject, textureName]()
+        {
             unsigned int i = 0;
             boost::shared_ptr<DatablockPbsComponent> datablockPbsCompPtr = nullptr;
             do
@@ -2292,7 +2300,8 @@ namespace NOWA
                     i++;
                 }
             } while (nullptr != datablockPbsCompPtr);
-        });
+        };
+        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setDataBlockPbsReflectionTextureName");
     }
 
     void WorkspaceBaseComponent::setPlanarMaxReflections(unsigned long gameObjectId, bool useAccurateLighting, unsigned int width, unsigned int height, bool withMipmaps, bool useMipmapMethodCompute, const Ogre::Vector3& position,
@@ -2300,7 +2309,8 @@ namespace NOWA
     {
         if (nullptr != this->planarReflections && false == this->planarReflectionReflectiveWorkspaceName.empty())
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setPlanarMaxReflections", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize]()
+            {
                 bool foundGameObjectId = false;
                 unsigned int planarReflectionActorIndex = 1;
                 for (size_t i = 0; i < this->planarReflectionActors.size(); i++)
@@ -2315,7 +2325,8 @@ namespace NOWA
                 }
 
                 this->planarReflections->setMaxActiveActors(planarReflectionActorIndex, this->planarReflectionReflectiveWorkspaceName, useAccurateLighting, width, height, withMipmaps, Ogre::PFG_RGBA8_UNORM_SRGB, useMipmapMethodCompute);
-            });
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setPlanarMaxReflections");
         }
     }
 
@@ -2324,7 +2335,8 @@ namespace NOWA
     {
         if (nullptr != this->planarReflections && false == this->planarReflectionReflectiveWorkspaceName.empty())
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::addPlanarReflectionsActor", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize]()
+            {
                 bool foundGameObjectId = false;
                 unsigned int planarReflectionActorIndex = 1;
                 Ogre::PlanarReflectionActor* existingActor = nullptr;
@@ -2375,13 +2387,15 @@ namespace NOWA
                     actor->mActivationPriority = 0;
                     this->planarReflectionActors.emplace_back(gameObjectId, planarReflectionActorIndex, actor);
                 }
-            });
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::addPlanarReflectionsActor");
         }
     }
 
     void WorkspaceBaseComponent::removePlanarReflectionsActor(unsigned long gameObjectId)
     {
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::removePlanarReflectionsActor", _1(gameObjectId), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObjectId]()
+        {
             bool couldRemove = false;
             for (size_t i = 0; i < this->planarReflectionActors.size(); i++)
             {
@@ -2411,7 +2425,8 @@ namespace NOWA
 
                 // this->createWorkspace();
             }
-        });
+        };
+        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::removePlanarReflectionsActor");
     }
 
     void WorkspaceBaseComponent::setBackgroundColor(const Ogre::Vector3& backgroundColor)
@@ -2479,16 +2494,15 @@ namespace NOWA
     }
 
     void WorkspaceBaseComponent::setUseHdr(bool useHdr)
-    {
-        this->useHdr->setValue(useHdr);
-
+    {      
         if (false == useHdr && nullptr != this->gameObjectPtr)
         {
             boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(gameObjectPtr->getId(), useHdr));
             AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataHdrActivated);
 
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setUseHdr", _1(useHdr), {
-                this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f), Ogre::ColourValue(0.6f, 0.45f, 0.3f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, useHdr]()
+            {
+                // this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f), Ogre::ColourValue(0.6f, 0.45f, 0.3f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
 
                 // Get the sun light (directional light for sun power setting)
                 GameObjectPtr lightGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(GameObjectController::MAIN_LIGHT_ID);
@@ -2505,13 +2519,15 @@ namespace NOWA
                 {
                     lightDirectionalCompPtr->setPowerScale(3.14159f);
                 }*/
-            });
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setUseHdr");
         }
 
         if (this->useHdr->getBool() == useHdr)
         {
             return;
         }
+        this->useHdr->setValue(useHdr);
 
         this->createWorkspace();
     }
@@ -2647,8 +2663,6 @@ namespace NOWA
 
     void WorkspaceBaseComponent::setUseOcean(bool useOcean, OceanComponent* oceanComponent)
     {
-        this->useOcean = useOcean;
-
         if (true == useOcean)
         {
             this->oceanComponent = oceanComponent;
@@ -2662,6 +2676,7 @@ namespace NOWA
         {
             return;
         }
+        this->useOcean = useOcean;
 
         this->createWorkspace();
     }

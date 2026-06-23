@@ -2031,7 +2031,6 @@ namespace NOWA
             maskPass->getFragmentProgramParameters()->setNamedConstant("sunScreenPos", sunScreenPos);
             blurPass->getFragmentProgramParameters()->setNamedConstant("sunScreenPos", sunScreenPos);
         };
-
         Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::update";
         NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
     }

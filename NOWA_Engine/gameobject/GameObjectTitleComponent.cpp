@@ -3,6 +3,7 @@
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
 #include "main/AppStateManager.h"
+#include "CameraComponent.h"
 
 namespace
 {
@@ -37,6 +38,7 @@ namespace NOWA
 		movableText(nullptr),
 		textNode(nullptr),
 		orientationTargetGameObject(nullptr),
+        cameraComponent(nullptr),
 		fontName(new Variant(GameObjectTitleComponent::AttrFontName(), "BlueHighway", this->attributes)),
 		caption(new Variant(GameObjectTitleComponent::AttrCaption(), "MyCaption", this->attributes)),
 		charHeight(new Variant(GameObjectTitleComponent::AttrCharHeight(), 0.5f, this->attributes)),
@@ -53,25 +55,13 @@ namespace NOWA
 
 	GameObjectTitleComponent::~GameObjectTitleComponent()
 	{
-		if (nullptr != this->movableText)
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-            {
-                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textNode);
-                this->textNode->detachObject(this->movableText);
-                this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->textNode);
-                this->textNode = nullptr;
-
-                delete this->movableText;
-                this->movableText = nullptr;
-            };
-            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectTitleComponent::~GameObjectTitleComponent");
-		}
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectTitleComponent] Destructor game object title component for game object: " + this->gameObjectPtr->getName());
+		
 	}
 
 	bool GameObjectTitleComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &GameObjectTitleComponent::handleComponentDeleted), EventDataDeleteComponent::getStaticEventType());
+
 		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FontName")
@@ -161,20 +151,51 @@ namespace NOWA
             // textNode is a child of gameObjectPtr->getSceneNode().
             // All positions set on textNode are LOCAL relative to the game object node.
             this->textNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
+            this->textNode->setName("TextNodeChildOf: " + this->gameObjectPtr->getSceneNode()->getName());
             this->textNode->attachObject(this->movableText);
             NOWA::GraphicsModule::getInstance()->addTrackedNode(this->textNode);
 
             Ogre::Vector3 sp = this->offsetPosition->getVector3();
             Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+            // Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
 
-            // Local position = sp only. Parent orientation is inherited automatically.
-            // Do NOT multiply by game object orientation o — that would double-rotate.
-            this->movableText->getParentSceneNode()->setOrientation(so);
-            this->movableText->getParentSceneNode()->setPosition(sp);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->textNode, so, false, false);
+            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->textNode, sp, false, false);
+
+			// this->movableText->getParentSceneNode()->_setDerivedOrientation(so);
+            // this->movableText->getParentSceneNode()->_setDerivedPosition(o * (so * sp));
         };
         GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectTitleComponent::postInit");
 
         return true;
+    }
+
+    void GameObjectTitleComponent::onRemoveComponent(void)
+    {
+        GameObjectComponent::onRemoveComponent();
+
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &GameObjectTitleComponent::handleComponentDeleted), EventDataDeleteComponent::getStaticEventType());
+
+		Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::update";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
+
+		this->cameraComponent = nullptr;
+
+        if (nullptr != this->movableText)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                // NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textNode);
+                this->textNode->detachObject(this->movableText);
+                this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->textNode);
+                this->textNode = nullptr;
+
+                delete this->movableText;
+                this->movableText = nullptr;
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectTitleComponent::~GameObjectTitleComponent");
+        }
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectTitleComponent] Destructor game object title component for game object: " + this->gameObjectPtr->getName());
     }
 
 	bool GameObjectTitleComponent::connect(void)
@@ -191,6 +212,12 @@ namespace NOWA
 			if (nullptr != gameObjectPtr)
 			{
 				this->orientationTargetGameObject = gameObjectPtr.get();
+                auto cameraCompPtr = NOWA::makeStrongPtr(this->orientationTargetGameObject->getComponent<CameraComponent>());
+				if (nullptr != cameraCompPtr)
+				{
+                    this->cameraComponent = cameraCompPtr.get();
+				}
+
 			}
 		}
 		return success;
@@ -261,33 +288,30 @@ namespace NOWA
             if (nullptr != this->orientationTargetGameObject)
             {
                 Ogre::Vector3 sp = this->offsetPosition->getVector3();
-                Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+                Ogre::Vector3 gameObjPos = this->gameObjectPtr->getPosition();
 
-                // NOTE: getWorldTransforms() in MovableText always billboards to camera,
-                // so rotating textNode orientation has no visual effect on text facing.
-                // The orientationTargetId feature controls where the text is POSITIONED
-                // relative to the game object — it offsets sp in the direction toward
-                // the target so the label appears on the side facing the target.
-                //
-                // If you want the text to appear on the side of the object facing the
-                // target, compute a local offset in that direction:
-                Ogre::Vector3 toTarget = this->orientationTargetGameObject->getPosition() - this->gameObjectPtr->getPosition();
-                toTarget.y = 0.0f;
-                if (toTarget.squaredLength() > 1e-6f)
+                Ogre::Vector3 targetPos;
+                auto cameraComp = NOWA::makeStrongPtr(this->orientationTargetGameObject->getComponent<CameraComponent>());
+
+                if (nullptr != cameraComp && nullptr != cameraComp->getCamera())
                 {
-                    toTarget.normalise();
+                    targetPos = cameraComp->getCamera()->getPosition();
+                }
+                else
+                {
+                    targetPos = this->orientationTargetGameObject->getSceneNode()->_getDerivedPosition();
                 }
 
-                // Offset the text toward the target in the XZ plane, plus sp.y upward
-                Ogre::Vector3 localOffset = toTarget * sp.length() + Ogre::Vector3(0.0f, sp.y, 0.0f);
+                // FROM target TO game object — same convention as original lookAt call
+                Ogre::Vector3 direction = gameObjPos - targetPos;
 
-                // textNode is child of game object node — all coords are local.
-                // Convert world-space toTarget direction to local space of parent node.
-                Ogre::Quaternion parentWorldOrient = this->gameObjectPtr->getSceneNode()->_getDerivedOrientation();
-                Ogre::Vector3 localDir = parentWorldOrient.Inverse() * localOffset;
+                // Full 3D direction, no y zeroing — matches original behaviour
+                Ogre::Quaternion so = MathHelper::getInstance()->lookAt(direction) * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
-                NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
-                NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), localDir);
+                Ogre::Vector3 worldPos = gameObjPos + sp;
+
+                NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->textNode, so, true, false);
+                NOWA::GraphicsModule::getInstance()->updateNodePosition(this->textNode, worldPos, true, false);
             }
         }
     }
@@ -481,8 +505,8 @@ namespace NOWA
             Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
             // Local position relative to parent — sp only, no world offset.
-            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
-            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), sp);
+            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, false, false);
+            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), sp, false, false);
         }
     }
 
@@ -501,8 +525,8 @@ namespace NOWA
             Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
             // Local position relative to parent — sp only, no world offset.
-            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
-            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), sp);
+            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, false, false);
+            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), sp, false, false);
         }
     }
 
@@ -571,6 +595,17 @@ namespace NOWA
 	MovableText* GameObjectTitleComponent::getMovableText(void) const
 	{
 		return this->movableText;
-	}
+    }
+
+    void GameObjectTitleComponent::handleComponentDeleted(NOWA::EventDataPtr eventData)
+    {
+        boost::shared_ptr<EventDataDeleteComponent> castEventData = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
+        // Found the game object
+        if (this->orientationTargetId->getULong() == castEventData->getGameObjectId())
+        {
+            this->cameraComponent = nullptr;
+            this->update(0.016f);
+        }
+    }
 
 }; //namespace end

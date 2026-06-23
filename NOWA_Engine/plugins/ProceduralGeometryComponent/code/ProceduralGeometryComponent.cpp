@@ -57,9 +57,6 @@ namespace NOWA
         vertBase(0u),
         geomMesh(nullptr),
         geomItem(nullptr),
-        previewMesh(nullptr),
-        previewItem(nullptr),
-        previewNode(nullptr),
         physicsArtifactComponent(nullptr)
     {
         // ── Activation ────────────────────────────────────────────────────────
@@ -229,14 +226,6 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-        // ── Preview scene node (always exists; item attached on demand) ────────
-        NOWA::GraphicsModule::RenderCommand makeNode = [this]()
-        {
-            previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-            previewNode->setVisible(false);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(makeNode), "ProceduralGeometryComponent::postInit_previewNode");
-
         // ── Build geometry from loaded (or default) parameters ────────────────
         this->rebuildMesh();
 
@@ -250,7 +239,6 @@ namespace NOWA
 
     bool ProceduralGeometryComponent::disconnect(void)
     {
-        this->destroyPreviewMesh();
         return true;
     }
 
@@ -259,7 +247,7 @@ namespace NOWA
         return true;
     }
 
-    // ── When the component is added in the editor → enter placement mode ─────
+    // ── When the component is added in the editor -> enter placement mode ─────
     void ProceduralGeometryComponent::onAddComponent(void)
     {
 
@@ -269,19 +257,7 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] onRemoveComponent");
 
-        this->destroyPreviewMesh();
         this->destroyGeometryMesh();
-
-        NOWA::GraphicsModule::RenderCommand destroyNode = [this]()
-        {
-            if (previewNode)
-            {
-                NOWA::GraphicsModule::getInstance()->removeTrackedNode(previewNode);
-                this->gameObjectPtr->getSceneManager()->destroySceneNode(previewNode);
-                previewNode = nullptr;
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(destroyNode), "ProceduralGeometryComponent::onRemoveComponent_node");
 
         physicsArtifactComponent = nullptr;
     }
@@ -331,7 +307,7 @@ namespace NOWA
     }
 
     // =========================================================================
-    //  actualizeValue  – property panel callback → rebuild mesh on changes
+    //  actualizeValue  – property panel callback -> rebuild mesh on changes
     // =========================================================================
 
     void ProceduralGeometryComponent::actualizeValue(Variant* attribute)
@@ -493,7 +469,7 @@ namespace NOWA
         }
         case GeometryShape::DISC:
         {
-            // Disc → thin cylinder; sz.y is the user-set thickness (min-clamped)
+            // Disc -> thin cylinder; sz.y is the user-set thickness (min-clamped)
             CP p;
             p.type = "Cylinder";
             p.size = Ogre::Vector3(sz.x, std::max(0.05f, sz.y), sz.x);
@@ -533,7 +509,7 @@ namespace NOWA
         }
         case GeometryShape::WEDGE:
         {
-            // 4 bottom verts + 2 top-back verts → inclined ramp
+            // 4 bottom verts + 2 top-back verts -> inclined ramp
             const float hx = sz.x * 0.5f;
             const float hy = sz.y;
             const float hz = sz.z * 0.5f;
@@ -804,7 +780,7 @@ namespace NOWA
             return;
         }
 
-        // ── VAO → SubMesh ─────────────────────────────────────────────────────
+        // ── VAO -> SubMesh ─────────────────────────────────────────────────────
         Ogre::VertexBufferPackedVec vbVec;
         vbVec.push_back(vb);
 
@@ -843,6 +819,9 @@ namespace NOWA
         this->gameObjectPtr->setDoNotDestroyMovableObject(true);
         this->gameObjectPtr->init(geomItem);
 
+        geomItem->setVisible(this->gameObjectPtr->isVisible());
+        geomItem->setCastShadows(this->gameObjectPtr->getCastShadows());
+
         if (nullptr != physicsArtifactComponent)
         {
             physicsArtifactComponent->reCreateCollision();
@@ -878,292 +857,6 @@ namespace NOWA
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralGeometryComponent::destroyGeometryMesh");
-    }
-
-    // =========================================================================
-    //  Preview mesh
-    // =========================================================================
-
-    void ProceduralGeometryComponent::createPreviewMesh(void)
-    {
-        // ── Step 1: Build geometry into CPU buffers (main thread, safe) ───────────
-        this->buildGeometry();
-
-        if (vertices.empty() || indices.empty())
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralGeometryComponent] createPreviewMesh: buildGeometry() produced "
-                                                                                "no geometry — cannot create preview.");
-            return;
-        }
-
-        // ── Step 2: Take value-copies for the render-thread lambda capture ────────
-        // Never capture m_vertices / m_indices by reference — they may be cleared
-        // before the render thread consumes them.
-        const std::vector<float> vertsCopy = vertices;
-        const std::vector<Ogre::uint32> idxsCopy = indices;
-        const size_t numVerts = vertices.size() / 8u; // 8 floats/vertex
-
-        const Ogre::String meshName = this->gameObjectPtr->getName() + "_GeomPrev_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-
-        // ── Step 3: Everything that touches Ogre-Next goes on the render thread ───
-        NOWA::GraphicsModule::RenderCommand cmd = [this, vertsCopy, idxsCopy, numVerts, meshName]()
-        {
-            // ── 3a: Ensure the preview scene node exists ──────────────────────────
-            // previewNode is created in postInit(), but createPreviewMesh() is
-            // called from mouseMoved() which is guaranteed post-postInit().
-            // This guard handles any future edge-case where call order changes.
-            if (nullptr == previewNode)
-            {
-                previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-                previewNode->setVisible(false);
-
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] createPreviewMesh: "
-                                                                                   "m_previewNode created defensively on render thread.");
-            }
-
-            // ── 3b: Destroy any stale preview mesh/item from a previous call ──────
-            if (nullptr != previewItem)
-            {
-                if (previewItem->getParentSceneNode())
-                {
-                    previewItem->getParentSceneNode()->detachObject(previewItem);
-                }
-                this->gameObjectPtr->getSceneManager()->destroyItem(previewItem);
-                previewItem = nullptr;
-            }
-            if (false == previewMesh.isNull())
-            {
-                Ogre::MeshManager::getSingleton().remove(previewMesh->getHandle());
-                previewMesh.reset();
-            }
-
-            // ── 3c: Remove any stale mesh registered under the same name ──────────
-            {
-                Ogre::MeshManager& mm = Ogre::MeshManager::getSingleton();
-                const Ogre::String grp = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME;
-                Ogre::MeshPtr existing = mm.getByName(meshName, grp);
-                if (false == existing.isNull())
-                {
-                    mm.remove(existing->getHandle());
-                }
-            }
-
-            // ── 3d: Get the Ogre-Next plumbing ────────────────────────────────────
-            Ogre::Root* root = Ogre::Root::getSingletonPtr();
-            Ogre::RenderSystem* renderSys = root->getRenderSystem();
-            Ogre::VaoManager* vaoManager = renderSys->getVaoManager();
-            const Ogre::String groupName = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME;
-
-            // ── 3e: Create the blank managed mesh ─────────────────────────────────
-            previewMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName);
-
-            // ── 3f: Declare the vertex layout ─────────────────────────────────────
-            // pos(3) + normal(3) + tangent(4) + uv(2) = 12 floats per vertex
-            Ogre::VertexElement2Vec vertexElements;
-            vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
-            vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
-            vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));
-            vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
-
-            // srcVerts layout: pos(3) + normal(3) + uv(2) = 8 floats
-            // dstVerts layout: pos(3) + normal(3) + tangent(4) + uv(2) = 12 floats
-            const size_t srcStride = 8u;
-            const size_t dstStride = 12u;
-
-            // ── 3g: Allocate SIMD-aligned destination vertex buffer ───────────────
-            const size_t dstBytes = numVerts * dstStride * sizeof(float);
-            float* dstData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(dstBytes, Ogre::MEMCATEGORY_GEOMETRY));
-
-            // ── 3h: Convert 8-float → 12-float; compute tangent from normal ───────
-            Ogre::Vector3 minBounds(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-            Ogre::Vector3 maxBounds(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
-
-            for (size_t i = 0; i < numVerts; ++i)
-            {
-                const size_t src = i * srcStride;
-                const size_t dst = i * dstStride;
-
-                // Position
-                dstData[dst + 0] = vertsCopy[src + 0];
-                dstData[dst + 1] = vertsCopy[src + 1];
-                dstData[dst + 2] = vertsCopy[src + 2];
-
-                // Track bounds for _setBounds()
-                Ogre::Vector3 pos(dstData[dst + 0], dstData[dst + 1], dstData[dst + 2]);
-                minBounds.makeFloor(pos);
-                maxBounds.makeCeil(pos);
-
-                // Normal
-                Ogre::Vector3 n(vertsCopy[src + 3], vertsCopy[src + 4], vertsCopy[src + 5]);
-                dstData[dst + 3] = n.x;
-                dstData[dst + 4] = n.y;
-                dstData[dst + 5] = n.z;
-
-                // Tangent — derived from normal (axis-aligned reference vector)
-                // This matches the same approach used in createGeometryMeshInternal().
-                Ogre::Vector3 t;
-                if (std::abs(n.y) < 0.9f)
-                {
-                    t = Ogre::Vector3::UNIT_Y.crossProduct(n).normalisedCopy();
-                }
-                else
-                {
-                    t = n.crossProduct(Ogre::Vector3::UNIT_X).normalisedCopy();
-                }
-
-                dstData[dst + 6] = t.x;
-                dstData[dst + 7] = t.y;
-                dstData[dst + 8] = t.z;
-                dstData[dst + 9] = 1.0f; // handedness
-
-                // UV
-                dstData[dst + 10] = vertsCopy[src + 6];
-                dstData[dst + 11] = vertsCopy[src + 7];
-            }
-
-            // ── 3i: Upload vertex buffer to GPU ───────────────────────────────────
-            Ogre::VertexBufferPacked* vertexBuffer = nullptr;
-            try
-            {
-                vertexBuffer = vaoManager->createVertexBuffer(vertexElements, numVerts, Ogre::BT_IMMUTABLE, dstData, true /*keepAsShadow — vaoManager owns dstData now*/);
-            }
-            catch (Ogre::Exception& e)
-            {
-                OGRE_FREE_SIMD(dstData, Ogre::MEMCATEGORY_GEOMETRY);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralGeometryComponent] createPreviewMesh: "
-                                                                                    "createVertexBuffer failed: " +
-                                                                                        e.getDescription());
-                return;
-            }
-
-            // ── 3j: Allocate SIMD-aligned index buffer ────────────────────────────
-            const size_t idxBytes = idxsCopy.size() * sizeof(Ogre::uint32);
-            Ogre::uint32* idxData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(idxBytes, Ogre::MEMCATEGORY_GEOMETRY));
-            memcpy(idxData, idxsCopy.data(), idxBytes);
-
-            // ── 3k: Upload index buffer to GPU ────────────────────────────────────
-            Ogre::IndexBufferPacked* indexBuffer = nullptr;
-            try
-            {
-                indexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, idxsCopy.size(), Ogre::BT_IMMUTABLE, idxData, true /*keepAsShadow*/);
-            }
-            catch (Ogre::Exception& e)
-            {
-                OGRE_FREE_SIMD(idxData, Ogre::MEMCATEGORY_GEOMETRY);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralGeometryComponent] createPreviewMesh: "
-                                                                                    "createIndexBuffer failed: " +
-                                                                                        e.getDescription());
-                return;
-            }
-
-            // ── 3l: Create VAO and wire it to the submesh ─────────────────────────
-            Ogre::VertexBufferPackedVec vbVec;
-            vbVec.push_back(vertexBuffer);
-
-            Ogre::VertexArrayObject* vao = vaoManager->createVertexArrayObject(vbVec, indexBuffer, Ogre::OT_TRIANGLE_LIST);
-
-            Ogre::SubMesh* subMesh = previewMesh->createSubMesh();
-            subMesh->mVao[Ogre::VpNormal].push_back(vao);
-            subMesh->mVao[Ogre::VpShadow].push_back(vao);
-
-            // ── 3m: Set mesh bounds ───────────────────────────────────────────────
-            // Guard against degenerate geometry producing inverted bounds
-            if (minBounds.x > maxBounds.x)
-            {
-                minBounds = Ogre::Vector3(-1.0f, -1.0f, -1.0f);
-                maxBounds = Ogre::Vector3(1.0f, 1.0f, 1.0f);
-            }
-
-            Ogre::Aabb aabb;
-            aabb.setExtents(minBounds, maxBounds);
-            previewMesh->_setBounds(aabb, false);
-            previewMesh->_setBoundingSphereRadius(aabb.getRadius());
-
-            // ── 3n: Create Item (always SCENE_DYNAMIC — preview is transient) ─────
-            previewItem = this->gameObjectPtr->getSceneManager()->createItem(previewMesh, Ogre::SCENE_DYNAMIC);
-
-            // ── 3o: Apply the preview datablock ("BaseWhiteNoLighting") ──────────
-            // This datablock is always registered by Ogre-Next at startup.
-            // It renders as solid white with no lighting — clearly distinguishable
-            // from the real mesh, and requires no PBS setup.
-            Ogre::HlmsDatablock* previewDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault("BaseWhiteNoLighting");
-            if (nullptr != previewDb)
-            {
-                previewItem->getSubItem(0)->setDatablock(previewDb);
-            }
-            // If the project has a dedicated "proceduralPreview" PBS datablock
-            // (e.g. semi-transparent blue), prefer that instead:
-            //
-            //   Ogre::HlmsDatablock* customDb =
-            //       Ogre::Root::getSingleton().getHlmsManager()
-            //           ->getDatablockNoDefault("proceduralPreview");
-            //   if (nullptr != customDb)
-            //       previewItem->getSubItem(0)->setDatablock(customDb);
-
-            // ── 3p: Configure Item so it is invisible to raycasts ─────────────────
-            // queryFlags = 0 means PhysicsActiveCompoundComponent, editor raycasts,
-            // etc. will never accidentally hit the ghost preview.
-            previewItem->setQueryFlags(0u);
-            previewItem->setCastShadows(false);
-
-            // ── 3q: Attach to the preview scene node and show it ──────────────────
-            previewNode->attachObject(previewItem);
-            previewNode->setVisible(true);
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] createPreviewMesh: created '" + shape->getListSelectedValue() + "' preview — " + Ogre::StringConverter::toString(numVerts) + " verts, " +
-                                                                                   Ogre::StringConverter::toString(idxsCopy.size() / 3u) + " tris.");
-        };
-
-        // ── Step 4: Submit to render thread and wait (we need previewItem valid) ─
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralGeometryComponent::createPreviewMesh");
-    }
-
-    void ProceduralGeometryComponent::updatePreviewPosition(const Ogre::Vector3& worldPos)
-    {
-        if (nullptr == previewNode)
-        {
-            return;
-        }
-        NOWA::GraphicsModule::RenderCommand cmd = [this, worldPos]()
-        {
-            if (previewNode)
-            {
-                previewNode->setPosition(worldPos);
-                previewNode->setVisible(true);
-            }
-        };
-        // Non-blocking – preview can lag one frame
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "ProceduralGeometryComponent::updatePreviewPosition");
-    }
-
-    void ProceduralGeometryComponent::destroyPreviewMesh(void)
-    {
-        if (nullptr == previewItem && previewMesh.isNull())
-        {
-            return;
-        }
-        NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            if (nullptr != previewItem)
-            {
-                if (previewItem->getParentSceneNode())
-                {
-                    previewItem->getParentSceneNode()->detachObject(previewItem);
-                }
-                this->gameObjectPtr->getSceneManager()->destroyItem(previewItem);
-                previewItem = nullptr;
-            }
-            if (false == previewMesh.isNull())
-            {
-                Ogre::MeshManager::getSingleton().remove(previewMesh->getHandle());
-                previewMesh.reset();
-            }
-            if (previewNode)
-            {
-                previewNode->setVisible(false);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralGeometryComponent::destroyPreviewMesh");
     }
 
     // =========================================================================
@@ -1232,11 +925,11 @@ namespace NOWA
             gq(0, 1, 2, 3);
         };
 
-        // +Y top  – CCW from above: left-back → left-front → right-front → right-back
+        // +Y top  – CCW from above: left-back -> left-front -> right-front -> right-back
         // Cross check: (v1-v0)x(v2-v0) = (0,0,2hz)x(2hx,0,2hz) = (0,+4hxhz,0) ✓
         face(-hx, +hy, -hz, -hx, +hy, +hz, hx, +hy, +hz, hx, +hy, -hz, 0, +1, 0);
 
-        // -Y bottom – CCW from below: left-front → left-back → right-back → right-front
+        // -Y bottom – CCW from below: left-front -> left-back -> right-back -> right-front
         // Cross check: (v1-v0)x(v2-v0) = (0,0,-2hz)x(2hx,0,-2hz) = (0,-4hxhz,0) ✓
         face(-hx, -hy, +hz, -hx, -hy, -hz, hx, -hy, -hz, hx, -hy, +hz, 0, -1, 0);
 
@@ -1366,8 +1059,8 @@ namespace NOWA
         for (int sl = 0; sl < slices; ++sl)
         {
             const Ogre::uint32 b = sl * 2u;
-            // FIX: was gq(b, b+2, b+3, b+1) → CW from outside.
-            // gq(b, b+1, b+3, b+2): cross at sl=0 → (0,h,0)x(0,0,rΔθ) = (hrΔθ,0,0) → N=(+1,0,0) ✓
+            // FIX: was gq(b, b+2, b+3, b+1) -> CW from outside.
+            // gq(b, b+1, b+3, b+2): cross at sl=0 -> (0,h,0)x(0,0,rΔθ) = (hrΔθ,0,0) -> N=(+1,0,0) ✓
             gq(b, b + 1, b + 3, b + 2);
         }
 
@@ -1382,7 +1075,7 @@ namespace NOWA
         }
         for (int sl = 0; sl < slices; ++sl)
         {
-            // gt(0, sl+2, sl+1): cross = ring[1]xring[0] → (0,+,0) ✓
+            // gt(0, sl+2, sl+1): cross = ring[1]xring[0] -> (0,+,0) ✓
             gt(0, sl + 2, sl + 1);
         }
 
@@ -1397,7 +1090,7 @@ namespace NOWA
         }
         for (int sl = 0; sl < slices; ++sl)
         {
-            // gt(0, sl+1, sl+2): cross = ring[0]xring[1] → (0,-,0) ✓
+            // gt(0, sl+1, sl+2): cross = ring[0]xring[1] -> (0,-,0) ✓
             gt(0, sl + 1, sl + 2);
         }
     }
@@ -1430,8 +1123,8 @@ namespace NOWA
             gv(r * c0, 0, r * s0, c0 * nxz_s, ny_n, s0 * nxz_s, static_cast<float>(sl) / slices, 1.0f);     // [1]
             gv(r * c1, 0, r * s1, c1 * nxz_s, ny_n, s1 * nxz_s, static_cast<float>(sl + 1) / slices, 1.0f); // [2]
 
-            // FIX: was gt(0,1,2) → CW; cross at sl=0 of (base[0]-apex)x(base[1]-apex) pointed inward.
-            // gt(0,2,1): (base[1]-apex)x(base[0]-apex) → outward ✓
+            // FIX: was gt(0,1,2) -> CW; cross at sl=0 of (base[0]-apex)x(base[1]-apex) pointed inward.
+            // gt(0,2,1): (base[1]-apex)x(base[0]-apex) -> outward ✓
             gt(0, 2, 1);
         }
 
@@ -1446,7 +1139,7 @@ namespace NOWA
         }
         for (int sl = 0; sl < slices; ++sl)
         {
-            gt(0, sl + 1, sl + 2); // cross → (0,-,0) ✓
+            gt(0, sl + 1, sl + 2); // cross -> (0,-,0) ✓
         }
     }
 
@@ -1489,7 +1182,7 @@ namespace NOWA
                 const Ogre::uint32 b = a + 1;
                 const Ogre::uint32 c = (st + 1) * rowLen + sl;
                 const Ogre::uint32 d = c + 1;
-                gt(a, c, b); // same as sphere – cross → outward ✓
+                gt(a, c, b); // same as sphere – cross -> outward ✓
                 gt(b, c, d);
             }
         }
@@ -1509,7 +1202,7 @@ namespace NOWA
         for (int sl = 0; sl < slices; ++sl)
         {
             const Ogre::uint32 b = sl * 2u;
-            // FIX: was gq(b, b+2, b+3, b+1) → CW from outside.
+            // FIX: was gq(b, b+2, b+3, b+1) -> CW from outside.
             gq(b, b + 1, b + 3, b + 2); // CCW from outside ✓
         }
 
@@ -1584,8 +1277,8 @@ namespace NOWA
                 const Ogre::uint32 c = (sl + 1) * rowLen + ri; // (sl+1, ri)
                 const Ogre::uint32 d = c + 1;                  // (sl+1, ri+1)
 
-                // FIX: was gt(a,c,b) → (c-a)x(b-a) = (0,0,RΔθ)x(0,rΔφ,0) = (-RrΔθΔφ,0,0) → INWARD.
-                // gt(a,b,c): (b-a)x(c-a) = (0,rΔφ,0)x(0,0,RΔθ) = (+RrΔθΔφ,0,0) → OUTWARD ✓
+                // FIX: was gt(a,c,b) -> (c-a)x(b-a) = (0,0,RΔθ)x(0,rΔφ,0) = (-RrΔθΔφ,0,0) -> INWARD.
+                // gt(a,b,c): (b-a)x(c-a) = (0,rΔφ,0)x(0,0,RΔθ) = (+RrΔθΔφ,0,0) -> OUTWARD ✓
                 gt(a, b, c);
                 gt(b, d, c);
             }
@@ -1628,13 +1321,13 @@ namespace NOWA
 
                     if (!reverseWinding)
                     {
-                        // Top face: gt(a,c,b) → cross=(0,0,Δz)x(Δx,0,0)=(0,+ΔxΔz,0) ✓
+                        // Top face: gt(a,c,b) -> cross=(0,0,Δz)x(Δx,0,0)=(0,+ΔxΔz,0) ✓
                         gt(a, c, b);
                         gt(b, c, d);
                     }
                     else
                     {
-                        // Bottom face: reversed winding → N=(0,-1,0)
+                        // Bottom face: reversed winding -> N=(0,-1,0)
                         gt(a, b, c);
                         gt(b, d, c);
                     }
@@ -1671,8 +1364,8 @@ namespace NOWA
         gv(-hx, 0.0f, -hz, 0, -1, 0, 0.0f, 0.0f); // A [0]
         gv(hx, 0.0f, -hz, 0, -1, 0, 1.0f, 0.0f);  // B [1]
         gv(0, 0.0f, hz, 0, -1, 0, 0.5f, 1.0f);    // C [2]
-        // FIX: was gt(0,2,1) → cross=(C-A)x(B-A)=(hx,0,2hz)x(2hx,0,0)=(0,+,0) WRONG (+Y not -Y).
-        // gt(0,1,2): cross=(B-A)x(C-A)=(2hx,0,0)x(hx,0,2hz)=(0,-4hxhz,0) → N=(0,-1,0) ✓
+        // FIX: was gt(0,2,1) -> cross=(C-A)x(B-A)=(hx,0,2hz)x(2hx,0,0)=(0,+,0) WRONG (+Y not -Y).
+        // gt(0,1,2): cross=(B-A)x(C-A)=(2hx,0,0)x(hx,0,2hz)=(0,-4hxhz,0) -> N=(0,-1,0) ✓
         gt(0, 1, 2);
 
         // ── Top cap (Y=hy, N=(0,+1,0)) ────────────────────────────────────────────
@@ -1680,7 +1373,7 @@ namespace NOWA
         gv(-hx, hy, -hz, 0, +1, 0, 0.0f, 0.0f); // A' [0]
         gv(hx, hy, -hz, 0, +1, 0, 1.0f, 0.0f);  // B' [1]
         gv(0, hy, hz, 0, +1, 0, 0.5f, 1.0f);    // C' [2]
-        // FIX: was gt(0,1,2) → N=(0,-1,0). Swap to gt(0,2,1) → N=(0,+1,0) ✓
+        // FIX: was gt(0,1,2) -> N=(0,-1,0). Swap to gt(0,2,1) -> N=(0,+1,0) ✓
         gt(0, 2, 1);
 
         // ── Back face (A-B-B'-A', N ≈ (0,0,-1)) ─────────────────────────────────
@@ -1691,8 +1384,8 @@ namespace NOWA
             gv(hx, 0.0f, -hz, n.x, n.y, n.z, 1.0f, 0.0f);
             gv(hx, hy, -hz, n.x, n.y, n.z, 1.0f, 1.0f);
             gv(-hx, hy, -hz, n.x, n.y, n.z, 0.0f, 1.0f);
-            // FIX: was gq(0,1,2,3) → cross=(2hx,0,0)x(2hx,hy,0)=(0,0,+2hxhy) → N=(0,0,+1) WRONG.
-            // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,hy,0)x(2hx,hy,0)=(0,0,-2hxhy) → N=(0,0,-1) ✓
+            // FIX: was gq(0,1,2,3) -> cross=(2hx,0,0)x(2hx,hy,0)=(0,0,+2hxhy) -> N=(0,0,+1) WRONG.
+            // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,hy,0)x(2hx,hy,0)=(0,0,-2hxhy) -> N=(0,0,-1) ✓
             gq(0, 3, 2, 1);
         }
 
@@ -1704,8 +1397,8 @@ namespace NOWA
             gv(0, 0.0f, hz, n.x, n.y, n.z, 1.0f, 0.0f);
             gv(0, hy, hz, n.x, n.y, n.z, 1.0f, 1.0f);
             gv(hx, hy, -hz, n.x, n.y, n.z, 0.0f, 1.0f);
-            // FIX: was gq(0,1,2,3) → INWARD.
-            // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,hy,0)x(-hx,hy,2hz)=(2hzhy,0,hxhy) → N∝(2hz,0,hx) ✓
+            // FIX: was gq(0,1,2,3) -> INWARD.
+            // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,hy,0)x(-hx,hy,2hz)=(2hzhy,0,hxhy) -> N∝(2hz,0,hx) ✓
             gq(0, 3, 2, 1);
         }
 
@@ -1717,8 +1410,8 @@ namespace NOWA
             gv(-hx, 0.0f, -hz, n.x, n.y, n.z, 1.0f, 0.0f);
             gv(-hx, hy, -hz, n.x, n.y, n.z, 1.0f, 1.0f);
             gv(0, hy, hz, n.x, n.y, n.z, 0.0f, 1.0f);
-            // FIX: was gq(0,1,2,3) → INWARD.
-            // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,hy,0)x(-hx,hy,-2hz)=(-2hzhy,0,hxhy)→N∝(-2hz,0,hx) ✓
+            // FIX: was gq(0,1,2,3) -> INWARD.
+            // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,hy,0)x(-hx,hy,-2hz)=(-2hzhy,0,hxhy)->N∝(-2hz,0,hx) ✓
             gq(0, 3, 2, 1);
         }
     }
@@ -1732,7 +1425,7 @@ namespace NOWA
         const int slices = std::max(3, static_cast<int>(this->segmentsH->getReal()));
 
         // Only treat as annulus if inner is meaningfully smaller than outer.
-        // This fixes the default-size (1,1,1) case where innerR==outerR → zero-width ring.
+        // This fixes the default-size (1,1,1) case where innerR==outerR -> zero-width ring.
         const bool isRing = (innerR > 1e-4f) && (innerR < outerR - 1e-4f);
 
         if (!isRing)
@@ -1750,8 +1443,8 @@ namespace NOWA
 
             for (int sl = 0; sl < slices; ++sl)
             {
-                // FIX: was gt(0,sl+1,sl+2) → cross=(ring[0])x(ring[1]) → (0,-r²sinΔ,0) → N=(0,-1,0) WRONG.
-                // gt(0,sl+2,sl+1): cross=(ring[1])x(ring[0]) → (0,+r²sinΔ,0) → N=(0,+1,0) ✓
+                // FIX: was gt(0,sl+1,sl+2) -> cross=(ring[0])x(ring[1]) -> (0,-r²sinΔ,0) -> N=(0,-1,0) WRONG.
+                // gt(0,sl+2,sl+1): cross=(ring[1])x(ring[0]) -> (0,+r²sinΔ,0) -> N=(0,+1,0) ✓
                 gt(0, sl + 2, sl + 1);
             }
         }
@@ -1772,7 +1465,7 @@ namespace NOWA
             for (int sl = 0; sl < slices; ++sl)
             {
                 const Ogre::uint32 b = sl * 2u;
-                // gq(b,b+2,b+3,b+1): cross verification → N=(0,+1,0) ✓ (was already correct)
+                // gq(b,b+2,b+3,b+1): cross verification -> N=(0,+1,0) ✓ (was already correct)
                 gq(b, b + 2, b + 3, b + 1);
             }
         }
@@ -1798,8 +1491,8 @@ namespace NOWA
         gv(hx, 0.0f, hz, 0, -1, 0, 1.0f, 0.0f);
         gv(hx, 0.0f, -hz, 0, -1, 0, 1.0f, 1.0f);
         gv(-hx, 0.0f, -hz, 0, -1, 0, 0.0f, 1.0f);
-        // FIX: was gq(0,1,2,3) → cross=(2hx,0,0)x(2hx,0,-2hz)=(0,+4hxhz,0) → N=(0,+1,0) WRONG.
-        // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,0,-2hz)x(2hx,0,-2hz)=(0,-4hxhz,0) → N=(0,-1,0) ✓
+        // FIX: was gq(0,1,2,3) -> cross=(2hx,0,0)x(2hx,0,-2hz)=(0,+4hxhz,0) -> N=(0,+1,0) WRONG.
+        // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,0,-2hz)x(2hx,0,-2hz)=(0,-4hxhz,0) -> N=(0,-1,0) ✓
         gq(0, 3, 2, 1);
 
         // ── Back face (N=(0,0,-1)) ────────────────────────────────────────────────
@@ -1808,7 +1501,7 @@ namespace NOWA
         gv(-hx, 0.0f, -hz, 0, 0, -1, 1.0f, 0.0f);
         gv(-hx, hy, -hz, 0, 0, -1, 1.0f, 1.0f);
         gv(hx, hy, -hz, 0, 0, -1, 0.0f, 1.0f);
-        // gq(0,1,2,3): cross=(-2hx,0,0)x(-2hx,hy,0)=(0,0,-2hxhy) → N=(0,0,-1) ✓  (was already correct)
+        // gq(0,1,2,3): cross=(-2hx,0,0)x(-2hx,hy,0)=(0,0,-2hxhy) -> N=(0,0,-1) ✓  (was already correct)
         gq(0, 1, 2, 3);
 
         // ── Sloped top face ────────────────────────────────────────────────────────
@@ -1817,8 +1510,8 @@ namespace NOWA
         gv(hx, hy, -hz, slopeN.x, slopeN.y, slopeN.z, 1.0f, 0.0f);
         gv(hx, 0.0f, hz, slopeN.x, slopeN.y, slopeN.z, 1.0f, 1.0f);
         gv(-hx, 0.0f, hz, slopeN.x, slopeN.y, slopeN.z, 0.0f, 1.0f);
-        // FIX: was gq(0,1,2,3) → cross=(2hx,0,0)x(2hx,-hy,2hz)=(0,-,0) and -(0,0,hy) → INWARD.
-        // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,-hy,2hz)x(2hx,-hy,2hz)=(0,+4hxhz,+2hxhy) → OUTWARD ✓
+        // FIX: was gq(0,1,2,3) -> cross=(2hx,0,0)x(2hx,-hy,2hz)=(0,-,0) and -(0,0,hy) -> INWARD.
+        // gq(0,3,2,1): cross=(v3-v0)x(v2-v0)=(0,-hy,2hz)x(2hx,-hy,2hz)=(0,+4hxhz,+2hxhy) -> OUTWARD ✓
         gq(0, 3, 2, 1);
 
         // ── Left triangle (N=(-1,0,0)) ────────────────────────────────────────────
@@ -1826,8 +1519,8 @@ namespace NOWA
         gv(-hx, 0.0f, hz, -1, 0, 0, 0.0f, 0.0f);
         gv(-hx, 0.0f, -hz, -1, 0, 0, 1.0f, 0.0f);
         gv(-hx, hy, -hz, -1, 0, 0, 1.0f, 1.0f);
-        // FIX: was gt(0,1,2) → cross=(0,0,-2hz)x(0,hy,-2hz)=(+2hzhy,0,0) → N=(+1,0,0) WRONG.
-        // gt(0,2,1): cross=(v2-v0)x(v1-v0)=(0,hy,-2hz)x(0,0,-2hz)=(-2hzhy,0,0) → N=(-1,0,0) ✓
+        // FIX: was gt(0,1,2) -> cross=(0,0,-2hz)x(0,hy,-2hz)=(+2hzhy,0,0) -> N=(+1,0,0) WRONG.
+        // gt(0,2,1): cross=(v2-v0)x(v1-v0)=(0,hy,-2hz)x(0,0,-2hz)=(-2hzhy,0,0) -> N=(-1,0,0) ✓
         gt(0, 2, 1);
 
         // ── Right triangle (N=(+1,0,0)) ───────────────────────────────────────────
@@ -1835,8 +1528,8 @@ namespace NOWA
         gv(hx, 0.0f, -hz, +1, 0, 0, 0.0f, 0.0f);
         gv(hx, 0.0f, hz, +1, 0, 0, 1.0f, 0.0f);
         gv(hx, hy, -hz, +1, 0, 0, 0.5f, 1.0f);
-        // FIX: was gt(0,1,2) → cross=(0,0,2hz)x(0,hy,0)=(-2hzhy,0,0) → N=(-1,0,0) WRONG.
-        // gt(0,2,1): cross=(v2-v0)x(v1-v0)=(0,hy,0)x(0,0,2hz)=(2hzhy,0,0) → N=(+1,0,0) ✓
+        // FIX: was gt(0,1,2) -> cross=(0,0,2hz)x(0,hy,0)=(-2hzhy,0,0) -> N=(-1,0,0) WRONG.
+        // gt(0,2,1): cross=(v2-v0)x(v1-v0)=(0,hy,0)x(0,0,2hz)=(2hzhy,0,0) -> N=(+1,0,0) ✓
         gt(0, 2, 1);
     }
 
@@ -1996,7 +1689,6 @@ namespace NOWA
             }
 
             // ── Tear down the procedural mesh before handing control to the GO ────
-            this->destroyPreviewMesh();
             this->destroyGeometryMesh();
 
             // ── Swap: assign the new static Item to the GameObject ────────────────

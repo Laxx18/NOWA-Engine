@@ -46,7 +46,7 @@ namespace NOWA
     // ============================================================================
 
     MovableText::MovableText(Ogre::IdType id, Ogre::ObjectMemoryManager* objectMemoryManager, Ogre::SceneManager* sceneManager, const Ogre::NameValuePairList* params) :
-        Ogre::MovableObject(id, objectMemoryManager, sceneManager, RENDER_QUEUE_V2_MESH),
+        Ogre::MovableObject(id, objectMemoryManager, sceneManager, RENDER_QUEUE_V2_TRANSPARENT),
         mpCam(nullptr),
         mpFont(nullptr),
         mpHlmsDatablock(nullptr),
@@ -428,30 +428,6 @@ namespace NOWA
             }
 
             mpCam = camera;
-        }
-    }
-
-    // ============================================================================
-    //  getWorldTransforms — verbatim from original
-    // ============================================================================
-
-    void MovableText::getWorldTransforms(Ogre::Matrix4* xform) const
-    {
-        if (this->isVisible() && mpCam)
-        {
-            Ogre::Matrix3 rot3x3, scale3x3 = Ogre::Matrix3::IDENTITY;
-
-            mpCam->getDerivedOrientation().ToRotationMatrix(rot3x3);
-
-            Ogre::Vector3 ppos = mParentNode->_getDerivedPosition() + Ogre::Vector3::UNIT_Y * mGlobalTranslation;
-            ppos += rot3x3 * mLocalTranslation;
-
-            scale3x3[0][0] = mParentNode->_getDerivedScale().x / 2.0f;
-            scale3x3[1][1] = mParentNode->_getDerivedScale().y / 2.0f;
-            scale3x3[2][2] = mParentNode->_getDerivedScale().z / 2.0f;
-
-            *xform = Ogre::Matrix4(rot3x3 * scale3x3);
-            xform->setTrans(ppos);
         }
     }
 

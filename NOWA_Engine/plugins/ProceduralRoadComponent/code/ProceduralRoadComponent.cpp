@@ -5594,32 +5594,29 @@ namespace NOWA
     void ProceduralRoadComponent::addInputListener(void)
     {
         const Ogre::String listenerName = ProceduralRoadComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
-        {
+        /*NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
+        {*/
             if (auto* core = InputDeviceCore::getSingletonPtr())
             {
-                if (auto* core = InputDeviceCore::getSingletonPtr())
-                {
-                    core->addKeyListener(this, listenerName);
-                    core->addMouseListener(this, listenerName);
-                }
+                core->addKeyListener(this, listenerName);
+                core->addMouseListener(this, listenerName);
             }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::addInputListener");
+        /*};
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::addInputListener");*/
     }
 
     void ProceduralRoadComponent::removeInputListener(void)
     {
         const Ogre::String listenerName = ProceduralRoadComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
-        {
+        // NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
+        // {
             if (auto* core = InputDeviceCore::getSingletonPtr())
             {
                 core->removeKeyListener(listenerName);
                 core->removeMouseListener(listenerName);
             }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::removeInputListener");
+       /* };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::removeInputListener");*/
     }
 
     void ProceduralRoadComponent::updateModificationState(void)

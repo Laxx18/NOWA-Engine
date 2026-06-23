@@ -252,25 +252,62 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponentV2] connect for: " + this->gameObjectPtr->getName());
 
-        // Snapshot after Lua might have moved things
-        this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
-        this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
-        this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
-
-        if (!this->createDynamicBody())
+        if (false == this->gameObjectPtr->hasComponent("MeshModifyComponent"))
         {
-            return false;
+            if (!this->createDynamicBody())
+            {
+                return false;
+            }
         }
 
-        this->registerTireNodes();
-        this->setCanDrive(this->activated->getBool());
-
-        if (this->physicsBody && this->bShowDebugData)
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
-            ENQUEUE_RENDER_COMMAND_WAIT("PhysicsActiveVehicleComponentV2::showDebug", { this->physicsBody->showDebugCollision(false, this->bShowDebugData); });
-        }
+            // Step 3: re-register tires against the new body.
+            this->registerTireNodes();
+            this->setCanDrive(this->activated->getBool());
+
+            if (this->physicsBody && this->bShowDebugData)
+            {
+                this->physicsBody->showDebugCollision(false, this->bShowDebugData);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveVehicleComponentV2::reCreateDynamicBodyForItem");
 
         return success;
+    }
+
+    void PhysicsActiveVehicleComponentV2::reCreateDynamicBodyForItem(Ogre::Item* item)
+    {
+        if (nullptr == item)
+        {
+            return;
+        }
+
+        // Step 1: destroy existing body and collision
+        this->destroyCollision();
+        this->destroyBody();
+
+        // Step 2: recreate the full Vehicle.
+        // swapMovableObject() has already attached the new Ogre::Item to the scene node,
+        // so createDynamicBody() -> createDynamicCollision() picks up the new mesh automatically.
+        if (false == this->createDynamicBody())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveVehicleComponent] reCreateDynamicBodyForItem: createDynamicBody failed for: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            // Step 3: re-register tires against the new body.
+            this->registerTireNodes();
+            this->setCanDrive(this->activated->getBool());
+
+            if (this->physicsBody && this->bShowDebugData)
+            {
+                this->physicsBody->showDebugCollision(false, this->bShowDebugData);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveVehicleComponentV2::reCreateDynamicBodyForItem");
     }
 
     // =========================================================================
@@ -282,7 +319,27 @@ namespace NOWA
 
         if (this->physicsBody)
         {
-            static_cast<OgreNewt::VehicleV2*>(this->physicsBody)->clearTires();
+            OgreNewt::VehicleV2* vehicle = static_cast<OgreNewt::VehicleV2*>(this->physicsBody);
+
+            // Stop GraphicsModule from continuing to drive these nodes from stale
+            // buffered data. Without this, any later direct write to a tire node
+            // (e.g. undo) gets silently overwritten on the very next render frame,
+            // because updateAllTransforms() unconditionally re-applies whatever is
+            // sitting in the trackedNodes buffer for any node that is still active.
+            for (const OgreNewt::TireInfoV2& tire : vehicle->getTires())
+            {
+                if (nullptr != tire.sceneNode)
+                {
+                    Ogre::Node* tireNode = tire.sceneNode;
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [tireNode]()
+                    {
+                        NOWA::GraphicsModule::getInstance()->removeTrackedNode(tireNode);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveVehicleComponentV2::disconnect - untrack tires");
+                }
+            }
+
+            vehicle->clearTires();
             this->destroyCollision();
             this->destroyBody();
         }
@@ -785,36 +842,6 @@ namespace NOWA
             this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveVehicleComponentV2>(&PhysicsActiveVehicleComponentV2::moveCallback, this);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponentV2] Ghost OFF for: " + this->gameObjectPtr->getName());
-        }
-    }
-
-    void PhysicsActiveVehicleComponentV2::reCreateDynamicBodyForItem(Ogre::Item* item)
-    {
-        if (nullptr == item)
-        {
-            return;
-        }
-
-        // Step 1: destroy existing body and collision
-        this->destroyCollision();
-        this->destroyBody();
-
-        // Step 2: recreate the full Vehicle.
-        // swapMovableObject() has already attached the new Ogre::Item to the scene node,
-        // so createDynamicBody() -> createDynamicCollision() picks up the new mesh automatically.
-        if (false == this->createDynamicBody())
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveVehicleComponent] reCreateDynamicBodyForItem: createDynamicBody failed for: " + this->gameObjectPtr->getName());
-            return;
-        }
-
-        // Step 3: re-register tires against the new body.
-        this->registerTireNodes();
-        this->setCanDrive(this->activated->getBool());
-
-        if (this->physicsBody && this->bShowDebugData)
-        {
-            ENQUEUE_RENDER_COMMAND_WAIT("PhysicsActiveVehicleComponentV2::showDebug", { this->physicsBody->showDebugCollision(false, this->bShowDebugData); });
         }
     }
 

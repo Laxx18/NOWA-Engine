@@ -41,6 +41,13 @@ namespace NOWA
 
 	Ogre::Real PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContactFriction(const OgreNewt::PlayerControllerBody* visitor, const Ogre::Vector3& position, const Ogre::Vector3& normal, int contactId, const OgreNewt::Body* other)
 	{
+		if (nullptr == visitor)
+		{
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContactFriction] Cannot call contact friction because the visitor physics component is nullptr for game object: " + this->owner->getName());
+            return 0.0f;
+		}
+
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
@@ -77,6 +84,12 @@ namespace NOWA
 
 	void PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContact(const OgreNewt::PlayerControllerBody* visitor, const Ogre::Vector3& position, const Ogre::Vector3& normal, Ogre::Real penetration, int contactId, const OgreNewt::Body* other)
 	{
+        if (nullptr == visitor)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContact] Cannot call contact because the visitor physics component is nullptr for game object: " + this->owner->getName());
+            return;
+        }
+
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{

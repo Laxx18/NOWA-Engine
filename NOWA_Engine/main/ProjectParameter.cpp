@@ -25,7 +25,7 @@ namespace NOWA
 		ambientLightLowerHemisphere(Ogre::ColourValue(0.6f, 0.45f, 0.3f)),
 		hemisphereDir(Ogre::Vector3(0.371386f, 0.642788f, 0.669998f)),
 		envmapScale(1.0f),
-		shadowFarDistance(100.0f),
+		shadowFarDistance(1000.0f),
 		shadowDirectionalLightExtrusionDistance(100.0f),
 		shadowDirLightTextureOffset(0.6f),
 		shadowColor(Ogre::ColourValue(0.25f, 0.25f, 0.25f)),

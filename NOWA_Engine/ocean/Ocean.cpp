@@ -352,10 +352,18 @@ namespace Ogre
         const float hysteresis = 0.05f;
         const float enterUnder = surfaceY - hysteresis;
         const float leaveUnder = surfaceY + hysteresis;
-        if( !m_isUnderwater )
-            m_isUnderwater = camPos.y < enterUnder;
+        
+        const bool insideX = camPos.x >= m_OceanOrigin.x && camPos.x <= m_OceanOrigin.x + m_xzDimensions.x;
+        const bool insideZ = camPos.z >= m_OceanOrigin.z && camPos.z <= m_OceanOrigin.z + m_xzDimensions.y;
+
+        if (!m_isUnderwater)
+        {
+            m_isUnderwater = insideX && insideZ && camPos.y < enterUnder;
+        }
         else
+        {
             m_isUnderwater = camPos.y < leaveUnder;
+        }
 
         const int32 basePixelDimension = static_cast<int32>(m_basePixelDimension);
         const int32 vertPixelDimension = static_cast<int32>(float(m_basePixelDimension) * m_depthWidthRatio);
@@ -508,7 +516,10 @@ namespace Ogre
 	//-----------------------------------------------------------------------------------
     bool Ocean::isUnderwater(const Vector3& worldPos) const
     {
-        return worldPos.y < m_OceanOrigin.y;
+        const bool insideX = worldPos.x >= m_OceanOrigin.x && worldPos.x <= m_OceanOrigin.x + m_xzDimensions.x;
+        const bool insideZ = worldPos.z >= m_OceanOrigin.z && worldPos.z <= m_OceanOrigin.z + m_xzDimensions.y;
+
+        return insideX && insideZ && worldPos.y < m_OceanOrigin.y;
     }
 	//-----------------------------------------------------------------------------------
     bool Ocean::isUnderwater(const SceneNode* sceneNode) const

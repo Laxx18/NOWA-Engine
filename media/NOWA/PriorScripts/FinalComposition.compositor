@@ -57,6 +57,17 @@ compositor_node_shadow NOWAShadowNode
 {
 	technique pssm
 
+	texture atlas		2048 7168 PFG_D32_FLOAT
+	texture tmpCubemap	2048 2048 PFG_R32_FLOAT cubemap depth_format PFG_D32_FLOAT
+
+	num_splits		3
+	pssm_lambda		0.95
+	// normal_offset_bias 168
+	// constant_bias_scale 1.0
+	shadow_map 0 atlas uv 0.0 0.000000000000000 1.0 0.285714285714286 light 0 split 0
+	shadow_map 1 atlas uv 0.0 0.285714285714286 0.5 0.142857142857143 light 0 split 1
+	shadow_map 2 atlas uv 0.5 0.285714285714286 0.5 0.142857142857143 light 0 split 2
+	
 	// Redesigned atlas: 2048x2048 square (was 2048x7168 portrait).
 	// All shadow maps are now square (best quality for their resolution).
 	// GPU texture memory: 16MB (was 56MB).
@@ -68,20 +79,24 @@ compositor_node_shadow NOWAShadowNode
 	//   Split 2 (far, 40-100m):  512x512   bottom-mid    far shadows, low res OK
 	//   Light 3 (spot/point):   1024x1024  top-right     spot cone coverage
 	//   Light 4 (spot/point):   1024x1024  bottom-right  spot cone coverage
-	texture atlas		2048 2048 PFG_D32_FLOAT
-	texture tmpCubemap	1024 1024 PFG_R32_FLOAT cubemap depth_format PFG_D32_FLOAT
+	// texture atlas		2048 2048 PFG_D32_FLOAT
+	// texture tmpCubemap	1024 1024 PFG_R32_FLOAT cubemap depth_format PFG_D32_FLOAT
 
-	num_splits		3
-	pssm_lambda		0.95
-	// normal_offset_bias 168
-	// constant_bias_scale 1.0
-	shadow_map 0 atlas uv 0.0  0.0  0.5  0.5  light 0 split 0
-	shadow_map 1 atlas uv 0.0  0.5  0.25 0.25 light 0 split 1
-	shadow_map 2 atlas uv 0.25 0.5  0.25 0.25 light 0 split 2
+	// num_splits		3
+	// pssm_lambda		0.95
+	// // normal_offset_bias 168
+	// // constant_bias_scale 1.0
+	// shadow_map 0 atlas uv 0.0  0.0  0.5  0.5  light 0 split 0
+	// shadow_map 1 atlas uv 0.0  0.5  0.25 0.25 light 0 split 1
+	// shadow_map 2 atlas uv 0.25 0.5  0.25 0.25 light 0 split 2
+
+	// technique focused
+	// shadow_map 3 atlas uv 0.5  0.0  0.5  0.5  light 1
+	// shadow_map 4 atlas uv 0.5  0.5  0.5  0.5  light 2
 
 	technique focused
-	shadow_map 3 atlas uv 0.5  0.0  0.5  0.5  light 1
-	shadow_map 4 atlas uv 0.5  0.5  0.5  0.5  light 2
+	shadow_map 3 atlas uv 0.0 0.428571428571429 1.0 0.285714285714286 light 1
+	shadow_map 4 atlas uv 0.0 0.714285714285714 1.0 0.285714285714286 light 2
 
 	target atlas
 	{

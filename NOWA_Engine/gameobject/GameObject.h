@@ -285,6 +285,12 @@ namespace NOWA
 		GameObjectComponents* getComponents(void);
 
 		/**
+         * @brief	Gets whether this game object has the given component class name, without the need to know the component template type. (Maybe its a plugin the user does not have).
+         * @return	true	If this gameobject has the component else false.
+         */
+		bool hasComponent(const Ogre::String& componentClassName);
+
+		/**
 		 * @brief		Adds a new component to this game object.
 		 * @param[in]	gameObjectCompPtr	The component ptr to add
 		 * @note		Do not use this function inside a @GameObjectComponent::connect function. It will likely cause a crash. Instead use @addDelayedComponent

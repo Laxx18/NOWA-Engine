@@ -31,21 +31,6 @@ namespace NOWA
      *   Disc     – flat circle; set size.z > 0 for a ring / annulus
      *   Wedge    – inclined ramp / wedge (slopes, stairs, architectural bevels)
      *
-     * Workflow (NOWA-Design):
-     *   1. Add the component to a GameObject.  The editor enters "Geometry Modify
-     *      Mode" and a ghost preview mesh follows the mouse cursor.
-     *   2. Left-click on terrain / any surface to confirm placement (the
-     *      GameObject snaps to the hit position).
-     *   3. After placement, every property change (shape, size, segments …)
-     *      immediately rebuilds the mesh with full undo/redo support.
-     *   4. Press ESC or right-click to cancel placement without moving the GO.
-     *   5. "Convert To Mesh" bakes the geometry to a static .mesh file and
-     *      replaces this component with a plain MeshComponent (one-way, permanent).
-     *
-     * Render thread safety:
-     *   All Ogre-Next calls go through GraphicsModule::enqueueAndWait().
-     *   Input listener registration is likewise render-thread-safe.
-     *
      * Vertex format:  pos(3) + normal(3) + tangent(4) + uv(2)  =  12 floats
      */
     class EXPORTED ProceduralGeometryComponent : public GeometricComponentBase, public Ogre::Plugin
@@ -67,13 +52,6 @@ namespace NOWA
             PRISM = 8,    ///< Triangular prism  (size = baseW × height × baseD)
             DISC = 9,     ///< Flat circle / ring  (size.x = outer R, size.z = inner R ≥ 0)
             WEDGE = 10    ///< Inclined ramp  (size = width × height × depth)
-        };
-
-        // ── Build-state machine ───────────────────────────────────────────────
-        enum class BuildState
-        {
-            IDLE = 0,   ///< Geometry exists; react only to property changes
-            PLACING = 1 ///< Preview ghost follows cursor; waiting for LMB confirm
         };
 
     public:
@@ -139,10 +117,6 @@ namespace NOWA
         static Ogre::String getStaticInfoText(void)
         {
             return "Usage: Creates a procedural geometry primitive directly in the viewport.\n\n"
-                   "PLACEMENT:\n"
-                   "- When the component is added, a ghost preview mesh follows the mouse cursor.\n"
-                   "- Left-click on any surface to confirm placement (snaps the GameObject there).\n"
-                   "- Right-click or press ESC to cancel without moving the GameObject.\n\n"
                    "SHAPES:\n"
                    "- Box      : standard cuboid.  Size = width × height × depth.\n"
                    "- Pyramid  : rectangular base, apex at top.  Size = baseW × height × baseD.\n"
@@ -281,11 +255,6 @@ namespace NOWA
         void createGeometryMeshInternal(const std::vector<float>& vertData, const std::vector<Ogre::uint32>& idxData, size_t numVerts, const Ogre::String& meshName);
         void destroyGeometryMesh(void);
 
-        // ── Preview mesh (ghost that follows cursor during PLACING) ───────────
-        void createPreviewMesh(void);
-        void updatePreviewPosition(const Ogre::Vector3& worldPos);
-        void destroyPreviewMesh(void);
-
         // ── Per-shape geometry generators ─────────────────────────────────────
         void generateBox(void);
         void generatePyramid(void);
@@ -345,10 +314,6 @@ namespace NOWA
         // ── Ogre-Next scene objects ───────────────────────────────────────────
         Ogre::MeshPtr geomMesh;
         Ogre::Item* geomItem;
-
-        Ogre::MeshPtr previewMesh;
-        Ogre::Item* previewItem;
-        Ogre::SceneNode* previewNode;
 
         // ── Physics (optional) ────────────────────────────────────────────────
         PhysicsArtifactComponent* physicsArtifactComponent;

@@ -117,21 +117,23 @@ namespace NOWA
                 }
                 else
                 {
-                    Ogre::String name = gameObjectPtr->getName();
-
-                    // If there is no physics component set the data directly for the game object scene node
                     this->oldGameObjectDataList[i].newPosition = gameObjectPtr->getSceneNode()->getPosition();
                     this->oldGameObjectDataList[i].newScale = gameObjectPtr->getSceneNode()->getScale();
                     this->oldGameObjectDataList[i].newOrientation = gameObjectPtr->getSceneNode()->getOrientation();
 
-                    // Not suitable for setting a hard position
-                    NOWA::GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].oldPosition, this->oldGameObjectDataList[i].oldOrientation, this->oldGameObjectDataList[i].oldScale, false,
-                        true);
+                    Ogre::Vector3 restorePos = this->oldGameObjectDataList[i].oldPosition;
+                    Ogre::Vector3 restoreScale = this->oldGameObjectDataList[i].oldScale;
+                    Ogre::Quaternion restoreOrient = this->oldGameObjectDataList[i].oldOrientation;
+                    Ogre::SceneNode* sceneNode = gameObjectPtr->getSceneNode();
 
-                    // Already on render thread
-                    /*gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].oldPosition);
-                    gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].oldScale);
-                    gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].oldOrientation);*/
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [sceneNode, restorePos, restoreOrient, restoreScale]()
+                    {
+                        // fireAndForget = true pins every buffer slot to this transform, so
+                        // updateAllTransforms() cannot interpolate back toward stale data
+                        // regardless of which buffer index or alpha it reads next.
+                        NOWA::GraphicsModule::getInstance()->updateNodeTransform(sceneNode, restorePos, restoreOrient, restoreScale, false, true);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectManipulationUndoCommand::undo - restore node transform");
                 }
                 i++;
             }
@@ -187,14 +189,23 @@ namespace NOWA
                 }
                 else
                 {
-                    // Not suitable for setting a hard position
-                    NOWA::GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].newPosition, this->oldGameObjectDataList[i].newOrientation, this->oldGameObjectDataList[i].newScale, false,
-                        true);
-
-                    // Already on render thread
-                    /*gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].newPosition);
+                    gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].newPosition);
                     gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].newScale);
-                    gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].newOrientation);*/
+                    gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].newOrientation);
+
+                    Ogre::Vector3 restorePos = this->oldGameObjectDataList[i].newPosition;
+                    Ogre::Vector3 restoreScale = this->oldGameObjectDataList[i].newScale;
+                    Ogre::Quaternion restoreOrient = this->oldGameObjectDataList[i].newOrientation;
+                    Ogre::SceneNode* sceneNode = gameObjectPtr->getSceneNode();
+
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [sceneNode, restorePos, restoreOrient, restoreScale]()
+                    {
+                        // fireAndForget = true pins every buffer slot to this transform, so
+                        // updateAllTransforms() cannot interpolate back toward stale data
+                        // regardless of which buffer index or alpha it reads next.
+                        NOWA::GraphicsModule::getInstance()->updateNodeTransform(sceneNode, restorePos, restoreOrient, restoreScale, false, true);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectManipulationUndoCommand::undo - restore node transform");
                 }
                 i++;
             }
@@ -4043,17 +4054,15 @@ namespace NOWA
 
         this->isInSimulation = false;
 
-        // Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
+        if (true == withUndo)
+        {
+            this->undo();
+        }
+
         AppStateManager::getSingletonPtr()->getGameProgressModule()->stop();
         AppStateManager::getSingletonPtr()->getScriptEventManager()->destroyContent();
         AppStateManager::getSingletonPtr()->getOgreRecastModule()->stopSimulation();
         AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
-
-        if (true == withUndo)
-        {
-            // this->undoAll();
-            this->undo();
-        }
 
         if (nullptr != AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt())
         {
@@ -4063,6 +4072,16 @@ namespace NOWA
             };
             NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
         }
+
+        // Must be LAST: flush transform buffer -> scene nodes synchronously on
+        // the render thread, so that the next startSimulation() snapshot via
+        // getSceneNode()->getPosition() sees the undo'd positions, not the
+        // last physics-written values that updateAllTransforms() left behind.
+        /*NOWA::GraphicsModule::RenderCommand renderCommand = []()
+        {
+            NOWA::GraphicsModule::getInstance()->flushTransforms();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "EditorManager::stopSimulation::flushTransforms");*/
     }
 
     void EditorManager::snapshotSelectedGameObjects(void)

@@ -827,6 +827,10 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 
             this->cameraSpeedUpButton->setEnabled(true);
             this->cameraSpeedDownButton->setEnabled(true);
+
+			auto sceneBoundsLeftNear = NOWA::Core::getSingletonPtr()->getCurrentSceneBoundLeftNear();
+            auto sceneBoundsRightFar = NOWA::Core::getSingletonPtr()->getCurrentSceneBoundRightFar();
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[NOWADesign]: Scene bounds left near: " + Ogre::StringConverter::toString(sceneBoundsLeftNear) + " right far: " + Ogre::StringConverter::toString(sceneBoundsRightFar));
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleProjectManipulation");
 
@@ -951,6 +955,7 @@ void DesignState::handlePlayerInControl(NOWA::EventDataPtr eventData)
 	this->playerInControl = castEventData->getIsActive();
 }
 
+// Only called from GameProgressModule
 void DesignState::handleSceneLoaded(NOWA::EventDataPtr eventData)
 {
 	boost::shared_ptr<NOWA::EventDataSceneLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataSceneLoaded>(eventData);

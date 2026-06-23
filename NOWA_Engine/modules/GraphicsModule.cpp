@@ -1697,6 +1697,35 @@ namespace NOWA
         trackedDatablock->active = true;
     }
 
+    void GraphicsModule::flushTransforms(void)
+    {
+        // Called synchronously on the render thread after undo, before
+        // the next startSimulation() snapshot. Writes the current buffer
+        // slot directly to scene nodes with no interpolation, so that
+        // getSceneNode()->getPosition() returns the correct undo'd value.
+        for (const auto& nodeTransform : this->trackedNodes)
+        {
+            if (false == nodeTransform.active || nullptr == nodeTransform.node)
+            {
+                continue;
+            }
+
+            const TransformData& t = nodeTransform.transforms[this->currentTransformNodeIdx];
+
+            if (false == nodeTransform.useDerived)
+            {
+                nodeTransform.node->setPosition(t.position);
+                nodeTransform.node->setOrientation(t.orientation);
+                nodeTransform.node->setScale(t.scale);
+            }
+            else
+            {
+                nodeTransform.node->_setDerivedPosition(t.position);
+                nodeTransform.node->_setDerivedOrientation(t.orientation);
+            }
+        }
+    }
+
     void GraphicsModule::removeTrackedClosure(const Ogre::String& uniqueName)
     {
         // Ensure queue is initialized

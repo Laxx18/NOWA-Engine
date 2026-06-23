@@ -3,9 +3,12 @@
 
 #include "GameObjectComponent.h"
 #include "utilities/MovableText.h"
+#include "main/Events.h"
 
 namespace NOWA
 {
+    class CameraComponent;
+
 	class EXPORTED GameObjectTitleComponent : public GameObjectComponent
 	{
 	public:
@@ -26,6 +29,11 @@ namespace NOWA
 		 * @see		GameObjectComponent::postInit
 		 */
 		virtual bool postInit(void) override;
+
+		/**
+         * @see		GameObjectComponent::onRemoveComponent
+         */
+        virtual void onRemoveComponent(void) override;
 
 		/**
 		 * @see		GameObjectComponent::connect
@@ -181,6 +189,9 @@ namespace NOWA
 		static const Ogre::String AttrOrientationTargetId(void) { return "Orientation Target Id"; }
 		static const Ogre::String AttrColor(void) { return "Color (r, g, b, a)"; }
 		static const Ogre::String AttrAlignment(void) { return "Alignment"; }
+
+    private:
+        void handleComponentDeleted(NOWA::EventDataPtr eventData);
 	private:
 		Variant* fontName;
 		Variant* caption;
@@ -195,6 +206,7 @@ namespace NOWA
 		MovableText* movableText;
 		Ogre::SceneNode* textNode;
 		GameObject* orientationTargetGameObject;
+        CameraComponent* cameraComponent;
 	};
 
 }; //namespace end

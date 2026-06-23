@@ -494,6 +494,8 @@ namespace NOWA
         void updateTrackedDatablockValue(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, const Ogre::ColourValue& targetValue, std::function<void(Ogre::ColourValue)> applyFunc,
             std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc);
 
+        void flushTransforms(void);
+
         // Advance to the next transform buffer (called by logic system)
         void advanceTransformBuffer(void);
 

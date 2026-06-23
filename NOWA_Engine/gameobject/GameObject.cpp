@@ -1495,7 +1495,24 @@ namespace NOWA
 	GameObjectComponents* GameObject::getComponents(void)
 	{
 		return &this->gameObjectComponents;
-	}
+    }
+
+    bool GameObject::hasComponent(const Ogre::String& componentClassName)
+    {
+        bool bHasComponent = false;
+
+        for (auto& component : this->gameObjectComponents)
+        {
+            Ogre::String thisClassName = std::get<COMPONENT>(component)->getClassName();
+           
+            if (thisClassName == componentClassName)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
 	void GameObject::addComponent(GameObjectCompPtr gameObjectCompPtr)
 	{
@@ -1926,8 +1943,9 @@ namespace NOWA
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setAttributePosition");
 
+		// Never ever use this here: Due to undo redo, node transform must be written directly!!
 		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] setAttributePosition: " + this->getName() + ": " + Ogre::StringConverter::toString(position));
-		// NOWA::GraphicsModule::getInstance()->updateNodePosition(this->sceneNode, position);
+		// NOWA::GraphicsModule::getInstance()->updateNodePosition(this->sceneNode, position, false, true);
 	}
 
 	void GameObject::setAttributeScale(const Ogre::Vector3& scale)
@@ -1941,7 +1959,8 @@ namespace NOWA
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setAttributeScale");
 
-		// NOWA::GraphicsModule::getInstance()->updateNodeScale(this->sceneNode, scale);
+		// Never ever use this here: Due to undo redo, node transform must be written directly!!
+		// NOWA::GraphicsModule::getInstance()->updateNodeScale(this->sceneNode, scale, false, true);
 		this->oldScale = scale;
 	}
 
@@ -1956,7 +1975,8 @@ namespace NOWA
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setAttributeOrientation");
 
-		// NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->sceneNode, orientation);
+		// Never ever use this here: Due to undo redo, node transform must be written directly!!
+		// NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->sceneNode, orientation, false, true);
 	}
 
 	void GameObject::setDefaultDirection(const Ogre::Vector3& defaultDirection)
