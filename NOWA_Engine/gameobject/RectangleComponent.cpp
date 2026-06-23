@@ -5,6 +5,8 @@
 #include "utilities/MathHelper.h"
 #include "LuaScriptComponent.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
 	using namespace rapidxml;

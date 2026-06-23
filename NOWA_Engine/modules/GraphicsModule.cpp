@@ -41,8 +41,53 @@ namespace NOWA
         stallRequested(false),
         stallAcknowledged(false)
     {
-        // Reserve some space for tracked nodes to avoid frequent reallocations
-        this->trackedNodes.reserve(100);
+        // Note: nodePool and its five siblings are std::deque, not std::vector - they
+        // grow only via push_back/emplace_back under their category mutex (see the
+        // threading-model comment in the header) and are never reserved/preallocated
+        // up front the way the old vector was; growth is rare in steady state because
+        // freed slots are recycled via the free-list, so there is no equivalent
+        // "reserve(100)" call needed here.
+        this->nodePool.resize(GraphicsModule::NODE_POOL_CAPACITY);
+        this->freeNodeSlots.reserve(GraphicsModule::NODE_POOL_CAPACITY);
+        for (size_t i = 0; i < GraphicsModule::NODE_POOL_CAPACITY; ++i)
+        {
+            this->freeNodeSlots.push_back(i);
+        }
+
+        this->cameraPool.resize(GraphicsModule::CAMERA_POOL_CAPACITY);
+        this->freeCameraSlots.reserve(GraphicsModule::CAMERA_POOL_CAPACITY);
+        for (size_t i = 0; i < GraphicsModule::CAMERA_POOL_CAPACITY; ++i)
+        {
+            this->freeCameraSlots.push_back(i);
+        }
+
+        this->oldBonePool.resize(GraphicsModule::OLD_BONE_POOL_CAPACITY);
+        this->freeOldBoneSlots.reserve(GraphicsModule::OLD_BONE_POOL_CAPACITY);
+        for (size_t i = 0; i < GraphicsModule::OLD_BONE_POOL_CAPACITY; ++i)
+        {
+            this->freeOldBoneSlots.push_back(i);
+        }
+
+        this->bonePool.resize(GraphicsModule::BONE_POOL_CAPACITY);
+        this->freeBoneSlots.reserve(GraphicsModule::BONE_POOL_CAPACITY);
+        for (size_t i = 0; i < GraphicsModule::BONE_POOL_CAPACITY; ++i)
+        {
+            this->freeBoneSlots.push_back(i);
+        }
+
+        this->passPool.resize(GraphicsModule::PASS_POOL_CAPACITY);
+        this->freePassSlots.reserve(GraphicsModule::PASS_POOL_CAPACITY);
+        for (size_t i = 0; i < GraphicsModule::PASS_POOL_CAPACITY; ++i)
+        {
+            this->freePassSlots.push_back(i);
+        }
+
+        this->datablockPool.resize(GraphicsModule::DATABLOCK_POOL_CAPACITY);
+        this->freeDatablockSlots.reserve(GraphicsModule::DATABLOCK_POOL_CAPACITY);
+        for (size_t i = 0; i < GraphicsModule::DATABLOCK_POOL_CAPACITY; ++i)
+        {
+            this->freeDatablockSlots.push_back(i);
+        }
 
         this->queueInitialized.store(true);
     }
@@ -197,12 +242,35 @@ namespace NOWA
 
         this->clearAllClosures();
 
-        this->trackedNodes.clear();
-        this->trackedCameras.clear();
-        this->trackedOldBones.clear();
-        this->trackedBones.clear();
-        this->trackedPasses.clear();
-        this->trackedDatablocks.clear();
+        // Terminal cleanup only - the engine is shutting down and bRunning has
+        // already dropped out of the while-loop above, so no other thread can
+        // still be resolving/updating a slot. This is the ONE place it is safe
+        // to actually clear() the pools (as opposed to tombstoning, which is
+        // what clearSceneResources() must do instead - see the threading-model
+        // comment in the header for why).
+        this->nodePool.clear();
+        this->nodeToIndexMap.clear();
+        this->freeNodeSlots.clear();
+
+        this->cameraPool.clear();
+        this->cameraToIndexMap.clear();
+        this->freeCameraSlots.clear();
+
+        this->oldBonePool.clear();
+        this->oldBoneToIndexMap.clear();
+        this->freeOldBoneSlots.clear();
+
+        this->bonePool.clear();
+        this->boneToIndexMap.clear();
+        this->freeBoneSlots.clear();
+
+        this->passPool.clear();
+        this->passToIndexMap.clear();
+        this->freePassSlots.clear();
+
+        this->datablockPool.clear();
+        this->datablockToIndexMap.clear();
+        this->freeDatablockSlots.clear();
 
         this->bRunning = false;
         this->timeoutEnabled = false;
@@ -305,22 +373,101 @@ namespace NOWA
 
     void GraphicsModule::clearSceneResources(void)
     {
-        this->trackedCameras.clear();
-        this->cameraToIndexMap.clear();
+        // IMPORTANT: this tombstones every slot in place - it must NOT call clear()
+        // on a pool's deque. Doing so would physically free chunk memory that some
+        // thread's thread_local cache might still hold a raw pointer into; the next
+        // time that thread used the stale pointer it would be a use-after-free
+        // instead of a harmless "identity mismatch, re-resolve" miss. See the
+        // threading-model comment near the top of the header.
+        {
+            std::lock_guard<std::mutex> lock(this->nodeRegistrationMutex);
+            for (auto& slot : this->nodePool)
+            {
+                slot.node.store(nullptr, std::memory_order_relaxed);
+                slot.active.store(false, std::memory_order_relaxed);
+            }
+            this->nodeToIndexMap.clear();
+            this->freeNodeSlots.clear();
+            for (size_t i = 0; i < this->nodePool.size(); ++i)
+            {
+                this->freeNodeSlots.push_back(i);
+            }
+        }
 
-        this->trackedNodes.clear();
-        this->nodeToIndexMap.clear();
+        {
+            std::lock_guard<std::mutex> lock(this->cameraRegistrationMutex);
+            for (auto& slot : this->cameraPool)
+            {
+                slot.camera.store(nullptr, std::memory_order_relaxed);
+                slot.active.store(false, std::memory_order_relaxed);
+            }
+            this->cameraToIndexMap.clear();
+            this->freeCameraSlots.clear();
+            for (size_t i = 0; i < this->cameraPool.size(); ++i)
+            {
+                this->freeCameraSlots.push_back(i);
+            }
+        }
 
-        this->oldBoneToIndexMap.clear();
-        this->trackedOldBones.clear();
-        this->boneToIndexMap.clear();
-        this->trackedBones.clear();
+        {
+            std::lock_guard<std::mutex> lock(this->oldBoneRegistrationMutex);
+            for (auto& slot : this->oldBonePool)
+            {
+                slot.oldBone.store(nullptr, std::memory_order_relaxed);
+                slot.active.store(false, std::memory_order_relaxed);
+            }
+            this->oldBoneToIndexMap.clear();
+            this->freeOldBoneSlots.clear();
+            for (size_t i = 0; i < this->oldBonePool.size(); ++i)
+            {
+                this->freeOldBoneSlots.push_back(i);
+            }
+        }
 
-        this->passToIndexMap.clear();
-        this->trackedPasses.clear();
+        {
+            std::lock_guard<std::mutex> lock(this->boneRegistrationMutex);
+            for (auto& slot : this->bonePool)
+            {
+                slot.bone.store(nullptr, std::memory_order_relaxed);
+                slot.active.store(false, std::memory_order_relaxed);
+            }
+            this->boneToIndexMap.clear();
+            this->freeBoneSlots.clear();
+            for (size_t i = 0; i < this->bonePool.size(); ++i)
+            {
+                this->freeBoneSlots.push_back(i);
+            }
+        }
 
-        this->datablockToIndexMap.clear();
-        this->trackedDatablocks.clear();
+        {
+            std::lock_guard<std::mutex> lock(this->passRegistrationMutex);
+            for (auto& slot : this->passPool)
+            {
+                slot.pass.store(nullptr, std::memory_order_relaxed);
+                slot.active.store(false, std::memory_order_relaxed);
+            }
+            this->passToIndexMap.clear();
+            this->freePassSlots.clear();
+            for (size_t i = 0; i < this->passPool.size(); ++i)
+            {
+                this->freePassSlots.push_back(i);
+            }
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(this->datablockRegistrationMutex);
+            for (auto& slot : this->datablockPool)
+            {
+                slot.datablock.store(nullptr, std::memory_order_relaxed);
+                slot.active.store(false, std::memory_order_relaxed);
+            }
+            this->datablockToIndexMap.clear();
+            this->freeDatablockSlots.clear();
+            for (size_t i = 0; i < this->datablockPool.size(); ++i)
+            {
+                this->freeDatablockSlots.push_back(i);
+            }
+        }
 
         this->currentTransformNodeIdx = 0;
         this->currentTransformCameraIdx = 0;
@@ -840,888 +987,1179 @@ namespace NOWA
         return false;
     }
 
-    GraphicsModule::NodeTransforms* GraphicsModule::findNodeTransforms(Ogre::Node* node)
+    GraphicsModule::NodeTransforms* GraphicsModule::resolveNodeSlotLocked(Ogre::Node* node)
     {
-        // O(1) lookup using the hash map
+        std::lock_guard<std::mutex> lock(this->nodeRegistrationMutex);
+
         auto it = this->nodeToIndexMap.find(node);
-        if (it != this->nodeToIndexMap.end() && false == this->trackedNodes.empty())
+        if (it != this->nodeToIndexMap.end())
         {
-            // Return pointer to the NodeTransforms in the vector
-            return &this->trackedNodes[it->second];
-        }
-        return nullptr;
-    }
-
-    GraphicsModule::CameraTransforms* GraphicsModule::findCameraTransforms(Ogre::Camera* camera)
-    {
-        // O(1) lookup using the hash map
-        auto it = this->cameraToIndexMap.find(camera);
-        if (it != this->cameraToIndexMap.end() && false == this->trackedCameras.empty())
-        {
-            // Return pointer to the CameraTransforms in the vector
-            return &this->trackedCameras[it->second];
-        }
-        return nullptr;
-    }
-
-    GraphicsModule::OldBoneTransforms* GraphicsModule::findOldBoneTransforms(Ogre::v1::OldBone* oldBone)
-    {
-        // O(1) lookup using the hash map
-        auto it = this->oldBoneToIndexMap.find(oldBone);
-        if (it != this->oldBoneToIndexMap.end() && false == this->trackedOldBones.empty())
-        {
-            // Return pointer to the OldBoneTransforms in the vector
-            return &this->trackedOldBones[it->second];
-        }
-        return nullptr;
-    }
-
-    GraphicsModule::BoneTransforms* GraphicsModule::findBoneTransforms(Ogre::Bone* bone)
-    {
-        auto it = this->boneToIndexMap.find(bone);
-        if (it != this->boneToIndexMap.end() && false == this->trackedBones.empty())
-        {
-            return &this->trackedBones[it->second];
-        }
-        return nullptr;
-    }
-
-    GraphicsModule::PassTransforms* GraphicsModule::findPassTransforms(Ogre::Pass* pass)
-    {
-        auto it = this->passToIndexMap.find(pass);
-        if (it != this->passToIndexMap.end() && false == this->trackedPasses.empty())
-        {
-            return &this->trackedPasses[it->second];
-        }
-        return nullptr;
-    }
-
-    GraphicsModule::TrackedDatablock* GraphicsModule::findTrackedDatablock(Ogre::HlmsDatablock* datablock)
-    {
-        // O(1) lookup using the hash map
-        auto it = this->datablockToIndexMap.find(datablock);
-        if (it != this->datablockToIndexMap.end() && false == this->trackedDatablocks.empty())
-        {
-            // Return pointer to the tracked datablock in the vector
-            return &this->trackedDatablocks[it->second];
-        }
-        return nullptr;
-    }
-
-    void GraphicsModule::addTrackedNode(Ogre::Node* node)
-    {
-        // Check if node is already tracked
-        if (this->findNodeTransforms(node))
-        {
-            return;
+            return &this->nodePool[it->second];
         }
 
-        // Create a new node transform record
-        GraphicsModule::NodeTransforms newNodeTransform;
-        newNodeTransform.node = node;
-        newNodeTransform.active = true;
-        newNodeTransform.isNew = true;
-        newNodeTransform.useDerived = false;
+        if (true == this->freeNodeSlots.empty())
+        {
+            // Pool exhausted - every one of the NODE_POOL_CAPACITY slots is
+            // currently bound to a live node. This should never happen in normal
+            // play; if it does, hand back the shared overflow sink instead of a
+            // null pointer so no caller crashes - the node simply will not
+            // interpolate until something frees up a real slot. Raise
+            // NODE_POOL_CAPACITY if you see this in the log.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[GraphicsModule] Node pool exhausted (capacity " + Ogre::StringConverter::toString(GraphicsModule::NODE_POOL_CAPACITY) + "). Raise NODE_POOL_CAPACITY. Node '" + node->getName() + "' will not interpolate.");
+            return &this->nodeOverflowSink;
+        }
 
-        // Initialize all buffers with the current node transform
+        size_t index = this->freeNodeSlots.back();
+        this->freeNodeSlots.pop_back();
+
+        NodeTransforms& slot = this->nodePool[index];
+
+        // Initialize all buffers with the current node transform - same baseline
+        // snapshot behaviour as the original addTrackedNode().
+        GraphicsModule::TransformData baseline;
+        baseline.position = node->getPosition();
+        baseline.orientation = node->getOrientation();
+        baseline.scale = node->getScale();
         for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
         {
-            newNodeTransform.transforms[i].position = node->getPosition();
-            newNodeTransform.transforms[i].orientation = node->getOrientation();
-            newNodeTransform.transforms[i].scale = node->getScale();
+            slot.transforms[i] = baseline;
         }
 
-        // Add to tracked nodes vector
-        size_t newIndex = this->trackedNodes.size();
-        this->trackedNodes.push_back(std::move(newNodeTransform));
+        slot.isNew = true;
+        slot.useDerived.store(false, std::memory_order_relaxed);
+        slot.active.store(true, std::memory_order_relaxed);
+        // Publish the identity LAST and with release ordering: any thread that
+        // later sees this node pointer via the index map or a recycled slot
+        // check is guaranteed to also see the baseline data written above.
+        slot.node.store(node, std::memory_order_release);
 
-        // Add to hash map for fast lookups
-        this->nodeToIndexMap[node] = newIndex;
+        this->nodeToIndexMap[node] = index;
 
         if (true == this->debugVisualization)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Added tracked node: " + node->getName());
         }
+
+        return &slot;
     }
 
-    void GraphicsModule::removeTrackedNode(Ogre::Node* node)
+    GraphicsModule::NodeTransforms* GraphicsModule::acquireNodeSlot(Ogre::Node* node)
     {
-        auto it = this->nodeToIndexMap.find(node);
-        if (it != this->nodeToIndexMap.end())
-        {
-            size_t indexToRemove = it->second;
-            size_t lastIndex = this->trackedNodes.size() - 1;
+        // Lock-free fast path. Each thread that has ever touched 'node' keeps its
+        // own cached slot pointer here - no shared state, no lock, no contention
+        // with any other thread's cache.
+        thread_local std::unordered_map<Ogre::Node*, NodeTransforms*> tlsCache;
 
-            if (true == this->debugVisualization)
+        auto cacheIt = tlsCache.find(node);
+        if (cacheIt != tlsCache.end())
+        {
+            NodeTransforms* slot = cacheIt->second;
+            if (slot->node.load(std::memory_order_acquire) == node)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Removed tracked node: " + node->getName());
+                return slot;
             }
-
-            // If this is not the last element, move the last element to this position
-            if (indexToRemove != lastIndex)
-            {
-                // Move the last element to the position of the removed element
-                this->trackedNodes[indexToRemove] = std::move(this->trackedNodes[lastIndex]);
-
-                // Update the index in the hash map for the moved element
-                this->nodeToIndexMap[this->trackedNodes[indexToRemove].node] = indexToRemove;
-            }
-
-            // Remove the last element (now duplicated or the one we want to remove)
-            this->trackedNodes.pop_back();
-
-            // Remove from the hash map
-            this->nodeToIndexMap.erase(it);
+            // Stale: this slot has been tombstoned/recycled since we cached it.
+            // Drop the entry and fall through to re-resolve, once, below.
+            tlsCache.erase(cacheIt);
         }
+
+        NodeTransforms* slot = this->resolveNodeSlotLocked(node);
+        tlsCache[node] = slot;
+        return slot;
     }
 
-    void GraphicsModule::updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived, bool fireAndForget)
+    GraphicsModule::CameraTransforms* GraphicsModule::resolveCameraSlotLocked(Ogre::Camera* camera)
     {
-        GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
-        if (nullptr == nodeTransforms)
-        {
-            this->addTrackedNode(node);
-            nodeTransforms = this->findNodeTransforms(node);
-        }
-
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                nodeTransforms->transforms[i].position = position;
-            }
-
-            nodeTransforms->active = true;
-            nodeTransforms->stableFrames = 0;
-            nodeTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
-            nodeTransforms->active = true;
-            nodeTransforms->updatedThisFrame = true;
-        }
-
-        nodeTransforms->useDerived = useDerived;
-
-        if (true == this->debugVisualization)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Updated position for node: " + node->getName() + " to " + Ogre::StringConverter::toString(position) +
-                                                                                    " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx) + (fireAndForget ? " [fireAndForget]" : ""));
-        }
-    }
-
-    void GraphicsModule::updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived, bool fireAndForget)
-    {
-        GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
-        if (nullptr == nodeTransforms)
-        {
-            this->addTrackedNode(node);
-            nodeTransforms = this->findNodeTransforms(node);
-        }
-
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                nodeTransforms->transforms[i].orientation = orientation;
-            }
-
-            nodeTransforms->active = true;
-            nodeTransforms->stableFrames = 0;
-            nodeTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
-            nodeTransforms->active = true;
-            nodeTransforms->updatedThisFrame = true;
-        }
-
-        nodeTransforms->useDerived = useDerived;
-
-        if (true == this->debugVisualization)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Updated orientation for node: " + node->getName() + " to " + Ogre::StringConverter::toString(orientation) +
-                                                                                    " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx) + (fireAndForget ? " [fireAndForget]" : ""));
-        }
-    }
-
-    void GraphicsModule::updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived, bool fireAndForget)
-    {
-        GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
-        if (nullptr == nodeTransforms)
-        {
-            this->addTrackedNode(node);
-            nodeTransforms = this->findNodeTransforms(node);
-        }
-
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                nodeTransforms->transforms[i].scale = scale;
-            }
-
-            nodeTransforms->active = true;
-            nodeTransforms->stableFrames = 0;
-            nodeTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
-            nodeTransforms->active = true;
-            nodeTransforms->updatedThisFrame = true;
-        }
-
-        nodeTransforms->useDerived = useDerived;
-
-        if (true == this->debugVisualization)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Updated scale for node: " + node->getName() + " to " + Ogre::StringConverter::toString(scale) +
-                                                                                    " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx) + (fireAndForget ? " [fireAndForget]" : ""));
-        }
-    }
-
-    void GraphicsModule::updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived, bool fireAndForget)
-    {
-        GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
-
-        if (nullptr == nodeTransforms)
-        {
-            this->addTrackedNode(node);
-            nodeTransforms = this->findNodeTransforms(node);
-        }
-
-        if (true == fireAndForget)
-        {
-            // Write all buffers identically so interpolation always yields
-            // exactly this transform regardless of weight or buffer index.
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                nodeTransforms->transforms[i].position = position;
-                nodeTransforms->transforms[i].orientation = orientation;
-                nodeTransforms->transforms[i].scale = scale;
-            }
-
-            // Deactivate: updateAllTransforms must not touch this node again
-            // until new physics data arrives via a non-fireAndForget write.
-            nodeTransforms->active = true;
-            nodeTransforms->stableFrames = 0;
-            nodeTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
-            nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
-            nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
-            nodeTransforms->updatedThisFrame = true;
-            nodeTransforms->active = true;
-        }
-
-        nodeTransforms->useDerived = useDerived;
-    }
-
-    void GraphicsModule::addTrackedCamera(Ogre::Camera* camera)
-    {
-        // Check if camera is already tracked
-        if (this->findCameraTransforms(camera))
-        {
-            return;
-        }
-
-        // Create a new camera transform record
-        GraphicsModule::CameraTransforms newCameraTransform;
-        newCameraTransform.camera = camera;
-        newCameraTransform.active = true;
-        newCameraTransform.isNew = true;
-
-        // Initialize all buffers with the current camera transform
-        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-        {
-            newCameraTransform.transforms[i].position = camera->getPosition();
-            newCameraTransform.transforms[i].orientation = camera->getOrientation();
-        }
-
-        // Add to tracked cameras vector
-        size_t newIndex = this->trackedCameras.size();
-        this->trackedCameras.push_back(std::move(newCameraTransform));
-
-        // Add to hash map for fast lookups
-        this->cameraToIndexMap[camera] = newIndex;
-    }
-
-    void GraphicsModule::removeTrackedCamera(Ogre::Camera* camera)
-    {
-        if (this->trackedCameras.empty())
-        {
-            return;
-        }
+        std::lock_guard<std::mutex> lock(this->cameraRegistrationMutex);
 
         auto it = this->cameraToIndexMap.find(camera);
         if (it != this->cameraToIndexMap.end())
         {
-            size_t indexToRemove = it->second;
-            size_t lastIndex = this->trackedCameras.size() - 1;
-
-            // If this is not the last element, move the last element to this position
-            if (indexToRemove != lastIndex)
-            {
-                // Move the last element to the position of the removed element
-                this->trackedCameras[indexToRemove] = std::move(this->trackedCameras[lastIndex]);
-
-                // Update the index in the hash map for the moved element
-                this->cameraToIndexMap[this->trackedCameras[indexToRemove].camera] = indexToRemove;
-            }
-
-            // Remove the last element (now duplicated or the one we want to remove)
-            this->trackedCameras.pop_back();
-
-            // Remove from the hash map
-            this->cameraToIndexMap.erase(it);
+            return &this->cameraPool[it->second];
         }
-    }
 
-    void GraphicsModule::updateCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position, bool fireAndForget)
-    {
-        GraphicsModule::CameraTransforms* cameraTransforms = this->findCameraTransforms(camera);
-        if (nullptr == cameraTransforms)
+        size_t index;
+        if (true == this->freeCameraSlots.empty())
         {
-            this->addTrackedCamera(camera);
-            cameraTransforms = this->findCameraTransforms(camera);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule] Camera pool exhausted (capacity " + Ogre::StringConverter::toString(GraphicsModule::CAMERA_POOL_CAPACITY) + "). Raise CAMERA_POOL_CAPACITY.");
+            return &this->cameraOverflowSink;
         }
+        index = this->freeCameraSlots.back();
+        this->freeCameraSlots.pop_back();
 
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                cameraTransforms->transforms[i].position = position;
-            }
+        CameraTransforms& slot = this->cameraPool[index];
 
-            cameraTransforms->active = true;
-            cameraTransforms->stableFrames = 0;
-            cameraTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
-            cameraTransforms->active = true;
-            cameraTransforms->updatedThisFrame = true;
-        }
-    }
-
-    void GraphicsModule::updateCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation, bool fireAndForget)
-    {
-        GraphicsModule::CameraTransforms* cameraTransforms = this->findCameraTransforms(camera);
-        if (nullptr == cameraTransforms)
-        {
-            this->addTrackedCamera(camera);
-            cameraTransforms = this->findCameraTransforms(camera);
-        }
-
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                cameraTransforms->transforms[i].orientation = orientation;
-            }
-
-            cameraTransforms->active = true;
-            cameraTransforms->stableFrames = 0;
-            cameraTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
-            cameraTransforms->active = true;
-            cameraTransforms->updatedThisFrame = true;
-        }
-    }
-
-    void GraphicsModule::updateCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget)
-    {
-        GraphicsModule::CameraTransforms* cameraTransforms = this->findCameraTransforms(camera);
-        if (nullptr == cameraTransforms)
-        {
-            this->addTrackedCamera(camera);
-            cameraTransforms = this->findCameraTransforms(camera);
-        }
-
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                cameraTransforms->transforms[i].position = position;
-                cameraTransforms->transforms[i].orientation = orientation;
-            }
-
-            cameraTransforms->active = true;
-            cameraTransforms->stableFrames = 0;
-            cameraTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
-            cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
-            cameraTransforms->active = true;
-            cameraTransforms->updatedThisFrame = true;
-        }
-    }
-
-    void GraphicsModule::addTrackedOldBone(Ogre::v1::OldBone* oldBone)
-    {
-        // Check if oldBone is already tracked
-        if (this->findOldBoneTransforms(oldBone))
-        {
-            return;
-        }
-
-        // Create a new oldBone transform record
-        GraphicsModule::OldBoneTransforms newOldBoneTransform;
-        newOldBoneTransform.oldBone = oldBone;
-        newOldBoneTransform.active = true;
-        newOldBoneTransform.isNew = true;
-
-        // Initialize all buffers with the current oldBone transform
+        GraphicsModule::CameraTransformData baseline;
+        baseline.position = camera->getPosition();
+        baseline.orientation = camera->getOrientation();
         for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
         {
-            newOldBoneTransform.transforms[i].position = oldBone->getPosition();
-            newOldBoneTransform.transforms[i].orientation = oldBone->getOrientation();
+            slot.transforms[i] = baseline;
         }
 
-        // Add to tracked oldBones vector
-        size_t newIndex = this->trackedOldBones.size();
-        this->trackedOldBones.push_back(std::move(newOldBoneTransform));
+        slot.isNew = true;
+        slot.active.store(true, std::memory_order_relaxed);
+        slot.camera.store(camera, std::memory_order_release);
 
-        // Add to hash map for fast lookups
-        this->oldBoneToIndexMap[oldBone] = newIndex;
+        this->cameraToIndexMap[camera] = index;
+
+        return &slot;
     }
 
-    void GraphicsModule::removeTrackedOldBone(Ogre::v1::OldBone* oldBone)
+    GraphicsModule::CameraTransforms* GraphicsModule::acquireCameraSlot(Ogre::Camera* camera)
     {
-        if (this->trackedOldBones.empty())
+        thread_local std::unordered_map<Ogre::Camera*, CameraTransforms*> tlsCache;
+
+        auto cacheIt = tlsCache.find(camera);
+        if (cacheIt != tlsCache.end())
         {
-            return;
+            CameraTransforms* slot = cacheIt->second;
+            if (slot->camera.load(std::memory_order_acquire) == camera)
+            {
+                return slot;
+            }
+            tlsCache.erase(cacheIt);
         }
+
+        CameraTransforms* slot = this->resolveCameraSlotLocked(camera);
+        tlsCache[camera] = slot;
+        return slot;
+    }
+
+    GraphicsModule::OldBoneTransforms* GraphicsModule::resolveOldBoneSlotLocked(Ogre::v1::OldBone* oldBone)
+    {
+        std::lock_guard<std::mutex> lock(this->oldBoneRegistrationMutex);
 
         auto it = this->oldBoneToIndexMap.find(oldBone);
         if (it != this->oldBoneToIndexMap.end())
         {
-            size_t indexToRemove = it->second;
-            size_t lastIndex = this->trackedOldBones.size() - 1;
-
-            // If this is not the last element, move the last element to this position
-            if (indexToRemove != lastIndex)
-            {
-                // Move the last element to the position of the removed element
-                this->trackedOldBones[indexToRemove] = std::move(this->trackedOldBones[lastIndex]);
-
-                // Update the index in the hash map for the moved element
-                this->oldBoneToIndexMap[this->trackedOldBones[indexToRemove].oldBone] = indexToRemove;
-            }
-
-            // Remove the last element (now duplicated or the one we want to remove)
-            this->trackedOldBones.pop_back();
-
-            // Remove from the hash map
-            this->oldBoneToIndexMap.erase(it);
+            return &this->oldBonePool[it->second];
         }
-    }
 
-    void GraphicsModule::updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, bool fireAndForget)
-    {
-        GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->findOldBoneTransforms(oldBone);
-        if (nullptr == oldBoneTransforms)
+        size_t index;
+        if (true == this->freeOldBoneSlots.empty())
         {
-            this->addTrackedOldBone(oldBone);
-            oldBoneTransforms = this->findOldBoneTransforms(oldBone);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule] OldBone pool exhausted (capacity " + Ogre::StringConverter::toString(GraphicsModule::OLD_BONE_POOL_CAPACITY) + "). Raise OLD_BONE_POOL_CAPACITY.");
+            return &this->oldBoneOverflowSink;
         }
+        index = this->freeOldBoneSlots.back();
+        this->freeOldBoneSlots.pop_back();
 
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                oldBoneTransforms->transforms[i].position = position;
-            }
+        OldBoneTransforms& slot = this->oldBonePool[index];
 
-            oldBoneTransforms->active = true;
-            oldBoneTransforms->stableFrames = 0;
-            oldBoneTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
-            oldBoneTransforms->active = true;
-            oldBoneTransforms->updatedThisFrame = true;
-        }
-    }
-
-    void GraphicsModule::updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation, bool fireAndForget)
-    {
-        GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->findOldBoneTransforms(oldBone);
-        if (nullptr == oldBoneTransforms)
-        {
-            this->addTrackedOldBone(oldBone);
-            oldBoneTransforms = this->findOldBoneTransforms(oldBone);
-        }
-
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                oldBoneTransforms->transforms[i].orientation = orientation;
-            }
-
-            oldBoneTransforms->active = true;
-            oldBoneTransforms->stableFrames = 0;
-            oldBoneTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
-            oldBoneTransforms->active = true;
-            oldBoneTransforms->updatedThisFrame = true;
-        }
-    }
-
-    void GraphicsModule::updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget)
-    {
-        GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->findOldBoneTransforms(oldBone);
-        if (nullptr == oldBoneTransforms)
-        {
-            this->addTrackedOldBone(oldBone);
-            oldBoneTransforms = this->findOldBoneTransforms(oldBone);
-        }
-
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                oldBoneTransforms->transforms[i].position = position;
-                oldBoneTransforms->transforms[i].orientation = orientation;
-            }
-
-            oldBoneTransforms->active = true;
-            oldBoneTransforms->stableFrames = 0;
-            oldBoneTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
-            oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
-            oldBoneTransforms->active = true;
-            oldBoneTransforms->updatedThisFrame = true;
-        }
-    }
-
-    void GraphicsModule::addTrackedBone(Ogre::Bone* bone)
-    {
-        // Check if bone is already tracked
-        if (this->findBoneTransforms(bone))
-        {
-            return;
-        }
-
-        GraphicsModule::BoneTransforms newBoneTransform;
-        newBoneTransform.bone = bone;
-        newBoneTransform.active = true;
-        newBoneTransform.isNew = true;
-
-        // Initialize all buffers with the current bone transform
+        GraphicsModule::TransformData baseline;
+        baseline.position = oldBone->getPosition();
+        baseline.orientation = oldBone->getOrientation();
         for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
         {
-            newBoneTransform.transforms[i].position = bone->getPosition();
-            newBoneTransform.transforms[i].orientation = bone->getOrientation();
+            slot.transforms[i] = baseline;
         }
 
-        size_t newIndex = this->trackedBones.size();
-        this->trackedBones.push_back(std::move(newBoneTransform));
+        slot.isNew = true;
+        slot.active.store(true, std::memory_order_relaxed);
+        slot.oldBone.store(oldBone, std::memory_order_release);
 
-        this->boneToIndexMap[bone] = newIndex;
+        this->oldBoneToIndexMap[oldBone] = index;
+
+        return &slot;
     }
 
-    void GraphicsModule::removeTrackedBone(Ogre::Bone* bone)
+    GraphicsModule::OldBoneTransforms* GraphicsModule::acquireOldBoneSlot(Ogre::v1::OldBone* oldBone)
     {
-        if (this->trackedBones.empty())
+        thread_local std::unordered_map<Ogre::v1::OldBone*, OldBoneTransforms*> tlsCache;
+
+        auto cacheIt = tlsCache.find(oldBone);
+        if (cacheIt != tlsCache.end())
         {
-            return;
+            OldBoneTransforms* slot = cacheIt->second;
+            if (slot->oldBone.load(std::memory_order_acquire) == oldBone)
+            {
+                return slot;
+            }
+            tlsCache.erase(cacheIt);
         }
+
+        OldBoneTransforms* slot = this->resolveOldBoneSlotLocked(oldBone);
+        tlsCache[oldBone] = slot;
+        return slot;
+    }
+
+    GraphicsModule::BoneTransforms* GraphicsModule::resolveBoneSlotLocked(Ogre::Bone* bone)
+    {
+        std::lock_guard<std::mutex> lock(this->boneRegistrationMutex);
 
         auto it = this->boneToIndexMap.find(bone);
         if (it != this->boneToIndexMap.end())
         {
-            size_t indexToRemove = it->second;
-            size_t lastIndex = this->trackedBones.size() - 1;
-
-            if (indexToRemove != lastIndex)
-            {
-                this->trackedBones[indexToRemove] = std::move(this->trackedBones[lastIndex]);
-                this->boneToIndexMap[this->trackedBones[indexToRemove].bone] = indexToRemove;
-            }
-
-            this->trackedBones.pop_back();
-            this->boneToIndexMap.erase(it);
+            return &this->bonePool[it->second];
         }
-    }
 
-    void GraphicsModule::updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position, bool fireAndForget)
-    {
-        GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
-        if (nullptr == boneTransforms)
+        size_t index;
+        if (true == this->freeBoneSlots.empty())
         {
-            this->addTrackedBone(bone);
-            boneTransforms = this->findBoneTransforms(bone);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule] Bone pool exhausted (capacity " + Ogre::StringConverter::toString(GraphicsModule::BONE_POOL_CAPACITY) + "). Raise BONE_POOL_CAPACITY.");
+            return &this->boneOverflowSink;
         }
+        index = this->freeBoneSlots.back();
+        this->freeBoneSlots.pop_back();
 
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                boneTransforms->transforms[i].position = position;
-            }
+        BoneTransforms& slot = this->bonePool[index];
 
-            boneTransforms->active = true;
-            boneTransforms->stableFrames = 0;
-            boneTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
-            boneTransforms->active = true;
-            boneTransforms->updatedThisFrame = true;
-        }
-    }
-
-    void GraphicsModule::updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation, bool fireAndForget)
-    {
-        GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
-        if (nullptr == boneTransforms)
-        {
-            this->addTrackedBone(bone);
-            boneTransforms = this->findBoneTransforms(bone);
-        }
-
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                boneTransforms->transforms[i].orientation = orientation;
-            }
-
-            boneTransforms->active = true;
-            boneTransforms->stableFrames = 0;
-            boneTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
-            boneTransforms->active = true;
-            boneTransforms->updatedThisFrame = true;
-        }
-    }
-
-    void GraphicsModule::updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget)
-    {
-        GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
-        if (nullptr == boneTransforms)
-        {
-            this->addTrackedBone(bone);
-            boneTransforms = this->findBoneTransforms(bone);
-        }
-
-        if (true == fireAndForget)
-        {
-            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-            {
-                boneTransforms->transforms[i].position = position;
-                boneTransforms->transforms[i].orientation = orientation;
-            }
-
-            boneTransforms->active = true;
-            boneTransforms->stableFrames = 0;
-            boneTransforms->updatedThisFrame = false;
-        }
-        else
-        {
-            boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
-            boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
-            boneTransforms->active = true;
-            boneTransforms->updatedThisFrame = true;
-        }
-    }
-
-    void GraphicsModule::addTrackedPass(Ogre::Pass* pass)
-    {
-        if (this->findPassTransforms(pass))
-        {
-            return;
-        }
-
-        GraphicsModule::PassTransforms newTransform;
-        newTransform.pass = pass;
-        newTransform.active = true;
-        newTransform.isNew = true;
-
+        GraphicsModule::TransformData baseline;
+        baseline.position = bone->getPosition();
+        baseline.orientation = bone->getOrientation();
         for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
         {
-            std::fill(std::begin(newTransform.transforms[i].speedsX), std::end(newTransform.transforms[i].speedsX), 0.0f);
-            std::fill(std::begin(newTransform.transforms[i].speedsY), std::end(newTransform.transforms[i].speedsY), 0.0f);
+            slot.transforms[i] = baseline;
         }
 
-        size_t newIndex = this->trackedPasses.size();
-        this->trackedPasses.push_back(std::move(newTransform));
-        this->passToIndexMap[pass] = newIndex;
+        slot.isNew = true;
+        slot.active.store(true, std::memory_order_relaxed);
+        slot.bone.store(bone, std::memory_order_release);
+
+        this->boneToIndexMap[bone] = index;
+
+        return &slot;
     }
 
-    void GraphicsModule::removeTrackedPass(Ogre::Pass* pass)
+    GraphicsModule::BoneTransforms* GraphicsModule::acquireBoneSlot(Ogre::Bone* bone)
     {
-        if (this->trackedPasses.empty())
+        thread_local std::unordered_map<Ogre::Bone*, BoneTransforms*> tlsCache;
+
+        auto cacheIt = tlsCache.find(bone);
+        if (cacheIt != tlsCache.end())
         {
-            return;
+            BoneTransforms* slot = cacheIt->second;
+            if (slot->bone.load(std::memory_order_acquire) == bone)
+            {
+                return slot;
+            }
+            tlsCache.erase(cacheIt);
         }
+
+        BoneTransforms* slot = this->resolveBoneSlotLocked(bone);
+        tlsCache[bone] = slot;
+        return slot;
+    }
+
+    GraphicsModule::PassTransforms* GraphicsModule::resolvePassSlotLocked(Ogre::Pass* pass)
+    {
+        std::lock_guard<std::mutex> lock(this->passRegistrationMutex);
 
         auto it = this->passToIndexMap.find(pass);
         if (it != this->passToIndexMap.end())
         {
-            size_t indexToRemove = it->second;
-            size_t lastIndex = this->trackedPasses.size() - 1;
-
-            if (indexToRemove != lastIndex)
-            {
-                this->trackedPasses[indexToRemove] = std::move(this->trackedPasses[lastIndex]);
-                this->passToIndexMap[this->trackedPasses[indexToRemove].pass] = indexToRemove;
-            }
-
-            this->trackedPasses.pop_back();
-            this->passToIndexMap.erase(it);
+            return &this->passPool[it->second];
         }
+
+        size_t index;
+        if (true == this->freePassSlots.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule] Pass pool exhausted (capacity " + Ogre::StringConverter::toString(GraphicsModule::PASS_POOL_CAPACITY) + "). Raise PASS_POOL_CAPACITY.");
+            return &this->passOverflowSink;
+        }
+        index = this->freePassSlots.back();
+        this->freePassSlots.pop_back();
+
+        PassTransforms& slot = this->passPool[index];
+
+        GraphicsModule::PassSpeedData currentData;
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            slot.transforms[i] = currentData;
+        }
+
+        slot.isNew = true;
+        slot.active.store(true, std::memory_order_relaxed);
+        slot.pass.store(pass, std::memory_order_release);
+
+        this->passToIndexMap[pass] = index;
+
+        return &slot;
+    }
+
+    GraphicsModule::PassTransforms* GraphicsModule::acquirePassSlot(Ogre::Pass* pass)
+    {
+        thread_local std::unordered_map<Ogre::Pass*, PassTransforms*> tlsCache;
+
+        auto cacheIt = tlsCache.find(pass);
+        if (cacheIt != tlsCache.end())
+        {
+            PassTransforms* slot = cacheIt->second;
+            if (slot->pass.load(std::memory_order_acquire) == pass)
+            {
+                return slot;
+            }
+            tlsCache.erase(cacheIt);
+        }
+
+        PassTransforms* slot = this->resolvePassSlotLocked(pass);
+        tlsCache[pass] = slot;
+        return slot;
+    }
+
+    GraphicsModule::TrackedDatablock* GraphicsModule::resolveDatablockSlotLocked(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, std::function<void(Ogre::ColourValue)> applyFunc,
+        std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc)
+    {
+        std::lock_guard<std::mutex> lock(this->datablockRegistrationMutex);
+
+        auto it = this->datablockToIndexMap.find(datablock);
+        if (it != this->datablockToIndexMap.end())
+        {
+            return &this->datablockPool[it->second];
+        }
+
+        size_t index;
+        if (true == this->freeDatablockSlots.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule] Datablock pool exhausted (capacity " + Ogre::StringConverter::toString(GraphicsModule::DATABLOCK_POOL_CAPACITY) + "). Raise DATABLOCK_POOL_CAPACITY.");
+            return &this->datablockOverflowSink;
+        }
+        index = this->freeDatablockSlots.back();
+        this->freeDatablockSlots.pop_back();
+
+        TrackedDatablock& slot = this->datablockPool[index];
+
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            slot.values[i] = initialValue;
+        }
+
+        slot.applyFunc = std::move(applyFunc);
+        slot.interpolateFunc = std::move(interpFunc);
+        slot.isNew = true;
+        slot.active.store(true, std::memory_order_relaxed);
+        slot.datablock.store(datablock, std::memory_order_release);
+
+        this->datablockToIndexMap[datablock] = index;
+
+        return &slot;
+    }
+
+    GraphicsModule::TrackedDatablock* GraphicsModule::acquireDatablockSlot(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, std::function<void(Ogre::ColourValue)> applyFunc,
+        std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc)
+    {
+        thread_local std::unordered_map<Ogre::HlmsDatablock*, TrackedDatablock*> tlsCache;
+
+        auto cacheIt = tlsCache.find(datablock);
+        if (cacheIt != tlsCache.end())
+        {
+            TrackedDatablock* slot = cacheIt->second;
+            if (slot->datablock.load(std::memory_order_acquire) == datablock)
+            {
+                return slot;
+            }
+            tlsCache.erase(cacheIt);
+        }
+
+        TrackedDatablock* slot = this->resolveDatablockSlotLocked(datablock, initialValue, std::move(applyFunc), std::move(interpFunc));
+        tlsCache[datablock] = slot;
+        return slot;
+    }
+
+    void GraphicsModule::addTrackedNode(Ogre::Node* node)
+    {
+        // Public, explicit registration. Same one-time-resolution path as the
+        // lazy "first update call" path below - acquireNodeSlot() is idempotent,
+        // so calling this ahead of time just pre-warms the calling thread's cache.
+        this->acquireNodeSlot(node);
+    }
+
+    void GraphicsModule::removeTrackedNode(Ogre::Node* node)
+    {
+        std::lock_guard<std::mutex> lock(this->nodeRegistrationMutex);
+
+        auto it = this->nodeToIndexMap.find(node);
+        if (it == this->nodeToIndexMap.end())
+        {
+            return;
+        }
+
+        size_t index = it->second;
+        NodeTransforms& slot = this->nodePool[index];
+
+        if (true == this->debugVisualization)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Removed tracked node: " + node->getName());
+        }
+
+        // Tombstone in place - never erase from the pool. Any thread whose
+        // thread_local cache still points at this exact slot will see its
+        // identity no longer matches (node load() != its cached node pointer)
+        // the next time it tries to use it, and will transparently re-resolve.
+        // NOTE: this assumes the caller has already stopped any other thread
+        // from calling update*() for this exact node before removing it -
+        // the same lifecycle convention the original code relied on (e.g. a
+        // component disconnects/stops driving a node before telling
+        // GraphicsModule to forget it).
+        slot.node.store(nullptr, std::memory_order_release);
+        slot.active.store(false, std::memory_order_relaxed);
+
+        this->nodeToIndexMap.erase(it);
+        this->freeNodeSlots.push_back(index);
+    }
+
+    void GraphicsModule::updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived)
+    {
+        // Lock-free after the first call: acquireNodeSlot() only takes nodeMutex
+        // the first time THIS thread sees 'node' (or after its cached slot was
+        // recycled). Every call after that is a direct pointer dereference.
+        //
+        GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+
+        nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
+        nodeTransforms->active.store(true, std::memory_order_relaxed);
+        nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);
+
+        if (true == this->debugVisualization)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[RenderCommandQueueModule]: Updated position for node: " + node->getName() + " to " + Ogre::StringConverter::toString(position) + " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx));
+        }
+    }
+    // Transform warp: this becomes the truth for this node right now,
+    void GraphicsModule::updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived)
+    // from it. Any later call - fireAndForget or not, from any thread -
+    // is free to overwrite it again; this is a one-shot snapshot, not a
+    // lock on the node.
+    {
+        // Always interpolated - call setNodeOrientation() instead for an instant warp.
+        GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+
+        nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
+        nodeTransforms->active.store(true, std::memory_order_relaxed);
+        nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);
+
+        if (true == this->debugVisualization)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[RenderCommandQueueModule]: Updated orientation for node: " + node->getName() + " to " + Ogre::StringConverter::toString(orientation) + " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx));
+        }
+    }
+
+    void GraphicsModule::updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived)
+    {
+        // Always interpolated - call setNodeScale() instead for an instant warp.
+        GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+
+        nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
+        nodeTransforms->active.store(true, std::memory_order_relaxed);
+        nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);
+
+        if (true == this->debugVisualization)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[RenderCommandQueueModule]: Updated scale for node: " + node->getName() + " to " + Ogre::StringConverter::toString(scale) + " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx));
+        }
+    }
+
+    void GraphicsModule::updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived)
+    {
+        GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+
+        nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
+        nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
+        nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
+        nodeTransforms->active.store(true, std::memory_order_relaxed);
+        nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);
+    }
+
+    // =========================================================================
+    // setNode*() - instant warp. See the contract comment on setNodePosition()
+    // in the header for the full rationale. Each public function here just
+    // decides which thread should do the actual work, then delegates to the
+    // matching *OnRenderThread() implementation, which is the only place that
+    // both touches the real Ogre::Node AND re-pins the interpolation buffer.
+    // =========================================================================
+
+    void GraphicsModule::setNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setNodePositionOnRenderThread(node, position, useDerived);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, node, position, useDerived]()
+            {
+                this->setNodePositionOnRenderThread(node, position, useDerived);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setNodePosition");
+        }
+    }
+
+    void GraphicsModule::setNodePositionOnRenderThread(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived)
+    {
+        // 1. Apply directly to the real Ogre node RIGHT NOW. This is what makes
+        //    this call "kill" any interpolation already in flight: the next
+        //    renderOneFrame() in this same iteration renders THIS value, not
+        //    whatever updateAllTransforms() would otherwise have blended to.
+        if (false == useDerived)
+        {
+            node->setPosition(position);
+        }
+        else
+        {
+            node->_setDerivedPosition(position);
+        }
+
+        // 2. Re-pin the interpolation buffer to match, so that if this node is
+        //    still tracked, any later updateAllTransforms() pass (this frame or
+        //    a future one, as long as nothing else writes to it first) keeps
+        //    reaffirming this exact value instead of drifting back toward
+        //    whatever was buffered before.
+        /*GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            nodeTransforms->transforms[i].position = position;
+        }
+
+        nodeTransforms->active.store(false, std::memory_order_relaxed);
+        nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::setNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setNodeOrientationOnRenderThread(node, orientation, useDerived);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, node, orientation, useDerived]()
+            {
+                this->setNodeOrientationOnRenderThread(node, orientation, useDerived);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setNodeOrientation");
+        }
+    }
+
+    void GraphicsModule::setNodeOrientationOnRenderThread(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived)
+    {
+        if (false == useDerived)
+        {
+            node->setOrientation(orientation);
+        }
+        else
+        {
+            node->_setDerivedOrientation(orientation);
+        }
+
+        /*GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            nodeTransforms->transforms[i].orientation = orientation;
+        }
+        nodeTransforms->active.store(false, std::memory_order_relaxed);
+        nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::setNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setNodeScaleOnRenderThread(node, scale, useDerived);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, node, scale, useDerived]()
+            {
+                this->setNodeScaleOnRenderThread(node, scale, useDerived);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setNodeScale");
+        }
+    }
+
+    void GraphicsModule::setNodeScaleOnRenderThread(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived)
+    {
+        // Note: Ogre::Node has no _setDerivedScale() counterpart - scale is only
+        // ever set directly, exactly like the original fireAndForget code path
+        // did (it commented "Scale only on non-derived path" for the same reason).
+        node->setScale(scale);
+
+        /*GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            nodeTransforms->transforms[i].scale = scale;
+        }
+
+        nodeTransforms->active.store(false, std::memory_order_relaxed);
+        nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::setNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setNodeTransformOnRenderThread(node, position, orientation, scale, useDerived);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, node, position, orientation, scale, useDerived]()
+            {
+                this->setNodeTransformOnRenderThread(node, position, orientation, scale, useDerived);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setNodeTransform");
+        }
+    }
+
+    void GraphicsModule::setNodeTransformOnRenderThread(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived)
+    {
+        if (false == useDerived)
+        {
+            node->setPosition(position);
+            node->setOrientation(orientation);
+            node->setScale(scale);
+        }
+        else
+        {
+            node->_setDerivedPosition(position);
+            node->_setDerivedOrientation(orientation);
+            // Comment says: "Scale only on non-derived path" - same as the
+            // original fireAndForget code and the interpolated path above.
+        }
+
+        /*GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            nodeTransforms->transforms[i].position = position;
+            nodeTransforms->transforms[i].orientation = orientation;
+            nodeTransforms->transforms[i].scale = scale;
+        }
+
+        nodeTransforms->active.store(false, std::memory_order_relaxed);
+        nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::addTrackedCamera(Ogre::Camera* camera)
+    {
+        this->acquireCameraSlot(camera);
+    }
+
+    void GraphicsModule::removeTrackedCamera(Ogre::Camera* camera)
+    {
+        std::lock_guard<std::mutex> lock(this->cameraRegistrationMutex);
+
+        auto it = this->cameraToIndexMap.find(camera);
+        if (it == this->cameraToIndexMap.end())
+        {
+            return;
+        }
+
+        size_t index = it->second;
+        CameraTransforms& slot = this->cameraPool[index];
+
+        slot.camera.store(nullptr, std::memory_order_release);
+        slot.active.store(false, std::memory_order_relaxed);
+
+        this->cameraToIndexMap.erase(it);
+        this->freeCameraSlots.push_back(index);
+    }
+
+    void GraphicsModule::updateCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position)
+    {
+        // Always interpolated - call setCameraPosition() instead for an instant warp.
+        GraphicsModule::CameraTransforms* cameraTransforms = this->acquireCameraSlot(camera);
+
+        cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
+        cameraTransforms->active.store(true, std::memory_order_relaxed);
+    }
+
+    void GraphicsModule::updateCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation)
+    {
+        GraphicsModule::CameraTransforms* cameraTransforms = this->acquireCameraSlot(camera);
+
+        cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
+        cameraTransforms->active.store(true, std::memory_order_relaxed);
+    }
+
+    void GraphicsModule::updateCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        // Always interpolated - call setCameraTransform() instead for an instant warp.
+        GraphicsModule::CameraTransforms* cameraTransforms = this->acquireCameraSlot(camera);
+
+        cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
+        cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
+        cameraTransforms->active.store(true, std::memory_order_relaxed);
+    }
+
+    // Instant warp - see the contract comment on setNodePosition() in the header.
+    void GraphicsModule::setCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setCameraPositionOnRenderThread(camera, position);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, camera, position]()
+            {
+                this->setCameraPositionOnRenderThread(camera, position);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setCameraPosition");
+        }
+    }
+
+    void GraphicsModule::setCameraPositionOnRenderThread(Ogre::Camera* camera, const Ogre::Vector3& position)
+    {
+        camera->setPosition(position);
+
+        /*GraphicsModule::CameraTransforms* cameraTransforms = this->acquireCameraSlot(camera);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            cameraTransforms->transforms[i].position = position;
+        }
+
+        cameraTransforms->active.store(false, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::setCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setCameraOrientationOnRenderThread(camera, orientation);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, camera, orientation]()
+            {
+                this->setCameraOrientationOnRenderThread(camera, orientation);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setCameraOrientation");
+        }
+    }
+
+    void GraphicsModule::setCameraOrientationOnRenderThread(Ogre::Camera* camera, const Ogre::Quaternion& orientation)
+    {
+        camera->setOrientation(orientation);
+
+        /*GraphicsModule::CameraTransforms* cameraTransforms = this->acquireCameraSlot(camera);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            cameraTransforms->transforms[i].orientation = orientation;
+        }
+
+        cameraTransforms->active.store(false, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::setCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setCameraTransformOnRenderThread(camera, position, orientation);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, camera, position, orientation]()
+            {
+                this->setCameraTransformOnRenderThread(camera, position, orientation);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setCameraTransform");
+        }
+    }
+
+    void GraphicsModule::setCameraTransformOnRenderThread(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        camera->setPosition(position);
+        camera->setOrientation(orientation);
+
+        /*GraphicsModule::CameraTransforms* cameraTransforms = this->acquireCameraSlot(camera);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            cameraTransforms->transforms[i].position = position;
+            cameraTransforms->transforms[i].orientation = orientation;
+        }
+
+        cameraTransforms->active.store(false, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::addTrackedOldBone(Ogre::v1::OldBone* oldBone)
+    {
+        this->acquireOldBoneSlot(oldBone);
+    }
+
+    void GraphicsModule::removeTrackedOldBone(Ogre::v1::OldBone* oldBone)
+    {
+        std::lock_guard<std::mutex> lock(this->oldBoneRegistrationMutex);
+
+        auto it = this->oldBoneToIndexMap.find(oldBone);
+        if (it == this->oldBoneToIndexMap.end())
+        {
+            return;
+        }
+
+        size_t index = it->second;
+        OldBoneTransforms& slot = this->oldBonePool[index];
+
+        slot.oldBone.store(nullptr, std::memory_order_release);
+        slot.active.store(false, std::memory_order_relaxed);
+
+        this->oldBoneToIndexMap.erase(it);
+        this->freeOldBoneSlots.push_back(index);
+    }
+
+    void GraphicsModule::updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position)
+    {
+        // Always interpolated - call setOldBonePosition() instead for an instant warp.
+        GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
+
+        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
+        oldBoneTransforms->active.store(true, std::memory_order_relaxed);
+    }
+
+    void GraphicsModule::updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation)
+    {
+        // Always interpolated - call setOldBoneOrientation() instead for an instant warp.
+        GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
+
+        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
+        oldBoneTransforms->active.store(true, std::memory_order_relaxed);
+    }
+
+    void GraphicsModule::updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
+
+        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
+        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
+        oldBoneTransforms->active.store(true, std::memory_order_relaxed);
+    }
+
+    // Instant warp - see the contract comment on setNodePosition() in the header.
+    void GraphicsModule::setOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setOldBonePositionOnRenderThread(oldBone, position);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, oldBone, position]()
+            {
+                this->setOldBonePositionOnRenderThread(oldBone, position);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setOldBonePosition");
+        }
+    }
+
+    void GraphicsModule::setOldBonePositionOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position)
+    {
+        oldBone->setPosition(position);
+
+        /*GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            oldBoneTransforms->transforms[i].position = position;
+        }
+
+        oldBoneTransforms->active.store(false, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::setOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setOldBoneOrientationOnRenderThread(oldBone, orientation);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, oldBone, orientation]()
+            {
+                this->setOldBoneOrientationOnRenderThread(oldBone, orientation);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setOldBoneOrientation");
+        }
+    }
+
+    void GraphicsModule::setOldBoneOrientationOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation)
+    {
+        oldBone->setOrientation(orientation);
+
+        /*GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            oldBoneTransforms->transforms[i].orientation = orientation;
+        }
+
+        oldBoneTransforms->active.store(false, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::setOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setOldBoneTransformOnRenderThread(oldBone, position, orientation);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, oldBone, position, orientation]()
+            {
+                this->setOldBoneTransformOnRenderThread(oldBone, position, orientation);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setOldBoneTransform");
+        }
+    }
+
+    void GraphicsModule::setOldBoneTransformOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        oldBone->setPosition(position);
+        oldBone->setOrientation(orientation);
+
+        /*GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            oldBoneTransforms->transforms[i].position = position;
+            oldBoneTransforms->transforms[i].orientation = orientation;
+        }
+
+        oldBoneTransforms->active.store(false, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::addTrackedBone(Ogre::Bone* bone)
+    {
+        this->acquireBoneSlot(bone);
+    }
+
+    void GraphicsModule::removeTrackedBone(Ogre::Bone* bone)
+    {
+        std::lock_guard<std::mutex> lock(this->boneRegistrationMutex);
+
+        auto it = this->boneToIndexMap.find(bone);
+        if (it == this->boneToIndexMap.end())
+        {
+            return;
+        }
+
+        size_t index = it->second;
+        BoneTransforms& slot = this->bonePool[index];
+
+        slot.bone.store(nullptr, std::memory_order_release);
+        slot.active.store(false, std::memory_order_relaxed);
+
+        this->boneToIndexMap.erase(it);
+        this->freeBoneSlots.push_back(index);
+    }
+
+    void GraphicsModule::updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position)
+    {
+        GraphicsModule::BoneTransforms* boneTransforms = this->acquireBoneSlot(bone);
+
+        boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
+        boneTransforms->active.store(true, std::memory_order_relaxed);
+    }
+
+    void GraphicsModule::updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation)
+    {
+        // Always interpolated - call setBoneOrientation() instead for an instant warp.
+        GraphicsModule::BoneTransforms* boneTransforms = this->acquireBoneSlot(bone);
+
+        boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+        boneTransforms->active.store(true, std::memory_order_relaxed);
+    }
+
+    void GraphicsModule::updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        // Always interpolated - call setBoneTransform() instead for an instant warp.
+        GraphicsModule::BoneTransforms* boneTransforms = this->acquireBoneSlot(bone);
+
+        boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
+        boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+        boneTransforms->active.store(true, std::memory_order_relaxed);
+    }
+
+    // Instant warp - see the contract comment on setNodePosition() in the header.
+    void GraphicsModule::setBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setBonePositionOnRenderThread(bone, position);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, bone, position]()
+            {
+                this->setBonePositionOnRenderThread(bone, position);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setBonePosition");
+        }
+    }
+
+    void GraphicsModule::setBonePositionOnRenderThread(Ogre::Bone* bone, const Ogre::Vector3& position)
+    {
+        bone->setPosition(position);
+
+        /*GraphicsModule::BoneTransforms* boneTransforms = this->acquireBoneSlot(bone);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            boneTransforms->transforms[i].position = position;
+        }
+
+        boneTransforms->active.store(false, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::setBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setBoneOrientationOnRenderThread(bone, orientation);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, bone, orientation]()
+            {
+                this->setBoneOrientationOnRenderThread(bone, orientation);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setBoneOrientation");
+        }
+    }
+
+    void GraphicsModule::setBoneOrientationOnRenderThread(Ogre::Bone* bone, const Ogre::Quaternion& orientation)
+    {
+        bone->setOrientation(orientation);
+
+        /*GraphicsModule::BoneTransforms* boneTransforms = this->acquireBoneSlot(bone);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            boneTransforms->transforms[i].orientation = orientation;
+        }
+
+        boneTransforms->active.store(false, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::setBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        if (true == this->isRenderThread())
+        {
+            this->setBoneTransformOnRenderThread(bone, position, orientation);
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand command = [this, bone, position, orientation]()
+            {
+                this->setBoneTransformOnRenderThread(bone, position, orientation);
+            };
+            this->enqueueAndWait(std::move(command), "GraphicsModule::setBoneTransform");
+        }
+    }
+
+    void GraphicsModule::setBoneTransformOnRenderThread(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        bone->setPosition(position);
+        bone->setOrientation(orientation);
+
+        /*GraphicsModule::BoneTransforms* boneTransforms = this->acquireBoneSlot(bone);
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            boneTransforms->transforms[i].position = position;
+            boneTransforms->transforms[i].orientation = orientation;
+        }
+
+        boneTransforms->active.store(false, std::memory_order_relaxed);*/
+    }
+
+    void GraphicsModule::addTrackedPass(Ogre::Pass* pass)
+    {
+        this->acquirePassSlot(pass);
+    }
+
+    void GraphicsModule::removeTrackedPass(Ogre::Pass* pass)
+    {
+        std::lock_guard<std::mutex> lock(this->passRegistrationMutex);
+
+        auto it = this->passToIndexMap.find(pass);
+        if (it == this->passToIndexMap.end())
+        {
+            return;
+        }
+
+        size_t index = it->second;
+        PassTransforms& slot = this->passPool[index];
+
+        slot.pass.store(nullptr, std::memory_order_release);
+        slot.active.store(false, std::memory_order_relaxed);
+
+        this->passToIndexMap.erase(it);
+        this->freePassSlots.push_back(index);
     }
 
     void GraphicsModule::updatePassSpeedsX(Ogre::Pass* pass, unsigned short index, Ogre::Real speedX)
     {
-        GraphicsModule::PassTransforms* passTransform = this->findPassTransforms(pass);
-        if (nullptr == passTransform)
-        {
-            this->addTrackedPass(pass);
-            passTransform = this->findPassTransforms(pass);
-        }
+        GraphicsModule::PassTransforms* passTransform = this->acquirePassSlot(pass);
 
         passTransform->transforms[this->currentTransformPassIdx].speedsX[index] = speedX;
-        passTransform->active = true;
+        passTransform->active.store(true, std::memory_order_relaxed);
     }
 
     void GraphicsModule::updatePassSpeedsY(Ogre::Pass* pass, unsigned short index, Ogre::Real speedY)
     {
-        GraphicsModule::PassTransforms* passTransform = this->findPassTransforms(pass);
-        if (nullptr == passTransform)
-        {
-            this->addTrackedPass(pass);
-            passTransform = this->findPassTransforms(pass);
-        }
+        GraphicsModule::PassTransforms* passTransform = this->acquirePassSlot(pass);
 
         passTransform->transforms[this->currentTransformPassIdx].speedsY[index] = speedY;
-        passTransform->active = true;
+        passTransform->active.store(true, std::memory_order_relaxed);
     }
 
     void GraphicsModule::addTrackedDatablock(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, std::function<void(Ogre::ColourValue)> applyFunc,
         std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc)
     {
-        if (this->datablockToIndexMap.count(datablock))
-        {
-            return;
-        }
-
-        TrackedDatablock tracked;
-        tracked.datablock = datablock;
-        tracked.applyFunc = std::move(applyFunc);
-        tracked.interpolateFunc = std::move(interpFunc);
-        tracked.active = true;
-        tracked.isNew = true;
-
-        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-        {
-            tracked.values[i] = initialValue;
-        }
-
-        size_t newIndex = this->trackedDatablocks.size();
-        this->trackedDatablocks.push_back(std::move(tracked));
-        this->datablockToIndexMap[datablock] = newIndex;
+        this->acquireDatablockSlot(datablock, initialValue, std::move(applyFunc), std::move(interpFunc));
     }
 
     void GraphicsModule::removeTrackedDatablock(Ogre::HlmsDatablock* datablock)
     {
-        if (this->trackedDatablocks.empty())
+        std::lock_guard<std::mutex> lock(this->datablockRegistrationMutex);
+
+        auto it = this->datablockToIndexMap.find(datablock);
+        if (it == this->datablockToIndexMap.end())
         {
             return;
         }
 
-        auto it = this->datablockToIndexMap.find(datablock);
-        if (it != this->datablockToIndexMap.end())
-        {
-            size_t indexToRemove = it->second;
-            size_t lastIndex = this->trackedDatablocks.size() - 1;
+        size_t index = it->second;
+        TrackedDatablock& slot = this->datablockPool[index];
 
-            // If this is not the last element, move the last element to this position
-            if (indexToRemove != lastIndex)
-            {
-                // Move the last element to the position of the removed element
-                this->trackedDatablocks[indexToRemove] = std::move(this->trackedDatablocks[lastIndex]);
+        slot.datablock.store(nullptr, std::memory_order_release);
+        slot.active.store(false, std::memory_order_relaxed);
 
-                // Update the index in the hash map for the moved element
-                this->datablockToIndexMap[this->trackedDatablocks[indexToRemove].datablock] = indexToRemove;
-            }
-
-            // Remove the last element (now duplicated or the one we want to remove)
-            this->trackedDatablocks.pop_back();
-
-            // Remove from the hash map
-            this->datablockToIndexMap.erase(it);
-        }
+        this->datablockToIndexMap.erase(it);
+        this->freeDatablockSlots.push_back(index);
     }
 
     void GraphicsModule::updateTrackedDatablockValue(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, const Ogre::ColourValue& targetValue, std::function<void(Ogre::ColourValue)> applyFunc,
         std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc)
     {
-        GraphicsModule::TrackedDatablock* trackedDatablock = this->findTrackedDatablock(datablock);
-
-        // If datablock isn't tracked yet, add it
-        if (nullptr == trackedDatablock)
-        {
-            this->addTrackedDatablock(datablock, initialValue, applyFunc, interpFunc);
-            trackedDatablock = this->findTrackedDatablock(datablock);
-        }
+        // acquireDatablockSlot() only actually consumes initialValue/applyFunc/interpFunc
+        // on first contact (when it has to create or recycle a slot); on every later
+        // call for the same datablock it is purely a lock-free cache hit, and these
+        // arguments are simply ignored - matching the original find-or-create semantics.
+        GraphicsModule::TrackedDatablock* trackedDatablock = this->acquireDatablockSlot(datablock, initialValue, std::move(applyFunc), std::move(interpFunc));
 
         trackedDatablock->values[this->currentTrackedDatablockIdx] = targetValue;
-        //  Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "updateTrackedDatablockValue tracked intex: " + Ogre::StringConverter::toString(this->currentTrackedDatablockIdx)
-        //      + " targetValue: " + Ogre::StringConverter::toString(targetValue));
-        trackedDatablock->active = true;
+        trackedDatablock->active.store(true, std::memory_order_relaxed);
     }
 
     void GraphicsModule::flushTransforms(void)
     {
-        // Called synchronously on the render thread after undo, before
-        // the next startSimulation() snapshot. Writes the current buffer
-        // slot directly to scene nodes with no interpolation, so that
-        // getSceneNode()->getPosition() returns the correct undo'd value.
-        for (const auto& nodeTransform : this->trackedNodes)
+        for (auto& nodeTransform : this->nodePool)
         {
-            if (false == nodeTransform.active || nullptr == nodeTransform.node)
+            Ogre::Node* node = nodeTransform.node.load(std::memory_order_acquire);
+            if (false == nodeTransform.active.load(std::memory_order_relaxed) || nullptr == node)
             {
                 continue;
             }
 
             const TransformData& t = nodeTransform.transforms[this->currentTransformNodeIdx];
 
-            if (false == nodeTransform.useDerived)
+            if (false == nodeTransform.useDerived.load(std::memory_order_relaxed))
             {
-                nodeTransform.node->setPosition(t.position);
-                nodeTransform.node->setOrientation(t.orientation);
-                nodeTransform.node->setScale(t.scale);
+                node->setPosition(t.position);
+                node->setOrientation(t.orientation);
+                node->setScale(t.scale);
             }
             else
             {
-                nodeTransform.node->_setDerivedPosition(t.position);
-                nodeTransform.node->_setDerivedOrientation(t.orientation);
+                node->_setDerivedPosition(t.position);
+                node->_setDerivedOrientation(t.orientation);
             }
         }
     }
@@ -1969,18 +2407,19 @@ namespace NOWA
             logManager.logMessage(Ogre::LML_CRITICAL, "=== BUFFER STATE DUMP ===", false);
             logManager.logMessage(Ogre::LML_CRITICAL, "Current buffer index: " + std::to_string(this->currentTransformNodeIdx), false);
             logManager.logMessage(Ogre::LML_CRITICAL, "Previous buffer index: " + std::to_string(this->getPreviousTransformNodeIdx()), false);
-            logManager.logMessage(Ogre::LML_CRITICAL, "Tracked nodes: " + std::to_string(this->trackedNodes.size()), false);
+            logManager.logMessage(Ogre::LML_CRITICAL, "Tracked nodes: " + std::to_string(this->nodePool.size()), false);
 
-            for (size_t i = 0; i < this->trackedNodes.size(); ++i)
+            for (size_t i = 0; i < this->nodePool.size(); ++i)
             {
-                const auto nodeTransform = this->trackedNodes[i];
-                logManager.logMessage(Ogre::LML_CRITICAL, "Node " + std::to_string(i) + " (" + Ogre::StringConverter::toString(nodeTransform.node) + "):", false);
-                logManager.logMessage(Ogre::LML_CRITICAL, "  Active: " + std::string(nodeTransform.active ? "yes" : "no"), false);
+                const NodeTransforms& nodeTransform = this->nodePool[i];
+                Ogre::Node* node = nodeTransform.node.load(std::memory_order_relaxed);
+                logManager.logMessage(Ogre::LML_CRITICAL, "Node " + std::to_string(i) + " (" + Ogre::StringConverter::toString(node) + "):", false);
+                logManager.logMessage(Ogre::LML_CRITICAL, "  Active: " + std::string(nodeTransform.active.load(std::memory_order_relaxed) ? "yes" : "no"), false);
                 logManager.logMessage(Ogre::LML_CRITICAL, "  New: " + std::string(nodeTransform.isNew ? "yes" : "no"), false);
 
                 for (size_t j = 0; j < NUM_TRANSFORM_BUFFERS; ++j)
                 {
-                    const auto transform = nodeTransform.transforms[j];
+                    const auto& transform = nodeTransform.transforms[j];
                     logManager.logMessage(Ogre::LML_CRITICAL, "  Buffer " + std::to_string(j) + ":", false);
                     logManager.logMessage(Ogre::LML_CRITICAL, "    Position: " + Ogre::StringConverter::toString(transform.position), false);
                     logManager.logMessage(Ogre::LML_CRITICAL, "    Orientation: " + Ogre::StringConverter::toString(transform.orientation), false);
@@ -1994,270 +2433,220 @@ namespace NOWA
 
     void GraphicsModule::advanceTransformBuffer(void)
     {
-        // Runs in Main thread
-
-        const int maxStableFrames = 4;
+        // Runs in Main thread.
 
         // =========================================================================
-        // Node transforms
+        // Node transforms — NO MUTEX in the loop body
         // =========================================================================
-        size_t prevIdx = this->currentTransformNodeIdx;
-        this->currentTransformNodeIdx = (this->currentTransformNodeIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-        if (true == this->debugVisualization)
         {
-            this->logCommandEvent("[RenderCommandQueueModule]: Advanced buffer from " + Ogre::StringConverter::toString(prevIdx) + " to " + Ogre::StringConverter::toString(this->currentTransformNodeIdx), Ogre::LML_TRIVIAL);
-        }
+            size_t prevIdx = this->currentTransformNodeIdx;
+            this->currentTransformNodeIdx = (this->currentTransformNodeIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
-        for (auto& nodeTransform : this->trackedNodes)
-        {
-            if (true == nodeTransform.isNew)
+            if (true == this->debugVisualization)
             {
-                if (nullptr == nodeTransform.node)
-                {
-                    nodeTransform.stableFrames = maxStableFrames;
-                    continue;
-                }
-
-                GraphicsModule::TransformData currentTransform;
-                if (true == nodeTransform.useDerived)
-                {
-                    currentTransform.position = nodeTransform.node->_getDerivedPosition();
-                    currentTransform.orientation = nodeTransform.node->_getDerivedOrientation();
-                    currentTransform.scale = nodeTransform.node->_getDerivedScale();
-                }
-                else
-                {
-                    currentTransform.position = nodeTransform.node->getPosition();
-                    currentTransform.orientation = nodeTransform.node->getOrientation();
-                    currentTransform.scale = nodeTransform.node->getScale();
-                }
-
-                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-                {
-                    nodeTransform.transforms[i] = currentTransform;
-                }
-
-                nodeTransform.isNew = false;
-                nodeTransform.stableFrames = 0;
-                nodeTransform.updatedThisFrame = false;
+                this->logCommandEvent("[RenderCommandQueueModule]: Advanced buffer from " + Ogre::StringConverter::toString(prevIdx) + " to " + Ogre::StringConverter::toString(this->currentTransformNodeIdx), Ogre::LML_TRIVIAL);
             }
-            else if (true == nodeTransform.active)
-            {
-                if (nodeTransform.updatedThisFrame)
-                {
-                    nodeTransform.stableFrames = 0;
-                }
-                else
-                {
-                    ++nodeTransform.stableFrames;
-                }
 
-                nodeTransform.transforms[this->currentTransformNodeIdx] = nodeTransform.transforms[prevIdx];
-                nodeTransform.updatedThisFrame = false;
-            }
-            // active==false (fireAndForget): do nothing — buffer is already correct,
-            // stableFrames==0 so no eviction, node just sits dormant until next physics write.
-        }
-
-        for (int i = static_cast<int>(this->trackedNodes.size()) - 1; i >= 0; --i)
-        {
-            NodeTransforms& nodeTransform = this->trackedNodes[i];
-            if (nodeTransform.stableFrames >= maxStableFrames)
+            for (auto& nodeTransform : this->nodePool)
             {
-                this->removeTrackedNode(nodeTransform.node);
+                Ogre::Node* node = nodeTransform.node.load(std::memory_order_acquire);
+
+                if (true == nodeTransform.isNew)
+                {
+                    if (nullptr == node)
+                    {
+                        continue;
+                    }
+
+                    GraphicsModule::TransformData currentTransform;
+                    if (true == nodeTransform.useDerived.load(std::memory_order_relaxed))
+                    {
+                        currentTransform.position = node->_getDerivedPosition();
+                        currentTransform.orientation = node->_getDerivedOrientation();
+                        currentTransform.scale = node->_getDerivedScale();
+                    }
+                    else
+                    {
+                        currentTransform.position = node->getPosition();
+                        currentTransform.orientation = node->getOrientation();
+                        currentTransform.scale = node->getScale();
+                    }
+
+                    for (size_t b = 0; b < NUM_TRANSFORM_BUFFERS; ++b)
+                    {
+                        nodeTransform.transforms[b] = currentTransform;
+                    }
+
+                    nodeTransform.isNew = false;
+                }
+                else if (true == nodeTransform.active.load(std::memory_order_relaxed))
+                {
+                    // Carry the last value forward into the new current slot. A node
+                    // that genuinely is not being updated this tick simply keeps
+
+                    nodeTransform.transforms[this->currentTransformNodeIdx] = nodeTransform.transforms[prevIdx];
+                }
             }
         }
 
         // =========================================================================
         // Camera transforms
         // =========================================================================
-        size_t prevCameraIdx = this->currentTransformCameraIdx;
-        this->currentTransformCameraIdx = (this->currentTransformCameraIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-        for (auto& cameraTransform : this->trackedCameras)
         {
-            if (true == cameraTransform.isNew)
+            size_t prevCameraIdx = this->currentTransformCameraIdx;
+            this->currentTransformCameraIdx = (this->currentTransformCameraIdx + 1) % NUM_TRANSFORM_BUFFERS;
+
+            for (auto& cameraTransform : this->cameraPool)
             {
-                GraphicsModule::CameraTransformData currentTransform;
-                currentTransform.position = cameraTransform.camera->getPosition();
-                currentTransform.orientation = cameraTransform.camera->getOrientation();
+                Ogre::Camera* camera = cameraTransform.camera.load(std::memory_order_acquire);
 
-                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                if (true == cameraTransform.isNew)
                 {
-                    cameraTransform.transforms[i] = currentTransform;
-                }
+                    if (nullptr == camera)
+                    {
+                        continue;
+                    }
 
-                cameraTransform.isNew = false;
-                cameraTransform.stableFrames = 0;
-                cameraTransform.updatedThisFrame = false;
-            }
-            else if (true == cameraTransform.active)
-            {
-                if (cameraTransform.updatedThisFrame)
+                    GraphicsModule::CameraTransformData currentTransform;
+                    currentTransform.position = camera->getPosition();
+                    currentTransform.orientation = camera->getOrientation();
+
+                    for (size_t b = 0; b < NUM_TRANSFORM_BUFFERS; ++b)
+                    {
+                        cameraTransform.transforms[b] = currentTransform;
+                    }
+
+                    cameraTransform.isNew = false;
+                }
+                else if (true == cameraTransform.active.load(std::memory_order_relaxed))
                 {
-                    cameraTransform.stableFrames = 0;
+                    cameraTransform.transforms[this->currentTransformCameraIdx] = cameraTransform.transforms[prevCameraIdx];
                 }
-                else
-                {
-                    ++cameraTransform.stableFrames;
-                }
-
-                cameraTransform.transforms[this->currentTransformCameraIdx] = cameraTransform.transforms[prevCameraIdx];
-                cameraTransform.updatedThisFrame = false;
-            }
-        }
-
-        for (int i = static_cast<int>(this->trackedCameras.size()) - 1; i >= 0; --i)
-        {
-            CameraTransforms& cameraTransform = this->trackedCameras[i];
-            if (cameraTransform.stableFrames >= maxStableFrames)
-            {
-                this->removeTrackedCamera(cameraTransform.camera);
             }
         }
 
         // =========================================================================
         // OldBone transforms
         // =========================================================================
-        size_t prevOldBoneIdx = this->currentTransformOldBoneIdx;
-        this->currentTransformOldBoneIdx = (this->currentTransformOldBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-        for (auto& oldBoneTransform : this->trackedOldBones)
         {
-            if (true == oldBoneTransform.isNew)
+            size_t prevOldBoneIdx = this->currentTransformOldBoneIdx;
+            this->currentTransformOldBoneIdx = (this->currentTransformOldBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
+
+            for (auto& oldBoneTransform : this->oldBonePool)
             {
-                GraphicsModule::TransformData currentTransform;
-                currentTransform.position = oldBoneTransform.oldBone->getPosition();
-                currentTransform.orientation = oldBoneTransform.oldBone->getOrientation();
+                Ogre::v1::OldBone* oldBone = oldBoneTransform.oldBone.load(std::memory_order_acquire);
 
-                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                if (true == oldBoneTransform.isNew)
                 {
-                    oldBoneTransform.transforms[i] = currentTransform;
-                }
+                    if (nullptr == oldBone)
+                    {
+                        continue;
+                    }
 
-                oldBoneTransform.isNew = false;
-                oldBoneTransform.stableFrames = 0;
-                oldBoneTransform.updatedThisFrame = false;
-            }
-            else if (true == oldBoneTransform.active)
-            {
-                if (oldBoneTransform.updatedThisFrame)
+                    GraphicsModule::TransformData currentTransform;
+                    currentTransform.position = oldBone->getPosition();
+                    currentTransform.orientation = oldBone->getOrientation();
+
+                    for (size_t b = 0; b < NUM_TRANSFORM_BUFFERS; ++b)
+                    {
+                        oldBoneTransform.transforms[b] = currentTransform;
+                    }
+
+                    oldBoneTransform.isNew = false;
+                }
+                else if (true == oldBoneTransform.active.load(std::memory_order_relaxed))
                 {
-                    oldBoneTransform.stableFrames = 0;
+                    oldBoneTransform.transforms[this->currentTransformOldBoneIdx] = oldBoneTransform.transforms[prevOldBoneIdx];
                 }
-                else
-                {
-                    ++oldBoneTransform.stableFrames;
-                }
-
-                oldBoneTransform.transforms[this->currentTransformOldBoneIdx] = oldBoneTransform.transforms[prevOldBoneIdx];
-                oldBoneTransform.updatedThisFrame = false;
-            }
-        }
-
-        for (int i = static_cast<int>(this->trackedOldBones.size()) - 1; i >= 0; --i)
-        {
-            OldBoneTransforms& oldBoneTransform = this->trackedOldBones[i];
-            if (oldBoneTransform.stableFrames >= maxStableFrames)
-            {
-                this->removeTrackedOldBone(oldBoneTransform.oldBone);
             }
         }
 
         // =========================================================================
         // Bone transforms
         // =========================================================================
-        size_t prevBoneIdx = this->currentTransformBoneIdx;
-        this->currentTransformBoneIdx = (this->currentTransformBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-        for (auto& boneTransform : this->trackedBones)
         {
-            if (true == boneTransform.isNew)
+            size_t prevBoneIdx = this->currentTransformBoneIdx;
+            this->currentTransformBoneIdx = (this->currentTransformBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
+
+            for (auto& boneTransform : this->bonePool)
             {
-                GraphicsModule::TransformData currentTransform;
-                currentTransform.position = boneTransform.bone->getPosition();
-                currentTransform.orientation = boneTransform.bone->getOrientation();
+                Ogre::Bone* bone = boneTransform.bone.load(std::memory_order_acquire);
 
-                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                if (true == boneTransform.isNew)
                 {
-                    boneTransform.transforms[i] = currentTransform;
-                }
+                    if (nullptr == bone)
+                    {
+                        continue;
+                    }
 
-                boneTransform.isNew = false;
-                boneTransform.stableFrames = 0;
-                boneTransform.updatedThisFrame = false;
-            }
-            else if (true == boneTransform.active)
-            {
-                if (boneTransform.updatedThisFrame)
-                {
-                    boneTransform.stableFrames = 0;
-                }
-                else
-                {
-                    ++boneTransform.stableFrames;
-                }
+                    GraphicsModule::TransformData currentTransform;
+                    currentTransform.position = bone->getPosition();
+                    currentTransform.orientation = bone->getOrientation();
 
-                boneTransform.transforms[this->currentTransformBoneIdx] = boneTransform.transforms[prevBoneIdx];
-                boneTransform.updatedThisFrame = false;
+                    for (size_t b = 0; b < NUM_TRANSFORM_BUFFERS; ++b)
+                    {
+                        boneTransform.transforms[b] = currentTransform;
+                    }
+
+                    boneTransform.isNew = false;
+                }
+                else if (true == boneTransform.active.load(std::memory_order_relaxed))
+                {
+                    boneTransform.transforms[this->currentTransformBoneIdx] = boneTransform.transforms[prevBoneIdx];
+                }
             }
         }
 
-        for (int i = static_cast<int>(this->trackedBones.size()) - 1; i >= 0; --i)
+        // =========================================================================
+        // Pass transforms (no eviction)
+        // =========================================================================
         {
-            BoneTransforms& boneTransform = this->trackedBones[i];
-            if (boneTransform.stableFrames >= maxStableFrames)
+            size_t prevPassIdx = this->currentTransformPassIdx;
+            this->currentTransformPassIdx = (this->currentTransformPassIdx + 1) % NUM_TRANSFORM_BUFFERS;
+
+            for (auto& passTransform : this->passPool)
             {
-                this->removeTrackedBone(boneTransform.bone);
-            }
-        }
-
-        size_t prevPassIdx = this->currentTransformPassIdx;
-        this->currentTransformPassIdx = (this->currentTransformPassIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-        for (auto& passTransform : this->trackedPasses)
-        {
-            if (passTransform.isNew)
-            {
-                // Initialize all buffers with current pass state
-                GraphicsModule::PassSpeedData currentData;
-
-                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                if (passTransform.isNew)
                 {
-                    passTransform.transforms[i] = currentData;
+                    GraphicsModule::PassSpeedData currentData;
+
+                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                    {
+                        passTransform.transforms[i] = currentData;
+                    }
+                    passTransform.isNew = false;
                 }
-                passTransform.isNew = false;
-            }
-            else if (passTransform.active)
-            {
-                // Copy previous buffer to current buffer
-                passTransform.transforms[this->currentTransformPassIdx] = passTransform.transforms[prevPassIdx];
-            }
-        }
-
-        // Advance datablock buffer
-
-        size_t prevDatablockIdx = this->currentTrackedDatablockIdx;
-        this->currentTrackedDatablockIdx = (this->currentTrackedDatablockIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-        for (auto& datablock : this->trackedDatablocks)
-        {
-            if (datablock.isNew)
-            {
-                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                else if (passTransform.active.load(std::memory_order_relaxed))
                 {
-                    datablock.values[i] = datablock.values[this->currentTrackedDatablockIdx];
+                    passTransform.transforms[this->currentTransformPassIdx] = passTransform.transforms[prevPassIdx];
                 }
-                datablock.isNew = false;
-            }
-            else if (datablock.active)
-            {
-                datablock.values[this->currentTrackedDatablockIdx] = datablock.values[prevDatablockIdx];
             }
         }
 
-        // Reset accumulated time for new frame
+        // =========================================================================
+        // Datablock transforms (no eviction)
+        // =========================================================================
+        {
+            size_t prevDatablockIdx = this->currentTrackedDatablockIdx;
+            this->currentTrackedDatablockIdx = (this->currentTrackedDatablockIdx + 1) % NUM_TRANSFORM_BUFFERS;
+
+            for (auto& datablock : this->datablockPool)
+            {
+                if (datablock.isNew)
+                {
+                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                    {
+                        datablock.values[i] = datablock.values[this->currentTrackedDatablockIdx];
+                    }
+                    datablock.isNew = false;
+                }
+                else if (datablock.active.load(std::memory_order_relaxed))
+                {
+                    datablock.values[this->currentTrackedDatablockIdx] = datablock.values[prevDatablockIdx];
+                }
+            }
+        }
+
         this->accumTimeSinceLastLogicFrame = 0.0f;
     }
 
@@ -2267,35 +2656,43 @@ namespace NOWA
         size_t prevIdx = this->getPreviousTransformNodeIdx();
 
         // Update all active nodes
-        for (const auto& nodeTransform : this->trackedNodes)
         {
-            if (true == nodeTransform.active)
+            for (const auto& nodeTransform : this->nodePool)
             {
-                // Get previous and current transforms
-                const GraphicsModule::TransformData& prevTransform = nodeTransform.transforms[prevIdx];
-                const GraphicsModule::TransformData& currTransform = nodeTransform.transforms[this->currentTransformNodeIdx];
-
-                // Interpolate position
-                Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
-
-                // Interpolate orientation
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
-
-                // Interpolate scale
-                Ogre::Vector3 interpScale = Ogre::Math::lerp(prevTransform.scale, currTransform.scale, this->interpolationWeight);
-
-                // Apply to scene node
-                if (!nodeTransform.useDerived)
+                if (true == nodeTransform.active.load(std::memory_order_relaxed))
                 {
-                    nodeTransform.node->setPosition(interpPos);
-                    nodeTransform.node->setOrientation(interpRot);
-                    nodeTransform.node->setScale(interpScale);
-                }
-                else
-                {
-                    nodeTransform.node->_setDerivedPosition(interpPos);
-                    nodeTransform.node->_setDerivedOrientation(interpRot);
-                    // Comment says: "Scale only on non-derived path"
+                    Ogre::Node* node = nodeTransform.node.load(std::memory_order_relaxed);
+                    if (nullptr == node)
+                    {
+                        continue;
+                    }
+
+                    // Get previous and current transforms
+                    const GraphicsModule::TransformData& prevTransform = nodeTransform.transforms[prevIdx];
+                    const GraphicsModule::TransformData& currTransform = nodeTransform.transforms[this->currentTransformNodeIdx];
+
+                    // Interpolate position
+                    Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
+
+                    // Interpolate orientation
+                    Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
+
+                    // Interpolate scale
+                    Ogre::Vector3 interpScale = Ogre::Math::lerp(prevTransform.scale, currTransform.scale, this->interpolationWeight);
+
+                    // Apply to scene node
+                    if (false == nodeTransform.useDerived.load(std::memory_order_relaxed))
+                    {
+                        node->setPosition(interpPos);
+                        node->setOrientation(interpRot);
+                        node->setScale(interpScale);
+                    }
+                    else
+                    {
+                        node->_setDerivedPosition(interpPos);
+                        node->_setDerivedOrientation(interpRot);
+                        // Comment says: "Scale only on non-derived path"
+                    }
                 }
             }
         }
@@ -2306,23 +2703,31 @@ namespace NOWA
         size_t prevCameraIdx = this->getPreviousTransformCameraIdx();
 
         // Update all active cameras
-        for (const auto& cameraTransform : this->trackedCameras)
         {
-            if (true == cameraTransform.active)
+            for (const auto& cameraTransform : this->cameraPool)
             {
-                // Get previous and current transforms
-                const GraphicsModule::CameraTransformData& prevTransform = cameraTransform.transforms[prevCameraIdx];
-                const GraphicsModule::CameraTransformData& currTransform = cameraTransform.transforms[this->currentTransformCameraIdx];
+                if (true == cameraTransform.active.load(std::memory_order_relaxed))
+                {
+                    Ogre::Camera* camera = cameraTransform.camera.load(std::memory_order_relaxed);
+                    if (nullptr == camera)
+                    {
+                        continue;
+                    }
 
-                // Interpolate position
-                Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
+                    // Get previous and current transforms
+                    const GraphicsModule::CameraTransformData& prevTransform = cameraTransform.transforms[prevCameraIdx];
+                    const GraphicsModule::CameraTransformData& currTransform = cameraTransform.transforms[this->currentTransformCameraIdx];
 
-                // Interpolate orientation
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
+                    // Interpolate position
+                    Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
 
-                // Apply to scene camera
-                cameraTransform.camera->setOrientation(interpRot);
-                cameraTransform.camera->setPosition(interpPos);
+                    // Interpolate orientation
+                    Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
+
+                    // Apply to scene camera
+                    camera->setOrientation(interpRot);
+                    camera->setPosition(interpPos);
+                }
             }
         }
 
@@ -2332,23 +2737,31 @@ namespace NOWA
         size_t prevOldBoneIdx = this->getPreviousTransformOldBoneIdx();
 
         // Update all active oldBones
-        for (const auto& oldBoneTransform : this->trackedOldBones)
         {
-            if (true == oldBoneTransform.active)
+            for (const auto& oldBoneTransform : this->oldBonePool)
             {
-                // Get previous and current transforms
-                const GraphicsModule::TransformData& prevTransform = oldBoneTransform.transforms[prevOldBoneIdx];
-                const GraphicsModule::TransformData& currTransform = oldBoneTransform.transforms[this->currentTransformOldBoneIdx];
+                if (true == oldBoneTransform.active.load(std::memory_order_relaxed))
+                {
+                    Ogre::v1::OldBone* oldBone = oldBoneTransform.oldBone.load(std::memory_order_relaxed);
+                    if (nullptr == oldBone)
+                    {
+                        continue;
+                    }
 
-                // Interpolate position
-                Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
+                    // Get previous and current transforms
+                    const GraphicsModule::TransformData& prevTransform = oldBoneTransform.transforms[prevOldBoneIdx];
+                    const GraphicsModule::TransformData& currTransform = oldBoneTransform.transforms[this->currentTransformOldBoneIdx];
 
-                // Interpolate orientation
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
+                    // Interpolate position
+                    Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
 
-                // Apply to scene oldBone
-                oldBoneTransform.oldBone->setOrientation(interpRot);
-                oldBoneTransform.oldBone->setPosition(interpPos);
+                    // Interpolate orientation
+                    Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
+
+                    // Apply to scene oldBone
+                    oldBone->setOrientation(interpRot);
+                    oldBone->setPosition(interpPos);
+                }
             }
         }
 
@@ -2356,46 +2769,62 @@ namespace NOWA
 
         size_t prevBoneIdx = this->getPreviousTransformBoneIdx();
 
-        for (const auto& boneTransform : this->trackedBones)
         {
-            if (true == boneTransform.active)
+            for (const auto& boneTransform : this->bonePool)
             {
-                const GraphicsModule::TransformData& prevTransform = boneTransform.transforms[prevBoneIdx];
-                const GraphicsModule::TransformData& currTransform = boneTransform.transforms[this->currentTransformBoneIdx];
+                if (true == boneTransform.active.load(std::memory_order_relaxed))
+                {
+                    Ogre::Bone* bone = boneTransform.bone.load(std::memory_order_relaxed);
+                    if (nullptr == bone)
+                    {
+                        continue;
+                    }
 
-                Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
+                    const GraphicsModule::TransformData& prevTransform = boneTransform.transforms[prevBoneIdx];
+                    const GraphicsModule::TransformData& currTransform = boneTransform.transforms[this->currentTransformBoneIdx];
 
-                boneTransform.bone->setOrientation(interpRot);
-                boneTransform.bone->setPosition(interpPos);
+                    Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
+                    Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
+
+                    bone->setOrientation(interpRot);
+                    bone->setPosition(interpPos);
+                }
             }
         }
 
         size_t prevPassIdx = this->getPreviousTransformPassIdx();
 
-        for (const auto& passTransform : this->trackedPasses)
         {
-            if (passTransform.active)
+            for (const auto& passTransform : this->passPool)
             {
-                const GraphicsModule::PassSpeedData& prev = passTransform.transforms[prevPassIdx];
-                const GraphicsModule::PassSpeedData& curr = passTransform.transforms[this->currentTransformPassIdx];
-
-                Ogre::Real interpX[9];
-                Ogre::Real interpY[9];
-
-                for (int i = 0; i < 9; ++i)
+                if (passTransform.active.load(std::memory_order_relaxed))
                 {
-                    interpX[i] = Ogre::Math::lerp(prev.speedsX[i], curr.speedsX[i], this->interpolationWeight);
-                    interpY[i] = Ogre::Math::lerp(prev.speedsY[i], curr.speedsY[i], this->interpolationWeight);
+                    Ogre::Pass* pass = passTransform.pass.load(std::memory_order_relaxed);
+                    if (nullptr == pass)
+                    {
+                        continue;
+                    }
 
-                    /*Ogre::LogManager::getSingletonPtr()->logMessage(
-                        "[Render] Layer " + std::to_string(i) +
-                        ": X=" + Ogre::StringConverter::toString(interpX[i]) +
-                        " Y=" + Ogre::StringConverter::toString(interpY[i]));*/
+                    const GraphicsModule::PassSpeedData& prev = passTransform.transforms[prevPassIdx];
+                    const GraphicsModule::PassSpeedData& curr = passTransform.transforms[this->currentTransformPassIdx];
+
+                    Ogre::Real interpX[9];
+                    Ogre::Real interpY[9];
+
+                    for (int i = 0; i < 9; ++i)
+                    {
+                        interpX[i] = Ogre::Math::lerp(prev.speedsX[i], curr.speedsX[i], this->interpolationWeight);
+                        interpY[i] = Ogre::Math::lerp(prev.speedsY[i], curr.speedsY[i], this->interpolationWeight);
+
+                        /*Ogre::LogManager::getSingletonPtr()->logMessage(
+                            "[Render] Layer " + std::to_string(i) +
+                            ": X=" + Ogre::StringConverter::toString(interpX[i]) +
+                            " Y=" + Ogre::StringConverter::toString(interpY[i]));*/
+                    }
+
+                    pass->getFragmentProgramParameters()->setNamedConstant("speedsX", interpX, 9, 1);
+                    pass->getFragmentProgramParameters()->setNamedConstant("speedsY", interpY, 9, 1);
                 }
-
-                passTransform.pass->getFragmentProgramParameters()->setNamedConstant("speedsX", interpX, 9, 1);
-                passTransform.pass->getFragmentProgramParameters()->setNamedConstant("speedsY", interpY, 9, 1);
             }
         }
 
@@ -2404,19 +2833,26 @@ namespace NOWA
         // Get the previous buffer index
         size_t prevTrackedDatablockIdx = this->getPreviousTrackedDatablockIdx();
 
-        for (const auto& trackedDatablock : this->trackedDatablocks)
         {
-            if (false == trackedDatablock.active)
+            for (const auto& trackedDatablock : this->datablockPool)
             {
-                continue;
+                if (false == trackedDatablock.active.load(std::memory_order_relaxed))
+                {
+                    continue;
+                }
+
+                if (nullptr == trackedDatablock.datablock.load(std::memory_order_relaxed))
+                {
+                    continue;
+                }
+
+                const Ogre::ColourValue& prev = trackedDatablock.values[prevTrackedDatablockIdx];
+                const Ogre::ColourValue& curr = trackedDatablock.values[this->currentTrackedDatablockIdx];
+
+                Ogre::ColourValue result = trackedDatablock.interpolateFunc(prev, curr, this->interpolationWeight);
+
+                trackedDatablock.applyFunc(result);
             }
-
-            const Ogre::ColourValue& prev = trackedDatablock.values[prevTrackedDatablockIdx];
-            const Ogre::ColourValue& curr = trackedDatablock.values[this->currentTrackedDatablockIdx];
-
-            Ogre::ColourValue result = trackedDatablock.interpolateFunc(prev, curr, this->interpolationWeight);
-
-            trackedDatablock.applyFunc(result);
         }
 
         // Note: updateAndExecuteClosures() is no longer called here.

@@ -5,6 +5,8 @@
 #include "OgreHlmsManager.h"
 #include "modules/GraphicsModule.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
 	FaderProcess::FaderProcess(FadeOperation fadeOperation, Ogre::Real duration, Interpolator::EaseFunctions selectedEaseFunction, Ogre::Real continueAlpha, Ogre::Real continueDuration, Ogre::Real speedMultiplier)

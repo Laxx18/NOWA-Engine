@@ -353,6 +353,7 @@
     <ClInclude Include="planetocean\PlanetOcean.h" />
     <ClInclude Include="planetsun\PlanetSun.h" />
     <ClInclude Include="planetterra\PlanetTerra.h" />
+    <ClInclude Include="RenderQueueEnums.h" />
     <ClInclude Include="res\resource.h" />
     <ClInclude Include="shader\HlmsBaseListenerContainer.h" />
     <ClInclude Include="shader\HlmsWind.h" />

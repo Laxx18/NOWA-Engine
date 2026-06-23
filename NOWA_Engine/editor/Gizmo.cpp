@@ -6,6 +6,8 @@
 #include "modules/GraphicsModule.h"
 #include "utilities/MathHelper.h"
 
+#include "RenderQueueEnums.h"
+
 // Debug test:
 #include "MyGUI.h"
 
@@ -1108,7 +1110,7 @@ namespace NOWA
 
         // rotationCircleNode->setPosition(selectNode->_getDerivedPositionUpdated());
         // rotationCircleNode->setOrientation(orientation);
-        NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->rotationCircleNode, selectNode->_getDerivedPositionUpdated(), orientation);
+        NOWA::GraphicsModule::getInstance()->setNodeTransform(this->rotationCircleNode, selectNode->_getDerivedPositionUpdated(), orientation);
 
         if (rotationCaption)
         {
@@ -1225,13 +1227,13 @@ namespace NOWA
         }
 
         Ogre::Vector3 newPosition = this->selectNode->getPosition() + internalTranslateVector;
-        NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, newPosition, false);
+        NOWA::GraphicsModule::getInstance()->setNodePosition(this->selectNode, newPosition, false);
     }
 
     void Gizmo::rotate(const Ogre::Quaternion& rotateQuaternion)
     {
         Ogre::Quaternion newOrientation = this->selectNode->getOrientation() * rotateQuaternion;
-        NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->selectNode, newOrientation, false);
+        NOWA::GraphicsModule::getInstance()->setNodeOrientation(this->selectNode, newOrientation, false);
     }
 
     void Gizmo::setConstraintAxis(const Ogre::Vector3& constraintAxis)

@@ -7,6 +7,8 @@
 #include "modules/WorkspaceModule.h"
 #include "utilities/XMLConverter.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
     using namespace rapidxml;

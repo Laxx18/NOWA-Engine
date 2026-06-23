@@ -77,6 +77,8 @@ namespace NOWA
         GameObjectComponent::disconnect();
         if (nullptr != this->physicsBody)
         {
+            GraphicsModule::getInstance()->removeTrackedNode(this->gameObjectPtr->getSceneNode());
+
             this->physicsBody->setVelocity(Ogre::Vector3::ZERO);
             this->physicsBody->setOmega(Ogre::Vector3::ZERO);
             this->physicsBody->setForce(Ogre::Vector3::ZERO);

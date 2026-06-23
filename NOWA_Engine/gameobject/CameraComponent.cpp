@@ -784,7 +784,7 @@ namespace NOWA
 
 		if (this->camera)
 		{
-			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, position, true);
+			NOWA::GraphicsModule::getInstance()->setCameraPosition(this->camera, position);
 		}
 	}
 
@@ -804,7 +804,7 @@ namespace NOWA
 
 		if (this->camera)
 		{
-			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, MathHelper::getInstance()->degreesToQuat(orientationDeg), true);
+			NOWA::GraphicsModule::getInstance()->setCameraOrientation(this->camera, MathHelper::getInstance()->degreesToQuat(orientationDeg));
 		}
 	}
 
@@ -817,7 +817,7 @@ namespace NOWA
 		}
 		if (this->camera)
 		{
-			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, orientation, true);
+			NOWA::GraphicsModule::getInstance()->setCameraOrientation(this->camera, orientation);
 		}
 	}
 

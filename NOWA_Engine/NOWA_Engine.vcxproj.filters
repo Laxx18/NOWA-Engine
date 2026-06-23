@@ -677,6 +677,7 @@
     <ClInclude Include="gameobject\WindComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="RenderQueueEnums.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">

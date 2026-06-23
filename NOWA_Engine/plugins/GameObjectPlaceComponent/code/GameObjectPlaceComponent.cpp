@@ -1597,7 +1597,10 @@ namespace NOWA
         }
         else
         {
-            NOWA::GraphicsModule::getInstance()->updateNodeTransform(node, hitPoint, targetOrientation, Ogre::Vector3::UNIT_SCALE, false, true);
+            // NOWA::GraphicsModule::getInstance()->setNodeTransform(node, hitPoint, targetOrientation, Ogre::Vector3::UNIT_SCALE, false);
+            // Note: Must be done via setAttributePosition, because internally the variant position is also updated, and undo redo will work correctly!
+            shadowGameObjectPtr->setAttributePosition(hitPoint);
+            shadowGameObjectPtr->setAttributeOrientation(targetOrientation);
         }
 
         return true;

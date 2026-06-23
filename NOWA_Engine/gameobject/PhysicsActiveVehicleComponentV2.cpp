@@ -13,19 +13,16 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    // =========================================================================
-    // PhysicsVehicleV2Callback
-    // =========================================================================
     PhysicsActiveVehicleComponentV2::PhysicsVehicleV2Callback::PhysicsVehicleV2Callback(GameObject* owner, LuaScript* luaScript, OgreNewt::World* ogreNewt, const Ogre::String& onSteerAngleChangedFunctionName,
         const Ogre::String& onMotorForceChangedFunctionName, const Ogre::String& onHandBrakeChangedFunctionName, const Ogre::String& onBrakeChangedFunctionName) :
         OgreNewt::VehicleV2Callback(),
         m_owner(owner),
         m_luaScript(luaScript),
         m_ogreNewt(ogreNewt),
-        m_onSteerAngleChangedFunctionName(onSteerAngleChangedFunctionName),
-        m_onMotorForceChangedFunctionName(onMotorForceChangedFunctionName),
-        m_onHandBrakeChangedFunctionName(onHandBrakeChangedFunctionName),
-        m_onBrakeChangedFunctionName(onBrakeChangedFunctionName)
+        onSteerAngleChangedFunctionName(onSteerAngleChangedFunctionName),
+        onMotorForceChangedFunctionName(onMotorForceChangedFunctionName),
+        onHandBrakeChangedFunctionName(onHandBrakeChangedFunctionName),
+        onBrakeChangedFunctionName(onBrakeChangedFunctionName)
     {
         if (!m_luaScript)
         {
@@ -40,9 +37,9 @@ namespace NOWA
     Ogre::Real PhysicsActiveVehicleComponentV2::PhysicsVehicleV2Callback::onSteerAngleChanged(OgreNewt::VehicleDrivingManipulationV2* manip, Ogre::Real dt)
     {
         manip->setSteerAngle(0.0f);
-        if (m_luaScript && m_luaScript->isCompiled() && !m_onSteerAngleChangedFunctionName.empty())
+        if (m_luaScript && m_luaScript->isCompiled() && !this->onSteerAngleChangedFunctionName.empty())
         {
-            m_luaScript->callTableFunction(m_onSteerAngleChangedFunctionName, manip, dt);
+            m_luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, manip, dt);
         }
         return manip->getSteerAngle();
     }
@@ -50,9 +47,9 @@ namespace NOWA
     Ogre::Real PhysicsActiveVehicleComponentV2::PhysicsVehicleV2Callback::onMotorForceChanged(OgreNewt::VehicleDrivingManipulationV2* manip, Ogre::Real dt)
     {
         manip->setMotorForce(0.0f);
-        if (m_luaScript && m_luaScript->isCompiled() && !m_onMotorForceChangedFunctionName.empty())
+        if (m_luaScript && m_luaScript->isCompiled() && !this->onMotorForceChangedFunctionName.empty())
         {
-            m_luaScript->callTableFunction(m_onMotorForceChangedFunctionName, manip, dt);
+            m_luaScript->callTableFunction(this->onMotorForceChangedFunctionName, manip, dt);
         }
         return manip->getMotorForce();
     }
@@ -60,9 +57,9 @@ namespace NOWA
     Ogre::Real PhysicsActiveVehicleComponentV2::PhysicsVehicleV2Callback::onHandBrakeChanged(OgreNewt::VehicleDrivingManipulationV2* manip, Ogre::Real dt)
     {
         manip->setHandBrake(0.0f);
-        if (m_luaScript && m_luaScript->isCompiled() && !m_onHandBrakeChangedFunctionName.empty())
+        if (m_luaScript && m_luaScript->isCompiled() && !this->onHandBrakeChangedFunctionName.empty())
         {
-            m_luaScript->callTableFunction(m_onHandBrakeChangedFunctionName, manip, dt);
+            m_luaScript->callTableFunction(this->onHandBrakeChangedFunctionName, manip, dt);
         }
         return manip->getHandBrake();
     }
@@ -70,31 +67,29 @@ namespace NOWA
     Ogre::Real PhysicsActiveVehicleComponentV2::PhysicsVehicleV2Callback::onBrakeChanged(OgreNewt::VehicleDrivingManipulationV2* manip, Ogre::Real dt)
     {
         manip->setBrake(0.0f);
-        if (m_luaScript && m_luaScript->isCompiled() && !m_onBrakeChangedFunctionName.empty())
+        if (m_luaScript && m_luaScript->isCompiled() && !this->onBrakeChangedFunctionName.empty())
         {
-            m_luaScript->callTableFunction(m_onBrakeChangedFunctionName, manip, dt);
+            m_luaScript->callTableFunction(this->onBrakeChangedFunctionName, manip, dt);
         }
         return manip->getBrake();
     }
 
-    // =========================================================================
-    // Constructor / Destructor
-    // =========================================================================
     PhysicsActiveVehicleComponentV2::PhysicsActiveVehicleComponentV2() :
         PhysicsActiveComponent(),
-        m_onSteerAngleChangedFunctionName(new Variant(PhysicsActiveVehicleComponentV2::AttrOnSteerAngleChangedFunctionName(), Ogre::String(""), this->attributes)),
-        m_onMotorForceChangedFunctionName(new Variant(PhysicsActiveVehicleComponentV2::AttrOnMotorForceChangedFunctionName(), Ogre::String(""), this->attributes)),
-        m_onHandBrakeChangedFunctionName(new Variant(PhysicsActiveVehicleComponentV2::AttrOnHandBrakeChangedFunctionName(), Ogre::String(""), this->attributes)),
-        m_onBrakeChangedFunctionName(new Variant(PhysicsActiveVehicleComponentV2::AttrOnBrakeChangedFunctionName(), Ogre::String(""), this->attributes)),
-        m_tireDirectionSwap(new Variant(PhysicsActiveVehicleComponentV2::AttrTireDirectionSwap(), false, this->attributes)),
-        m_steeringStrength(new Variant(PhysicsActiveVehicleComponentV2::AttrSteeringStrength(), 1.0f, this->attributes)),
-        m_tireSpinAxis(new Variant(PhysicsActiveVehicleComponentV2::AttrTireSpinAxis(), std::vector<Ogre::String>({"X", "Y", "Z"}), this->attributes))
+        onSteerAngleChangedFunctionName(new Variant(PhysicsActiveVehicleComponentV2::AttrOnSteerAngleChangedFunctionName(), Ogre::String(""), this->attributes)),
+        onMotorForceChangedFunctionName(new Variant(PhysicsActiveVehicleComponentV2::AttrOnMotorForceChangedFunctionName(), Ogre::String(""), this->attributes)),
+        onHandBrakeChangedFunctionName(new Variant(PhysicsActiveVehicleComponentV2::AttrOnHandBrakeChangedFunctionName(), Ogre::String(""), this->attributes)),
+        onBrakeChangedFunctionName(new Variant(PhysicsActiveVehicleComponentV2::AttrOnBrakeChangedFunctionName(), Ogre::String(""), this->attributes)),
+        tireDirectionSwap(new Variant(PhysicsActiveVehicleComponentV2::AttrTireDirectionSwap(), false, this->attributes)),
+        steeringStrength(new Variant(PhysicsActiveVehicleComponentV2::AttrSteeringStrength(), 1.0f, this->attributes)),
+        tireSpinAxis(new Variant(PhysicsActiveVehicleComponentV2::AttrTireSpinAxis(), std::vector<Ogre::String>({"X", "Y", "Z"}), this->attributes))
     {
         // Create all 8 tire-ID slots
         for (int i = 0; i < MAX_TIRES; ++i)
         {
-            m_tireIds[i] = new Variant(PhysicsActiveVehicleComponentV2::AttrTireId(i), static_cast<unsigned long>(0UL), this->attributes);
-            m_tireIds[i]->setDescription("Id of tire GameObject for slot " + Ogre::StringConverter::toString(i) + ". 0 = unused.");
+            // Important: For cloning or group save load, last parameter: isId -> must be true so that ids are overwritten in a unique manner for group is saved to prevent id collisions
+            this->tireIds[i] = new Variant(PhysicsActiveVehicleComponentV2::AttrTireId(i), static_cast<unsigned long>(0UL), this->attributes, true);
+            this->tireIds[i]->setDescription("Id of tire GameObject for slot " + Ogre::StringConverter::toString(i) + ". 0 = unused.");
         }
 
         this->asSoftBody->setVisible(false);
@@ -116,38 +111,38 @@ namespace NOWA
         this->angularDamping->setValue(Ogre::Vector3(0.9f, 0.05f, 0.9f));
         this->linearDamping->setValue(0.05f);
 
-        m_tireDirectionSwap->setDescription("Flip the spin direction of all tires. "
+        this->tireDirectionSwap->setDescription("Flip the spin direction of all tires. "
                                             "Enable this if your tires roll backward when driving forward. "
                                             "The correct setting depends on which way your tire mesh's local X axis points.");
 
-        m_steeringStrength->setDescription("Multiplier on the yaw-rate target used when steering (default 1.0 = 1 rad/s at full lock). "
+        this->steeringStrength->setDescription("Multiplier on the yaw-rate target used when steering (default 1.0 = 1 rad/s at full lock). "
                                            "Increase (e.g. 2.0–4.0) if the vehicle turns too sluggishly. "
                                            "Decrease if it over-steers or spins out.");
 
-        m_tireSpinAxis->setDescription("Chassis-space axis the tires spin around when rolling (default X). "
+        this->tireSpinAxis->setDescription("Chassis-space axis the tires spin around when rolling (default X). "
                                        "X: axle = +X (left-right); typical for cars facing +Z in the modeller. "
                                        "Z: axle = +Z (left-right); typical for cars facing +X in the modeller. "
                                        "Y: axle = +Y (vertical); uncommon. "
                                        "Start with X. If tires flip like a coin change to Z. "
                                        "Use TireDirectionSwap to reverse direction once the axis is correct.");
-        m_tireSpinAxis->setListSelectedValue("X");
+        this->tireSpinAxis->setListSelectedValue("X");
 
-        m_onSteerAngleChangedFunctionName->setDescription("Lua callback: onSteerAngleChanged(manip, dt). "
+        this->onSteerAngleChangedFunctionName->setDescription("Lua callback: onSteerAngleChanged(manip, dt). "
                                                           "Call manip:setSteerAngle(degrees) with [-45..45].");
-        m_onSteerAngleChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), m_onSteerAngleChangedFunctionName->getString() + "(manip, dt)");
+        this->onSteerAngleChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onSteerAngleChangedFunctionName->getString() + "(manip, dt)");
 
-        m_onMotorForceChangedFunctionName->setDescription("Lua callback: onMotorForceChanged(manip, dt). "
+        this->onMotorForceChangedFunctionName->setDescription("Lua callback: onMotorForceChanged(manip, dt). "
                                                           "Call manip:setMotorForce(force). Same scale as old vehicle "
                                                           "(e.g. 10000 * 120 * dt forward).");
-        m_onMotorForceChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), m_onMotorForceChangedFunctionName->getString() + "(manip, dt)");
+        this->onMotorForceChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onMotorForceChangedFunctionName->getString() + "(manip, dt)");
 
-        m_onHandBrakeChangedFunctionName->setDescription("Lua callback: onHandBrakeChanged(manip, dt). "
+        this->onHandBrakeChangedFunctionName->setDescription("Lua callback: onHandBrakeChanged(manip, dt). "
                                                          "Call manip:setHandBrake(value). Good value: 5.5.");
-        m_onHandBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), m_onHandBrakeChangedFunctionName->getString() + "(manip, dt)");
+        this->onHandBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onHandBrakeChangedFunctionName->getString() + "(manip, dt)");
 
-        m_onBrakeChangedFunctionName->setDescription("Lua callback: onBrakeChanged(manip, dt). "
+        this->onBrakeChangedFunctionName->setDescription("Lua callback: onBrakeChanged(manip, dt). "
                                                      "Call manip:setBrake(value). Good value: 7.5.");
-        m_onBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), m_onBrakeChangedFunctionName->getString() + "(manip, dt)");
+        this->onBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onBrakeChangedFunctionName->getString() + "(manip, dt)");
     }
 
     PhysicsActiveVehicleComponentV2::~PhysicsActiveVehicleComponentV2()
@@ -155,9 +150,6 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponentV2] Destructor for: " + this->gameObjectPtr->getName());
     }
 
-    // =========================================================================
-    // init  (XML load)
-    // =========================================================================
     bool PhysicsActiveVehicleComponentV2::init(rapidxml::xml_node<>*& propertyElement)
     {
         PhysicsActiveComponent::parseCommonProperties(propertyElement);
@@ -211,9 +203,6 @@ namespace NOWA
         return true;
     }
 
-    // =========================================================================
-    // postInit
-    // =========================================================================
     bool PhysicsActiveVehicleComponentV2::postInit(void)
     {
         // Use PhysicsComponent::postInit() – body creation is deferred to connect()
@@ -232,15 +221,76 @@ namespace NOWA
         return success;
     }
 
-    // =========================================================================
-    // onRemoveComponent
-    // =========================================================================
     void PhysicsActiveVehicleComponentV2::onRemoveComponent(void)
     {
         if (this->physicsBody)
         {
             static_cast<OgreNewt::VehicleV2*>(this->physicsBody)->clearTires();
         }
+    }
+
+    GameObjectCompPtr PhysicsActiveVehicleComponentV2::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        PhysicsActiveVehicleComponentV2CompPtr cloned(boost::make_shared<PhysicsActiveVehicleComponentV2>());
+
+        cloned->setActivated(this->activated->getBool());
+        cloned->setMass(this->mass->getReal());
+        cloned->setMassOrigin(this->massOrigin->getVector3());
+        cloned->setLinearDamping(this->linearDamping->getReal());
+        cloned->setAngularDamping(this->angularDamping->getVector3());
+        cloned->setGravity(this->gravity->getVector3());
+        cloned->setGravitySourceCategory(this->gravitySourceCategory->getString());
+        cloned->setConstraintDirection(this->constraintDirection->getVector3());
+        cloned->setSpeed(this->speed->getReal());
+        cloned->setCollisionType(this->collisionType->getListSelectedValue());
+        cloned->setCollisionDirection(this->collisionDirection->getVector3());
+
+        clonedGameObjectPtr->addComponent(cloned);
+        cloned->setOwner(clonedGameObjectPtr);
+
+        for (int i = 0; i < MAX_TIRES; ++i)
+        {
+            cloned->setTireId(i, this->tireIds[i]->getULong());
+        }
+
+        cloned->setOnSteerAngleChangedFunctionName(this->onSteerAngleChangedFunctionName->getString());
+        cloned->setOnMotorForceChangedFunctionName(this->onMotorForceChangedFunctionName->getString());
+        cloned->setOnHandBrakeChangedFunctionName(this->onHandBrakeChangedFunctionName->getString());
+        cloned->setOnBrakeChangedFunctionName(this->onBrakeChangedFunctionName->getString());
+        cloned->setTireDirectionSwap(this->tireDirectionSwap->getBool());
+        cloned->setSteeringStrength(this->steeringStrength->getReal());
+        cloned->setTireSpinAxis(this->tireSpinAxis->getListSelectedValue());
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(cloned));
+        return cloned;
+    }
+
+    bool PhysicsActiveVehicleComponentV2::onCloned(void)
+    {
+        for (int i = 0; i < MAX_TIRES; ++i)
+        {
+            const unsigned long priorId = this->tireIds[i]->getULong();
+            if (0UL == priorId)
+            {
+                continue;
+            }
+
+            GameObjectPtr tireGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getClonedGameObjectFromPriorId(priorId);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage("[VehicleV2] onCloned slot " + Ogre::StringConverter::toString(i) + " priorId=" + Ogre::StringConverter::toString(priorId) +
+                                                            " found=" + (tireGameObjectPtr ? tireGameObjectPtr->getName() : "NULL"));
+
+            if (nullptr != tireGameObjectPtr)
+            {
+                this->tireIds[i]->setValue(tireGameObjectPtr->getId());
+            }
+            else
+            {
+                this->tireIds[i]->setValue(static_cast<unsigned long>(0));
+            }
+        }
+
+        return true;
     }
 
     // =========================================================================
@@ -330,12 +380,7 @@ namespace NOWA
             {
                 if (nullptr != tire.sceneNode)
                 {
-                    Ogre::Node* tireNode = tire.sceneNode;
-                    NOWA::GraphicsModule::RenderCommand renderCommand = [tireNode]()
-                    {
-                        NOWA::GraphicsModule::getInstance()->removeTrackedNode(tireNode);
-                    };
-                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveVehicleComponentV2::disconnect - untrack tires");
+                    NOWA::GraphicsModule::getInstance()->removeTrackedNode(tire.sceneNode);
                 }
             }
 
@@ -360,9 +405,6 @@ namespace NOWA
         }
     }
 
-    // =========================================================================
-    // createDynamicBody
-    // =========================================================================
     bool PhysicsActiveVehicleComponentV2::createDynamicBody(void)
     {
         this->destroyCollision();
@@ -399,13 +441,13 @@ namespace NOWA
         LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
 
         this->physicsBody = new OgreNewt::VehicleV2(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->collisionPtr, weightedMass, calculatedMassOrigin, this->gravity->getVector3(), this->gameObjectPtr->getDefaultDirection(),
-            new PhysicsVehicleV2Callback(this->gameObjectPtr.get(), luaScript, this->ogreNewt, m_onSteerAngleChangedFunctionName->getString(), m_onMotorForceChangedFunctionName->getString(), m_onHandBrakeChangedFunctionName->getString(),
-                m_onBrakeChangedFunctionName->getString()));
+            new PhysicsVehicleV2Callback(this->gameObjectPtr.get(), luaScript, this->ogreNewt, this->onSteerAngleChangedFunctionName->getString(), this->onMotorForceChangedFunctionName->getString(), this->onHandBrakeChangedFunctionName->getString(),
+                this->onBrakeChangedFunctionName->getString()));
 
         // Push configurable parameters into the vehicle before registerTireNodes() runs.
         OgreNewt::VehicleV2* vehicle = static_cast<OgreNewt::VehicleV2*>(this->physicsBody);
-        vehicle->setTireDirectionSwap(m_tireDirectionSwap->getBool());
-        vehicle->setSteeringStrength(m_steeringStrength->getReal());
+        vehicle->setTireDirectionSwap(this->tireDirectionSwap->getBool());
+        vehicle->setSteeringStrength(this->steeringStrength->getReal());
         this->applySpinAxisToVehicle(vehicle);
 
         NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
@@ -457,9 +499,6 @@ namespace NOWA
         }
     }
 
-    // =========================================================================
-    // registerTireNodes  (called once in connect())
-    // =========================================================================
     void PhysicsActiveVehicleComponentV2::registerTireNodes(void)
     {
         if (nullptr == this->physicsBody)
@@ -476,7 +515,7 @@ namespace NOWA
 
         for (int i = 0; i < MAX_TIRES; ++i)
         {
-            const unsigned long tireId = m_tireIds[i]->getULong();
+            const unsigned long tireId = this->tireIds[i]->getULong();
             if (tireId == 0UL)
             {
                 continue;
@@ -609,7 +648,7 @@ namespace NOWA
         {
             return;
         }
-        m_tireIds[index]->setValue(tireId);
+        this->tireIds[index]->setValue(tireId);
     }
 
     unsigned long PhysicsActiveVehicleComponentV2::getTireId(int index) const
@@ -618,47 +657,47 @@ namespace NOWA
         {
             return 0UL;
         }
-        return m_tireIds[index]->getULong();
+        return this->tireIds[index]->getULong();
     }
 
     void PhysicsActiveVehicleComponentV2::setOnSteerAngleChangedFunctionName(const Ogre::String& name)
     {
-        m_onSteerAngleChangedFunctionName->setValue(name);
-        m_onSteerAngleChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), name + "(manip, dt)");
+        this->onSteerAngleChangedFunctionName->setValue(name);
+        this->onSteerAngleChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), name + "(manip, dt)");
     }
     Ogre::String PhysicsActiveVehicleComponentV2::getOnSteerAngleChangedFunctionName() const
     {
-        return m_onSteerAngleChangedFunctionName->getString();
+        return this->onSteerAngleChangedFunctionName->getString();
     }
 
     void PhysicsActiveVehicleComponentV2::setOnMotorForceChangedFunctionName(const Ogre::String& name)
     {
-        m_onMotorForceChangedFunctionName->setValue(name);
-        m_onMotorForceChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), name + "(manip, dt)");
+        this->onMotorForceChangedFunctionName->setValue(name);
+        this->onMotorForceChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), name + "(manip, dt)");
     }
     Ogre::String PhysicsActiveVehicleComponentV2::getOnMotorForceChangedFunctionName() const
     {
-        return m_onMotorForceChangedFunctionName->getString();
+        return this->onMotorForceChangedFunctionName->getString();
     }
 
     void PhysicsActiveVehicleComponentV2::setOnHandBrakeChangedFunctionName(const Ogre::String& name)
     {
-        m_onHandBrakeChangedFunctionName->setValue(name);
-        m_onHandBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), name + "(manip, dt)");
+        this->onHandBrakeChangedFunctionName->setValue(name);
+        this->onHandBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), name + "(manip, dt)");
     }
     Ogre::String PhysicsActiveVehicleComponentV2::getOnHandBrakeChangedFunctionName() const
     {
-        return m_onHandBrakeChangedFunctionName->getString();
+        return this->onHandBrakeChangedFunctionName->getString();
     }
 
     void PhysicsActiveVehicleComponentV2::setOnBrakeChangedFunctionName(const Ogre::String& name)
     {
-        m_onBrakeChangedFunctionName->setValue(name);
-        m_onBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), name + "(manip, dt)");
+        this->onBrakeChangedFunctionName->setValue(name);
+        this->onBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), name + "(manip, dt)");
     }
     Ogre::String PhysicsActiveVehicleComponentV2::getOnBrakeChangedFunctionName() const
     {
-        return m_onBrakeChangedFunctionName->getString();
+        return this->onBrakeChangedFunctionName->getString();
     }
 
     void PhysicsActiveVehicleComponentV2::setCanDrive(bool canDrive)
@@ -671,7 +710,7 @@ namespace NOWA
 
     void PhysicsActiveVehicleComponentV2::setTireDirectionSwap(bool swap)
     {
-        m_tireDirectionSwap->setValue(swap);
+        this->tireDirectionSwap->setValue(swap);
         if (this->physicsBody)
         {
             // Live update: flips all already-registered tire invRadius values.
@@ -681,12 +720,12 @@ namespace NOWA
 
     bool PhysicsActiveVehicleComponentV2::getTireDirectionSwap() const
     {
-        return m_tireDirectionSwap->getBool();
+        return this->tireDirectionSwap->getBool();
     }
 
     void PhysicsActiveVehicleComponentV2::setSteeringStrength(Ogre::Real strength)
     {
-        m_steeringStrength->setValue(strength);
+        this->steeringStrength->setValue(strength);
         if (this->physicsBody)
         {
             static_cast<OgreNewt::VehicleV2*>(this->physicsBody)->setSteeringStrength(strength);
@@ -695,7 +734,7 @@ namespace NOWA
 
     Ogre::Real PhysicsActiveVehicleComponentV2::getSteeringStrength() const
     {
-        return m_steeringStrength->getReal();
+        return this->steeringStrength->getReal();
     }
 
     void PhysicsActiveVehicleComponentV2::applySpinAxisToVehicle(OgreNewt::VehicleV2* vehicle)
@@ -704,7 +743,7 @@ namespace NOWA
         {
             return;
         }
-        const Ogre::String axis = m_tireSpinAxis->getListSelectedValue();
+        const Ogre::String axis = this->tireSpinAxis->getListSelectedValue();
         int idx = 0; // default X
         if (axis == "Y")
         {
@@ -719,7 +758,7 @@ namespace NOWA
 
     void PhysicsActiveVehicleComponentV2::setTireSpinAxis(const Ogre::String& axis)
     {
-        m_tireSpinAxis->setListSelectedValue(axis);
+        this->tireSpinAxis->setListSelectedValue(axis);
         if (this->physicsBody)
         {
             this->applySpinAxisToVehicle(static_cast<OgreNewt::VehicleV2*>(this->physicsBody));
@@ -728,7 +767,7 @@ namespace NOWA
 
     Ogre::String PhysicsActiveVehicleComponentV2::getTireSpinAxis() const
     {
-        return m_tireSpinAxis->getListSelectedValue();
+        return this->tireSpinAxis->getListSelectedValue();
     }
 
     bool PhysicsActiveVehicleComponentV2::isAirborne(void) const
@@ -908,7 +947,7 @@ namespace NOWA
             xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
             propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, attrName)));
-            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m_tireIds[i]->getULong())));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->tireIds[i]->getULong())));
             propertiesXML->append_node(propertyXML);
         }
 
@@ -921,17 +960,17 @@ namespace NOWA
             propertiesXML->append_node(n);
         };
 
-        writeStr("OnSteerAngleFunctionName", m_onSteerAngleChangedFunctionName->getString());
-        writeStr("OnMotorForceFunctionName", m_onMotorForceChangedFunctionName->getString());
-        writeStr("OnHandBrakeFunctionName", m_onHandBrakeChangedFunctionName->getString());
-        writeStr("OnBrakeFunctionName", m_onBrakeChangedFunctionName->getString());
+        writeStr("OnSteerAngleFunctionName", this->onSteerAngleChangedFunctionName->getString());
+        writeStr("OnMotorForceFunctionName", this->onMotorForceChangedFunctionName->getString());
+        writeStr("OnHandBrakeFunctionName", this->onHandBrakeChangedFunctionName->getString());
+        writeStr("OnBrakeFunctionName", this->onBrakeChangedFunctionName->getString());
 
         // TireDirectionSwap (bool, type 12)
         {
             xml_node<>* n = doc.allocate_node(node_element, "property");
             n->append_attribute(doc.allocate_attribute("type", "12"));
             n->append_attribute(doc.allocate_attribute("name", "TireDirectionSwap"));
-            n->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m_tireDirectionSwap->getBool())));
+            n->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->tireDirectionSwap->getBool())));
             propertiesXML->append_node(n);
         }
         // SteeringStrength (real, type 6)
@@ -939,7 +978,7 @@ namespace NOWA
             xml_node<>* n = doc.allocate_node(node_element, "property");
             n->append_attribute(doc.allocate_attribute("type", "6"));
             n->append_attribute(doc.allocate_attribute("name", "SteeringStrength"));
-            n->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m_steeringStrength->getReal())));
+            n->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->steeringStrength->getReal())));
             propertiesXML->append_node(n);
         }
         // TireSpinAxis (string, type 7)
@@ -947,48 +986,9 @@ namespace NOWA
             xml_node<>* n = doc.allocate_node(node_element, "property");
             n->append_attribute(doc.allocate_attribute("type", "7"));
             n->append_attribute(doc.allocate_attribute("name", "TireSpinAxis"));
-            n->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m_tireSpinAxis->getListSelectedValue())));
+            n->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->tireSpinAxis->getListSelectedValue())));
             propertiesXML->append_node(n);
         }
-    }
-
-    // =========================================================================
-    // clone
-    // =========================================================================
-    GameObjectCompPtr PhysicsActiveVehicleComponentV2::clone(GameObjectPtr clonedGameObjectPtr)
-    {
-        PhysicsActiveVehicleComponentV2CompPtr cloned(boost::make_shared<PhysicsActiveVehicleComponentV2>());
-
-        cloned->setActivated(this->activated->getBool());
-        cloned->setMass(this->mass->getReal());
-        cloned->setMassOrigin(this->massOrigin->getVector3());
-        cloned->setLinearDamping(this->linearDamping->getReal());
-        cloned->setAngularDamping(this->angularDamping->getVector3());
-        cloned->setGravity(this->gravity->getVector3());
-        cloned->setGravitySourceCategory(this->gravitySourceCategory->getString());
-        cloned->setConstraintDirection(this->constraintDirection->getVector3());
-        cloned->setSpeed(this->speed->getReal());
-        cloned->setCollisionType(this->collisionType->getListSelectedValue());
-        cloned->setCollisionDirection(this->collisionDirection->getVector3());
-
-        clonedGameObjectPtr->addComponent(cloned);
-        cloned->setOwner(clonedGameObjectPtr);
-
-        for (int i = 0; i < MAX_TIRES; ++i)
-        {
-            cloned->setTireId(i, m_tireIds[i]->getULong());
-        }
-
-        cloned->setOnSteerAngleChangedFunctionName(m_onSteerAngleChangedFunctionName->getString());
-        cloned->setOnMotorForceChangedFunctionName(m_onMotorForceChangedFunctionName->getString());
-        cloned->setOnHandBrakeChangedFunctionName(m_onHandBrakeChangedFunctionName->getString());
-        cloned->setOnBrakeChangedFunctionName(m_onBrakeChangedFunctionName->getString());
-        cloned->setTireDirectionSwap(m_tireDirectionSwap->getBool());
-        cloned->setSteeringStrength(m_steeringStrength->getReal());
-        cloned->setTireSpinAxis(m_tireSpinAxis->getListSelectedValue());
-
-        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(cloned));
-        return cloned;
     }
 
     // =========================================================================

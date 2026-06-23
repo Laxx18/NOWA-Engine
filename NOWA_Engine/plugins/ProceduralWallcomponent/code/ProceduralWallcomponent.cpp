@@ -21,6 +21,8 @@
 #include "Vao/OgreVaoManager.h"
 #include "Vao/OgreVertexArrayObject.h"
 
+#include "RenderQueueEnums.h"
+
 #include <filesystem>
 #include <system_error>
 

@@ -187,6 +187,8 @@ namespace NOWA
 
 	void FollowTargetComponent::reset(void)
 	{
+        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->gameObjectPtr->getSceneNode());
+
 		if (nullptr != this->physicsActiveComponent)
 		{
 			this->physicsActiveComponent->setPosition(this->originPosition);
@@ -239,6 +241,8 @@ namespace NOWA
 	void FollowTargetComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->gameObjectPtr->getSceneNode());
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &FollowTargetComponent::handleGameObjectDeleted), EventDataDeleteGameObject::getStaticEventType());
 	}

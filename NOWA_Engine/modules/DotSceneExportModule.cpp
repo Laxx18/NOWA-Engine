@@ -1375,158 +1375,181 @@ namespace NOWA
 		 TargetId=					1961461562 -> line
 		*/
 
-		// GO id, list of component ids, bool flag whether id has already been replaced
-		// Make a flat list for easier replacement
-		std::vector<std::pair<unsigned long, bool>> flatIdsList;
+		// ── Build flat ID list ────────────────────────────────────────────────
+        std::vector<std::pair<unsigned long, bool>> flatIdsList;
 
-		for (size_t i = 0; i < gameObjectIds.size(); i++)
-		{
-			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectIds[i]);
-			if (nullptr != gameObjectPtr)
-			{
-				std::vector<std::pair<Ogre::String, Variant*>>& attributes = gameObjectPtr->getAttributes();
-				for (size_t j = 0; j < attributes.size(); j++)
-				{
-					Variant* gameObjectIdAttribute = attributes[j].second;
-					if (true == gameObjectIdAttribute->getIsId())
-					{
-						if (gameObjectIdAttribute->getULong() > 0)
-						{
-							flatIdsList.push_back(std::make_pair(gameObjectIdAttribute->getULong(), false));
+        for (size_t i = 0; i < gameObjectIds.size(); i++)
+        {
+            GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectIds[i]);
+            if (nullptr != gameObjectPtr)
+            {
+                std::vector<std::pair<Ogre::String, Variant*>>& attributes = gameObjectPtr->getAttributes();
+                for (size_t j = 0; j < attributes.size(); j++)
+                {
+                    Variant* attr = attributes[j].second;
+                    if (attr->getIsId() && attr->getULong() > 0)
+                    {
+                        flatIdsList.push_back({attr->getULong(), false});
 
-							GameObjectComponents* components = gameObjectPtr->getComponents();
-							for (auto it = components->begin(); it != components->end(); ++it)
-							{
-								std::vector<std::pair<Ogre::String, Variant*>>& attributes = std::get<COMPONENT>(*it)->getAttributes();
-								for (size_t k = 0; k < attributes.size(); k++)
-								{
-									Variant* componentIdAttribute = attributes[k].second;
-									if (true == componentIdAttribute->getIsId())
-									{
-										if (componentIdAttribute->getULong() > 0)
-										{
-											flatIdsList.push_back(std::make_pair(componentIdAttribute->getULong(), false));
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+                        GameObjectComponents* components = gameObjectPtr->getComponents();
+                        for (auto it = components->begin(); it != components->end(); ++it)
+                        {
+                            auto& compAttrs = std::get<COMPONENT>(*it)->getAttributes();
+                            for (size_t k = 0; k < compAttrs.size(); k++)
+                            {
+                                Variant* compAttr = compAttrs[k].second;
+                                if (compAttr->getIsId() && compAttr->getULong() > 0)
+                                {
+                                    flatIdsList.push_back({compAttr->getULong(), false});
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-		// Make a copy of the ids (later for setting back the original ids)
-		std::vector<std::pair<unsigned long, bool>> origFlatIdsList = flatIdsList;
+        // ── Keep original IDs; build new unique IDs ───────────────────────────
+        std::vector<std::pair<unsigned long, bool>> origFlatIdsList = flatIdsList;
 
-		size_t nextId = 0;
-		for (size_t i = 0; i < flatIdsList.size(); i++)
-		{
-			unsigned long originalId = flatIdsList[i].first;
-			unsigned long newId = NOWA::makeUniqueID();
+        size_t nextId = 0;
+        for (size_t i = 0; i < flatIdsList.size(); i++)
+        {
+            unsigned long originalId = flatIdsList[i].first;
+            unsigned long newId = NOWA::makeUniqueID();
 
-			nextId = i + 1;
-			if (nextId < flatIdsList.size())
-			{
-				for (size_t j = nextId; j < flatIdsList.size(); j++)
-				{
-					unsigned long currentId = flatIdsList[j].first;
-					if (currentId == originalId && false == flatIdsList[j].second)
-					{
-						flatIdsList[j].first = newId;
-						flatIdsList[j].second = true; // mark as replaced
-					}
-				}
-			}
-			if (false == flatIdsList[i].second)
-			{
-				flatIdsList[i].first = newId;
-				flatIdsList[i].second = true; // mark as replaced
-			}
-		}
+            nextId = i + 1;
+            if (nextId < flatIdsList.size())
+            {
+                for (size_t j = nextId; j < flatIdsList.size(); j++)
+                {
+                    if (flatIdsList[j].first == originalId && !flatIdsList[j].second)
+                    {
+                        flatIdsList[j].first = newId;
+                        flatIdsList[j].second = true;
+                    }
+                }
+            }
+            if (!flatIdsList[i].second)
+            {
+                flatIdsList[i].first = newId;
+                flatIdsList[i].second = true;
+            }
+        }
 
-		Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(sceneResourceGroupName);
-		Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
-		Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
+        // ── Resolve file paths ────────────────────────────────────────────────
+        Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(sceneResourceGroupName);
 
-		Ogre::String filePath;
-		Ogre::String filePathName;
-		for (; it != itEnd; ++it)
-		{
-			filePath = (*it)->archive->getName() + "/Groups";
-			filePathName = filePath + "/" + fileName;
-			size_t found = fileName.rfind(".group");
-			if (Ogre::String::npos == found)
-			{
-				filePathName += ".group";
-			}
-			break;
-		}
+        Ogre::String filePath;
+        Ogre::String filePathName;
+        for (auto it = resLocationsList.cbegin(); it != resLocationsList.cend(); ++it)
+        {
+            filePath = (*it)->archive->getName() + "/Groups";
+            filePathName = filePath + "/" + fileName;
+            size_t found = fileName.rfind(".group");
+            if (Ogre::String::npos == found)
+            {
+                filePathName += ".group";
+            }
+            break;
+        }
 
-		// Set the new ids
-		this->setIdsForGameObjects(flatIdsList, gameObjectIds);
+        // Copy lua scripts to Groups folder and replace IDs in them ─
+        // Do this BEFORE setIdsForGameObjects so we still have origFlatIdsList
+        // mapping correctly to flatIdsList (orig[i].first -> flat[i].first).
+        for (size_t i = 0; i < gameObjectIds.size(); i++)
+        {
+            GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectIds[i]);
+            if (nullptr == gameObjectPtr)
+            {
+                continue;
+            }
 
-		rapidxml::xml_document<> doc;
-		xml_node<>* decl = doc.allocate_node(node_declaration);
-		decl->append_attribute(doc.allocate_attribute("version", "1.0"));
-		decl->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
-		doc.append_node(decl);
+            GameObjectComponents* components = gameObjectPtr->getComponents();
+            for (auto it = components->begin(); it != components->end(); ++it)
+            {
+                auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
+                if (nullptr == luaScriptCompPtr)
+                {
+                    continue;
+                }
 
-		// Export also resource locations, so that when a group is loaded missing resources are declared
+                // Source: current scene's lua script
+                Ogre::String scriptName = luaScriptCompPtr->getScriptFile();
+                if (scriptName.empty())
+                {
+                    continue;
+                }
+
+                Ogre::String scriptSourceFilePathName;
+                if (!gameObjectPtr->getGlobal())
+                {
+                    scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + scriptName;
+                }
+                else
+                {
+                    scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + scriptName;
+                }
+
+                // Destination: Groups folder
+                Ogre::String scriptDestFilePathName = filePath + "/" + scriptName;
+
+                // Copy script to Groups folder (overwrite so IDs stay current)
+                AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName, scriptDestFilePathName, false, gameObjectPtr->getGlobal());
+
+                // Replace all old IDs with new IDs in the copied script
+                for (size_t j = 0; j < origFlatIdsList.size(); j++)
+                {
+                    AppStateManager::getSingletonPtr()->getLuaScriptModule()->replaceIdsInScript(scriptDestFilePathName, Ogre::StringConverter::toString(origFlatIdsList[j].first), Ogre::StringConverter::toString(flatIdsList[j].first));
+                }
+            }
+        }
+
+        // ── Set new IDs on game objects and write XML ─────────────────────────
+        this->setIdsForGameObjects(flatIdsList, gameObjectIds);
+
+        rapidxml::xml_document<> doc;
+        xml_node<>* decl = doc.allocate_node(node_declaration);
+        decl->append_attribute(doc.allocate_attribute("version", "1.0"));
+        decl->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
+        doc.append_node(decl);
+
 #if 1
-		xml_node<>* resourceLocationsXML = doc.allocate_node(node_element, "resourceLocations");
-		this->exportResourceLocations(resourceLocationsXML, doc);
-		doc.append_node(resourceLocationsXML);
+        xml_node<>* resourceLocationsXML = doc.allocate_node(node_element, "resourceLocations");
+        this->exportResourceLocations(resourceLocationsXML, doc);
+        doc.append_node(resourceLocationsXML);
 #endif
 
-		rapidxml::xml_node<>* nodesXML = doc.allocate_node(rapidxml::node_element, "nodes");
-		for (size_t i = 0; i < gameObjectIds.size(); i++)
-		{
-			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectIds[i]);
-			if (nullptr != gameObjectPtr)
-			{
-				// Write all the game object data to stream (may also be a global game object)
-				this->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, gameObjectPtr->getGlobal(), false);
-			}
-		}
-		doc.append_node(nodesXML);
+        rapidxml::xml_node<>* nodesXML = doc.allocate_node(rapidxml::node_element, "nodes");
+        for (size_t i = 0; i < gameObjectIds.size(); i++)
+        {
+            GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectIds[i]);
+            if (nullptr != gameObjectPtr)
+            {
+                this->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, gameObjectPtr->getGlobal(), false);
+            }
+        }
+        doc.append_node(nodesXML);
 
-		if (filePathName.empty())
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName);
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName + "\n", "NOWA");
-		}
+        if (filePathName.empty())
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName);
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName + "\n", "NOWA");
+        }
 
-		std::ofstream file;
-		file.open(filePathName);
-		file << doc;
-		file.close();
+        std::ofstream file;
+        file.open(filePathName);
+        file << doc;
+        file.close();
 
-		// Set the back the original ids
-		this->setIdsForGameObjects(origFlatIdsList, gameObjectIds);
+        // ── Restore original IDs on game objects ──────────────────────────────
+        this->setIdsForGameObjects(origFlatIdsList, gameObjectIds);
 
-		for (size_t i = 0; i < gameObjectIds.size(); i++)
-		{
-			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectIds[i]);
-			if (nullptr != gameObjectPtr)
-			{
-				GameObjectComponents* components = gameObjectPtr->getComponents();
-				for (auto it = components->begin(); it != components->end(); ++it)
-				{
-					auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
-					if (nullptr != luaScriptCompPtr)
-					{
-						Ogre::String scriptFilePathName = filePath + "/" + luaScriptCompPtr->getScriptFile();
-						for (size_t j = 0; j < origFlatIdsList.size(); j++)
-						{
-							AppStateManager::getSingletonPtr()->getLuaScriptModule()->replaceIdsInScript(scriptFilePathName,
-								Ogre::StringConverter::toString(origFlatIdsList[j].first), Ogre::StringConverter::toString(flatIdsList[j].first));
-						}
-					}
-				}
-			}
-		}
-	}
+        // NOTE: replaceIdsInScript is NO LONGER called here — it was moved above
+        // before setIdsForGameObjects so the script copy and ID replacement happen
+        // while we still have the correct orig->new mapping and the source script
+        // still exists at its original location with its original content.
+    }
 
 	void DotSceneExportModule::setIdsForGameObjects(const std::vector<std::pair<unsigned long, bool>>& idsList, const std::vector<unsigned long>& gameObjectIds)
 	{

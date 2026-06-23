@@ -14,6 +14,8 @@ GPL v3
 #include "utilities/MovableText.h"
 #include "utilities/XMLConverter.h"
 
+#include "RenderQueueEnums.h"
+
 #include "OgreMeshManager2.h"
 #include "OgreAbiUtils.h"
 #include "OgreBitwise.h"
@@ -340,6 +342,8 @@ namespace NOWA
     {
         GameObjectComponent::disconnect();
 
+        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textLineNode);
+
         // Stop render work FIRST, then block until resources are freed.
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(this->trackedClosureId());
         this->restoreOriginalItemAndCleanup();
@@ -366,6 +370,8 @@ namespace NOWA
     void MeshConstructionComponent::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
+
+        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textLineNode);
 
         // Stop render work, then block until resources are freed.
         // enqueueAndWait prevents the dangling-this crash.

@@ -557,7 +557,6 @@ namespace NOWA
 
         rapidxml::xml_node<>* pElement;
 
-        // Process resource locations (?)
         pElement = XMLDoc.first_node("resourceLocations");
         if (pElement)
         {
@@ -570,49 +569,65 @@ namespace NOWA
             this->processNodes(pElement);
         }
 
-        // Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
+        // Post init all parsed game objects
         for (size_t i = 0; i < this->parsedGameObjectIds.size(); i++)
         {
             const auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
-            if (nullptr != gameObjectPtr)
+            if (nullptr == gameObjectPtr)
             {
-                // Deactivated, because its copied on another place^^
-#if 0
-				GameObjectComponents* components = gameObjectPtr->getComponents();
-				for (auto it = components->begin(); it != components->end(); ++it)
-				{
-					auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
-					if (nullptr != luaScriptCompPtr)
-					{
-						Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(resourceGroupName)[0];
-						Ogre::String scriptSourceFilePathName = projectPath + "/Groups/" + luaScriptCompPtr->getScriptFile();
-						Ogre::String scriptDestFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + luaScriptCompPtr->getScriptFile();
-						AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName, scriptDestFilePathName, false);
-					}
-				}
-#endif
-                // Tells lua script component, that its being cloned (prevents multiple script creations)
-                GameObjectComponents* components = gameObjectPtr->getComponents();
-                for (auto it = components->begin(); it != components->end(); ++it)
-                {
-                    auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
-                    if (nullptr != luaScriptCompPtr)
-                    {
-                        luaScriptCompPtr->setComponentCloned(true);
+                continue;
+            }
 
-                        boost::shared_ptr<EventDataGroupLoaded> eventDataGroupLoaded(new EventDataGroupLoaded(gameObjectPtr->getId()));
-                        AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGroupLoaded);
-                    }
+            GameObjectComponents* components = gameObjectPtr->getComponents();
+            for (auto it = components->begin(); it != components->end(); ++it)
+            {
+                auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
+                if (nullptr == luaScriptCompPtr)
+                {
+                    continue;
                 }
 
-                gameObjectPtr->postInit();
+                // Copy script from Groups folder to current scene folder.
+                // The script in Groups now has the correct new IDs (fixed in exportGroup).
+                // Only copy if the script does not already exist in the scene folder
+                // (prevents overwriting a different game object's script with the same name).
+                Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(resourceGroupName);
+
+                for (auto rit = resLocationsList.cbegin(); rit != resLocationsList.cend(); ++rit)
+                {
+                    Ogre::String groupsFilePath = (*rit)->archive->getName() + "/Groups";
+                    Ogre::String scriptSourceFilePathName = groupsFilePath + "/" + luaScriptCompPtr->getScriptFile();
+                    Ogre::String scriptDestFilePathName;
+
+                    if (!gameObjectPtr->getGlobal())
+                    {
+                        scriptDestFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + luaScriptCompPtr->getScriptFile();
+                    }
+                    else
+                    {
+                        scriptDestFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + luaScriptCompPtr->getScriptFile();
+                    }
+
+                    // Copy only if destination doesn't exist yet
+                    std::ifstream destCheck(scriptDestFilePathName, std::ios::in);
+                    if (!destCheck.good())
+                    {
+                        AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName, scriptDestFilePathName, false, gameObjectPtr->getGlobal());
+                    }
+                    break;
+                }
+
+                luaScriptCompPtr->setComponentCloned(true);
+
+                boost::shared_ptr<EventDataGroupLoaded> eventDataGroupLoaded(new EventDataGroupLoaded(gameObjectPtr->getId()));
+                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGroupLoaded);
             }
+
+            gameObjectPtr->postInit();
         }
 
-        // Copy the parsed game object ids and clear for next round
         std::vector<unsigned long> tempParsedGameObjectIds = this->parsedGameObjectIds;
         this->parsedGameObjectIds.clear();
-
         return tempParsedGameObjectIds;
     }
 

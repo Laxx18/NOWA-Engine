@@ -30,6 +30,8 @@
 #include "TerraShadowMapper.h"
 #include "ocean/OgreHlmsOcean.h"
 
+#include "RenderQueueEnums.h"
+
 // #define GPU_PARTICLES
 
 namespace NOWA

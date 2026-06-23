@@ -228,7 +228,7 @@ namespace NOWA
             Ogre::Vector3 worldMove = this->getOrientation() * moveValue;
             Ogre::Vector3 newPosition = this->getPosition() + worldMove;
 
-            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPosition, false);
+            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPosition);
         }
     }
 
@@ -341,7 +341,7 @@ namespace NOWA
             Ogre::Quaternion newOrientation = yawRotation * pitchRotation * rollRotation * currentOrientation;
 
             // Use the thread-safe update method just like moveCamera does
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, newOrientation, false);
+            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, newOrientation);
         }
 
         this->lastValue = rotationValue;
@@ -362,7 +362,7 @@ namespace NOWA
 
         // Also write into GraphicsModule so the render thread interpolates
         // from the correct position and not from stale buffer history.
-        NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, position, true);
+        NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, position);
     }
 
     void BaseCamera::snapToOrientation(const Ogre::Quaternion& orientation)
@@ -376,7 +376,7 @@ namespace NOWA
 
         // Now write the authoritative position — fireAndForget=true deactivates
         // the tracked entry so updateAllTransforms won't interpolate over it.
-        NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, orientation, true);
+        NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, orientation);
     }
 
     Ogre::Vector3 BaseCamera::getPosition(void)

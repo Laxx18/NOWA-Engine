@@ -328,7 +328,7 @@ namespace OgreNewt
         m_updateRotation = updateRotation;
         // Sync snap fields so the first updateNode() call (below) has correct data.
         // Physics hasn't started yet so cur/prev are the spawn position set by the caller.
-        updateNode(1.0f, false);
+        updateNode(1.0f, true);
 
         m_lastPosit = m_node->getPosition();
         m_lastOrientation = m_node->getOrientation();

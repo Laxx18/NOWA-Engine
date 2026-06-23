@@ -6,6 +6,8 @@
 #include "main/Core.h"
 #include "main/AppStateManager.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
 	using namespace rapidxml;

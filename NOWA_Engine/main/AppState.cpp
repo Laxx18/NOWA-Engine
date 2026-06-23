@@ -9,6 +9,8 @@
 #include "main/AppStateManager.h"
 #include "gameobject/WorkspaceComponents.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
 	AppState::AppState()

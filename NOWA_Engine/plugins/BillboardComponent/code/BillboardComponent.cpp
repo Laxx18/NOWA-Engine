@@ -7,6 +7,8 @@
 
 #include "gameobject/GameObjectFactory.h"
 
+#include "RenderQueueEnums.h"
+
 #include "OgreAbiUtils.h"
 
 namespace NOWA

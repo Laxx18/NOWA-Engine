@@ -21,6 +21,8 @@ GPL v3
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
 
+#include "RenderQueueEnums.h"
+
 #include "OgreHlmsManager.h"
 #include "OgreHlmsPbs.h"
 #include "OgreHlmsPbsDatablock.h"

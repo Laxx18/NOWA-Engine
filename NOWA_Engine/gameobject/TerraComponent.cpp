@@ -12,6 +12,8 @@
 #include "WorkspaceComponents.h"
 #include "DatablockTerraComponent.h"
 
+#include "RenderQueueEnums.h"
+
 namespace
 {
 	// Function to check if a number is divisible by a power of 2

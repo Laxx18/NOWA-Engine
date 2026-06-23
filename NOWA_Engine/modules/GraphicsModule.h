@@ -10,6 +10,7 @@
 #include <atomic>
 #include <unordered_map>
 #include <vector>
+#include <deque>
 #include <array>
 #include <thread>
 
@@ -31,70 +32,127 @@ namespace NOWA
     }
 
     /*
-    *    @brief How the command queue does work:
-    *    Main thread must wait, until the closure command is finished. If the closure command is called and inside that, there is another inner function, which also calls ENQUEUE_RENDER_COMMAND_WAIT, 
-    *    it must not wait anymore, because the outer does already etc.
-    *    Its necessary that wait macros do wait until the command in the front of the queue is processed completely! I must prevent, that queue has several waiting commands, 
-    *    which have not been processed, because then hell breaks loose.
-    *
-    *    How This Buffer-Based Approach Works
-    *    This implementation follows Ogre-Next's approach very closely. Here's how it works:
-    *
-    *    Multiple Transform Buffers: Each tracked node has multiple transform buffers (4 in this case), allowing for smooth transitions between logic frames.
-    *    Buffer Advancement: The logic thread advances the current buffer before updating game logic. This preserves the previous frame's data for interpolation.
-    *    Transform Copying: When advancing to a new buffer, the current transform values are copied to the new buffer. This ensures that if an object doesn't move during a frame, it maintains its position.
-    *    Interpolation: The render thread calculates an interpolation weight based on time since the last logic frame and uses it to interpolate between the previous and current transform buffers.
-    *
-    *    Key Advantages
-    *
-    *    Thread Safety: Logic writes to one buffer, rendering reads from between two buffers. No locks needed!
-    *    Triple Buffering Effect: With 4 buffers, we effectively have a triple-buffering approach (previous, current, and next), allowing for smooth transitions even with variable frame rates.
-    *    Predictable Memory Usage: Unlike the previous approach, memory usage is fixed per node and doesn't grow over time.
-    *    Efficient Updates: You only update the transforms that change, not every active transform every frame.
-    *    Smooth Interpolation: Like Ogre-Next, this approach provides smooth interpolation between frames.
-    *
-    *    Implementation Tips
-    *
-    *    Add Node Tracking: The addTrackedNode method should be called early when nodes are created, so they're ready for interpolation when needed.
-    *    Buffer Size: 4 buffers is typically enough, but you can adjust based on your needs.
-    *    Transform Updates: Only update the components that change to minimize data movement.
-    *    Memory Management: Consider using a custom allocator for the NodeTransforms vector if you have many objects.
-    *
-    * How the graphics resources destruction does work:
-    * Logic thread (for physics/game logic).
-    * Render thread (for reading transform data and drawing).
-    * If an entity/item is deleted immediately on the logic thread, the render thread might still access its transform � leading to crashes or undefined behavior.
-    * 
-    * - Logic thread writes to logicWriteSlot.
-    * - Render thread reads from (logicWriteSlot + NUM_SLOTS - 2) % NUM_SLOTS to destroy.
-    * - Always skip 1�2 slots between write and destroy to ensure safety.
-    * - No cross-thread access = no mutex needed.
-    * 
-    * A fixed-size ring buffer (e.g., 3 or 4 slots) is used to delay destruction by a few frames. Each frame:
-    * The logic thread enqueues entities/items/resources to be destroyed in its current slot.
-    * The render thread destroys the contents of a slot from two frames ago.
-    * This guarantees no overlapping access, so no mutex is needed.
-    * 
-    * Why no mutex is needed?
-    * Each thread only touches its own slot.
-    * Communication is linear and strictly ordered per frame.
-    * Delayed destruction happens in slots that are guaranteed to be unused by any thread.
-    * Only one thread owns and modifies a slot at any time.
-    */
+     *    @brief How the command queue does work:
+     *    Main thread must wait, until the closure command is finished. If the closure command is called and inside that, there is another inner function, which also calls ENQUEUE_RENDER_COMMAND_WAIT,
+     *    it must not wait anymore, because the outer does already etc.
+     *    Its necessary that wait macros do wait until the command in the front of the queue is processed completely! I must prevent, that queue has several waiting commands,
+     *    which have not been processed, because then hell breaks loose.
+     *
+     *    How This Buffer-Based Approach Works
+     *    This implementation follows Ogre-Next's approach very closely. Here's how it works:
+     *
+     *    Multiple Transform Buffers: Each tracked node has multiple transform buffers (4 in this case), allowing for smooth transitions between logic frames.
+     *    Buffer Advancement: The logic thread advances the current buffer before updating game logic. This preserves the previous frame's data for interpolation.
+     *    Transform Copying: When advancing to a new buffer, the current transform values are copied to the new buffer. This ensures that if an object doesn't move during a frame, it maintains its position.
+     *    Interpolation: The render thread calculates an interpolation weight based on time since the last logic frame and uses it to interpolate between the previous and current transform buffers.
+     *
+     *    Key Advantages
+     *
+     *    Thread Safety: Logic writes to one buffer, rendering reads from between two buffers. No locks needed!
+     *    Triple Buffering Effect: With 4 buffers, we effectively have a triple-buffering approach (previous, current, and next), allowing for smooth transitions even with variable frame rates.
+     *    Predictable Memory Usage: Unlike the previous approach, memory usage is fixed per node and doesn't grow over time.
+     *    Efficient Updates: You only update the transforms that change, not every active transform every frame.
+     *    Smooth Interpolation: Like Ogre-Next, this approach provides smooth interpolation between frames.
+     *
+     *    Implementation Tips
+     *
+     *    Add Node Tracking: The addTrackedNode method should be called early when nodes are created, so they're ready for interpolation when needed.
+     *    Buffer Size: 4 buffers is typically enough, but you can adjust based on your needs.
+     *    Transform Updates: Only update the components that change to minimize data movement.
+     *    Memory Management: Consider using a custom allocator for the NodeTransforms vector if you have many objects.
+     *
+     * How the graphics resources destruction does work:
+     * Logic thread (for physics/game logic).
+     * Render thread (for reading transform data and drawing).
+     * If an entity/item is deleted immediately on the logic thread, the render thread might still access its transform � leading to crashes or undefined behavior.
+     *
+     * - Logic thread writes to logicWriteSlot.
+     * - Render thread reads from (logicWriteSlot + NUM_SLOTS - 2) % NUM_SLOTS to destroy.
+     * - Always skip 1�2 slots between write and destroy to ensure safety.
+     * - No cross-thread access = no mutex needed.
+     *
+     * A fixed-size ring buffer (e.g., 3 or 4 slots) is used to delay destruction by a few frames. Each frame:
+     * The logic thread enqueues entities/items/resources to be destroyed in its current slot.
+     * The render thread destroys the contents of a slot from two frames ago.
+     * This guarantees no overlapping access, so no mutex is needed.
+     *
+     * Why no mutex is needed?
+     * Each thread only touches its own slot.
+     * Communication is linear and strictly ordered per frame.
+     * Delayed destruction happens in slots that are guaranteed to be unused by any thread.
+     * Only one thread owns and modifies a slot at any time.
+     *
+     * IMPORTANT - Threading model for the tracked-resource containers (nodePool, cameraPool,
+     * oldBonePool, bonePool, passPool, datablockPool) and their *ToIndexMap siblings:
+     *
+     * This mirrors how Ogre-Next's own Tutorial06_Multithreading sample (GameEntityManager)
+     * does it: a tracked object is resolved into a stable storage slot EXACTLY ONCE per
+     * (thread, object) pair, and after that the calling thread keeps the slot's raw address
+     * cached locally (thread_local) and uses it directly forever - no lock, no hash lookup,
+     * no per-call overhead. The lock only exists to make that one-time resolution, and the
+     * rare removal/eviction of a slot, safe.
+     *
+     * Why a std::deque, not a std::vector: a vector's swap-and-pop removal pattern moves
+     * OTHER elements around in memory, which would invalidate any thread's already-cached
+     * pointer to one of those other elements. A std::deque never relocates an existing
+     * element - growing it (push_back/emplace_back) does not move elements that are already
+     * in it, and it is never erased from, only "tombstoned" in place (see removeTracked*()).
+     * A pointer obtained while holding the mutex therefore stays valid for the lifetime of
+     * the GraphicsModule, even across later growth or recycling of OTHER slots.
+     *
+     * Why a slot can still be safely recycled without a lock on the reading side: each slot
+     * carries its own identity field (e.g. NodeTransforms::node) as an atomic pointer. Before
+     * trusting a cached slot pointer, the fast path always re-checks
+     * "does this slot's stored identity still equal the object I'm updating?". If a slot was
+     * tombstoned and later handed to a different object, the stored identity no longer
+     * matches, the stale cache entry is dropped, and that one thread re-resolves once more
+     * (taking the lock again, exactly as on first contact). This is the same kind of
+     * ownership check Ogre's message-passing protocol gives it "for free" - NOWA just has to
+     * do it explicitly because objects are updated directly rather than via a message queue.
+     *
+     * Rules:
+     * 1. resolveNodeSlotLocked() (and its five siblings) is the ONLY place that may grow a
+     *    pool (push_back/emplace_back) or mutate its index map / free-list. It always takes
+     *    the category's mutex and is never called while that mutex is already held by the
+     *    calling thread (the mutexes are plain std::mutex, not recursive - on purpose, so a
+     *    forgotten nested lock fails loudly as a deadlock in testing instead of silently
+     *    working "by luck" via recursion).
+     * 2. removeTracked*() takes the lock and tombstones a slot in place (identity -> nullptr,
+     *    active -> false, index pushed onto the free-list). It never erases from the pool.
+     * 3. The once-per-frame bulk passes (advanceTransformBuffer, updateAllTransforms,
+     *    flushTransforms, dumpBufferState) take the category's lock for their ENTIRE pass,
+     *    not because the per-element work needs it, but because a std::deque's operator[]/
+     *    iteration is only guaranteed safe relative to a CONCURRENT push_back if every access
+     *    is itself synchronized - the pointer-stability guarantee only protects pointers
+     *    obtained *while already holding the lock*, not a fresh unlocked operator[] call.
+     *    Where advanceTransformBuffer's eviction sweep needs to tombstone a slot, it does so
+     *    inline (under the lock it already holds) rather than calling the public
+     *    removeTracked*() function, specifically to avoid needing a recursive mutex.
+     * 4. acquireNode/Camera/OldBone/Bone/Pass/DatablockSlot() are the lock-free fast path used
+     *    by every update*() function. They consult a thread_local cache first; only a cache
+     *    miss (first contact for this (thread, object) pair, or a stale/recycled entry) falls
+     *    through to the locked resolve function.
+     * 5. clearSceneResources() must NOT call clear() on a pool's underlying deque - that would
+     *    physically free chunk memory that another thread's thread_local cache might still
+     *    point to, turning a future use of a stale cache entry into a use-after-free instead
+     *    of a harmless "stale identity, re-resolve" miss. It tombstones every existing slot in
+     *    place instead, exactly like removeTracked*() does for one slot at a time. Only the
+     *    final, terminal cleanup in renderThreadFunction() at engine shutdown actually clears
+     *    the deques, since no further access can happen after that point.
+     */
 
-	class EXPORTED GraphicsModule
-	{
+    class EXPORTED GraphicsModule
+    {
     public:
-
         friend class AppState;
 
         // Transform data structure - just stores the raw transform data
         struct TransformData
         {
             // Absolute components (interpolated)
-            Ogre::Vector3     position = Ogre::Vector3::ZERO;
-            Ogre::Quaternion  orientation = Ogre::Quaternion::IDENTITY;
-            Ogre::Vector3     scale = Ogre::Vector3::UNIT_SCALE;
+            Ogre::Vector3 position = Ogre::Vector3::ZERO;
+            Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
+            Ogre::Vector3 scale = Ogre::Vector3::UNIT_SCALE;
         };
 
         struct PassSpeedData
@@ -106,75 +164,288 @@ namespace NOWA
         struct CameraTransformData
         {
             // Absolute components (interpolated)
-            Ogre::Vector3    position = Ogre::Vector3::ZERO;
+            Ogre::Vector3 position = Ogre::Vector3::ZERO;
             Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
         };
 
-        // Node and its transform buffers
+        // Node and its transform buffers.
+        //
+        // Locking model (see the big comment block above for the full rationale):
+        // 'node' is the slot's identity tag. It is written exactly twice in a slot's
+        // life - once when resolveNodeSlotLocked() claims/recycles the slot (under
+        // nodeMutex), once when removeTrackedNode()/the eviction sweep tombstones it
+        // back to nullptr (also under nodeMutex). Every other field a lock-free
+        // update*() call can touch (active, useDerived, updatedThisFrame,
+        // stableFrames) is atomic so that those writes are well-defined even though
+        // they happen without holding nodeMutex. 'isNew' is NOT atomic - it is only
+        // ever touched by resolveNodeSlotLocked() and advanceTransformBuffer(), both
+        // of which already hold nodeMutex for as long as they touch it.
+        // buffer-advance tick).
+        //
+        // There is deliberately no "last touched N frames ago" bookkeeping here -
+        // tracking lifetime is explicit-only: something that starts driving a node
+        // through updateNode*()/setNode*() is responsible for calling
+        // removeTrackedNode() when it stops. A node that is tracked but genuinely
+        // not being updated this tick simply keeps showing its last value (the
+        // copy-forward step in advanceTransformBuffer() carries it into the new
+        // buffer slot unchanged) - there is no implicit timeout or auto-eviction.
+        //
+        // Explicit move ctor/assignment: std::atomic<T> has NO move constructor
+        // (its deleted copy constructor suppresses the implicit one), so the
+        // compiler-generated move for this whole struct would also be implicitly
+        // deleted, which then falls back to the (also deleted) copy constructor -
+        // exactly the "construct_at: deleted function" error MSVC reports. This is
+        // needed even though, at runtime, nodePool is resize()'d exactly once while
+        // empty and never moves a real element again afterward: vector's growth
+        // path is templated code that the compiler must still be able to
+        // INSTANTIATE regardless of whether it is ever actually executed. Moving
+        // each atomic field by hand (load from source, store into destination) is
+        // exactly the data-preserving behaviour we want anyway. Copy is explicitly
+        // deleted - nothing should ever copy one of these.
         struct NodeTransforms
         {
-            Ogre::Node* node;
+            std::atomic<Ogre::Node*> node{nullptr};
             TransformData transforms[NUM_TRANSFORM_BUFFERS];
-            bool active = false;
+            std::atomic<bool> active{false};
+            std::atomic<bool> useDerived{false};
             bool isNew = false;
-            bool useDerived = false;
-            bool updatedThisFrame = false;
-            int stableFrames = 0;
+
+            NodeTransforms() = default;
+            NodeTransforms(const NodeTransforms&) = delete;
+            NodeTransforms& operator=(const NodeTransforms&) = delete;
+
+            NodeTransforms(NodeTransforms&& other) noexcept
+            {
+                node.store(other.node.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                {
+                    transforms[i] = other.transforms[i];
+                }
+                active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                useDerived.store(other.useDerived.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                isNew = other.isNew;
+            }
+
+            NodeTransforms& operator=(NodeTransforms&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    node.store(other.node.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                    {
+                        transforms[i] = other.transforms[i];
+                    }
+                    active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    useDerived.store(other.useDerived.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    isNew = other.isNew;
+                }
+                return *this;
+            }
         };
 
         struct CameraTransforms
         {
-            Ogre::Camera* camera;
+            std::atomic<Ogre::Camera*> camera{nullptr};
             CameraTransformData transforms[NUM_TRANSFORM_BUFFERS];
-            bool active = false;
+            std::atomic<bool> active{false};
             bool isNew = false;
-            bool updatedThisFrame = false;
-            int stableFrames = 0;
+
+            CameraTransforms() = default;
+            CameraTransforms(const CameraTransforms&) = delete;
+            CameraTransforms& operator=(const CameraTransforms&) = delete;
+
+            CameraTransforms(CameraTransforms&& other) noexcept
+            {
+                camera.store(other.camera.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                {
+                    transforms[i] = other.transforms[i];
+                }
+                active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                isNew = other.isNew;
+            }
+
+            CameraTransforms& operator=(CameraTransforms&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    camera.store(other.camera.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                    {
+                        transforms[i] = other.transforms[i];
+                    }
+                    active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    isNew = other.isNew;
+                }
+                return *this;
+            }
         };
 
         struct OldBoneTransforms
         {
-            Ogre::v1::OldBone* oldBone;
+            std::atomic<Ogre::v1::OldBone*> oldBone{nullptr};
             TransformData transforms[NUM_TRANSFORM_BUFFERS];
-            bool active = false;
+            std::atomic<bool> active{false};
             bool isNew = false;
-            bool updatedThisFrame = false;
-            int stableFrames = 0;
+
+            OldBoneTransforms() = default;
+            OldBoneTransforms(const OldBoneTransforms&) = delete;
+            OldBoneTransforms& operator=(const OldBoneTransforms&) = delete;
+
+            OldBoneTransforms(OldBoneTransforms&& other) noexcept
+            {
+                oldBone.store(other.oldBone.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                {
+                    transforms[i] = other.transforms[i];
+                }
+                active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                isNew = other.isNew;
+            }
+
+            OldBoneTransforms& operator=(OldBoneTransforms&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    oldBone.store(other.oldBone.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                    {
+                        transforms[i] = other.transforms[i];
+                    }
+                    active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    isNew = other.isNew;
+                }
+                return *this;
+            }
         };
 
         struct BoneTransforms
         {
-            Ogre::Bone* bone;
+            std::atomic<Ogre::Bone*> bone{nullptr};
             TransformData transforms[NUM_TRANSFORM_BUFFERS];
-            bool active = false;
+            std::atomic<bool> active{false};
             bool isNew = false;
-            bool updatedThisFrame = false;
-            int stableFrames = 0;
+
+            BoneTransforms() = default;
+            BoneTransforms(const BoneTransforms&) = delete;
+            BoneTransforms& operator=(const BoneTransforms&) = delete;
+
+            BoneTransforms(BoneTransforms&& other) noexcept
+            {
+                bone.store(other.bone.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                {
+                    transforms[i] = other.transforms[i];
+                }
+                active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                isNew = other.isNew;
+            }
+
+            BoneTransforms& operator=(BoneTransforms&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    bone.store(other.bone.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                    {
+                        transforms[i] = other.transforms[i];
+                    }
+                    active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    isNew = other.isNew;
+                }
+                return *this;
+            }
         };
 
         struct PassTransforms
         {
-            Ogre::Pass* pass = nullptr;
+            std::atomic<Ogre::Pass*> pass{nullptr};
             PassSpeedData transforms[NUM_TRANSFORM_BUFFERS];
-            bool active = false;
+            std::atomic<bool> active{false};
             bool isNew = false;
+
+            PassTransforms() = default;
+            PassTransforms(const PassTransforms&) = delete;
+            PassTransforms& operator=(const PassTransforms&) = delete;
+
+            PassTransforms(PassTransforms&& other) noexcept
+            {
+                pass.store(other.pass.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                {
+                    transforms[i] = other.transforms[i];
+                }
+                active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                isNew = other.isNew;
+            }
+
+            PassTransforms& operator=(PassTransforms&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    pass.store(other.pass.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                    {
+                        transforms[i] = other.transforms[i];
+                    }
+                    active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    isNew = other.isNew;
+                }
+                return *this;
+            }
         };
 
         struct TrackedDatablock
         {
-            Ogre::HlmsDatablock* datablock;
+            std::atomic<Ogre::HlmsDatablock*> datablock{nullptr};
 
             // Each buffer holds a value (e.g. ColourValue)
             Ogre::ColourValue values[NUM_TRANSFORM_BUFFERS];
 
-            // The interpolation application function
+            // The interpolation application function. Only ever set once, under
+            // datablockMutex, when the slot is created/recycled - never touched by
+            // the lock-free update path - so a plain std::function is fine here.
             std::function<void(Ogre::ColourValue)> applyFunc;
 
-            // Interpolation function between two values
+            // Interpolation function between two values. Same lifetime rule as above.
             std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpolateFunc;
 
-            bool active = false;
+            std::atomic<bool> active{false};
             bool isNew = false;
+
+            TrackedDatablock() = default;
+            TrackedDatablock(const TrackedDatablock&) = delete;
+            TrackedDatablock& operator=(const TrackedDatablock&) = delete;
+
+            TrackedDatablock(TrackedDatablock&& other) noexcept
+            {
+                datablock.store(other.datablock.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                {
+                    values[i] = other.values[i];
+                }
+                applyFunc = std::move(other.applyFunc);
+                interpolateFunc = std::move(other.interpolateFunc);
+                active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                isNew = other.isNew;
+            }
+
+            TrackedDatablock& operator=(TrackedDatablock&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    datablock.store(other.datablock.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                    {
+                        values[i] = other.values[i];
+                    }
+                    applyFunc = std::move(other.applyFunc);
+                    interpolateFunc = std::move(other.interpolateFunc);
+                    active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                    isNew = other.isNew;
+                }
+                return *this;
+            }
         };
 
         // Closure command structure for the queue
@@ -195,7 +466,6 @@ namespace NOWA
                 , isUpdate(update)
                 , isRemoval(removal)
             {
-
             }
         };
 
@@ -211,7 +481,6 @@ namespace NOWA
             PersistentClosure(const Ogre::String& name, std::function<void(Ogre::Real)> func)
                 : uniqueName(name), closureFunc(std::move(func))
             {
-
             }
         };
 
@@ -227,6 +496,7 @@ namespace NOWA
             RenderCommand command;
             std::shared_ptr<std::promise<void>> completionPromise; // nullptr for fire-and-forget
         };
+
     public:
         void beginWorkspaceTransition(void);
 
@@ -358,19 +628,19 @@ namespace NOWA
         uint64_t getLogicFrameId() const;
 
         /*
-        * Bulletproof solution for nested render thread commands � in a large codebase (400,000+ LOC), accidental misuse of a promise-based render command inside another queued render command can easily cause deadlocks.
-        * The Problem:
-        *   When entry.command() is running on the render thread, and inside that command, another command is enqueued with a promise, then wait() is called from the render thread. The render thread waits for itself => deadlock.
-        *   The Solution: Detect and immediately execute nested commands if already on the render thread. 
-        *   You need to make your queue system smart enough to detect that a command is enqueued from the render thread itself, and then run it directly synchronously, bypassing the queue and the promise.
-        */
+         * Bulletproof solution for nested render thread commands � in a large codebase (400,000+ LOC), accidental misuse of a promise-based render command inside another queued render command can easily cause deadlocks.
+         * The Problem:
+         *   When entry.command() is running on the render thread, and inside that command, another command is enqueued with a promise, then wait() is called from the render thread. The render thread waits for itself => deadlock.
+         *   The Solution: Detect and immediately execute nested commands if already on the render thread.
+         *   You need to make your queue system smart enough to detect that a command is enqueued from the render thread itself, and then run it directly synchronously, bypassing the queue and the promise.
+         */
 
         // Sets the render thread ID
         void markCurrentThreadAsRenderThread(void);
 
         // Checks if we are on the render thread
         bool isRenderThread(void) const;
-       
+
         void incrementWaitDepth(void);
 
         void decrementWaitDepth(void);
@@ -416,16 +686,40 @@ namespace NOWA
         void removeTrackedNode(Ogre::Node* node);
 
         // Update position for a node in the current buffer
-        void updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived = false, bool fireAndForget = false);
+        // use setNodePosition() instead if you need an instant warp.
+        void updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived = false);
+
+        // Update orientation for a node in the current buffer. Always interpolated -
+        // use setNodeOrientation() instead if you need an instant warp.
+        void updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived = false);
+
+        // Update scale for a node in the current buffer. Always interpolated -
+        // use setNodeScale() instead if you need an instant warp.
+        void updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived = false);
+
+        // Update full transform for a node in the current buffer. Always interpolated -
+        // use setNodeTransform() instead if you need an instant warp.
+        void updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE, bool useDerived = false);
+
+        // Instant warp: applies directly to the Ogre node THIS call (synchronously,
+        // dispatching to the render thread if not already on it) and re-pins the
+        // interpolation buffer to match, so it overrides whatever updateAllTransforms()
+        // would otherwise have shown - no waiting for the next interpolation pass, no
+        // dependency on buffer index/weight timing. If something else keeps calling
+        // updateNodePosition()/etc. for this same node afterward (e.g. a still-running
+        // vehicle update), THAT will overwrite the warp again on its own next write -
+        // setNodePosition() guarantees correctness for the instant it runs, it cannot by
+        // itself stop another system from continuing to drive the same node.
+        void setNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived = false);
 
         // Update orientation for a node in the current buffer
-        void updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived = false, bool fireAndForget = false);
+        void setNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived = false);
 
         // Update scale for a node in the current buffer
-        void updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived = false, bool fireAndForget = false);
+        void setNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived = false);
 
         // Update full transform for a node in the current buffer
-        void updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE, bool useDerived = false, bool fireAndForget = false);
+        void setNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE, bool useDerived = false);
 
         // Add a Camera to be tracked and transformed
         void addTrackedCamera(Ogre::Camera* camera);
@@ -434,13 +728,25 @@ namespace NOWA
         void removeTrackedCamera(Ogre::Camera* camera);
 
         // Update position for a Camera in the current buffer
-        void updateCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position, bool fireAndForget = false);
+        // use setCameraPosition() instead if you need an instant warp.
+        void updateCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position);
+
+        // Update orientation for a Camera in the current buffer. Always interpolated -
+        // use setCameraOrientation() instead if you need an instant warp.
+        void updateCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation);
+
+        // Update full transform for a Camera in the current buffer. Always interpolated -
+        // use setCameraTransform() instead if you need an instant warp.
+        void updateCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+
+        // Instant warp - see setNodePosition() for the full contract.
+        void setCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position);
 
         // Update orientation for a Camera in the current buffer
-        void updateCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation, bool fireAndForget = false);
+        void setCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation);
 
         // Update full transform for a Camera in the current buffer
-        void updateCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget = false);
+        void setCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
         // Add a OldBone to be tracked and transformed
         void addTrackedOldBone(Ogre::v1::OldBone* oldBone);
@@ -449,13 +755,25 @@ namespace NOWA
         void removeTrackedOldBone(Ogre::v1::OldBone* oldBone);
 
         // Update position for a OldBone in the current buffer
-        void updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, bool fireAndForget = false);
+        // use setOldBonePosition() instead if you need an instant warp.
+        void updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position);
+
+        // Update orientation for a OldBone in the current buffer. Always interpolated -
+        // use setOldBoneOrientation() instead if you need an instant warp.
+        void updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation);
+
+        // Update full transform for a OldBone in the current buffer. Always interpolated -
+        // use setOldBoneTransform() instead if you need an instant warp.
+        void updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+
+        // Instant warp - see setNodePosition() for the full contract.
+        void setOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position);
 
         // Update orientation for a OldBone in the current buffer
-        void updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation, bool fireAndForget = false);
+        void setOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation);
 
         // Update full transform for a OldBone in the current buffer
-        void updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget = false);
+        void setOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
         // Add a Bone to be tracked and transformed
         void addTrackedBone(Ogre::Bone* bone);
@@ -464,13 +782,25 @@ namespace NOWA
         void removeTrackedBone(Ogre::Bone* bone);
 
         // Update position for a Bone in the current buffer
-        void updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position, bool fireAndForget = false);
+        // use setBonePosition() instead if you need an instant warp.
+        void updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position);
+
+        // Update orientation for a Bone in the current buffer. Always interpolated -
+        // use setBoneOrientation() instead if you need an instant warp.
+        void updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation);
+
+        // Update full transform for a Bone in the current buffer. Always interpolated -
+        // use setBoneTransform() instead if you need an instant warp.
+        void updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
         // Update orientation for a Bone in the current buffer
-        void updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation, bool fireAndForget = false);
+        void setBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position);
 
         // Update full transform for a Bone in the current buffer
-        void updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget = false);
+        void setBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation);
+
+        // Instant warp - see setNodePosition() for the full contract.
+        void setBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
         // Add a Pass to be tracked and transformed
         void addTrackedPass(Ogre::Pass* pass);
@@ -536,7 +866,7 @@ namespace NOWA
         /*
         Do only use enqueueDestroy if:
         Situation
-        macroGame 
+        macroGame
         loop: projectile dies, enemy killed, spawned object gone
         ENQUEUE_DESTROY_COMMAND — deferred ring-buffer, no stall
 
@@ -552,26 +882,26 @@ namespace NOWA
         bool hasPendingDestroyCommands(void) const;
 
         /*
-        * // Example of persistent closure (non-fire-and-forget)
-        *    void SomeClass::setupPersistentEffect()
-        *    {
-        *        auto persistentClosure = [this](Ogre::Real weight)
-        *        {
-        *            // This closure will be executed every frame until removed
-        *            this->updateSomeEffect(weight);
-        *        };
-        *
-        *        Ogre::String id = "SomeClass::persistentEffect";
-        *        // false = not fire-and-forget, will persist until explicitly removed
-        *        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, persistentClosure, false);
-        *    }
-        *
-        *    // Remove persistent closure when no longer needed
-        *    void SomeClass::cleanup()
-        *    {
-        *        NOWA::GraphicsModule::getInstance()->removeTrackedClosure("SomeClass::persistentEffect");
-        *    }
-        */
+         * // Example of persistent closure (non-fire-and-forget)
+         *    void SomeClass::setupPersistentEffect()
+         *    {
+         *        auto persistentClosure = [this](Ogre::Real weight)
+         *        {
+         *            // This closure will be executed every frame until removed
+         *            this->updateSomeEffect(weight);
+         *        };
+         *
+         *        Ogre::String id = "SomeClass::persistentEffect";
+         *        // false = not fire-and-forget, will persist until explicitly removed
+         *        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, persistentClosure, false);
+         *    }
+         *
+         *    // Remove persistent closure when no longer needed
+         *    void SomeClass::cleanup()
+         *    {
+         *        NOWA::GraphicsModule::getInstance()->removeTrackedClosure("SomeClass::persistentEffect");
+         *    }
+         */
         // Called from logic thread - completely lock-free
         void updateTrackedClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc, bool fireAndForget = true);
 
@@ -590,12 +920,14 @@ namespace NOWA
         /*
          * @brief Gets the MyGUI widget currently under mouse focus, if any. This is used by input handling code to determine whether to block input for gameplay when the mouse is interacting with the UI.
          * @return Pointer to the MyGUI widget currently under mouse focus, or nullptr if no widget is focused.
-        */
+         */
         MyGUI::Widget* getMyGUIFocusWidget(void);
-	public:
+
+    public:
         static constexpr size_t NUM_DESTROY_SLOTS = 4;
 
         static GraphicsModule* getInstance();
+
     private:
         GraphicsModule();
 
@@ -609,18 +941,58 @@ namespace NOWA
 
         void setInterpolationWeight(float w);
 
-        // Find a node's transform record
-        NodeTransforms* findNodeTransforms(Ogre::Node* node);
+        // Locked slow path: resolves 'node' to a stable pool slot, creating or
+        // recycling one if it isn't tracked yet. Takes nodeMutex. Called at most
+        // once per (thread, node) pair by acquireNodeSlot() below - never call
+        // this directly from update*()/addTrackedNode() hot paths.
+        NodeTransforms* resolveNodeSlotLocked(Ogre::Node* node);
 
-        CameraTransforms* findCameraTransforms(Ogre::Camera* camera);
+        // Lock-free fast path used by every updateNode*()/addTrackedNode() call.
+        // Checks a thread_local cache first; only falls through to
+        // resolveNodeSlotLocked() on a cache miss or a stale (recycled) entry.
+        NodeTransforms* acquireNodeSlot(Ogre::Node* node);
 
-        OldBoneTransforms* findOldBoneTransforms(Ogre::v1::OldBone* oldBone);
+        CameraTransforms* resolveCameraSlotLocked(Ogre::Camera* camera);
+        CameraTransforms* acquireCameraSlot(Ogre::Camera* camera);
 
-        BoneTransforms* findBoneTransforms(Ogre::Bone* bone);
+        OldBoneTransforms* resolveOldBoneSlotLocked(Ogre::v1::OldBone* oldBone);
+        OldBoneTransforms* acquireOldBoneSlot(Ogre::v1::OldBone* oldBone);
 
-        PassTransforms* findPassTransforms(Ogre::Pass* pass);
+        BoneTransforms* resolveBoneSlotLocked(Ogre::Bone* bone);
+        BoneTransforms* acquireBoneSlot(Ogre::Bone* bone);
 
-        TrackedDatablock* findTrackedDatablock(Ogre::HlmsDatablock* datablock);
+        PassTransforms* resolvePassSlotLocked(Ogre::Pass* pass);
+        PassTransforms* acquirePassSlot(Ogre::Pass* pass);
+
+        // Datablock needs the extra creation parameters because - unlike position/
+        // orientation for a node - the apply/interpolate functions cannot be derived
+        // from the object itself and must come from the caller on first contact.
+        TrackedDatablock* resolveDatablockSlotLocked(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, std::function<void(Ogre::ColourValue)> applyFunc,
+            std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc);
+        TrackedDatablock* acquireDatablockSlot(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, std::function<void(Ogre::ColourValue)> applyFunc,
+            std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc);
+
+        // Render-thread-only implementations behind setNode*()/setCamera*()/etc. Each
+        // one (1) applies directly to the actual Ogre object right now, and (2) pins
+        // the interpolation buffer to match. Called either directly (if already on
+        // the render thread) or via enqueueAndWait (otherwise) by the public set*()
+        // wrappers - see the contract comment on setNodePosition() in the header.
+        void setNodePositionOnRenderThread(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived);
+        void setNodeOrientationOnRenderThread(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived);
+        void setNodeScaleOnRenderThread(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived);
+        void setNodeTransformOnRenderThread(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived);
+
+        void setCameraPositionOnRenderThread(Ogre::Camera* camera, const Ogre::Vector3& position);
+        void setCameraOrientationOnRenderThread(Ogre::Camera* camera, const Ogre::Quaternion& orientation);
+        void setCameraTransformOnRenderThread(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+
+        void setOldBonePositionOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position);
+        void setOldBoneOrientationOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation);
+        void setOldBoneTransformOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+
+        void setBonePositionOnRenderThread(Ogre::Bone* bone, const Ogre::Vector3& position);
+        void setBoneOrientationOnRenderThread(Ogre::Bone* bone, const Ogre::Quaternion& orientation);
+        void setBoneTransformOnRenderThread(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
         // Internal helper methods (render thread only)
         void processSingleCommand(const ClosureCommand& command, Ogre::Real renderDt);
@@ -651,17 +1023,18 @@ namespace NOWA
         }
 
         void publishLogicFrame();
-	private:
+
+    private:
         std::thread renderThread;
         std::atomic<bool> bRunning{false};
 
-        std::atomic<bool> workspaceTransitionInProgress{ false };
+        std::atomic<bool> workspaceTransitionInProgress{false};
 
         // alpha = accumulator / fixedDt  (clamped 0..1)
-        std::atomic<float> m_interpolationAlpha{ 0.0f };
+        std::atomic<float> m_interpolationAlpha{0.0f};
 
         // increments when logic produces a new snapshot (endLogicFrame)
-        std::atomic<uint64_t> m_logicFrameId{ 0 };
+        std::atomic<uint64_t> m_logicFrameId{0};
 
         Ogre::Real currentRenderDt;
 
@@ -673,23 +1046,76 @@ namespace NOWA
         std::atomic<std::chrono::milliseconds::rep> timeoutDuration;
         std::atomic<Ogre::LogMessageLevel> logLevel;
 
-        std::vector<NodeTransforms> trackedNodes;
+        // Pool storage for tracked nodes. See the threading-model comment near the
+        // top of this header. Append-only (push_back/emplace_back only ever grows
+        // it); slots are tombstoned in place and recycled via freeNodeSlots, never
+        // physically erased - that is what makes a cached raw pointer into this
+        // deque safe to keep using forever, even across later growth.
+        static constexpr size_t NODE_POOL_CAPACITY = 8192;
+        static constexpr size_t CAMERA_POOL_CAPACITY = 64;
+        static constexpr size_t OLD_BONE_POOL_CAPACITY = 4096;
+        static constexpr size_t BONE_POOL_CAPACITY = 4096;
+        static constexpr size_t PASS_POOL_CAPACITY = 256;
+        static constexpr size_t DATABLOCK_POOL_CAPACITY = 1024;
+
+        // Returned by resolve*SlotLocked() instead of a real pool slot in the
+        // (should-never-happen-in-practice) case that a pool is completely full.
+        // Writes to these are harmless - they are never part of nodePool/etc. and
+        // are therefore never iterated by advanceTransformBuffer/updateAllTransforms,
+        // so the caller never gets a null pointer, the object just silently does not
+        // interpolate until something frees up a real slot.
+        NodeTransforms nodeOverflowSink;
+        CameraTransforms cameraOverflowSink;
+        OldBoneTransforms oldBoneOverflowSink;
+        BoneTransforms boneOverflowSink;
+        PassTransforms passOverflowSink;
+        TrackedDatablock datablockOverflowSink;
+
+        // Pool storage for tracked nodes. resize()'d to NODE_POOL_CAPACITY exactly
+        // once, in the constructor, BEFORE the render/logic threads start - every
+        // slot physically exists from that point on, and nodePool.size() never
+        // changes again for the lifetime of the GraphicsModule. That is what makes
+        // it safe for any thread to read nodePool.size() (or just iterate the whole
+        // vector) without any synchronization at all: there is no concurrent writer
+        // to race against, because there is no writer, ever, after construction.
+        // "Is this slot in use" is carried entirely by each slot's own active/node
+        // fields, not by the vector's size - an unused slot is simply a fully
+        // constructed NodeTransforms sitting at active==false.
+        std::vector<NodeTransforms> nodePool;
         std::unordered_map<Ogre::Node*, size_t> nodeToIndexMap;
+        std::vector<size_t> freeNodeSlots;
+        // Guards nodePool's structure (growth/recycling) + nodeToIndexMap + freeNodeSlots.
+        // Deliberately a plain (non-recursive) mutex - see rule 1 in the threading-model
+        // comment. Mutable so the const dumpBufferState() can lock it.
+        // advanceTransformBuffer/updateAllTransforms/flushTransforms/
+        // dumpBufferState's loops. Mutable so the const dumpBufferState() can lock
+        // it if it ever needs to (it currently doesn't, since reads are lock-free).
+        mutable std::mutex nodeRegistrationMutex;
 
-        std::vector<CameraTransforms> trackedCameras;
+        std::vector<CameraTransforms> cameraPool;
         std::unordered_map<Ogre::Camera*, size_t> cameraToIndexMap;
+        std::vector<size_t> freeCameraSlots;
+        mutable std::mutex cameraRegistrationMutex;
 
-        std::vector<OldBoneTransforms> trackedOldBones;
+        std::vector<OldBoneTransforms> oldBonePool;
         std::unordered_map<Ogre::v1::OldBone*, size_t> oldBoneToIndexMap;
+        std::vector<size_t> freeOldBoneSlots;
+        mutable std::mutex oldBoneRegistrationMutex;
 
-        std::vector<BoneTransforms> trackedBones;
+        std::vector<BoneTransforms> bonePool;
         std::unordered_map<Ogre::Bone*, size_t> boneToIndexMap;
+        std::vector<size_t> freeBoneSlots;
+        mutable std::mutex boneRegistrationMutex;
 
-        std::vector<PassTransforms> trackedPasses;
+        std::vector<PassTransforms> passPool;
         std::unordered_map<Ogre::Pass*, size_t> passToIndexMap;
+        std::vector<size_t> freePassSlots;
+        mutable std::mutex passRegistrationMutex;
 
-        std::vector<TrackedDatablock> trackedDatablocks;
+        std::vector<TrackedDatablock> datablockPool;
         std::unordered_map<Ogre::HlmsDatablock*, size_t> datablockToIndexMap;
+        std::vector<size_t> freeDatablockSlots;
+        mutable std::mutex datablockRegistrationMutex;
 
         // Lock-free concurrent queue for closure commands
         moodycamel::ConcurrentQueue<ClosureCommand> closureQueue;
@@ -697,16 +1123,16 @@ namespace NOWA
         // Storage for persistent closures (only accessed by render thread)
         std::unordered_map<Ogre::String, PersistentClosure> persistentClosures;
 
-        std::atomic<MyGUI::Widget*> myGUIFocusWidget { nullptr };
+        std::atomic<MyGUI::Widget*> myGUIFocusWidget{nullptr};
 
         // Producer token for better performance (used by logic thread)
         moodycamel::ProducerToken producerToken;
 
-        // Consumer token for better performance (used by render thread)  
+        // Consumer token for better performance (used by render thread)
         moodycamel::ConsumerToken consumerToken;
 
         // Atomic flag to ensure proper initialization
-        std::atomic<bool> queueInitialized { false };
+        std::atomic<bool> queueInitialized{false};
 
         std::atomic<size_t> currentTransformNodeIdx;
         std::atomic<size_t> currentTransformCameraIdx;
@@ -730,7 +1156,7 @@ namespace NOWA
 
         std::atomic<bool> stallRequested;
         std::atomic<bool> stallAcknowledged;
-	};
+    };
 
 }; // namespace end
 

@@ -3,6 +3,8 @@
 #include "gameobject/JointComponents.h"
 #include "main/AppStateManager.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
 	Picker::PickForceObserver::PickForceObserver()

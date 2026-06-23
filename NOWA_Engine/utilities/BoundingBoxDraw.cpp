@@ -2,6 +2,8 @@
 #include "BoundingBoxDraw.h"
 #include "modules/GraphicsModule.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
 	BoundingBoxDraw::BoundingBoxDraw(Ogre::SceneManager* sceneManager)

@@ -332,7 +332,7 @@ namespace NOWA
 
 	bool TransformEaseComponent::disconnect(void)
 	{
-		
+        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->gameObjectPtr->getSceneNode());
 		return true;
 	}
 
@@ -345,6 +345,8 @@ namespace NOWA
 	void TransformEaseComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->gameObjectPtr->getSceneNode());
 	}
 	
 	void TransformEaseComponent::onOtherComponentRemoved(unsigned int index)

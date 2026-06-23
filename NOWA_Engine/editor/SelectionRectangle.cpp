@@ -3,6 +3,8 @@
 #include "main/Core.h"
 #include "modules/GraphicsModule.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
 	SelectionRectangle::SelectionRectangle(const Ogre::String& name, Ogre::SceneManager* sceneManager, Ogre::Camera* camera)

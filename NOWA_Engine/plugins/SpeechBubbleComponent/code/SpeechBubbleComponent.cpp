@@ -8,6 +8,8 @@
 #include "gameobject/GameObjectTitleComponent.h"
 #include "gameobject/SimpleSoundComponent.h"
 
+#include "RenderQueueEnums.h"
+
 #include "OgreSimpleSpline.h"
 #include "OgreAbiUtils.h"
 

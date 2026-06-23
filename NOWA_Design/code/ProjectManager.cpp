@@ -1,78 +1,70 @@
 #include "NOWAPrecompiled.h"
 #include "ProjectManager.h"
 #include "GuiEvents.h"
-#include "modules/WorkspaceModule.h"
 #include "modules/GraphicsModule.h"
+#include "modules/WorkspaceModule.h"
 
-#include "OpenSaveFileDialog/DialogManager.cpp"
 #include "OpenSaveFileDialog/Dialog.cpp"
+#include "OpenSaveFileDialog/DialogManager.cpp"
 #include "OpenSaveFileDialog/OpenSaveFileDialog.cpp"
 
 #include "RecentFilesManager.h"
 
-ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager)
-	: sceneManager(sceneManager),
-	sunLight(nullptr),
-	dotSceneImportModule(nullptr),
-	dotSceneExportModule(nullptr),
-	ogreNewt(nullptr),
-	openSaveFileDialog(nullptr),
-	editorManager(nullptr)
+ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager) : sceneManager(sceneManager), sunLight(nullptr), dotSceneImportModule(nullptr), dotSceneExportModule(nullptr), ogreNewt(nullptr), openSaveFileDialog(nullptr), editorManager(nullptr)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager InitOpenSaveDialog",
-	{
-		new tools::DialogManager();
-		tools::DialogManager::getInstance().initialise();
+    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager InitOpenSaveDialog", {
+        new tools::DialogManager();
+        tools::DialogManager::getInstance().initialise();
 
-		this->openSaveFileDialog = new OpenSaveFileDialogExtended();
-		this->openSaveFileDialog->setFileMask("*.scene");
-		this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &ProjectManager::notifyEndDialog);
-	});
+        this->openSaveFileDialog = new OpenSaveFileDialogExtended();
+        this->openSaveFileDialog->setFileMask("*.scene");
+        this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &ProjectManager::notifyEndDialog);
+    });
 }
 
 ProjectManager::~ProjectManager()
 {
-	// Threadsafe from the outside
-	// Delete import/export modules safely (already safe as you said)
-	if (this->dotSceneImportModule)
-	{
-		delete this->dotSceneImportModule;
-		this->dotSceneImportModule = nullptr;
-	}
+    // Threadsafe from the outside
+    // Delete import/export modules safely (already safe as you said)
+    if (this->dotSceneImportModule)
+    {
+        delete this->dotSceneImportModule;
+        this->dotSceneImportModule = nullptr;
+    }
 
-	if (this->dotSceneExportModule)
-	{
-		delete this->dotSceneExportModule;
-		this->dotSceneExportModule = nullptr;
-	}
+    if (this->dotSceneExportModule)
+    {
+        delete this->dotSceneExportModule;
+        this->dotSceneExportModule = nullptr;
+    }
 
-	// Move pointer locally and enqueue deletion on render thread
-	if (this->openSaveFileDialog)
-	{
-		delete this->openSaveFileDialog;
-		tools::DialogManager::getInstance().shutdown();
-		delete tools::DialogManager::getInstancePtr();
-		this->openSaveFileDialog = nullptr;
-	}
+    // Move pointer locally and enqueue deletion on render thread
+    if (this->openSaveFileDialog)
+    {
+        delete this->openSaveFileDialog;
+        tools::DialogManager::getInstance().shutdown();
+        delete tools::DialogManager::getInstancePtr();
+        this->openSaveFileDialog = nullptr;
+    }
 
-	this->editorManager = nullptr;
+    this->editorManager = nullptr;
 }
 
 void ProjectManager::setEditorManager(NOWA::EditorManager* editorManager)
 {
-	this->editorManager = editorManager;
+    this->editorManager = editorManager;
 }
 
 NOWA::EditorManager* ProjectManager::getEditorManager(void) const
 {
-	return this->editorManager;
+    return this->editorManager;
 }
 
 Ogre::Light* ProjectManager::createSunLight(void)
 {
-	Ogre::Light* sunLight = nullptr;
+    Ogre::Light* sunLight = nullptr;
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, &sunLight]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, &sunLight]()
     {
         try
         {
@@ -115,15 +107,14 @@ Ogre::Light* ProjectManager::createSunLight(void)
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::createSunLight");
 
-	return sunLight;
+    return sunLight;
 }
-
 
 Ogre::Camera* ProjectManager::createMainCamera(void)
 {
-	Ogre::Camera* mainCamera = nullptr;
+    Ogre::Camera* mainCamera = nullptr;
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, &mainCamera]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, &mainCamera]()
     {
         // There must be a main camera which may not be deleted
         Ogre::SceneNode* cameraNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
@@ -162,227 +153,219 @@ Ogre::Camera* ProjectManager::createMainCamera(void)
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::createMainCamera");
 
-	return mainCamera;
+    return mainCamera;
 }
 
 void ProjectManager::createMainGameObject(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::createMainGameObject",
-	{
-		Ogre::SceneNode * mainGameObjectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-		// Attention: Never set to huge coordinates like -1000 -1000 -1000, else shadows will be corrupted, because the game object would be to far away from all other game objects!
-		mainGameObjectNode->setPosition(0, 0, 0);
+    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::createMainGameObject", {
+        Ogre::SceneNode* mainGameObjectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+        // Attention: Never set to huge coordinates like -1000 -1000 -1000, else shadows will be corrupted, because the game object would be to far away from all other game objects!
+        mainGameObjectNode->setPosition(0, 0, 0);
 
-		Ogre::Item* mainGameObjectItem = this->sceneManager->createItem("Node.mesh");
-		// mainGameObjectEntity->setStatic(true);
-		mainGameObjectNode->attachObject(mainGameObjectItem);
-		mainGameObjectNode->setVisible(false);
+        Ogre::Item* mainGameObjectItem = this->sceneManager->createItem("Node.mesh");
+        // mainGameObjectEntity->setStatic(true);
+        mainGameObjectNode->attachObject(mainGameObjectItem);
+        mainGameObjectNode->setVisible(false);
 
-		Ogre::String gameObjectName = "MainGameObject";
-		mainGameObjectItem->setName(gameObjectName);
-		mainGameObjectNode->setName(gameObjectName);
+        Ogre::String gameObjectName = "MainGameObject";
+        mainGameObjectItem->setName(gameObjectName);
+        mainGameObjectNode->setName(gameObjectName);
 
-		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, mainGameObjectNode, mainGameObjectItem, NOWA::SCENE_NODE, NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
-		if (nullptr != gameObjectPtr)
-		{
-			// Do not permit to change the name of the sun light
-			gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
+        NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, mainGameObjectNode, mainGameObjectItem, NOWA::SCENE_NODE, NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
+        if (nullptr != gameObjectPtr)
+        {
+            // Do not permit to change the name of the sun light
+            gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
 
-			// Add also the light direcitional component
-			NOWA::DescriptionCompPtr descriptionComponentPtr = boost::dynamic_pointer_cast<NOWA::DescriptionComponent>(
-				NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::DescriptionComponent::getStaticClassName()));
+            // Add also the light direcitional component
+            NOWA::DescriptionCompPtr descriptionComponentPtr = boost::dynamic_pointer_cast<NOWA::DescriptionComponent>(NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::DescriptionComponent::getStaticClassName()));
 
-			// Register after the component has been created
-			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
-		}
-	});
+            // Register after the component has been created
+            NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+        }
+    });
 }
 
 void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParameter)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::destroyScene",
-	{
-		this->destroyScene();
-		this->additionalMeshResources.clear();
-	});
+    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::destroyScene", {
+        this->destroyScene();
+        this->additionalMeshResources.clear();
+    });
 
-	// Create the physics and set data internally in internalApplySettings
+    // Create the physics and set data internally in internalApplySettings
     this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPhysics(NOWA::AppStateManager::getSingletonPtr()->getCurrentAppStateName() + "_world");
     this->ogreNewt->cleanUp();
 
-	this->internalApplySettings();
-	this->projectParameter = projectParameter;
+    this->internalApplySettings();
+    this->projectParameter = projectParameter;
 
-	// NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
-	
-	NOWA::Core::getSingletonPtr()->setProjectName(this->projectParameter.projectName);
+    // NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
 
-	// this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->createQualityPhysics(Ogre::Vector3(-500.0f, -10.0f, -500.0f), Ogre::Vector3(500.0f, 200.0f, 500.0f));
-	// this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPerformantPhysics(Ogre::Vector3(-500.0f, -100.0f, -500.0f), Ogre::Vector3(500.0f, 100.0f, 500.0f), 60.0f);
+    NOWA::Core::getSingletonPtr()->setProjectName(this->projectParameter.projectName);
 
-	// Before creating a new scene, load the scene, so that a possible existing global.scene can be loaded beforehand
-	if (nullptr == this->dotSceneImportModule)
-	{
-		this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, nullptr, nullptr);
-	}
-	try
-	{
-		// Note: When creating a new scene, the .scene file does not exist yet, but maybe there is already a globa.scene file existing
-		// This file will be parsed and below also again exported along with the new scene file.
-		// Mandatory game objects are only created below, if they do not exist already via the parsed globa.scene
-		// So now no new scene creation does kill a valid valueable global.scene anymore!
+    // this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->createQualityPhysics(Ogre::Vector3(-500.0f, -10.0f, -500.0f), Ogre::Vector3(500.0f, 200.0f, 500.0f));
+    // this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPerformantPhysics(Ogre::Vector3(-500.0f, -100.0f, -500.0f), Ogre::Vector3(500.0f, 100.0f, 500.0f), 60.0f);
 
-		this->dotSceneImportModule->setShowLoadingDetails(true);
-        this->dotSceneImportModule->setShowProgressBar(true); 
-		this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr);
-	}
-	catch (const std::runtime_error& e)
-	{
-		ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::failedToCreateProject",
-		{
-			MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}"),
-			MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-		});
-		return;
-	}
+    // Before creating a new scene, load the scene, so that a possible existing global.scene can be loaded beforehand
+    if (nullptr == this->dotSceneImportModule)
+    {
+        this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, nullptr, nullptr);
+    }
+    try
+    {
+        // Note: When creating a new scene, the .scene file does not exist yet, but maybe there is already a globa.scene file existing
+        // This file will be parsed and below also again exported along with the new scene file.
+        // Mandatory game objects are only created below, if they do not exist already via the parsed globa.scene
+        // So now no new scene creation does kill a valid valueable global.scene anymore!
 
-	// Check after (maybe loading a valid global.scene, which mandatory game objects already exists
-	const auto mainCameraGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("MainCamera");
-	if (nullptr == mainCameraGameObjectPtr)
-	{
-		Ogre::Camera* camera = this->createMainCamera();
-		if (nullptr == camera)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProjectManager] Could not new project because the mandantory camera could not be created.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[ProjectManager] Could not new project because the mandantory camera could not be created.\n", "NOWA");
-		}
-		// Add and activate the main camera
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(camera, true);
-	}
-	else
-	{
-		// Add and activate the main camera
-		auto cameraComponent = NOWA::makeStrongPtr(mainCameraGameObjectPtr->getComponent<NOWA::CameraComponent>());
-		if (nullptr != cameraComponent)
-		{
-			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(cameraComponent->getCamera(), true);
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProjectManager] Could not new project because the mandantory camera could not be created. Details: The camera component is missing.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[ProjectManager] Could not new project because the mandantory camera could not be created. Details: The camera component is missing.\n", "NOWA");
-		}
-	}
+        this->dotSceneImportModule->setShowLoadingDetails(true);
+        this->dotSceneImportModule->setShowProgressBar(true);
+        this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr);
+    }
+    catch (const std::runtime_error& e)
+    {
+        ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::failedToCreateProject", {
+            MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}"), MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+        });
+        return;
+    }
 
-	// No workspace created during scene loading, create a dummy one
-	if (false == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
-	{
-		NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
-	}
+    // Check after (maybe loading a valid global.scene, which mandatory game objects already exists
+    const auto mainCameraGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("MainCamera");
+    if (nullptr == mainCameraGameObjectPtr)
+    {
+        Ogre::Camera* camera = this->createMainCamera();
+        if (nullptr == camera)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProjectManager] Could not new project because the mandantory camera could not be created.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[ProjectManager] Could not new project because the mandantory camera could not be created.\n", "NOWA");
+        }
+        // Add and activate the main camera
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(camera, true);
+    }
+    else
+    {
+        // Add and activate the main camera
+        auto cameraComponent = NOWA::makeStrongPtr(mainCameraGameObjectPtr->getComponent<NOWA::CameraComponent>());
+        if (nullptr != cameraComponent)
+        {
+            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(cameraComponent->getCamera(), true);
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProjectManager] Could not new project because the mandantory camera could not be created. Details: The camera component is missing.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[ProjectManager] Could not new project because the mandantory camera could not be created. Details: The camera component is missing.\n", "NOWA");
+        }
+    }
 
-	if (nullptr == NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("SunLight"))
-	{
-		// Important: Light must be created, else a dxd3d error occurs in the app folder, that viewDir is invalid
-		this->sunLight = this->createSunLight();
-		if (nullptr == sunLight)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProjectManager] Could not new project because the mandantory sun light could not be created.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[ProjectManager] Could not new project because the mandantory sun light could not be created.\n", "NOWA");
-		}
-	}
+    // No workspace created during scene loading, create a dummy one
+    if (false == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
+    {
+        NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
+    }
 
-	if (nullptr == NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("MainGameObject"))
-	{
-		// Add a main game object
-		this->createMainGameObject();
-	}
+    if (nullptr == NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("SunLight"))
+    {
+        // Important: Light must be created, else a dxd3d error occurs in the app folder, that viewDir is invalid
+        this->sunLight = this->createSunLight();
+        if (nullptr == sunLight)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProjectManager] Could not new project because the mandantory sun light could not be created.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[ProjectManager] Could not new project because the mandantory sun light could not be created.\n", "NOWA");
+        }
+    }
 
-	this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, /*this->camera, sunLight,*/ this->ogreNewt, this->projectParameter);
-	this->dotSceneExportModule->exportScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects");
+    if (nullptr == NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("MainGameObject"))
+    {
+        // Add a main game object
+        this->createMainGameObject();
+    }
 
-	NOWA::DeployResourceModule::getInstance()->createLuaInitScript(this->projectParameter.projectName);
+    this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, /*this->camera, sunLight,*/ this->ogreNewt, this->projectParameter);
+    this->dotSceneExportModule->exportScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects");
 
-	boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::NEW));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
+    NOWA::DeployResourceModule::getInstance()->createLuaInitScript(this->projectParameter.projectName);
+
+    boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::NEW));
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
 }
 
 void ProjectManager::saveProject(const Ogre::String& optionalFileName)
 {
-	if (false == optionalFileName.empty())
-	{
-		size_t found = optionalFileName.find_last_of("/\\");
-		if (Ogre::String::npos == found)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Could not save project because the project name or scene name is wrong! See: '" + optionalFileName + "'.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[ProjectManager] Could not save project because the project name or scene name is wrong! See: '" + optionalFileName + "'.\n", "NOWA");
-		}
-		this->projectParameter.projectName = optionalFileName.substr(0, found);
-		this->projectParameter.sceneName = optionalFileName.substr(found + 1, optionalFileName.size() - 1);
-	}
+    if (false == optionalFileName.empty())
+    {
+        size_t found = optionalFileName.find_last_of("/\\");
+        if (Ogre::String::npos == found)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Could not save project because the project name or scene name is wrong! See: '" + optionalFileName + "'.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[ProjectManager] Could not save project because the project name or scene name is wrong! See: '" + optionalFileName + "'.\n", "NOWA");
+        }
+        this->projectParameter.projectName = optionalFileName.substr(0, found);
+        this->projectParameter.sceneName = optionalFileName.substr(found + 1, optionalFileName.size() - 1);
+    }
 
-	// Must be recreated each time, so that dotSceneExportModule has correct ogre newt
-	if (nullptr != this->dotSceneExportModule)
-	{
-		delete this->dotSceneExportModule;
-		this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, this->ogreNewt, this->projectParameter);
-		this->dotSceneExportModule->setAdditionalMeshResources(this->additionalMeshResources);
-	}
+    // Must be recreated each time, so that dotSceneExportModule has correct ogre newt
+    if (nullptr != this->dotSceneExportModule)
+    {
+        delete this->dotSceneExportModule;
+        this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, this->ogreNewt, this->projectParameter);
+        this->dotSceneExportModule->setAdditionalMeshResources(this->additionalMeshResources);
+    }
 
-	// Creates prior a backup of the scene
-	NOWA::DeployResourceModule::getInstance()->createProjectBackup(this->projectParameter.projectName, this->projectParameter.sceneName);
-	this->dotSceneExportModule->exportScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects");
+    // Creates prior a backup of the scene
+    NOWA::DeployResourceModule::getInstance()->createProjectBackup(this->projectParameter.projectName, this->projectParameter.sceneName);
+    this->dotSceneExportModule->exportScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects");
 
-	// Add file name to recent file names
-	RecentFilesManager::getInstance().addRecentFile(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
+    // Add file name to recent file names
+    RecentFilesManager::getInstance().addRecentFile(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
 
-	boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::SAVE));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
+    boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::SAVE));
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
 
-	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
+    boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 }
 
 void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned short recentFileIndex)
 {
-	Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
-	MyGUI::PointerManager::getInstancePtr()->setPointer("link");
+    Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
+    MyGUI::PointerManager::getInstancePtr()->setPointer("link");
 
-	// Separate the destruction and initialization into TWO sequential commands
-	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::loadProject::destroy",
-	{
-		this->destroyScene();
-	});
+    // Separate the destruction and initialization into TWO sequential commands
+    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::loadProject::destroy", { this->destroyScene(); });
 
-	this->additionalMeshResources.clear();
+    this->additionalMeshResources.clear();
 
-	Ogre::String tempFileName = filePathName;
-	tempFileName = NOWA::Core::getSingletonPtr()->getFileNameFromPath(tempFileName);
+    Ogre::String tempFileName = filePathName;
+    tempFileName = NOWA::Core::getSingletonPtr()->getFileNameFromPath(tempFileName);
 
-	Ogre::String tempProjectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(filePathName);
+    Ogre::String tempProjectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(filePathName);
 
-	this->projectParameter.projectName = tempProjectName;
-	NOWA::Core::getSingletonPtr()->setProjectName(tempProjectName);
+    this->projectParameter.projectName = tempProjectName;
+    NOWA::Core::getSingletonPtr()->setProjectName(tempProjectName);
 
-	this->projectParameter.sceneName = tempFileName;
-	// Remove .scene
-	size_t found = this->projectParameter.sceneName.find(".scene");
-	if (found != std::wstring::npos)
-	{
-		this->projectParameter.sceneName = this->projectParameter.sceneName.substr(0, this->projectParameter.sceneName.size() - 6);
-	}
+    this->projectParameter.sceneName = tempFileName;
+    // Remove .scene
+    size_t found = this->projectParameter.sceneName.find(".scene");
+    if (found != std::wstring::npos)
+    {
+        this->projectParameter.sceneName = this->projectParameter.sceneName.substr(0, this->projectParameter.sceneName.size() - 6);
+    }
 
-	Ogre::String projectFilePathName = this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene";
+    Ogre::String projectFilePathName = this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene";
 
-	if (nullptr == this->dotSceneImportModule)
-	{
-		this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, nullptr, nullptr);
-	}
+    if (nullptr == this->dotSceneImportModule)
+    {
+        this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, nullptr, nullptr);
+    }
 
-	try
-	{
-		bool success = false;
+    try
+    {
+        bool success = false;
 
-		NOWA::AppStateManager::LogicCommand logicCommand = [this, &success]()
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, &success]()
         {
             Ogre::ResourceGroupManager* rgm = Ogre::ResourceGroupManager::getSingletonPtr();
 
@@ -400,599 +383,594 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
         };
         NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 
-		// Must be done back in logic thread, because this is called via mygui mouse press from rendering thread!
-		if (false == success)
-		{
-			if (-1 != recentFileIndex)
-			{
-				boost::shared_ptr<EventDataSceneInvalid> eventDataSceneInvalid(new EventDataSceneInvalid(recentFileIndex, projectFilePathName));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneInvalid);
-			}
+        // Must be done back in logic thread, because this is called via mygui mouse press from rendering thread!
+        if (false == success)
+        {
+            if (-1 != recentFileIndex)
+            {
+                boost::shared_ptr<EventDataSceneInvalid> eventDataSceneInvalid(new EventDataSceneInvalid(recentFileIndex, projectFilePathName));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneInvalid);
+            }
 
-			// Trigger for main menu bar, that the recent list will be updated via this event
-			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
+            // Trigger for main menu bar, that the recent list will be updated via this event
+            boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 
-			this->createDummyCamera();
+            this->createDummyCamera();
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::failedToCreateProject", _1(projectFilePathName),
-			{
-				MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("NOWA-Design",
-					MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}: " + projectFilePathName),
-					MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-			});
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::failedToCreateProject", _1(projectFilePathName), {
+                MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}: " + projectFilePathName),
+                    MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+            });
 
-			return;
-		}
+            return;
+        }
 
-		// If the scene does no more exist, but there is a global scene, which has no active camera, create dummy one
-		if (nullptr == NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
-		{
-			this->createDummyCamera();
-		}
+        // If the scene does no more exist, but there is a global scene, which has no active camera, create dummy one
+        if (nullptr == NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
+        {
+            this->createDummyCamera();
+        }
 
-		// No workspace created during scene loading, create a dummy one
-		if (false == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
-		{
-			NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
-		}
+        // No workspace created during scene loading, create a dummy one
+        if (false == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
+        {
+            NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
+        }
 
-		// Internally, OgreNewt has maybe been parsed, so get it here
-		this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
-		if (nullptr != this->ogreNewt)
-		{
-			this->ogreNewt->cleanUp();
-		}
-	}
-	catch (const std::runtime_error& e)
-	{
-		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}"),
-			MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-		return;
-	}
+        // Internally, OgreNewt has maybe been parsed, so get it here
+        this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
+        if (nullptr != this->ogreNewt)
+        {
+            this->ogreNewt->cleanUp();
+        }
+    }
+    catch (const std::runtime_error& e)
+    {
+        MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}"), MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+        return;
+    }
 
-	if (nullptr == this->dotSceneExportModule)
-	{
-		this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, this->ogreNewt, this->projectParameter);
-	}
+    if (nullptr == this->dotSceneExportModule)
+    {
+        this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, this->ogreNewt, this->projectParameter);
+    }
 
-	this->projectParameter = this->dotSceneImportModule->getProjectParameter();
+    this->projectParameter = this->dotSceneImportModule->getProjectParameter();
 
-	// Set the data from loaded scene
-	this->sunLight = this->dotSceneImportModule->getSunLight();
+    // Set the data from loaded scene
+    this->sunLight = this->dotSceneImportModule->getSunLight();
 
-	// Add file name to recent file names
-	RecentFilesManager::getInstance().addRecentFile(projectFilePathName);
+    // Add file name to recent file names
+    RecentFilesManager::getInstance().addRecentFile(projectFilePathName);
 
-	RecentFilesManager::getInstance().saveSettings();
+    RecentFilesManager::getInstance().saveSettings();
 
-	boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::LOAD));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
+    boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::LOAD));
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
 
-	MyGUI::PointerManager::getInstancePtr()->setPointer(defaultPointer);
+    MyGUI::PointerManager::getInstancePtr()->setPointer(defaultPointer);
 }
 
 void ProjectManager::applySettings(const NOWA::ProjectParameter& projectParameter)
 {
-	this->projectParameter = projectParameter;
-	this->internalApplySettings();
+    this->projectParameter = projectParameter;
+    this->internalApplySettings();
 }
 
 void ProjectManager::internalApplySettings(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::internalApplySettings",
-	{
-		if (nullptr != this->sunLight)
-		{
-			/*
-			Tip: Set the upperHemisphere to a cold colour (e.g. blueish sky) and lowerHemisphere
-				to a warm colour (e.g. sun-yellowish, orange) and the hemisphereDir in the opposite
-				direction of your main directional light for a convincing look.
-			*/
-			this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
-				Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b)/* * 0.065f * 0.75f*/, -this->sunLight->getDirection()/* + Ogre::Vector3::UNIT_Y * 0.2f*/, this->projectParameter.envmapScale);
-		}
-		else
-		{
-			this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
-				Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b)/* * 0.065f * 0.75f*/, this->projectParameter.hemisphereDir.normalisedCopy(), this->projectParameter.envmapScale);
-		}
+    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::internalApplySettings", {
+        if (nullptr != this->sunLight)
+        {
+            /*
+            Tip: Set the upperHemisphere to a cold colour (e.g. blueish sky) and lowerHemisphere
+                to a warm colour (e.g. sun-yellowish, orange) and the hemisphereDir in the opposite
+                direction of your main directional light for a convincing look.
+            */
+            this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
+                Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b) /* * 0.065f * 0.75f*/,
+                -this->sunLight->getDirection() /* + Ogre::Vector3::UNIT_Y * 0.2f*/, this->projectParameter.envmapScale);
+        }
+        else
+        {
+            this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
+                Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b) /* * 0.065f * 0.75f*/,
+                this->projectParameter.hemisphereDir.normalisedCopy(), this->projectParameter.envmapScale);
+        }
 
-		//Set sane defaults for proper shadow mapping
-		this->sceneManager->setShadowFarDistance(this->projectParameter.shadowFarDistance);
-		this->sceneManager->setShadowDirectionalLightExtrusionDistance(this->projectParameter.shadowDirectionalLightExtrusionDistance);
-		this->sceneManager->setShadowDirLightTextureOffset(this->projectParameter.shadowDirLightTextureOffset);
+        // Set sane defaults for proper shadow mapping
+        this->sceneManager->setShadowFarDistance(this->projectParameter.shadowFarDistance);
+        this->sceneManager->setShadowDirectionalLightExtrusionDistance(this->projectParameter.shadowDirectionalLightExtrusionDistance);
+        this->sceneManager->setShadowDirLightTextureOffset(this->projectParameter.shadowDirLightTextureOffset);
 
-		// this->sceneManager->setShadowTextureFadeStart(0.8f);
-		// this->sceneManager->setShadowTextureFadeEnd(0.9f);
+        // this->sceneManager->setShadowTextureFadeStart(0.8f);
+        // this->sceneManager->setShadowTextureFadeEnd(0.9f);
 
-		// Just a test: https://forums.ogre3d.org/viewtopic.php?t=96470
-		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-		Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+        // Just a test: https://forums.ogre3d.org/viewtopic.php?t=96470
+        Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+        Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
 
-		if (0 == this->projectParameter.forwardMode)
-		{
-			hlmsPbs->setUseLightBuffers(false);
-			this->sceneManager->setForward3D(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-				this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-			this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-				10, 10, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-		}
-		else if (1 == this->projectParameter.forwardMode)
-		{
-			hlmsPbs->setUseLightBuffers(true);
-			this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-												this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-		}
-		else if (2 == this->projectParameter.forwardMode)
-		{
-			hlmsPbs->setUseLightBuffers(true);
-			this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-												10, 10, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-		}
+        if (0 == this->projectParameter.forwardMode)
+        {
+            hlmsPbs->setUseLightBuffers(false);
+            this->sceneManager->setForward3D(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance,
+                this->projectParameter.maxLightDistance);
+            this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, 10, 10,
+                this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
+        }
+        else if (1 == this->projectParameter.forwardMode)
+        {
+            hlmsPbs->setUseLightBuffers(true);
+            this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance,
+                this->projectParameter.maxLightDistance);
+        }
+        else if (2 == this->projectParameter.forwardMode)
+        {
+            hlmsPbs->setUseLightBuffers(true);
+            this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, 10, 10,
+                this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
+        }
 
-		NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
+        NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
 
-		OgreNewt::World* ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
-		if (nullptr != ogreNewt)
-		{
-			ogreNewt->setSolverModel(this->projectParameter.solverModel);
-			ogreNewt->setUpdateFPS(this->projectParameter.physicsUpdateRate, 2);
-			ogreNewt->setThreadCount(this->projectParameter.physicsThreadCount);
-			ogreNewt->setDefaultLinearDamping(this->projectParameter.linearDamping);
-			ogreNewt->setDefaultAngularDamping(this->projectParameter.angularDamping);
-			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
-		}
+        OgreNewt::World* ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
+        if (nullptr != ogreNewt)
+        {
+            ogreNewt->setSolverModel(this->projectParameter.solverModel);
+            ogreNewt->setUpdateFPS(this->projectParameter.physicsUpdateRate, 2);
+            ogreNewt->setThreadCount(this->projectParameter.physicsThreadCount);
+            ogreNewt->setDefaultLinearDamping(this->projectParameter.linearDamping);
+            ogreNewt->setDefaultAngularDamping(this->projectParameter.angularDamping);
+            NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
+        }
 
-		if (true == this->projectParameter.hasRecast)
-		{
-			OgreRecastConfigParams params;
+        if (true == this->projectParameter.hasRecast)
+        {
+            OgreRecastConfigParams params;
 
-			params.setCellSize(projectParameter.cellSize);
-			params.setCellHeight(projectParameter.cellHeight);
-			params.setAgentMaxSlope(projectParameter.agentMaxSlope);
-			params.setAgentMaxClimb(projectParameter.agentMaxClimb);
-			params.setAgentHeight(projectParameter.agentHeight);
-			params.setAgentRadius(projectParameter.agentRadius);
-			params.setEdgeMaxLen(projectParameter.edgeMaxLen);
-			params.setEdgeMaxError(projectParameter.edgeMaxError);
-			params.setRegionMinSize(projectParameter.regionMinSize);
-			params.setRegionMergeSize(projectParameter.regionMergeSize);
-			params.setVertsPerPoly(projectParameter.vertsPerPoly);
-			params.setDetailSampleDist(projectParameter.detailSampleDist);
-			params.setDetailSampleMaxError(projectParameter.detailSampleMaxError);
-			params.setKeepInterResults(projectParameter.keepInterResults);
+            params.setCellSize(projectParameter.cellSize);
+            params.setCellHeight(projectParameter.cellHeight);
+            params.setAgentMaxSlope(projectParameter.agentMaxSlope);
+            params.setAgentMaxClimb(projectParameter.agentMaxClimb);
+            params.setAgentHeight(projectParameter.agentHeight);
+            params.setAgentRadius(projectParameter.agentRadius);
+            params.setEdgeMaxLen(projectParameter.edgeMaxLen);
+            params.setEdgeMaxError(projectParameter.edgeMaxError);
+            params.setRegionMinSize(projectParameter.regionMinSize);
+            params.setRegionMergeSize(projectParameter.regionMergeSize);
+            params.setVertsPerPoly(projectParameter.vertsPerPoly);
+            params.setDetailSampleDist(projectParameter.detailSampleDist);
+            params.setDetailSampleMaxError(projectParameter.detailSampleMaxError);
+            params.setKeepInterResults(projectParameter.keepInterResults);
 
-			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->createOgreRecast(this->sceneManager, params, projectParameter.pointExtends);
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->createOgreRecast(this->sceneManager, params, projectParameter.pointExtends);
 
-			const auto navMeshTerraComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshTerraComponent>();
+            const auto navMeshTerraComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshTerraComponent>();
 
-			// Nav mesh terra components, must be re-applied in order to re-create nav mesh
-			for (size_t i = 0; i < navMeshTerraComponents.size(); i++)
-			{
-				navMeshTerraComponents[i]->postInit();
-			}
+            // Nav mesh terra components, must be re-applied in order to re-create nav mesh
+            for (size_t i = 0; i < navMeshTerraComponents.size(); i++)
+            {
+                navMeshTerraComponents[i]->postInit();
+            }
 
-			const auto navMeshComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshComponent>();
+            const auto navMeshComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshComponent>();
 
-			// Nav mesh components, must be re-applied in order to re-create nav mesh
-			for (size_t i = 0; i < navMeshComponents.size(); i++)
-			{
-				navMeshComponents[i]->postInit();
-			}
+            // Nav mesh components, must be re-applied in order to re-create nav mesh
+            for (size_t i = 0; i < navMeshComponents.size(); i++)
+            {
+                navMeshComponents[i]->postInit();
+            }
 
-			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->setMustRegenerate(true);
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->setMustRegenerate(true);
             NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
-		}
-		else
-		{
-			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
-		}
+        }
+        else
+        {
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
+        }
 
-		this->sceneManager->setShadowColour(Ogre::ColourValue(this->projectParameter.shadowColor.r, this->projectParameter.shadowColor.g, this->projectParameter.shadowColor.b, 1.0f));
-		NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), true);
-		NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
+        this->sceneManager->setShadowColour(Ogre::ColourValue(this->projectParameter.shadowColor.r, this->projectParameter.shadowColor.g, this->projectParameter.shadowColor.b, 1.0f));
+        NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), true);
+        NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
 
-		const auto oceanComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::OceanComponent>();
+        const auto oceanComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::OceanComponent>();
 
-		// Ocean must set new values for ambient, shadows
-		for (size_t i = 0; i < oceanComponents.size(); i++)
-		{
-			oceanComponents[i]->actualizeShading();
-		}
-	});
+        // Ocean must set new values for ambient, shadows
+        for (size_t i = 0; i < oceanComponents.size(); i++)
+        {
+            oceanComponents[i]->actualizeShading();
+        }
+    });
 
-	// Sent event that scene has been modified
-	boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
+    // Sent event that scene has been modified
+    boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
 
-	boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
+    boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 
-	// Remove .scene, if user typed
-	size_t found = this->projectParameter.sceneName.find(".scene");
-	if (found != std::wstring::npos)
-	{
-		this->projectParameter.sceneName = this->projectParameter.sceneName.substr(0, this->projectParameter.sceneName.size() - 6);
-	}
-	this->projectParameter.projectName = NOWA::Core::getSingletonPtr()->getProjectName();
+    // Remove .scene, if user typed
+    size_t found = this->projectParameter.sceneName.find(".scene");
+    if (found != std::wstring::npos)
+    {
+        this->projectParameter.sceneName = this->projectParameter.sceneName.substr(0, this->projectParameter.sceneName.size() - 6);
+    }
+    this->projectParameter.projectName = NOWA::Core::getSingletonPtr()->getProjectName();
 }
 
 void ProjectManager::destroyScene(void)
 {
-	// Delete camera that existed, before a project was created
-	Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-	// If there is already a camera component with this camera, let it be destroyed by the camera component when NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->destroyContent(); is called
-	bool foundCorrectCameraComponent = false;
-	auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-	for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
-	{
-		NOWA::GameObject* gameObject = it->second.get();
-		auto cameraComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::CameraComponent>());
-		if (nullptr != cameraComponent)
-		{
-			if (cameraComponent->getCamera() == camera)
-			{
-				foundCorrectCameraComponent = true;
-				NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(camera);
-			}
-		}
-	}
-	// Else destroy it manually here
-	if (nullptr != camera && false == foundCorrectCameraComponent)
-	{
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(camera);
-		NOWA::GraphicsModule::getInstance()->removeTrackedCamera(camera);
-		this->sceneManager->destroyCamera(camera);
-		camera = nullptr;
-	}
+    // Delete camera that existed, before a project was created
+    Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+    // If there is already a camera component with this camera, let it be destroyed by the camera component when NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->destroyContent(); is called
+    bool foundCorrectCameraComponent = false;
+    auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+    for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
+    {
+        NOWA::GameObject* gameObject = it->second.get();
+        auto cameraComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::CameraComponent>());
+        if (nullptr != cameraComponent)
+        {
+            if (cameraComponent->getCamera() == camera)
+            {
+                foundCorrectCameraComponent = true;
+                NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(camera);
+            }
+        }
+    }
+    // Else destroy it manually here
+    if (nullptr != camera && false == foundCorrectCameraComponent)
+    {
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(camera);
+        NOWA::GraphicsModule::getInstance()->removeTrackedCamera(camera);
+        this->sceneManager->destroyCamera(camera);
+        camera = nullptr;
+    }
 
-	NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
-	NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->destroyContent();
-	NOWA::WorkspaceModule::getInstance()->destroyContent();
-	NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
+    NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
+    NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->destroyContent();
+    NOWA::WorkspaceModule::getInstance()->destroyContent();
+    NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
 
-	if (nullptr != this->dotSceneExportModule)
-	{
-		delete this->dotSceneExportModule;
-		this->dotSceneExportModule = nullptr;
-	}
-	if (nullptr != this->dotSceneImportModule)
-	{
-		delete this->dotSceneImportModule;
-		this->dotSceneImportModule = nullptr;
-	}
-	this->sunLight = nullptr;
+    if (nullptr != this->dotSceneExportModule)
+    {
+        delete this->dotSceneExportModule;
+        this->dotSceneExportModule = nullptr;
+    }
+    if (nullptr != this->dotSceneImportModule)
+    {
+        delete this->dotSceneImportModule;
+        this->dotSceneImportModule = nullptr;
+    }
+    this->sunLight = nullptr;
 }
 
 void ProjectManager::createDummyCamera(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::failedToCreateProject",
-	{
-		Ogre::Camera * camera = this->sceneManager->createCamera("GamePlayCamera");
-		NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(camera);
-		camera->setFOVy(Ogre::Degree(90.0f));
-		camera->setNearClipDistance(0.1f);
-		camera->setFarClipDistance(500.0f);
-		camera->setQueryFlags(0 << 0);
-		camera->setPosition(0.0f, 5.0f, -2.0f);
-		// camera->setPosition(camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f)));
+    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::failedToCreateProject", {
+        Ogre::Camera* camera = this->sceneManager->createCamera("GamePlayCamera");
+        NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(camera);
+        camera->setFOVy(Ogre::Degree(90.0f));
+        camera->setNearClipDistance(0.1f);
+        camera->setFarClipDistance(500.0f);
+        camera->setQueryFlags(0 << 0);
+        camera->setPosition(0.0f, 5.0f, -2.0f);
+        // camera->setPosition(camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f)));
 
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
-		auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, baseCamera);
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(camera, baseCamera->getBehaviorType());
-		// Create dummy workspace
-		NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, camera, nullptr);
-	});
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
+        auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, baseCamera);
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(camera, baseCamera->getBehaviorType());
+        // Create dummy workspace
+        NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, camera, nullptr);
+    });
 }
 
 void ProjectManager::saveGroup(const Ogre::String& filePathName)
 {
-	if (nullptr != this->dotSceneExportModule)
-	{
-		auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-		if (selectedGameObjects.size() > 0)
-		{
-			std::vector<unsigned long> gameObjectIds(selectedGameObjects.size());
-			unsigned int i = 0;
-			for (auto it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
-			{
-				gameObjectIds[i++] = it->second.gameObject->getId();
-			}
-			this->dotSceneExportModule->exportGroup(gameObjectIds, filePathName, "Projects");
-		}
-	}
-	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
+    if (nullptr != this->dotSceneExportModule)
+    {
+        auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+        if (selectedGameObjects.size() > 0)
+        {
+            std::vector<unsigned long> gameObjectIds(selectedGameObjects.size());
+            unsigned int i = 0;
+            for (auto it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+            {
+                gameObjectIds[i++] = it->second.gameObject->getId();
+            }
+            this->dotSceneExportModule->exportGroup(gameObjectIds, filePathName, "Projects");
+        }
+    }
+    boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 }
 
 void ProjectManager::showFileSaveDialog(const Ogre::String& action, const Ogre::String& fileMask, const Ogre::String& specifiedTargetFolder)
 {
-	this->openSaveFileDialog->setFileName("");
-	
-	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
+    this->openSaveFileDialog->setFileName("");
+
+    boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
-	
-	Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Projects");
-	Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
-	Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
 
-	Ogre::String targetFolder;
-	for (; it != itEnd; ++it)
-	{
-		targetFolder = (*it)->archive->getName();
-		if (false == specifiedTargetFolder.empty())
-		{
-			targetFolder += "/" + specifiedTargetFolder;
-		}
-		break;
-	}
+    Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Projects");
+    Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
+    Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
 
-	if ("*.group" == fileMask)
-		targetFolder += "/Groups";
+    Ogre::String targetFolder;
+    for (; it != itEnd; ++it)
+    {
+        targetFolder = (*it)->archive->getName();
+        if (false == specifiedTargetFolder.empty())
+        {
+            targetFolder += "/" + specifiedTargetFolder;
+        }
+        break;
+    }
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::showFileSaveDialog", _3(targetFolder, action, fileMask),
-	{
-		// Set the target folder specified in scene resource group
-		this->openSaveFileDialog->setCurrentFolder(targetFolder);
-		// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
-		this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SaveFile}"),
-			MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SaveAs}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), false);
-		this->openSaveFileDialog->setMode(action);
-		this->openSaveFileDialog->setFileMask(fileMask);
-		this->openSaveFileDialog->doModal();
-	});
+    if ("*.group" == fileMask)
+    {
+        targetFolder += "/Groups";
+    }
+
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, targetFolder, action, fileMask]()
+    {
+        // Set the target folder specified in scene resource group
+        this->openSaveFileDialog->setCurrentFolder(targetFolder);
+        // this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
+        this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SaveFile}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SaveAs}"),
+            MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), false);
+        this->openSaveFileDialog->setMode(action);
+        this->openSaveFileDialog->setFileMask(fileMask);
+        this->openSaveFileDialog->doModal();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::showFileSaveDialog");
 }
 
 bool ProjectManager::showFileOpenDialog(const Ogre::String& action, const Ogre::String& fileMask)
 {
-	// For projects folder mode is correct
-	bool folderMode = false;
-	// Only when a scene is loaded, set the scene as invalid, not for groups etc!
-	if ("*.scene" == fileMask)
-	{
-		folderMode = false;
-		boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
-	}
-	else if ("" == fileMask)
-	{
-		folderMode = true;
-	}
-	Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Projects");
-	Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
-	Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
+    // For projects folder mode is correct
+    bool folderMode = false;
+    // Only when a scene is loaded, set the scene as invalid, not for groups etc!
+    if ("*.scene" == fileMask)
+    {
+        folderMode = false;
+        boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
+    }
+    else if ("" == fileMask)
+    {
+        folderMode = true;
+    }
+    Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Projects");
+    Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
+    Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
 
-	Ogre::String targetFolder;
-	for (; it != itEnd; ++it)
-	{
-		targetFolder = (*it)->archive->getName();
-		break;
-	}
+    Ogre::String targetFolder;
+    for (; it != itEnd; ++it)
+    {
+        targetFolder = (*it)->archive->getName();
+        break;
+    }
 
-	if ("*.group" == fileMask)
-		targetFolder += "/Groups";
-	else if ("" == fileMask)
-	{
-		Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Models");
-		Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
-		Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
+    if ("*.group" == fileMask)
+    {
+        targetFolder += "/Groups";
+    }
+    else if ("" == fileMask)
+    {
+        Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Models");
+        Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
+        Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
 
-		for (; it != itEnd; ++it)
-		{
-			targetFolder = (*it)->archive->getName();
-			break;
-		}
-	}
+        for (; it != itEnd; ++it)
+        {
+            targetFolder = (*it)->archive->getName();
+            break;
+        }
+    }
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::showFileOpenDialog", _4(targetFolder, action, fileMask, folderMode),
-	{
-		// Set the target folder specified in scene resource group
-		this->openSaveFileDialog->setCurrentFolder(targetFolder);
-		// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, targetFolder, action, fileMask, folderMode]()
+    {
+        // Set the target folder specified in scene resource group
+        this->openSaveFileDialog->setCurrentFolder(targetFolder);
+        // this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
 
-		this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{OpenFile}"),
-			MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Open}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), folderMode);
+        this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{OpenFile}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Open}"),
+            MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), folderMode);
 
-		this->openSaveFileDialog->setMode(action);
-		this->openSaveFileDialog->setFileMask(fileMask);
-		this->openSaveFileDialog->setFileName("");
-		this->openSaveFileDialog->doModal();
-	});
+        this->openSaveFileDialog->setMode(action);
+        this->openSaveFileDialog->setFileMask(fileMask);
+        this->openSaveFileDialog->setFileName("");
+        this->openSaveFileDialog->doModal();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::showFileOpenDialog");
 
-	return true;
+    return true;
 }
 
 void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 {
-	if (result)
-	{
-		if (this->openSaveFileDialog->getMode() == "SaveProject")
-		{
-			Ogre::String tempFileName = this->openSaveFileDialog->getFilePathName();
-			
-			Ogre::String tempProjectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(tempFileName);
-			NOWA::Core::getSingletonPtr()->setProjectName(tempProjectName);
-			this->projectParameter.projectName = tempProjectName;
+    if (result)
+    {
+        if (this->openSaveFileDialog->getMode() == "SaveProject")
+        {
+            Ogre::String tempFileName = this->openSaveFileDialog->getFilePathName();
 
-			size_t found = tempFileName.find(".");
-			if (Ogre::String::npos != found)
-			{
-				tempFileName = tempFileName.substr(0, found);
-			}
-			this->projectParameter.sceneName = tempFileName;
+            Ogre::String tempProjectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(tempFileName);
+            NOWA::Core::getSingletonPtr()->setProjectName(tempProjectName);
+            this->projectParameter.projectName = tempProjectName;
 
-			if (false == this->checkProjectExists(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene"))
-			{
-				this->saveProject(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
-			}
-		}
-		else if (this->openSaveFileDialog->getMode() == "LoadProject")
-		{
-			this->loadProject(this->openSaveFileDialog->getFilePathName());
-		}
-		else if (this->openSaveFileDialog->getMode() == "SaveGroup")
-		{
-			Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
-			// Remove the group extension, because its added in dot scene import module automatically
-			size_t found = tempFileName.find(".");
-			if (Ogre::String::npos != found)
-			{
-				tempFileName = tempFileName.substr(0, found);
-			}
-			this->saveGroup(tempFileName);
-		}
-		else if (this->openSaveFileDialog->getMode() == "LoadGroup")
-		{
-			Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
-			if (nullptr == this->dotSceneImportModule)
-			{
-				this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
-			}
+            size_t found = tempFileName.find(".");
+            if (Ogre::String::npos != found)
+            {
+                tempFileName = tempFileName.substr(0, found);
+            }
+            this->projectParameter.sceneName = tempFileName;
 
-			std::vector<unsigned long> gameObjectIds = this->dotSceneImportModule->parseGroup(tempFileName, "Projects");
+            if (false == this->checkProjectExists(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene"))
+            {
+                this->saveProject(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
+            }
+        }
+        else if (this->openSaveFileDialog->getMode() == "LoadProject")
+        {
+            this->loadProject(this->openSaveFileDialog->getFilePathName());
+        }
+        else if (this->openSaveFileDialog->getMode() == "SaveGroup")
+        {
+            Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
+            // Remove the group extension, because its added in dot scene import module automatically
+            size_t found = tempFileName.find(".");
+            if (Ogre::String::npos != found)
+            {
+                tempFileName = tempFileName.substr(0, found);
+            }
+            this->saveGroup(tempFileName);
+        }
+        else if (this->openSaveFileDialog->getMode() == "LoadGroup")
+        {
+            Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
+            if (nullptr == this->dotSceneImportModule)
+            {
+                this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
+            }
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::attachGroupToPlaceNode", _1(gameObjectIds),
-			{
-				this->editorManager->attachGroupToPlaceNode(gameObjectIds);
-			});
-			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
+            std::vector<unsigned long> gameObjectIds = this->dotSceneImportModule->parseGroup(tempFileName, "Projects");
+
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::attachGroupToPlaceNode", _1(gameObjectIds), { this->editorManager->attachGroupToPlaceNode(gameObjectIds); });
+            boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
-		}
-		else if (this->openSaveFileDialog->getMode() == "AddMeshResources")
-		{
-			Ogre::String meshResourcesFolder = this->openSaveFileDialog->getCurrentFolder();
-			Ogre::String resourceName = "Default";
-			const size_t lastSlashIndex = meshResourcesFolder.rfind('\\');
-			if (std::string::npos != lastSlashIndex)
-			{
-				resourceName = meshResourcesFolder.substr(lastSlashIndex + 1, meshResourcesFolder.size() - lastSlashIndex);
-			}
-			
-			Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
-			// MyGUI::PointerManager::getInstancePtr()->setPointer("beam");
-			Ogre::ResourceGroupManager::getSingleton().addResourceLocation(meshResourcesFolder, "FileSystem", resourceName);
-			Ogre::ResourceGroupManager::getSingleton().initialiseResourceGroup(resourceName, false);
-			// MyGUI::PointerManager::getInstancePtr()->setPointer(defaultPointer);
+        }
+        else if (this->openSaveFileDialog->getMode() == "AddMeshResources")
+        {
+            Ogre::String meshResourcesFolder = this->openSaveFileDialog->getCurrentFolder();
+            Ogre::String resourceName = "Default";
+            const size_t lastSlashIndex = meshResourcesFolder.rfind('\\');
+            if (std::string::npos != lastSlashIndex)
+            {
+                resourceName = meshResourcesFolder.substr(lastSlashIndex + 1, meshResourcesFolder.size() - lastSlashIndex);
+            }
 
-			this->additionalMeshResources.emplace_back(resourceName);
+            Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
+            // MyGUI::PointerManager::getInstancePtr()->setPointer("beam");
+            Ogre::ResourceGroupManager::getSingleton().addResourceLocation(meshResourcesFolder, "FileSystem", resourceName);
+            Ogre::ResourceGroupManager::getSingleton().initialiseResourceGroup(resourceName, false);
+            // MyGUI::PointerManager::getInstancePtr()->setPointer(defaultPointer);
 
-			// Sent when a name has changed, so that the resources panel can be refreshed with new values
-			boost::shared_ptr<NOWA::EventDataRefreshMeshResources> eventDataRefreshMeshResources(new NOWA::EventDataRefreshMeshResources());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshMeshResources);
-		}
-		else if (this->openSaveFileDialog->getMode() == "CopyScene")
-		{
-			Ogre::String tempFileName = this->openSaveFileDialog->getCurrentFolder();
+            this->additionalMeshResources.emplace_back(resourceName);
 
-			Ogre::String sceneName = this->openSaveFileDialog->getFileName();
+            // Sent when a name has changed, so that the resources panel can be refreshed with new values
+            boost::shared_ptr<NOWA::EventDataRefreshMeshResources> eventDataRefreshMeshResources(new NOWA::EventDataRefreshMeshResources());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshMeshResources);
+        }
+        else if (this->openSaveFileDialog->getMode() == "CopyScene")
+        {
+            Ogre::String tempFileName = this->openSaveFileDialog->getCurrentFolder();
 
-			size_t found = sceneName.rfind(".scene");
-			if (Ogre::String::npos != found)
-			{
-				sceneName = sceneName.substr(0, sceneName.size() - 6);
-			}
+            Ogre::String sceneName = this->openSaveFileDialog->getFileName();
 
-			tempFileName += "/" + sceneName;
+            size_t found = sceneName.rfind(".scene");
+            if (Ogre::String::npos != found)
+            {
+                sceneName = sceneName.substr(0, sceneName.size() - 6);
+            }
 
-			tempFileName += "/" + this->openSaveFileDialog->getFileName();
-			// Remove the scene extension, because its added in dot scene import module automatically
-			found = tempFileName.rfind(".scene");
-			if (Ogre::String::npos == found)
-			{
-				tempFileName += ".scene";
-			}
+            tempFileName += "/" + sceneName;
 
-			if (nullptr != this->dotSceneExportModule)
-			{
-				delete this->dotSceneExportModule;
-				this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, this->ogreNewt, this->projectParameter);
-			}
-			this->dotSceneExportModule->copyScene(this->projectParameter.sceneName, tempFileName, "Projects");
-		}
-	}
-	else
-	{
-		// Only set scene valid, if a scene has already been loaded
-		if (false == NOWA::Core::getSingletonPtr()->getCurrentScenePath().empty())
-		{
-			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
-		}
-	}
+            tempFileName += "/" + this->openSaveFileDialog->getFileName();
+            // Remove the scene extension, because its added in dot scene import module automatically
+            found = tempFileName.rfind(".scene");
+            if (Ogre::String::npos == found)
+            {
+                tempFileName += ".scene";
+            }
 
-	ENQUEUE_RENDER_COMMAND("ProjectManager::openSaveFileDialog::endModal",
-	{
-		this->openSaveFileDialog->endModal();
-	});
-	// MyGUI::InputManager::getInstancePtr()->removeWidgetModal(sender);
+            if (nullptr != this->dotSceneExportModule)
+            {
+                delete this->dotSceneExportModule;
+                this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, this->ogreNewt, this->projectParameter);
+            }
+            this->dotSceneExportModule->copyScene(this->projectParameter.sceneName, tempFileName, "Projects");
+        }
+    }
+    else
+    {
+        // Only set scene valid, if a scene has already been loaded
+        if (false == NOWA::Core::getSingletonPtr()->getCurrentScenePath().empty())
+        {
+            boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
+        }
+    }
+
+    ENQUEUE_RENDER_COMMAND("ProjectManager::openSaveFileDialog::endModal", { this->openSaveFileDialog->endModal(); });
+    // MyGUI::InputManager::getInstancePtr()->removeWidgetModal(sender);
 }
 
 bool ProjectManager::checkProjectExists(const Ogre::String& fileName)
 {
-	bool projectExists = false;
+    bool projectExists = false;
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::checkProjectExists", _2(fileName, &projectExists),
-	{
-		Ogre::String filePathName;
-		auto & resManager = Ogre::ResourceGroupManager::getSingleton();
-		const auto & resLocationsList = resManager.getResourceLocationList("Projects");
+    ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::checkProjectExists", _2(fileName, &projectExists), {
+        Ogre::String filePathName;
+        auto& resManager = Ogre::ResourceGroupManager::getSingleton();
+        const auto& resLocationsList = resManager.getResourceLocationList("Projects");
 
-		for (const auto& loc : resLocationsList)
-		{
-			filePathName = loc->archive->getName() + "/" + fileName;
+        for (const auto& loc : resLocationsList)
+        {
+            filePathName = loc->archive->getName() + "/" + fileName;
 
-			std::ifstream ifs(filePathName);
-			if (ifs.good())
-			{
-				projectExists = true;
+            std::ifstream ifs(filePathName);
+            if (ifs.good())
+            {
+                projectExists = true;
 
-				// UI calls must be on render/UI thread
-				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue",
-					MyGUI::LanguageManager::getInstance().replaceTags("#{Overwrite}"),
-					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+                // UI calls must be on render/UI thread
+                MyGUI::Message* messageBox =
+                    MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstance().replaceTags("#{Overwrite}"), MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
-				messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ProjectManager::notifyMessageBoxEnd);
-				break;
-			}
-		}
-	});
+                messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ProjectManager::notifyMessageBoxEnd);
+                break;
+            }
+        }
+    });
 
-	return projectExists;
+    return projectExists;
 }
 
 void ProjectManager::notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
 {
-	if (result == MyGUI::MessageBoxStyle::Yes)
-	{
-		this->saveProject(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
-	}
-	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
+    if (result == MyGUI::MessageBoxStyle::Yes)
+    {
+        this->saveProject(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
+    }
+    boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 }
 
 Ogre::String ProjectManager::getSceneFileName(void) const
 {
-	return this->projectParameter.sceneName;
+    return this->projectParameter.sceneName;
 }
 
 void ProjectManager::setOgreNewt(OgreNewt::World* ogreNewt)
 {
-	this->ogreNewt = ogreNewt;
+    this->ogreNewt = ogreNewt;
 }
 
 OgreNewt::World* ProjectManager::getOgreNewt(void) const
 {
-	return this->ogreNewt;
+    return this->ogreNewt;
 }
 
 void ProjectManager::setProjectParameter(NOWA::ProjectParameter projectParameter)
 {
-	this->projectParameter = projectParameter;
+    this->projectParameter = projectParameter;
 }
 
 NOWA::ProjectParameter ProjectManager::getProjectParameter(void)
 {
-	return this->projectParameter;
+    return this->projectParameter;
 }

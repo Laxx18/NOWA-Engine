@@ -4,6 +4,8 @@
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
 	using namespace rapidxml;

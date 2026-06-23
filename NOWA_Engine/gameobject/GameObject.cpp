@@ -22,6 +22,8 @@
 #include "OceanComponent.h"
 #include "ocean/OgreHlmsOceanDatablock.h"
 
+#include "RenderQueueEnums.h"
+
 #include "OgreMeshManager2.h"
 #include "OgreConfigFile.h"
 #include "OgreLodConfig.h"
@@ -1083,18 +1085,12 @@ namespace NOWA
 		else if (GameObject::AttrPosition() == attribute->getName())
 		{
 			this->position->setValue(attribute->getVector3());
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::actualizeValue setPosition", _1(attribute),
-			{
-				this->sceneNode->setPosition(attribute->getVector3());
-			});
+            GraphicsModule::getInstance()->setNodePosition(this->sceneNode, attribute->getVector3());
 		}
 		else if (GameObject::AttrScale() == attribute->getName())
 		{
-			this->scale->setValue(attribute->getVector3());
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::actualizeValue setScale", _1(attribute),
-			{
-				this->sceneNode->setScale(attribute->getVector3());
-				// Ogre::AxisAlignedBox boundingBox = this->entity->getMesh()->getBounds();
+            GraphicsModule::getInstance()->setNodeScale(this->sceneNode, attribute->getVector3());
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::actualizeValue setScale", _1(attribute), {
 				this->refreshSize(attribute->getVector3());
 			});
 
@@ -1106,10 +1102,7 @@ namespace NOWA
 			Ogre::Quaternion orientation = MathHelper::getInstance()->degreesToQuat(attribute->getVector3());
 			Ogre::Vector3 degreeOrientation = attribute->getVector3();
 			this->orientation->setValue(attribute->getVector3());
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::actualizeValue setOrientation", _1(orientation),
-			{
-				this->sceneNode->setOrientation(orientation);
-			});
+            GraphicsModule::getInstance()->setNodeOrientation(this->sceneNode, orientation);
 		}
 		else if (GameObject::AttrDynamic() == attribute->getName())
 		{
@@ -1935,32 +1928,13 @@ namespace NOWA
 	void GameObject::setAttributePosition(const Ogre::Vector3& position)
 	{
 		this->position->setValue(position);
-
-		// Have no idea why, but interpolation cannot be used here! Else a crash does occur, later debug it!
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, position]()
-        {
-            this->sceneNode->_setDerivedPosition(position);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setAttributePosition");
-
-		// Never ever use this here: Due to undo redo, node transform must be written directly!!
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] setAttributePosition: " + this->getName() + ": " + Ogre::StringConverter::toString(position));
-		// NOWA::GraphicsModule::getInstance()->updateNodePosition(this->sceneNode, position, false, true);
+		NOWA::GraphicsModule::getInstance()->setNodePosition(this->sceneNode, position, true);
 	}
 
 	void GameObject::setAttributeScale(const Ogre::Vector3& scale)
 	{
 		this->scale->setValue(scale);
-		// Have no idea why, but interpolation cannot be used here! Else a crash does occur, later debug it!
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, scale]()
-        {
-            this->sceneNode->setScale(scale);
-            this->refreshSize(scale);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setAttributeScale");
-
-		// Never ever use this here: Due to undo redo, node transform must be written directly!!
-		// NOWA::GraphicsModule::getInstance()->updateNodeScale(this->sceneNode, scale, false, true);
+		NOWA::GraphicsModule::getInstance()->setNodeScale(this->sceneNode, scale, true);
 		this->oldScale = scale;
 	}
 
@@ -1968,15 +1942,7 @@ namespace NOWA
 	{
 		// Set in the form degree, x-axis, y-axis, z-axis
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(orientation));
-		// Have no idea why, but interpolation cannot be used here! Else a crash does occur, later debug it!
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, orientation]()
-        {
-            this->sceneNode->_setDerivedOrientation(orientation);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setAttributeOrientation");
-
-		// Never ever use this here: Due to undo redo, node transform must be written directly!!
-		// NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->sceneNode, orientation, false, true);
+		NOWA::GraphicsModule::getInstance()->setNodeOrientation(this->sceneNode, orientation, true);
 	}
 
 	void GameObject::setDefaultDirection(const Ogre::Vector3& defaultDirection)

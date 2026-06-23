@@ -18,6 +18,8 @@ GPL v3
 #include "OgreHlmsUnlit.h"
 #include "ParticleSystem/OgreParticleSystemManager2.h"
 
+#include "RenderQueueEnums.h"
+
 namespace NOWA
 {
 	ParticleFxModule::ParticleFxModule(const Ogre::String& appStateName)
@@ -168,6 +170,7 @@ namespace NOWA
 	{
 		for (auto it = this->particles.begin(); it != this->particles.end(); ++it)
 		{
+            NOWA::GraphicsModule::getInstance()->removeTrackedNode(it->second.particleNode);
 			this->destroyEverything(it->second);
 		}
 
@@ -311,6 +314,8 @@ namespace NOWA
 			it->second.activated = false;
 			it->second.pendingRestartAfterDrain = false;
 
+            NOWA::GraphicsModule::getInstance()->removeTrackedNode(it->second.particleNode);
+
 			if (it->second.fadeOut && it->second.fadeState != ParticleFadeState::FadingOut && nullptr != it->second.particleSystem)
 			{
 				this->beginFadeOut(it->second);
@@ -359,124 +364,115 @@ namespace NOWA
 		}
 	}
 
-	void ParticleFxModule::update(Ogre::Real dt)
-	{
-		if (true == this->particles.empty())
-		{
-			return;
-		}
+	// Called from logic thread (ParticleFxComponent::update or AppState::update)
+    void ParticleFxModule::update(Ogre::Real dt)
+    {
+        if (this->particles.empty())
+        {
+            return;
+        }
 
-		auto closureFunction = [this](Ogre::Real renderDt)
-		{
-			for (auto& particleEntry : this->particles)
-			{
-				ParticleFxData& particleData = particleEntry.second;
+        for (auto& particleEntry : this->particles)
+        {
+            ParticleFxData& particleData = particleEntry.second;
 
-				if (nullptr == particleData.particleSystem)
-				{
-					continue;
-				}
+            if (nullptr == particleData.particleSystem)
+            {
+                continue;
+            }
 
+            // Fade timers — logic thread owns these
+            if (particleData.fadeState == ParticleFadeState::FadingIn)
+            {
+                this->updateFadeIn(particleData, dt);
+            }
+            else if (particleData.fadeState == ParticleFadeState::FadingOut)
+            {
+                this->updateFadeOut(particleData, dt);
+            }
 
-				// Update camera position for GPU particles
-				// TODO: What about splitscreen?
-				Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-				if (nullptr != camera)
-				{
-					this->particleManager->setCameraPosition(camera->getDerivedPosition());
-				}
+            // Drain countdown
+            if (particleData.pendingDrainTimeMs > 0.0f)
+            {
+                particleData.pendingDrainTimeMs -= dt * 1000.0f;
+                if (particleData.pendingDrainTimeMs <= 0.0f)
+                {
+                    particleData.pendingDrainTimeMs = 0.0f;
+                    this->stopParticleEffect(particleData); // enqueueAndWait — OK on logic thread
+                    particleData.isEmitting = false;
 
-				this->updateTextureAtlasAnimations(renderDt);
+                    if (particleData.pendingRestartAfterDrain)
+                    {
+                        particleData.pendingRestartAfterDrain = false;
+                        particleData.particlePlayTime = particleData.particleInitialPlayTime;
+                        this->startParticleEffect(particleData); // enqueueAndWait — OK on logic thread
+                    }
+                }
+            }
 
-				// Handle fade states
-				if (particleData.fadeState == ParticleFadeState::FadingIn)
-				{
-					this->updateFadeIn(particleData, renderDt);
-				}
-				else if (particleData.fadeState == ParticleFadeState::FadingOut)
-				{
-					this->updateFadeOut(particleData, renderDt);
-				}
+            // Play timer
+            if (particleData.activated && particleData.isEmitting)
+            {
+                if (0.0f == particleData.particleInitialPlayTime)
+                {
+                    continue;
+                }
 
-				// Handle draining after fade out
-				if (particleData.pendingDrainTimeMs > 0.0f)
-				{
-					particleData.pendingDrainTimeMs -= renderDt * 1000.0f;
+                Ogre::Real& playTime = particleData.particlePlayTime;
+                if (playTime > 0.0f)
+                {
+                    playTime -= dt * 1000.0f * particleData.particlePlaySpeed;
+                }
+                else
+                {
+                    if (particleData.repeat)
+                    {
+                        if (particleData.fadeOut)
+                        {
+                            this->beginFadeOut(particleData);
+                            particleData.pendingRestartAfterDrain = true;
+                        }
+                        else
+                        {
+                            particleData.particlePlayTime = particleData.particleInitialPlayTime;
+                            this->stopParticleEffect(particleData);
+                            this->startParticleEffect(particleData);
+                        }
+                    }
+                    else
+                    {
+                        if (particleData.fadeOut)
+                        {
+                            this->beginFadeOut(particleData);
+                        }
+                        else
+                        {
+                            this->stopParticleEffect(particleData);
+                            particleData.activated = false;
+                            particleData.isEmitting = false;
+                        }
+                    }
+                }
+            }
+        }
 
-					if (particleData.pendingDrainTimeMs <= 0.0f)
-					{
-						particleData.pendingDrainTimeMs = 0.0f;
+        // Schedule render-thread-only work as a fire-and-forget closure
+        // (camera position update + texture atlas animation — no particle lifecycle)
+		// Really important: I had ugly crash, because the the particledata was also in this tracked closure on render thread, but on logic thread stuff has been done with the particledata, so it MUST not be read/write on render thread!
+        auto renderClosure = [this](Ogre::Real renderDt)
+        {
+            Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+            if (nullptr != camera)
+            {
+                this->particleManager->setCameraPosition(camera->getDerivedPosition());
+            }
 
-						this->stopParticleEffect(particleData);
+            this->updateTextureAtlasAnimations(renderDt);
+        };
 
-						particleData.isEmitting = false;
-
-						if (particleData.pendingRestartAfterDrain)
-						{
-							particleData.pendingRestartAfterDrain = false;
-							particleData.particlePlayTime = particleData.particleInitialPlayTime;
-							this->startParticleEffect(particleData);
-						}
-					}
-				}
-
-				// Only play activated particle effects
-				if (true == particleData.activated && particleData.isEmitting)
-				{
-					Ogre::Real& playTime = particleData.particlePlayTime;
-
-					// Play particle effect forever or when user stops manually
-					if (0.0f == particleData.particleInitialPlayTime)
-					{
-						continue;
-					}
-
-					// Control the execution time
-					if (playTime > 0.0f)
-					{
-						playTime -= renderDt * 1000.0f * particleData.particlePlaySpeed;
-					}
-					else
-					{
-						// Time expired
-						if (particleData.repeat)
-						{
-							// Restart
-							if (particleData.fadeOut)
-							{
-								// Schedule restart after drain
-								this->beginFadeOut(particleData);
-								particleData.pendingRestartAfterDrain = true;
-							}
-							else
-							{
-								// Immediate restart
-								particleData.particlePlayTime = particleData.particleInitialPlayTime;
-								this->stopParticleEffect(particleData);
-								this->startParticleEffect(particleData);
-							}
-						}
-						else
-						{
-							// Stop
-							if (particleData.fadeOut)
-							{
-								this->beginFadeOut(particleData);
-							}
-							else
-							{
-								this->stopParticleEffect(particleData);
-								particleData.activated = false;
-								particleData.isEmitting = false;
-							}
-						}
-					}
-				}
-			}
-		};
-		Ogre::String id = this->appStateName + "_ParticleFxModule::update";
-		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-	}
+        Ogre::String id = this->appStateName + "_ParticleFxModule::update";
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, renderClosure, false);
+    }
 
 	ParticleFxData* ParticleFxModule::getParticle(const Ogre::String& name)
 	{
@@ -493,6 +489,7 @@ namespace NOWA
 		auto it = this->particles.find(name);
 		if (it != this->particles.end())
 		{
+            // NOWA::GraphicsModule::getInstance()->removeTrackedNode(it->second.particleNode);
 			this->destroyEverything(it->second);
 			this->particles.erase(it);
 		}

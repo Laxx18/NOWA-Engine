@@ -63,10 +63,10 @@ namespace NOWA
             GameObject* m_owner;
             LuaScript* m_luaScript;
             OgreNewt::World* m_ogreNewt;
-            Ogre::String m_onSteerAngleChangedFunctionName;
-            Ogre::String m_onMotorForceChangedFunctionName;
-            Ogre::String m_onHandBrakeChangedFunctionName;
-            Ogre::String m_onBrakeChangedFunctionName;
+            Ogre::String onSteerAngleChangedFunctionName;
+            Ogre::String onMotorForceChangedFunctionName;
+            Ogre::String onHandBrakeChangedFunctionName;
+            Ogre::String onBrakeChangedFunctionName;
         };
 
     public:
@@ -92,6 +92,11 @@ namespace NOWA
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
         virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        /**
+         * @see        GameObjectComponent::onCloned
+         */
+        virtual bool onCloned(void) override;
 
         virtual Ogre::String getClassName(void) const override;
 
@@ -237,14 +242,14 @@ namespace NOWA
         void applySpinAxisToVehicle(OgreNewt::VehicleV2* vehicle);
 
     private:
-        Variant* m_tireIds[MAX_TIRES];
-        Variant* m_onSteerAngleChangedFunctionName;
-        Variant* m_onMotorForceChangedFunctionName;
-        Variant* m_onHandBrakeChangedFunctionName;
-        Variant* m_onBrakeChangedFunctionName;
-        Variant* m_tireDirectionSwap;
-        Variant* m_steeringStrength;
-        Variant* m_tireSpinAxis;
+        Variant* tireIds[MAX_TIRES];
+        Variant* onSteerAngleChangedFunctionName;
+        Variant* onMotorForceChangedFunctionName;
+        Variant* onHandBrakeChangedFunctionName;
+        Variant* onBrakeChangedFunctionName;
+        Variant* tireDirectionSwap;
+        Variant* steeringStrength;
+        Variant* tireSpinAxis;
     };
 
 } // namespace NOWA

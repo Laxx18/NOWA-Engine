@@ -159,8 +159,8 @@ namespace NOWA
             Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
             // Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
 
-			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->textNode, so, false, false);
-            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->textNode, sp, false, false);
+			NOWA::GraphicsModule::getInstance()->setNodeOrientation(this->textNode, so);
+            NOWA::GraphicsModule::getInstance()->setNodePosition(this->textNode, sp);
 
 			// this->movableText->getParentSceneNode()->_setDerivedOrientation(so);
             // this->movableText->getParentSceneNode()->_setDerivedPosition(o * (so * sp));
@@ -185,7 +185,7 @@ namespace NOWA
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
-                // NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textNode);
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textNode);
                 this->textNode->detachObject(this->movableText);
                 this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->textNode);
                 this->textNode = nullptr;
@@ -310,8 +310,8 @@ namespace NOWA
 
                 Ogre::Vector3 worldPos = gameObjPos + sp;
 
-                NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->textNode, so, true, false);
-                NOWA::GraphicsModule::getInstance()->updateNodePosition(this->textNode, worldPos, true, false);
+                NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->textNode, so, true);
+                NOWA::GraphicsModule::getInstance()->updateNodePosition(this->textNode, worldPos, true);
             }
         }
     }
@@ -505,8 +505,8 @@ namespace NOWA
             Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
             // Local position relative to parent — sp only, no world offset.
-            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, false, false);
-            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), sp, false, false);
+            NOWA::GraphicsModule::getInstance()->setNodeOrientation(this->movableText->getParentSceneNode(), so);
+            NOWA::GraphicsModule::getInstance()->setNodePosition(this->movableText->getParentSceneNode(), sp);
         }
     }
 
@@ -525,8 +525,8 @@ namespace NOWA
             Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
             // Local position relative to parent — sp only, no world offset.
-            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, false, false);
-            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), sp, false, false);
+            NOWA::GraphicsModule::getInstance()->setNodeOrientation(this->movableText->getParentSceneNode(), so);
+            NOWA::GraphicsModule::getInstance()->setNodePosition(this->movableText->getParentSceneNode(), sp);
         }
     }
 

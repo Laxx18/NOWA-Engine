@@ -8,6 +8,8 @@
 #include "gameobject/DatablockPbsComponent.h"
 #include "gameobject/DatablockUnlitComponent.h"
 
+#include "RenderQueueEnums.h"
+
 #include "OgreAbiUtils.h"
 
 namespace NOWA

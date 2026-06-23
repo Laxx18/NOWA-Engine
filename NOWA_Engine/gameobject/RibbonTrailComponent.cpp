@@ -7,6 +7,8 @@
 #include "main/ProcessManager.h"
 #include "main/AppStateManager.h"
 
+#include "RenderQueueEnums.h"
+
 namespace
 {
 	bool realToBool(Ogre::Real value)

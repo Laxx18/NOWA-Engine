@@ -186,6 +186,8 @@ namespace NOWA
 		this->targetGameObject = nullptr;
 		this->physicsActiveComponent = nullptr;
 		this->physicsActiveKinematicComponent = nullptr;
+
+		NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->gameObjectPtr->getSceneNode());
 		
 		if (nullptr != this->gameObjectStateHistory)
 		{
@@ -215,6 +217,8 @@ namespace NOWA
 	void TransformHistoryComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->gameObjectPtr->getSceneNode());
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &TransformHistoryComponent::handleTargetGameObjectDeleted), EventDataDeleteGameObject::getStaticEventType());
 

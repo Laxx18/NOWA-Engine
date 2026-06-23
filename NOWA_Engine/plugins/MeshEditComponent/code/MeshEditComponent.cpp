@@ -32,6 +32,8 @@ GPL v3
 
 #include "editor/EditorManager.h"
 
+#include "RenderQueueEnums.h"
+
 #include <numeric>
 
 namespace

@@ -10,6 +10,8 @@
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
 
+#include "RenderQueueEnums.h"
+
 #include <mutex>
 
 namespace

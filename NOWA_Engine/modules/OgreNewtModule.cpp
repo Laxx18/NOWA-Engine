@@ -42,9 +42,9 @@ namespace NOWA
         if (numCPU >= 2)
         {
             numCPU /= 2;
-            if (threadCount > numCPU)
+            if (threadCount > static_cast<int>(numCPU))
             {
-                threadCount = numCPU;
+                threadCount = static_cast<int>(numCPU);
             }
         }
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Using: " + Ogre::StringConverter::toString(threadCount) + " cores for physics simulation and updaterate: " + Ogre::StringConverter::toString(updateRate));
@@ -262,6 +262,7 @@ namespace NOWA
 		return this->globalGravity;
 	}
 
+#if 0
 	void OgreNewtModule::registerRenderCallbackForBody(OgreNewt::Body* body)
     {
         if (nullptr == body)
@@ -298,6 +299,47 @@ namespace NOWA
                     const Ogre::Quaternion localRot = parent->_getDerivedOrientationUpdated().Inverse() * rot;
                     NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos, false, fireAndForget);
                     NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot, false, fireAndForget);
+                }
+            });
+	#endif
+
+    void OgreNewtModule::registerRenderCallbackForBody(OgreNewt::Body* body)
+    {
+        if (nullptr == body)
+        {
+            return;
+        }
+
+        body->setRenderUpdateCallback(
+            [](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic, bool isTeleport)
+            {
+                if (nullptr == node || !node->getParent())
+                {
+                    return;
+                }
+
+                if (updateStatic || isTeleport)
+                {
+                    // Static path unchanged
+                    const bool fireAndForget = isTeleport;
+                    Ogre::Node* parent = node->getParent();
+                    const Ogre::Vector3 localPos = (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated();
+                    const Ogre::Quaternion localRot = parent->_getDerivedOrientationUpdated().Inverse() * rot;
+                    NOWA::GraphicsModule::getInstance()->setNodePosition(node, localPos, false);
+                    NOWA::GraphicsModule::getInstance()->setNodeOrientation(node, localRot, false);
+                }
+                else if (!node->isStatic())
+                {
+                    // Write into the transform buffer — NOT directly to the SceneNode.
+                    // updateAllTransforms on the render thread reads from this buffer
+                    // and interpolates correctly between physics steps.
+                    // Direct _setDerivedPosition bypasses interpolation and fights
+                    // with updateAllTransforms, causing visual jitter.
+                    NOWA::GraphicsModule::getInstance()->updateNodePosition(node, pos, true);
+                    if (updateRot)
+                    {
+                        NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, rot, true);
+                    }
                 }
             });
     }

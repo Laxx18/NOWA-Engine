@@ -26,6 +26,8 @@
 
 #include "gameobject/WindComponent.h"
 
+#include "RenderQueueEnums.h"
+
 #include <cstdio>
 #include <fstream>
 #include <future>
