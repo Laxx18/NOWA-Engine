@@ -31,24 +31,25 @@ namespace NOWA
 		Ogre::Vector3 resultPosition = this->camera->getPosition();
 		Ogre::Quaternion resultOrientation = this->camera->getOrientation();
 
-		ENQUEUE_RENDER_COMMAND_WAIT("BasePhysicsCamera::onSetData",
-		{
-			this->cameraNode = this->sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-			this->cameraNode->setName("PhysicsCameraNode");
-			this->cameraNode->setStatic(false);
-			this->camera->setStatic(false);
-			this->camera->setPosition(Ogre::Vector3::ZERO);
-			this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->cameraNode = this->sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+            this->cameraNode->setName("PhysicsCameraNode");
+            this->cameraNode->setStatic(false);
+            this->camera->setStatic(false);
+            this->camera->setPosition(Ogre::Vector3::ZERO);
+            this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
 
-			// Camera is always attached to root node when created, so must be first detached
-			if (true == this->camera->isAttached())
-			{
-				this->camera->detachFromParent();
-			}
-			this->cameraNode->attachObject(this->camera);
-			// Define it's scale 
-			this->cameraNode->setScale(this->cameraSize);
-		});
+            // Camera is always attached to root node when created, so must be first detached
+            if (true == this->camera->isAttached())
+            {
+                this->camera->detachFromParent();
+            }
+            this->cameraNode->attachObject(this->camera);
+            // Define it's scale
+            this->cameraNode->setScale(this->cameraSize);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "BasePhysicsCamera::onSetData");
 
 		OgreNewt::CollisionPrimitives::Ellipsoid* col = new OgreNewt::CollisionPrimitives::Ellipsoid(this->ogreNewt, this->cameraSize, 0);
 		Ogre::Vector3 inertia;
@@ -76,19 +77,21 @@ namespace NOWA
 
 	void BasePhysicsCamera::onClearData(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("BasePhysicsCamera::onClearData",
-		{
-			if (this->cameraNode->getAttachedObjectIterator().hasMoreElements())
-			{
-				this->cameraNode->detachObject(this->camera);
-			}
-			if (nullptr != this->cameraNode)
-			{
-				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->cameraNode);
-				this->sceneManager->destroySceneNode(this->cameraNode);
-				this->cameraNode = nullptr;
-			}
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            if (this->cameraNode->getAttachedObjectIterator().hasMoreElements())
+            {
+                this->cameraNode->detachObject(this->camera);
+            }
+            if (nullptr != this->cameraNode)
+            {
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->cameraNode);
+                this->sceneManager->destroySceneNode(this->cameraNode);
+                this->cameraNode = nullptr;
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "BasePhysicsCamera::onClearData");
+
 		if (nullptr != this->upVector)
 		{
 			this->upVector->destroyJoint(this->ogreNewt);

@@ -33,11 +33,7 @@ namespace NOWA
 		this->firstTimeMoveValueSet = true;
 		if (this->sceneNode)
 		{
-			ENQUEUE_RENDER_COMMAND("AttachCamera::onSetData",
-			{
-				this->camera->setPosition(this->sceneNode->_getDerivedPositionUpdated());
-				this->camera->setOrientation(this->sceneNode->_getDerivedOrientationUpdated());
-			});
+            NOWA::GraphicsModule::getInstance()->setCameraTransform(this->camera, this->sceneNode->_getDerivedPositionUpdated(), this->sceneNode->_getDerivedOrientationUpdated());
 		}
 		else
 		{

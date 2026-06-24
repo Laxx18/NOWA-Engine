@@ -131,6 +131,9 @@ namespace NOWA
 
     void GraphicsModule::renderThreadFunction(void)
     {
+        // Advertise this thread's identity to Core so enqueueAndWait thread-ownership assertions work correctly.
+        Core::getSingletonPtr()->setRenderThreadId(std::this_thread::get_id());
+
         this->markCurrentThreadAsRenderThread();
 
         this->setTimeoutDuration(std::chrono::milliseconds(10000));
@@ -289,6 +292,8 @@ namespace NOWA
         this->debugVisualization = false;
         this->currentDestroySlot = 0;
         this->isRunningWaitClosure = false;
+
+        Core::getSingletonPtr()->saveHlmsDiskCache();
     }
 
     void GraphicsModule::publishInterpolationAlpha(float alpha)

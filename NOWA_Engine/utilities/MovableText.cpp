@@ -45,7 +45,7 @@ namespace NOWA
     // ============================================================================
 
     MovableText::MovableText(Ogre::IdType id, Ogre::ObjectMemoryManager* objectMemoryManager, Ogre::SceneManager* sceneManager, const Ogre::NameValuePairList* params) :
-        Ogre::MovableObject(id, objectMemoryManager, sceneManager, 214 /*(RENDER_QUEUE_V2_TRANSPARENT)*/),
+        Ogre::MovableObject(id, objectMemoryManager, sceneManager, 213 /*(RENDER_QUEUE_V2_TRANSPARENT)*/),
         mpCam(nullptr),
         mpFont(nullptr),
         mpHlmsDatablock(nullptr),

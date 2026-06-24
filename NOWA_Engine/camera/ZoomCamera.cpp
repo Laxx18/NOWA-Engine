@@ -39,7 +39,9 @@ namespace NOWA
 
         // Camera must be orthographic!
         this->oldProjectionType = this->camera->getProjectionType();
-        ENQUEUE_RENDER_COMMAND("ZoomCamera::onSetData", {
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             this->camera->setProjectionType(Ogre::PT_ORTHOGRAPHIC);
 
             // Calcluates the desired position.
@@ -55,7 +57,8 @@ namespace NOWA
             // Note: Internally in setOrthoWindowWidth the value is / aspectRatio
             Ogre::Real size = this->calcRequiredSize();
             this->camera->setOrthoWindowWidth(size);
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ZoomCamera::onSetData");
 
         // Optimal position: -16 18 3
         // Optimal orientation: -80 -60 0
@@ -63,11 +66,13 @@ namespace NOWA
 
     void ZoomCamera::onClearData(void)
     {
-        ENQUEUE_RENDER_COMMAND("ZoomCamera::onClearData", {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             this->camera->setProjectionType(this->oldProjectionType);
             this->camera->setOrthoWindowWidth(this->oldOrthogonalSize.x);
             this->camera->setOrthoWindowHeight(this->oldOrthogonalSize.y);
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ZoomCamera::onClearData");
     }
 
     void ZoomCamera::setCategory(const Ogre::String& category)

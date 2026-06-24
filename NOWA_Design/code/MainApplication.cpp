@@ -48,8 +48,6 @@ void MainApplication::startSimulation(const Ogre::String& configName)
 	coreConfiguration.customConfigName = "defaultConfig.xml";
 	coreConfiguration.isGame = false;
 
-	NOWA::Core::getSingletonPtr()->setRenderThreadId(std::this_thread::get_id());
-
 	bool isInitializedCorrectly = NOWA::Core::getSingletonPtr()->initialize(coreConfiguration);
 	if (false == isInitializedCorrectly)
 	{

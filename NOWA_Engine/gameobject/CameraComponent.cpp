@@ -410,10 +410,10 @@ namespace NOWA
 					this->setOrthographic(this->orthographic->getBool());
 
 					// Attention: This is new and set for any created camera
-					Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth();
+					/*Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth();
                     Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight();
                     Ogre::Real aspectRatio = windowWidth / windowHeight;
-                    this->camera->setAspectRatio(aspectRatio);
+                    this->camera->setAspectRatio(aspectRatio);*/
 
 					// Ogre creates a default node automatically.
 					// We only need to set the transform on our GameObject node and align the camera.

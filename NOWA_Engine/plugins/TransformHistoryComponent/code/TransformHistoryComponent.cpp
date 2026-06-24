@@ -138,6 +138,8 @@ namespace NOWA
 
 	bool TransformHistoryComponent::connect(void)
 	{
+        GameObjectComponent::connect();
+
 		this->oldPosition = this->gameObjectPtr->getPosition();
 		this->oldOrientation = this->gameObjectPtr->getOrientation();
 
@@ -182,6 +184,8 @@ namespace NOWA
 
 	bool TransformHistoryComponent::disconnect(void)
 	{
+        GameObjectComponent::disconnect();
+
 		this->isTransforming = false;
 		this->targetGameObject = nullptr;
 		this->physicsActiveComponent = nullptr;

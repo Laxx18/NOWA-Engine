@@ -808,7 +808,10 @@ void ResourcesPanelGameObjects::clear(void)
 {
 	// is called from render thread
 	MyGUI::TreeControl::Node * root = this->gameObjectsTree->getRoot();
-	root->removeAll();
+    if (nullptr != root)
+    {
+        root->removeAll();
+    }
 
 	this->refresh("");
 }

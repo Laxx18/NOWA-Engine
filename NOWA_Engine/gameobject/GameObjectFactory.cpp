@@ -659,7 +659,7 @@ namespace NOWA
 			if (nullptr != existingGameObjectPtr)
 			{
 				boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(gameObjectPtr->getId()));
-				AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(newGameObjectEvent);
+				AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(newGameObjectEvent);
 			}
 		}
 		else

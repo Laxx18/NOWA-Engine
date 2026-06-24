@@ -221,12 +221,6 @@ namespace NOWA
 		// Refresh the particle names list
 		this->particleTemplateName->setValue(this->particleFxModule->getAvailableParticleTemplates());
 
-		if (true == this->particleTemplateName->getListSelectedValue().empty())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] Warning: No particle template selected for game object: " + this->gameObjectPtr->getName());
-			return true;
-		}
-
 		// Particle effect is moving, so it must always be dynamic
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);

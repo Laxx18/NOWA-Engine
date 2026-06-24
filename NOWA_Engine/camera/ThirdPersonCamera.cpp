@@ -15,6 +15,7 @@ namespace NOWA
         lookAtOffset(lookAtOffset),
         cameraSpring(cameraSpring),
         cameraFriction(cameraFriction),
+        cameraVelocity(Ogre::Vector3::ZERO),
         cameraSpringLength(cameraSpringLength),
         lastSmoothedCameraPos(Ogre::Vector3::ZERO)
     {
@@ -29,12 +30,10 @@ namespace NOWA
     {
         BaseCamera::onSetData();
         this->firstTimeMoveValueSet = true;
+        this->cameraVelocity = Ogre::Vector3::ZERO;
         if (this->sceneNode)
         {
-            ENQUEUE_RENDER_COMMAND_WAIT("ThirdPersonCamera::onSetData", {
-                this->camera->setPosition(this->sceneNode->_getDerivedPositionUpdated());
-                this->camera->setOrientation(this->sceneNode->_getDerivedOrientationUpdated());
-            });
+            GraphicsModule::getInstance()->setCameraTransform(this->camera, this->sceneNode->_getDerivedPositionUpdated(), this->sceneNode->_getDerivedOrientationUpdated());
         }
         else
         {
@@ -45,6 +44,7 @@ namespace NOWA
 
     void ThirdPersonCamera::onClearData(void)
     {
+        this->cameraVelocity = Ogre::Vector3::ZERO;
         NOWA::GraphicsModule::getInstance()->removeTrackedCamera(this->camera);
     }
 
@@ -95,12 +95,12 @@ namespace NOWA
     //    Ogre::Vector3 playerPosition;
     //    Ogre::Quaternion playerOrientation;
 
-    //    if (nullptr != this->physicsBody)
+    //    /*if (nullptr != this->physicsBody)
     //    {
     //        playerPosition = this->physicsBody->getPosition();
     //        playerOrientation = this->physicsBody->getOrientation();
     //    }
-    //    else
+    //    else*/
     //    {
     //        playerPosition = this->sceneNode->_getDerivedPositionUpdated();
     //        playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
@@ -112,23 +112,24 @@ namespace NOWA
     //    playerPosition += this->lookAtOffset;
 
     //    // ----------------------
-    //    // Build a canonical camera frame from the player's actual surface-projected
-    //    // forward and up vectors. This makes offsetPosition and the support target
-    //    // axis-agnostic: (0, 4, 7) always means "4 up, 7 behind the player"
-    //    // regardless of whether defaultDirection is -Z, +X, or anything else.
+    //    // Build a canonical camera frame using ONLY the ship's yaw projected
+    //    // onto the gravity plane — roll and pitch are intentionally stripped.
+    //    // This means the camera stays level even if the ship is rolled 90°.
     //    Ogre::Vector3 camForward = playerOrientation * this->defaultDirection;
+
+    //    // Project onto the horizontal plane defined by localUp — strips pitch and roll
     //    camForward = camForward - camForward.dotProduct(localUp) * localUp;
+
     //    if (camForward.squaredLength() < 1e-6f)
     //    {
-    //        // Fallback: use a stable world reference projected onto the horizontal plane
+    //        // Ship is pointing straight up/down — fall back to a stable world reference
     //        Ogre::Vector3 worldRef = (Ogre::Math::Abs(localUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
     //        camForward = worldRef - worldRef.dotProduct(localUp) * localUp;
-    //        camForward.normalise();
     //    }
-    //    else
-    //    {
-    //        camForward.normalise();
-    //    }
+    //    camForward.normalise();
+
+    //    // Right is always derived from localUp x camForward — never from ship's right axis.
+    //    // This guarantees the camera frame is always upright regardless of ship roll.
     //    Ogre::Vector3 camRight = localUp.crossProduct(camForward);
     //    camRight.normalise();
 
@@ -138,8 +139,8 @@ namespace NOWA
     //    // ----------------------
     //    // Stable horizontal frame from gravity only (never from player orientation).
     //    // Used for the orbit spring angle so the camera does not tilt with the player.
-    //    Ogre::Vector3 worldRef = (Ogre::Math::Abs(localUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
-    //    Ogre::Vector3 stableRight = localUp.crossProduct(worldRef).normalisedCopy();
+    //    Ogre::Vector3 worldRef2 = (Ogre::Math::Abs(localUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
+    //    Ogre::Vector3 stableRight = localUp.crossProduct(worldRef2).normalisedCopy();
     //    Ogre::Vector3 stableForward = stableRight.crossProduct(localUp).normalisedCopy();
 
     //    // ----------------------
@@ -192,19 +193,9 @@ namespace NOWA
         }
         Ogre::Vector3 localUp = -gravityDir.normalisedCopy();
 
-        // Read directly from the physics body (m_curPosit / m_curRotation) --
-        // NOT from the SceneNode. The SceneNode is updated by the render thread
-        // one frame later via enqueued _setDerivedPosition. At high speed that
-        // one-frame lag is large enough to make the camera visibly chase the ship.
         Ogre::Vector3 playerPosition;
         Ogre::Quaternion playerOrientation;
 
-        /*if (nullptr != this->physicsBody)
-        {
-            playerPosition = this->physicsBody->getPosition();
-            playerOrientation = this->physicsBody->getOrientation();
-        }
-        else*/
         {
             playerPosition = this->sceneNode->_getDerivedPositionUpdated();
             playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
@@ -215,64 +206,60 @@ namespace NOWA
         // Apply lookAt offset to get visual center of the player
         playerPosition += this->lookAtOffset;
 
-        // ----------------------
-        // Build a canonical camera frame using ONLY the ship's yaw projected
+        // Build canonical camera frame using ONLY the ship's yaw projected
         // onto the gravity plane — roll and pitch are intentionally stripped.
-        // This means the camera stays level even if the ship is rolled 90°.
         Ogre::Vector3 camForward = playerOrientation * this->defaultDirection;
-
-        // Project onto the horizontal plane defined by localUp — strips pitch and roll
         camForward = camForward - camForward.dotProduct(localUp) * localUp;
 
         if (camForward.squaredLength() < 1e-6f)
         {
-            // Ship is pointing straight up/down — fall back to a stable world reference
             Ogre::Vector3 worldRef = (Ogre::Math::Abs(localUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
             camForward = worldRef - worldRef.dotProduct(localUp) * localUp;
         }
         camForward.normalise();
 
-        // Right is always derived from localUp x camForward — never from ship's right axis.
-        // This guarantees the camera frame is always upright regardless of ship roll.
+        // Right is always derived from localUp x camForward — never from the player's right axis.
         Ogre::Vector3 camRight = localUp.crossProduct(camForward);
         camRight.normalise();
 
         // offsetPosition convention: x = right, y = up, z = behind (positive z = behind player)
         Ogre::Vector3 localOffset = camRight * this->offsetPosition.x + localUp * this->offsetPosition.y + (-camForward) * this->offsetPosition.z;
 
-        // ----------------------
         // Stable horizontal frame from gravity only (never from player orientation).
         // Used for the orbit spring angle so the camera does not tilt with the player.
         Ogre::Vector3 worldRef2 = (Ogre::Math::Abs(localUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
         Ogre::Vector3 stableRight = localUp.crossProduct(worldRef2).normalisedCopy();
         Ogre::Vector3 stableForward = stableRight.crossProduct(localUp).normalisedCopy();
 
-        // ----------------------
-        // Hooks-style Camera Spring
-
+        // Primary spring: preserve current horizontal angle, correct only distance.
+        // This contributes zero angular restoring force by design.
         Ogre::Vector3 direction = cameraPosition - playerPosition;
         Ogre::Vector3 directionH = direction - direction.dotProduct(localUp) * localUp;
         Ogre::Radian angle = Ogre::Math::ATan2(directionH.z, directionH.x);
 
         Ogre::Vector3 offsetXZ = Ogre::Math::Cos(angle) * stableRight + Ogre::Math::Sin(angle) * stableForward;
-
-        // Target position: player + spring orbit + player-local offset
         Ogre::Vector3 targetPosition = playerPosition + offsetXZ * this->cameraSpringLength + localOffset;
 
-        // Velocity vector (primary spring movement toward target)
-        Ogre::Vector3 velocityVector = (targetPosition - cameraPosition) * this->cameraSpring;
-        velocityVector *= this->cameraFriction;
+        // Support target: pulls camera behind player using the canonical frame.
+        // Normalized by springLength so angular restoring force stays constant
+        // regardless of how close the camera is — this is what caused jitter at
+        // lower SpringLength values: the support force was proportional to springLength
+        // so halving it halved the angular stiffness and let oscillations build.
+        Ogre::Vector3 supportTarget = playerPosition + (-camForward * this->cameraSpringLength) + localOffset;
+        Ogre::Real lengthNorm = (this->cameraSpringLength > 0.0f) ? (7.0f / this->cameraSpringLength) : 1.0f;
 
-        // Support force -- pulls camera toward player's back using the canonical frame.
-        Ogre::Vector3 tVector = -camForward * this->cameraSpringLength;
-        Ogre::Vector3 supportTarget = playerPosition + tVector + localOffset;
+        // Proper spring-damper integrated with dt.
+        // cameraSpring  = stiffness  (how aggressively it chases the target)
+        // cameraFriction = damping   (how quickly oscillations die out)
+        // Both are now framerate-independent — previously the lack of dt scaling
+        // caused the spring to behave differently at different framerates and
+        // made jitter worse as SpringLength decreased.
+        Ogre::Vector3 springForce = (targetPosition - cameraPosition) * this->cameraSpring;
+        Ogre::Vector3 supportForce = (supportTarget - cameraPosition) * this->cameraSpring * this->moveCameraWeight * lengthNorm;
+        Ogre::Vector3 damping = -this->cameraVelocity * this->cameraFriction;
 
-        Ogre::Vector3 vVector = (supportTarget - cameraPosition) * this->cameraSpring * this->moveCameraWeight;
-        vVector *= this->cameraFriction;
-
-        // Final camera position
-        Ogre::Vector3 totalDisplacement = velocityVector + vVector;
-        Ogre::Vector3 positionVector = cameraPosition + totalDisplacement;
+        this->cameraVelocity += (springForce + supportForce + damping) * dt * 60.0f;
+        Ogre::Vector3 positionVector = cameraPosition + this->cameraVelocity * dt * 60.0f;
 
         // Final look-at orientation
         Ogre::Quaternion resultOrientation = MathHelper::getInstance()->computeLookAtQuaternion(positionVector, playerPosition, localUp);

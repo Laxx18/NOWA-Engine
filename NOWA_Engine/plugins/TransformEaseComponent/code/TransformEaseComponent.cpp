@@ -302,6 +302,8 @@ namespace NOWA
 
 	bool TransformEaseComponent::connect(void)
 	{
+        GameObjectComponent::connect();
+
 		this->rotationProgress = 0.0f;
 		this->internalRotationDirectionChange = this->rotationDirectionChange->getBool();
 		this->rotationRound = 0;
@@ -332,6 +334,8 @@ namespace NOWA
 
 	bool TransformEaseComponent::disconnect(void)
 	{
+        GameObjectComponent::disconnect();
+
         NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->gameObjectPtr->getSceneNode());
 		return true;
 	}

@@ -418,8 +418,8 @@ namespace NOWA
         double currentTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
         double accumulator = 0.0;
 
-        NOWA::GraphicsModule* gfx = NOWA::GraphicsModule::getInstance();
-        gfx->setFrameTime(static_cast<Ogre::Real>(fixedDt));
+        NOWA::GraphicsModule* graphicsModule = NOWA::GraphicsModule::getInstance();
+        graphicsModule->setFrameTime(static_cast<Ogre::Real>(fixedDt));
 
         while (false == this->bShutdown)
         {
@@ -444,7 +444,7 @@ namespace NOWA
             {
                 if (!didUpdate)
                 {
-                    gfx->beginLogicFrame();
+                    graphicsModule->beginLogicFrame();
                     didUpdate = true;
                 }
 
@@ -472,7 +472,7 @@ namespace NOWA
             }
 
             const float alpha = (fixedDt > 0.0) ? static_cast<float>(accumulator / fixedDt) : 0.0f;
-            gfx->publishInterpolationAlpha(alpha);
+            graphicsModule->publishInterpolationAlpha(alpha);
 
             if (false == renderWindow->isVisible() && this->renderWhenInactive)
             {

@@ -262,47 +262,6 @@ namespace NOWA
 		return this->globalGravity;
 	}
 
-#if 0
-	void OgreNewtModule::registerRenderCallbackForBody(OgreNewt::Body* body)
-    {
-        if (nullptr == body)
-        {
-            return;
-        }
-
-        body->setRenderUpdateCallback([](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic, bool isTeleport)
-            {
-                if (nullptr == node || !node->getParent())
-                {
-                    return;
-                }
-
-                if (!node->isStatic())
-                {
-                    // Write into the transform buffer — NOT directly to the SceneNode.
-                    // updateAllTransforms on the render thread reads from this buffer
-                    // and interpolates correctly between physics steps.
-                    // Direct _setDerivedPosition bypasses interpolation and fights
-                    // with updateAllTransforms, causing visual jitter.
-                    NOWA::GraphicsModule::getInstance()->updateNodePosition(node, pos, true, false);
-                    if (updateRot)
-                    {
-                        NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, rot, true, false);
-                    }
-                }
-                else if (updateStatic)
-                {
-                    // Static path unchanged
-                    const bool fireAndForget = isTeleport;
-                    Ogre::Node* parent = node->getParent();
-                    const Ogre::Vector3 localPos = (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated();
-                    const Ogre::Quaternion localRot = parent->_getDerivedOrientationUpdated().Inverse() * rot;
-                    NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos, false, fireAndForget);
-                    NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot, false, fireAndForget);
-                }
-            });
-	#endif
-
     void OgreNewtModule::registerRenderCallbackForBody(OgreNewt::Body* body)
     {
         if (nullptr == body)
@@ -318,7 +277,10 @@ namespace NOWA
                     return;
                 }
 
-                if (updateStatic || isTeleport)
+				// Important cases and most performant:
+				// 1. In OgreNewt::Body setPositionOrientation is called for a non dynamic body then updateStatic is true
+				// 2. In OgreNewt::Body setPositionOrientation is called for a dynamic body then isTeleport is true
+                if (true == updateStatic || true == isTeleport)
                 {
                     // Static path unchanged
                     const bool fireAndForget = isTeleport;
@@ -328,6 +290,7 @@ namespace NOWA
                     NOWA::GraphicsModule::getInstance()->setNodePosition(node, localPos, false);
                     NOWA::GraphicsModule::getInstance()->setNodeOrientation(node, localRot, false);
                 }
+				// 3. In OgreNewt::Body movecallback transformcallback, force, velocity, etc. is called which only runs on a dynamic body, so this case is called
                 else if (!node->isStatic())
                 {
                     // Write into the transform buffer — NOT directly to the SceneNode.

@@ -174,13 +174,13 @@ namespace NOWA
 			this->destroyEverything(it->second);
 		}
 
-		//// Explicitly destroy all particle system definitions
-		//// before the SceneManager destructor tries to do it
-		//if (nullptr != this->particleManager)
-		//{
-		//	this->particleManager->destroyAllParticleSystems();
-		//	this->particleManager->destroyAllBillboardSets();
-		//}
+		// Explicitly destroy all particle system definitions
+		// before the SceneManager destructor tries to do it
+		if (nullptr != this->particleManager)
+		{
+			this->particleManager->destroyAllParticleSystems();
+			this->particleManager->destroyAllBillboardSets();
+		}
 
 		Ogre::String id = this->appStateName + "_ParticleFxModule::update";
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);

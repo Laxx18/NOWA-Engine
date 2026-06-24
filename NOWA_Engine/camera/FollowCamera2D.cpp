@@ -138,10 +138,9 @@ namespace NOWA
         {
             this->lastMoveValue = Ogre::Vector3::ZERO;
 
-            ENQUEUE_RENDER_COMMAND("FollowCamera2D::moveCamera start", {
-                this->camera->setPosition(this->sceneNode->getPosition());
-                this->camera->move(this->offset);
-            });
+            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->sceneNode->_getDerivedPositionUpdated() + this->offset);
+
+            GraphicsModule::getInstance()->setCameraTransform(this->camera, this->sceneNode->_getDerivedPositionUpdated(), this->sceneNode->_getDerivedOrientationUpdated());
 
             this->firstTimeMoveValueSet = false;
         }

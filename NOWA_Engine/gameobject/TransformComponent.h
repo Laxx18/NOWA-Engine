@@ -30,11 +30,21 @@ namespace NOWA
 		* @see		GameObjectComponent::postInit
 		*/
 		virtual bool postInit(void) override;
+
+		/**
+         * @see		GameObjectComponent::onRemoveComponent
+         */
+        virtual void onRemoveComponent(void);
 		
 		/**
 		 * @see		GameObjectComponent::connect
 		 */
 		virtual bool connect(void) override;
+
+		/**
+         * @see		GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
 
 		/**
 		* @see		GameObjectComponent::getClassName

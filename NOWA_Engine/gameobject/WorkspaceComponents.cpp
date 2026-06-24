@@ -118,10 +118,12 @@ namespace NOWA
             Ogre::CompositorPassScene* passScene = static_cast<Ogre::CompositorPassScene*>(pass);
             Ogre::Camera* camera = passScene->getCamera();
 
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PlanarReflectionsWorkspaceListener::passEarlyPreExecute", _2(camera, pass), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera, pass]()
+            {
                 // Note: The Aspect Ratio must match that of the camera we're reflecting.
                 this->planarReflections->update(camera, camera->getAutoAspectRatio() ? pass->getViewportAspectRatio(0u) : camera->getAspectRatio());
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PlanarReflectionsWorkspaceListener::passEarlyPreExecute");
         }
 
     private:
@@ -143,10 +145,10 @@ namespace NOWA
         useDistortion(new Variant(WorkspaceBaseComponent::AttrUseDistortion(), false, this->attributes)),
         useMSAA(new Variant(WorkspaceBaseComponent::AttrUseMSAA(), false, this->attributes)),
         usePCC(new Variant(WorkspaceBaseComponent::AttrUsePCC(), false, this->attributes)),
-        shadowGlobalBias(new Variant(WorkspaceBaseComponent::AttrShadowGlobalBias(), Ogre::Real(1.0f), this->attributes)),
-        shadowGlobalNormalOffset(new Variant(WorkspaceBaseComponent::AttrShadowGlobalNormalOffset(), Ogre::Real(168.0f), this->attributes)),
-        shadowPSSMLambda(new Variant(WorkspaceBaseComponent::AttrShadowPSSMLambda(), Ogre::Real(0.95f), this->attributes)),
-        shadowSplitBlend(new Variant(WorkspaceBaseComponent::AttrShadowSplitBlend(), Ogre::Real(0.125f), this->attributes)),
+        shadowGlobalBias(new Variant(WorkspaceBaseComponent::AttrShadowGlobalBias(), Ogre::Real(2.0f), this->attributes)),
+        shadowGlobalNormalOffset(new Variant(WorkspaceBaseComponent::AttrShadowGlobalNormalOffset(), Ogre::Real(164.0f), this->attributes)),
+        shadowPSSMLambda(new Variant(WorkspaceBaseComponent::AttrShadowPSSMLambda(), Ogre::Real(0.8f), this->attributes)),
+        shadowSplitBlend(new Variant(WorkspaceBaseComponent::AttrShadowSplitBlend(), Ogre::Real(0.0125f), this->attributes)),
         shadowSplitFade(new Variant(WorkspaceBaseComponent::AttrShadowSplitFade(), Ogre::Real(0.313f), this->attributes)),
         shadowSplitPadding(new Variant(WorkspaceBaseComponent::AttrShadowSplitPadding(), Ogre::Real(1.0f), this->attributes)),
         cameraComponent(nullptr),
@@ -383,7 +385,6 @@ namespace NOWA
         {
             this->reconnectAllNodes();
         };
-
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::connect");
 
         GraphicsModule::getInstance()->endWorkspaceTransition();
@@ -910,6 +911,12 @@ namespace NOWA
                     }
                 }*/
 
+                if (nullptr != this->hlmsWind)
+                {
+                    this->hlmsWind->shutdown(this->gameObjectPtr->getSceneManager());
+                    this->hlmsWind = nullptr;
+                }
+
                 if (nullptr != this->hlmsListener)
                 {
                     delete this->hlmsListener;
@@ -1198,6 +1205,9 @@ namespace NOWA
                 if (nullptr != this->hlmsWind)
                 {
                     this->hlmsWind->addTime(renderDt);
+                    // Commit interactor snapshot written by logic thread this frame.
+                    // Must happen after addTime and before Ogre renders the pass.
+                    this->hlmsWind->commitPendingToRender();
                 }
 
                 // Switch workspace graph when the camera crosses the water line.
@@ -1465,8 +1475,7 @@ namespace NOWA
         {
             this->enableEffect(effectName, activated);
         };
-
-        GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "WorkspaceBaseComponent::onEffectActivationChanged");
+        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::onEffectActivationChanged");
     }
 
     void WorkspaceBaseComponent::enableEffect(const Ogre::String& effectName, bool activated)
@@ -3053,7 +3062,12 @@ namespace NOWA
     void WorkspaceBaseComponent::setShadowGlobalBias(Ogre::Real shadowGlobalBias)
     {
         this->shadowGlobalBias->setValue(shadowGlobalBias);
-        ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowGlobalBias", { this->updateShadowGlobalBias(); });
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->updateShadowGlobalBias();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setShadowGlobalBias");
     }
 
     Ogre::Real WorkspaceBaseComponent::getShadowGlobalBias(void) const
@@ -3064,7 +3078,11 @@ namespace NOWA
     void WorkspaceBaseComponent::setShadowGlobalNormalOffset(Ogre::Real shadowGlobalNormalOffset)
     {
         this->shadowGlobalNormalOffset->setValue(shadowGlobalNormalOffset);
-        ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowGlobalNormalOffset", { this->updateShadowGlobalBias(); });
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->updateShadowGlobalBias();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setShadowGlobalNormalOffset");
     }
 
     Ogre::Real WorkspaceBaseComponent::getShadowGlobalNormalOffset(void) const
@@ -3075,7 +3093,11 @@ namespace NOWA
     void WorkspaceBaseComponent::setShadowPSSMLambda(Ogre::Real shadowPssmLambda)
     {
         this->shadowPSSMLambda->setValue(shadowPssmLambda);
-        ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowPSSMLambda", { this->updateShadowGlobalBias(); });
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->updateShadowGlobalBias();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setShadowPSSMLambda");
     }
 
     Ogre::Real WorkspaceBaseComponent::getShadowPSSMLambda(void) const
@@ -3086,7 +3108,11 @@ namespace NOWA
     void WorkspaceBaseComponent::setShadowSplitBlend(Ogre::Real shadowSplitBlend)
     {
         this->shadowSplitBlend->setValue(shadowSplitBlend);
-        ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowSplitBlend", { this->updateShadowGlobalBias(); });
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->updateShadowGlobalBias();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setShadowSplitBlend");
     }
 
     Ogre::Real WorkspaceBaseComponent::getShadowSplitBlend(void) const
@@ -3097,7 +3123,11 @@ namespace NOWA
     void WorkspaceBaseComponent::setShadowSplitFade(Ogre::Real shadowSplitFade)
     {
         this->shadowSplitFade->setValue(shadowSplitFade);
-        ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowSplitFade", { this->updateShadowGlobalBias(); });
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->updateShadowGlobalBias();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setShadowSplitFade");
     }
 
     Ogre::Real WorkspaceBaseComponent::getShadowSplitFade(void) const
@@ -3108,7 +3138,11 @@ namespace NOWA
     void WorkspaceBaseComponent::setShadowSplitPadding(Ogre::Real shadowSplitPadding)
     {
         this->shadowSplitPadding->setValue(shadowSplitPadding);
-        ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowSplitPadding", { this->updateShadowGlobalBias(); });
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->updateShadowGlobalBias();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setShadowSplitPadding");
     }
 
     Ogre::Real WorkspaceBaseComponent::getShadowSplitPadding(void) const
@@ -5150,7 +5184,11 @@ namespace NOWA
     void WorkspaceBackgroundComponent::compileBackgroundMaterial(void)
     {
         auto materialBackgroundPtr = this->materialBackgroundPtr;
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("BackgroundScrollComponent::compileBackgroundMaterial", _1(materialBackgroundPtr), { materialBackgroundPtr->compile(); });
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, materialBackgroundPtr]()
+        {
+            materialBackgroundPtr->compile();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "BackgroundScrollComponent::compileBackgroundMaterial");
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////

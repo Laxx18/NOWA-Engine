@@ -43,7 +43,6 @@ namespace NOWA
 
 		void setLookAtOffset(const Ogre::Vector3& lookAtOffset);
 
-		void setSceneNode(Ogre::SceneNode* sceneNode);
 	protected:
 
 		virtual void onSetData(void);
@@ -54,6 +53,7 @@ namespace NOWA
 		Ogre::Real cameraSpring;
 		Ogre::Real cameraFriction;
 		Ogre::Real cameraSpringLength;
+        Ogre::Vector3 cameraVelocity;
 		Ogre::Vector3 lookAtOffset;
 		Ogre::Vector3 lastSmoothedCameraPos;
 		Ogre::SceneNode* sceneNode;

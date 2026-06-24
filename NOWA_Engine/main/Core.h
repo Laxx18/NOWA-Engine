@@ -158,6 +158,7 @@ namespace NOWA
 		friend class DotSceneImportModule;
 		friend class DotSceneExportModule;
 		friend class FollowCamera2D; // Bounds function
+        friend class GraphicsModule;
 	public:
 
 		/** Constructor. Performs lightweight initialization; heavy subsystems are initialized in `initialize()`. */
@@ -1001,12 +1002,6 @@ namespace NOWA
 		HlmsBaseListenerContainer* getBaseListenerContainer(void) const;
 
 		/**
-		 * @brief Setup HLMS (High-Level Material System). Registers HLMS types on first call and reloads PBS libraries.
-		 * @param useFog When true, include fog piece files in the PBS library.
-		 */
-		void setupHlms(bool useFog = false);
-
-		/**
 		 * @brief Tighten GPU memory budget to reduce memory usage (unload caches, limit residency).
 		 * Useful for low-memory scenarios.
 		 */
@@ -1112,10 +1107,14 @@ namespace NOWA
 		void update(Ogre::Real dt);
 		void updateFrameStats(Ogre::Real dt);
 		void cleanPluginsCfg(bool isDebug);
-		void registerHlms(void);
 		void initMyGui(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, const Ogre::String& logName);
 		void setCurrentScenePath(const Ogre::String& currentScenePath);
 		void setCurrentSceneBounds(const Ogre::Vector3& mostLeftNearPosition, const Ogre::Vector3& mostRightFarPosition);
+
+        /**
+         * @brief Registers ALL types, called once on main thread
+         */
+        void setupHlms(void);
 
 		void loadHlmsDiskCache(void);
 
@@ -1157,6 +1156,8 @@ namespace NOWA
 		PluginFactory* pluginFactory;
 		Ogre::Timer* timer;
 		std::thread::id renderThreadId;
+
+		bool hlmsRegistered;
 		
 		Ogre::String writeAccessFolder;
 		bool isGame;

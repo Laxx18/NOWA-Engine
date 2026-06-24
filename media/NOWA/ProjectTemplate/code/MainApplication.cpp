@@ -51,8 +51,6 @@ void MainApplication::startSimulation(const Ogre::String& graphicsConfigName)
 	// coreConfiguration.resourcesName = "ProjectTemplateDeployed.cfg";
 	coreConfiguration.resourcesName = "ProjectTemplate.cfg";
 	coreConfiguration.customConfigName = "ProjectTemplateConfig.xml";
-
-	NOWA::Core::getSingletonPtr()->setRenderThreadId(std::this_thread::get_id());
 	
 	bool isInitializedCorrectly = NOWA::Core::getSingletonPtr()->initialize(coreConfiguration);
 	if (false == isInitializedCorrectly)

@@ -57,16 +57,14 @@ compositor_node_shadow NOWAShadowNode
 {
 	technique pssm
 
-	texture atlas		2048 7168 PFG_D32_FLOAT
+	texture atlas		3072 2048 PFG_D32_FLOAT
 	texture tmpCubemap	2048 2048 PFG_R32_FLOAT cubemap depth_format PFG_D32_FLOAT
 
 	num_splits		3
 	pssm_lambda		0.95
-	// normal_offset_bias 168
-	// constant_bias_scale 1.0
-	shadow_map 0 atlas uv 0.0 0.000000000000000 1.0 0.285714285714286 light 0 split 0
-	shadow_map 1 atlas uv 0.0 0.285714285714286 0.5 0.142857142857143 light 0 split 1
-	shadow_map 2 atlas uv 0.5 0.285714285714286 0.5 0.142857142857143 light 0 split 2
+	shadow_map 0 atlas uv 0.000000000000000 0.0 0.666666666666667 1.0 light 0 split 0
+	shadow_map 1 atlas uv 0.666666666666667 0.0 0.333333333333333 0.5 light 0 split 1
+	shadow_map 2 atlas uv 0.666666666666667 0.5 0.333333333333333 0.5 light 0 split 2
 	
 	// Redesigned atlas: 2048x2048 square (was 2048x7168 portrait).
 	// All shadow maps are now square (best quality for their resolution).
