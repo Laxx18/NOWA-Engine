@@ -103,7 +103,12 @@ namespace NOWA
             this->fogBreakMinBrightnesses[i]->setConstraints(0.01f, 1.0f);
             this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
             this->fogBreakFalloffs[i]->setConstraints(0.01f, 1.0f);
-            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 20.0f, this->attributes);
+            // Was 20.0f. linkedLightPower for a daytime preset should sit in the same order
+            // of magnitude as sunPower/skyPower (both 1.0f here), not 20x higher - the Ogre
+            // sample's own non-atmosphere lights use setPowerScale(Math::PI) ~ 3.14 as their
+            // "normal" reference point. 06:30 is just past sunrise (low sun elevation), so a
+            // bit dimmer than full midday is appropriate. Test and adjust by eye.
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 5.0f, this->attributes);
             this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
             this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
             this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
@@ -154,7 +159,9 @@ namespace NOWA
             this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
             this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
             this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 30.0f, this->attributes);
+            // Was 30.0f - the most extreme mismatch found: 30x sunPower/skyPower at the SAME
+            // preset. This is the leading suspect for "environment shines too much" at midday.
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 8.0f, this->attributes);
             this->linkedLightPowers[i]->setConstraints(1.0f, 100.0f);
             this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
             this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
@@ -193,9 +200,15 @@ namespace NOWA
             this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
             this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
             this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
-            this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            // 20:00 maps (via convertTime()) to roughly -0.83 on your own [-1,1] time axis -
+            // already deep on the "night" side, same convention your other night presets use.
+            // It was previously left at full daytime brightness (1.0/1.0/20.0) with no dimming
+            // at all, then jumped straight to heavily dimmed at 22:00 (case 3) - an abrupt,
+            // inconsistent step. These values are a transitional point between full daytime
+            // and case 3's already-dimmed numbers; test and adjust by eye.
+            this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 0.05f, this->attributes);
             this->sunPowers[i]->setConstraints(0.0f, 100.0f);
-            this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 0.3f, this->attributes);
             this->skyPowers[i]->setConstraints(0.0f, 100.0f);
             this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
             this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
@@ -205,11 +218,16 @@ namespace NOWA
             this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
             this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
             this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 20.0f, this->attributes);
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 10.0f, this->attributes);
             this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            // Was 0.1f * PI / 0.01f * PI - identical to the midday preset. Ambient (the
+            // "environment" fill light on objects) never dimmed for any night-side preset,
+            // which is the core bug: the sky itself dims correctly via sunPower/skyPower, but
+            // every object stays lit as if it were still noon. Mirrors the *= 0.001f the Ogre
+            // sample applies to ALL of its night-side presets.
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI * 0.05f, this->attributes);
             this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI * 0.05f, this->attributes);
             this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
             this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
             this->envmapScales[i]->setConstraints(0.01f, 1.0f);
@@ -258,9 +276,11 @@ namespace NOWA
             this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
             this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 10.0f, this->attributes);
             this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            // Was 0.1f * PI / 0.01f * PI, identical to midday - see case 2's comment for why
+            // this is the core bug. Mirrors the Ogre sample's *= 0.001f for night presets.
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI * 0.001f, this->attributes);
             this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI * 0.001f, this->attributes);
             this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
             this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
             this->envmapScales[i]->setConstraints(0.01f, 1.0f);
@@ -309,9 +329,10 @@ namespace NOWA
             this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
             this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
             this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            // Was 0.1f * PI / 0.01f * PI, identical to midday - see case 2's comment.
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI * 0.001f, this->attributes);
             this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI * 0.001f, this->attributes);
             this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
             this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
             this->envmapScales[i]->setConstraints(0.01f, 1.0f);
@@ -360,9 +381,10 @@ namespace NOWA
             this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
             this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 10.0f, this->attributes);
             this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            // Was 0.1f * PI / 0.01f * PI, identical to midday - see case 2's comment.
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI * 0.001f, this->attributes);
             this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI * 0.001f, this->attributes);
             this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
             this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
             this->envmapScales[i]->setConstraints(0.01f, 1.0f);
@@ -1234,6 +1256,19 @@ namespace NOWA
         Ogre::AtmosphereNpr::Preset upperSentinel = sentinel;
         upperSentinel.time = 0.999999f; // time01 = 1.0
         presets.push_back(upperSentinel);
+
+        // Everything above is pushed in case-index order (0,1,2,3,4,5, lowerSentinel,
+        // upperSentinel), which is NOT the same as ascending order by .time - e.g. case1
+        // (12:00, +0.5) is immediately followed by case2 (20:00, -0.833), and both sentinels
+        // land at the END of the array instead of bracketing it at the start/end where they
+        // belong. AtmosphereNpr's internal preset lookup expects (and Preset even ships a
+        // comparator overload specifically for) an ascending-by-time ordering - querying an
+        // unsorted range with a sorted-range algorithm gives undefined results exactly at the
+        // point where the order breaks, which is why the sky looked correct most of the day
+        // and broke specifically once the live time crossed 18:00 (the +1.0/-1.0 wrap seam,
+        // which sits right in the middle of the disordered region). Sort once, here, so every
+        // caller of buildPresetArray() gets a correctly ordered array for free.
+        std::sort(presets.begin(), presets.end(), Ogre::AtmosphereNpr::Preset());
     }
 
     Ogre::String AtmosphereComponent::getCurrentTimeOfDay(void)

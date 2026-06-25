@@ -1239,6 +1239,10 @@ namespace NOWA
         {
             this->setOrientation(MathHelper::getInstance()->degreesToQuat(attribute->getVector3()));
         }
+        else if (PhysicsComponent::AttrCollidable() == attribute->getName())
+        {
+            this->setCollidable(attribute->getBool());
+        }
     }
 
     void PhysicsComponent::setBody(OgreNewt::Body* body)

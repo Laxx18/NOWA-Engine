@@ -64,7 +64,7 @@ namespace NOWA
 		lightId(new Variant(TerraComponent::AttrLightId(), static_cast<unsigned long>(0), this->attributes, true)),
 		cameraId(new Variant(TerraComponent::AttrCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
 		basePixelDimension(new Variant(TerraComponent::AttrBasePixelDimension(), static_cast<unsigned int>(64), this->attributes, true)),
-        lodRing0WorldSize(new Variant(TerraComponent::AttrLodRing0WorldSize(), 20.0f, this->attributes)),
+        lodRing0WorldSize(new Variant(TerraComponent::AttrLodRing0WorldSize(), 40.0f, this->attributes)),
 		strength(new Variant(TerraComponent::AttrStrength(), 50, this->attributes)),
 		brushSize(new Variant(TerraComponent::AttrBrushSize(), static_cast<int>(64), this->attributes)),
 		brushIntensity(new Variant(TerraComponent::AttrBrushIntensity(), static_cast<int>(255), this->attributes)),
@@ -109,7 +109,7 @@ namespace NOWA
 		this->basePixelDimension->setDescription("Lower values makes LOD very aggressive. Higher values less aggressive. Must be power of 2.");
         this->lodRing0WorldSize->setDescription("World-space size of the innermost (highest detail) LOD ring. "
                                                 "Set to 0 to auto-calculate from terrain size, camera far clip distance, "
-                                                "and render distance. Set to a positive value to override manually.");
+                                                "and render distance. Set to a positive value to override manually. Note: Going below 40 will show some artifacts on terra.");
 	}
 
 	TerraComponent::~TerraComponent()
@@ -248,20 +248,22 @@ namespace NOWA
     {
         if (nullptr != this->terra/* && false == notSimulating*/)
         {
+            // Attention: TerraWorkspaceListener hijacks Terra's internal camera pointer during
+            // shadow-casting passes for non-directional lights (passPreExecute swaps it to the
+            // shadow camera, then passSceneAfterShadowMaps restores it to nullptr, never back to
+            // the main camera). Since this closure runs after renderOneFrame() has already executed
+            // those shadow passes for this frame, Terra's camera is left as nullptr (or, with no
+            // non-directional shadow casters, untouched) by the time we get here. Re-assert the main
+            // camera before update() so Terra's LOD/cell recalculation runs against the camera that
+            // is actually used for the main scene render, not whatever the listener last left it as.
+            this->terra->setCamera(this->usedCamera);
+
             const float lightEpsilon = 0.0f;
             if (nullptr != this->sunLight)
             {
                 auto closureFunction = [this, lightEpsilon](Ogre::Real renderDt)
                 {
-                    // Attention: TerraWorkspaceListener hijacks Terra's internal camera pointer during
-                    // shadow-casting passes for non-directional lights (passPreExecute swaps it to the
-                    // shadow camera, then passSceneAfterShadowMaps restores it to nullptr, never back to
-                    // the main camera). Since this closure runs after renderOneFrame() has already executed
-                    // those shadow passes for this frame, Terra's camera is left as nullptr (or, with no
-                    // non-directional shadow casters, untouched) by the time we get here. Re-assert the main
-                    // camera before update() so Terra's LOD/cell recalculation runs against the camera that
-                    // is actually used for the main scene render, not whatever the listener last left it as.
-                    this->terra->setCamera(this->usedCamera);
+                    
                     this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
                 };
                 Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
@@ -271,7 +273,6 @@ namespace NOWA
             {
                 auto closureFunction = [this, lightEpsilon](Ogre::Real renderDt)
                 {
-                    this->terra->setCamera(this->usedCamera);
                     this->terra->update(Ogre::Vector3::ZERO, lightEpsilon);
                 };
                 Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);

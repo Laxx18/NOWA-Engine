@@ -61,6 +61,11 @@ namespace NOWA
 			this->serialize->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == PhysicsComponent::AttrCollidable())
+        {
+            this->collidable->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 		
 		// Snapshot loaded, game object pointer should exist, set transform
 		if (nullptr != this->gameObjectPtr)
@@ -93,6 +98,7 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		clonedCompPtr->setCollidable(this->collidable->getBool());
 		clonedCompPtr->setSerialize(this->serialize->getBool());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
@@ -122,11 +128,6 @@ namespace NOWA
 	{
 		PhysicsComponent::actualizeValue(attribute);
 
-		//// The category and the category id are handled in game object, but the category id must be handled in physics component too
-		//if ("Category" == attribute->getName())
-		//{
-		//	this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
-		//}
 		if (GameObject::AttrClampY() == attribute->getName())
 		{
 			// Clamp physics y coordinate, if activated and something to clamp to
@@ -165,11 +166,11 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->serialize->getBool())));
 		propertiesXML->append_node(propertyXML);
 
-		/*propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "CollisionType"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collisionType->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);*/
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc,PhysicsComponent::AttrCollidable())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collidable->getBool())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	void PhysicsArtifactComponent::showDebugData(void)
@@ -282,7 +283,7 @@ namespace NOWA
 		// Its prohibited to set mass for non movable bodies!
 
 		this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
-
+        this->physicsBody->setCollidable(this->collidable->getBool());
 		this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
 		this->setPosition(this->initialPosition);
@@ -355,6 +356,7 @@ namespace NOWA
         this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), compoundCollision, true);
         NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
+		this->physicsBody->setCollidable(this->collidable->getBool());
         this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
@@ -484,6 +486,7 @@ namespace NOWA
 
 		// Set the new collision hull
 		this->physicsBody->setCollision(staticCollision);
+        this->physicsBody->setCollidable(this->collidable->getBool());
 
 		// Re-apply material group ID — reCreateCollision creates a fresh body
         // which resets m_shapeMaterial.m_userId to 0

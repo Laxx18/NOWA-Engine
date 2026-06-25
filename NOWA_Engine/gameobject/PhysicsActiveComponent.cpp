@@ -274,8 +274,6 @@ namespace NOWA
         clonedCompPtr->setCollisionType(this->collisionType->getListSelectedValue());
         // do not use constraintAxis variable, because its being manipulated during physics body creation
         clonedCompPtr->setConstraintAxis(this->constraintAxis->getVector3());
-        // Bug in newton, setting afterwards collidable to true, will not work, hence do not clone this property?
-        // clonedCompPtr->setCollidable(this->collidable->getBool());
 
         clonedCompPtr->setCollisionSize(this->collisionSize->getVector3());
         clonedCompPtr->setCollisionPosition(this->collisionPosition->getVector3());
@@ -285,6 +283,8 @@ namespace NOWA
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        clonedCompPtr->setCollidable(this->collidable->getBool());
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
         return clonedCompPtr;

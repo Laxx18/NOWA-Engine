@@ -21,10 +21,10 @@ Viper_0["connect"] = function(gameObject)
     player = AppStateManager:getGameObjectController():castGameObject(gameObject);
     --AppStateManager:getGameObjectController():activatePlayerController(true, gameObject:getId(), true);
     physicsActiveVehicleComponent = gameObject:getPhysicsActiveVehicleComponentV2();
-    --rollSound = gameObject:getSimpleSoundComponentFromIndex(0);
-    --rollSound:setVolume(200);
+    rollSound = gameObject:getSimpleSoundComponentFromIndex(0);
+    rollSound:setVolume(200);
     
-    --skidSound = player:getSimpleSoundComponentFromIndex(1);
+    skidSound = player:getSimpleSoundComponentFromIndex(1);
     inputDeviceComponent = player:getInputDeviceComponent();
     inputDeviceModule = inputDeviceComponent:getInputDeviceModule();
    
@@ -43,14 +43,14 @@ Viper_0["update"] = function(dt)
     --log("vel: " .. toString(physicsActiveVehicleComponent:getVelocity():squaredLength()));
     local motion = physicsActiveVehicleComponent:getVelocity():squaredLength() + 40;
     if motion > 40 + (0.2 * 0.2) then
-        --rollSound:setActivated(true);
+        rollSound:setActivated(true);
         -- If started to drive, motor engine sound shall remain in a deep voice
         if (motion < 40) then
             motion = 40;
         end
-        --rollSound:setPitch(motion * 0.01);
-    --else
-    --    rollSound:setActivated(false);
+        rollSound:setPitch(motion * 0.001);
+    else
+        rollSound:setActivated(false);
     end
 end
 
@@ -111,7 +111,7 @@ Viper_0["onHandBrakeChanged"] = function(vehicleDrivingManipulation, dt)
     if inputDeviceModule:isActionDown(NOWA_A_JUMP) then
         vehicleDrivingManipulation:setHandBrake(5.5);
         if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
-            --skidSound:setActivated(true);
+            skidSound:setActivated(true);
         end
     end
 end
@@ -125,7 +125,7 @@ Viper_0["onBrakeChanged"] = function(vehicleDrivingManipulation, dt)
     if inputDeviceModule:isActionDown(NOWA_A_COWER) then
         vehicleDrivingManipulation:setBrake(7.5);
         if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
-            --skidSound:setActivated(true);
+            skidSound:setActivated(true);
         end
     end
 end
