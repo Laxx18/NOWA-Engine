@@ -246,7 +246,7 @@ namespace NOWA
 
 	void TerraComponent::update(Ogre::Real dt, bool notSimulating)
     {
-        if (nullptr != this->terra)
+        if (nullptr != this->terra/* && false == notSimulating*/)
         {
             const float lightEpsilon = 0.0f;
             if (nullptr != this->sunLight)

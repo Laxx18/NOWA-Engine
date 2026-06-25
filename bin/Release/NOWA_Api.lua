@@ -30647,6 +30647,22 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
+			setShowBoundingBox =
+			{
+				type = "method",
+				description = "Sets whether selected game objects show a selection bounding box.",
+				args = "(boolean showBoundingBox)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShowBoundingBox =
+			{
+				type = "function",
+				description = "Gets whether selected game objects show a selection bounding box.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			reactOnGameObjectsSelected =
 			{
 				type = "method",

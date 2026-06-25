@@ -2202,16 +2202,20 @@ namespace NOWA
 			physicsPlayerControllerComponent->setActivated(true);
 		}
 
-		if (nullptr == this->playerController->getInputDeviceComponent() || nullptr == this->playerController->getInputDeviceComponent()->getInputDeviceModule())
-		{
-			this->hasInputDevice = false;
-		}
-
 		this->sceneManager = this->playerController->getOwner()->getSceneManager();
 	}
 
 	void WalkingStateJumpNRun::update(GameObject* player, Ogre::Real dt)
     {
+
+
+        this->hasInputDevice = true;
+
+        if (nullptr == this->playerController->getInputDeviceComponent() || true == this->playerController->getInputDeviceComponent()->isDeviceLocked())
+        {
+            this->hasInputDevice = false;
+        }
+
         // -------------------------------------------------------------------------
         // Early returns BEFORE beginFrame -- if we skip beginFrame we must also
         // skip addTime, which is fine (animation stays frozen during these states).

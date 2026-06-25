@@ -158,6 +158,10 @@ namespace NOWA
 
 		void select(unsigned long gameObjectId, bool bSelect);
 
+		void setShowBoundingBox(bool showBoundingBox);
+
+        bool getShowBoundingBox(void) const;
+
 		void setActivatePlayerController(bool activatePlayerController); 
 
 		bool getActivatePlayerController(void) const;
@@ -201,6 +205,7 @@ namespace NOWA
 		static const Ogre::String AttrCategories(void) { return "Categories"; }
 		static const Ogre::String AttrUseMultiSelection(void) { return "Use Multi Selection"; }
 		static const Ogre::String AttrUseSelectionRectangle(void) { return "Use Selection Rectangle"; }
+        static const Ogre::String AttrShowBoundingBox(void) { return "Show Bounding Box"; }
 		static const Ogre::String AttrActivatePlayerController(void) { return "Activate Playercontroller"; }
 	protected:
 		/**
@@ -275,7 +280,7 @@ namespace NOWA
 		Variant* categories;
 		Variant* useMultiSelection;
 		Variant* useSelectionRectangle;
-
+        Variant* showBoundingBox;
 		Variant* activatePlayerController;
 	};
 

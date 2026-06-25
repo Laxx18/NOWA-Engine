@@ -4318,14 +4318,6 @@ namespace NOWA
             return nullptr;
         }
 
-        if (nullptr == this->windComponent)
-        {
-            // Same gating as procedural grass: no WindComponent in the scene
-            // means nothing will ever drive the sway uniform, so there is no
-            // point swapping to a Wind datablock at all.
-            return nullptr;
-        }
-
         const Ogre::String swayingName = this->getSwayingDatablockName(*originalDatablock->getNameStr());
 
         Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();

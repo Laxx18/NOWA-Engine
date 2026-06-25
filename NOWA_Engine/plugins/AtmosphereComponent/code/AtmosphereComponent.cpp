@@ -891,6 +891,118 @@ namespace NOWA
         return true;
     }
 
+    //void AtmosphereComponent::update(Ogre::Real dt, bool notSimulating)
+    //{
+    //    if (false == notSimulating)
+    //    {
+    //        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+
+    //        // Update time of day — stabilisationFactor is always 1.0 across all branches,
+    //        // kept here in case you want to tune per-segment speed later.
+    //        Ogre::Real stabilisationFactor = 1.0f;
+
+    //        this->timeOfDay += this->timeMultiplicator->getReal() * stabilisationFactor * dt;
+
+    //        // Smooth wrap — the seam is at ±1.0 which maps to 18:00.
+    //        if (this->timeOfDay >= 1.0f)
+    //        {
+    //            this->timeOfDay = -1.0f + (this->timeOfDay - 1.0f);
+    //        }
+    //        else if (this->timeOfDay < -1.0f)
+    //        {
+    //            this->timeOfDay = 1.0f + (this->timeOfDay + 1.0f);
+    //        }
+
+    //        this->azimuth += this->timeMultiplicator->getReal() * dt;
+    //        this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
+
+    //        auto closureFunction = [atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(), lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(),
+    //                                   defaultDir = this->lightDirectionalComponent->getOwner()->getDefaultDirection(), externalLightMode = this->externalLightMode, cachedSunDir = this->cachedExternalSunDir, timeOfDay = this->timeOfDay,
+    //                                   azimuth = this->azimuth](Ogre::Real renderDt) mutable
+    //        {
+    //            sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere(), sceneManager->getAmbientLightLowerHemisphere(), sceneManager->getAmbientLightHemisphereDir());
+
+    //            Ogre::Vector3 sd;
+    //            if (false == externalLightMode)
+    //            {
+    //                const float sunAngle = timeOfDay * Ogre::Math::PI;
+    //                const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
+    //                sd = (Ogre::Quaternion(Ogre::Radian(azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy();
+
+    //                Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(lightNode->getOrientation(), sd, defaultDir, renderDt, 60.0f);
+    //                lightNode->_setDerivedOrientation(newOrientation);
+    //            }
+    //            else
+    //            {
+    //                sd = cachedSunDir;
+    //                if (sd.squaredLength() > 0.0f)
+    //                {
+    //                    sd.normalise();
+    //                }
+    //            }
+
+    //            // Convert timeOfDay to a clock hour first, then to time01.
+    //            //
+    //            // timeOfDay range -> clock:
+    //            //   [ 0.0,  1.0) ->  6:00 to 18:00
+    //            //   [-1.0, -0.5) -> 18:00 to 24:00
+    //            //   [-0.5,  0.0) ->  0:00 to  6:00
+    //            //
+    //            // This gives time01 = clockHour / 24 which runs:
+    //            //   midnight  (0:00) -> 0.00
+    //            //   sunrise   (6:00) -> 0.25
+    //            //   noon     (12:00) -> 0.50
+    //            //   sunset   (18:00) -> 0.75
+    //            //   midnight (24:00) -> 1.00 (== 0.00)
+    //            //
+    //            // The seam is now at midnight — a uniformly dark sky — so any tiny
+    //            // preset discontinuity at time01=0/1 is invisible. Previously the
+    //            // seam was at 18:00 (sunset), which is the most visually dramatic
+    //            // moment and caused the power-scale jump from 1 to 16.
+
+    //            float clockHour;
+    //            if (timeOfDay >= -1.0f && timeOfDay < -0.5f)
+    //            {
+    //                // Evening: -1.0 to -0.5 -> 18:00 to 24:00
+    //                clockHour = 18.0f + (timeOfDay + 1.0f) * 12.0f;
+    //            }
+    //            else if (timeOfDay >= -0.5f && timeOfDay < 0.0f)
+    //            {
+    //                // Night: -0.5 to 0.0 -> 0:00 to 6:00
+    //                clockHour = (timeOfDay + 0.5f) * 12.0f;
+    //            }
+    //            else
+    //            {
+    //                // Morning + afternoon: 0.0 to 1.0 -> 6:00 to 18:00
+    //                clockHour = 6.0f + timeOfDay * 12.0f;
+    //            }
+
+    //            float time01 = clockHour / 24.0f;
+    //            time01 = Ogre::Math::Clamp(time01, 0.0f, 0.999999f);
+
+    //            atmosphereNpr->updatePreset(sd, time01);
+
+    //            Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+    //            if (nullptr != camera)
+    //            {
+    //                atmosphereNpr->_update(sceneManager, camera);
+    //            }
+    //        };
+
+    //        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+    //        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+
+    //        if (true == this->bShowDebugData)
+    //        {
+    //            Ogre::String time = getCurrentTimeOfDay();
+    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
+    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] OgreLight PowerScale: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getOgreLight()->getPowerScale()));
+    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset SunPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().sunPower));
+    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset LinkedLightPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().linkedLightPower));
+    //        }
+    //    }
+    //}
+
     void AtmosphereComponent::update(Ogre::Real dt, bool notSimulating)
     {
         if (false == notSimulating)
@@ -903,7 +1015,8 @@ namespace NOWA
 
             this->timeOfDay += this->timeMultiplicator->getReal() * stabilisationFactor * dt;
 
-            // Smooth wrap — the seam is at ±1.0 which maps to 18:00.
+            // Smooth wrap — the seam is at ±1.0, the circular boundary AtmosphereNpr's own
+            // preset lookup (and Preset::lerp's -2.0f wraparound offset) is built around.
             if (this->timeOfDay >= 1.0f)
             {
                 this->timeOfDay = -1.0f + (this->timeOfDay - 1.0f);
@@ -941,46 +1054,17 @@ namespace NOWA
                     }
                 }
 
-                // Convert timeOfDay to a clock hour first, then to time01.
-                //
-                // timeOfDay range -> clock:
-                //   [ 0.0,  1.0) ->  6:00 to 18:00
-                //   [-1.0, -0.5) -> 18:00 to 24:00
-                //   [-0.5,  0.0) ->  0:00 to  6:00
-                //
-                // This gives time01 = clockHour / 24 which runs:
-                //   midnight  (0:00) -> 0.00
-                //   sunrise   (6:00) -> 0.25
-                //   noon     (12:00) -> 0.50
-                //   sunset   (18:00) -> 0.75
-                //   midnight (24:00) -> 1.00 (== 0.00)
-                //
-                // The seam is now at midnight — a uniformly dark sky — so any tiny
-                // preset discontinuity at time01=0/1 is invisible. Previously the
-                // seam was at 18:00 (sunset), which is the most visually dramatic
-                // moment and caused the power-scale jump from 1 to 16.
-
-                float clockHour;
-                if (timeOfDay >= -1.0f && timeOfDay < -0.5f)
-                {
-                    // Evening: -1.0 to -0.5 -> 18:00 to 24:00
-                    clockHour = 18.0f + (timeOfDay + 1.0f) * 12.0f;
-                }
-                else if (timeOfDay >= -0.5f && timeOfDay < 0.0f)
-                {
-                    // Night: -0.5 to 0.0 -> 0:00 to 6:00
-                    clockHour = (timeOfDay + 0.5f) * 12.0f;
-                }
-                else
-                {
-                    // Morning + afternoon: 0.0 to 1.0 -> 6:00 to 18:00
-                    clockHour = 6.0f + timeOfDay * 12.0f;
-                }
-
-                float time01 = clockHour / 24.0f;
-                time01 = Ogre::Math::Clamp(time01, 0.0f, 0.999999f);
-
-                atmosphereNpr->updatePreset(sd, time01);
+                // Pass timeOfDay directly into updatePreset(). It is already expressed in the
+                // same circular [-1, +1] convention (length 2.0, wrapping at -1/+1) that
+                // convertTime() uses when building the preset array (see buildPresetArray()),
+                // and that AtmosphereNpr::updatePreset()/Preset::lerp() are themselves built
+                // around (Preset::lerp's "a.time - 2.0f" term only makes sense for a circular
+                // domain of length 2.0). There must be no second, independently-computed time
+                // representation here — a [0,1] "clockHour / 24" value is NOT the same number
+                // line as the presets' negative-for-evening/night .time values, and querying
+                // with it makes lower_bound() skip every preset with a negative time entirely,
+                // regardless of the actual time of day.
+                atmosphereNpr->updatePreset(sd, timeOfDay);
 
                 Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
                 if (nullptr != camera)

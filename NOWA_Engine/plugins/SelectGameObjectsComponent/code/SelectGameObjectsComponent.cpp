@@ -21,13 +21,14 @@ namespace NOWA
 	class SelectionObserver : public NOWA::SelectionManager::ISelectionObserver
 	{
 	public:
-		SelectionObserver(bool activatePlayerController, bool useMultiSelection)
-			: selectionStrategy(new NOWA::DefaultOutLine()), // = new NOWA::RimEffectOutLine();
-			activatePlayerController(activatePlayerController),
-			useMultiSelection(useMultiSelection)
-		{
+        SelectionObserver(bool activatePlayerController, bool useMultiSelection, bool showBoundingBox) :
+            selectionStrategy(nullptr),
+            activatePlayerController(activatePlayerController),
+            useMultiSelection(useMultiSelection),
+            showBoundingBox(showBoundingBox)
+        {
 
-		}
+        }
 
 		virtual ~SelectionObserver()
 		{
@@ -40,14 +41,17 @@ namespace NOWA
 
 		virtual void onHandleSelection(NOWA::GameObject* gameObject, bool selected) override
 		{
-			if (true == selected)
-			{
-				this->selectionStrategy->highlight(gameObject);
-			}
-			else
-			{
-				this->selectionStrategy->unHighlight(gameObject);
-			}
+            if (true == this->showBoundingBox)
+            {
+                if (true == selected)
+                {
+                    this->selectionStrategy->highlight(gameObject);
+                }
+                else
+                {
+                    this->selectionStrategy->unHighlight(gameObject);
+                }
+            }
 
 			if (true == activatePlayerController)
 			{
@@ -80,10 +84,16 @@ namespace NOWA
 		{
 			this->useMultiSelection = useMultiSelection;
 		}
+
+		void setShowBoundingBox(bool showBoundingBox)
+		{
+            this->showBoundingBox = showBoundingBox;
+		}
 	private:
 		NOWA::DefaultOutLine* selectionStrategy;
 		bool activatePlayerController;
 		bool useMultiSelection;
+        bool showBoundingBox;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +105,8 @@ namespace NOWA
 		categories(new Variant(SelectGameObjectsComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
 		useMultiSelection(new Variant(SelectGameObjectsComponent::AttrUseMultiSelection(), true, this->attributes)),
 		useSelectionRectangle(new Variant(SelectGameObjectsComponent::AttrUseSelectionRectangle(), true, this->attributes)),
-		activatePlayerController(new Variant(SelectGameObjectsComponent::AttrActivatePlayerController(), true, this->attributes))
+        activatePlayerController(new Variant(SelectGameObjectsComponent::AttrActivatePlayerController(), true, this->attributes)),
+        showBoundingBox(new Variant(SelectGameObjectsComponent::AttrShowBoundingBox(), true, this->attributes))
 	{
 		this->selectionManager = new SelectionManager();
 		this->activatePlayerController->setDescription("If set to true and for the corresponding game object a player controller does exist, it will be activated if game object has been selected or deactivated, if not.");
@@ -162,6 +173,11 @@ namespace NOWA
 			this->useSelectionRectangle->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Show Bounding Box")
+        {
+            this->showBoundingBox->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ActivatePlayerController")
 		{
 			this->activatePlayerController->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
@@ -181,7 +197,8 @@ namespace NOWA
 
 		// TODO: What if camera does change?
 		this->selectionManager->init(this->gameObjectPtr->getSceneManager(), NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), 
-			this->categories->getString(), OIS::MB_Left, new SelectionObserver(this->activatePlayerController->getBool(), this->useMultiSelection->getBool()));
+			this->categories->getString(), OIS::MB_Left,
+            new SelectionObserver(this->activatePlayerController->getBool(), this->useMultiSelection->getBool(), this->showBoundingBox->getBool()));
 
 		// If a listener has been added via key/mouse/joystick pressed, a new listener would be inserted during this iteration, which would cause a crash in mouse/key/button release iterator, hence add in next frame
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
@@ -267,6 +284,10 @@ namespace NOWA
 		{
 			this->setUseSelectionRectangle(attribute->getBool());
 		}
+        else if (SelectGameObjectsComponent::AttrShowBoundingBox() == attribute->getName())
+        {
+            this->setShowBoundingBox(attribute->getBool());
+        }
 		else if (SelectGameObjectsComponent::AttrActivatePlayerController() == attribute->getName())
 		{
 			this->setActivatePlayerController(attribute->getBool());
@@ -307,6 +328,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UseSelectionRectangle"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useSelectionRectangle->getBool())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Show Bounding Box"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->showBoundingBox->getBool())));
+        propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
@@ -512,6 +539,28 @@ namespace NOWA
 		{
 			this->selectionManager->select(gameObjectId, bSelect);
 		}
+    }
+
+    void SelectGameObjectsComponent::setShowBoundingBox(bool showBoundingBox)
+    {
+        if (this->showBoundingBox->getBool() == showBoundingBox)
+        {
+            return;
+        }
+
+        this->showBoundingBox->setValue(showBoundingBox);
+
+		const auto selectionObserver = this->selectionManager->getSelectionObserver();
+
+        if (nullptr != selectionObserver)
+        {
+            static_cast<SelectionObserver*>(selectionObserver)->setShowBoundingBox(showBoundingBox);
+        }
+    }
+
+	bool SelectGameObjectsComponent::getShowBoundingBox(void) const
+	{
+        return this->showBoundingBox->getBool();
 	}
 
 	void SelectGameObjectsComponent::setActivatePlayerController(bool activatePlayerController)
@@ -583,6 +632,8 @@ namespace NOWA
 			.def("getUseMultiSelection", &SelectGameObjectsComponent::getUseMultiSelection)
 			.def("setUseSelectionRectangle", &SelectGameObjectsComponent::setUseSelectionRectangle)
 			.def("getUseSelectionRectangle", &SelectGameObjectsComponent::getUseSelectionRectangle)
+            .def("setShowBoundingBox", &SelectGameObjectsComponent::setShowBoundingBox)
+            .def("getShowBoundingBox", &SelectGameObjectsComponent::getShowBoundingBox)
 			.def("reactOnGameObjectsSelected", &SelectGameObjectsComponent::reactOnGameObjectsSelected)
 			.def("select", &internalSelect)
 		];
@@ -596,6 +647,8 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "bool getUseMultiSelection()", "Gets whether multiple game objects can be selected.");
 		LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "void setUseSelectionRectangle(bool useSelectionRectangle)", "Sets whether use a selection rectangle for multiple game objects selection.");
 		LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "bool getUseSelectionRectangle()", "Gets whether use a selection rectangle for multiple game objects selection.");
+        LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "void setShowBoundingBox(bool showBoundingBox)", "Sets whether selected game objects show a selection bounding box.");
+        LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "bool getShowBoundingBox()", "Gets whether selected game objects show a selection bounding box.");
 		LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "void reactOnGameObjectsSelected(func closureFunction, table[GameObject])",
 			"Sets whether to react if one or more game objects are selected.");
 		LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "void select(string gameObjectId, bool bSelect)", "Selects or un-selects the given game object by id.");
