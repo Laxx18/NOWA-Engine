@@ -126,7 +126,7 @@ namespace NOWA
         this->ruleCount->addUserData(GameObject::AttrActionNeedRefresh());
 
         // Add constraints
-        this->masterSeed->setConstraints(0u, UINT32_MAX);
+        this->masterSeed->setConstraints(0u, 666u);
         this->gridResolution->setConstraints(0.1f, 10.0f);
     }
 
@@ -224,7 +224,7 @@ namespace NOWA
             this->ruleTreeSwayStrengths.resize(count, nullptr);
         }
 
-        this->masterSeed->setConstraints(0u, UINT32_MAX);
+        this->masterSeed->setConstraints(0u, 666u);
         this->gridResolution->setConstraints(0.1f, 10.0f);
 
         // Load each rule's properties
@@ -1202,7 +1202,7 @@ namespace NOWA
         }
         else if (actionId == "ProceduralFoliageVolumeComponent.RandomizeSeed")
         {
-            this->masterSeed->setValue(static_cast<unsigned int>(Ogre::Math::RangeRandom(0, UINT32_MAX)));
+            this->masterSeed->setValue(static_cast<unsigned int>(Ogre::Math::RangeRandom(0, 666)));
             this->regenerateFoliage();
             return true;
         }
@@ -2761,29 +2761,30 @@ namespace NOWA
         // Get the datablock: Wind HLMS if WindComponent exists, otherwise PBS fallback.
         Ogre::HlmsDatablock* grassDatablock = nullptr;
         {
-            if (nullptr != this->windComponent)
+            // Always search Wind HLMS first — the datablock exists there regardless
+            // of whether a WindComponent is present in the scene.
+            // WindComponent presence only determines whether the sway animation runs.
+            Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+
+            Ogre::Hlms* hlmsWind = hlmsManager->getHlms(Ogre::HLMS_USER0);
+            if (nullptr != hlmsWind)
             {
-                Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
-                Ogre::Hlms* hlmsWind = hlmsManager->getHlms(Ogre::HLMS_USER0);
-                if (nullptr != hlmsWind)
-                {
-                    grassDatablock = hlmsWind->getDatablock(rule.grassMaterialName);
-                }
+                grassDatablock = hlmsWind->getDatablock(rule.grassMaterialName);
             }
+
             if (nullptr == grassDatablock)
             {
-                // Fallback: try PBS
-                Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+                // Fallback: try PBS (for scenes that use non-Wind grass materials)
                 Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
                 if (nullptr != hlmsPbs)
                 {
                     grassDatablock = hlmsPbs->getDatablock(rule.grassMaterialName);
                 }
             }
+
             if (nullptr == grassDatablock)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[ProceduralFoliageVolume] Grass rule '" + rule.name + "': datablock '" + rule.grassMaterialName + "' not found. " + "Grass will not be created. Create a Wind HLMS datablock with this name.");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] Grass rule '" + rule.name + "': datablock '" + rule.grassMaterialName + "' not found in Wind HLMS or PBS. Grass will not be created.");
                 return;
             }
         }
@@ -3053,6 +3054,13 @@ namespace NOWA
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] No PhysicsArtifactComponent found, skipping collision creation");
             return;
+        }
+
+        // DIAGNOSTIC
+        for (const auto& batch : this->vegetationBatches)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CollisionDiag] batch ruleIndex=" + Ogre::StringConverter::toString(batch.ruleIndex) + " instances=" + Ogre::StringConverter::toString(batch.instances.size()) +
+                                                                                    " collisionEnabled=" + Ogre::StringConverter::toString(this->rules[batch.ruleIndex].collisionEnabled));
         }
 
         // Check if any rule has collision enabled

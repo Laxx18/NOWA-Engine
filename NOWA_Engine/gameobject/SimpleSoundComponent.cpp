@@ -324,11 +324,12 @@ namespace NOWA
 
 		if (nullptr != this->sound)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("SimpleSoundComponent::enableSpectrumAnalysis",
-			{
-				this->sound->stop();
-				this->sound->enableSpectrumAnalysis(false, 1, 1, OgreAL::MathWindows::BARLETT, OgreAL::AudioProcessor::SpectrumPreparationType::LINEAR, 0.0f);
-			});
+            this->sound->stop();
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->sound->enableSpectrumAnalysis(false, 1, 1, OgreAL::MathWindows::BARLETT, OgreAL::AudioProcessor::SpectrumPreparationType::LINEAR, 0.0f);
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SimpleSoundComponent::enableSpectrumAnalysis");
 			
 		}
 		return true;
@@ -602,10 +603,11 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SimpleSoundComponent::enableSpectrumAnalysis", _6(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor),
-			{
-				this->sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor]()
+            {
+                this->sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SimpleSoundComponent::enableSpectrumAnalysis");
 
 			/*NOWA::AppStateManager::LogicCommand logicCommand = [this, enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor]()
 				{

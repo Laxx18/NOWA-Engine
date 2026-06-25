@@ -554,6 +554,8 @@ namespace NOWA
 		Ogre::Real convertTime(const Ogre::String& strTimeOfDay);
 
 		void resetAtmosphere(void);
+
+		void buildPresetArray(Ogre::AtmosphereNpr::PresetArray& presets, bool bShowSun);
 	private:
 		Ogre::String name;
 

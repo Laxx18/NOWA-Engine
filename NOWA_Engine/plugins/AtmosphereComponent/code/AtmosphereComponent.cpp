@@ -1,815 +1,812 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "AtmosphereComponent.h"
-#include "utilities/XMLConverter.h"
-#include "utilities/MathHelper.h"
-#include "utilities/Interpolator.h"
-#include "modules/LuaScriptApi.h"
-#include "main/EventManager.h"
-#include "main/AppStateManager.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/LightDirectionalComponent.h"
+#include "main/AppStateManager.h"
+#include "main/EventManager.h"
+#include "modules/LuaScriptApi.h"
+#include "utilities/Interpolator.h"
+#include "utilities/MathHelper.h"
+#include "utilities/XMLConverter.h"
 
 #include "OgreAbiUtils.h"
 
 namespace NOWA
 {
-	using namespace rapidxml;
-	using namespace luabind;
+    using namespace rapidxml;
+    using namespace luabind;
 
-	AtmosphereComponent::AtmosphereComponent()
-		: GameObjectComponent(),
-		name("AtmosphereComponent"),
-		activated(new Variant(AtmosphereComponent::AttrActivated(), true, this->attributes)),
-		enableSky(new Variant(AtmosphereComponent::AttrEnableSky(), true, this->attributes)),
+    AtmosphereComponent::AtmosphereComponent() :
+        GameObjectComponent(),
+        name("AtmosphereComponent"),
+        activated(new Variant(AtmosphereComponent::AttrActivated(), true, this->attributes)),
+        enableSky(new Variant(AtmosphereComponent::AttrEnableSky(), true, this->attributes)),
         showSun(new Variant(AtmosphereComponent::AttrShowSun(), true, this->attributes)),
-		startTime(new Variant(AtmosphereComponent::AttrStartTime(), Ogre::String("12:00"), this->attributes)),
-		timeMultiplicator(new Variant(AtmosphereComponent::AttrTimeMultiplicator(), 0.01f, this->attributes)),
-		lightDirectionalComponent(nullptr),
-		atmosphereNpr(nullptr),
-		timeOfDay(Ogre::Math::PI),
-		azimuth(0.0f),
-		hasLoaded(false),
-		dayTimeCurrentMinutes(0),
-		oldLightDirection(Ogre::Vector3(-1.0f, -1.0f, -1.0f)),
+        startTime(new Variant(AtmosphereComponent::AttrStartTime(), Ogre::String("12:00"), this->attributes)),
+        timeMultiplicator(new Variant(AtmosphereComponent::AttrTimeMultiplicator(), 0.01f, this->attributes)),
+        lightDirectionalComponent(nullptr),
+        atmosphereNpr(nullptr),
+        timeOfDay(Ogre::Math::PI),
+        azimuth(0.0f),
+        hasLoaded(false),
+        dayTimeCurrentMinutes(0),
+        oldLightDirection(Ogre::Vector3(-1.0f, -1.0f, -1.0f)),
         externalLightMode(false),
-		cachedExternalSunDir(Ogre::Vector3::UNIT_Y)
-	{
-		this->activated->setDescription("If activated, the atmospheric effects will take place.");
-		this->enableSky->setDescription("Sets whether sky is enabled and visible.");
+        cachedExternalSunDir(Ogre::Vector3::UNIT_Y)
+    {
+        this->activated->setDescription("If activated, the atmospheric effects will take place.");
+        this->enableSky->setDescription("Sets whether sky is enabled and visible.");
         this->showSun->setDescription("Sets whether sun is shown.");
-		this->startTime->setDescription("Sets the start time in format hh:mm e.g. 03:15 is at night and 13:30 is at day and 23:59 is midnight.");
-		this->timeMultiplicator->setDescription("Sets the time multiplier. How long a day lasts. Default value is 1. Setting e.g. to 2, the day goes by twice as fast. Range [0.1; 5].");
+        this->startTime->setDescription("Sets the start time in format hh:mm e.g. 03:15 is at night and 13:30 is at day and 23:59 is midnight.");
+        this->timeMultiplicator->setDescription("Sets the time multiplier. How long a day lasts. Default value is 1. Setting e.g. to 2, the day goes by twice as fast. Range [0.1; 5].");
 
-		this->presetCount = new Variant(AtmosphereComponent::AttrPresetsCount(), 6, this->attributes);
-		this->presetCount->setDescription("Sets the count of the atmosphere presets.");
+        this->presetCount = new Variant(AtmosphereComponent::AttrPresetsCount(), 6, this->attributes);
+        this->presetCount->setDescription("Sets the count of the atmosphere presets.");
 
-		this->times.resize(this->presetCount->getUInt());
-		this->densityCoefficients.resize(this->presetCount->getUInt());
-		this->densityDiffusions.resize(this->presetCount->getUInt());
-		this->horizonLimits.resize(this->presetCount->getUInt());
-		this->sunPowers.resize(this->presetCount->getUInt());
-		this->skyPowers.resize(this->presetCount->getUInt());
-		this->skyColors.resize(this->presetCount->getUInt());
-		this->fogDensities.resize(this->presetCount->getUInt());
-		this->fogBreakMinBrightnesses.resize(this->presetCount->getUInt());
-		this->fogBreakFalloffs.resize(this->presetCount->getUInt());
-		this->linkedLightPowers.resize(this->presetCount->getUInt());
-		this->linkedSceneAmbientUpperPowers.resize(this->presetCount->getUInt());
-		this->linkedSceneAmbientLowerPowers.resize(this->presetCount->getUInt());
-		this->envmapScales.resize(this->presetCount->getUInt());
+        this->times.resize(this->presetCount->getUInt());
+        this->densityCoefficients.resize(this->presetCount->getUInt());
+        this->densityDiffusions.resize(this->presetCount->getUInt());
+        this->horizonLimits.resize(this->presetCount->getUInt());
+        this->sunPowers.resize(this->presetCount->getUInt());
+        this->skyPowers.resize(this->presetCount->getUInt());
+        this->skyColors.resize(this->presetCount->getUInt());
+        this->fogDensities.resize(this->presetCount->getUInt());
+        this->fogBreakMinBrightnesses.resize(this->presetCount->getUInt());
+        this->fogBreakFalloffs.resize(this->presetCount->getUInt());
+        this->linkedLightPowers.resize(this->presetCount->getUInt());
+        this->linkedSceneAmbientUpperPowers.resize(this->presetCount->getUInt());
+        this->linkedSceneAmbientLowerPowers.resize(this->presetCount->getUInt());
+        this->envmapScales.resize(this->presetCount->getUInt());
 
-		// Since when node game object count is changed, the whole properties must be refreshed, so that new field may come for node tracks
-		this->presetCount->addUserData(GameObject::AttrActionNeedRefresh());
-		this->presetCount->addUserData(GameObject::AttrActionSeparator());
-	}
+        // Since when node game object count is changed, the whole properties must be refreshed, so that new field may come for node tracks
+        this->presetCount->addUserData(GameObject::AttrActionNeedRefresh());
+        this->presetCount->addUserData(GameObject::AttrActionSeparator());
+    }
 
-	AtmosphereComponent::~AtmosphereComponent(void)
-	{
-		this->lightDirectionalComponent = nullptr;
-		if (nullptr != this->atmosphereNpr)
-		{
-			NOWA::GraphicsModule::RenderCommand cmd = [this]()
+    AtmosphereComponent::~AtmosphereComponent(void)
+    {
+        this->lightDirectionalComponent = nullptr;
+        if (nullptr != this->atmosphereNpr)
+        {
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
                 this->atmosphereNpr->setLight(nullptr);
                 delete this->atmosphereNpr;
                 this->atmosphereNpr = nullptr;
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::~AtmosphereComponent");
-		}
-	}
+        }
+    }
 
-	void AtmosphereComponent::generateDefaultData(unsigned short i)
-	{
-		switch (i)
-		{
-			case 0:
-			{
-				this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "06:30", this->attributes);
-				this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.37f, this->attributes);
-				this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
-				this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
-				this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
-				this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.035f, this->attributes);
-				this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
-				this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->sunPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->skyPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
-				this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
-				this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.001f, this->attributes);
-				this->fogDensities[i]->setConstraints(0.0f, 1.0f);
-				this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
-				this->fogBreakMinBrightnesses[i]->setConstraints(0.01f, 1.0f);
-				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
-				this->fogBreakFalloffs[i]->setConstraints(0.01f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 6.0f, this->attributes);
-				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f , this->attributes);
-				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f , this->attributes);
-				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
+    void AtmosphereComponent::generateDefaultData(unsigned short i)
+    {
+        switch (i)
+        {
+        case 0:
+        {
+            this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "06:30", this->attributes);
+            this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.37f, this->attributes);
+            this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
+            this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
+            this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
+            this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.035f, this->attributes);
+            this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
+            this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->sunPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->skyPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
+            this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
+            this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.001f, this->attributes);
+            this->fogDensities[i]->setConstraints(0.0f, 1.0f);
+            this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
+            this->fogBreakMinBrightnesses[i]->setConstraints(0.01f, 1.0f);
+            this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
+            this->fogBreakFalloffs[i]->setConstraints(0.01f, 1.0f);
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 20.0f, this->attributes);
+            this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->envmapScales[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
-				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
-				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; 100).");
-				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+            this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+            this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+            this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+            this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+            this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+            this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+            this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+            this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
+            this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+                                                             "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+                                                             "becoming more visible.Range: [0; 100).");
+            this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
+                                                      "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+            this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+            this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+            this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+            this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
-				break;
-			}
-			case 1:
-			{
-				this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "12:00", this->attributes); // Midday
-				this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.58f, this->attributes);
-				this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
-				this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
-				this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
-				this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
-				this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
-				this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->sunPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->skyPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
-				this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
-				this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
-				this->fogDensities[i]->setConstraints(0.0f, 1.0f);
-				this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
-				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
-				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
-				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i),  12.0f, this->attributes);
-				this->linkedLightPowers[i]->setConstraints(1.0f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f , this->attributes);
-				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f , this->attributes);
-				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
+            break;
+        }
+        case 1:
+        {
+            this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "12:00", this->attributes); // Midday
+            this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.58f, this->attributes);
+            this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
+            this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
+            this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
+            this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
+            this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
+            this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->sunPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->skyPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
+            this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
+            this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
+            this->fogDensities[i]->setConstraints(0.0f, 1.0f);
+            this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
+            this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
+            this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
+            this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 30.0f, this->attributes);
+            this->linkedLightPowers[i]->setConstraints(1.0f, 100.0f);
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->envmapScales[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
-				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
-				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; 100).");
-				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (1; 100).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+            this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+            this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+            this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+            this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+            this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+            this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+            this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+            this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
+            this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+                                                             "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+                                                             "becoming more visible.Range: [0; 100).");
+            this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
+                                                      "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+            this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (1; 100).");
+            this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+            this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+            this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
-				break;
-			}
-			case 2:
-			{
-				this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "20:00", this->attributes);
-				this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.58f, this->attributes);
-				this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
-				this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
-				this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
-				this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
-				this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
-				this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->sunPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->skyPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
-				this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
-				this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
-				this->fogDensities[i]->setConstraints(0.0f, 1.0f);
-				this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
-				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
-				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
-				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i),  8.0f, this->attributes);
-				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f , this->attributes);
-				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f , this->attributes);
-				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
+            break;
+        }
+        case 2:
+        {
+            this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "20:00", this->attributes);
+            this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.58f, this->attributes);
+            this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
+            this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
+            this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
+            this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
+            this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
+            this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->sunPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->skyPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
+            this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
+            this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
+            this->fogDensities[i]->setConstraints(0.0f, 1.0f);
+            this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
+            this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
+            this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
+            this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 20.0f, this->attributes);
+            this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->envmapScales[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
-				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
-				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; 100).");
-				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (1; 100).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+            this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+            this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+            this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+            this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+            this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+            this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+            this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+            this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
+            this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+                                                             "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+                                                             "becoming more visible.Range: [0; 100).");
+            this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
+                                                      "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+            this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (1; 100).");
+            this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+            this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+            this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
-				break;
-			}
-			case 3:
-			{
-				this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "22:00", this->attributes);
-				this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.08f, this->attributes);
-				this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
-				this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
-				this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
-				this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
-				this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
-				this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 0.01f, this->attributes);
-				this->sunPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 0.2f, this->attributes);
-				this->skyPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
-				this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
-				this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
-				this->fogDensities[i]->setConstraints(0.0f, 1.0f);
-				this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
-				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
-				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
-				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 3.0f, this->attributes);
-				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f *  0.001f, this->attributes);
-				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f *  0.001f, this->attributes);
-				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
+            break;
+        }
+        case 3:
+        {
+            this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "22:00", this->attributes);
+            this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.08f, this->attributes);
+            this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
+            this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
+            this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
+            this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
+            this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
+            this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 0.01f, this->attributes);
+            this->sunPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 0.2f, this->attributes);
+            this->skyPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
+            this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
+            this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
+            this->fogDensities[i]->setConstraints(0.0f, 1.0f);
+            this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
+            this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
+            this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
+            this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 10.0f, this->attributes);
+            this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->envmapScales[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
-				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
-				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; 100).");
-				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (1; 100).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+            this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+            this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+            this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+            this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+            this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+            this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+            this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+            this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
+            this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+                                                             "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+                                                             "becoming more visible.Range: [0; 100).");
+            this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
+                                                      "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+            this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (1; 100).");
+            this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+            this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+            this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
-				break;
-			}
-			case 4:
-			{
-				this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "00:00", this->attributes); // Midnight
-				this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.021f, this->attributes);
-				this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
-				this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
-				this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
-				this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
-				this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
-				this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 0.005f, this->attributes);
-				this->sunPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 0.2f, this->attributes);
-				this->skyPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
-				this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
-				this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
-				this->fogDensities[i]->setConstraints(0.0f, 1.0f);
-				this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
-				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
-				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
-				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 0.5f, this->attributes);
-				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f *  0.001f, this->attributes);
-				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f *  0.001f, this->attributes);
-				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
+            break;
+        }
+        case 4:
+        {
+            this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "00:00", this->attributes); // Midnight
+            this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.021f, this->attributes);
+            this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
+            this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
+            this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
+            this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
+            this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
+            this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 0.005f, this->attributes);
+            this->sunPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 0.2f, this->attributes);
+            this->skyPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
+            this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
+            this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
+            this->fogDensities[i]->setConstraints(0.0f, 1.0f);
+            this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
+            this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
+            this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
+            this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->envmapScales[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
-				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
-				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; 100).");
-				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+            this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+            this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+            this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+            this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+            this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+            this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+            this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+            this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
+            this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+                                                             "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+                                                             "becoming more visible.Range: [0; 100).");
+            this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
+                                                      "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+            this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+            this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+            this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+            this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
-				break;
-			}
-			case 5:
-			{
-				this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "05:00", this->attributes);
-				this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.08f, this->attributes);
-				this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
-				this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
-				this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
-				this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
-				this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
-				this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 0.01f, this->attributes);
-				this->sunPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 0.2f, this->attributes);
-				this->skyPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
-				this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
-				this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
-				this->fogDensities[i]->setConstraints(0.0f, 1.0f);
-				this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
-				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
-				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
-				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 3.0f, this->attributes);
-				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f *  0.001f, this->attributes);
-				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f *  0.001f, this->attributes);
-				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
+            break;
+        }
+        case 5:
+        {
+            this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "05:00", this->attributes);
+            this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.08f, this->attributes);
+            this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
+            this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
+            this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
+            this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
+            this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
+            this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 0.01f, this->attributes);
+            this->sunPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 0.2f, this->attributes);
+            this->skyPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
+            this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
+            this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
+            this->fogDensities[i]->setConstraints(0.0f, 1.0f);
+            this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
+            this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
+            this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
+            this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 10.0f, this->attributes);
+            this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->envmapScales[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
-				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
-				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; 100).");
-				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+            this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+            this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+            this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+            this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+            this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+            this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+            this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+            this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
+            this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+                                                             "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+                                                             "becoming more visible.Range: [0; 100).");
+            this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
+                                                      "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+            this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+            this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+            this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+            this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
-				break;
-			}
-			default:
-			{
-				// First again for all others
-				this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "06:30", this->attributes);
-				this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.47f, this->attributes);
-				this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
-				this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
-				this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
-				this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
-				this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
-				this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->sunPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->skyPowers[i]->setConstraints(0.0f, 100.0f);
-				this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
-				this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
-				this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
-				this->fogDensities[i]->setConstraints(0.0f, 1.0f);
-				this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
-				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
-				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
-				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i),  10.0f, this->attributes);
-				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f , this->attributes);
-				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f , this->attributes);
-				this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-				this->envmapScales[i]->setConstraints(0.01f, 1.0f);
-				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
+            break;
+        }
+        default:
+        {
+            // First again for all others
+            this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), "06:30", this->attributes);
+            this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.47f, this->attributes);
+            this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
+            this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
+            this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
+            this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.025f, this->attributes);
+            this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
+            this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->sunPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->skyPowers[i]->setConstraints(0.0f, 100.0f);
+            this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
+            this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
+            this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0001f, this->attributes);
+            this->fogDensities[i]->setConstraints(0.0f, 1.0f);
+            this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.25f, this->attributes);
+            this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
+            this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
+            this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
+            this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 10.0f, this->attributes);
+            this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
+            this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
+            this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Ogre::Math::PI, this->attributes);
+            this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
+            this->envmapScales[i]->setConstraints(0.01f, 1.0f);
+            this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
-				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
-				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; 100).");
-				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+            this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+            this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+            this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+            this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+            this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+            this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+            this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+            this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
+            this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+                                                             "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+                                                             "becoming more visible.Range: [0; 100).");
+            this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
+                                                      "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+            this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+            this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+            this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+            this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
-				break;
-			}
-		}
-	}
+            break;
+        }
+        }
+    }
 
-	void AtmosphereComponent::initialise()
-	{
+    void AtmosphereComponent::initialise()
+    {
+    }
 
-	}
+    const Ogre::String& AtmosphereComponent::getName() const
+    {
+        return this->name;
+    }
 
-	const Ogre::String& AtmosphereComponent::getName() const
-	{
-		return this->name;
-	}
+    void AtmosphereComponent::install(const Ogre::NameValuePairList* options)
+    {
+        GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<AtmosphereComponent>(AtmosphereComponent::getStaticClassId(), AtmosphereComponent::getStaticClassName());
+    }
 
-	void AtmosphereComponent::install(const Ogre::NameValuePairList* options)
-	{
-		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<AtmosphereComponent>(AtmosphereComponent::getStaticClassId(), AtmosphereComponent::getStaticClassName());
-	}
+    void AtmosphereComponent::shutdown()
+    {
+    }
 
-	void AtmosphereComponent::shutdown()
-	{
+    void AtmosphereComponent::uninstall()
+    {
+    }
 
-	}
+    void AtmosphereComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+    {
+        outAbiCookie = Ogre::generateAbiCookie();
+    }
 
-	void AtmosphereComponent::uninstall()
-	{
+    bool AtmosphereComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        GameObjectComponent::init(propertyElement);
 
-	}
-
-	void AtmosphereComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
-	{
-		outAbiCookie = Ogre::generateAbiCookie();
-	}
-
-	bool AtmosphereComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		GameObjectComponent::init(propertyElement);
-
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
-		{
-			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EnableSky")
-		{
-			this->enableSky->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
+        {
+            this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EnableSky")
+        {
+            this->enableSky->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShowSun")
         {
             this->showSun->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartTime")
-		{
-			this->setStartTime(XMLConverter::getAttrib(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TimeMultiplicator")
-		{
-			this->timeMultiplicator->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PresetsCount")
-		{
-			this->presetCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartTime")
+        {
+            this->setStartTime(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TimeMultiplicator")
+        {
+            this->timeMultiplicator->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PresetsCount")
+        {
+            this->presetCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
-		// Only create new variant, if fresh loading. If snapshot is done, no new variant
-		// must be created! Because the algorithm is working changed flag of each existing variant!
-		if (this->times.size() > this->presetCount->getUInt())
-		{
-			this->times.resize(this->presetCount->getUInt());
-			this->densityCoefficients.resize(this->presetCount->getUInt());
-			this->densityDiffusions.resize(this->presetCount->getUInt());
-			this->horizonLimits.resize(this->presetCount->getUInt());
-			this->sunPowers.resize(this->presetCount->getUInt());
-			this->skyPowers.resize(this->presetCount->getUInt());
-			this->skyColors.resize(this->presetCount->getUInt());
-			this->fogDensities.resize(this->presetCount->getUInt());
-			this->fogBreakMinBrightnesses.resize(this->presetCount->getUInt());
-			this->fogBreakFalloffs.resize(this->presetCount->getUInt());
-			this->linkedLightPowers.resize(this->presetCount->getUInt());
-			this->linkedSceneAmbientUpperPowers.resize(this->presetCount->getUInt());
-			this->linkedSceneAmbientLowerPowers.resize(this->presetCount->getUInt());
-			this->envmapScales.resize(this->presetCount->getUInt());
-		}
-		else
-		{
-			this->eraseVariants(this->times, this->presetCount->getUInt());
-			this->eraseVariants(this->densityCoefficients, this->presetCount->getUInt());
-			this->eraseVariants(this->densityDiffusions, this->presetCount->getUInt());
-			this->eraseVariants(this->horizonLimits, this->presetCount->getUInt());
-			this->eraseVariants(this->sunPowers, this->presetCount->getUInt());
-			this->eraseVariants(this->skyPowers, this->presetCount->getUInt());
-			this->eraseVariants(this->skyColors, this->presetCount->getUInt());
-			this->eraseVariants(this->fogDensities, this->presetCount->getUInt());
-			this->eraseVariants(this->fogBreakMinBrightnesses, this->presetCount->getUInt());
-			this->eraseVariants(this->fogBreakFalloffs, this->presetCount->getUInt());
-			this->eraseVariants(this->linkedLightPowers, this->presetCount->getUInt());
-			this->eraseVariants(this->linkedSceneAmbientUpperPowers, this->presetCount->getUInt());
-			this->eraseVariants(this->linkedSceneAmbientUpperPowers, this->presetCount->getUInt());
-			this->eraseVariants(this->linkedSceneAmbientLowerPowers, this->presetCount->getUInt());
-			this->eraseVariants(this->envmapScales, this->presetCount->getUInt());
-		}
+        // Only create new variant, if fresh loading. If snapshot is done, no new variant
+        // must be created! Because the algorithm is working changed flag of each existing variant!
+        if (this->times.size() > this->presetCount->getUInt())
+        {
+            this->times.resize(this->presetCount->getUInt());
+            this->densityCoefficients.resize(this->presetCount->getUInt());
+            this->densityDiffusions.resize(this->presetCount->getUInt());
+            this->horizonLimits.resize(this->presetCount->getUInt());
+            this->sunPowers.resize(this->presetCount->getUInt());
+            this->skyPowers.resize(this->presetCount->getUInt());
+            this->skyColors.resize(this->presetCount->getUInt());
+            this->fogDensities.resize(this->presetCount->getUInt());
+            this->fogBreakMinBrightnesses.resize(this->presetCount->getUInt());
+            this->fogBreakFalloffs.resize(this->presetCount->getUInt());
+            this->linkedLightPowers.resize(this->presetCount->getUInt());
+            this->linkedSceneAmbientUpperPowers.resize(this->presetCount->getUInt());
+            this->linkedSceneAmbientLowerPowers.resize(this->presetCount->getUInt());
+            this->envmapScales.resize(this->presetCount->getUInt());
+        }
+        else
+        {
+            this->eraseVariants(this->times, this->presetCount->getUInt());
+            this->eraseVariants(this->densityCoefficients, this->presetCount->getUInt());
+            this->eraseVariants(this->densityDiffusions, this->presetCount->getUInt());
+            this->eraseVariants(this->horizonLimits, this->presetCount->getUInt());
+            this->eraseVariants(this->sunPowers, this->presetCount->getUInt());
+            this->eraseVariants(this->skyPowers, this->presetCount->getUInt());
+            this->eraseVariants(this->skyColors, this->presetCount->getUInt());
+            this->eraseVariants(this->fogDensities, this->presetCount->getUInt());
+            this->eraseVariants(this->fogBreakMinBrightnesses, this->presetCount->getUInt());
+            this->eraseVariants(this->fogBreakFalloffs, this->presetCount->getUInt());
+            this->eraseVariants(this->linkedLightPowers, this->presetCount->getUInt());
+            this->eraseVariants(this->linkedSceneAmbientUpperPowers, this->presetCount->getUInt());
+            this->eraseVariants(this->linkedSceneAmbientUpperPowers, this->presetCount->getUInt());
+            this->eraseVariants(this->linkedSceneAmbientLowerPowers, this->presetCount->getUInt());
+            this->eraseVariants(this->envmapScales, this->presetCount->getUInt());
+        }
 
-		for (size_t i = 0; i < this->times.size(); i++)
-		{
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Time" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->times[i])
-				{
-					this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->setTime(static_cast<unsigned int>(i), XMLConverter::getAttrib(propertyElement, "data"));
-				}
-				else
-				{
-					this->times[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DensityCoefficient" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->densityCoefficients[i])
-				{
-					this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
-					this->setDensityCoefficient(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->densityCoefficients[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DensityDiffusion" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->densityDiffusions[i])
-				{
-					this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
-					this->setDensityDiffusion(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->densityDiffusions[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "HorizonLimit" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->horizonLimits[i])
-				{
-					this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
-					this->setHorizonLimit(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->horizonLimits[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SunPower" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->sunPowers[i])
-				{
-					this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->sunPowers[i]->setConstraints(0.0f, 100.0f);
-					this->setSunPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->sunPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SkyPower" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->skyPowers[i])
-				{
-					this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->skyPowers[i]->setConstraints(0.0f, 100.0f);
-					this->setSkyPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->skyPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SkyColor" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->skyColors[i])
-				{
-					this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
-					this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
-					this->setSkyColor(static_cast<unsigned int>(i), XMLConverter::getAttribVector3(propertyElement, "data"));
-				}
-				else
-				{
-					this->skyColors[i]->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FogDensity" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->fogDensities[i])
-				{
-					this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->fogDensities[i]->setConstraints(0.0f, 1.0f);
-					this->setFogDensity(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->fogDensities[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FogBreakMinBrightness" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->fogBreakMinBrightnesses[i])
-				{
-					this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
-					this->setFogBreakMinBrightness(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->fogBreakMinBrightnesses[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FogBreakFalloff" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->fogBreakFalloffs[i])
-				{
-					this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-					this->setFogBreakFalloff(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->fogBreakFalloffs[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LinkedLightPower" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->linkedLightPowers[i])
-				{
-					this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
-					this->setLinkedLightPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->linkedLightPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LinkedAmbientUpperPower" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->linkedSceneAmbientUpperPowers[i])
-				{
-					this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
-					this->setLinkedAmbientUpperPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->linkedSceneAmbientUpperPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LinkedAmbientLowerPower" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->linkedSceneAmbientLowerPowers[i])
-				{
-					this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
-					this->setLinkedAmbientLowerPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->linkedSceneAmbientLowerPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EnvmapScale" + Ogre::StringConverter::toString(i))
-			{
-				if (nullptr == this->envmapScales[i])
-				{
-					this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-					this->envmapScales[i]->setConstraints(0.01f, 1.0f);
-					this->setEnvmapScale(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				else
-				{
-					this->envmapScales[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-				}
-				propertyElement = propertyElement->next_sibling("property");
-				// Adds separator for the next round
-				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
-			}
+        for (size_t i = 0; i < this->times.size(); i++)
+        {
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Time" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->times[i])
+                {
+                    this->times[i] = new Variant(AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->setTime(static_cast<unsigned int>(i), XMLConverter::getAttrib(propertyElement, "data"));
+                }
+                else
+                {
+                    this->times[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DensityCoefficient" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->densityCoefficients[i])
+                {
+                    this->densityCoefficients[i] = new Variant(AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->densityCoefficients[i]->setConstraints(0.0f, 1.0f);
+                    this->setDensityCoefficient(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->densityCoefficients[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DensityDiffusion" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->densityDiffusions[i])
+                {
+                    this->densityDiffusions[i] = new Variant(AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->densityDiffusions[i]->setConstraints(0.0f, 1.0f);
+                    this->setDensityDiffusion(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->densityDiffusions[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "HorizonLimit" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->horizonLimits[i])
+                {
+                    this->horizonLimits[i] = new Variant(AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->horizonLimits[i]->setConstraints(0.0f, 100.0f);
+                    this->setHorizonLimit(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->horizonLimits[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SunPower" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->sunPowers[i])
+                {
+                    this->sunPowers[i] = new Variant(AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->sunPowers[i]->setConstraints(0.0f, 100.0f);
+                    this->setSunPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->sunPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SkyPower" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->skyPowers[i])
+                {
+                    this->skyPowers[i] = new Variant(AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->skyPowers[i]->setConstraints(0.0f, 100.0f);
+                    this->setSkyPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->skyPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SkyColor" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->skyColors[i])
+                {
+                    this->skyColors[i] = new Variant(AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.334f, 0.57f, 1.0f), this->attributes);
+                    this->skyColors[i]->addUserData(GameObject::AttrActionColorDialog());
+                    this->setSkyColor(static_cast<unsigned int>(i), XMLConverter::getAttribVector3(propertyElement, "data"));
+                }
+                else
+                {
+                    this->skyColors[i]->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FogDensity" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->fogDensities[i])
+                {
+                    this->fogDensities[i] = new Variant(AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->fogDensities[i]->setConstraints(0.0f, 1.0f);
+                    this->setFogDensity(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->fogDensities[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FogBreakMinBrightness" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->fogBreakMinBrightnesses[i])
+                {
+                    this->fogBreakMinBrightnesses[i] = new Variant(AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
+                    this->setFogBreakMinBrightness(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->fogBreakMinBrightnesses[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FogBreakFalloff" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->fogBreakFalloffs[i])
+                {
+                    this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
+                    this->setFogBreakFalloff(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->fogBreakFalloffs[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LinkedLightPower" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->linkedLightPowers[i])
+                {
+                    this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
+                    this->setLinkedLightPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->linkedLightPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LinkedAmbientUpperPower" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->linkedSceneAmbientUpperPowers[i])
+                {
+                    this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
+                    this->setLinkedAmbientUpperPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->linkedSceneAmbientUpperPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LinkedAmbientLowerPower" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->linkedSceneAmbientLowerPowers[i])
+                {
+                    this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->linkedSceneAmbientLowerPowers[i]->setConstraints(0.01f, 1.0f);
+                    this->setLinkedAmbientLowerPower(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->linkedSceneAmbientLowerPowers[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EnvmapScale" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->envmapScales[i])
+                {
+                    this->envmapScales[i] = new Variant(AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->envmapScales[i]->setConstraints(0.01f, 1.0f);
+                    this->setEnvmapScale(static_cast<unsigned int>(i), XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                else
+                {
+                    this->envmapScales[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+                // Adds separator for the next round
+                this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
+            }
 
-			this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-			this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
-			this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
-			this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
-			this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
-			this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-			this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
-			this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
-			this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-				"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-				"becoming more visible.Range: [0; 100).");
-			this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-				"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-			this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
-			this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-			this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-			this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
-		}
+            this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+            this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+            this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+            this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+            this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+            this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+            this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+            this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
+            this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+                                                             "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+                                                             "becoming more visible.Range: [0; 100).");
+            this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
+                                                      "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+            this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+            this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+            this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+            this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+        }
 
-		this->hasLoaded = true;
+        this->hasLoaded = true;
 
-		return true;
-	}
+        return true;
+    }
 
-	GameObjectCompPtr AtmosphereComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		// No cloning
-		return AtmosphereComponentPtr();
-	}
+    GameObjectCompPtr AtmosphereComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        // No cloning
+        return AtmosphereComponentPtr();
+    }
 
-	bool AtmosphereComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AtmosphereComponent] Init component for game object: " + this->gameObjectPtr->getName());
+    bool AtmosphereComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AtmosphereComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-		// If scene has not been loaded generate default presets
-		if (false == this->hasLoaded)
-		{
-			for (size_t i = 0; i < this->times.size(); i++)
-			{
-				this->generateDefaultData(static_cast<unsigned short>(i));
-			}
-			this->hasLoaded = false;
-		}
+        // If scene has not been loaded generate default presets
+        if (false == this->hasLoaded)
+        {
+            for (size_t i = 0; i < this->times.size(); i++)
+            {
+                this->generateDefaultData(static_cast<unsigned short>(i));
+            }
+            this->hasLoaded = false;
+        }
 
-		// Get the sun light (directional light for sun power setting)
-		GameObjectPtr lightGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(GameObjectController::MAIN_LIGHT_ID);
+        // Get the sun light (directional light for sun power setting)
+        GameObjectPtr lightGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(GameObjectController::MAIN_LIGHT_ID);
 
-		if (nullptr == lightGameObjectPtr)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Could not find 'SunLight' for this component! Affected game object: " + this->gameObjectPtr->getName());
-			return false;
-		}
+        if (nullptr == lightGameObjectPtr)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Could not find 'SunLight' for this component! Affected game object: " + this->gameObjectPtr->getName());
+            return false;
+        }
 
-		auto lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
-		if (nullptr != lightDirectionalCompPtr)
-		{
-			this->lightDirectionalComponent = lightDirectionalCompPtr.get();
-		}
-		else
-		{
-			return false;
-		}
+        auto lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
+        if (nullptr != lightDirectionalCompPtr)
+        {
+            this->lightDirectionalComponent = lightDirectionalCompPtr.get();
+        }
+        else
+        {
+            return false;
+        }
 
-		if (true == this->activated->getBool())
+        if (true == this->activated->getBool())
         {
             NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
@@ -839,29 +836,28 @@ namespace NOWA
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::postInit");
         }
 
-		return true;
-	}
+        return true;
+    }
 
-	void AtmosphereComponent::onRemoveComponent(void)
+    void AtmosphereComponent::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
 
         this->resetAtmosphere();
     }
 
-	bool AtmosphereComponent::connect(void)
-	{
+    bool AtmosphereComponent::connect(void)
+    {
         this->setActivated(this->activated->getBool());
 
-		return true;
-	}
+        return true;
+    }
 
-	bool AtmosphereComponent::disconnect(void)
+    bool AtmosphereComponent::disconnect(void)
     {
         this->setStartTime(this->startTime->getString());
 
-        // Stop the animation closure — atmosphere object stays alive so sky keeps rendering
-        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
         if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
@@ -881,6 +877,11 @@ namespace NOWA
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::disconnect");
             }
+
+            if (nullptr != this->atmosphereNpr)
+            {
+                this->update(0.016, false);
+            }
         }
 
         // Do NOT call resetAtmosphere() here — that destroys atmosphereNpr and turns off
@@ -890,58 +891,41 @@ namespace NOWA
         return true;
     }
 
-	void AtmosphereComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (false == notSimulating && true == this->activated->getBool())
-		{
-			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+    void AtmosphereComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        if (false == notSimulating)
+        {
+            Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
 
-			// Calculate stabilization factor BEFORE modifying timeOfDay
-			Ogre::Real stabilisationFactor = 1.0f;  // Default
-			if (this->timeOfDay >= 0.0f && this->timeOfDay < 0.5f)
-			{
-				stabilisationFactor = 6.0f / 6.0f;  // 6 hours
-			}
-			else if (this->timeOfDay >= 0.5f && this->timeOfDay < 1.0f)
-			{
-				stabilisationFactor = 6.0f / 6.0f;  // 6 hours (12:00-18:00)
-			}
-			else if (this->timeOfDay >= -1.0f && this->timeOfDay < -0.5f)
-			{
-				stabilisationFactor = 6.0f / 6.0f;  // 6 hours (18:00-24:00)
-			}
-			else if (this->timeOfDay >= -0.5f && this->timeOfDay < 0.0f)
-			{
-				stabilisationFactor = 6.0f / 6.0f;  // 6 hours
-			}
+            // Update time of day — stabilisationFactor is always 1.0 across all branches,
+            // kept here in case you want to tune per-segment speed later.
+            Ogre::Real stabilisationFactor = 1.0f;
 
-			// Update time of day
-			this->timeOfDay += this->timeMultiplicator->getReal() * stabilisationFactor * dt;
+            this->timeOfDay += this->timeMultiplicator->getReal() * stabilisationFactor * dt;
 
-			// Smooth wrap to avoid teleport (critical!)
-			if (this->timeOfDay >= 1.0f)
-			{
-				this->timeOfDay = -1.0f + (this->timeOfDay - 1.0f);
-			}
-			else if (this->timeOfDay < -1.0f)
-			{
-				this->timeOfDay = 1.0f + (this->timeOfDay + 1.0f);
-			}
+            // Smooth wrap — the seam is at ±1.0 which maps to 18:00.
+            if (this->timeOfDay >= 1.0f)
+            {
+                this->timeOfDay = -1.0f + (this->timeOfDay - 1.0f);
+            }
+            else if (this->timeOfDay < -1.0f)
+            {
+                this->timeOfDay = 1.0f + (this->timeOfDay + 1.0f);
+            }
 
-			this->azimuth += this->timeMultiplicator->getReal() * dt;
-			this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
+            this->azimuth += this->timeMultiplicator->getReal() * dt;
+            this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
-			auto closureFunction = [sunDir = Ogre::Vector3(/* computed below */), atmosphereTime01 = float(0.0f), atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(),
-                                        lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(), defaultDir = this->lightDirectionalComponent->getOwner()->getDefaultDirection(), externalLightMode = this->externalLightMode,
-                                        cachedSunDir = this->cachedExternalSunDir, timeOfDay = this->timeOfDay, azimuth = this->azimuth](Ogre::Real renderDt) mutable
+            auto closureFunction = [atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(), lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(),
+                                       defaultDir = this->lightDirectionalComponent->getOwner()->getDefaultDirection(), externalLightMode = this->externalLightMode, cachedSunDir = this->cachedExternalSunDir, timeOfDay = this->timeOfDay,
+                                       azimuth = this->azimuth](Ogre::Real renderDt) mutable
             {
                 sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere(), sceneManager->getAmbientLightLowerHemisphere(), sceneManager->getAmbientLightHemisphereDir());
 
-                // Everything is a local copy — no this, no dangling pointers
                 Ogre::Vector3 sd;
                 if (false == externalLightMode)
                 {
-                    const float sunAngle = timeOfDay ;
+                    const float sunAngle = timeOfDay * Ogre::Math::PI;
                     const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
                     sd = (Ogre::Quaternion(Ogre::Radian(azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy();
 
@@ -957,7 +941,43 @@ namespace NOWA
                     }
                 }
 
-                float time01 = (timeOfDay + 1.0f) * 0.5f;
+                // Convert timeOfDay to a clock hour first, then to time01.
+                //
+                // timeOfDay range -> clock:
+                //   [ 0.0,  1.0) ->  6:00 to 18:00
+                //   [-1.0, -0.5) -> 18:00 to 24:00
+                //   [-0.5,  0.0) ->  0:00 to  6:00
+                //
+                // This gives time01 = clockHour / 24 which runs:
+                //   midnight  (0:00) -> 0.00
+                //   sunrise   (6:00) -> 0.25
+                //   noon     (12:00) -> 0.50
+                //   sunset   (18:00) -> 0.75
+                //   midnight (24:00) -> 1.00 (== 0.00)
+                //
+                // The seam is now at midnight — a uniformly dark sky — so any tiny
+                // preset discontinuity at time01=0/1 is invisible. Previously the
+                // seam was at 18:00 (sunset), which is the most visually dramatic
+                // moment and caused the power-scale jump from 1 to 16.
+
+                float clockHour;
+                if (timeOfDay >= -1.0f && timeOfDay < -0.5f)
+                {
+                    // Evening: -1.0 to -0.5 -> 18:00 to 24:00
+                    clockHour = 18.0f + (timeOfDay + 1.0f) * 12.0f;
+                }
+                else if (timeOfDay >= -0.5f && timeOfDay < 0.0f)
+                {
+                    // Night: -0.5 to 0.0 -> 0:00 to 6:00
+                    clockHour = (timeOfDay + 0.5f) * 12.0f;
+                }
+                else
+                {
+                    // Morning + afternoon: 0.0 to 1.0 -> 6:00 to 18:00
+                    clockHour = 6.0f + timeOfDay * 12.0f;
+                }
+
+                float time01 = clockHour / 24.0f;
                 time01 = Ogre::Math::Clamp(time01, 0.0f, 0.999999f);
 
                 atmosphereNpr->updatePreset(sd, time01);
@@ -968,85 +988,82 @@ namespace NOWA
                     atmosphereNpr->_update(sceneManager, camera);
                 }
             };
+
             Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
             NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 
-			if (true == this->bShowDebugData)
-			{
-				Ogre::String time = getCurrentTimeOfDay();
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[AtmosphereComponent] OgreLight PowerScale: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getOgreLight()->getPowerScale()));
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[AtmosphereComponent] Preset SunPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().sunPower));
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[AtmosphereComponent] Preset LinkedLightPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().linkedLightPower));
-			}
-		}
-	}
+            if (true == this->bShowDebugData)
+            {
+                Ogre::String time = getCurrentTimeOfDay();
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] OgreLight PowerScale: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getOgreLight()->getPowerScale()));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset SunPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().sunPower));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset LinkedLightPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().linkedLightPower));
+            }
+        }
+    }
 
-	void AtmosphereComponent::setStartTime(const Ogre::String& startTime)
-	{
-		// Time mapping:
-		//       0   0.5   1/-1   -0.5    0    0.5   1/-1   -0.5    0
-		// Clock 6   12    21     24/0    6    12    21     24/0    6
-		// Linear interpolation will work with those ranges from the table above in both directions
-		this->startTime->setValue(startTime);
+    void AtmosphereComponent::setStartTime(const Ogre::String& startTime)
+    {
+        // Time mapping:
+        //       0   0.5   1/-1   -0.5    0    0.5   1/-1   -0.5    0
+        // Clock 6   12    21     24/0    6    12    21     24/0    6
+        // Linear interpolation will work with those ranges from the table above in both directions
+        this->startTime->setValue(startTime);
 
-		this->timeOfDay = this->convertTime(startTime);
-	}
+        this->timeOfDay = this->convertTime(startTime);
+    }
 
-	Ogre::String AtmosphereComponent::getStartTime(void) const
-	{
-		return this->startTime->getString();
-	}
+    Ogre::String AtmosphereComponent::getStartTime(void) const
+    {
+        return this->startTime->getString();
+    }
 
-	Ogre::Real AtmosphereComponent::convertTime(const Ogre::String& strTimeOfDay)
-	{
-		// Time mapping:
-		//       0   0.5   1/-1   -0.5    0    0.5   1/-1   -0.5    0
-		// Clock 6   12    21     24/0    6    12    21     24/0    6
-		// Linear interpolation will work with those ranges from the table above in both directions
-		Ogre::Real normalizedTime = 0.0f;
-		size_t hoursFound = strTimeOfDay.find(":");
-		if (Ogre::String::npos != hoursFound)
-		{
-			int hours = Ogre::StringConverter::parseInt(strTimeOfDay.substr(0, hoursFound));
-			if (hours >= 24)
-			{
-				hours = 0;
-			}
-			int minutes = Ogre::StringConverter::parseInt(strTimeOfDay.substr(hoursFound + 1, strTimeOfDay.length() - 1));
-			if (minutes >= 60)
-			{
-				minutes = 0;
-			}
-			Ogre::Real factor = (hours + (minutes / 60.0f));
+    Ogre::Real AtmosphereComponent::convertTime(const Ogre::String& strTimeOfDay)
+    {
+        // Time mapping:
+        //       0   0.5   1/-1   -0.5    0    0.5   1/-1   -0.5    0
+        // Clock 6   12    21     24/0    6    12    21     24/0    6
+        // Linear interpolation will work with those ranges from the table above in both directions
+        Ogre::Real normalizedTime = 0.0f;
+        size_t hoursFound = strTimeOfDay.find(":");
+        if (Ogre::String::npos != hoursFound)
+        {
+            int hours = Ogre::StringConverter::parseInt(strTimeOfDay.substr(0, hoursFound));
+            if (hours >= 24)
+            {
+                hours = 0;
+            }
+            int minutes = Ogre::StringConverter::parseInt(strTimeOfDay.substr(hoursFound + 1, strTimeOfDay.length() - 1));
+            if (minutes >= 60)
+            {
+                minutes = 0;
+            }
+            Ogre::Real factor = (hours + (minutes / 60.0f));
 
-			// New Mapping - put evening hours in negative range
-			if (factor >= 6.0f && factor < 12.0f)
-			{
-				// Morning: 6:00 to 12:00 -> 0.0 to 0.5
-				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 6.0f, 12.0f, 0.0f, 0.5f);
-			}
-			else if (factor >= 12.0f && factor < 18.0f)
-			{
-				// Afternoon: 12:00 to 18:00 -> 0.5 to 1.0
-				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 12.0f, 18.0f, 0.5f, 1.0f);
-			}
-			else if (factor >= 18.0f && factor < 24.0f)
-			{
-				// Evening: 18:00 to 24:00 -> -1.0 to -0.5
-				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 18.0f, 24.0f, -1.0f, -0.5f);
-			}
-			else if (factor >= 0.0f && factor < 6.0f)
-			{
-				// Night: 0:00 to 6:00 -> -0.5 to 0.0
-				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 0.0f, 6.0f, -0.5f, 0.0f);
-			}
-		}
-		return normalizedTime;
+            // New Mapping - put evening hours in negative range
+            if (factor >= 6.0f && factor < 12.0f)
+            {
+                // Morning: 6:00 to 12:00 -> 0.0 to 0.5
+                normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 6.0f, 12.0f, 0.0f, 0.5f);
+            }
+            else if (factor >= 12.0f && factor < 18.0f)
+            {
+                // Afternoon: 12:00 to 18:00 -> 0.5 to 1.0
+                normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 12.0f, 18.0f, 0.5f, 1.0f);
+            }
+            else if (factor >= 18.0f && factor < 24.0f)
+            {
+                // Evening: 18:00 to 24:00 -> -1.0 to -0.5
+                normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 18.0f, 24.0f, -1.0f, -0.5f);
+            }
+            else if (factor >= 0.0f && factor < 6.0f)
+            {
+                // Night: 0:00 to 6:00 -> -0.5 to 0.0
+                normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 0.0f, 6.0f, -0.5f, 0.0f);
+            }
+        }
+        return normalizedTime;
     }
 
     void AtmosphereComponent::resetAtmosphere(void)
@@ -1054,10 +1071,10 @@ namespace NOWA
         Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
-		{
+        if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
             return;
-		}
+        }
 
         if (nullptr == this->atmosphereNpr)
         {
@@ -1079,302 +1096,357 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::resetAtmosphere");
     }
 
-	Ogre::String AtmosphereComponent::getCurrentTimeOfDay(void)
-	{
-		Ogre::String time = "";
-		Ogre::Real value = 0.0f;
+    void AtmosphereComponent::buildPresetArray(Ogre::AtmosphereNpr::PresetArray& presets, bool bShowSun)
+    {
+        presets.clear();
 
-		if (this->timeOfDay >= 0.0f && this->timeOfDay < 0.5f)
-		{
-			// Morning: 0.0 to 0.5 -> 6:00 to 12:00
-			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.0f, 0.5f, 6.0f, 12.0f);
-		}
-		else if (this->timeOfDay >= 0.5f && this->timeOfDay < 1.0f)
-		{
-			// Afternoon: 0.5 to 1.0 -> 12:00 to 18:00 (CHANGED from 21:00!)
-			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.5f, 1.0f, 12.0f, 18.0f);
-		}
-		else if (this->timeOfDay >= -1.0f && this->timeOfDay < -0.5f)
-		{
-			// Evening: -1.0 to -0.5 -> 18:00 to 24:00 (CHANGED from 21:00!)
-			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -1.0f, -0.5f, 18.0f, 24.0f);
-		}
-		else if (this->timeOfDay >= -0.5f && this->timeOfDay < 0.0f)
-		{
-			// Night: -0.5 to 0.0 -> 0:00 to 6:00
-			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -0.5f, 0.0f, 0.0f, 6.0f);
-		}
+        for (size_t i = 0; i < this->times.size(); i++)
+        {
+            presets.push_back(Ogre::AtmosphereNpr::Preset());
+            presets.back().time = this->convertTime(this->times[i]->getString());
+            presets.back().densityCoeff = this->densityCoefficients[i]->getReal();
+            presets.back().densityDiffusion = this->densityDiffusions[i]->getReal();
+            presets.back().horizonLimit = this->horizonLimits[i]->getReal();
+            presets.back().sunPower = bShowSun ? this->sunPowers[i]->getReal() : 0.0f;
+            if (true == this->enableSky->getBool())
+            {
+                presets.back().skyPower = this->skyPowers[i]->getReal();
+                presets.back().skyColour = this->skyColors[i]->getVector3();
+            }
+            presets.back().fogDensity = this->fogDensities[i]->getReal();
+            presets.back().fogBreakMinBrightness = this->fogBreakMinBrightnesses[i]->getReal();
+            presets.back().fogBreakFalloff = this->fogBreakFalloffs[i]->getReal();
+            presets.back().linkedLightPower = bShowSun ? this->linkedLightPowers[i]->getReal() : 0.0f;
+            presets.back().linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[i]->getReal();
+            presets.back().linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[i]->getReal();
+            presets.back().envmapScale = this->envmapScales[i]->getReal();
+        }
 
-		int hours = static_cast<int>(value);
-		if (hours >= 24)
-			hours = 0;
+        // Sentinel presets at the absolute boundaries [-1.0, +1.0] (time01: 0.0 and 1.0).
+        // Without these, Ogre::AtmosphereNpr::updatePreset extrapolates outside the defined
+        // range at the wrap point and produces a massive HDR spike — the visible brightness jump.
+        // We use case 4 (midnight, darkest preset) for both sentinels so the boundary is dark
+        // and any extrapolation beyond it stays dark rather than spiking bright.
+        const size_t nightIdx = 4; // case 4 = midnight
+        Ogre::AtmosphereNpr::Preset sentinel;
+        sentinel.densityCoeff = this->densityCoefficients[nightIdx]->getReal();
+        sentinel.densityDiffusion = this->densityDiffusions[nightIdx]->getReal();
+        sentinel.horizonLimit = this->horizonLimits[nightIdx]->getReal();
+        sentinel.sunPower = bShowSun ? this->sunPowers[nightIdx]->getReal() : 0.0f;
+        sentinel.skyPower = this->enableSky->getBool() ? this->skyPowers[nightIdx]->getReal() : 0.0f;
+        sentinel.skyColour = this->skyColors[nightIdx]->getVector3();
+        sentinel.fogDensity = this->fogDensities[nightIdx]->getReal();
+        sentinel.fogBreakMinBrightness = this->fogBreakMinBrightnesses[nightIdx]->getReal();
+        sentinel.fogBreakFalloff = this->fogBreakFalloffs[nightIdx]->getReal();
+        sentinel.linkedLightPower = bShowSun ? this->linkedLightPowers[nightIdx]->getReal() : 0.0f;
+        sentinel.linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[nightIdx]->getReal();
+        sentinel.linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[nightIdx]->getReal();
+        sentinel.envmapScale = this->envmapScales[nightIdx]->getReal();
 
-		time += (hours < 10 ? "0" + Ogre::StringConverter::toString(hours) : Ogre::StringConverter::toString(hours)) + ":";
-		int minutes = static_cast<int>(value * 60) % 60;
-		time += minutes < 10 ? "0" + Ogre::StringConverter::toString(minutes) : Ogre::StringConverter::toString(minutes);
+        Ogre::AtmosphereNpr::Preset lowerSentinel = sentinel;
+        lowerSentinel.time = -1.0f; // time01 = 0.0
+        presets.push_back(lowerSentinel);
 
-		this->dayTimeCurrentMinutes = (hours * 60) + minutes;
-		return time;
-	}
+        Ogre::AtmosphereNpr::Preset upperSentinel = sentinel;
+        upperSentinel.time = 0.999999f; // time01 = 1.0
+        presets.push_back(upperSentinel);
+    }
 
-	int AtmosphereComponent::getCurrentTimeOfDayMinutes(void)
-	{
-		return this->dayTimeCurrentMinutes;
-	}
+    Ogre::String AtmosphereComponent::getCurrentTimeOfDay(void)
+    {
+        Ogre::String time = "";
+        Ogre::Real value = 0.0f;
 
-	void AtmosphereComponent::actualizeValue(Variant* attribute)
-	{
-		GameObjectComponent::actualizeValue(attribute);
+        if (this->timeOfDay >= 0.0f && this->timeOfDay < 0.5f)
+        {
+            // Morning: 0.0 to 0.5 -> 6:00 to 12:00
+            value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.0f, 0.5f, 6.0f, 12.0f);
+        }
+        else if (this->timeOfDay >= 0.5f && this->timeOfDay < 1.0f)
+        {
+            // Afternoon: 0.5 to 1.0 -> 12:00 to 18:00 (CHANGED from 21:00!)
+            value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.5f, 1.0f, 12.0f, 18.0f);
+        }
+        else if (this->timeOfDay >= -1.0f && this->timeOfDay < -0.5f)
+        {
+            // Evening: -1.0 to -0.5 -> 18:00 to 24:00 (CHANGED from 21:00!)
+            value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -1.0f, -0.5f, 18.0f, 24.0f);
+        }
+        else if (this->timeOfDay >= -0.5f && this->timeOfDay < 0.0f)
+        {
+            // Night: -0.5 to 0.0 -> 0:00 to 6:00
+            value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -0.5f, 0.0f, 0.0f, 6.0f);
+        }
 
-		if (AtmosphereComponent::AttrActivated() == attribute->getName())
-		{
-			this->setActivated(attribute->getBool());
-		}
-		else if (AtmosphereComponent::AttrEnableSky() == attribute->getName())
-		{
-			this->setEnableSky(attribute->getBool());
-		}
+        int hours = static_cast<int>(value);
+        if (hours >= 24)
+        {
+            hours = 0;
+        }
+
+        time += (hours < 10 ? "0" + Ogre::StringConverter::toString(hours) : Ogre::StringConverter::toString(hours)) + ":";
+        int minutes = static_cast<int>(value * 60) % 60;
+        time += minutes < 10 ? "0" + Ogre::StringConverter::toString(minutes) : Ogre::StringConverter::toString(minutes);
+
+        this->dayTimeCurrentMinutes = (hours * 60) + minutes;
+        return time;
+    }
+
+    int AtmosphereComponent::getCurrentTimeOfDayMinutes(void)
+    {
+        return this->dayTimeCurrentMinutes;
+    }
+
+    void AtmosphereComponent::actualizeValue(Variant* attribute)
+    {
+        GameObjectComponent::actualizeValue(attribute);
+
+        if (AtmosphereComponent::AttrActivated() == attribute->getName())
+        {
+            this->setActivated(attribute->getBool());
+        }
+        else if (AtmosphereComponent::AttrEnableSky() == attribute->getName())
+        {
+            this->setEnableSky(attribute->getBool());
+        }
         else if (AtmosphereComponent::AttrShowSun() == attribute->getName())
         {
             this->setShowSun(attribute->getBool());
         }
-		else if (AtmosphereComponent::AttrStartTime() == attribute->getName())
-		{
-			this->setStartTime(attribute->getString());
-		}
-		else if (AtmosphereComponent::AttrTimeMultiplicator() == attribute->getName())
-		{
-			this->setTimeMultiplicator(attribute->getReal());
-		}
-		else if (AtmosphereComponent::AttrPresetsCount() == attribute->getName())
-		{
-			this->setPresetCount(attribute->getUInt());
-		}
-		else
-		{
-			for (unsigned int i = 0; i < static_cast<unsigned int>(this->times.size()); i++)
-			{
-				if (AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setTime(i, attribute->getString());
-				}
-				else if (AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setDensityCoefficient(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setDensityDiffusion(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setHorizonLimit(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setSunPower(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setSkyPower(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setSkyColor(i, attribute->getVector3());
-				}
-				else if (AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setFogDensity(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setFogBreakMinBrightness(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setFogBreakFalloff(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setLinkedLightPower(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setLinkedAmbientUpperPower(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setLinkedAmbientLowerPower(i, attribute->getReal());
-				}
-				else if (AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setEnvmapScale(i, attribute->getReal());
-				}
-			}
-		}
-	}
+        else if (AtmosphereComponent::AttrStartTime() == attribute->getName())
+        {
+            this->setStartTime(attribute->getString());
+        }
+        else if (AtmosphereComponent::AttrTimeMultiplicator() == attribute->getName())
+        {
+            this->setTimeMultiplicator(attribute->getReal());
+        }
+        else if (AtmosphereComponent::AttrPresetsCount() == attribute->getName())
+        {
+            this->setPresetCount(attribute->getUInt());
+        }
+        else
+        {
+            for (unsigned int i = 0; i < static_cast<unsigned int>(this->times.size()); i++)
+            {
+                if (AtmosphereComponent::AttrTime() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setTime(i, attribute->getString());
+                }
+                else if (AtmosphereComponent::AttrDensityCoefficient() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setDensityCoefficient(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrDensityDiffusion() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setDensityDiffusion(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrHorizonLimit() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setHorizonLimit(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrSunPower() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setSunPower(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrSkyPower() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setSkyPower(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrSkyColor() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setSkyColor(i, attribute->getVector3());
+                }
+                else if (AtmosphereComponent::AttrFogDensity() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setFogDensity(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrFogBreakMinBrightness() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setFogBreakMinBrightness(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setFogBreakFalloff(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setLinkedLightPower(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setLinkedAmbientUpperPower(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setLinkedAmbientLowerPower(i, attribute->getReal());
+                }
+                else if (AtmosphereComponent::AttrEnvmapScale() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setEnvmapScale(i, attribute->getReal());
+                }
+            }
+        }
+    }
 
-	void AtmosphereComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc);
+    void AtmosphereComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        // 2 = int
+        // 6 = real
+        // 7 = string
+        // 8 = vector2
+        // 9 = vector3
+        // 10 = vector4 -> also quaternion
+        // 12 = bool
+        GameObjectComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "EnableSky"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->enableSky->getBool())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "EnableSky"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->enableSky->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "ShowSun"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->showSun->getBool())));
         propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "StartTime"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->startTime->getString())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "StartTime"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->startTime->getString())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "TimeMultiplicator"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->timeMultiplicator->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "TimeMultiplicator"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->timeMultiplicator->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "PresetsCount"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->presetCount->getUInt())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "PresetsCount"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->presetCount->getUInt())));
+        propertiesXML->append_node(propertyXML);
 
-		for (size_t i = 0; i < this->times.size(); i++)
-		{
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Time" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->times[i]->getString())));
-			propertiesXML->append_node(propertyXML);
+        for (size_t i = 0; i < this->times.size(); i++)
+        {
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Time" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->times[i]->getString())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "DensityCoefficient" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->densityCoefficients[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "DensityCoefficient" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->densityCoefficients[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "DensityDiffusion" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->densityDiffusions[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "DensityDiffusion" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->densityDiffusions[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "HorizonLimit" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->horizonLimits[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "HorizonLimit" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->horizonLimits[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SunPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sunPowers[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SunPower" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sunPowers[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SkyPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skyPowers[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SkyPower" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skyPowers[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SkyColor" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skyColors[i]->getVector3())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SkyColor" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skyColors[i]->getVector3())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "FogDensity" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fogDensities[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "FogDensity" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fogDensities[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "FogBreakMinBrightness" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fogBreakMinBrightnesses[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "FogBreakMinBrightness" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fogBreakMinBrightnesses[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "FogBreakFalloff" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fogBreakFalloffs[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "FogBreakFalloff" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fogBreakFalloffs[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "LinkedLightPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->linkedLightPowers[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "LinkedLightPower" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->linkedLightPowers[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "LinkedAmbientUpperPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->linkedSceneAmbientUpperPowers[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "LinkedAmbientUpperPower" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->linkedSceneAmbientUpperPowers[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "LinkedAmbientLowerPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->linkedSceneAmbientLowerPowers[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "LinkedAmbientLowerPower" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->linkedSceneAmbientLowerPowers[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
 
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "EnvmapScale" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->envmapScales[i]->getReal())));
-			propertiesXML->append_node(propertyXML);
-		}
-	}
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "EnvmapScale" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->envmapScales[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
+        }
+    }
 
-	Ogre::String AtmosphereComponent::getClassName(void) const
-	{
-		return "AtmosphereComponent";
-	}
+    Ogre::String AtmosphereComponent::getClassName(void) const
+    {
+        return "AtmosphereComponent";
+    }
 
-	Ogre::String AtmosphereComponent::getParentClassName(void) const
-	{
-		return "GameObjectComponent";
-	}
+    Ogre::String AtmosphereComponent::getParentClassName(void) const
+    {
+        return "GameObjectComponent";
+    }
 
-	bool AtmosphereComponent::canStaticAddComponent(GameObject* gameObject)
-	{
-		auto atmosphereCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<AtmosphereComponent>());
-		if (nullptr == atmosphereCompPtr)
-		{
-			return true;
-		}
-		return false;
-	}
+    bool AtmosphereComponent::canStaticAddComponent(GameObject* gameObject)
+    {
+        auto atmosphereCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<AtmosphereComponent>());
+        if (nullptr == atmosphereCompPtr)
+        {
+            return true;
+        }
+        return false;
+    }
 
-	void AtmosphereComponent::setActivated(bool activated)
+    void AtmosphereComponent::setActivated(bool activated)
     {
         this->activated->setValue(activated);
-
-        // Always purge any in-flight closure FIRST — it holds a raw pointer
-        // to the old atmosphereNpr and must never run after the delete below.
         Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
@@ -1411,27 +1483,7 @@ namespace NOWA
             Ogre::AtmosphereNpr::PresetArray presets;
             const bool bShowSun = this->showSun->getBool();
 
-            for (size_t i = 0; i < this->times.size(); i++)
-            {
-                presets.push_back(Ogre::AtmosphereNpr::Preset());
-                presets.back().time = this->convertTime(this->times[i]->getString());
-                presets.back().densityCoeff = this->densityCoefficients[i]->getReal();
-                presets.back().densityDiffusion = this->densityDiffusions[i]->getReal();
-                presets.back().horizonLimit = this->horizonLimits[i]->getReal();
-                presets.back().sunPower = bShowSun ? this->sunPowers[i]->getReal() : 0.0f;
-                if (true == this->enableSky->getBool())
-                {
-                    presets.back().skyPower = this->skyPowers[i]->getReal();
-                    presets.back().skyColour = this->skyColors[i]->getVector3();
-                }
-                presets.back().fogDensity = this->fogDensities[i]->getReal();
-                presets.back().fogBreakMinBrightness = this->fogBreakMinBrightnesses[i]->getReal();
-                presets.back().fogBreakFalloff = this->fogBreakFalloffs[i]->getReal();
-                presets.back().linkedLightPower = bShowSun ? this->linkedLightPowers[i]->getReal() : 0.0f;
-                presets.back().linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[i]->getReal();
-                presets.back().linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[i]->getReal();
-                presets.back().envmapScale = this->envmapScales[i]->getReal();
-            }
+            this->buildPresetArray(presets, bShowSun);
 
             NOWA::GraphicsModule::RenderCommand cmd2 = [this, presets]()
             {
@@ -1462,25 +1514,25 @@ namespace NOWA
         }
     }
 
-	bool AtmosphereComponent::isActivated(void) const
-	{
-		return this->activated->getBool();
-	}
+    bool AtmosphereComponent::isActivated(void) const
+    {
+        return this->activated->getBool();
+    }
 
-	void AtmosphereComponent::setEnableSky(bool enableSky)
-	{
-		this->enableSky->setValue(enableSky);
+    void AtmosphereComponent::setEnableSky(bool enableSky)
+    {
+        this->enableSky->setValue(enableSky);
 
-		NOWA::GraphicsModule::RenderCommand cmd = [this, enableSky]()
+        NOWA::GraphicsModule::RenderCommand cmd = [this, enableSky]()
         {
             this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), enableSky);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setEnableSky");
-	}
+    }
 
-	bool AtmosphereComponent::getEnableSky(void) const
-	{
-		return this->enableSky->getBool();
+    bool AtmosphereComponent::getEnableSky(void) const
+    {
+        return this->enableSky->getBool();
     }
 
     void AtmosphereComponent::setShowSun(bool showSun)
@@ -1495,27 +1547,7 @@ namespace NOWA
 
         Ogre::AtmosphereNpr::PresetArray presets;
 
-        for (size_t i = 0; i < this->times.size(); i++)
-        {
-            presets.push_back(Ogre::AtmosphereNpr::Preset());
-            presets.back().time = this->convertTime(this->times[i]->getString());
-            presets.back().densityCoeff = this->densityCoefficients[i]->getReal();
-            presets.back().densityDiffusion = this->densityDiffusions[i]->getReal();
-            presets.back().horizonLimit = this->horizonLimits[i]->getReal();
-            presets.back().sunPower = showSun ? this->sunPowers[i]->getReal() : 0.0f;
-            if (true == this->enableSky->getBool())
-            {
-                presets.back().skyPower = this->skyPowers[i]->getReal();
-                presets.back().skyColour = this->skyColors[i]->getVector3();
-            }
-            presets.back().fogDensity = this->fogDensities[i]->getReal();
-            presets.back().fogBreakMinBrightness = this->fogBreakMinBrightnesses[i]->getReal();
-            presets.back().fogBreakFalloff = this->fogBreakFalloffs[i]->getReal();
-            presets.back().linkedLightPower = showSun ? this->linkedLightPowers[i]->getReal() : 0.0f;
-            presets.back().linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[i]->getReal();
-            presets.back().linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[i]->getReal();
-            presets.back().envmapScale = this->envmapScales[i]->getReal();
-        }
+        this->buildPresetArray(presets, showSun);
 
         NOWA::GraphicsModule::RenderCommand cmd = [this, presets]()
         {
@@ -1529,563 +1561,567 @@ namespace NOWA
         return this->showSun->getBool();
     }
 
-	void AtmosphereComponent::setTimeMultiplicator(Ogre::Real timeMultiplicator)
-	{
-		this->timeMultiplicator->setValue(timeMultiplicator);
-	}
+    void AtmosphereComponent::setTimeMultiplicator(Ogre::Real timeMultiplicator)
+    {
+        this->timeMultiplicator->setValue(timeMultiplicator);
+    }
 
-	Ogre::Real AtmosphereComponent::getTimeMultiplicator(void) const
-	{
-		return this->timeMultiplicator->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getTimeMultiplicator(void) const
+    {
+        return this->timeMultiplicator->getReal();
+    }
 
-	void AtmosphereComponent::setTimeOfDay(Ogre::Real timeOfDay)
-	{
-		this->timeOfDay = timeOfDay;
-	}
+    void AtmosphereComponent::setTimeOfDay(Ogre::Real timeOfDay)
+    {
+        this->timeOfDay = timeOfDay;
+    }
 
-	Ogre::Real AtmosphereComponent::getTimeOfDay(void) const
-	{
-		return this->timeOfDay;
-	}
+    Ogre::Real AtmosphereComponent::getTimeOfDay(void) const
+    {
+        return this->timeOfDay;
+    }
 
-	void AtmosphereComponent::setAzimuth(Ogre::Real azimuth)
-	{
-		this->azimuth = azimuth;
-	}
+    void AtmosphereComponent::setAzimuth(Ogre::Real azimuth)
+    {
+        this->azimuth = azimuth;
+    }
 
-	Ogre::Real AtmosphereComponent::getAzimuth(void) const
-	{
-		return this->azimuth;
-	}
+    Ogre::Real AtmosphereComponent::getAzimuth(void) const
+    {
+        return this->azimuth;
+    }
 
-	void AtmosphereComponent::setPresetCount(unsigned int presetCount)
-	{
-		if (presetCount > 12)
-		{
-			presetCount = 12;
-		}
+    void AtmosphereComponent::setPresetCount(unsigned int presetCount)
+    {
+        if (presetCount > 12)
+        {
+            presetCount = 12;
+        }
 
-		this->presetCount->setValue(presetCount);
+        this->presetCount->setValue(presetCount);
 
-		size_t oldSize = this->times.size();
+        size_t oldSize = this->times.size();
 
-		if (presetCount > oldSize)
-		{
-			// Resize the array for count
-			this->times.resize(presetCount);
-			this->densityCoefficients.resize(presetCount);
-			this->densityDiffusions.resize(presetCount);
-			this->horizonLimits.resize(presetCount);
-			this->sunPowers.resize(presetCount);
-			this->skyPowers.resize(presetCount);
-			this->skyColors.resize(presetCount);
-			this->fogDensities.resize(presetCount);
-			this->fogBreakMinBrightnesses.resize(presetCount);
-			this->fogBreakFalloffs.resize(presetCount);
-			this->linkedLightPowers.resize(presetCount);
-			this->linkedSceneAmbientUpperPowers.resize(presetCount);
-			this->linkedSceneAmbientLowerPowers.resize(presetCount);
-			this->envmapScales.resize(presetCount);
+        if (presetCount > oldSize)
+        {
+            // Resize the array for count
+            this->times.resize(presetCount);
+            this->densityCoefficients.resize(presetCount);
+            this->densityDiffusions.resize(presetCount);
+            this->horizonLimits.resize(presetCount);
+            this->sunPowers.resize(presetCount);
+            this->skyPowers.resize(presetCount);
+            this->skyColors.resize(presetCount);
+            this->fogDensities.resize(presetCount);
+            this->fogBreakMinBrightnesses.resize(presetCount);
+            this->fogBreakFalloffs.resize(presetCount);
+            this->linkedLightPowers.resize(presetCount);
+            this->linkedSceneAmbientUpperPowers.resize(presetCount);
+            this->linkedSceneAmbientLowerPowers.resize(presetCount);
+            this->envmapScales.resize(presetCount);
 
-			for (size_t i = oldSize; i < this->times.size(); i++)
-			{
-				this->generateDefaultData(static_cast<unsigned short>(i));
-			}
-		}
-		else if (presetCount < oldSize)
-		{
-			this->eraseVariants(this->times, presetCount);
-			this->eraseVariants(this->densityCoefficients, presetCount);
-			this->eraseVariants(this->densityDiffusions, presetCount);
-			this->eraseVariants(this->horizonLimits, presetCount);
-			this->eraseVariants(this->sunPowers, presetCount);
-			this->eraseVariants(this->skyPowers, presetCount);
-			this->eraseVariants(this->skyColors, presetCount);
-			this->eraseVariants(this->fogDensities, presetCount);
-			this->eraseVariants(this->fogBreakMinBrightnesses, presetCount);
-			this->eraseVariants(this->fogBreakFalloffs, presetCount);
-			this->eraseVariants(this->linkedLightPowers, presetCount);
-			this->eraseVariants(this->linkedSceneAmbientUpperPowers, presetCount);
-			this->eraseVariants(this->linkedSceneAmbientLowerPowers, presetCount);
-			this->eraseVariants(this->envmapScales, presetCount);
-		}
-	}
+            for (size_t i = oldSize; i < this->times.size(); i++)
+            {
+                this->generateDefaultData(static_cast<unsigned short>(i));
+            }
+        }
+        else if (presetCount < oldSize)
+        {
+            this->eraseVariants(this->times, presetCount);
+            this->eraseVariants(this->densityCoefficients, presetCount);
+            this->eraseVariants(this->densityDiffusions, presetCount);
+            this->eraseVariants(this->horizonLimits, presetCount);
+            this->eraseVariants(this->sunPowers, presetCount);
+            this->eraseVariants(this->skyPowers, presetCount);
+            this->eraseVariants(this->skyColors, presetCount);
+            this->eraseVariants(this->fogDensities, presetCount);
+            this->eraseVariants(this->fogBreakMinBrightnesses, presetCount);
+            this->eraseVariants(this->fogBreakFalloffs, presetCount);
+            this->eraseVariants(this->linkedLightPowers, presetCount);
+            this->eraseVariants(this->linkedSceneAmbientUpperPowers, presetCount);
+            this->eraseVariants(this->linkedSceneAmbientLowerPowers, presetCount);
+            this->eraseVariants(this->envmapScales, presetCount);
+        }
+    }
 
-	unsigned int AtmosphereComponent::getPresetCount(void) const
-	{
-		return this->presetCount->getUInt();
-	}
+    unsigned int AtmosphereComponent::getPresetCount(void) const
+    {
+        return this->presetCount->getUInt();
+    }
 
-	void AtmosphereComponent::setTime(unsigned int index, const Ogre::String& time)
-	{
-		if (index >= this->times.size())
-		{
-			index = static_cast<unsigned int>(this->times.size()) - 1;
-		}
+    void AtmosphereComponent::setTime(unsigned int index, const Ogre::String& time)
+    {
+        if (index >= this->times.size())
+        {
+            index = static_cast<unsigned int>(this->times.size()) - 1;
+        }
 
-		Ogre::Real normalizedTime = this->convertTime(time);
+        Ogre::Real normalizedTime = this->convertTime(time);
 
-		this->times[index]->setValue(time);
+        this->times[index]->setValue(time);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.time = normalizedTime;
+        if (nullptr != this->atmosphereNpr)
+        {
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.time = normalizedTime;
+
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setTime");
-		}
-	}
+        }
+    }
 
-	Ogre::String AtmosphereComponent::getTime(unsigned int index)
-	{
-		return this->times[index]->getString();
-	}
+    Ogre::String AtmosphereComponent::getTime(unsigned int index)
+    {
+        return this->times[index]->getString();
+    }
 
-	void AtmosphereComponent::setDensityCoefficient(unsigned int index, Ogre::Real densityCoefficient)
-	{
-		if (index >= this->densityCoefficients.size())
-			index = static_cast<unsigned int>(this->densityCoefficients.size()) - 1;
+    void AtmosphereComponent::setDensityCoefficient(unsigned int index, Ogre::Real densityCoefficient)
+    {
+        if (index >= this->densityCoefficients.size())
+        {
+            index = static_cast<unsigned int>(this->densityCoefficients.size()) - 1;
+        }
 
-		if (densityCoefficient < 0.0f)
-		{
-			densityCoefficient = 0.0f;
-		}
+        if (densityCoefficient < 0.0f)
+        {
+            densityCoefficient = 0.0f;
+        }
 
-		this->densityCoefficients[index]->setValue(densityCoefficient);
+        this->densityCoefficients[index]->setValue(densityCoefficient);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.densityCoeff = densityCoefficient;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.densityCoeff = densityCoefficient;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setDensityCoefficient");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getDensityCoefficient(unsigned int index)
-	{
-		return this->densityCoefficients[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getDensityCoefficient(unsigned int index)
+    {
+        return this->densityCoefficients[index]->getReal();
+    }
 
-	void AtmosphereComponent::setDensityDiffusion(unsigned int index, Ogre::Real densityDiffusion)
-	{
-		if (index >= this->densityDiffusions.size())
-			index = static_cast<unsigned int>(this->densityDiffusions.size()) - 1;
+    void AtmosphereComponent::setDensityDiffusion(unsigned int index, Ogre::Real densityDiffusion)
+    {
+        if (index >= this->densityDiffusions.size())
+        {
+            index = static_cast<unsigned int>(this->densityDiffusions.size()) - 1;
+        }
 
-		if (densityDiffusion < 0.0f)
-		{
-			densityDiffusion = 0.0f;
-		}
+        if (densityDiffusion < 0.0f)
+        {
+            densityDiffusion = 0.0f;
+        }
 
-		this->densityDiffusions[index]->setValue(densityDiffusion);
+        this->densityDiffusions[index]->setValue(densityDiffusion);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.densityDiffusion = densityDiffusion;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.densityDiffusion = densityDiffusion;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setDensityDiffusion");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getDensityDiffusion(unsigned int index)
-	{
-		return this->densityDiffusions[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getDensityDiffusion(unsigned int index)
+    {
+        return this->densityDiffusions[index]->getReal();
+    }
 
-	void AtmosphereComponent::setHorizonLimit(unsigned int index, Ogre::Real horizonLimit)
-	{
-		if (index >= this->horizonLimits.size())
-		{
-			index = static_cast<unsigned int>(this->horizonLimits.size()) - 1;
-		}
-		if (horizonLimit < 0.0f)
-		{
-			horizonLimit = 0.0f;
-		}
+    void AtmosphereComponent::setHorizonLimit(unsigned int index, Ogre::Real horizonLimit)
+    {
+        if (index >= this->horizonLimits.size())
+        {
+            index = static_cast<unsigned int>(this->horizonLimits.size()) - 1;
+        }
+        if (horizonLimit < 0.0f)
+        {
+            horizonLimit = 0.0f;
+        }
 
-		this->horizonLimits[index]->setValue(horizonLimit);
+        this->horizonLimits[index]->setValue(horizonLimit);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.horizonLimit = horizonLimit;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.horizonLimit = horizonLimit;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setHorizonLimit");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getHorizonLimit(unsigned int index)
-	{
-		return this->horizonLimits[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getHorizonLimit(unsigned int index)
+    {
+        return this->horizonLimits[index]->getReal();
+    }
 
-	void AtmosphereComponent::setSunPower(unsigned int index, Ogre::Real sunPower)
-	{
-		if (index >= this->sunPowers.size())
-		{
-			index = static_cast<unsigned int>(this->sunPowers.size()) - 1;
-		}
-		if (sunPower < 0.0f)
-		{
-			sunPower = 0.0f;
-		}
+    void AtmosphereComponent::setSunPower(unsigned int index, Ogre::Real sunPower)
+    {
+        if (index >= this->sunPowers.size())
+        {
+            index = static_cast<unsigned int>(this->sunPowers.size()) - 1;
+        }
+        if (sunPower < 0.0f)
+        {
+            sunPower = 0.0f;
+        }
 
-		this->sunPowers[index]->setValue(sunPower);
+        this->sunPowers[index]->setValue(sunPower);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.sunPower = sunPower;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.sunPower = sunPower;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSunPower");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getSunPower(unsigned int index)
-	{
-		return this->sunPowers[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getSunPower(unsigned int index)
+    {
+        return this->sunPowers[index]->getReal();
+    }
 
-	void AtmosphereComponent::setSkyPower(unsigned int index, Ogre::Real skyPower)
-	{
-		if (index >= this->skyPowers.size())
-		{
-			index = static_cast<unsigned int>(this->skyPowers.size()) - 1;
-		}
-		if (skyPower < 0.0f)
-		{
-			skyPower = 0.0f;
-		}
+    void AtmosphereComponent::setSkyPower(unsigned int index, Ogre::Real skyPower)
+    {
+        if (index >= this->skyPowers.size())
+        {
+            index = static_cast<unsigned int>(this->skyPowers.size()) - 1;
+        }
+        if (skyPower < 0.0f)
+        {
+            skyPower = 0.0f;
+        }
 
-		this->skyPowers[index]->setValue(skyPower);
+        this->skyPowers[index]->setValue(skyPower);
 
-		if (true == this->enableSky->getBool())
-		{
-			if (nullptr != this->atmosphereNpr)
-			{
-				Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-				preset.skyPower = skyPower;
+        if (true == this->enableSky->getBool())
+        {
+            if (nullptr != this->atmosphereNpr)
+            {
+                Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+                preset.skyPower = skyPower;
 
-				NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+                NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
                 {
                     this->atmosphereNpr->setPreset(preset);
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSkyPower");
-			}
-		}
-	}
+            }
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getSkyPower(unsigned int index)
-	{
-		return this->skyPowers[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getSkyPower(unsigned int index)
+    {
+        return this->skyPowers[index]->getReal();
+    }
 
-	void AtmosphereComponent::setSkyColor(unsigned int index, const Ogre::Vector3& skyColor)
-	{
-		if (index >= this->skyColors.size())
-		{
-			index = static_cast<unsigned int>(this->skyColors.size()) - 1;
-		}
+    void AtmosphereComponent::setSkyColor(unsigned int index, const Ogre::Vector3& skyColor)
+    {
+        if (index >= this->skyColors.size())
+        {
+            index = static_cast<unsigned int>(this->skyColors.size()) - 1;
+        }
 
-		Ogre::Vector3 tempSkyColor(skyColor);
-		if (tempSkyColor.x < 0.0f)
-		{
-			tempSkyColor.x = 0.0f;
-		}
-		else if (tempSkyColor.x > 1.0f)
-		{
-			tempSkyColor.x = 1.0f;
-		}
+        Ogre::Vector3 tempSkyColor(skyColor);
+        if (tempSkyColor.x < 0.0f)
+        {
+            tempSkyColor.x = 0.0f;
+        }
+        else if (tempSkyColor.x > 1.0f)
+        {
+            tempSkyColor.x = 1.0f;
+        }
 
-		if (tempSkyColor.y < 0.0f)
-		{
-			tempSkyColor.y = 0.0f;
-		}
-		else if (tempSkyColor.y > 1.0f)
-		{
-			tempSkyColor.y = 1.0f;
-		}
+        if (tempSkyColor.y < 0.0f)
+        {
+            tempSkyColor.y = 0.0f;
+        }
+        else if (tempSkyColor.y > 1.0f)
+        {
+            tempSkyColor.y = 1.0f;
+        }
 
-		if (tempSkyColor.z < 0.0f)
-		{
-			tempSkyColor.z = 0.0f;
-		}
-		else if (tempSkyColor.z > 1.0f)
-		{
-			tempSkyColor.z = 1.0f;
-		}
+        if (tempSkyColor.z < 0.0f)
+        {
+            tempSkyColor.z = 0.0f;
+        }
+        else if (tempSkyColor.z > 1.0f)
+        {
+            tempSkyColor.z = 1.0f;
+        }
 
-		this->skyColors[index]->setValue(tempSkyColor);
+        this->skyColors[index]->setValue(tempSkyColor);
 
-		if (true == this->enableSky->getBool())
-		{
-			if (nullptr != this->atmosphereNpr)
-			{
-				Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-				preset.skyColour = tempSkyColor;
+        if (true == this->enableSky->getBool())
+        {
+            if (nullptr != this->atmosphereNpr)
+            {
+                Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+                preset.skyColour = tempSkyColor;
 
-				NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+                NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
                 {
                     this->atmosphereNpr->setPreset(preset);
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSkyColor");
-			}
-		}
-	}
+            }
+        }
+    }
 
-	Ogre::Vector3 AtmosphereComponent::getSkyColor(unsigned int index)
-	{
-		return this->skyColors[index]->getVector3();
-	}
+    Ogre::Vector3 AtmosphereComponent::getSkyColor(unsigned int index)
+    {
+        return this->skyColors[index]->getVector3();
+    }
 
-	void AtmosphereComponent::setFogDensity(unsigned int index, Ogre::Real fogDensity)
-	{
-		if (index >= this->fogDensities.size())
-		{
-			index = static_cast<unsigned int>(this->fogDensities.size()) - 1;
-		}
+    void AtmosphereComponent::setFogDensity(unsigned int index, Ogre::Real fogDensity)
+    {
+        if (index >= this->fogDensities.size())
+        {
+            index = static_cast<unsigned int>(this->fogDensities.size()) - 1;
+        }
 
-		if (fogDensity < 0.0f)
-		{
-			fogDensity = 0.0f;
-		}
-		else if (fogDensity > 1.0f)
-		{
-			fogDensity = 1.0f;
-		}
+        if (fogDensity < 0.0f)
+        {
+            fogDensity = 0.0f;
+        }
+        else if (fogDensity > 1.0f)
+        {
+            fogDensity = 1.0f;
+        }
 
-		this->fogDensities[index]->setValue(fogDensity);
+        this->fogDensities[index]->setValue(fogDensity);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.fogDensity = fogDensity;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.fogDensity = fogDensity;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setFogDensity");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getFogDensity(unsigned int index)
-	{
-		return this->fogDensities[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getFogDensity(unsigned int index)
+    {
+        return this->fogDensities[index]->getReal();
+    }
 
-	void AtmosphereComponent::setFogBreakMinBrightness(unsigned int index, Ogre::Real fogBreakMinBrightness)
-	{
-		if (index >= this->fogBreakMinBrightnesses.size())
-		{
-			index = static_cast<unsigned int>(this->fogBreakMinBrightnesses.size()) - 1;
-		}
-		if (fogBreakMinBrightness < 0.0f)
-		{
-			fogBreakMinBrightness = 0.0f;
-		}
+    void AtmosphereComponent::setFogBreakMinBrightness(unsigned int index, Ogre::Real fogBreakMinBrightness)
+    {
+        if (index >= this->fogBreakMinBrightnesses.size())
+        {
+            index = static_cast<unsigned int>(this->fogBreakMinBrightnesses.size()) - 1;
+        }
+        if (fogBreakMinBrightness < 0.0f)
+        {
+            fogBreakMinBrightness = 0.0f;
+        }
 
-		this->fogBreakMinBrightnesses[index]->setValue(fogBreakMinBrightness);
+        this->fogBreakMinBrightnesses[index]->setValue(fogBreakMinBrightness);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.fogBreakMinBrightness = fogBreakMinBrightness;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.fogBreakMinBrightness = fogBreakMinBrightness;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setFogBreakMinBrightness");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getFogBreakMinBrightness(unsigned int index)
-	{
-		return this->fogBreakMinBrightnesses[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getFogBreakMinBrightness(unsigned int index)
+    {
+        return this->fogBreakMinBrightnesses[index]->getReal();
+    }
 
-	void AtmosphereComponent::setFogBreakFalloff(unsigned int index, Ogre::Real fogBreakFalloff)
-	{
-		if (index >= this->fogBreakFalloffs.size())
-		{
-			index = static_cast<unsigned int>(this->fogBreakFalloffs.size()) - 1;
-		}
-		if (fogBreakFalloff < 0.01f)
-		{
-			fogBreakFalloff = 0.01f;
-		}
+    void AtmosphereComponent::setFogBreakFalloff(unsigned int index, Ogre::Real fogBreakFalloff)
+    {
+        if (index >= this->fogBreakFalloffs.size())
+        {
+            index = static_cast<unsigned int>(this->fogBreakFalloffs.size()) - 1;
+        }
+        if (fogBreakFalloff < 0.01f)
+        {
+            fogBreakFalloff = 0.01f;
+        }
 
-		this->fogBreakFalloffs[index]->setValue(fogBreakFalloff);
+        this->fogBreakFalloffs[index]->setValue(fogBreakFalloff);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.fogBreakFalloff = fogBreakFalloff;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.fogBreakFalloff = fogBreakFalloff;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setFogBreakFalloff");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getFogBreakFalloff(unsigned int index)
-	{
-		return this->fogBreakFalloffs[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getFogBreakFalloff(unsigned int index)
+    {
+        return this->fogBreakFalloffs[index]->getReal();
+    }
 
-	void AtmosphereComponent::setLinkedLightPower(unsigned int index, Ogre::Real linkedLightPower)
-	{
-		if (index >= this->linkedLightPowers.size())
-		{
-			index = static_cast<unsigned int>(this->linkedLightPowers.size()) - 1;
-		}
+    void AtmosphereComponent::setLinkedLightPower(unsigned int index, Ogre::Real linkedLightPower)
+    {
+        if (index >= this->linkedLightPowers.size())
+        {
+            index = static_cast<unsigned int>(this->linkedLightPowers.size()) - 1;
+        }
 
-		if (linkedLightPower < 0.01f)
-		{
-			linkedLightPower = 0.01f;
-		}
+        if (linkedLightPower < 0.01f)
+        {
+            linkedLightPower = 0.01f;
+        }
 
-		this->linkedLightPowers[index]->setValue(linkedLightPower);
+        this->linkedLightPowers[index]->setValue(linkedLightPower);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.linkedLightPower = linkedLightPower;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.linkedLightPower = linkedLightPower;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setLinkedLightPower");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getLinkedLightPower(unsigned int index)
-	{
-		return this->linkedLightPowers[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getLinkedLightPower(unsigned int index)
+    {
+        return this->linkedLightPowers[index]->getReal();
+    }
 
-	void AtmosphereComponent::setLinkedAmbientUpperPower(unsigned int index, Ogre::Real linkedAmbientUpperPower)
-	{
-		if (index >= this->linkedSceneAmbientUpperPowers.size())
-		{
-			index = static_cast<unsigned int>(this->linkedSceneAmbientUpperPowers.size()) - 1;
-		}
-		if (linkedAmbientUpperPower < 0.01f)
-		{
-			linkedAmbientUpperPower = 0.01f;
-		}
+    void AtmosphereComponent::setLinkedAmbientUpperPower(unsigned int index, Ogre::Real linkedAmbientUpperPower)
+    {
+        if (index >= this->linkedSceneAmbientUpperPowers.size())
+        {
+            index = static_cast<unsigned int>(this->linkedSceneAmbientUpperPowers.size()) - 1;
+        }
+        if (linkedAmbientUpperPower < 0.01f)
+        {
+            linkedAmbientUpperPower = 0.01f;
+        }
 
-		this->linkedSceneAmbientUpperPowers[index]->setValue(linkedAmbientUpperPower);
+        this->linkedSceneAmbientUpperPowers[index]->setValue(linkedAmbientUpperPower);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.linkedSceneAmbientUpperPower = linkedAmbientUpperPower;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.linkedSceneAmbientUpperPower = linkedAmbientUpperPower;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setLinkedAmbientUpperPower");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getLinkedAmbientUpperPower(unsigned int index)
-	{
-		return this->linkedSceneAmbientUpperPowers[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getLinkedAmbientUpperPower(unsigned int index)
+    {
+        return this->linkedSceneAmbientUpperPowers[index]->getReal();
+    }
 
-	void AtmosphereComponent::setLinkedAmbientLowerPower(unsigned int index, Ogre::Real linkedAmbientLowerPower)
-	{
-		if (index >= this->linkedSceneAmbientLowerPowers.size())
-		{
-			index = static_cast<unsigned int>(this->linkedSceneAmbientLowerPowers.size()) - 1;
-		}
-		if (linkedAmbientLowerPower < 0.01f)
-		{
-			linkedAmbientLowerPower = 0.01f;
-		}
+    void AtmosphereComponent::setLinkedAmbientLowerPower(unsigned int index, Ogre::Real linkedAmbientLowerPower)
+    {
+        if (index >= this->linkedSceneAmbientLowerPowers.size())
+        {
+            index = static_cast<unsigned int>(this->linkedSceneAmbientLowerPowers.size()) - 1;
+        }
+        if (linkedAmbientLowerPower < 0.01f)
+        {
+            linkedAmbientLowerPower = 0.01f;
+        }
 
-		this->linkedSceneAmbientLowerPowers[index]->setValue(linkedAmbientLowerPower);
+        this->linkedSceneAmbientLowerPowers[index]->setValue(linkedAmbientLowerPower);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.linkedSceneAmbientLowerPower = linkedAmbientLowerPower;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.linkedSceneAmbientLowerPower = linkedAmbientLowerPower;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setLinkedAmbientLowerPower");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getLinkedAmbientLowerPower(unsigned int index)
-	{
-		return this->linkedSceneAmbientLowerPowers[index]->getReal();
-	}
+    Ogre::Real AtmosphereComponent::getLinkedAmbientLowerPower(unsigned int index)
+    {
+        return this->linkedSceneAmbientLowerPowers[index]->getReal();
+    }
 
-	void AtmosphereComponent::setEnvmapScale(unsigned int index, Ogre::Real envmapScale)
-	{
-		if (index >= this->envmapScales.size())
-		{
-			index = static_cast<unsigned int>(this->envmapScales.size()) - 1;
-		}
-		if (envmapScale < 0.01f)
-		{
-			envmapScale = 0.01f;
-		}
-		else if (envmapScale > 1.0f)
-		{
-			envmapScale = 1.0f;
-		}
+    void AtmosphereComponent::setEnvmapScale(unsigned int index, Ogre::Real envmapScale)
+    {
+        if (index >= this->envmapScales.size())
+        {
+            index = static_cast<unsigned int>(this->envmapScales.size()) - 1;
+        }
+        if (envmapScale < 0.01f)
+        {
+            envmapScale = 0.01f;
+        }
+        else if (envmapScale > 1.0f)
+        {
+            envmapScale = 1.0f;
+        }
 
-		this->envmapScales[index]->setValue(envmapScale);
+        this->envmapScales[index]->setValue(envmapScale);
 
-		if (nullptr != this->atmosphereNpr)
-		{
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.envmapScale = envmapScale;
+        if (nullptr != this->atmosphereNpr)
+        {
+            Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+            preset.envmapScale = envmapScale;
 
-			NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
+            NOWA::GraphicsModule::RenderCommand cmd = [this, preset]()
             {
                 this->atmosphereNpr->setPreset(preset);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setEnvmapScale");
-		}
-	}
+        }
+    }
 
-	Ogre::Real AtmosphereComponent::getEnvmapScale(unsigned int index)
-	{
-		return this->envmapScales[index]->getReal();
+    Ogre::Real AtmosphereComponent::getEnvmapScale(unsigned int index)
+    {
+        return this->envmapScales[index]->getReal();
     }
 
     Ogre::AtmosphereNpr* AtmosphereComponent::getAtmosphereNpr(void) const
@@ -2093,33 +2129,33 @@ namespace NOWA
         return this->atmosphereNpr;
     }
 
-	void AtmosphereComponent::setSunDir(const Ogre::Radian& sunAltitude, const Ogre::Radian& azimuth)
-	{
-		// Avoids possible issues if this is changed/destroyed.
-		auto atmosphereNpr = this->atmosphereNpr; // Capture pointer explicitly
+    void AtmosphereComponent::setSunDir(const Ogre::Radian& sunAltitude, const Ogre::Radian& azimuth)
+    {
+        // Avoids possible issues if this is changed/destroyed.
+        auto atmosphereNpr = this->atmosphereNpr; // Capture pointer explicitly
 
-		NOWA::GraphicsModule::RenderCommand cmd = [this, atmosphereNpr, sunAltitude, azimuth]()
+        NOWA::GraphicsModule::RenderCommand cmd = [this, atmosphereNpr, sunAltitude, azimuth]()
         {
             atmosphereNpr->setSunDir(sunAltitude, azimuth);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSunDir");
-	}
+    }
 
-	void AtmosphereComponent::setSunDir(const Ogre::Vector3& sunDir, const Ogre::Real normalizedTimeOfDay)
-	{
-		// Avoids possible issues if this is changed/destroyed.
-		auto atmosphereNpr = this->atmosphereNpr; // Capture pointer explicitly
+    void AtmosphereComponent::setSunDir(const Ogre::Vector3& sunDir, const Ogre::Real normalizedTimeOfDay)
+    {
+        // Avoids possible issues if this is changed/destroyed.
+        auto atmosphereNpr = this->atmosphereNpr; // Capture pointer explicitly
 
-		NOWA::GraphicsModule::RenderCommand cmd = [this, atmosphereNpr, sunDir, normalizedTimeOfDay]()
+        NOWA::GraphicsModule::RenderCommand cmd = [this, atmosphereNpr, sunDir, normalizedTimeOfDay]()
         {
             atmosphereNpr->setSunDir(sunDir, normalizedTimeOfDay);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::setSunDir2");
-	}
+    }
 
-	Ogre::Vector3 AtmosphereComponent::getAtmosphereAt(const Ogre::Vector3& cameraDir, bool bSkipSun)
-	{
-		return this->atmosphereNpr->getAtmosphereAt(cameraDir, bSkipSun);
+    Ogre::Vector3 AtmosphereComponent::getAtmosphereAt(const Ogre::Vector3& cameraDir, bool bSkipSun)
+    {
+        return this->atmosphereNpr->getAtmosphereAt(cameraDir, bSkipSun);
     }
 
     void AtmosphereComponent::setExternalLightMode(bool external)
@@ -2139,129 +2175,140 @@ namespace NOWA
         this->cachedExternalSunDir = dir;
     }
 
-	// Lua registration part
+    // Lua registration part
 
-	AtmosphereComponent* getAtmosphereComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
-	{
-		return makeStrongPtr<AtmosphereComponent>(gameObject->getComponentWithOccurrence<AtmosphereComponent>(occurrenceIndex)).get();
-	}
+    AtmosphereComponent* getAtmosphereComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
+    {
+        return makeStrongPtr<AtmosphereComponent>(gameObject->getComponentWithOccurrence<AtmosphereComponent>(occurrenceIndex)).get();
+    }
 
-	AtmosphereComponent* getAtmosphereComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<AtmosphereComponent>(gameObject->getComponent<AtmosphereComponent>()).get();
-	}
+    AtmosphereComponent* getAtmosphereComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<AtmosphereComponent>(gameObject->getComponent<AtmosphereComponent>()).get();
+    }
 
-	AtmosphereComponent* getAtmosphereComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<AtmosphereComponent>(gameObject->getComponentFromName<AtmosphereComponent>(name)).get();
-	}
+    AtmosphereComponent* getAtmosphereComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<AtmosphereComponent>(gameObject->getComponentFromName<AtmosphereComponent>(name)).get();
+    }
 
-	void AtmosphereComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
-	{
-		module(lua)
-		[
-			class_<AtmosphereComponent, GameObjectComponent>("AtmosphereComponent")
-			.def("setActivated", &AtmosphereComponent::setActivated)
-			.def("isActivated", &AtmosphereComponent::isActivated)
-			.def("setEnableSky", &AtmosphereComponent::setEnableSky)
-			.def("getEnableSky", &AtmosphereComponent::getEnableSky)
-			.def("setTimeMultiplicator", &AtmosphereComponent::setTimeMultiplicator)
-			.def("getTimeMultiplicator", &AtmosphereComponent::getTimeMultiplicator)
-			.def("setPresetCount", &AtmosphereComponent::setPresetCount)
-			.def("getPresetCount", &AtmosphereComponent::getPresetCount)
-			.def("setTime", &AtmosphereComponent::setTime)
-			.def("getTime", &AtmosphereComponent::getTime)
-			.def("setDensityCoefficient", &AtmosphereComponent::setDensityCoefficient)
-			.def("getDensityCoefficient", &AtmosphereComponent::getDensityCoefficient)
-			.def("setDensityDiffusion", &AtmosphereComponent::setDensityDiffusion)
-			.def("getDensityDiffusion", &AtmosphereComponent::getDensityDiffusion)
-			.def("setHorizonLimit", &AtmosphereComponent::setHorizonLimit)
-			.def("getHorizonLimit", &AtmosphereComponent::getHorizonLimit)
-			.def("setSunPower", &AtmosphereComponent::setSunPower)
-			.def("getSunPower", &AtmosphereComponent::getSunPower)
-			.def("setSkyPower", &AtmosphereComponent::setSkyPower)
-			.def("getSkyPower", &AtmosphereComponent::getSkyPower)
-			.def("setSkyColor", &AtmosphereComponent::setSkyColor)
-			.def("getSkyColor", &AtmosphereComponent::getSkyColor)
-			.def("setFogDensity", &AtmosphereComponent::setFogDensity)
-			.def("getFogDensity", &AtmosphereComponent::setFogDensity)
-			.def("setFogBreakMinBrightness", &AtmosphereComponent::setFogBreakMinBrightness)
-			.def("setFogBreakMinBrightness", &AtmosphereComponent::getFogBreakMinBrightness)
-			.def("setFogBreakFalloff", &AtmosphereComponent::setFogBreakFalloff)
-			.def("getFogBreakFalloff", &AtmosphereComponent::getFogBreakFalloff)
-			.def("setLinkedLightPower", &AtmosphereComponent::setLinkedLightPower)
-			.def("getLinkedLightPower", &AtmosphereComponent::getLinkedLightPower)
-			.def("setLinkedAmbientUpperPower", &AtmosphereComponent::setLinkedAmbientUpperPower)
-			.def("getLinkedAmbientUpperPower", &AtmosphereComponent::getLinkedAmbientUpperPower)
-			.def("setLinkedAmbientLowerPower", &AtmosphereComponent::setLinkedAmbientLowerPower)
-			.def("getLinkedAmbientLowerPower", &AtmosphereComponent::getLinkedAmbientLowerPower)
-			.def("setEnvmapScale", &AtmosphereComponent::setEnvmapScale)
-			.def("getEnvmapScale", &AtmosphereComponent::getEnvmapScale)
-			.def("getCurrentTimeOfDay", &AtmosphereComponent::getCurrentTimeOfDay)
-			.def("getCurrentTimeOfDayMinutes", &AtmosphereComponent::getCurrentTimeOfDayMinutes)
-			.def("setStartTime", &AtmosphereComponent::setStartTime)
-			.def("getStartTime", &AtmosphereComponent::getStartTime)
-		];
+    void AtmosphereComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        module(lua)[class_<AtmosphereComponent, GameObjectComponent>("AtmosphereComponent")
+                .def("setActivated", &AtmosphereComponent::setActivated)
+                .def("isActivated", &AtmosphereComponent::isActivated)
+                .def("setEnableSky", &AtmosphereComponent::setEnableSky)
+                .def("getEnableSky", &AtmosphereComponent::getEnableSky)
+                .def("setTimeMultiplicator", &AtmosphereComponent::setTimeMultiplicator)
+                .def("getTimeMultiplicator", &AtmosphereComponent::getTimeMultiplicator)
+                .def("setPresetCount", &AtmosphereComponent::setPresetCount)
+                .def("getPresetCount", &AtmosphereComponent::getPresetCount)
+                .def("setTime", &AtmosphereComponent::setTime)
+                .def("getTime", &AtmosphereComponent::getTime)
+                .def("setDensityCoefficient", &AtmosphereComponent::setDensityCoefficient)
+                .def("getDensityCoefficient", &AtmosphereComponent::getDensityCoefficient)
+                .def("setDensityDiffusion", &AtmosphereComponent::setDensityDiffusion)
+                .def("getDensityDiffusion", &AtmosphereComponent::getDensityDiffusion)
+                .def("setHorizonLimit", &AtmosphereComponent::setHorizonLimit)
+                .def("getHorizonLimit", &AtmosphereComponent::getHorizonLimit)
+                .def("setSunPower", &AtmosphereComponent::setSunPower)
+                .def("getSunPower", &AtmosphereComponent::getSunPower)
+                .def("setSkyPower", &AtmosphereComponent::setSkyPower)
+                .def("getSkyPower", &AtmosphereComponent::getSkyPower)
+                .def("setSkyColor", &AtmosphereComponent::setSkyColor)
+                .def("getSkyColor", &AtmosphereComponent::getSkyColor)
+                .def("setFogDensity", &AtmosphereComponent::setFogDensity)
+                .def("getFogDensity", &AtmosphereComponent::setFogDensity)
+                .def("setFogBreakMinBrightness", &AtmosphereComponent::setFogBreakMinBrightness)
+                .def("setFogBreakMinBrightness", &AtmosphereComponent::getFogBreakMinBrightness)
+                .def("setFogBreakFalloff", &AtmosphereComponent::setFogBreakFalloff)
+                .def("getFogBreakFalloff", &AtmosphereComponent::getFogBreakFalloff)
+                .def("setLinkedLightPower", &AtmosphereComponent::setLinkedLightPower)
+                .def("getLinkedLightPower", &AtmosphereComponent::getLinkedLightPower)
+                .def("setLinkedAmbientUpperPower", &AtmosphereComponent::setLinkedAmbientUpperPower)
+                .def("getLinkedAmbientUpperPower", &AtmosphereComponent::getLinkedAmbientUpperPower)
+                .def("setLinkedAmbientLowerPower", &AtmosphereComponent::setLinkedAmbientLowerPower)
+                .def("getLinkedAmbientLowerPower", &AtmosphereComponent::getLinkedAmbientLowerPower)
+                .def("setEnvmapScale", &AtmosphereComponent::setEnvmapScale)
+                .def("getEnvmapScale", &AtmosphereComponent::getEnvmapScale)
+                .def("getCurrentTimeOfDay", &AtmosphereComponent::getCurrentTimeOfDay)
+                .def("getCurrentTimeOfDayMinutes", &AtmosphereComponent::getCurrentTimeOfDayMinutes)
+                .def("setStartTime", &AtmosphereComponent::setStartTime)
+                .def("getStartTime", &AtmosphereComponent::getStartTime)];
 
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "class inherits GameObjectComponent", AtmosphereComponent::getStaticInfoText());
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setActivated(bool activated)", "If activated, the atmospheric effects will take place.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "bool isActivated()", "Gets whether this component is activated.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setEnableSky(bool enableSky)", "Sets whether sky is enabled and visible.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "bool getEnableSky()", "Gets whether sky is enabled and visible.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setTimeMultiplicator(float timeMultiplicator)", "Sets the time multiplier. How long a day lasts. Default value is 1. Setting e.g. to 2, the day goes by twice as fast. Range [0.1; 5].");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getTimeMultiplicator()", "Gets the time multiplier. How long a day lasts. Default value is 1. Setting e.g. to 2, the day goes by twice as fast. Range [0.1; 5].");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setPresetCount(unsigned int presetCount)", "Sets the count of the atmosphere presets.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "unsigned int getPresetCount()", "Gets the count of the atmosphere presets.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "class inherits GameObjectComponent", AtmosphereComponent::getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setActivated(bool activated)", "If activated, the atmospheric effects will take place.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "bool isActivated()", "Gets whether this component is activated.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setEnableSky(bool enableSky)", "Sets whether sky is enabled and visible.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "bool getEnableSky()", "Gets whether sky is enabled and visible.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setTimeMultiplicator(float timeMultiplicator)",
+            "Sets the time multiplier. How long a day lasts. Default value is 1. Setting e.g. to 2, the day goes by twice as fast. Range [0.1; 5].");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getTimeMultiplicator()", "Gets the time multiplier. How long a day lasts. Default value is 1. Setting e.g. to 2, the day goes by twice as fast. Range [0.1; 5].");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setPresetCount(unsigned int presetCount)", "Sets the count of the atmosphere presets.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "unsigned int getPresetCount()", "Gets the count of the atmosphere presets.");
 
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setTime(unsigned int index, ´string time)", "Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "string getTime(unsigned int index)", "Gets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setDensityCoefficient(unsigned int index, float densityCoefficient)", " Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getDensityCoefficient(unsigned int index)", "Gets the normalized time for the preset. The time must be in range [-1; 1] where range [-1; 0] is night and [0; 1] is day.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setDensityDiffusion(unsigned int index, float densityDiffusion)", "Sets the density diffusion for the preset. Valid values are in range [0; 1].");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getDensityDiffusion(unsigned int index)", "Gets the density diffusion for the preset. Valid values are in range [0; 1]..");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setHorizonLimit(unsigned int index, float horizonLimit)", "Sets the horizon limit for the preset. Valid values are in range [0; 1]. Most relevant in sunsets and sunrises.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getHorizonLimit(unsigned int index)", "Gets the horizon limit for the preset. Valid values are in range [0; 1]. Most relevant in sunsets and sunrises.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSunPower(unsigned int index, float sunPower)", "Sets the sun power for the preset. Valid values are in range [0; ]. For HDR (affects the sun on the sky).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getSunPower(unsigned int index)", "Gets the sun power for the preset. Valid values are in range [0; ]. For HDR (affects the sun on the sky).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSkyPower(unsigned int index, float skyPower)", "Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getSkyPower(unsigned int index)", "Gets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSkyColor(unsigned int index, Vector3 skyColor)", "Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 1]. Sky must be enabled.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "Vector3 getSkyColor(unsigned int index)", "Gets the sky color for the preset. In range [0; 1], [0; 1], [0; 1]. Sky must be enabled.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setFogDensity(unsigned int index, float fogDensity)", "Sets the fog density for the preset. In range [0; 1]. Affects objects' fog (not sky).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getFogDensity(unsigned int index)", "Gets the fog density for the preset. In range [0; 1]. Affects objects' fog (not sky).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setFogBreakMinBrightness(unsigned int index, float fogBreakMinBrightness)", "Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-			"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-			"becoming more visible.Range: [0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getFogBreakMinBrightness(unsigned int index)", "Gets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
-			"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-			"becoming more visible.Range: [0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setFogBreakFalloff(unsigned int index, float fogBreakFalloff)", "Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-			"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getFogBreakFalloff(unsigned int index)", "Gets the fog break falloff for the preset. How fast bright objects appear in fog."
-			"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedLightPower(unsigned int index, float linkedLightPower)", "Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedLightPower(unsigned int index)", "Gets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedAmbientUpperPower(unsigned int index, float linkedAmbientUpperPower)", "Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedAmbientUpperPower(unsigned int index)", "Gets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedAmbientLowerPower(unsigned int index, float linkedAmbientLowerPower)", "Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedAmbientLowerPower(unsigned int index)", "Gets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setEnvmapScale(unsigned int index, float envmapScale)", "Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getEnvmapScale(unsigned int index)", "Gets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "string getCurrentTimeOfDay()", "Gets current time of day as string.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "int getCurrentTimeOfDayMinutes()", "Gets current time of day in minutes.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setStartTime(string startTime)", "Sets the start time in format hh:mm e.g. 03:15 is at night and 13:30 is at day and 23:59 is midnight.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "string getStartTime()", "Gets the start time in format hh:mm e.g. 03:15 is at night and 13:30 is at day and 23:59 is midnight..");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setTime(unsigned int index, ´string time)", "Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "string getTime(unsigned int index)", "Gets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setDensityCoefficient(unsigned int index, float densityCoefficient)",
+            " Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getDensityCoefficient(unsigned int index)",
+            "Gets the normalized time for the preset. The time must be in range [-1; 1] where range [-1; 0] is night and [0; 1] is day.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setDensityDiffusion(unsigned int index, float densityDiffusion)", "Sets the density diffusion for the preset. Valid values are in range [0; 1].");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getDensityDiffusion(unsigned int index)", "Gets the density diffusion for the preset. Valid values are in range [0; 1]..");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setHorizonLimit(unsigned int index, float horizonLimit)",
+            "Sets the horizon limit for the preset. Valid values are in range [0; 1]. Most relevant in sunsets and sunrises.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getHorizonLimit(unsigned int index)", "Gets the horizon limit for the preset. Valid values are in range [0; 1]. Most relevant in sunsets and sunrises.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSunPower(unsigned int index, float sunPower)", "Sets the sun power for the preset. Valid values are in range [0; ]. For HDR (affects the sun on the sky).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getSunPower(unsigned int index)", "Gets the sun power for the preset. Valid values are in range [0; ]. For HDR (affects the sun on the sky).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSkyPower(unsigned int index, float skyPower)",
+            "Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getSkyPower(unsigned int index)", "Gets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSkyColor(unsigned int index, Vector3 skyColor)", "Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 1]. Sky must be enabled.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "Vector3 getSkyColor(unsigned int index)", "Gets the sky color for the preset. In range [0; 1], [0; 1], [0; 1]. Sky must be enabled.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setFogDensity(unsigned int index, float fogDensity)", "Sets the fog density for the preset. In range [0; 1]. Affects objects' fog (not sky).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getFogDensity(unsigned int index)", "Gets the fog density for the preset. In range [0; 1]. Affects objects' fog (not sky).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setFogBreakMinBrightness(unsigned int index, float fogBreakMinBrightness)",
+            "Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+            "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+            "becoming more visible.Range: [0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getFogBreakMinBrightness(unsigned int index)",
+            "Gets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
+            "A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
+            "becoming more visible.Range: [0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setFogBreakFalloff(unsigned int index, float fogBreakFalloff)",
+            "Sets the fog break falloff for the preset. How fast bright objects appear in fog."
+            "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getFogBreakFalloff(unsigned int index)",
+            "Gets the fog break falloff for the preset. How fast bright objects appear in fog."
+            "Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedLightPower(unsigned int index, float linkedLightPower)",
+            "Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedLightPower(unsigned int index)", "Gets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedAmbientUpperPower(unsigned int index, float linkedAmbientUpperPower)",
+            "Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedAmbientUpperPower(unsigned int index)",
+            "Gets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedAmbientLowerPower(unsigned int index, float linkedAmbientLowerPower)",
+            "Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedAmbientLowerPower(unsigned int index)",
+            "Gets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setEnvmapScale(unsigned int index, float envmapScale)", "Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getEnvmapScale(unsigned int index)", "Gets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "string getCurrentTimeOfDay()", "Gets current time of day as string.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "int getCurrentTimeOfDayMinutes()", "Gets current time of day in minutes.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setStartTime(string startTime)", "Sets the start time in format hh:mm e.g. 03:15 is at night and 13:30 is at day and 23:59 is midnight.");
+        LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "string getStartTime()", "Gets the start time in format hh:mm e.g. 03:15 is at night and 13:30 is at day and 23:59 is midnight..");
 
-		gameObjectClass.def("getAtmosphereComponentFromName", &getAtmosphereComponentFromName);
-		gameObjectClass.def("getAtmosphereComponent", (AtmosphereComponent * (*)(GameObject*)) & getAtmosphereComponent);
-		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getAtmosphereComponentFromIndex", (AtmosphereComponent * (*)(GameObject*, unsigned int)) & getAtmosphereComponentFromIndex);
+        gameObjectClass.def("getAtmosphereComponentFromName", &getAtmosphereComponentFromName);
+        gameObjectClass.def("getAtmosphereComponent", (AtmosphereComponent * (*)(GameObject*)) & getAtmosphereComponent);
+        // If its desired to create several of this components for one game object
+        gameObjectClass.def("getAtmosphereComponentFromIndex", (AtmosphereComponent * (*)(GameObject*, unsigned int)) & getAtmosphereComponentFromIndex);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AtmosphereComponent getAtmosphereComponent()", "Gets the component. This can be used if the game object this component just once.");
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AtmosphereComponent getAtmosphereComponentFromName(String name)", "Gets the component from name.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AtmosphereComponent getAtmosphereComponent()", "Gets the component. This can be used if the game object this component just once.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AtmosphereComponent getAtmosphereComponentFromName(String name)", "Gets the component from name.");
 
-		gameObjectControllerClass.def("castAtmosphereComponent", &GameObjectController::cast<AtmosphereComponent>);
-		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "AtmosphereComponent castAtmosphereComponent(AtmosphereComponent other)", "Casts an incoming type from function for lua auto completion.");
-	}
+        gameObjectControllerClass.def("castAtmosphereComponent", &GameObjectController::cast<AtmosphereComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "AtmosphereComponent castAtmosphereComponent(AtmosphereComponent other)", "Casts an incoming type from function for lua auto completion.");
+    }
 
-}; //namespace end
+}; // namespace end

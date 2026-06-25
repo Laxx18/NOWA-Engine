@@ -418,9 +418,9 @@ namespace NOWA
                 this->info = nullptr;
             }
 
-            this->myGui->shutdown();
+            /*this->myGui->shutdown();
             delete this->myGui;
-            this->myGui = nullptr;
+            this->myGui = nullptr;*/
             try
             {
                 this->myGuiOgrePlatform->shutdown();

@@ -141,6 +141,23 @@ namespace Ogre
         // tune per terrain via setLodRing0WorldSize().
         float m_lodRing0WorldSize;
 
+        /// World-space distance considered "100%" view distance for the aggressive
+        /// far-LOD falloff curve. Set this to your effective camera view distance
+        /// (e.g. min(farClipDistance, renderDistance)). At this distance, terrain
+        /// cells will be decimated down to roughly m_lodFarVertexPercent density.
+        float m_maxLodDistance;
+
+        /// Fraction (0..1) of full vertex density that the farthest rendered
+        /// terrain cells should retain once they reach m_maxLodDistance.
+        /// 0.1f = "last cells should have ~10% of their vertices".
+        float m_lodFarVertexPercent;
+
+        /// Shapes the falloff between distance 0 and m_maxLodDistance.
+        /// 1.0 = linear (what you asked for). >1.0 = stays detailed longer near
+        /// the camera then drops hard further out. <1.0 = drops hard immediately
+        /// then levels out near m_maxLodDistance.
+        float m_lodCurvePower;
+
         void destroyHeightmapTexture(void);
 
         /// Calls createHeightmapTexture, loads image data to our CPU-side buffers
@@ -378,6 +395,15 @@ namespace Ogre
 
         float getLodRing0WorldSize() const;
 
+        void setMaxLodDistance(float maxLodDistance);
+        float getMaxLodDistance() const;
+
+        void setLodFarVertexPercent(float percent);
+        float getLodFarVertexPercent() const;
+
+        void setLodCurvePower(float power);
+        float getLodCurvePower() const;
+
         //-----------------------------------------------------------------------------------
         // computeAutoLodRing0WorldSize
         //
@@ -393,6 +419,12 @@ namespace Ogre
         // the camera's farClip/renderDistance are configured.
         //-----------------------------------------------------------------------------------
         float computeAutoLodRing0WorldSize(float effectiveVisibleDistance, uint32 desiredLodLevels) const;
+
+        /// Returns the integer lodLevel (power-of-two decimation exponent) that
+       /// best matches the desired vertex density at the given world-space
+       /// distance from the camera, per the m_maxLodDistance /
+       /// m_lodFarVertexPercent / m_lodCurvePower curve.
+        uint32 computeLodLevelForDistance(float distanceFromCamera) const;
     public:
         Ogre::uint32 mHlmsTerraIndex;
     };

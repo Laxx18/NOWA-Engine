@@ -316,8 +316,8 @@ namespace NOWA
         return this->registeredTypes;
     }
 
-    GameObjectPtr GameObjectFactory::createOrSetGameObjectFromXML(rapidxml::xml_node<>* xmlNode, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
-		Ogre::MovableObject* movableObject, NOWA::eType type, const Ogre::String& filename, bool forceCreation, bool forceClampY, GameObjectPtr existingGameObjectPtr)
+    GameObjectPtr GameObjectFactory::createOrSetGameObjectFromXML(rapidxml::xml_node<>* xmlNode, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, NOWA::eType type, const Ogre::String& filename,
+        bool forceCreation, bool sceneParsed, GameObjectPtr existingGameObjectPtr)
 	{
 		rapidxml::xml_node<>* propertyElement = xmlNode->first_node("property");
 		Ogre::String gameObjectName;
@@ -538,6 +538,8 @@ namespace NOWA
 					}
 				}
 #endif
+                gameObjectPtr->bIsLoadingFromFile = sceneParsed;
+
 				gameObjectPtr->setName(sceneNode->getName());
 				gameObjectPtr->setTagName(tagName);
 				gameObjectPtr->setControlledByClientID(controlledByClientID);
@@ -552,7 +554,7 @@ namespace NOWA
 				{
 					gameObjectPtr->setRenderQueueIndex(renderQueueIndex);
 				}
-                gameObjectPtr->bIsLoadingFromFile = true;
+                
                 if (true == renderDistanceSet)
                 {
                     gameObjectPtr->setRenderDistance(renderDistance);
@@ -563,7 +565,6 @@ namespace NOWA
                 }
                 gameObjectPtr->lodLevels->setValue(lodLevels);
                 gameObjectPtr->lodDistance->setValue(lodDistance);
-                gameObjectPtr->bIsLoadingFromFile = false;
                 gameObjectPtr->setDataBlocks(dataBlocks);
 			}
 			if (!gameObjectPtr->init())
@@ -584,6 +585,8 @@ namespace NOWA
 			{
 				gameObjectPtr->setDynamic(false);
 			}
+
+			gameObjectPtr->bIsLoadingFromFile = false;
 
 			unsigned int index = 0;
 			// Loop through each property element and load the component

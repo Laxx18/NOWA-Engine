@@ -46,9 +46,9 @@
 			"detail0" :
             {
                 "offset" : [0, 0],
-                "scale": [32, 32],
+                "scale": [16, 16],
 				"roughness" : 0.5,
-				"metalness" : 0.1,
+				"metalness" : 0,
                 "diffuse_map" : "ground_dirt_gardenD.png",
 				"roughness_map" : "ground_dirt_gardenR.png",
 				"metalness_map" : "ground_dirt_gardenS.png",
@@ -58,9 +58,9 @@
 			"detail1" :
             {
                 "offset" : [0, 0],
-                "scale": [32, 32],
+                "scale": [16, 16],
 				"roughness" : 0.5,
-				"metalness" : 0.1,
+				"metalness" : 0,
                 "diffuse_map" : "grass_green_d.jpg",
 				"roughness_map" : "grass_green_r.png",
 				"metalness_map" : "grass_green_s.png",
@@ -70,9 +70,9 @@
 			"detail2" :
             {
                 "offset" : [0, 0],
-                "scale": [32, 32],
+                "scale": [16, 16],
 				"roughness" : 0.5,
-				"metalness" : 0.1,
+				"metalness" : 0,
                 "diffuse_map" : "island_sand_d.jpg",
 				"roughness_map" : "island_sand_r.png",
 				"metalness_map" : "island_sand_s.png",
@@ -82,9 +82,9 @@
 			"detail3" :
             {
                 "offset" : [0, 0],
-                "scale": [32, 32],
+                "scale": [16, 16],
 				"roughness" : 0.5,
-				"metalness" : 0.1,
+				"metalness" : 0,
                 "diffuse_map" : "mntn_black_d.jpg",
 				"roughness_map" : "mntn_black_r.png",
 				"metalness_map" : "mntn_black_s.png",

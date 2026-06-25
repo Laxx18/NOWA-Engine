@@ -343,6 +343,7 @@ namespace NOWA
             Ogre::String scenePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
             compoundCollision = this->serializeCompoundCollision(scenePath, childCollisions, collisionName, this->gameObjectPtr->getCategoryId(), true);
         };
+        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::createCompoundBody");
 
         if (nullptr == compoundCollision)
         {

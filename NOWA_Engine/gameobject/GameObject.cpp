@@ -136,7 +136,8 @@ namespace NOWA
         bool castShadows = true;
         bool visible = true;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::GameObject setStatic", _2(&castShadows, &visible), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, &castShadows, &visible]()
+        {
             // game object uses the unique name of the scene node
             if (nullptr != this->sceneNode)
             {
@@ -148,7 +149,8 @@ namespace NOWA
                 castShadows = this->movableObject->getCastShadows();
                 visible = this->movableObject->getVisible();
             }
-        });
+        };
+        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::GameObject setStatic");
 
         this->castShadows = new Variant(GameObject::AttrCastShadows(), castShadows, this->attributes);
         this->useReflection = new Variant(GameObject::AttrUseReflection(), false, this->attributes);
@@ -1047,7 +1049,7 @@ namespace NOWA
         }
         else if (GameObject::AttrCategory() == attribute->getName())
         {
-            if (attribute->getListSelectedValue() != this->category->getListSelectedValue())
+            if (attribute->getListSelectedValue() != this->category->getListSelectedValue() && false == this->bIsLoadingFromFile)
             {
                 // Call with the default value and the new one from selected list item
                 this->category->setListSelectedValue(attribute->getListSelectedValue());
@@ -1059,15 +1061,18 @@ namespace NOWA
         }
         else if (GameObject::AttrRenderCategory() == attribute->getName())
         {
-            if (attribute->getListSelectedValue() != this->renderCategory->getListSelectedValue())
+            if (attribute->getListSelectedValue() != this->renderCategory->getListSelectedValue() && false == this->bIsLoadingFromFile)
             {
                 // Call with the default value and the new one from selected list item
                 this->renderCategory->setListSelectedValue(attribute->getListSelectedValue());
                 this->changeRenderCategory(attribute->getListSelectedOldValue(), attribute->getListSelectedValue());
                 this->renderCategoryId->setValue(AppStateManager::getSingletonPtr()->getGameObjectController()->getRenderCategoryId(attribute->getListSelectedValue()));
 
-                // TODO: Here wait?
-                ENQUEUE_RENDER_COMMAND("GameObject::actualizeValue setVisibilityFlags", { this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt()); });
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
+                };
+                GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeValue setVisibilityFlags");
             }
         }
         else if (GameObject::AttrTagName() == attribute->getName())
@@ -1098,6 +1103,10 @@ namespace NOWA
         }
         else if (GameObject::AttrCastShadows() == attribute->getName())
         {
+            if (this->castShadows->getBool() == attribute->getBool() && false == this->bIsLoadingFromFile)
+            {
+                return;
+            }
             this->castShadows->setValue(attribute->getBool());
             this->movableObject->setCastShadows(this->castShadows->getBool());
         }
@@ -1379,6 +1388,11 @@ namespace NOWA
             tempName = name;
         }
 
+        if (this->name->getString() == name && false == this->bIsLoadingFromFile)
+        {
+            return;
+        }
+
         AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(tempName, this->id->getULong());
         this->name->setValue(tempName);
 
@@ -1455,7 +1469,7 @@ namespace NOWA
 
     void GameObject::setTagName(const Ogre::String& tagName)
     {
-        if (this->tagName->getString() != tagName)
+        if (this->tagName->getString() != tagName && false == this->bIsLoadingFromFile)
         {
             Ogre::String oldTagName = this->tagName->getString();
             this->tagName->setValue(tagName);
@@ -1908,7 +1922,7 @@ namespace NOWA
 
     void GameObject::setAttributePosition(const Ogre::Vector3& position)
     {
-        if (this->sceneNode->getPosition() == position)
+        if (this->sceneNode->getPosition() == position && false == this->bIsLoadingFromFile)
         {
             return;
         }
@@ -1923,7 +1937,7 @@ namespace NOWA
 
     void GameObject::setAttributeScale(const Ogre::Vector3& scale)
     {
-        if (this->sceneNode->getScale() == scale)
+        if (this->sceneNode->getScale() == scale && false == this->bIsLoadingFromFile)
         {
             return;
         }
@@ -1938,7 +1952,7 @@ namespace NOWA
 
     void GameObject::setAttributeOrientation(const Ogre::Quaternion& orientation)
     {
-        if (this->sceneNode->getOrientation() == orientation)
+        if (this->sceneNode->getOrientation() == orientation && false == this->bIsLoadingFromFile)
         {
             return;
         }
@@ -1953,6 +1967,11 @@ namespace NOWA
 
     void GameObject::setDefaultDirection(const Ogre::Vector3& defaultDirection)
     {
+        if (this->defaultDirection->getVector3() == defaultDirection && false == this->bIsLoadingFromFile)
+        {
+            return;
+        }
+
         this->defaultDirection->setValue(defaultDirection);
         boost::shared_ptr<NOWA::EventDataDefaultDirectionChanged> eventDataDefaultDirectionChanged(new NOWA::EventDataDefaultDirectionChanged(this->id->getULong(), defaultDirection));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDefaultDirectionChanged);
@@ -1990,7 +2009,7 @@ namespace NOWA
 
     void GameObject::setDynamic(bool dynamic)
     {
-        if (this->dynamic->getBool() == dynamic)
+        if (this->dynamic->getBool() == dynamic && false == this->bIsLoadingFromFile)
         {
             return;
         }
@@ -2150,7 +2169,7 @@ namespace NOWA
 
     void GameObject::setUseReflection(bool useReflection)
     {
-        if (useReflection == this->useReflection->getBool())
+        if (useReflection == this->useReflection->getBool() && false == this->bIsLoadingFromFile)
         {
             return;
         }
@@ -2269,6 +2288,11 @@ namespace NOWA
 
     void GameObject::setInternalAttributeGlobal(bool isGlobal)
     {
+        if (this->global->getBool() == isGlobal && false == this->bIsLoadingFromFile)
+        {
+            return;
+        }
+
         this->global->setValue(isGlobal);
 
         if (nullptr != this->luaScript)
@@ -2329,7 +2353,7 @@ namespace NOWA
 
     void GameObject::setRenderQueueIndex(unsigned int renderQueueIndex)
     {
-        if (this->renderQueueIndex->getInt() == renderQueueIndex)
+        if (this->renderQueueIndex->getInt() == renderQueueIndex && false == this->bIsLoadingFromFile)
         {
             return;
         }
@@ -2379,7 +2403,8 @@ namespace NOWA
 
     void GameObject::setRenderDistance(unsigned int renderDistance)
     {
-        if (this->renderDistance->getUInt() == renderDistance)
+        // TODO debug, because else it was never set
+        if (this->renderDistance->getUInt() == renderDistance && false == this->bIsLoadingFromFile)
         {
             return;
         }
@@ -2432,7 +2457,7 @@ namespace NOWA
 
     void GameObject::setLodDistance(Ogre::Real lodDistance)
     {
-        if (this->lodDistance->getUInt() == static_cast<unsigned int>(lodDistance))
+        if (this->lodDistance->getUInt() == static_cast<unsigned int>(lodDistance) && false == this->bIsLoadingFromFile)
         {
             return;
         }
@@ -2669,6 +2694,11 @@ namespace NOWA
             shadowRenderingDistance = 5;
         }
 
+        if (this->shadowRenderingDistance->getUInt() == shadowRenderingDistance && false == this->bIsLoadingFromFile)
+        {
+            return;
+        }
+
         if (0 != this->renderDistance->getUInt())
         {
             if (shadowRenderingDistance > this->renderDistance->getUInt())
@@ -2680,7 +2710,11 @@ namespace NOWA
         this->shadowRenderingDistance->setValue(shadowRenderingDistance);
         if (nullptr != this->movableObject && shadowRenderingDistance > 0)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setShadowRenderingDistance", _1(shadowRenderingDistance), { this->movableObject->setShadowRenderingDistance(static_cast<Ogre::Real>(shadowRenderingDistance)); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, shadowRenderingDistance]()
+            {
+                this->movableObject->setShadowRenderingDistance(static_cast<Ogre::Real>(shadowRenderingDistance));
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setShadowRenderingDistance");
         }
     }
 
@@ -2744,7 +2778,8 @@ namespace NOWA
     {
         std::pair<bool, Ogre::Real> result = {false, 0.0f};
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::performRaycastForYClamping", _1(&result), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, &result]()
+        {
             bool success = false;
             Ogre::Vector3 resultPoint = Ogre::Vector3::ZERO;
 
@@ -2789,7 +2824,8 @@ namespace NOWA
             }
 
             result = std::make_pair(success, resultPoint.y); // Set the result
-        });
+        };
+        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::performRaycastForYClamping");
 
         return result; // This will return immediately, and result will be set after the render thread completes
     }

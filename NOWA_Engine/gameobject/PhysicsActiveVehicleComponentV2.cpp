@@ -218,6 +218,11 @@ namespace NOWA
         this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
         this->gameObjectPtr->getAttribute(GameObject::AttrDefaultDirection())->setValue(Ogre::Vector3::UNIT_Z);
 
+        if (!this->createDynamicBody())
+        {
+            return false;
+        }
+
         return success;
     }
 
@@ -302,13 +307,13 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponentV2] connect for: " + this->gameObjectPtr->getName());
 
-        if (false == this->gameObjectPtr->hasComponent("MeshModifyComponent"))
+        /*if (false == this->gameObjectPtr->hasComponent("MeshModifyComponent"))
         {
             if (!this->createDynamicBody())
             {
                 return false;
             }
-        }
+        }*/
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
@@ -385,8 +390,8 @@ namespace NOWA
             }
 
             vehicle->clearTires();
-            this->destroyCollision();
-            this->destroyBody();
+            // this->destroyCollision();
+            // this->destroyBody();
         }
 
         return success;
@@ -407,8 +412,8 @@ namespace NOWA
 
     bool PhysicsActiveVehicleComponentV2::createDynamicBody(void)
     {
-        this->destroyCollision();
-        this->destroyBody();
+        // this->destroyCollision();
+        // this->destroyBody();
 
         Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
         Ogre::Quaternion collisionOrientation = Ogre::Quaternion::IDENTITY;

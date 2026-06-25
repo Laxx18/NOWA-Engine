@@ -33,7 +33,7 @@ namespace NOWA
 		* @brief Creates a new game object from XML or sets data for existing game object
 		*/
 		GameObjectPtr createOrSetGameObjectFromXML(rapidxml::xml_node<>* xmlNode, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
-			Ogre::MovableObject* movableObject, NOWA::eType type, const Ogre::String& filename = Ogre::String(), bool forceCreation = false, bool forceClampY = false, GameObjectPtr existingGameObjectPtr = nullptr);
+			Ogre::MovableObject* movableObject, NOWA::eType type, const Ogre::String& filename = Ogre::String(), bool forceCreation = false, bool sceneParsed = false, GameObjectPtr existingGameObjectPtr = nullptr);
 
 		GenericObjectFactory<GameObjectComponent, unsigned int>* getComponentFactory(void);
 

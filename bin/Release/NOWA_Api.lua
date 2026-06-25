@@ -10956,6 +10956,30 @@ return {
 				returns = "(WindComponent)",
 				valuetype = "WindComponent"
 			},
+			getWindEffectComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurrence index, since a game object may have this component several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(WindEffectComponent)",
+				valuetype = "WindEffectComponent"
+			},
+			getWindEffectComponent =
+			{
+				type = "function",
+				description = "Gets the component. Use this if the game object has this component only once.",
+				args = "()",
+				returns = "(WindEffectComponent)",
+				valuetype = "WindEffectComponent"
+			},
+			getWindEffectComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by its custom name.",
+				args = "(string name)",
+				returns = "(WindEffectComponent)",
+				valuetype = "WindEffectComponent"
+			},
 			getWindInteractionComponent =
 			{
 				type = "function",
@@ -12803,6 +12827,14 @@ return {
 				args = "(WindComponent other)",
 				returns = "(WindComponent)",
 				valuetype = "WindComponent"
+			},
+			castWindEffectComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(WindEffectComponent other)",
+				returns = "(WindEffectComponent)",
+				valuetype = "WindEffectComponent"
 			},
 			castWindInteractionComponent =
 			{
@@ -34161,10 +34193,307 @@ return {
 			}
 		}
 	},
+	WindEffectComponent =
+	{
+		type = "class",
+		description = "Usage: Alternative to WindComponent. Drives the global ambient Wind-shader strength, direction and turbulence frequency, plus a slow continuous breathing sway and randomized gust impulses with their own direction variance. While a gust is active, a travelling push position is fed into one HlmsWind interactor slot so the foliage visibly ripples as the gust front sweeps through the scene. Only one WindComponent or WindEffectComponent should be active at a time. Presets: Calm, Gentle Breeze, Fresh Wind, Strong Wind, Storm, Hurricane, Custom.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this component is active.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setPresetName =
+			{
+				type = "method",
+				description = "Sets the wind preset. Possible values are: 'Calm', 'Gentle Breeze', 'Fresh Wind', 'Strong Wind', 'Storm', 'Hurricane', 'Custom'. Preset examples: Calm: WindStrength=0.05 WindFrequency=0.15 GustEnabled=false; Gentle Breeze: WindStrength=0.3 WindFrequency=0.25 GustStrengthMultiplier=1.6 GustDirectionVariance=15; Fresh Wind: WindStrength=0.6 WindFrequency=0.4 GustStrengthMultiplier=2.0 GustDirectionVariance=20; Strong Wind: WindStrength=1.0 WindFrequency=0.65 GustStrengthMultiplier=2.4 GustDirectionVariance=28; Storm: WindStrength=1.8 WindFrequency=1.0 GustStrengthMultiplier=2.6 GustDirectionVariance=35; Hurricane: WindStrength=3.2 WindFrequency=1.6 GustStrengthMultiplier=2.8 GustDirectionVariance=45. Note: WindDirection and UseGustInteractor are not touched by presets. If any other value is changed manually, the preset name becomes 'Custom'.",
+				args = "(string presetName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPresetName =
+			{
+				type = "function",
+				description = "Gets the currently set preset name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setWindDirection =
+			{
+				type = "method",
+				description = "Sets the dominant world-space wind direction (automatically normalized). (1,0,0) = east, (-1,0,0) = west, (0,0,1) = south, (0,0,-1) = north. The Y component has no visual effect.",
+				args = "(Vector3 direction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWindDirection =
+			{
+				type = "function",
+				description = "Gets the current normalized wind direction vector.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setWindStrength =
+			{
+				type = "method",
+				description = "Sets the base ambient wind displacement strength (0..5). Typical range: 0..2.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWindStrength =
+			{
+				type = "function",
+				description = "Gets the current base wind strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWindFrequency =
+			{
+				type = "method",
+				description = "Sets the animation speed of the 3D Perlin turbulence field (0.1..10).",
+				args = "(number frequency)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWindFrequency =
+			{
+				type = "function",
+				description = "Gets the current turbulence animation speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSineModulationEnabled =
+			{
+				type = "method",
+				description = "Enables/disables the slow continuous breathing sway layered on top of WindStrength.",
+				args = "(boolean enabled)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSineModulationEnabled =
+			{
+				type = "function",
+				description = "Gets whether the breathing sway is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setSineModulationAmplitude =
+			{
+				type = "method",
+				description = "Sets the breathing sway amplitude as a fraction of WindStrength (0..1).",
+				args = "(number amplitude)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSineModulationAmplitude =
+			{
+				type = "function",
+				description = "Gets the breathing sway amplitude.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSineModulationFrequency =
+			{
+				type = "method",
+				description = "Sets the breathing sway speed in Hz, full sway cycles per second (0.01..5).",
+				args = "(number frequency)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSineModulationFrequency =
+			{
+				type = "function",
+				description = "Gets the breathing sway speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGustEnabled =
+			{
+				type = "method",
+				description = "Enables/disables randomized gust impulses on top of WindStrength.",
+				args = "(boolean enabled)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGustEnabled =
+			{
+				type = "function",
+				description = "Gets whether gusts are enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setGustMinInterval =
+			{
+				type = "method",
+				description = "Sets the minimum random delay in seconds before the next gust may start (0.5..120).",
+				args = "(number seconds)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGustMinInterval =
+			{
+				type = "function",
+				description = "Gets the minimum gust interval.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGustMaxInterval =
+			{
+				type = "method",
+				description = "Sets the maximum random delay in seconds before the next gust may start (0.5..120).",
+				args = "(number seconds)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGustMaxInterval =
+			{
+				type = "function",
+				description = "Gets the maximum gust interval.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGustDuration =
+			{
+				type = "method",
+				description = "Sets how long a single gust lasts in seconds (0.2..30). Strength and the travelling push rise and fall smoothly across this duration.",
+				args = "(number seconds)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGustDuration =
+			{
+				type = "function",
+				description = "Gets the gust duration.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGustStrengthMultiplier =
+			{
+				type = "method",
+				description = "Sets how many times WindStrength is multiplied at the peak of a gust (1..6).",
+				args = "(number multiplier)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGustStrengthMultiplier =
+			{
+				type = "function",
+				description = "Gets the gust strength multiplier.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGustDirectionVariance =
+			{
+				type = "method",
+				description = "Sets the maximum random yaw deviation in degrees of a gust's direction from WindDirection (0..90). A new random value is picked per gust.",
+				args = "(number degrees)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGustDirectionVariance =
+			{
+				type = "function",
+				description = "Gets the gust direction variance.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setUseGustInteractor =
+			{
+				type = "method",
+				description = "Sets whether one of the WIND_MAX_INTERACTORS (8) HlmsWind slots is occupied to feed a travelling push position into the foliage while a gust is active. Disable to free the slot up for WindInteractionComponent instances.",
+				args = "(boolean useGustInteractor)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseGustInteractor =
+			{
+				type = "function",
+				description = "Gets whether the gust front interactor slot is in use.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setGustPushStrength =
+			{
+				type = "method",
+				description = "Sets the peak foliage push magnitude of the gust front interactor (0..5).",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGustPushStrength =
+			{
+				type = "function",
+				description = "Gets the gust front push strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGustRadius =
+			{
+				type = "method",
+				description = "Sets the radius in world units of the gust front interactor (0.5..80).",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGustRadius =
+			{
+				type = "function",
+				description = "Gets the gust front interactor radius.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGustTravelSpeed =
+			{
+				type = "method",
+				description = "Sets the speed in world units per second at which the gust front interactor travels away from the owner GameObject (0..50).",
+				args = "(number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGustTravelSpeed =
+			{
+				type = "function",
+				description = "Gets the gust front travel speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	WindInteractionComponent =
 	{
 		type = "class",
-		description = "Usage: Attach to any moving GameObject (player, enemy, vehicle) to push nearby Wind-shader foliage aside as it moves. Requires a WindComponent in the scene for ambient sway. Tune Radius (world units, 0.1-20) and Strength (0.0-5.0, typical 0.2-2.0). Up to 4 WindInteractionComponents can be active simultaneously.",
+		description = "Usage: Attach to any moving GameObject (player, enemy, vehicle) to push nearby Wind-shader foliage aside as it moves. Requires a WindComponent in the scene for ambient sway. Tune Radius (world units, 0.1-20) and Strength (0.0-5.0, typical 0.2-2.0). OffsetPosition and OffsetOrientation shift the interaction origin relative to the owner pivot. Up to 4 WindInteractionComponents can be active simultaneously.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -34215,6 +34544,38 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			setOffsetPosition =
+			{
+				type = "method",
+				description = "Sets a local position offset applied to the owner's world position before submitting the interactor to HlmsWind. Use this to shift the push sphere away from the pivot, e.g. Vector3(0, -1, 0) to place it at foot level.",
+				args = "(Vector3 offsetPosition)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOffsetPosition =
+			{
+				type = "function",
+				description = "Gets the current local position offset of the interaction origin.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setOffsetOrientation =
+			{
+				type = "method",
+				description = "Sets a local orientation offset in Euler angles (degrees) applied together with the offset position. Rotates the local offset vector into the correct world direction independently of the owner's orientation.",
+				args = "(Vector3 offsetOrientation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOffsetOrientation =
+			{
+				type = "function",
+				description = "Gets the current local orientation offset in Euler angles (degrees).",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
 			}
 		}
 	},

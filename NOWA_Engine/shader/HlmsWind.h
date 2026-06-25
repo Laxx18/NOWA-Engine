@@ -7,6 +7,8 @@
 #include "OgreHlmsPbs.h"
 #include "defines.h"
 
+#include <mutex>
+
 namespace NOWA
 {
     /**
@@ -99,7 +101,7 @@ namespace NOWA
         void setWindDirection(const Ogre::Vector3& direction);
 
         /** @brief Returns the current pending wind direction. @note Logic thread. */
-        const Ogre::Vector3& getWindDirection() const;
+        Ogre::Vector3 getWindDirection() const;
 
         /** @brief Sets the spatial frequency of the Perlin noise scroll. @note Logic thread. */
         void setWindFrequency(Ogre::Real frequency);
@@ -159,8 +161,19 @@ namespace NOWA
 
     private:
         // -----------------------------------------------------------------
-        // Pending state — written by logic thread, read only by commitPendingToRender().
+        // Pending state — written by the logic thread, read only by
+        // commitPendingToRender(). Both sides must hold pendingMutex while
+        // touching ANY of pendingParams / pendingInteractors / pendingInteractorCount
+        // / slotOccupied, since commitPendingToRender() copies several of these
+        // fields together and a partial (torn) copy across two different logic
+        // frames would hand the GPU an internally inconsistent snapshot (e.g. a
+        // new windDirection.x mixed with an old .y/.z, or a strength from one
+        // frame paired with a direction from another). Critical sections here are
+        // a handful of float/bool writes — negligible cost, called a few times per
+        // frame, never per-vertex.
         // -----------------------------------------------------------------
+
+        mutable std::mutex pendingMutex;
 
         /// Wind scalar parameters staged for next commit.
         struct WindParams
@@ -174,17 +187,18 @@ namespace NOWA
         WindParams pendingParams;
         WindInteractor pendingInteractors[WIND_MAX_INTERACTORS];
         int pendingInteractorCount = 0;
+        bool slotOccupied[WIND_MAX_INTERACTORS];
 
         // -----------------------------------------------------------------
         // Render state — written only by commitPendingToRender() on the render
         // thread, read only by getPassBufferSize() / preparePassBuffer() also on
-        // the render thread. Never touched by the logic thread.
+        // the render thread. Never touched by the logic thread, so no locking
+        // is needed here.
         // -----------------------------------------------------------------
 
         WindParams renderParams;
         WindInteractor renderInteractors[WIND_MAX_INTERACTORS];
         int renderInteractorCount = 0;
-        bool slotOccupied[WIND_MAX_INTERACTORS];
     };
 
     // =========================================================================
@@ -248,7 +262,7 @@ namespace NOWA
         void setWindDirection(const Ogre::Vector3& direction);
 
         /** @brief Returns the current pending wind direction. @note Logic thread. */
-        const Ogre::Vector3& getWindDirection() const;
+        Ogre::Vector3 getWindDirection() const;
 
         /** @brief Sets Perlin noise scroll frequency. @note Logic thread. */
         void setWindFrequency(float frequency);

@@ -64,7 +64,7 @@ namespace NOWA
 		lightId(new Variant(TerraComponent::AttrLightId(), static_cast<unsigned long>(0), this->attributes, true)),
 		cameraId(new Variant(TerraComponent::AttrCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
 		basePixelDimension(new Variant(TerraComponent::AttrBasePixelDimension(), static_cast<unsigned int>(64), this->attributes, true)),
-        lodRing0WorldSize(new Variant(TerraComponent::AttrLodRing0WorldSize(), 10.0f, this->attributes)),
+        lodRing0WorldSize(new Variant(TerraComponent::AttrLodRing0WorldSize(), 20.0f, this->attributes)),
 		strength(new Variant(TerraComponent::AttrStrength(), 50, this->attributes)),
 		brushSize(new Variant(TerraComponent::AttrBrushSize(), static_cast<int>(64), this->attributes)),
 		brushIntensity(new Variant(TerraComponent::AttrBrushIntensity(), static_cast<int>(255), this->attributes)),
@@ -354,34 +354,34 @@ namespace NOWA
 
         float ring0Size = this->lodRing0WorldSize->getReal();
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] applyLodRing0WorldSize: configured value=" + Ogre::StringConverter::toString(ring0Size));
+        // Always compute the effective view distance, regardless of whether ring0Size
+        // is manual or auto, because this also feeds the far-LOD falloff curve below.
+        float farClip = this->usedCamera->getFarClipDistance();
+        float renderDist = static_cast<float>(this->gameObjectPtr->getAttribute(GameObject::AttrRenderDistance())->getInt());
+
+        float effectiveVisibleDistance;
+        if (farClip > 0.0f && renderDist > 0.0f)
+        {
+            effectiveVisibleDistance = std::min(farClip, renderDist);
+        }
+        else if (farClip > 0.0f)
+        {
+            effectiveVisibleDistance = farClip;
+        }
+        else if (renderDist > 0.0f)
+        {
+            effectiveVisibleDistance = renderDist;
+        }
+        else
+        {
+            effectiveVisibleDistance = std::max(this->terra->getXZDimensions().x, this->terra->getXZDimensions().y);
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[TerraComponent] applyLodRing0WorldSize: configured value=" + Ogre::StringConverter::toString(ring0Size) + " effectiveVisibleDistance=" + Ogre::StringConverter::toString(effectiveVisibleDistance));
 
         if (ring0Size <= 0.0f)
         {
-            float farClip = this->usedCamera->getFarClipDistance();
-            float renderDist = static_cast<float>(this->gameObjectPtr->getAttribute(GameObject::AttrRenderDistance())->getInt());
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[TerraComponent] auto mode: farClip=" + Ogre::StringConverter::toString(farClip) + " renderDist=" + Ogre::StringConverter::toString(renderDist) + " terraXZDim=" + Ogre::StringConverter::toString(this->terra->getXZDimensions()));
-
-            float effectiveVisibleDistance;
-            if (farClip > 0.0f && renderDist > 0.0f)
-            {
-                effectiveVisibleDistance = std::min(farClip, renderDist);
-            }
-            else if (farClip > 0.0f)
-            {
-                effectiveVisibleDistance = farClip;
-            }
-            else if (renderDist > 0.0f)
-            {
-                effectiveVisibleDistance = renderDist;
-            }
-            else
-            {
-                effectiveVisibleDistance = std::max(this->terra->getXZDimensions().x, this->terra->getXZDimensions().y);
-            }
-
             const Ogre::uint32 desiredLodLevels = std::max(1u, this->gameObjectPtr->getLodLevels());
 
             ring0Size = this->terra->computeAutoLodRing0WorldSize(effectiveVisibleDistance, desiredLodLevels);
@@ -393,6 +393,15 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Calling terra->setLodRing0WorldSize(" + Ogre::StringConverter::toString(ring0Size) + ")");
 
         this->terra->setLodRing0WorldSize(ring0Size);
+
+        // ---- Aggressive far-LOD falloff ----
+        // "effectiveVisibleDistance is 100%, last cells get ~10% of their vertices,
+        // scaled linearly in between" - exactly what you asked for.
+        this->terra->setMaxLodDistance(effectiveVisibleDistance);
+        this->terra->setLodFarVertexPercent(0.6f);
+        this->terra->setLodCurvePower(0.9f);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Far-LOD curve set: maxLodDistance=" + Ogre::StringConverter::toString(effectiveVisibleDistance) + " farVertexPercent=0.1 curvePower=1.0");
     }
 
 	void TerraComponent::handleSwitchCamera(NOWA::EventDataPtr eventData)

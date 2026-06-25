@@ -90,6 +90,74 @@ namespace Ogre
         return std::max(ring0, 1.0f);
     }
 
+    //-----------------------------------------------------------------------------------
+    //uint32 Terra::computeLodLevelForDistance(float distanceFromCamera) const
+    //{
+    //    // Normalize distance into 0..1, where 1.0 == m_maxLodDistance ("100%").
+    //    float t = Math::Clamp(distanceFromCamera / std::max(1.0f, m_maxLodDistance), 0.0f, 1.0f);
+
+    //    // Shape the falloff curve. curvePower == 1.0 -> linear.
+    //    float shaped = std::pow(t, std::max(0.01f, m_lodCurvePower));
+
+    //    // Desired *area* vertex density fraction at this distance:
+    //    // 1.0 at t=0 (no extra decimation), m_lodFarVertexPercent at t=1.
+    //    float densityFraction = 1.0f - (1.0f - m_lodFarVertexPercent) * shaped;
+    //    densityFraction = std::max(densityFraction, m_lodFarVertexPercent);
+
+    //    // Convert area-density fraction into an EXTRA per-axis decimation factor,
+    //    // on top of whatever the ring-doubling baseline already does. At t=0 this
+    //    // must come out to 0 extra levels; it only grows as t -> 1.
+    //    float extraDivisorF = 1.0f / std::sqrt(std::max(densityFraction, 0.0001f));
+    //    float extraLevelF = std::log2(std::max(extraDivisorF, 1.0f));
+
+    //    uint32 extraLevels = static_cast<uint32>(std::round(extraLevelF));
+    //    return extraLevels;
+    //}
+
+    //-----------------------------------------------------------------------------------
+    //uint32 Terra::computeLodLevelForDistance(float distanceFromCamera) const
+    //{
+    //    // Explicit distance bands -> extra decimation levels, scaled by
+    //    // m_maxLodDistance ("100%"). Edit the fractions/levels directly for
+    //    // full, predictable control - no sqrt/log2 ceiling to fight against.
+    //    const float t = (m_maxLodDistance > 1.0f) ? (distanceFromCamera / m_maxLodDistance) : 0.0f;
+
+    //    if (t < 0.15f)       return 0u;  // near camera: untouched
+    //    else if (t < 0.30f)  return 1u;  // 4x area decimation
+    //    else if (t < 0.50f)  return 2u;  // 16x
+    //    else if (t < 0.70f)  return 3u;  // 64x
+    //    else if (t < 0.85f)  return 4u;  // 256x
+    //    else                 return 6u;  // far field: 4096x, brutally flat
+    //}
+
+    //-----------------------------------------------------------------------------------
+    uint32 Terra::computeLodLevelForDistance(float distanceFromCamera) const
+    {
+        // Generic, percentage-based: t is always 0..1 regardless of whether
+        // m_maxLodDistance is 200 or 10000, since it's a ratio - this is the
+        // part that already worked and stays untouched.
+        const float t = Math::Clamp(distanceFromCamera / std::max(1.0f, m_maxLodDistance), 0.0f, 1.0f);
+
+        // Ramp shape - power < 1.0 reaches high decimation earlier in the range,
+        // so mid-distance terrain doesn't stay over-detailed. Unchanged behavior.
+        const float shaped = std::pow(t, std::max(0.01f, m_lodCurvePower));
+
+        // How many extra halving-steps are even achievable on THIS heightmap.
+        // Derived from m_width/m_depth, which already exist as members - no new
+        // state needed. Bigger heightmaps naturally allow more extra levels.
+        const uint32 maxRes = std::max(m_width, m_depth);
+        const float maxAchievableExtraLevels = std::max(1.0f, std::log2(float(std::max(1u, maxRes))));
+
+        // m_lodFarVertexPercent is now a DIRECT 0..1 fraction of that achievable
+        // budget - no sqrt, no log2 in between, no hidden ceiling. Set it to 0.8
+        // and you get 80% of whatever this heightmap can give you at max range.
+        const float fractionOfBudget = Math::Clamp(m_lodFarVertexPercent, 0.0f, 1.0f);
+
+        const float extraLevelF = shaped * fractionOfBudget * maxAchievableExtraLevels;
+
+        return static_cast<uint32>(std::round(extraLevelF));
+    }
+
     Terra::Terra(IdType id, ObjectMemoryManager* objectMemoryManager,
         SceneManager* sceneManager, uint8 renderQueueId,
         CompositorManager2* compositorManager, Camera* camera, bool zUp) :
@@ -125,7 +193,10 @@ namespace Ogre
         mNormalMapCamera(0),
         m_brushSize(64),
         mHlmsTerraIndex(std::numeric_limits<uint32>::max()),
-        m_lodRing0WorldSize(10.0f)
+        m_lodRing0WorldSize(10.0f),
+        m_maxLodDistance(500.0f),
+        m_lodFarVertexPercent(0.1f),
+        m_lodCurvePower(1.0f)
     {
         if (nullptr == m_camera)
         {
@@ -506,21 +577,25 @@ namespace Ogre
         //const uint8 numMipmaps = image.getNumMipmaps();
 
         TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
-        m_blendWeightTex = textureManager->createTexture(m_prefix  + "_detailMap.png", Ogre::GpuPageOutStrategy::SaveToSystemRam,
+        m_blendWeightTex = textureManager->createTexture(m_prefix + "_detailMap.png", Ogre::GpuPageOutStrategy::SaveToSystemRam,
             TextureFlags::RenderToTexture, TextureTypes::Type2D);
 
         m_blendWeightTex->setResolution(imageWidth, imageHeight);
-        m_blendWeightTex->setPixelFormat(PFG_RGBA8_UNORM_SRGB);
+        // Attention: blend weights are linear scalar data, NOT color - must NOT use
+        // an _SRGB format here. _SRGB formats trigger an automatic gamma-decode on
+        // every GPU texture sample, which warps the linear 0..1 weight values and
+        // causes visible banding/graininess in smooth brush gradients.
+        m_blendWeightTex->setPixelFormat(PFG_RGBA8_UNORM);
         m_blendWeightTex->_transitionTo(GpuResidency::Resident, (uint8*)0);
         m_blendWeightTex->_setNextResidencyStatus(GpuResidency::Resident);
 
         if (nullptr == m_blendWeightStagingTexture)
         {
-            m_blendWeightStagingTexture = textureManager->getStagingTexture(imageWidth, imageHeight, 1u, 1u, PFG_RGBA8_UNORM_SRGB);
+            m_blendWeightStagingTexture = textureManager->getStagingTexture(imageWidth, imageHeight, 1u, 1u, PFG_RGBA8_UNORM);
         }
 
         m_blendWeightStagingTexture->startMapRegion();
-        TextureBox texBox = m_blendWeightStagingTexture->mapRegion(imageWidth, imageHeight, 1u, 1u, PFG_RGBA8_UNORM_SRGB);
+        TextureBox texBox = m_blendWeightStagingTexture->mapRegion(imageWidth, imageHeight, 1u, 1u, PFG_RGBA8_UNORM);
 
         const size_t bytesPerPixel = texBox.bytesPerPixel;
 
@@ -529,29 +604,29 @@ namespace Ogre
 
         for (uint32 y = 0; y < imageHeight; y++)
         {
-            uint8* RESTRICT_ALIAS pixBoxData = reinterpret_cast<uint8* RESTRICT_ALIAS>(texBox.at(0, y, 0));
+            uint8* RESTRICT_ALIAS pixBoxData = reinterpret_cast<uint8 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
             for (uint32 x = 0; x < imageWidth; x++)
             {
-               const size_t dstIdx = x * bytesPerPixel;
-               float rgba[4];
-               // Create blank texture without details
-               rgba[0] = 1.0f;
-               rgba[1] = 0.0f;
-               rgba[2] = 0.0f;
-               rgba[3] = 0.0f;
-               PixelFormatGpuUtils::packColour(rgba, PFG_RGBA8_UNORM_SRGB, &pixBoxData[dstIdx]);
+                const size_t dstIdx = x * bytesPerPixel;
+                float rgba[4];
+                // Create blank texture without details
+                rgba[0] = 1.0f;
+                rgba[1] = 0.0f;
+                rgba[2] = 0.0f;
+                rgba[3] = 0.0f;
+                PixelFormatGpuUtils::packColour(rgba, PFG_RGBA8_UNORM, &pixBoxData[dstIdx]);
             }
         }
 
         m_blendWeightStagingTexture->stopMapRegion();
         m_blendWeightStagingTexture->upload(texBox, m_blendWeightTex, 0);
 
-       //  if (!m_blendWeightTex->isDataReady())
-         //    m_blendWeightTex->notifyDataIsReady();
+        //  if (!m_blendWeightTex->isDataReady())
+          //    m_blendWeightTex->notifyDataIsReady();
 
         const uint32 rowAlignment = 4u;
         const size_t totalBytes = PixelFormatGpuUtils::calculateSizeBytes(m_blendWeightTex->getWidth(), m_blendWeightTex->getHeight(),
-                                                                          m_blendWeightTex->getDepth(), m_blendWeightTex->getNumSlices(), m_blendWeightTex->getPixelFormat(), m_blendWeightTex->getNumMipmaps(), rowAlignment);
+            m_blendWeightTex->getDepth(), m_blendWeightTex->getNumSlices(), m_blendWeightTex->getPixelFormat(), m_blendWeightTex->getNumMipmaps(), rowAlignment);
         void* data = OGRE_MALLOC_SIMD(totalBytes, MEMCATEGORY_RESOURCE);
 
         m_blendWeightImage.loadDynamicImage(data, true, m_blendWeightTex);
@@ -565,7 +640,14 @@ namespace Ogre
         m_blendWeightTex = textureManager->createTexture(m_prefix + "_detailMap.png",
             GpuPageOutStrategy::SaveToSystemRam, TextureFlags::RenderToTexture, TextureTypes::Type2D);
         m_blendWeightTex->setResolution(image.getWidth(), image.getHeight());
-        m_blendWeightTex->setPixelFormat(image.getPixelFormat());
+
+        // Attention: force the LINEAR equivalent of whatever format the PNG loader
+        // detected. Image2 commonly auto-tags 8-bit PNGs as PFG_RGBA8_UNORM_SRGB,
+        // but blend weights are linear scalar data, not color, so that tag must be
+        // overridden or the GPU will gamma-decode the weights on every sample.
+        PixelFormatGpu loadedFormat = image.getPixelFormat();
+        PixelFormatGpu linearFormat = PixelFormatGpuUtils::getEquivalentLinear(loadedFormat);
+        m_blendWeightTex->setPixelFormat(linearFormat);
         m_blendWeightTex->scheduleTransitionTo(GpuResidency::Resident);
 
         m_currentBlendWeightImageName = m_prefix + "_detailMap.png";
@@ -580,7 +662,7 @@ namespace Ogre
             bool correctCandidate = false;
             while (false == correctCandidate)
             {
-                m_blendWeightStagingTexture = textureManager->getStagingTexture(image.getWidth(), image.getHeight(), 1u, 1u, image.getPixelFormat());
+                m_blendWeightStagingTexture = textureManager->getStagingTexture(image.getWidth(), image.getHeight(), 1u, 1u, linearFormat);
                 if (m_blendWeightStagingTexture->_getSizeBytes() == correctSizeInBytesFor1024x1024)
                 {
                     correctCandidate = true;
@@ -589,14 +671,10 @@ namespace Ogre
         }
 
         m_blendWeightStagingTexture->startMapRegion();
-        TextureBox texBox = m_blendWeightStagingTexture->mapRegion(image.getWidth(), image.getHeight(), 1u, 1u, image.getPixelFormat());
+        TextureBox texBox = m_blendWeightStagingTexture->mapRegion(image.getWidth(), image.getHeight(), 1u, 1u, linearFormat);
 
         //for( uint8 mip=0; mip<numMipmaps; ++mip )
         texBox.copyFrom(image.getData(0));
-
-
-
-
 
         // Note: If crash occurs, check if offsetscale0 etc. is 1 and not 128, also check the datablock.json in the workspace terra folder!
         // Or candidate is wrong, getting resolution of 2048x2048 instead of 1024x1024
@@ -612,29 +690,6 @@ namespace Ogre
          //    m_blendWeightTex->notifyDataIsReady();
 
         m_blendWeightImage = image;
-
-        /*for (uint32 y = 0; y < image.getHeight(); y++)
-        {
-            uint8* RESTRICT_ALIAS pixBoxData = reinterpret_cast<uint8 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
-            for (uint32 x = 0; x < image.getWidth(); x++)
-            {
-                const size_t dstIdx = x * bytesPerPixel;
-                // m_newBlendWeightData[y * image.getWidth() + x] = pixBoxData[dstIdx];
-                // float rgba[4];
-                // PixelFormatGpuUtils::unpackColour(rgba, PFG_RGBA8_UNORM_SRGB, &pixBoxData[dstIdx]);
-
-                float rgba[4] = { pixBoxData[dstIdx + 0], pixBoxData[dstIdx + 1], pixBoxData[dstIdx + 2], pixBoxData[dstIdx + 3] };
-                PixelFormatGpuUtils::unpackColour(rgba, PFG_RGBA8_UNORM_SRGB, &pixBoxData[dstIdx]);
-
-                m_newBlendWeightData[(y + 0) * image.getWidth() + x] = rgba[0];
-                m_newBlendWeightData[(y + 1) * image.getWidth() + x] = rgba[1];
-                m_newBlendWeightData[(y + 2) * image.getWidth() + x] = rgba[2];
-                m_newBlendWeightData[(y + 3) * image.getWidth() + x] = rgba[3];
-            }
-        }
-
-        int i = 0;
-        i = 1;*/
     }
 
     void Terra::calculateOptimumSkirtSize(void)
@@ -858,6 +913,7 @@ namespace Ogre
     }
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------
     void Terra::update(const Vector3& lightDir, float lightEpsilon)
     {
         const float lightCosAngleChange =
@@ -873,47 +929,40 @@ namespace Ogre
 
         const Vector3 camPos = toYUp(m_camera->getDerivedPosition());
 
-        // -----------------------------------------------------------------
-        // LOD footprint decoupling fix:
-        //
-        // BasePixelDimension previously controlled BOTH vertex density (how
-        // many heightmap pixels each cell spans) AND the world-space size of
-        // the LOD 0 ring (since cellSize is expressed in pixels and pixels
-        // map directly to world units via m_xzRelativeSize). For small
-        // terrains with high pixel resolution, BasePixelDimension had to stay
-        // large just to keep the LOD 0 ring world-space footprint reasonable
-        // -- but that also meant fewer vertices per cell -> visibly blocky
-        // "huge pixels" once BasePixelDimension was lowered to fix LOD ring
-        // sizing.
-        //
-        // Fix: keep BasePixelDimension as the vertex-density control (tied to
-        // m_basePixelDimension, unchanged), but introduce an independent
-        // world-space "innermost LOD ring radius" (m_lodRing0WorldSize) that
-        // determines how large LOD 0 is in world units. We then compute how
-        // many BasePixelDimension-sized cells fit into that world-space target,
-        // and use THAT as the effective starting cellSize for the LOD loop --
-        // never going below 1 cell so degenerate configs don't divide by zero.
-        //
-        // This means: BasePixelDimension only affects vertex density per cell
-        // (visual smoothness), while m_lodRing0WorldSize controls how far you
-        // must travel before LOD increases, completely independent of terrain
-        // pixel resolution or world size.
-        // -----------------------------------------------------------------
+        // Computes the REAL world-space distance (XZ plane only, height ignored
+        // since terrain LOD shouldn't care about vertical camera offset) from the
+        // camera to a specific cell's center, then asks the falloff curve how many
+        // EXTRA decimation levels that cell deserves on top of the ring baseline.
+        // This is per-cell, not per-ring, so it genuinely responds to camera
+        // movement: two cells in the same ring can get different results if one
+        // is on the near side of the terrain and one is on the far side.
+        auto computeCellAppliedLod = [this, &camPos](const GridPoint& cellPos, const GridPoint& cellGridSize, uint32 baselineLod) -> uint32
+        {
+            const Vector2 cellOriginWorld = gridToWorld(cellPos);
+            const float cellHalfWidth = float(cellGridSize.x) * m_xzRelativeSize.x * 0.5f;
+            const float cellHalfDepth = float(cellGridSize.z) * m_xzRelativeSize.y * 0.5f;
+
+            const float cellCenterWorldX = cellOriginWorld.x + cellHalfWidth;
+            const float cellCenterWorldZ = cellOriginWorld.y + cellHalfDepth;
+
+            const float dx = cellCenterWorldX - camPos.x;
+            const float dz = cellCenterWorldZ - camPos.z;
+            const float distanceFromCamera = std::sqrt(dx * dx + dz * dz);
+
+            const uint32 extraLodLevels = computeLodLevelForDistance(distanceFromCamera);
+            return baselineLod + extraLodLevels;
+        };
 
         const int32 basePixelDimension = static_cast<int32>(m_basePixelDimension);
         const int32 vertPixelDimensionBase =
             static_cast<int32>(float(m_basePixelDimension) * m_depthWidthRatio);
 
-        // Convert desired world-space LOD0 cell size into pixel units using the
-        // terrain's pixel-to-world ratio (m_xzRelativeSize = world units per pixel).
         const float pixelsPerWorldUnitX = (m_xzRelativeSize.x > 1e-6f) ? (1.0f / m_xzRelativeSize.x) : 1.0f;
         const float pixelsPerWorldUnitZ = (m_xzRelativeSize.y > 1e-6f) ? (1.0f / m_xzRelativeSize.y) : 1.0f;
 
         int32 targetCellPixelsX = static_cast<int32>(m_lodRing0WorldSize * pixelsPerWorldUnitX);
         int32 targetCellPixelsZ = static_cast<int32>(m_lodRing0WorldSize * m_depthWidthRatio * pixelsPerWorldUnitZ);
 
-        // Snap to a whole multiple of basePixelDimension so cell boundaries still
-        // align with vertex grid lines (avoids seams/cracks between cells).
         int32 cellPixelsX = std::max(basePixelDimension,
             (targetCellPixelsX / basePixelDimension) * basePixelDimension);
         int32 cellPixelsZ = std::max(vertPixelDimensionBase,
@@ -923,29 +972,16 @@ namespace Ogre
         cellSize.x = cellPixelsX;
         cellSize.z = cellPixelsZ;
 
-        // Quantize the camera position to cellSize steps (was basePixelDimension).
         GridPoint camCenter = worldToGrid(camPos);
         camCenter.x = (camCenter.x / cellSize.x) * cellSize.x;
         camCenter.z = (camCenter.z / cellSize.z) * cellSize.z;
 
-        /*static int logCounter = 0;
-        if (++logCounter % 60 == 0)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[Terra::update] camPos=" + Ogre::StringConverter::toString(camPos) +
-                " m_lodRing0WorldSize=" + Ogre::StringConverter::toString(m_lodRing0WorldSize) +
-                " pixelsPerWorldUnitX=" + Ogre::StringConverter::toString(pixelsPerWorldUnitX) +
-                " targetCellPixelsX=" + Ogre::StringConverter::toString(targetCellPixelsX) +
-                " cellSize.x=" + Ogre::StringConverter::toString(cellSize.x) +
-                " cellSize.z=" + Ogre::StringConverter::toString(cellSize.z) +
-                " basePixelDimension=" + Ogre::StringConverter::toString(basePixelDimension) +
-                " camCenter.x=" + Ogre::StringConverter::toString(camCenter.x) +
-                " camCenter.z=" + Ogre::StringConverter::toString(camCenter.z));
-        }*/
-
         uint32 currentLod = 0;
 
-        // LOD 0: Add full 4x4 grid
+        // LOD 0: Add full 4x4 grid. Per-cell distance is evaluated here too -
+        // normally these cells are all close to the camera so extraLodLevels
+        // will compute to 0, but this keeps the system honest near terrain
+        // edges where ring0 itself might already be far from camera.
         for (int32 z = -2; z < 2; ++z)
         {
             for (int32 x = -2; x < 2; ++x)
@@ -955,7 +991,10 @@ namespace Ogre
                 pos.z += z * cellSize.z;
 
                 if (isVisible(pos, cellSize))
-                    addRenderable(pos, cellSize, currentLod);
+                {
+                    const uint32 appliedLodLevel = computeCellAppliedLod(pos, cellSize, currentLod);
+                    addRenderable(pos, cellSize, appliedLodLevel);
+                }
             }
         }
 
@@ -965,7 +1004,11 @@ namespace Ogre
 
         const uint32 maxRes = std::max(m_width, m_depth);
 
+        static int logCounter = 0;
+
         size_t numObjectsAdded = std::numeric_limits<size_t>::max();
+        uint32 previousRingAppliedLod = 0u;
+
         while (numObjectsAdded != m_currentCell ||
             (mRenderables.empty() && (1u << currentLod) <= maxRes))
         {
@@ -974,6 +1017,23 @@ namespace Ogre
             cellSize.x <<= 1u;
             cellSize.z <<= 1u;
             ++currentLod;
+
+            // Evaluate distance ONCE per ring (using one representative cell,
+            // not every cell individually) so every cell in this ring gets the
+            // exact same applied LOD - this removes intra-ring cracks.
+            GridPoint representativePos = camCenter;
+            representativePos.x += (-2) * cellSize.x;
+            representativePos.z += 1 * cellSize.z;
+            const uint32 desiredAppliedLod = computeCellAppliedLod(representativePos, cellSize, currentLod);
+
+            // Clamp so the TOTAL applied lod can only climb by +1 over the
+            // previous ring. This restores the "neighbors differ by at most one
+            // LOD level" rule that calculateOptimumSkirtSize's fixed-size skirts
+            // depend on. Without this, the far-field curve can make adjacent
+            // rings jump many levels at once on steep terrain - the skirt can't
+            // cover that gap, producing an exposed wall/crack.
+            const uint32 appliedLodLevel = std::min(desiredAppliedLod, previousRingAppliedLod + 1u);
+            previousRingAppliedLod = appliedLodLevel;
 
             // Row 0
             {
@@ -985,7 +1045,7 @@ namespace Ogre
                     pos.z += z * cellSize.z;
 
                     if (isVisible(pos, cellSize))
-                        addRenderable(pos, cellSize, currentLod);
+                        addRenderable(pos, cellSize, appliedLodLevel);
                 }
             }
             // Row 3
@@ -998,7 +1058,7 @@ namespace Ogre
                     pos.z += z * cellSize.z;
 
                     if (isVisible(pos, cellSize))
-                        addRenderable(pos, cellSize, currentLod);
+                        addRenderable(pos, cellSize, appliedLodLevel);
                 }
             }
             // Cells [0, 1] & [0, 2];
@@ -1011,7 +1071,7 @@ namespace Ogre
                     pos.z += z * cellSize.z;
 
                     if (isVisible(pos, cellSize))
-                        addRenderable(pos, cellSize, currentLod);
+                        addRenderable(pos, cellSize, appliedLodLevel);
                 }
             }
             // Cells [3, 1] & [3, 2];
@@ -1024,7 +1084,7 @@ namespace Ogre
                     pos.z += z * cellSize.z;
 
                     if (isVisible(pos, cellSize))
-                        addRenderable(pos, cellSize, currentLod);
+                        addRenderable(pos, cellSize, appliedLodLevel);
                 }
             }
 
@@ -1929,7 +1989,7 @@ namespace Ogre
 				rgba[2] = this->alterBlend(rgba[2], vals.z * brushVal) / 255.0f;
 				rgba[3] = this->alterBlend(rgba[3], vals.w * brushVal) / 255.0f;
 
-				PixelFormatGpuUtils::packColour(rgba, PFG_RGBA8_UNORM_SRGB, &detailMapPixBoxData[posX]);
+				PixelFormatGpuUtils::packColour(rgba, PFG_RGBA8_UNORM, &detailMapPixBoxData[posX]);
 
 				movAmount += 4;
 			}
@@ -2243,6 +2303,37 @@ namespace Ogre
     float Terra::getLodRing0WorldSize() const
     {
         return m_lodRing0WorldSize;
+    }
+
+    //-----------------------------------------------------------------------------------
+    void Terra::setMaxLodDistance(float maxLodDistance)
+    {
+        m_maxLodDistance = std::max(1.0f, maxLodDistance);
+    }
+    //-----------------------------------------------------------------------------------
+    float Terra::getMaxLodDistance() const
+    {
+        return m_maxLodDistance;
+    }
+    //-----------------------------------------------------------------------------------
+    void Terra::setLodFarVertexPercent(float percent)
+    {
+        m_lodFarVertexPercent = Math::Clamp(percent, 0.01f, 1.0f);
+    }
+    //-----------------------------------------------------------------------------------
+    float Terra::getLodFarVertexPercent() const
+    {
+        return m_lodFarVertexPercent;
+    }
+    //-----------------------------------------------------------------------------------
+    void Terra::setLodCurvePower(float power)
+    {
+        m_lodCurvePower = std::max(0.01f, power);
+    }
+    //-----------------------------------------------------------------------------------
+    float Terra::getLodCurvePower() const
+    {
+        return m_lodCurvePower;
     }
 
     void Terra::setPrefix(const Ogre::String& prefix)
