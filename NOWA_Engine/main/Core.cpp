@@ -854,6 +854,10 @@ namespace NOWA
         Ogre::SceneManager* dummySceneManager = this->root->createSceneManager(Ogre::ST_GENERIC, 1, "DummyScene");
         Ogre::Camera* dummyCamera = dummySceneManager->createCamera("DummyCamera");
 
+        // Register ALL HLMS types before any resource group initialisation.
+        // Material scripts need HLMS types present when they are parsed.
+        this->setupHlms();
+
         this->timer = new Ogre::Timer();
         this->timer->reset();
 
@@ -939,10 +943,6 @@ namespace NOWA
             loadableObjectsCount = 0;
         }
 
-        // Register ALL HLMS types before any resource group initialisation.
-        // Material scripts need HLMS types present when they are parsed.
-        this->setupHlms();
-
         // Initialize the essential resource group, in which the gui resources are located, so that a loading screen can be visualized
         try
         {
@@ -1004,6 +1004,21 @@ namespace NOWA
             description += "\n\nPlease check your resources file, propably there are some resources missing: '" + this->resourcesName + "' If you do not know what to todo, copy the 'NOWA_Design.cfg' and rename it.\n\n";
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: " + description);
             throw Ogre::ItemIdentityException(1, description, "initialiseAllResourceGroups(true)", __FILE__, __LINE__);
+        }
+
+        // Initialize resources for LTC area lights and accurate specular reflections (IBL)
+        Ogre::Hlms* hlms = this->root->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
+        Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlms);
+        try
+        {
+            hlmsPbs->loadLtcMatrix();
+        }
+        catch (Ogre::FileNotFoundException& e)
+        {
+            Ogre::LogManager::getSingleton().logMessage(e.getFullDescription(), Ogre::LML_CRITICAL);
+            Ogre::LogManager::getSingleton().logMessage("WARNING: LTC matrix textures could not be loaded. Accurate specular IBL reflections "
+                                                        "and LTC area lights won't be available or may not function properly!",
+                Ogre::LML_CRITICAL);
         }
 
         // Create once custom temp textures for dither and half tone effect
@@ -1387,6 +1402,7 @@ namespace NOWA
         preLoadTextures(config);
     }
 
+#if 0
     void Core::setupHlms(void)
     {
         if (true == this->hlmsRegistered)
@@ -1545,23 +1561,243 @@ namespace NOWA
         hlmsTerra->setDebugOutputPath(false, false);
         hlmsOcean->setDebugOutputPath(false, false);
 
-        // LTC matrix — after PBS is registered and resources loaded
-        {
-            Ogre::HlmsPbs* hlmsPbsLtc = static_cast<Ogre::HlmsPbs*>(this->root->getHlmsManager()->getHlms(Ogre::HLMS_PBS));
-            try
-            {
-                hlmsPbsLtc->loadLtcMatrix();
-            }
-            catch (Ogre::FileNotFoundException& e)
-            {
-                Ogre::LogManager::getSingleton().logMessage(e.getFullDescription(), Ogre::LML_CRITICAL);
-                Ogre::LogManager::getSingleton().logMessage("[Core] WARNING: LTC matrix textures not found.", Ogre::LML_CRITICAL);
-            }
-        }
-
         this->loadHlmsDiskCache();
 
         this->hlmsRegistered = true;
+    }
+#endif
+
+    void Core::setupHlms(void)
+    {
+        Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+
+        // Check if HLMS is already registered (first-time setup vs. refresh)
+        bool alreadyRegistered = (hlmsManager->getHlms(Ogre::HLMS_PBS) != nullptr);
+
+        if (!alreadyRegistered)
+        {
+            // First time - do full HLMS registration
+            this->baseListenerContainer = new HlmsBaseListenerContainer();
+
+            Ogre::String dataFolder = "../../media/";
+            Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
+
+            Ogre::String rsName = renderSystem->getName();
+
+            Ogre::String shaderSyntax = "GLSL";
+            if (rsName == "OpenGL ES 2.x Rendering Subsystem")
+            {
+                shaderSyntax = "GLSLES";
+            }
+            else if (rsName == "Direct3D11 Rendering Subsystem")
+            {
+                shaderSyntax = "HLSL";
+            }
+            else if (rsName == "Metal Rendering Subsystem")
+            {
+                shaderSyntax = "Metal";
+            }
+
+            // At this point rootHlmsFolder should be a valid path to the Hlms data folder
+
+            Ogre::HlmsUnlit* hlmsUnlit = nullptr;
+            Ogre::HlmsPbs* hlmsPbs = nullptr;
+            Ogre::HlmsTerra* hlmsTerra = nullptr;
+            HlmsWind* hlmsWind = nullptr;
+            Ogre::HlmsOcean* hlmsOcean = nullptr;
+
+            Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+
+            // For retrieval of the paths to the different folders needed
+            Ogre::String mainFolderPath;
+            Ogre::StringVector libraryFoldersPaths;
+            Ogre::StringVector::const_iterator libraryFolderPathIt;
+            Ogre::StringVector::const_iterator libraryFolderPathEn;
+
+            Ogre::ArchiveManager& archiveManager = Ogre::ArchiveManager::getSingleton();
+
+            // HlmsUnlit
+            {
+                // Get the path to all the subdirectories used by HlmsUnlit
+                Ogre::HlmsUnlit::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+                Ogre::Archive* archiveUnlit = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
+                Ogre::ArchiveVec archiveUnlitLibraryFolders;
+                libraryFolderPathIt = libraryFoldersPaths.begin();
+                libraryFolderPathEn = libraryFoldersPaths.end();
+                while (libraryFolderPathIt != libraryFolderPathEn)
+                {
+                    Ogre::Archive* archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
+                    archiveUnlitLibraryFolders.push_back(archiveLibrary);
+                    ++libraryFolderPathIt;
+                }
+
+                // Create and register the unlit Hlms
+                hlmsUnlit = OGRE_NEW Ogre::HlmsUnlit(archiveUnlit, &archiveUnlitLibraryFolders);
+                hlmsManager->registerHlms(hlmsUnlit);
+            }
+
+            // HlmsPbs
+            {
+                Ogre::HlmsPbs::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+                Ogre::Archive* archivePbs = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
+
+                // Get the library archive(s)
+                Ogre::ArchiveVec archivePbsLibraryFolders;
+                libraryFolderPathIt = libraryFoldersPaths.begin();
+                libraryFolderPathEn = libraryFoldersPaths.end();
+                while (libraryFolderPathIt != libraryFolderPathEn)
+                {
+                    Ogre::Archive* archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
+                    archivePbsLibraryFolders.push_back(archiveLibrary);
+                    ++libraryFolderPathIt;
+                }
+#if 0
+			// If no fog is used in scene, causes white flickering, hence it has been deactivated
+			Ogre::Archive* archiveFog = archiveManager.load(dataFolder + "Hlms/Fog/Any", "FileSystem", true);
+			archivePbsLibraryFolders.push_back(archiveFog);
+#endif
+
+                // Create and register
+                hlmsPbs = OGRE_NEW Ogre::HlmsPbs(archivePbs, &archivePbsLibraryFolders);
+                hlmsManager->registerHlms(hlmsPbs);
+
+                // hlmsPbs->setIndustryCompatible(true);
+            }
+
+            // HlmsTerra
+            {
+                Ogre::HlmsTerra::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+
+                Ogre::Archive* archiveTerra = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
+
+                Ogre::ArchiveVec archiveTerraLibraryFolders;
+                libraryFolderPathIt = libraryFoldersPaths.begin();
+                libraryFolderPathEn = libraryFoldersPaths.end();
+                while (libraryFolderPathIt != libraryFolderPathEn)
+                {
+                    Ogre::Archive* archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
+                    archiveTerraLibraryFolders.push_back(archiveLibrary);
+                    ++libraryFolderPathIt;
+                }
+
+                hlmsTerra = OGRE_NEW Ogre::HlmsTerra(archiveTerra, &archiveTerraLibraryFolders);
+                hlmsManager->registerHlms(hlmsTerra, Ogre::HLMS_USER3);
+                // Note: Terra piece files are added to PBS in setupHlms()
+            }
+
+            // Ocean
+            {
+                Ogre::String mainFolderPath;
+                Ogre::StringVector libraryFolders;
+
+                Ogre::HlmsOcean::getDefaultPaths(mainFolderPath, libraryFolders);
+
+                Ogre::Archive* archiveOcean = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
+
+                Ogre::ArchiveVec libraries;
+                for (const auto& path : libraryFolders)
+                {
+                    libraries.push_back(archiveManager.load(dataFolder + path, "FileSystem", true));
+                }
+
+                hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraries);
+                hlmsManager->registerHlms(hlmsOcean, Ogre::HLMS_USER1);
+                // Note: Ocean piece files are added to PBS in setupHlms()
+            }
+
+            // HlmsWind
+            {
+                // Note: HlmsWind uses HLMS_USER0
+                HlmsWind::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+
+                Ogre::ArchiveVec archive;
+
+                for (Ogre::String str : libraryFoldersPaths)
+                {
+                    Ogre::Archive* archiveLibrary = Ogre::ArchiveManager::getSingleton().load(dataFolder + str, "FileSystem", true);
+                    archive.push_back(archiveLibrary);
+                }
+
+                Ogre::Archive* archivePbs = Ogre::ArchiveManager::getSingleton().load(dataFolder + mainFolderPath, "FileSystem", true);
+                // Create and register the wind Hlms
+                hlmsWind = OGRE_NEW HlmsWind(archivePbs, &archive);
+                hlmsManager->registerHlms(hlmsWind, Ogre::HLMS_USER0);
+            }
+
+            if (renderSystem->getName() == "Direct3D11 Rendering Subsystem")
+            {
+                // Set lower limits 512kb instead of the default 4MB per Hlms in D3D 11.0
+                // and below to avoid saturating AMD's discard limit (8MB) or
+                // saturate the PCIE bus in some low end machines.
+                bool supportsNoOverwriteOnTextureBuffers;
+                renderSystem->getCustomAttribute("MapNoOverwriteOnDynamicBufferSRV", &supportsNoOverwriteOnTextureBuffers);
+
+                if (!supportsNoOverwriteOnTextureBuffers)
+                {
+                    hlmsPbs->setTextureBufferDefaultSize(512 * 1024);
+                    hlmsUnlit->setTextureBufferDefaultSize(512 * 1024);
+                    hlmsTerra->setTextureBufferDefaultSize(512 * 1024);
+                    hlmsWind->setTextureBufferDefaultSize(512 * 1024);
+                    hlmsOcean->setTextureBufferDefaultSize(512 * 1024);
+                }
+            }
+
+            // Disable the nasty shader cache files creation on exe dir
+            hlmsPbs->setDebugOutputPath(false, false);
+            hlmsUnlit->setDebugOutputPath(false, false);
+            hlmsTerra->setDebugOutputPath(false, false);
+            hlmsOcean->setDebugOutputPath(false, false);
+
+            // Set shader cache for faster loading
+            this->loadHlmsDiskCache();
+        }
+
+        // Now reload PBS library with all needed piece files
+        Ogre::String dataFolder = "../../media/";
+        Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
+
+        Ogre::String shaderSyntax = "GLSL";
+        if (renderSystem->getName() == "OpenGL ES 2.x Rendering Subsystem")
+        {
+            shaderSyntax = "GLSLES";
+        }
+        else if (renderSystem->getName() == "Direct3D11 Rendering Subsystem")
+        {
+            shaderSyntax = "HLSL";
+        }
+        else if (renderSystem->getName() == "Metal Rendering Subsystem")
+        {
+            shaderSyntax = "Metal";
+        }
+
+        Ogre::ArchiveManager& archiveManager = Ogre::ArchiveManager::getSingleton();
+
+        // Get PBS and its data folder
+        Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
+        Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
+
+        // Build library with default PBS paths
+        Ogre::String mainFolderPath;
+        Ogre::StringVector libraryFoldersPaths;
+        Ogre::HlmsPbs::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+
+        Ogre::ArchiveVec library;
+        for (const auto& path : libraryFoldersPaths)
+        {
+            library.push_back(archiveManager.load(dataFolder + path, "FileSystem", true));
+        }
+
+        // Always add Terra shadows piece files (Terra is always registered)
+        library.push_back(archiveManager.load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
+
+        // Always add Ocean piece files (Ocean is always registered)
+        library.push_back(archiveManager.load(dataFolder + "Hlms/Ocean/" + shaderSyntax, "FileSystem", true));
+
+        // Conditionally add Fog piece files
+
+        // Reload PBS with the complete library
+        // Causes afterwards crashes if detail normal maps are used!
+        // hlmsPbs->reloadFrom(archivePbs, &library);
     }
 
     Core* Core::getSingletonPtr(void)

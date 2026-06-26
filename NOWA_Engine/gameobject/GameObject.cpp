@@ -1049,7 +1049,7 @@ namespace NOWA
         }
         else if (GameObject::AttrCategory() == attribute->getName())
         {
-            // if (attribute->getListSelectedValue() != this->category->getListSelectedValue() && false == this->bIsLoadingFromFile)
+            if (attribute->getListSelectedValue() != this->category->getListSelectedOldValue() && false == this->bIsLoadingFromFile)
             {
                 // Call with the default value and the new one from selected list item
                 this->category->setListSelectedValue(attribute->getListSelectedValue());
@@ -1061,7 +1061,7 @@ namespace NOWA
         }
         else if (GameObject::AttrRenderCategory() == attribute->getName())
         {
-            // if (attribute->getListSelectedValue() != this->renderCategory->getListSelectedValue() && false == this->bIsLoadingFromFile)
+            if (attribute->getListSelectedValue() != this->renderCategory->getListSelectedOldValue() && false == this->bIsLoadingFromFile)
             {
                 // Call with the default value and the new one from selected list item
                 this->renderCategory->setListSelectedValue(attribute->getListSelectedValue());
