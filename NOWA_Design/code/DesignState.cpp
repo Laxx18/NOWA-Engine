@@ -683,7 +683,7 @@ void DesignState::simulate(bool pause, bool withUndo)
 
 			if (nullptr != editorManager)
 			{
-				this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
+				// this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
 				// Set the state before the simulation began
 				this->editorManager->stopSimulation(withUndo);
 			}

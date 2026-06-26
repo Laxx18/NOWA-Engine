@@ -112,6 +112,7 @@ namespace NOWA
 		priorId(0),
 		oldCoordinate(Ogre::Vector4::ZERO),
         bIsCloning(false),
+        bInitiallyCalled(true),
 		activated(new Variant(MyGUIComponent::AttrActivated(), true, this->attributes)),
 		position(new Variant(MyGUIComponent::AttrPosition(), Ogre::Vector2(0.5f, 0.5f), this->attributes)),
 		size(new Variant(MyGUIComponent::AttrSize(), Ogre::Vector2(0.2f, 0.1f), this->attributes)),
@@ -193,20 +194,25 @@ namespace NOWA
 			this->parentId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Skin")
-		{
-            if (nullptr != this->style)
+        if (nullptr != this->skin)
+        {
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Skin")
             {
                 this->skin->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+                propertyElement = propertyElement->next_sibling("property");
             }
-			propertyElement = propertyElement->next_sibling("property");
-		}
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Style")
+        }
+        if (nullptr != this->style)
         {
-            if (nullptr != this->style)
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Style")
             {
                 this->style->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+                propertyElement = propertyElement->next_sibling("property");
             }
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CommonWidget")
+        {
+            this->commonWidget->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CommonWidget")
@@ -233,6 +239,14 @@ namespace NOWA
             this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
         }
 
+		if (nullptr != this->skin)
+        {
+            this->setSkin(this->skin->getListSelectedValue());
+        }
+        if (nullptr != this->style)
+        {
+            this->setStyle(this->style->getListSelectedValue());
+        }
         this->setActivated(this->activated->getBool());
         this->setRealPosition(this->position->getVector2());
         this->setRealSize(this->size->getVector2());
@@ -241,6 +255,8 @@ namespace NOWA
         this->setColor(this->color->getVector4());
         this->setEnabled(this->enabled->getBool());
         this->setParentId(this->parentId->getULong());
+
+		this->bInitiallyCalled = false;
 
         // Guard: shared data-only instances (activated=false) have no widget yet
         if (nullptr != this->widget)
@@ -572,16 +588,15 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ParentId"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->parentId->getULong())));
 		propertiesXML->append_node(propertyXML);
-		
-		// MyGuiSpriteComponent has no skin
-		if (nullptr != this->skin)
-		{
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", "Skin"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skin->getListSelectedValue())));
-			propertiesXML->append_node(propertyXML);
-		}
+
+        if (nullptr != this->skin)
+        {
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", "Skin"));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skin->getListSelectedValue())));
+            propertiesXML->append_node(propertyXML);
+        }
 
 		if (nullptr != this->style)
         {
@@ -591,8 +606,7 @@ namespace NOWA
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->style->getListSelectedValue())));
             propertiesXML->append_node(propertyXML);
         }
-
-		propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "CommonWidget"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->commonWidget->getBool())));
@@ -611,7 +625,7 @@ namespace NOWA
 
     void MyGUIComponent::setActivated(bool activated)
     {
-        if (this->activated->getBool() == activated)
+        if (this->activated->getBool() == activated && false == this->bInitiallyCalled)
         {
             return;
         }

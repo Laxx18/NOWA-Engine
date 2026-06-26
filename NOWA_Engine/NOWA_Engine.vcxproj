@@ -188,6 +188,7 @@
     <ClInclude Include="camera\FollowCamera2D.h" />
     <ClInclude Include="camera\NullCamera.h" />
     <ClInclude Include="camera\ThirdPersonCamera.h" />
+    <ClInclude Include="camera\ThirdPersonOcclusionCamera.h" />
     <ClInclude Include="camera\ZoomCamera.h" />
     <ClInclude Include="console\EditString.h" />
     <ClInclude Include="console\LuaConsole.h" />
@@ -375,6 +376,7 @@
     <ClInclude Include="utilities\IAnimationBlender.h" />
     <ClInclude Include="utilities\Interpolator.h" />
     <ClInclude Include="utilities\LensFlare.h" />
+    <ClInclude Include="utilities\LockFreeMailbox.h" />
     <ClInclude Include="utilities\LowPassAngleFilter.h" />
     <ClInclude Include="utilities\LuaObserver.h" />
     <ClInclude Include="utilities\MathHelper.h" />
@@ -409,6 +411,7 @@
     <ClCompile Include="camera\FirstPersonCamera.cpp" />
     <ClCompile Include="camera\FollowCamera2D.cpp" />
     <ClCompile Include="camera\ThirdPersonCamera.cpp" />
+    <ClCompile Include="camera\ThirdPersonOcclusionCamera.cpp" />
     <ClCompile Include="camera\ZoomCamera.cpp" />
     <ClCompile Include="console\EditString.cpp" />
     <ClCompile Include="console\LuaConsole.cpp" />

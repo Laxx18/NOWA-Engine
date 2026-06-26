@@ -312,6 +312,8 @@ namespace NOWA
 	typedef boost::shared_ptr<CameraBehaviorBaseComponent> CameraBehaviorBaseCompPtr;
 	typedef boost::shared_ptr<CameraBehaviorFirstPersonComponent> CameraBehaviorFirstPersonCompPtr;
 	typedef boost::shared_ptr<CameraBehaviorThirdPersonComponent> CameraBehaviorThirdPersonCompPtr;
+    typedef boost::shared_ptr<CameraBehaviorThirdPersonOcclusionComponent> CameraBehaviorThirdPersonOcclusionCompPtr;
+	
 	typedef boost::shared_ptr<CameraBehaviorFollow2DComponent> CameraBehaviorFollow2DCompPtr;
 	typedef boost::shared_ptr<CameraBehaviorZoomComponent> CameraBehaviorZoomCompPtr;
 
@@ -372,6 +374,7 @@ namespace NOWA
 #include "camera/BaseCamera.h"
 #include "camera/FirstPersonCamera.h"
 #include "camera/ThirdPersonCamera.h"
+#include "camera/ThirdPersonOcclusionCamera.h"
 #include "camera/FollowCamera2D.h"
 #include "camera/ZoomCamera.h"
 #include "camera/BasePhysicsCamera.h"

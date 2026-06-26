@@ -10,6 +10,7 @@
 #include "camera/FirstPersonCamera.h"
 #include "camera/FollowCamera2D.h"
 #include "camera/ThirdPersonCamera.h"
+#include "camera/ThirdPersonOcclusionCamera.h"
 #include "camera/ZoomCamera.h"
 #include "gameobject/CameraComponent.h"
 #include "main/AppStateManager.h"
@@ -1045,6 +1046,422 @@ namespace NOWA
 
         gameObjectControllerClass.def("castCameraBehaviorThirdPersonComponent", &GameObjectController::cast<CameraBehaviorThirdPersonComponent>);
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CameraBehaviorThirdPersonComponent castCameraBehaviorThirdPersonComponent(CameraBehaviorThirdPersonComponent other)",
+            "Casts an incoming type from function for lua auto completion.");
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    CameraBehaviorThirdPersonOcclusionComponent::CameraBehaviorThirdPersonOcclusionComponent() :
+        CameraBehaviorComponent(),
+        offsetPosition(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrOffsetPosition(), Ogre::Vector3(0.0f, 2.0f, 5.0f), this->attributes)),
+        lookAtOffset(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrLookAtOffset(), Ogre::Vector3(0.0f, 1.0f, 0.0f), this->attributes)),
+        springForce(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSpringForce(), 0.1f, this->attributes)),
+        friction(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrFriction(), 0.5f, this->attributes)),
+        springLength(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSpringLength(), 6.0f, this->attributes)),
+        probeRadius(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrProbeRadius(), 0.25f, this->attributes)),
+        skinMargin(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSkinMargin(), 0.15f, this->attributes)),
+        minDistance(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrMinDistance(), 0.5f, this->attributes)),
+        releaseSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrReleaseSmoothValue(), 0.85f, this->attributes))
+    {
+    }
+
+    CameraBehaviorThirdPersonOcclusionComponent::~CameraBehaviorThirdPersonOcclusionComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraBehaviorBaseComponent] Destructor camera behavior third person occlusion component for game object: " + this->gameObjectPtr->getName());
+    }
+
+    bool CameraBehaviorThirdPersonOcclusionComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CameraBehaviorComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "YOffset")
+        {
+            this->offsetPosition->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LookAtOffset")
+        {
+            this->lookAtOffset->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpringForce")
+        {
+            this->springForce->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.1f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Friction")
+        {
+            this->friction->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpringLength")
+        {
+            this->springLength->setValue(XMLConverter::getAttribReal(propertyElement, "data", 6.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ProbeRadius")
+        {
+            this->probeRadius->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.25f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SkinMargin")
+        {
+            this->skinMargin->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.15f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MinDistance")
+        {
+            this->minDistance->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ReleaseSmoothValue")
+        {
+            this->releaseSmoothValue->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.85f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CameraBehaviorThirdPersonOcclusionComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CameraBehaviorThirdPersonOcclusionCompPtr clonedCompPtr(boost::make_shared<CameraBehaviorThirdPersonOcclusionComponent>());
+
+        clonedCompPtr->setOffsetPosition(this->offsetPosition->getVector3());
+        clonedCompPtr->setLookAtOffset(this->lookAtOffset->getVector3());
+        clonedCompPtr->setSpringForce(this->springForce->getReal());
+        clonedCompPtr->setFriction(this->friction->getReal());
+        clonedCompPtr->setSpringLength(this->springLength->getReal());
+        clonedCompPtr->setProbeRadius(this->probeRadius->getReal());
+        clonedCompPtr->setSkinMargin(this->skinMargin->getReal());
+        clonedCompPtr->setMinDistance(this->minDistance->getReal());
+        clonedCompPtr->setReleaseSmoothValue(this->releaseSmoothValue->getReal());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        clonedCompPtr->setCameraGameObjectId(this->cameraGameObjectId->getULong());
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
+
+    bool CameraBehaviorThirdPersonOcclusionComponent::canStaticAddComponent(GameObject* gameObject)
+    {
+        if (gameObject->getComponentCount<CameraBehaviorThirdPersonOcclusionComponent>() < 2)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    bool CameraBehaviorThirdPersonOcclusionComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraBehaviorThirdPersonOcclusionComponent] Init camera behavior third person occlusion component for game object: " + this->gameObjectPtr->getName());
+
+        return CameraBehaviorComponent::postInit();
+    }
+
+    bool CameraBehaviorThirdPersonOcclusionComponent::connect(void)
+    {
+        return CameraBehaviorComponent::connect();
+    }
+
+    bool CameraBehaviorThirdPersonOcclusionComponent::disconnect(void)
+    {
+        return CameraBehaviorComponent::disconnect();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::actualizeValue(Variant* attribute)
+    {
+        CameraBehaviorComponent::actualizeValue(attribute);
+
+        if (CameraBehaviorThirdPersonOcclusionComponent::AttrOffsetPosition() == attribute->getName())
+        {
+            this->setOffsetPosition(attribute->getVector3());
+        }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrLookAtOffset() == attribute->getName())
+        {
+            this->setLookAtOffset(attribute->getVector3());
+        }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrSpringForce() == attribute->getName())
+        {
+            this->setSpringForce(attribute->getReal());
+        }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrFriction() == attribute->getName())
+        {
+            this->setFriction(attribute->getReal());
+        }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrSpringLength() == attribute->getName())
+        {
+            this->setSpringLength(attribute->getReal());
+        }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrProbeRadius() == attribute->getName())
+        {
+            this->setProbeRadius(attribute->getReal());
+        }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrSkinMargin() == attribute->getName())
+        {
+            this->setSkinMargin(attribute->getReal());
+        }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrMinDistance() == attribute->getName())
+        {
+            this->setMinDistance(attribute->getReal());
+        }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrReleaseSmoothValue() == attribute->getName())
+        {
+            this->setReleaseSmoothValue(attribute->getReal());
+        }
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CameraBehaviorComponent::writeXML(propertiesXML, doc);
+
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "YOffset"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->offsetPosition->getVector3())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "LookAtOffset"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lookAtOffset->getVector3())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "SpringForce"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->springForce->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Friction"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->friction->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "SpringLength"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->springLength->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ProbeRadius"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->probeRadius->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "SkinMargin"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skinMargin->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "MinDistance"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->minDistance->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ReleaseSmoothValue"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->releaseSmoothValue->getReal())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setActivated(bool activated)
+    {
+        if (true == activated && nullptr == this->baseCamera)
+        {
+            this->acquireActiveCamera();
+
+            this->baseCamera = new ThirdPersonOcclusionCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(),
+                this->offsetPosition->getVector3(), this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
+
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setProbeRadius(this->probeRadius->getReal());
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setSkinMargin(this->skinMargin->getReal());
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setMinDistance(this->minDistance->getReal());
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setReleaseSmoothValue(this->releaseSmoothValue->getReal());
+
+            // Exclude the owning game object's own mesh from occlusion casts, so the
+            // camera never treats its own target as an obstruction.
+            if (nullptr != this->gameObjectPtr->getMovableObject())
+            {
+                std::vector<Ogre::MovableObject*> excluded;
+                excluded.push_back(this->gameObjectPtr->getMovableObject());
+                static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setExcludedMovables(excluded);
+            }
+
+            // NOTE: mirrored as-is from CameraBehaviorThirdPersonComponent::setActivated -
+            // physComp here is unused; this->physicsActiveComponent (referenced below) must
+            // be getting populated as a side effect of CameraBehaviorComponent::setActivated()
+            // a few lines down, not from this local. Worth double-checking that's actually
+            // intentional rather than a leftover from a refactor.
+            auto physComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+        }
+        CameraBehaviorComponent::setActivated(activated);
+
+        if (true == activated && nullptr != this->physicsActiveComponent)
+        {
+            this->baseCamera->setPhysicsBody(this->physicsActiveComponent->getBody());
+        }
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setOffsetPosition(const Ogre::Vector3& offsetPosition)
+    {
+        this->offsetPosition->setValue(offsetPosition);
+    }
+
+    Ogre::Vector3 CameraBehaviorThirdPersonOcclusionComponent::getOffsetPosition(void) const
+    {
+        return this->offsetPosition->getVector3();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setLookAtOffset(const Ogre::Vector3& lookAtOffset)
+    {
+        this->lookAtOffset->setValue(lookAtOffset);
+    }
+
+    const Ogre::Vector3 CameraBehaviorThirdPersonOcclusionComponent::getLookAtOffset(void) const
+    {
+        return this->lookAtOffset->getVector3();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setSpringForce(Ogre::Real springForce)
+    {
+        this->springForce->setValue(springForce);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getSpringForce(void) const
+    {
+        return this->springForce->getReal();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setFriction(Ogre::Real friction)
+    {
+        this->friction->setValue(friction);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getFriction(void) const
+    {
+        return this->friction->getReal();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setSpringLength(Ogre::Real springLength)
+    {
+        this->springLength->setValue(springLength);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getSpringLength(void) const
+    {
+        return this->springLength->getReal();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setProbeRadius(Ogre::Real probeRadius)
+    {
+        this->probeRadius->setValue(probeRadius);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getProbeRadius(void) const
+    {
+        return this->probeRadius->getReal();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setSkinMargin(Ogre::Real skinMargin)
+    {
+        this->skinMargin->setValue(skinMargin);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getSkinMargin(void) const
+    {
+        return this->skinMargin->getReal();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setMinDistance(Ogre::Real minDistance)
+    {
+        this->minDistance->setValue(minDistance);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getMinDistance(void) const
+    {
+        return this->minDistance->getReal();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setReleaseSmoothValue(Ogre::Real releaseSmoothValue)
+    {
+        this->releaseSmoothValue->setValue(releaseSmoothValue);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getReleaseSmoothValue(void) const
+    {
+        return this->releaseSmoothValue->getReal();
+    }
+
+    Ogre::String CameraBehaviorThirdPersonOcclusionComponent::getClassName(void) const
+    {
+        return "CameraBehaviorThirdPersonOcclusionComponent";
+    }
+
+    Ogre::String CameraBehaviorThirdPersonOcclusionComponent::getParentClassName(void) const
+    {
+        return "CameraBehaviorComponent";
+    }
+
+    // Lua registration part
+
+    CameraBehaviorThirdPersonOcclusionComponent* getCameraBehaviorThirdPersonOcclusionComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+    {
+        return makeStrongPtr<CameraBehaviorThirdPersonOcclusionComponent>(gameObject->getComponentWithOccurrence<CameraBehaviorThirdPersonOcclusionComponent>(occurrenceIndex)).get();
+    }
+
+    CameraBehaviorThirdPersonOcclusionComponent* getCameraBehaviorThirdPersonOcclusionComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<CameraBehaviorThirdPersonOcclusionComponent>(gameObject->getComponent<CameraBehaviorThirdPersonOcclusionComponent>()).get();
+    }
+
+    CameraBehaviorThirdPersonOcclusionComponent* getCameraBehaviorThirdPersonOcclusionComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CameraBehaviorThirdPersonOcclusionComponent>(gameObject->getComponentFromName<CameraBehaviorThirdPersonOcclusionComponent>(name)).get();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    {
+        module(lua)[class_<CameraBehaviorThirdPersonOcclusionComponent, GameObjectComponent>("CameraBehaviorThirdPersonOcclusionComponent")
+                .def("setOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::setOffsetPosition)
+                .def("getOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::getOffsetPosition)
+                .def("setLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::setLookAtOffset)
+                .def("getLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::getLookAtOffset)
+                .def("setSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::setSpringForce)
+                .def("getSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::getSpringForce)
+                .def("setFriction", &CameraBehaviorThirdPersonOcclusionComponent::setFriction)
+                .def("getFriction", &CameraBehaviorThirdPersonOcclusionComponent::getFriction)
+                .def("setSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::setSpringLength)
+                .def("getSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::getSpringLength)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the camera offset position, it should be away from the game object.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "Vector3 getOffsetPosition()", "Gets the offset position, the camera is away from the game object.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setLookAtOffset(Vector3 lookAtOffset)", "Sets the camera look at game object offset.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "Vector3 getLookAtOffset()", "Gets the camera look at game object offset.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setSpringForce(float springForce)",
+            "Sets the camera spring force, that is, when the game object is rotated the camera is moved to the same direction but with a spring effect.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getSpringForce()", "Gets the camera spring force.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setFriction(float friction)", "Sets the camera friction during movement.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getFriction()", "Gets the camera friction during movement.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setSpringLength(float springLength)", "Sets the camera spring length during movement.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getSpringLength()", "Gets the camera spring length during movement.");
+
+        gameObjectClass.def("getCameraBehaviorThirdPersonOcclusionComponentFromName", &getCameraBehaviorThirdPersonOcclusionComponentFromName);
+        gameObjectClass.def("getCameraBehaviorThirdPersonOcclusionComponent", (CameraBehaviorThirdPersonOcclusionComponent * (*)(GameObject*)) & getCameraBehaviorThirdPersonOcclusionComponent);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorThirdPersonOcclusionComponent getCameraBehaviorThirdPersonOcclusionComponent()", "Gets the component. This can be used if the game object this component just once.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorThirdPersonOcclusionComponent getCameraBehaviorThirdPersonOcclusionComponentFromName(String name)", "Gets the component from name.");
+
+        gameObjectControllerClass.def("castCameraBehaviorThirdPersonOcclusionComponent", &GameObjectController::cast<CameraBehaviorThirdPersonOcclusionComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CameraBehaviorThirdPersonOcclusionComponent castCameraBehaviorThirdPersonOcclusionComponent(CameraBehaviorThirdPersonOcclusionComponent other)",
             "Casts an incoming type from function for lua auto completion.");
     }
 

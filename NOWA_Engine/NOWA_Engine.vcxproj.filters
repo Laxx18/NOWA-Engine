@@ -678,6 +678,12 @@
       <Filter>gameobject</Filter>
     </ClInclude>
     <ClInclude Include="RenderQueueEnums.h" />
+    <ClInclude Include="camera\ThirdPersonOcclusionCamera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\LockFreeMailbox.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1241,6 +1247,9 @@
     </ClCompile>
     <ClCompile Include="gameobject\WindComponent.cpp">
       <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\ThirdPersonOcclusionCamera.cpp">
+      <Filter>camera</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

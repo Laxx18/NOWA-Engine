@@ -1202,6 +1202,15 @@ namespace NOWA
 				{
 					nodesXML->append_node(nodeXML);
 				}
+				else
+				{
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: Could not export node and gameobject because not type has been found for: " + ogreNode->getName() 
+						+ ". Are you using a component which has no item? If yes, implement bool isProcedural() and return true! And set in the .scene file for the item: meshFile=''Procedural.mesh''");
+                    throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE,
+                        "[DotSceneExportModule] Error: Could not export node and gameobject because not type has been found for: " + ogreNode->getName() +
+                            +". Are you using a component which has no item? If yes, implement bool isProcedural() and return true! And set in the .scene file for the item: meshFile=''Procedural.mesh''\n",
+                        "NOWA");
+				}
 			}
 		}
 #if 0

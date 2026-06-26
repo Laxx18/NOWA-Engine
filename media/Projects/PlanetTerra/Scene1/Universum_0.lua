@@ -88,6 +88,8 @@ Universum_0["connect"] = function(gameObject)
     
     local fadeWindowComponent = universum_0:getMyGUIFadeAlphaControllerComponent();
     local landStartButton     = universum_0:getMyGUIButtonComponentFromName("LandStartButton");
+    
+    local cannotLandText     = universum_0:getMyGUITextComponentFromName("CannotLandText");
  
     -- Button toggles between Land and Start (takeoff).
     landStartButton:reactOnMouseButtonClick(function()
@@ -125,10 +127,19 @@ Universum_0["connect"] = function(gameObject)
             fadeWindowComponent:setActivated(true);
         end
     end)
+    
+     universumComp:reactOnCannotLand(function(planetGO, shipGO)
+        cannotLandText:setActivated(true);
+        
+        log("[Universum] reactOnCannotLand fired");
+    end)
+    
+    
  
     -- Fired when ship is close enough to land (within landingAltitudeThreshold).
     -- Show "Land" button here, or auto-trigger for testing.
-    universumComp:reactOnLanding(function(bodyGO, shipGO)
+    universumComp:reactOnLanding(function(planetGO, shipGO)
+        cannotLandText:setActivated(false);
         if fadeWindowComponent ~= nil then
             fadeWindowComponent:setAlpha(1);
             fadeWindowComponent:setActivated(true);
@@ -138,7 +149,7 @@ Universum_0["connect"] = function(gameObject)
     end)
  
     -- Fired when autopilot has fully settled the ship.
-    universumComp:reactOnLanded(function(bodyGO, shipGO)
+    universumComp:reactOnLanded(function(planetGO, shipGO)
         log("[Universum] reactOnLanded fired -- spawning player");
         activatePlayer();
         fadeWindowComponent:setAlpha(0);

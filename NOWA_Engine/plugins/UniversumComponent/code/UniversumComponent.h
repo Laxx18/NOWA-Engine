@@ -258,6 +258,15 @@ namespace NOWA
         virtual void update(Ogre::Real dt, bool notSimulating) override;
         virtual void actualizeValue(Variant* attribute) override;
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see GameObjectComponent::isProcedural
+         */
+        virtual bool isProcedural(void) const override
+        {
+            return true;
+        }
+
         virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         static bool canStaticAddComponent(GameObject* gameObject);
@@ -413,6 +422,10 @@ namespace NOWA
         void requestLanding(void);
 
         void reactOnLanding(luabind::object closureFunction);
+
+        void reactOnCannotLand(luabind::object closureFunction);
+
+        void callCannotLandFunction(unsigned long bodyId, unsigned long shipId);
 
         void callLandingFunction(unsigned long bodyId, unsigned long shipId);
 
@@ -584,7 +597,7 @@ namespace NOWA
 
         LandingState getLandingState(void) const;
 
-        bool findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, GameObjectPtr shipGo, Ogre::Vector3& outTarget);
+        void findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, bool& outCanLand, float& outSurfaceHeight);
 
         void reset(void);
     private:
@@ -644,6 +657,7 @@ namespace NOWA
         luabind::object planetEnteredClosureFunction;
         luabind::object planetLeftClosureFunction;
         luabind::object universeGeneratedClosureFunction;
+        luabind::object cannotLandFunction; 
         luabind::object landingClosureFunction;
         luabind::object landedClosureFunction;
         // Attached to each planet/moon's AreaOfInterestComponent at generateUniverse time.

@@ -450,47 +450,47 @@ namespace NOWA
 		return q;
     }
 
-    //Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
-    //{
-    //    // Compute ship's current world forward using the mesh's default direction.
-    //    Ogre::Vector3 worldFwd = currentOrient * defaultDirection;
+    Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
+    {
+        // Compute ship's current world forward using the mesh's default direction.
+        Ogre::Vector3 worldFwd = currentOrient * defaultDirection;
 
-    //    // Project onto the surface plane to get the horizontal heading.
-    //    Ogre::Vector3 fwdH = worldFwd - worldFwd.dotProduct(surfaceNormal) * surfaceNormal;
-    //    if (fwdH.squaredLength() < 0.001f)
-    //    {
-    //        // Ship is pointing straight into or away from the planet.
-    //        // Fall back to ship's right axis instead.
-    //        Ogre::Vector3 worldRight = currentOrient * Ogre::Vector3::UNIT_X;
-    //        fwdH = worldRight - worldRight.dotProduct(surfaceNormal) * surfaceNormal;
-    //        if (fwdH.squaredLength() < 0.001f)
-    //        {
-    //            // Last resort: any direction perpendicular to the normal.
-    //            fwdH = surfaceNormal.perpendicular();
-    //        }
-    //    }
-    //    fwdH.normalise();
+        // Project onto the surface plane to get the horizontal heading.
+        Ogre::Vector3 fwdH = worldFwd - worldFwd.dotProduct(surfaceNormal) * surfaceNormal;
+        if (fwdH.squaredLength() < 0.001f)
+        {
+            // Ship is pointing straight into or away from the planet.
+            // Fall back to ship's right axis instead.
+            Ogre::Vector3 worldRight = currentOrient * Ogre::Vector3::UNIT_X;
+            fwdH = worldRight - worldRight.dotProduct(surfaceNormal) * surfaceNormal;
+            if (fwdH.squaredLength() < 0.001f)
+            {
+                // Last resort: any direction perpendicular to the normal.
+                fwdH = surfaceNormal.perpendicular();
+            }
+        }
+        fwdH.normalise();
 
-    //    // R1: rotate local +Y to align with surfaceNormal.
-    //    // getRotationTo() handles all edge cases (parallel / anti-parallel vectors) internally.
-    //    Ogre::Quaternion R1 = Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
+        // R1: rotate local +Y to align with surfaceNormal.
+        // getRotationTo() handles all edge cases (parallel / anti-parallel vectors) internally.
+        Ogre::Quaternion R1 = Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
 
-    //    // After R1 the default forward direction lands at:
-    //    Ogre::Vector3 rotatedFwd = R1 * defaultDirection;
-    //    Ogre::Vector3 rotatedFwdH = rotatedFwd - rotatedFwd.dotProduct(surfaceNormal) * surfaceNormal;
-    //    if (rotatedFwdH.squaredLength() < 0.001f)
-    //    {
-    //        // Forward happens to be perfectly vertical after R1 -- no twist needed.
-    //        return R1;
-    //    }
-    //    rotatedFwdH.normalise();
+        // After R1 the default forward direction lands at:
+        Ogre::Vector3 rotatedFwd = R1 * defaultDirection;
+        Ogre::Vector3 rotatedFwdH = rotatedFwd - rotatedFwd.dotProduct(surfaceNormal) * surfaceNormal;
+        if (rotatedFwdH.squaredLength() < 0.001f)
+        {
+            // Forward happens to be perfectly vertical after R1 -- no twist needed.
+            return R1;
+        }
+        rotatedFwdH.normalise();
 
-    //    // R2: twist around surfaceNormal so the forward heading matches fwdH.
-    //    Ogre::Quaternion R2 = rotatedFwdH.getRotationTo(fwdH);
+        // R2: twist around surfaceNormal so the forward heading matches fwdH.
+        Ogre::Quaternion R2 = rotatedFwdH.getRotationTo(fwdH);
 
-    //    // Combined orientation: align up first, then twist to correct heading.
-    //    return R2 * R1;
-    //}
+        // Combined orientation: align up first, then twist to correct heading.
+        return R2 * R1;
+    }
 
 	//Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
  //   {
@@ -580,65 +580,127 @@ namespace NOWA
  //       return Ogre::Quaternion(m);
  //   }
 
-    Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
-    {
-        //// Align local Y (ship up) with the outward surface normal.
-        //// Does not depend on currentOrient so there is no feedback loop and no jitter.
-        //return Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
+  //  Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
+  //  {
+  //      // Align local Y (ship up) with the outward surface normal.
+  //      // Does not depend on currentOrient so there is no feedback loop and no jitter.
+  //      return Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
 
-		// surfaceNormal: OUTWARD from planet centre (= "up" on the surface).
-        // We build a stable frame that aligns local Y with outwardUp while
-        // preserving the ship's current forward heading projected onto the surface.
-        const Ogre::Vector3 outwardUp = surfaceNormal.normalisedCopy();
+		//// surfaceNormal: OUTWARD from planet centre (= "up" on the surface).
+  //      // We build a stable frame that aligns local Y with outwardUp while
+  //      // preserving the ship's current forward heading projected onto the surface.
+  //      const Ogre::Vector3 outwardUp = surfaceNormal.normalisedCopy();
 
-        // Current world-space forward of the ship.
-        Ogre::Vector3 shipForward = currentOrient * defaultDirection;
+  //      // Current world-space forward of the ship.
+  //      Ogre::Vector3 shipForward = currentOrient * defaultDirection;
 
-        // Project onto surface tangent plane.
-        shipForward = shipForward - shipForward.dotProduct(outwardUp) * outwardUp;
+  //      // Project onto surface tangent plane.
+  //      shipForward = shipForward - shipForward.dotProduct(outwardUp) * outwardUp;
 
-        if (shipForward.squaredLength() < 1e-4f)
-        {
-            // Ship pointing straight at/away from planet: pick a stable fallback.
-            Ogre::Vector3 worldRef = (Ogre::Math::Abs(outwardUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
-            shipForward = worldRef - worldRef.dotProduct(outwardUp) * outwardUp;
-        }
-        shipForward.normalise();
+  //      if (shipForward.squaredLength() < 1e-4f)
+  //      {
+  //          // Ship pointing straight at/away from planet: pick a stable fallback.
+  //          Ogre::Vector3 worldRef = (Ogre::Math::Abs(outwardUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
+  //          shipForward = worldRef - worldRef.dotProduct(outwardUp) * outwardUp;
+  //      }
+  //      shipForward.normalise();
 
-        // right = forward x up, then recompute clean forward.
-        Ogre::Vector3 right = shipForward.crossProduct(outwardUp);
-        right.normalise();
-        Ogre::Vector3 cleanForward = outwardUp.crossProduct(right);
-        cleanForward.normalise();
+  //      // right = forward x up, then recompute clean forward.
+  //      Ogre::Vector3 right = shipForward.crossProduct(outwardUp);
+  //      right.normalise();
+  //      Ogre::Vector3 cleanForward = outwardUp.crossProduct(right);
+  //      cleanForward.normalise();
 
-        // Place axes into the right matrix columns for the ship's defaultDirection.
-        // Col0=X, Col1=Y, Col2=Z. Local Y is always outwardUp.
-        Ogre::Vector3 axisX, axisY, axisZ;
-        axisY = outwardUp;
+  //      // Place axes into the right matrix columns for the ship's defaultDirection.
+  //      // Col0=X, Col1=Y, Col2=Z. Local Y is always outwardUp.
+  //      Ogre::Vector3 axisX, axisY, axisZ;
+  //      axisY = outwardUp;
 
-        const float dotZ = defaultDirection.dotProduct(Ogre::Vector3::UNIT_Z);
-        const float dotX = defaultDirection.dotProduct(Ogre::Vector3::UNIT_X);
+  //      const float dotZ = defaultDirection.dotProduct(Ogre::Vector3::UNIT_Z);
+  //      const float dotX = defaultDirection.dotProduct(Ogre::Vector3::UNIT_X);
 
-        if (Ogre::Math::Abs(dotZ) >= Ogre::Math::Abs(dotX))
-        {
-            axisZ = cleanForward * Ogre::Math::Sign(dotZ);
-            axisX = right * Ogre::Math::Sign(dotZ);
-        }
-        else
-        {
-            axisX = cleanForward * Ogre::Math::Sign(dotX);
-            axisZ = -right * Ogre::Math::Sign(dotX);
-        }
+  //      if (Ogre::Math::Abs(dotZ) >= Ogre::Math::Abs(dotX))
+  //      {
+  //          axisZ = cleanForward * Ogre::Math::Sign(dotZ);
+  //          axisX = right * Ogre::Math::Sign(dotZ);
+  //      }
+  //      else
+  //      {
+  //          axisX = cleanForward * Ogre::Math::Sign(dotX);
+  //          axisZ = -right * Ogre::Math::Sign(dotX);
+  //      }
 
-        Ogre::Matrix3 mat;
-        mat.SetColumn(0, axisX);
-        mat.SetColumn(1, axisY);
-        mat.SetColumn(2, axisZ);
+  //      Ogre::Matrix3 mat;
+  //      mat.SetColumn(0, axisX);
+  //      mat.SetColumn(1, axisY);
+  //      mat.SetColumn(2, axisZ);
 
-        Ogre::Quaternion result;
-        result.FromRotationMatrix(mat);
-        return result;
-    }
+  //      Ogre::Quaternion result;
+  //      result.FromRotationMatrix(mat);
+  //      return result;
+  //  }
+
+    //Ogre::Quaternion MathHelper::computeLandingOrientation(const Ogre::Quaternion& currentOrient, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& defaultDirection)
+    //{
+    //    const Ogre::Vector3 outwardUp = surfaceNormal.normalisedCopy();
+
+    //    Ogre::Vector3 shipForward = currentOrient * defaultDirection;
+    //    shipForward = shipForward - shipForward.dotProduct(outwardUp) * outwardUp;
+
+    //    if (shipForward.squaredLength() < 1e-4f)
+    //    {
+    //        Ogre::Vector3 worldRef = (Ogre::Math::Abs(outwardUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
+    //        shipForward = worldRef - worldRef.dotProduct(outwardUp) * outwardUp;
+    //    }
+    //    shipForward.normalise();
+
+    //    const float dotZ = defaultDirection.dotProduct(Ogre::Vector3::UNIT_Z);
+    //    const float dotX = defaultDirection.dotProduct(Ogre::Vector3::UNIT_X);
+
+    //    Ogre::Vector3 axisX, axisY, axisZ;
+    //    axisY = outwardUp;
+
+    //    if (Ogre::Math::Abs(dotZ) >= Ogre::Math::Abs(dotX))
+    //    {
+    //        // Nose along Z: forward = shipForward, right = forward x up, reorthogonalise forward
+    //        axisZ = shipForward * Ogre::Math::Sign(dotZ);
+    //        axisX = axisZ.crossProduct(axisY); // right = forward x up
+    //        if (axisX.squaredLength() < 1e-6f)
+    //        {
+    //            return currentOrient;
+    //        }
+    //        axisX.normalise();
+    //        axisZ = axisY.crossProduct(axisX); // reorthogonalise: forward = up x right
+    //        axisZ.normalise();
+    //    }
+    //    else
+    //    {
+    //        // Nose along X: right = shipForward, forward = up x right, reorthogonalise right
+    //        axisX = shipForward * Ogre::Math::Sign(dotX);
+    //        axisZ = axisY.crossProduct(axisX); // forward = up x right
+    //        if (axisZ.squaredLength() < 1e-6f)
+    //        {
+    //            return currentOrient;
+    //        }
+    //        axisZ.normalise();
+    //        axisX = axisZ.crossProduct(axisY); // reorthogonalise: right = forward x up
+    //        axisX.normalise();
+    //    }
+
+    //    Ogre::Matrix3 mat;
+    //    mat[0][0] = axisX.x;
+    //    mat[0][1] = axisY.x;
+    //    mat[0][2] = axisZ.x;
+    //    mat[1][0] = axisX.y;
+    //    mat[1][1] = axisY.y;
+    //    mat[1][2] = axisZ.y;
+    //    mat[2][0] = axisX.z;
+    //    mat[2][1] = axisY.z;
+    //    mat[2][2] = axisZ.z;
+    //    Ogre::Quaternion result;
+    //    result.FromRotationMatrix(mat);
+    //    return result;
+    //}
 
 	Ogre::Radian MathHelper::getAngle(const Ogre::Vector3& dir1, const Ogre::Vector3& dir2, const Ogre::Vector3& norm, bool signedAngle)
 	{
@@ -2891,52 +2953,79 @@ namespace NOWA
         return success;
     }
 
-	/*
-	// http://www.flipcode.com/archives/Fast_Approximate_Distance_Functions.shtml
-	Distance approximation:
-	u32 approx_distance( s32 dx, s32 dy )
-	{
-	u32 min, max;
+    Ogre::Real MathHelper::getProbeCastClosestDistance(const Ogre::Vector3& origin, const Ogre::Vector3& direction, Ogre::Real rayLength, Ogre::Real probeRadius, Ogre::Camera* camera, Ogre::RaySceneQuery* raySceneQuery,
+        std::vector<Ogre::MovableObject*>* excludeObjects, std::vector<ProbeSampleResult>* outSamples)
+    {
+        if (nullptr == raySceneQuery || nullptr == camera || rayLength <= 0.0f)
+        {
+            return rayLength;
+        }
 
-	if ( dx < 0 ) dx = -dx;
-	if ( dy < 0 ) dy = -dy;
+        Ogre::Vector3 castDir = direction;
+        if (castDir.squaredLength() < 1e-8f)
+        {
+            return rayLength;
+        }
+        castDir.normalise();
 
-	if ( dx < dy )
-	{
-	min = dx;
-	max = dy;
-	} else {
-	min = dy;
-	max = dx;
-	}
+        Ogre::Real closestDistance = rayLength;
 
-	// coefficients equivalent to ( 123/128 * max ) and ( 51/128 * min )
-	return ((( max << 8 ) + ( max << 3 ) - ( max << 4 ) - ( max << 1 ) +
-	( min << 7 ) - ( min << 5 ) + ( min << 3 ) - ( min << 1 )) >> 8 );
-	}
-	*/
+        auto sampleOneRay = [&](const Ogre::Vector3& sampleOrigin)
+        {
+            Ogre::Ray castRay(sampleOrigin, castDir);
+            raySceneQuery->setRay(castRay);
 
-	Ogre::Aabb MathHelper::getWorldAABB(Ogre::SceneNode* sceneNode)
-	{
-		Ogre::Aabb aabb;
+            Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
+            size_t hitObject = 0;
+            Ogre::Real hitDistance = 0.0f;
+            Ogre::Vector3 hitNormal = Ogre::Vector3::UNIT_Y;
 
-		// merge with attached objects
-		for (size_t i = 0; i < sceneNode->numAttachedObjects(); ++i)
-		{
-			Ogre::MovableObject* movableObject = sceneNode->getAttachedObject(i);
-			// Attention: is that correct with Updated()?
-			aabb.merge(movableObject->getWorldAabbUpdated());
-		}
+            this->getRaycastFromPoint(raySceneQuery, camera, hitPoint, hitObject, hitDistance, hitNormal, excludeObjects);
 
-		// merge with child nodes
-		for (size_t i = 0; i < sceneNode->numChildren(); ++i)
-		{
-			Ogre::SceneNode* childSceneNode = static_cast<Ogre::SceneNode*>(sceneNode->getChild(i));
-			aabb.merge(getWorldAABB(childSceneNode));
-		}
+            const bool didHit = (hitPoint != Ogre::Vector3::ZERO && hitDistance > 0.0f);
 
-		return aabb;
-	}
+            if (true == didHit && hitDistance < closestDistance)
+            {
+                closestDistance = hitDistance;
+            }
+
+            if (nullptr != outSamples)
+            {
+                ProbeSampleResult sample;
+                sample.hit = didHit;
+                sample.hitPoint = hitPoint;
+                sample.hitDistance = hitDistance;
+                sample.hitObject = reinterpret_cast<Ogre::MovableObject*>(hitObject);
+                outSamples->push_back(sample);
+            }
+        };
+
+        if (probeRadius <= 0.0f)
+        {
+            sampleOneRay(origin);
+            return closestDistance;
+        }
+
+        // 5-sample cluster: center + 4 offsets on two axes perpendicular to castDir,
+        // approximating a sphere-sweep so a volume with area (e.g. a camera lens),
+        // not just a single point, is accounted for.
+        Ogre::Vector3 up = Ogre::Vector3::UNIT_Y;
+        if (Ogre::Math::Abs(castDir.dotProduct(up)) > 0.95f)
+        {
+            up = Ogre::Vector3::UNIT_X;
+        }
+        Ogre::Vector3 right = castDir.crossProduct(up).normalisedCopy();
+        Ogre::Vector3 trueUp = right.crossProduct(castDir).normalisedCopy();
+
+        Ogre::Vector3 offsets[5] = {Ogre::Vector3::ZERO, right * probeRadius, -right * probeRadius, trueUp * probeRadius, -trueUp * probeRadius};
+
+        for (int i = 0; i < 5; ++i)
+        {
+            sampleOneRay(origin + offsets[i]);
+        }
+
+        return closestDistance;
+    }
 
 	Ogre::Real MathHelper::mapValue(Ogre::Real valueToMap, Ogre::Real targetMin, Ogre::Real targetMax)
 	{

@@ -258,6 +258,7 @@ namespace NOWA
 		this->componentFactory.registerClass<CameraBehaviorBaseComponent>(CameraBehaviorBaseComponent::getStaticClassId(), CameraBehaviorBaseComponent::getStaticClassName());
 		this->componentFactory.registerClass<CameraBehaviorFirstPersonComponent>(CameraBehaviorFirstPersonComponent::getStaticClassId(), CameraBehaviorFirstPersonComponent::getStaticClassName());
 		this->componentFactory.registerClass<CameraBehaviorThirdPersonComponent>(CameraBehaviorThirdPersonComponent::getStaticClassId(), CameraBehaviorThirdPersonComponent::getStaticClassName());
+        this->componentFactory.registerClass<CameraBehaviorThirdPersonOcclusionComponent>(CameraBehaviorThirdPersonOcclusionComponent::getStaticClassId(), CameraBehaviorThirdPersonOcclusionComponent::getStaticClassName());
 		this->componentFactory.registerClass<CameraBehaviorFollow2DComponent>(CameraBehaviorFollow2DComponent::getStaticClassId(), CameraBehaviorFollow2DComponent::getStaticClassName());
 		this->componentFactory.registerClass<CameraBehaviorZoomComponent>(CameraBehaviorZoomComponent::getStaticClassId(), CameraBehaviorZoomComponent::getStaticClassName());
 

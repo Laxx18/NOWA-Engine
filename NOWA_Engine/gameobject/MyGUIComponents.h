@@ -279,6 +279,7 @@ namespace NOWA
 		bool createWidgetInParent;
 		bool oldActivated;
 		bool isSimulating;
+        bool bInitiallyCalled;
 		unsigned long priorId;
 		Ogre::Vector4 oldCoordinate;
         bool bIsCloning;

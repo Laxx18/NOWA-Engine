@@ -2207,8 +2207,6 @@ namespace NOWA
 
 	void WalkingStateJumpNRun::update(GameObject* player, Ogre::Real dt)
     {
-
-
         this->hasInputDevice = true;
 
         if (nullptr == this->playerController->getInputDeviceComponent() || true == this->playerController->getInputDeviceComponent()->isDeviceLocked())
@@ -2862,6 +2860,11 @@ namespace NOWA
         const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
         if (nullptr == this->playerController->getPhysicsComponent())
+        {
+            return;
+        }
+
+        if (nullptr == this->playerController->getInputDeviceComponent() || true == this->playerController->getInputDeviceComponent()->isDeviceLocked())
         {
             return;
         }

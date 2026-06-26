@@ -2962,7 +2962,7 @@ namespace NOWA
         }
 
         // bigger planet take the game objects instead the moon, need to debug what the radius is
-#if 1
+#if 0
         if (false == this->gravitySourceCategory->getString().empty())
         {
             auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->gravitySourceCategory->getString());
@@ -3030,13 +3030,6 @@ namespace NOWA
             this->gravityUpdated.clear();
         }
 #else
-        body->getMassMatrix(mass, inertia);
-
-        if (false == this->hasAttraction)
-        {
-            wholeForce *= mass;
-        }
-
         if (false == this->gravitySourceCategory->getString().empty())
         {
             auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->gravitySourceCategory->getString());

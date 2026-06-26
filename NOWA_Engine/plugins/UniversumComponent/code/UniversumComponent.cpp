@@ -17,6 +17,7 @@
 #include "gameobject/PhysicsActiveKinematicComponent.h"
 #include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/PhysicsComponent.h"
+#include "gameobject/CameraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
 #include "modules/LuaScriptApi.h"
@@ -959,31 +960,23 @@ namespace NOWA
         {
             return;
         }
+
         const unsigned long playerGOId = this->playerGameObjectId->getULong();
         if (0ul == playerGOId)
         {
             return;
         }
+
         GameObjectPtr shipGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(playerGOId);
         if (nullptr == shipGo)
         {
             return;
         }
 
-        // Keep landingBodyCentre in sync with the paused body GO
-        if (0ul != this->landedOnBodyId)
-        {
-            GameObjectPtr bodyGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->landedOnBodyId);
-            if (nullptr != bodyGo)
-            {
-                this->landingBodyCentre = bodyGo->getPosition();
-            }
-        }
-
         Ogre::Vector3 shipPos = shipGo->getPosition();
-        Ogre::Vector3 toCenter = this->landingBodyCentre - shipPos;
+        Ogre::Vector3 toCenter = shipPos - this->landingBodyCentre;
         float distFromCenter = toCenter.length();
-        Ogre::Vector3 surfaceNormal = (distFromCenter > 1e-4f) ? (-toCenter / distFromCenter) : Ogre::Vector3::UNIT_Y;
+        Ogre::Vector3 surfaceNormal = (distFromCenter > 1e-4f) ? toCenter / distFromCenter : Ogre::Vector3::UNIT_Y;
         float distToSurface = distFromCenter - this->landingBodyRadius;
         Ogre::Quaternion currentOrient = shipGo->getOrientation();
         Ogre::Quaternion targetOrient = MathHelper::getInstance()->computeLandingOrientation(currentOrient, surfaceNormal, shipGo->getDefaultDirection());
@@ -1007,58 +1000,59 @@ namespace NOWA
         {
             const float settleHeight = 1.0f;
 
-            // Resolve flat landing target once at the start of the descent
+            // Resolve landing clearance once.
             if (false == this->resolvedLandingTargetValid)
             {
-                Ogre::Vector3 flatSpot;
-                if (this->findFlatLandingSpot(shipPos, surfaceNormal, this->landingBodyCentre, this->landingBodyRadius, shipGo, flatSpot))
-                {
-                    Ogre::Vector3 flatNormal = (flatSpot - this->landingBodyCentre).normalisedCopy();
-                    float flatSpotDistFromCentre = (flatSpot - this->landingBodyCentre).length();
-                    this->resolvedLandingTarget = flatSpot + flatNormal * settleHeight;
-                    this->resolvedLandingTargetValid = true;
+                bool canLand = false;
+                float surfaceHeight = this->landingBodyRadius;
+                this->findFlatLandingSpot(shipPos, this->landingBodyCentre, this->landingBodyRadius, canLand, surfaceHeight);
 
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                        "[UniversumComponent] LANDING resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) + " flatSpot=" + Ogre::StringConverter::toString(flatSpot) + " flatSpotDistFromCentre=" +
-                            Ogre::StringConverter::toString(flatSpotDistFromCentre) + " bodyRadius=" + Ogre::StringConverter::toString(this->landingBodyRadius) + " bodyCentre=" + Ogre::StringConverter::toString(this->landingBodyCentre) +
-                            " shipPos=" + Ogre::StringConverter::toString(shipPos) + " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) + " distToSurface=" + Ogre::StringConverter::toString(distToSurface));
-                }
-                else
+                if (!canLand)
                 {
-                    this->resolvedLandingTarget = this->landingBodyCentre + surfaceNormal * (this->landingBodyRadius + settleHeight);
-                    this->resolvedLandingTargetValid = true;
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING fallback resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) +
-                                                                                           " bodyCentre=" + Ogre::StringConverter::toString(this->landingBodyCentre) + " bodyRadius=" + Ogre::StringConverter::toString(this->landingBodyRadius) +
-                                                                                           " surfaceNormal=" + Ogre::StringConverter::toString(surfaceNormal) + " shipPos=" + Ogre::StringConverter::toString(shipPos) +
-                                                                                           " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) + " distToSurface=" + Ogre::StringConverter::toString(distToSurface));
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING aborted: terrain too steep");
+                    this->callCannotLandFunction(this->landedOnBodyId, playerGOId);
+                    this->landingState = LandingState::APPROACHING;
+                    this->resolvedLandingTargetValid = false;
+                    this->setPlayerInputLock(false);
+                    this->landingInputLocked = false;
+                    return;
                 }
+
+                // Target is directly below the ship along the radial line at surface + settleHeight.
+                this->resolvedLandingTarget = this->landingBodyCentre + surfaceNormal * (surfaceHeight + settleHeight);
+                this->resolvedLandingTargetValid = true;
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) +
+                                                                                       " surfaceHeight=" + Ogre::StringConverter::toString(surfaceHeight) + " settleHeight=" + Ogre::StringConverter::toString(settleHeight));
             }
 
             Ogre::Vector3 toTarget = this->resolvedLandingTarget - shipPos;
             float distToTarget = toTarget.length();
 
-            Ogre::Vector3 targetNormal = (this->resolvedLandingTarget - this->landingBodyCentre).normalisedCopy();
-            Ogre::Quaternion targetOrientAtSpot = MathHelper::getInstance()->computeLandingOrientation(currentOrient, targetNormal, shipGo->getDefaultDirection());
-
-            // Check landing completion FIRST — before applying any velocity
-            const bool contactLanded = this->landingContactActive;
-            const bool distTargetLanded = (distToTarget <= settleHeight * 2.0f);
-
-            this->landingDebugTimer += dt;
-            if (this->landingDebugTimer >= 1.0f)
+            Ogre::Vector3 descentVelocity = Ogre::Vector3::ZERO;
+            if (distToTarget > 0.05f && distToSurface > settleHeight * 2.0f)
             {
-                this->landingDebugTimer = 0.0f;
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "[UniversumComponent] LANDING tick:"
-                    " shipPos=" +
-                        Ogre::StringConverter::toString(shipPos) + " resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) + " distToTarget=" + Ogre::StringConverter::toString(distToTarget) +
-                        " distToSurface=" + Ogre::StringConverter::toString(distToSurface) + " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) + " bodyRadius=" + Ogre::StringConverter::toString(this->landingBodyRadius) +
-                        " bodyCentre=" + Ogre::StringConverter::toString(this->landingBodyCentre) + " contactLanded=" + Ogre::StringConverter::toString(contactLanded) + " distTargetLanded=" + Ogre::StringConverter::toString(distTargetLanded));
+                const float maxDescentSpeed = 15.0f;
+                descentVelocity = toTarget.normalisedCopy() * std::min(distToTarget * 0.5f, maxDescentSpeed);
+            }
+            else
+            {
+                descentVelocity = -surfaceNormal * 2.0f;
             }
 
-            if (contactLanded || distTargetLanded)
+            this->applyShipMovement(shipGo, descentVelocity, targetOrient, 5.0f);
+
+            this->landingDebugTimer += dt;
+            if (this->landingDebugTimer >= 2.0f)
             {
-                this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrientAtSpot, 0.0f);
+                this->landingDebugTimer = 0.0f;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING tick: distToSurface=" + Ogre::StringConverter::toString(distToSurface) +
+                                                                                       " distToTarget=" + Ogre::StringConverter::toString(distToTarget) + " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
+            }
+
+            if (true == this->landingContactActive)
+            {
+                this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrient, 0.0f);
                 this->landingState = LandingState::LANDED;
                 this->landingDebugTimer = 0.0f;
                 this->landingContactActive = false;
@@ -1066,29 +1060,9 @@ namespace NOWA
                 this->setPlayerInputLock(false);
                 this->landingInputLocked = false;
                 this->callLandedFunction(this->landedOnBodyId, playerGOId);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDED on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId) + " shipPos=" + Ogre::StringConverter::toString(shipPos) +
-                                                                                       " resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) + " distToTarget=" + Ogre::StringConverter::toString(distToTarget) +
-                                                                                       " distToSurface=" + Ogre::StringConverter::toString(distToSurface) + " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) +
-                                                                                       " bodyRadius=" + Ogre::StringConverter::toString(this->landingBodyRadius) + " contact=" + Ogre::StringConverter::toString(contactLanded) +
-                                                                                       " distTarget=" + Ogre::StringConverter::toString(distTargetLanded));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Landed on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId));
                 return;
             }
-
-            // Apply descent velocity only when not yet at target
-            Ogre::Vector3 descentVelocity = Ogre::Vector3::ZERO;
-            if (distToTarget > 0.05f && distToTarget > settleHeight * 2.0f)
-            {
-                const float maxDescentSpeed = 30.0f;
-                const float minDescentSpeed = 5.0f;
-                float speed = std::max(minDescentSpeed, std::min(distToTarget * 0.8f, maxDescentSpeed));
-                descentVelocity = toTarget.normalisedCopy() * speed;
-            }
-            else
-            {
-                descentVelocity = -targetNormal * 2.0f;
-            }
-
-            this->applyShipMovement(shipGo, descentVelocity, targetOrientAtSpot, 5.0f);
             this->landingContactActive = false;
             return;
         }
@@ -1643,63 +1617,87 @@ namespace NOWA
         return this->landingState;
     }
 
-    bool UniversumComponent::findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& surfaceNormal, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, GameObjectPtr shipGo, Ogre::Vector3& outTarget)
+    void UniversumComponent::findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, bool& outCanLand, float& outSurfaceHeight)
     {
+        outCanLand = false;
+        outSurfaceHeight = bodyRadius;
+
         GameObjectPtr bodyGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->landedOnBodyId);
         if (nullptr == bodyGo)
         {
-            return false;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] No body GO found");
+            outCanLand = true; // no terrain data, just land
+            return;
         }
 
-        auto terraComp = NOWA::makeStrongPtr(bodyGo->getComponent<PlanetTerraComponent>());
-        if (nullptr == terraComp)
+        Ogre::Camera* camera = nullptr;
+        const unsigned long cameraGOId = this->cameraGameObjectId->getULong();
+        GameObjectPtr cameraGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraGameObjectId->getULong());
+        if (nullptr != cameraGo)
         {
-            return false;
-        }
-
-        const Ogre::Vector3 outwardDir = (shipPos - bodyCentre).normalisedCopy();
-
-        const float searchAngles[] = {20.0f, 35.0f, 60.0f};
-        const int numAngles = static_cast<int>(sizeof(searchAngles) / sizeof(searchAngles[0]));
-
-        Ogre::Vector3 bestWorldPos = Ogre::Vector3::ZERO;
-        Ogre::Vector3 bestWorldNormal = surfaceNormal;
-        bool found = false;
-
-        for (int ai = 0; ai < numAngles && false == found; ++ai)
-        {
-            found = terraComp->findFlatLandingVertex(outwardDir, searchAngles[ai], bestWorldPos, bestWorldNormal);
-            if (found)
+            auto cameraCompPtr = NOWA::makeStrongPtr(cameraGo->getComponent<CameraComponent>());
+            if (nullptr != cameraCompPtr)
             {
-                float distFromCentre = (bestWorldPos - bodyCentre).length();
-                if (distFromCentre < bodyRadius * 0.9f)
-                {
-                    // Vertex is inside the planet sphere — valley or transform issue.
-                    // Fall back to radial projection on the nominal sphere.
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] findFlatLandingSpot: vertex inside sphere "
-                                                                                       "(dist=" +
-                                                                                           Ogre::StringConverter::toString(distFromCentre) + " vs radius=" + Ogre::StringConverter::toString(bodyRadius) + "), using radial projection");
-                    bestWorldPos = bodyCentre + outwardDir * bodyRadius;
-                    bestWorldNormal = outwardDir;
-                }
-                else
-                {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] findFlatLandingSpot: vertex found at angle=" + Ogre::StringConverter::toString(searchAngles[ai]) +
-                                                                                           " pos=" + Ogre::StringConverter::toString(bestWorldPos) + " normal=" + Ogre::StringConverter::toString(bestWorldNormal));
-                }
+                camera = cameraCompPtr->getCamera();
             }
         }
 
-        if (false == found)
+        if (nullptr == camera)
         {
-            // Absolute fallback: radial projection onto nominal sphere.
-            bestWorldPos = bodyCentre + outwardDir * bodyRadius;
-            bestWorldNormal = outwardDir;
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] findFlatLandingSpot: no vertex in 60-deg cone, using radial projection");
+            return;
         }
 
-        outTarget = bestWorldPos;
-        return true; // always returns a valid position
+         // Radial direction: from planet centre outward through ship.
+        const Ogre::Vector3 outwardDir = (shipPos - bodyCentre).normalisedCopy();
+
+        // Cast a ray from well above the ship straight down toward planet centre.
+        // Ray origin is 2x radius out so it always starts above the surface.
+        const Ogre::Vector3 rayOrigin = bodyCentre + outwardDir * (bodyRadius * 2.0f);
+        const Ogre::Vector3 rayDir = -outwardDir; // toward planet centre
+
+        this->landingRayQuery->setRay(Ogre::Ray(rayOrigin, rayDir));
+       
+        Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
+        Ogre::MovableObject* hitObject = nullptr;
+        Ogre::Real closestDistance = 0.0f;
+        Ogre::Vector3 normal = Ogre::Vector3::UNIT_Y;
+
+        // Exclude the shadow object itself from the ray test so we hit the ground, not the preview
+        std::vector<Ogre::MovableObject*> excludeObjects;
+        excludeObjects.emplace_back(bodyGo->getMovableObject());
+
+        MathHelper::getInstance()->getRaycastFromPoint(this->landingRayQuery, camera, hitPoint, (size_t&)hitObject, closestDistance, normal, &excludeObjects);
+
+        if (0 == hitObject)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Raycast missed terrain, allowing land. rayOrigin=" + Ogre::StringConverter::toString(rayOrigin));
+            outCanLand = true;
+            outSurfaceHeight = bodyRadius;
+            return;
+        }
+
+        float hitDist = (hitPoint - bodyCentre).length();
+        outSurfaceHeight = hitDist;
+
+        // Slope = angle between surface normal and outward radial direction.
+        Ogre::Vector3 outwardNormal = -normal;
+        float slopeDot = outwardNormal.normalisedCopy().dotProduct(outwardDir);
+        float slopeAngleDeg = Ogre::Math::ACos(Ogre::Math::Clamp(slopeDot, -1.0f, 1.0f)).valueDegrees();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] rayOrigin=" + Ogre::StringConverter::toString(rayOrigin) + " hitPos=" + Ogre::StringConverter::toString(hitPoint) +
+                                                                               " hitNormal=" + Ogre::StringConverter::toString(normal) + " hitDist=" + Ogre::StringConverter::toString(hitDist) +
+                                                                               " slopeAngleDeg=" + Ogre::StringConverter::toString(slopeAngleDeg) + " bodyRadius=" + Ogre::StringConverter::toString(bodyRadius));
+
+        const float maxSlopeAngleDeg = 20.0f;
+        if (slopeAngleDeg > maxSlopeAngleDeg)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Too steep: " + Ogre::StringConverter::toString(slopeAngleDeg) + " deg > " + Ogre::StringConverter::toString(maxSlopeAngleDeg));
+            outCanLand = false;
+            return;
+        }
+
+        outCanLand = true;
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Flat enough: " + Ogre::StringConverter::toString(slopeAngleDeg) + " deg, surfaceHeight=" + Ogre::StringConverter::toString(outSurfaceHeight));
     }
 
     void UniversumComponent::pausePlanetOrbit(unsigned long planetGameObjectId, unsigned long gameObjectId)
@@ -2524,88 +2522,344 @@ namespace NOWA
         // 2=uint, 6=real, 7=string, 12=bool
         GameObjectComponent::writeXML(propertiesXML, doc);
 
-        auto writeAttr = [&](const char* type, const char* attrName, const Ogre::String& data)
-        {
-            xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", type));
-            propertyXML->append_attribute(doc.allocate_attribute("name", attrName));
-            propertyXML->append_attribute(doc.allocate_attribute("data", doc.allocate_string(data.c_str())));
-            propertiesXML->append_node(propertyXML);
-        };
+        xml_node<>* propertyXML = nullptr;
 
-        writeAttr("2", "Random Seed", XMLConverter::ConvertString(doc, this->randomSeed->getUInt()));
-        writeAttr("2", "Solar System Count", XMLConverter::ConvertString(doc, this->solarSystemCount->getUInt()));
-        writeAttr("6", "Solar System Distance Min", XMLConverter::ConvertString(doc, this->solarSystemDistanceMin->getReal()));
-        writeAttr("6", "Solar System Distance Max", XMLConverter::ConvertString(doc, this->solarSystemDistanceMax->getReal()));
-        writeAttr("2", "Planets Per System Min", XMLConverter::ConvertString(doc, this->planetsPerSystemMin->getUInt()));
-        writeAttr("2", "Planets Per System Max", XMLConverter::ConvertString(doc, this->planetsPerSystemMax->getUInt()));
-        writeAttr("12", "Use Moons", XMLConverter::ConvertString(doc, this->useMoons->getBool()));
-        writeAttr("2", "Moons Per Planet Min", XMLConverter::ConvertString(doc, this->moonsPerPlanetMin->getUInt()));
-        writeAttr("2", "Moons Per Planet Max", XMLConverter::ConvertString(doc, this->moonsPerPlanetMax->getUInt()));
-        writeAttr("12", "Use Motion", XMLConverter::ConvertString(doc, this->useMotion->getBool()));
-        writeAttr("12", "Use Ocean", XMLConverter::ConvertString(doc, this->useOcean->getBool()));
-        writeAttr("6", "Ocean Probability", XMLConverter::ConvertString(doc, this->oceanProbability->getReal()));
-        writeAttr("6", "Sun Radius", XMLConverter::ConvertString(doc, this->sunRadius->getReal()));
-        writeAttr("6", "Planet Radius Min", XMLConverter::ConvertString(doc, this->planetRadiusMin->getReal()));
-        writeAttr("6", "Planet Radius Max", XMLConverter::ConvertString(doc, this->planetRadiusMax->getReal()));
-        writeAttr("6", "Moon Radius", XMLConverter::ConvertString(doc, this->moonRadius->getReal()));
-        writeAttr("6", "Orbital Distance Min", XMLConverter::ConvertString(doc, this->orbitalDistanceMin->getReal()));
-        writeAttr("6", "Orbital Distance Max", XMLConverter::ConvertString(doc, this->orbitalDistanceMax->getReal()));
-        writeAttr("6", "Moon Orbital Distance Min", XMLConverter::ConvertString(doc, this->moonOrbitalDistanceMin->getReal()));
-        writeAttr("6", "Moon Orbital Distance Max", XMLConverter::ConvertString(doc, this->moonOrbitalDistanceMax->getReal()));
-        writeAttr("6", "Orbital Speed Min", XMLConverter::ConvertString(doc, this->orbitalSpeedMin->getReal()));
-        writeAttr("6", "Orbital Speed Max", XMLConverter::ConvertString(doc, this->orbitalSpeedMax->getReal()));
-        writeAttr("6", "Axial Speed Min", XMLConverter::ConvertString(doc, this->axialSpeedMin->getReal()));
-        writeAttr("6", "Axial Speed Max", XMLConverter::ConvertString(doc, this->axialSpeedMax->getReal()));
-        writeAttr("2", "Player GameObject Id", XMLConverter::ConvertString(doc, this->playerGameObjectId->getULong()));
-        writeAttr("2", "Camera GameObject Id", XMLConverter::ConvertString(doc, this->cameraGameObjectId->getULong()));
-        writeAttr("2", "Sun Light GameObject Id", XMLConverter::ConvertString(doc, this->sunLightGameObjectId->getULong()));
-        writeAttr("6", "Far Clip Space", XMLConverter::ConvertString(doc, this->farClipSpace->getReal()));
-        writeAttr("6", "Far Clip Surface", XMLConverter::ConvertString(doc, this->farClipSurface->getReal()));
-        writeAttr("6", "Far Clip Transition Speed", XMLConverter::ConvertString(doc, this->farClipTransitionSpeed->getReal()));
-        writeAttr("6", "Scale", XMLConverter::ConvertString(doc, this->scale->getReal()));
-        writeAttr("12", "Auto Pause Orbit On Surface", XMLConverter::ConvertString(doc, this->autoPauseOrbit->getBool()));
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Random Seed"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->randomSeed->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Solar System Count"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->solarSystemCount->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Solar System Distance Min"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->solarSystemDistanceMin->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Solar System Distance Max"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->solarSystemDistanceMax->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Planets Per System Min"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->planetsPerSystemMin->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Planets Per System Max"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->planetsPerSystemMax->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Use Moons"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useMoons->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Moons Per Planet Min"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->moonsPerPlanetMin->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Moons Per Planet Max"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->moonsPerPlanetMax->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Use Motion"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useMotion->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Use Ocean"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useOcean->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Ocean Probability"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->oceanProbability->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Sun Radius"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sunRadius->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Planet Radius Min"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->planetRadiusMin->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Planet Radius Max"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->planetRadiusMax->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Moon Radius"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->moonRadius->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Orbital Distance Min"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->orbitalDistanceMin->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Orbital Distance Max"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->orbitalDistanceMax->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Moon Orbital Distance Min"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->moonOrbitalDistanceMin->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Moon Orbital Distance Max"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->moonOrbitalDistanceMax->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Orbital Speed Min"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->orbitalSpeedMin->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Orbital Speed Max"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->orbitalSpeedMax->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Axial Speed Min"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->axialSpeedMin->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Axial Speed Max"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->axialSpeedMax->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Player GameObject Id"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->playerGameObjectId->getULong())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Camera GameObject Id"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cameraGameObjectId->getULong())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Sun Light GameObject Id"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sunLightGameObjectId->getULong())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Far Clip Space"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->farClipSpace->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Far Clip Surface"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->farClipSurface->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Far Clip Transition Speed"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->farClipTransitionSpeed->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Scale"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->scale->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Auto Pause Orbit On Surface"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->autoPauseOrbit->getBool())));
+        propertiesXML->append_node(propertyXML);
 
         // ---- Save solar systems so scene reload restores orbital motion --------
-        writeAttr("2", "Saved System Count", XMLConverter::ConvertString(doc, static_cast<unsigned int>(this->solarSystems.size())));
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Saved System Count"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, static_cast<unsigned int>(this->solarSystems.size()))));
+        propertiesXML->append_node(propertyXML);
 
         for (size_t si = 0u; si < this->solarSystems.size(); ++si)
         {
             const SolarSystem& sys = this->solarSystems[si];
             const Ogre::String sp = "Sys" + Ogre::StringConverter::toString(static_cast<unsigned int>(si)) + "_";
 
-            writeAttr("2", doc.allocate_string((sp + "SunId").c_str()), XMLConverter::ConvertString(doc, sys.sunId));
-            writeAttr("9", doc.allocate_string((sp + "LightColor").c_str()), XMLConverter::ConvertString(doc, sys.sunLightColor));
-            writeAttr("6", doc.allocate_string((sp + "LightPower").c_str()), XMLConverter::ConvertString(doc, sys.sunLightPower));
-            writeAttr("2", doc.allocate_string((sp + "PlanetCount").c_str()), XMLConverter::ConvertString(doc, static_cast<unsigned int>(sys.planets.size())));
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((sp + "SunId").c_str())));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, sys.sunId)));
+            propertiesXML->append_node(propertyXML);
+
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((sp + "LightColor").c_str())));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, sys.sunLightColor)));
+            propertiesXML->append_node(propertyXML);
+
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((sp + "LightPower").c_str())));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, sys.sunLightPower)));
+            propertiesXML->append_node(propertyXML);
+
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((sp + "PlanetCount").c_str())));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, static_cast<unsigned int>(sys.planets.size()))));
+            propertiesXML->append_node(propertyXML);
 
             for (size_t pi = 0u; pi < sys.planets.size(); ++pi)
             {
                 const OrbitalBody& p = sys.planets[pi];
                 const Ogre::String pp = sp + "P" + Ogre::StringConverter::toString(static_cast<unsigned int>(pi)) + "_";
-                writeAttr("2", doc.allocate_string((pp + "Id").c_str()), XMLConverter::ConvertString(doc, p.gameObjectId));
-                writeAttr("6", doc.allocate_string((pp + "OrbR").c_str()), XMLConverter::ConvertString(doc, p.orbitalRadius));
-                writeAttr("6", doc.allocate_string((pp + "OrbS").c_str()), XMLConverter::ConvertString(doc, p.orbitalSpeed));
-                writeAttr("6", doc.allocate_string((pp + "OrbT").c_str()), XMLConverter::ConvertString(doc, p.orbitalTilt));
-                writeAttr("6", doc.allocate_string((pp + "Phase").c_str()), XMLConverter::ConvertString(doc, p.phaseOffset));
-                writeAttr("6", doc.allocate_string((pp + "AxS").c_str()), XMLConverter::ConvertString(doc, p.axialSpeed));
-                writeAttr("6", doc.allocate_string((pp + "Grav").c_str()), XMLConverter::ConvertString(doc, p.gravityStrength));
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "Id").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.gameObjectId)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "OrbR").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.orbitalRadius)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "OrbS").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.orbitalSpeed)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "OrbT").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.orbitalTilt)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "Phase").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.phaseOffset)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "AxS").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.axialSpeed)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "Grav").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.gravityStrength)));
+                propertiesXML->append_node(propertyXML);
             }
 
-            writeAttr("2", doc.allocate_string((sp + "MoonCount").c_str()), XMLConverter::ConvertString(doc, static_cast<unsigned int>(sys.moons.size())));
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((sp + "MoonCount").c_str())));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, static_cast<unsigned int>(sys.moons.size()))));
+            propertiesXML->append_node(propertyXML);
 
             for (size_t mi = 0u; mi < sys.moons.size(); ++mi)
             {
                 const Ogre::String mp = sp + "M" + Ogre::StringConverter::toString(static_cast<unsigned int>(mi)) + "_";
-                writeAttr("2", doc.allocate_string((mp + "Parent").c_str()), XMLConverter::ConvertString(doc, static_cast<unsigned int>(sys.moons[mi].first)));
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "Parent").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, static_cast<unsigned int>(sys.moons[mi].first))));
+                propertiesXML->append_node(propertyXML);
+
                 const OrbitalBody& m = sys.moons[mi].second;
-                writeAttr("2", doc.allocate_string((mp + "Id").c_str()), XMLConverter::ConvertString(doc, m.gameObjectId));
-                writeAttr("6", doc.allocate_string((mp + "OrbR").c_str()), XMLConverter::ConvertString(doc, m.orbitalRadius));
-                writeAttr("6", doc.allocate_string((mp + "OrbS").c_str()), XMLConverter::ConvertString(doc, m.orbitalSpeed));
-                writeAttr("6", doc.allocate_string((mp + "OrbT").c_str()), XMLConverter::ConvertString(doc, m.orbitalTilt));
-                writeAttr("6", doc.allocate_string((mp + "Phase").c_str()), XMLConverter::ConvertString(doc, m.phaseOffset));
-                writeAttr("6", doc.allocate_string((mp + "AxS").c_str()), XMLConverter::ConvertString(doc, m.axialSpeed));
-                writeAttr("6", doc.allocate_string((mp + "Grav").c_str()), XMLConverter::ConvertString(doc, m.gravityStrength));
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "Id").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.gameObjectId)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "OrbR").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.orbitalRadius)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "OrbS").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.orbitalSpeed)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "OrbT").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.orbitalTilt)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "Phase").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.phaseOffset)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "AxS").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.axialSpeed)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "Grav").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.gravityStrength)));
+                propertiesXML->append_node(propertyXML);
             }
         }
 
@@ -2619,7 +2873,12 @@ namespace NOWA
             }
             ownedIds += Ogre::StringConverter::toString(this->ownedGameObjectIds[i]);
         }
-        writeAttr("7", "Owned GO Ids", ownedIds);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Owned GO Ids"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", doc.allocate_string(ownedIds.c_str())));
+        propertiesXML->append_node(propertyXML);
     }
 
     // =========================================================================
@@ -4122,9 +4381,55 @@ namespace NOWA
         this->landingClosureFunction = closureFunction;
     }
 
+    void UniversumComponent::reactOnCannotLand(luabind::object closureFunction)
+    {
+        this->cannotLandFunction = closureFunction;
+    }
+
     void UniversumComponent::reactOnLanded(luabind::object closureFunction)
     {
         this->landedClosureFunction = closureFunction;
+    }
+
+    void UniversumComponent::callCannotLandFunction(unsigned long bodyId, unsigned long shipId)
+    {
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->planetEnteredClosureFunction.is_valid())
+        {
+            return;
+        }
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, bodyId, shipId]()
+        {
+            try
+            {
+                auto gameObjectController = AppStateManager::getSingletonPtr()->getGameObjectController();
+
+                auto planetGameObjectPtr = gameObjectController->getGameObjectFromId(bodyId);
+                auto enteringGameObjectPtr = gameObjectController->getGameObjectFromId(shipId);
+
+                GameObject* planetGameObject = nullptr;
+                GameObject* enteringGameObject = nullptr;
+
+                if (nullptr != planetGameObjectPtr)
+                {
+                    planetGameObject = planetGameObjectPtr.get();
+                }
+
+                if (nullptr != enteringGameObjectPtr)
+                {
+                    enteringGameObject = enteringGameObjectPtr.get();
+                }
+
+                luabind::call_function<void>(this->cannotLandFunction, planetGameObject, enteringGameObject);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] Lua error in reactOnCannotLand: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     void UniversumComponent::callPlanetEnteredFunction(unsigned long planetId, unsigned long enteringGoId)
@@ -4315,6 +4620,7 @@ namespace NOWA
                 .def("getAutoPauseOrbit", &UniversumComponent::getAutoPauseOrbit)
                 .def("reactOnPlanetEntered", &UniversumComponent::reactOnPlanetEntered)
                 .def("reactOnPlanetLeft", &UniversumComponent::reactOnPlanetLeft)
+                .def("reactOnCannotLand", &UniversumComponent::reactOnCannotLand)
                 .def("reactOnLanding", &UniversumComponent::reactOnLanding)
                 .def("reactOnLanded", &UniversumComponent::reactOnLanded)
                 .def("requestLanding", &UniversumComponent::requestLanding)
@@ -4348,13 +4654,15 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnPlanetLeft(func closure(planetGameObject, enteredGameObject))",
             "Registers a Lua closure called when any object leaves a planet or moon atmosphere zone. "
             "Receives the planet GameObject.");
-        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnLanding(func closure(bodyGameObject, shipGameObject))",
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnCannotLand(func closure(planetGameObject, shipGameObject))",
+            "Registers a closure called once when the cannot land because gradient is to steep etc.");
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnLanding(func closure(planetGameObject, shipGameObject))",
             "Registers a closure called once when the ship is close enough to land "
             "(within landingThreshold, default 30 units above the surface). "
             "Use this to show your Land button. The callback does not lock input. "
             "Call universumComp:requestLanding() from the button handler to start autopilot.");
 
-        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnLanded(func closure(bodyGameObject, shipGameObject))", "Registers a closure called once when the ship landed.");
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnLanded(func closure(planetGameObject, shipGameObject))", "Registers a closure called once when the ship landed.");
 
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void requestLanding()",
             "Starts the landing autopilot. "

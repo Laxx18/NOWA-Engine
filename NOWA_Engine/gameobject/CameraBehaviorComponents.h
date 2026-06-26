@@ -492,6 +492,143 @@ namespace NOWA
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	/**
+     * @see CameraBehaviorThirdPersonComponent - structurally identical, wraps
+     *      ThirdPersonOcclusionCamera instead of ThirdPersonCamera and exposes the
+     *      additional occlusion-cast tuning parameters as Variants. Does not inherit
+     *      from CameraBehaviorThirdPersonComponent because its Variant members are
+     *      private there, not protected - if that's changed, this can collapse into
+     *      a small override instead of duplicating the shared properties.
+     */
+    class EXPORTED CameraBehaviorThirdPersonOcclusionComponent : public CameraBehaviorComponent
+    {
+    public:
+        typedef boost::shared_ptr<CameraBehaviorThirdPersonOcclusionComponent> CameraBehaviorThirdPersonOcclusionCompPtr;
+
+    public:
+        CameraBehaviorThirdPersonOcclusionComponent();
+
+        virtual ~CameraBehaviorThirdPersonOcclusionComponent();
+
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        virtual bool postInit(void) override;
+
+        virtual bool connect(void) override;
+
+        virtual bool disconnect(void) override;
+
+        virtual Ogre::String getClassName(void) const override;
+
+        virtual Ogre::String getParentClassName(void) const override;
+
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CameraBehaviorThirdPersonOcclusionComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CameraBehaviorThirdPersonOcclusionComponent";
+        }
+
+        static bool canStaticAddComponent(GameObject* gameObject);
+
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Requirements: A kind of player controller component must exist. Note: If player is not in front of camera, adjust the game object's global mesh direction. "
+                   "Additionally prevents the camera from clipping through level geometry between the player and its ideal spring position.";
+        }
+
+        virtual void actualizeValue(Variant* attribute) override;
+
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        virtual void setActivated(bool activated) override;
+
+        void setOffsetPosition(const Ogre::Vector3& offsetPosition);
+        Ogre::Vector3 getOffsetPosition(void) const;
+
+        void setLookAtOffset(const Ogre::Vector3& lookAtOffset);
+        const Ogre::Vector3 getLookAtOffset(void) const;
+
+        void setSpringForce(Ogre::Real springForce);
+        Ogre::Real getSpringForce(void) const;
+
+        void setFriction(Ogre::Real friction);
+        Ogre::Real getFriction(void) const;
+
+        void setSpringLength(Ogre::Real springLength);
+        Ogre::Real getSpringLength(void) const;
+
+        void setProbeRadius(Ogre::Real probeRadius);
+        Ogre::Real getProbeRadius(void) const;
+
+        void setSkinMargin(Ogre::Real skinMargin);
+        Ogre::Real getSkinMargin(void) const;
+
+        void setMinDistance(Ogre::Real minDistance);
+        Ogre::Real getMinDistance(void) const;
+
+        void setReleaseSmoothValue(Ogre::Real releaseSmoothValue);
+        Ogre::Real getReleaseSmoothValue(void) const;
+
+    public:
+        static const Ogre::String AttrOffsetPosition(void)
+        {
+            return "Offset Position";
+        }
+        static const Ogre::String AttrLookAtOffset(void)
+        {
+            return "Look-At Offset";
+        }
+        static const Ogre::String AttrSpringForce(void)
+        {
+            return "Spring Force";
+        }
+        static const Ogre::String AttrFriction(void)
+        {
+            return "Friction";
+        }
+        static const Ogre::String AttrSpringLength(void)
+        {
+            return "Spring Length";
+        }
+        static const Ogre::String AttrProbeRadius(void)
+        {
+            return "Probe Radius";
+        }
+        static const Ogre::String AttrSkinMargin(void)
+        {
+            return "Skin Margin";
+        }
+        static const Ogre::String AttrMinDistance(void)
+        {
+            return "Min Distance";
+        }
+        static const Ogre::String AttrReleaseSmoothValue(void)
+        {
+            return "Release Smooth Value";
+        }
+
+    private:
+        Variant* offsetPosition;
+        Variant* springForce;
+        Variant* friction;
+        Variant* springLength;
+        Variant* lookAtOffset;
+        Variant* probeRadius;
+        Variant* skinMargin;
+        Variant* minDistance;
+        Variant* releaseSmoothValue;
+    };
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	class EXPORTED CameraBehaviorFollow2DComponent : public CameraBehaviorComponent
 	{
 	public:

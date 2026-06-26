@@ -3620,6 +3620,94 @@ return {
 			}
 		}
 	},
+	CameraBehaviorThirdPersonOcclusionComponent =
+	{
+		type = "class",
+		description = "CameraBehaviorThirdPersonOcclusionComponent class",
+		childs = 
+		{
+			setOffsetPosition =
+			{
+				type = "method",
+				description = "Sets the camera offset position, it should be away from the game object.",
+				args = "(Vector3 offsetPosition)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOffsetPosition =
+			{
+				type = "function",
+				description = "Gets the offset position, the camera is away from the game object.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setLookAtOffset =
+			{
+				type = "method",
+				description = "Sets the camera look at game object offset.",
+				args = "(Vector3 lookAtOffset)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLookAtOffset =
+			{
+				type = "function",
+				description = "Gets the camera look at game object offset.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setSpringForce =
+			{
+				type = "method",
+				description = "Sets the camera spring force, that is, when the game object is rotated the camera is moved to the same direction but with a spring effect.",
+				args = "(number springForce)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSpringForce =
+			{
+				type = "function",
+				description = "Gets the camera spring force.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFriction =
+			{
+				type = "method",
+				description = "Sets the camera friction during movement.",
+				args = "(number friction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFriction =
+			{
+				type = "function",
+				description = "Gets the camera friction during movement.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSpringLength =
+			{
+				type = "method",
+				description = "Sets the camera spring length during movement.",
+				args = "(number springLength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSpringLength =
+			{
+				type = "function",
+				description = "Gets the camera spring length during movement.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	CameraBehaviorZoomComponent =
 	{
 		type = "class",
@@ -9676,6 +9764,22 @@ return {
 				returns = "(CameraBehaviorThirdPersonComponent)",
 				valuetype = "CameraBehaviorThirdPersonComponent"
 			},
+			getCameraBehaviorThirdPersonOcclusionComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(CameraBehaviorThirdPersonOcclusionComponent)",
+				valuetype = "CameraBehaviorThirdPersonOcclusionComponent"
+			},
+			getCameraBehaviorThirdPersonOcclusionComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(CameraBehaviorThirdPersonOcclusionComponent)",
+				valuetype = "CameraBehaviorThirdPersonOcclusionComponent"
+			},
 			getCameraBehaviorZoomComponent =
 			{
 				type = "function",
@@ -12323,6 +12427,14 @@ return {
 				args = "(CameraBehaviorThirdPersonComponent other)",
 				returns = "(CameraBehaviorThirdPersonComponent)",
 				valuetype = "CameraBehaviorThirdPersonComponent"
+			},
+			castCameraBehaviorThirdPersonOcclusionComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(CameraBehaviorThirdPersonOcclusionComponent other)",
+				returns = "(CameraBehaviorThirdPersonOcclusionComponent)",
+				valuetype = "CameraBehaviorThirdPersonOcclusionComponent"
 			},
 			castCameraBehaviorZoomComponent =
 			{
@@ -32840,11 +32952,19 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			reactOnCannotLand =
+			{
+				type = "method",
+				description = "Registers a closure called once when the cannot land because gradient is to steep etc.",
+				args = "(func closure(planetGameObject, shipGameObject)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			reactOnLanding =
 			{
 				type = "method",
 				description = "Registers a closure called once when the ship is close enough to land (within landingThreshold, default 30 units above the surface). Use this to show your Land button. The callback does not lock input. Call universumComp:requestLanding() from the button handler to start autopilot.",
-				args = "(func closure(bodyGameObject, shipGameObject)",
+				args = "(func closure(planetGameObject, shipGameObject)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -32852,7 +32972,7 @@ return {
 			{
 				type = "method",
 				description = "Registers a closure called once when the ship landed.",
-				args = "(func closure(bodyGameObject, shipGameObject)",
+				args = "(func closure(planetGameObject, shipGameObject)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},

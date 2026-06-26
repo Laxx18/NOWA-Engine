@@ -723,9 +723,45 @@ namespace NOWA
          * @param[in]		excludeMovableObjects		Optional list of movable objects (entity, item, etc.), that should be excluded from the ray cast
          * @param[in]		forGizmo				Optional flag, if the query should only match the gizmo, so no query flags will be wasted
          * @note				Getting information about the normal of the hit model data allows e.g. to snap other objects and rotate them according to the normal
+		 * @details			Usecase: The user hasn't moved the mouse, don't redo the same raycast — a same-thread, single-ray, per-pixel memoization cache.
          * @return			True if the raycast could be performed or hit the object, else false if e.g. the object category was not in the ray scene query filter
          */
 		bool getRaycastForFrame(int mouseX, int mouseY, Ogre::Camera* camera, Ogre::Window* renderWindow, Ogre::RaySceneQuery* raySceneQuery, std::vector<Ogre::MovableObject*>& excludeObjects, Ogre::Vector3& outPosition);
+
+		/**
+         * @brief Diagnostic detail for a single sample ray fired by getProbeCastClosestDistance().
+         */
+        struct ProbeSampleResult
+        {
+            bool hit = false;
+            Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
+            Ogre::Real hitDistance = 0.0f;
+            Ogre::MovableObject* hitObject = nullptr;
+        };
+
+        /**
+         * @brief Casts a small cluster of parallel rays (a probe) approximating a sphere-sweep,
+         *        and returns the closest hit distance among them - or rayLength if none hit.
+         *        Generalizes getRaycastFromPoint() for "does a small-radius volume moving along
+         *        this line hit anything" queries (e.g. camera occlusion, any other shape-cast-
+         *        style check), instead of every caller hand-rolling its own probe-offset loop.
+         * @param[in] origin Start point of the cast.
+         * @param[in] direction Cast direction. Does not need to be pre-normalised.
+         * @param[in] rayLength Maximum distance to test; also the return value if nothing is hit.
+         * @param[in] probeRadius Radius of the offset ring around the central ray. 0 or less
+         *            degenerates to a single ray (one getRaycastFromPoint-equivalent call).
+         * @param[in] camera Active camera, forwarded to getRaycastFromPoint for each sample.
+         * @param[in] raySceneQuery Query object reused for every sample ray in the cluster.
+         * @param[in] excludeObjects Movables to ignore, forwarded to every sample ray.
+         * @param[out] outSamples Optional - if non-null, filled with one ProbeSampleResult per
+         *             sample ray actually fired (1 if probeRadius <= 0, else 5), in the same
+         *             order every time: center, +right, -right, +up, -up. Leave null on any
+         *             call where the diagnostic detail isn't needed - collecting it is skipped
+         *             entirely rather than computed and discarded.
+         * @return Distance to the closest hit among all probe rays, or rayLength if none hit.
+         */
+        Ogre::Real getProbeCastClosestDistance(const Ogre::Vector3& origin, const Ogre::Vector3& direction, Ogre::Real rayLength, Ogre::Real probeRadius, Ogre::Camera* camera, Ogre::RaySceneQuery* raySceneQuery,
+            std::vector<Ogre::MovableObject*>* excludeObjects = nullptr, std::vector<ProbeSampleResult>* outSamples = nullptr);
 
 		/// Ogre Matrix inverse really sucks (it use a full Gaussian pivoting when a simple transpose follow by vector rotation will do.
 		inline Ogre::Matrix4 matrixTransposeInverse(const Ogre::Matrix4& matrix)

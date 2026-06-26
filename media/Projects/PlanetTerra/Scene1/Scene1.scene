@@ -31,10 +31,9 @@
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
 			<renderDistance distance="500"/>
-			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-2327.92 -2574.42 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
+		<bounds mostLeftNearPosition="-2331.27 -2574.42 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -42,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-2327.07" y="1154.33" z="6572.67"/>
-			<rotation qw="0.921303" qx="-0.113598" qy="-0.368972" qz="-0.0464286"/>
+			<position x="-2330.39" y="1153.47" z="6577.37"/>
+			<rotation qw="0.913699" qx="-0.079486" qy="-0.396941" qz="-0.0356906"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -63,7 +62,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
@@ -72,8 +71,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-2326.09 1150.87 6572.79"/>
-					<property type="9" name="CameraOrientation" data="-1.23893 -47.5957 -0.0983808"/>
+					<property type="9" name="CameraPosition" data="-2330.39 1153.47 6577.37"/>
+					<property type="9" name="CameraOrientation" data="-9.99642 -46.9526 -0.123259"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -131,7 +130,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
@@ -173,7 +172,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
@@ -196,7 +195,7 @@
 			<position x="-1623.76" y="0.1615" z="5614.71"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_0" meshFile="Node.mesh" castShadows="true" visible="true">
+			<item name="Universum_0" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -213,7 +212,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="1000"/>
+					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="500"/>
 					<property type="6" name="LodLevels" data="4"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
@@ -361,6 +360,29 @@
 					<property type="6" name="SourceId" data="2225169235"/>
 					<property type="6" name="Alpha" data="1"/>
 					<property type="6" name="Coefficient" data="1"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="CannotLandText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="284901261"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.4 0.05"/>
+					<property type="8" name="Size" data="0.15 0.1"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="TextBox"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Cannot land here!"/>
+					<property type="2" name="FontHeight" data="22"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0.48828 0.00954 0.00954 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
 				</userData>
 			</item>
 		</node>
@@ -394,8 +416,8 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="6" name="Radius" data="2500"/>
-					<property type="2" name="SegmentsH" data="32"/>
-					<property type="2" name="SegmentsV" data="32"/>
+					<property type="2" name="SegmentsH" data="64"/>
+					<property type="2" name="SegmentsV" data="64"/>
 					<property type="7" name="Datablock" data="PlanetSunDefaultMaterial"/>
 					<property type="9" name="EmissiveColour" data="1 0.6 0.1"/>
 					<property type="9" name="DiffuseColour" data="1 0.5 0.05"/>
@@ -408,6 +430,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
 				</userData>
 			</item>
 		</node>
@@ -430,7 +453,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderQueueIndex" data="213"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
 					<property type="6" name="LodDistance" data="10000"/>
 					<property type="6" name="LodLevels" data="4"/>
@@ -441,8 +464,8 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="6" name="Radius" data="2618.16"/>
-					<property type="2" name="SegmentsH" data="64"/>
-					<property type="2" name="SegmentsV" data="64"/>
+					<property type="2" name="SegmentsH" data="128"/>
+					<property type="2" name="SegmentsV" data="128"/>
 					<property type="2" name="Blend TexSize" data="1024"/>
 					<property type="7" name="Brush Name" data="AllWhite.png"/>
 					<property type="6" name="Brush Size" data="30"/>
@@ -572,6 +595,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -604,7 +628,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderQueueIndex" data="213"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
 					<property type="6" name="LodDistance" data="10000"/>
 					<property type="6" name="LodLevels" data="4"/>
@@ -682,6 +706,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -714,7 +739,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderQueueIndex" data="213"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
 					<property type="6" name="LodDistance" data="10000"/>
 					<property type="6" name="LodLevels" data="4"/>
@@ -725,8 +750,8 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="6" name="Radius" data="2642.23"/>
-					<property type="2" name="SegmentsH" data="64"/>
-					<property type="2" name="SegmentsV" data="64"/>
+					<property type="2" name="SegmentsH" data="128"/>
+					<property type="2" name="SegmentsV" data="128"/>
 					<property type="2" name="Blend TexSize" data="1024"/>
 					<property type="7" name="Brush Name" data="AllWhite.png"/>
 					<property type="6" name="Brush Size" data="30"/>
@@ -825,6 +850,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -857,7 +883,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderQueueIndex" data="213"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
 					<property type="6" name="LodDistance" data="10000"/>
 					<property type="6" name="LodLevels" data="4"/>
@@ -935,6 +961,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -967,7 +994,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderQueueIndex" data="213"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
 					<property type="6" name="LodDistance" data="10000"/>
 					<property type="6" name="LodLevels" data="4"/>
@@ -1045,6 +1072,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1077,7 +1105,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderQueueIndex" data="213"/>
 					<property type="2" name="RenderDistance" data="1000000"/>
 					<property type="6" name="LodDistance" data="10000"/>
 					<property type="6" name="LodLevels" data="4"/>
@@ -1155,6 +1183,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1393,11 +1422,11 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="9" name="YOffset" data="0 5 -2"/>
+					<property type="9" name="YOffset" data="0 5 2"/>
 					<property type="9" name="LookAtOffset" data="0 2 0"/>
 					<property type="6" name="SpringForce" data="0.6"/>
 					<property type="6" name="Friction" data="0.5"/>
-					<property type="6" name="SpringLength" data="30"/>
+					<property type="6" name="SpringLength" data="10"/>
 					<property type="7" name="ComponentCompositorEffectRadialBlurComponent" data="CompositorEffectRadialBlurComponent"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
@@ -1496,6 +1525,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
