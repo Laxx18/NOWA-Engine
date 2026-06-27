@@ -619,30 +619,6 @@ namespace NOWA
 									   size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
 
 		/**
-		* @brief			Performs a raycast on model base to get a position on the model
-		* @param[in]		raySceneQuery				The ray scene query, which must already have a valid !ray! and maybe a filter, on what objects to perform the raycast and which objects to skip.
-		* @param[in]		camera						The camera for further data to get of the camera
-		* @param[in|out]	resultPostionOnModel		The result position on the model
-		* @param[in]		excludeMovableObjects		Optional list of movable objects (entity, item, etc.), that should be excluded from the ray cast
-		* @return			True if the raycast could be performed or hit the object, else false if e.g. the object category was not in the ray scene query filter
-		*/
-		bool getRaycastFromPoint(Ogre::RaySceneQuery* raySceneQuery, Ogre::Camera* camera, Ogre::Vector3& resultPostionOnModel, std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr);
-
-		/**
-		* @brief			Performs a raycast on model based on current mouse position. (More convenient function as the other raycastFromPoint function)
-		* @param[in]		X				The absolute mouse x position
-		* @param[in]		Y				The absolute mouse y position
-		* @param[in]		camera			The camera to through the ray from current camera position and orientation to the mouse x and y position
-		* @param[in]		window	The renderWindow to calculate the mouse position in relation to the renderWindow size
-		* @param[in]		raySceneQuery				The ray scene query, to check if the ray cast should be performed for the given object category
-		* @param[in|out]	resultPositionOnModel		The result position on the model
-		* @param[in]		excludeMovableObjects		Optional list of movable objects (entity, item, etc.), that should be excluded from the ray cast
-		* @return		True if the raycast could be performed or hit the object, else false if e.g. the object category was not in the ray scene query filter
-		*/
-		bool getRaycastFromPoint(int mouseX, int mouseY, Ogre::Camera* camera, Ogre::Window* renderWindow, Ogre::RaySceneQuery* raySceneQuery,
-								 Ogre::Vector3& resultPositionOnModel, std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr);
-
-		/**
 		* @brief			Performs a raycast on model from the given x and z coordinate
 		* @param[in]		raySceneQuery	The ray scene query, to check if the ray cast should be performed for the given object category
 		* @param[in|out]	height			The height of the model mesh for the given x and z coordinate

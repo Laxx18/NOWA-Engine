@@ -30,7 +30,7 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="500"/>
+			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-2331.27 -2574.42 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
@@ -195,7 +195,7 @@
 			<position x="-1623.76" y="0.1615" z="5614.71"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_0" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_0" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -215,7 +215,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="500"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentUniversumComponent" data="UniversumComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -352,6 +352,29 @@
 					<property type="7" name="TextAlign" data="HCenter"/>
 					<property type="8" name="TextOffset" data="0 0"/>
 					<property type="10" name="TextColor" data="0 0 0 1"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="LandDegreeText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="1794456659"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.5 0.2"/>
+					<property type="8" name="Size" data="0.4 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2225169235"/>
+					<property type="7" name="Skin" data="EditBox"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Land Degree"/>
+					<property type="2" name="FontHeight" data="12"/>
+					<property type="7" name="TextAlign" data="Left"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0 0.3 0.5 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
 					<property type="7" name="ComponentMyGUIFadeAlphaControllerComponent" data="MyGUIFadeAlphaControllerComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

@@ -32936,6 +32936,14 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
+			getCurrentLandingPlanetGradient =
+			{
+				type = "function",
+				description = "Gets the current gradient on planet for landing. If its to steep, landing is not possible. This can be use to show the current gradient for the spaceship armature for example.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			reactOnPlanetEntered =
 			{
 				type = "method",

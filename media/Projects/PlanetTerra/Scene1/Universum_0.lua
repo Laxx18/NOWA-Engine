@@ -16,8 +16,10 @@ require("init");
 local FIGHTER_GO_ID = "2599276278";
 local PLAYER_GO_ID       = "1959649159";
 
-local universum_0    = nil;
+local universumGameObject    = nil;
 local universumComp  = nil;
+local window = nil;
+local landDegreeText = nil;
 local playerGo = nil;
 local fighterGo = nil;
 
@@ -71,9 +73,9 @@ end
 
 Universum_0["connect"] = function(gameObject)
  
-    universum_0 = AppStateManager:getGameObjectController():castGameObject(gameObject);
+    universumGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
  
-    universumComp = universum_0:getUniversumComponent();
+    universumComp = universumGameObject:getUniversumComponent();
     if universumComp == nil then
         log("[Universum_0] ERROR: UniversumComponent not found on " .. universum_0:getName());
         return;
@@ -86,10 +88,11 @@ Universum_0["connect"] = function(gameObject)
     playerGo = AppStateManager:getGameObjectController():getGameObjectFromId(PLAYER_GO_ID);
     playerGo:getPhysicsActiveComponent():setActivated(false);
     
-    local fadeWindowComponent = universum_0:getMyGUIFadeAlphaControllerComponent();
-    local landStartButton     = universum_0:getMyGUIButtonComponentFromName("LandStartButton");
-    
-    local cannotLandText     = universum_0:getMyGUITextComponentFromName("CannotLandText");
+    local fadeWindowComponent = universumGameObject:getMyGUIFadeAlphaControllerComponent();
+    local landStartButton     = universumGameObject:getMyGUIButtonComponentFromName("LandStartButton");
+    window                         = universumGameObject:getMyGUIWindowComponent();
+    landDegreeText             = universumGameObject:getMyGUITextComponentFromName("LandDegreeText");
+    local cannotLandText     = universumGameObject:getMyGUITextComponentFromName("CannotLandText");
  
     -- Button toggles between Land and Start (takeoff).
     landStartButton:reactOnMouseButtonClick(function()
@@ -160,6 +163,12 @@ end
 
 Universum_0["disconnect"] = function()
     AppStateManager:getGameObjectController():undoAll();
+end
+
+Universum_0["update"] = function(dt)
+   if (window:isActivated() == true) then
+       landDegreeText:setCaption("Landing Degree: " .. toString(universumComp:getCurrentLandingPlanetGradient()));
+   end
 end
 
 -- No per-frame logic needed here -- the UniversumComponent handles

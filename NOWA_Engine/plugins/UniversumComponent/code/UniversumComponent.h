@@ -259,14 +259,6 @@ namespace NOWA
         virtual void actualizeValue(Variant* attribute) override;
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-        /**
-         * @see GameObjectComponent::isProcedural
-         */
-        virtual bool isProcedural(void) const override
-        {
-            return true;
-        }
-
         virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         static bool canStaticAddComponent(GameObject* gameObject);
@@ -362,6 +354,8 @@ namespace NOWA
 
         void setFarClipSurface(Ogre::Real distance);
         Ogre::Real getFarClipSurface(void) const;
+
+        Ogre::Real getCurrentLandingPlanetGradient(void) const;
 
         // ---- Inner observer: wired automatically to each planet's AreaOfInterest ----
 
@@ -691,9 +685,12 @@ namespace NOWA
         bool shadowsConfiguredForSurface;
         bool landingContactActive;
         float landingContactTimer;
+        Ogre::Real surfaceBlend;
 
         Ogre::Vector3 currentAmbientUpper;
         Ogre::Vector3 currentAmbientLower;
+        Ogre::Vector3 lastSunDir;
+        Ogre::ColourValue lastSunColor;
 
         // Ray query for flat landing spot search
         Ogre::RaySceneQuery* landingRayQuery;
@@ -701,6 +698,7 @@ namespace NOWA
         // The resolved flat landing target (world space), valid once findFlatLandingSpot succeeds
         Ogre::Vector3 resolvedLandingTarget;
         bool resolvedLandingTargetValid;
+        Ogre::Real currentLandingPlanetGradient;
 
                  // Tuning
         static constexpr float LANDING_MAX_GRADIENT_DEG = 15.0f; // max acceptable slope

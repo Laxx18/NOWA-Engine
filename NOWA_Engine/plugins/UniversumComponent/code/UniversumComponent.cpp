@@ -180,8 +180,12 @@ namespace NOWA
         landingContactTimer(0.0f),
         currentAmbientUpper(0.03f, 0.03f, 0.04f),
         currentAmbientLower(0.03f, 0.03f, 0.04f),
+        lastSunDir(Ogre::Vector3::ZERO),
+        lastSunColor(Ogre::ColourValue::Black),
         landingRayQuery(nullptr),
-        resolvedLandingTargetValid(false)
+        resolvedLandingTargetValid(false),
+        currentLandingPlanetGradient(90.0f),
+        surfaceBlend(0.0f)
     {
         this->generate->setDescription("Runs the full generation pipeline and applies the result to the "
                                        "sibling PlanetTerraComponent. The planet must already exist.");
@@ -736,6 +740,9 @@ namespace NOWA
     {
         this->cachedAtmosphereComponent = nullptr;
 
+        Ogre::String closureId = this->gameObjectPtr->getName() + "::sunLight";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
+
         // During destruction just unregister without touching physics or visibility.
         // restoreAllSurfaceObjects calls setActivated(true) which hangs if Newton is gone.
         if (AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
@@ -840,6 +847,10 @@ namespace NOWA
         this->currentAmbientLower = Ogre::Vector3(0.03f, 0.03f, 0.04f);
         this->elapsedTime = 0.0f;
         this->resolvedLandingTargetValid = false;
+        this->currentLandingPlanetGradient = 90.0f;
+        this->surfaceBlend = 0.0f;
+        this->lastSunDir = Ogre::Vector3::ZERO;
+        this->lastSunColor = Ogre::ColourValue::Black;
 
         // When simulation stops, the undo system resets all planet/moon SceneNodes back
         // to their spawn positions (t=0 state). We must reset the per-body timers to match,
@@ -998,9 +1009,50 @@ namespace NOWA
 
         if (this->landingState == LandingState::LANDING)
         {
-            const float settleHeight = 1.0f;
+            // Ship half-height projected onto the surface normal.
+            const Ogre::Vector3 shipSize = shipGo->getSize();
+            const Ogre::Vector3 halfExtents = shipSize * 0.5f;
+            const float shipHalfHeight = std::abs(halfExtents.x * surfaceNormal.x) + std::abs(halfExtents.y * surfaceNormal.y) + std::abs(halfExtents.z * surfaceNormal.z);
+            const float settleHeight = shipHalfHeight + 0.5f;
 
-            // Resolve landing clearance once.
+            // Per-frame raycast from ship straight toward planet centre.
+            // This gives the TRUE distance from ship physics centre to terrain surface,
+            // ignoring nominal radius entirely.
+            float actualDistToSurface = distToSurface; // fallback to nominal if raycast fails
+            {
+                GameObjectPtr bodyGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->landedOnBodyId);
+                Ogre::Camera* camera = nullptr;
+                GameObjectPtr cameraGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraGameObjectId->getULong());
+                if (nullptr != cameraGo)
+                {
+                    auto cameraCompPtr = NOWA::makeStrongPtr(cameraGo->getComponent<CameraComponent>());
+                    if (nullptr != cameraCompPtr)
+                    {
+                        camera = cameraCompPtr->getCamera();
+                    }
+                }
+                if (nullptr != bodyGo && nullptr != camera)
+                {
+                    // Shoot ray from ship toward planet centre (-surfaceNormal = inward).
+                    this->landingRayQuery->setRay(Ogre::Ray(shipPos, -surfaceNormal));
+
+                    std::vector<Ogre::MovableObject*> excludeObjects;
+                    excludeObjects.emplace_back(shipGo->getMovableObject());
+
+                    Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
+                    Ogre::Vector3 hitNormal = surfaceNormal;
+                    Ogre::MovableObject* hitObj = nullptr;
+                    Ogre::Real hitDist = 0.0f;
+
+                    bool hit = MathHelper::getInstance()->getRaycastFromPoint(this->landingRayQuery, camera, hitPoint, (size_t&)hitObj, hitDist, hitNormal, &excludeObjects);
+
+                    if (hit && hitDist > 0.0f && hitDist < this->landingBodyRadius * 3.0f)
+                    {
+                        actualDistToSurface = hitDist;
+                    }
+                }
+            }
+
             if (false == this->resolvedLandingTargetValid)
             {
                 bool canLand = false;
@@ -1018,39 +1070,35 @@ namespace NOWA
                     return;
                 }
 
-                // Target is directly below the ship along the radial line at surface + settleHeight.
+                // Settle point: actual terrain surface + ship half-height.
                 this->resolvedLandingTarget = this->landingBodyCentre + surfaceNormal * (surfaceHeight + settleHeight);
                 this->resolvedLandingTargetValid = true;
 
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING resolvedTarget=" + Ogre::StringConverter::toString(this->resolvedLandingTarget) +
-                                                                                       " surfaceHeight=" + Ogre::StringConverter::toString(surfaceHeight) + " settleHeight=" + Ogre::StringConverter::toString(settleHeight));
+                                                                                       " surfaceHeight=" + Ogre::StringConverter::toString(surfaceHeight) + " shipHalfHeight=" + Ogre::StringConverter::toString(shipHalfHeight) +
+                                                                                       " settleHeight=" + Ogre::StringConverter::toString(settleHeight) + " actualDistToSurface=" + Ogre::StringConverter::toString(actualDistToSurface));
             }
 
             Ogre::Vector3 toTarget = this->resolvedLandingTarget - shipPos;
             float distToTarget = toTarget.length();
 
-            Ogre::Vector3 descentVelocity = Ogre::Vector3::ZERO;
-            if (distToTarget > 0.05f && distToSurface > settleHeight * 2.0f)
-            {
-                const float maxDescentSpeed = 15.0f;
-                descentVelocity = toTarget.normalisedCopy() * std::min(distToTarget * 0.5f, maxDescentSpeed);
-            }
-            else
-            {
-                descentVelocity = -surfaceNormal * 2.0f;
-            }
-
-            this->applyShipMovement(shipGo, descentVelocity, targetOrient, 5.0f);
-
             this->landingDebugTimer += dt;
-            if (this->landingDebugTimer >= 2.0f)
+            if (this->landingDebugTimer >= 1.0f)
             {
                 this->landingDebugTimer = 0.0f;
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING tick: distToSurface=" + Ogre::StringConverter::toString(distToSurface) +
-                                                                                       " distToTarget=" + Ogre::StringConverter::toString(distToTarget) + " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDING tick:"
+                                                                                   " distToTarget=" +
+                                                                                       Ogre::StringConverter::toString(distToTarget) + " actualDistToSurface=" + Ogre::StringConverter::toString(actualDistToSurface) +
+                                                                                       " shipHalfHeight=" + Ogre::StringConverter::toString(shipHalfHeight) + " settleHeight=" + Ogre::StringConverter::toString(settleHeight) +
+                                                                                       " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) + " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
             }
 
-            if (true == this->landingContactActive)
+            const bool contactLanded = this->landingContactActive;
+            const bool distTargetLanded = (distToTarget <= 0.5f);
+            // Raycast distance from ship centre to terrain <= ship half-height + small margin.
+            const bool raycastLanded = (actualDistToSurface <= settleHeight + 0.5f);
+
+            if (contactLanded || distTargetLanded || raycastLanded)
             {
                 this->applyShipMovement(shipGo, Ogre::Vector3::ZERO, targetOrient, 0.0f);
                 this->landingState = LandingState::LANDED;
@@ -1060,9 +1108,24 @@ namespace NOWA
                 this->setPlayerInputLock(false);
                 this->landingInputLocked = false;
                 this->callLandedFunction(this->landedOnBodyId, playerGOId);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Landed on body id=" + Ogre::StringConverter::toString(this->landedOnBodyId));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] LANDED:"
+                                                                                   " contact=" +
+                                                                                       Ogre::StringConverter::toString(contactLanded) + " distTarget=" + Ogre::StringConverter::toString(distTargetLanded) +
+                                                                                       " raycast=" + Ogre::StringConverter::toString(raycastLanded) + " actualDistToSurface=" + Ogre::StringConverter::toString(actualDistToSurface) +
+                                                                                       " settleHeight=" + Ogre::StringConverter::toString(settleHeight) + " distToTarget=" + Ogre::StringConverter::toString(distToTarget));
                 return;
             }
+
+            Ogre::Vector3 descentVelocity = Ogre::Vector3::ZERO;
+            if (distToTarget > 0.5f)
+            {
+                const float maxDescentSpeed = 80.0f;
+                const float minDescentSpeed = 15.0f;
+                float speed = std::max(minDescentSpeed, std::min(distToTarget * 1.5f, maxDescentSpeed));
+                descentVelocity = toTarget.normalisedCopy() * speed;
+            }
+
+            this->applyShipMovement(shipGo, descentVelocity, targetOrient, 5.0f);
             this->landingContactActive = false;
             return;
         }
@@ -1621,17 +1684,89 @@ namespace NOWA
     {
         outCanLand = false;
         outSurfaceHeight = bodyRadius;
+        this->currentLandingPlanetGradient = 90.0f;
 
         GameObjectPtr bodyGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->landedOnBodyId);
         if (nullptr == bodyGo)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] No body GO found");
-            outCanLand = true; // no terrain data, just land
+            outCanLand = true;
+            outSurfaceHeight = bodyRadius;
+            this->currentLandingPlanetGradient = 0.0f;
             return;
         }
 
+        // ---------------------------------------------------------------
+        // PART 1: Gradient via PlanetTerra API (correct normals, O(1))
+        // ---------------------------------------------------------------
+        auto terraComp = NOWA::makeStrongPtr(bodyGo->getComponent<PlanetTerraComponent>());
+        if (nullptr == terraComp)
+        {
+            outCanLand = true;
+            outSurfaceHeight = bodyRadius;
+            this->currentLandingPlanetGradient = 0.0f;
+            return;
+        }
+
+        const Ogre::Vector3 outwardDir = (shipPos - bodyCentre).normalisedCopy();
+        Ogre::Vector3 tangentA = outwardDir.perpendicular().normalisedCopy();
+        Ogre::Vector3 tangentB = outwardDir.crossProduct(tangentA).normalisedCopy();
+
+        // tan(1 deg) = 0.01746 — tight footprint, local slope only
+        const float coneHalfAngleTan = 0.01746f;
+
+        Ogre::Vector3 sampleDirs[5];
+        sampleDirs[0] = outwardDir;
+        sampleDirs[1] = (outwardDir + tangentA * coneHalfAngleTan).normalisedCopy();
+        sampleDirs[2] = (outwardDir + tangentA * -coneHalfAngleTan).normalisedCopy();
+        sampleDirs[3] = (outwardDir + tangentB * coneHalfAngleTan).normalisedCopy();
+        sampleDirs[4] = (outwardDir + tangentB * -coneHalfAngleTan).normalisedCopy();
+
+        float radialHeights[5];
+        int validCount = 0;
+
+        for (int i = 0; i < 5; ++i)
+        {
+            Ogre::Vector3 outWorldPos, outWorldNormal;
+            if (terraComp->sampleHeightAndNormalAtDirection(sampleDirs[i], outWorldPos, outWorldNormal))
+            {
+                radialHeights[validCount++] = (outWorldPos - bodyCentre).length();
+            }
+        }
+
+        if (validCount < 3)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Not enough Terra samples (" + Ogre::StringConverter::toString(validCount) + "), denying land");
+            outCanLand = false;
+            return;
+        }
+
+        float minH = radialHeights[0], maxH = radialHeights[0];
+        for (int i = 1; i < validCount; ++i)
+        {
+            minH = std::min(minH, radialHeights[i]);
+            maxH = std::max(maxH, radialHeights[i]);
+        }
+        float heightDelta = maxH - minH;
+        float footprintArc = radialHeights[0] * coneHalfAngleTan;
+        float slopeAngleDeg = Ogre::Math::ATan2(heightDelta, footprintArc).valueDegrees();
+
+        this->currentLandingPlanetGradient = slopeAngleDeg;
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] GRADIENT: validCount=" + Ogre::StringConverter::toString(validCount) + " heightDelta=" + Ogre::StringConverter::toString(heightDelta) +
+                                                                               " footprintArc=" + Ogre::StringConverter::toString(footprintArc) + " slopeAngleDeg=" + Ogre::StringConverter::toString(slopeAngleDeg));
+
+        const float maxSlopeAngleDeg = 20.0f;
+        if (slopeAngleDeg > maxSlopeAngleDeg)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Too steep: " + Ogre::StringConverter::toString(slopeAngleDeg) + " deg");
+            outCanLand = false;
+            return;
+        }
+
+        // ---------------------------------------------------------------
+        // PART 2: Exact surface distance via raycast (correct distance)
+        // ---------------------------------------------------------------
         Ogre::Camera* camera = nullptr;
-        const unsigned long cameraGOId = this->cameraGameObjectId->getULong();
         GameObjectPtr cameraGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraGameObjectId->getULong());
         if (nullptr != cameraGo)
         {
@@ -1644,60 +1779,49 @@ namespace NOWA
 
         if (nullptr == camera)
         {
-            return;
-        }
-
-         // Radial direction: from planet centre outward through ship.
-        const Ogre::Vector3 outwardDir = (shipPos - bodyCentre).normalisedCopy();
-
-        // Cast a ray from well above the ship straight down toward planet centre.
-        // Ray origin is 2x radius out so it always starts above the surface.
-        const Ogre::Vector3 rayOrigin = bodyCentre + outwardDir * (bodyRadius * 2.0f);
-        const Ogre::Vector3 rayDir = -outwardDir; // toward planet centre
-
-        this->landingRayQuery->setRay(Ogre::Ray(rayOrigin, rayDir));
-       
-        Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
-        Ogre::MovableObject* hitObject = nullptr;
-        Ogre::Real closestDistance = 0.0f;
-        Ogre::Vector3 normal = Ogre::Vector3::UNIT_Y;
-
-        // Exclude the shadow object itself from the ray test so we hit the ground, not the preview
-        std::vector<Ogre::MovableObject*> excludeObjects;
-        excludeObjects.emplace_back(bodyGo->getMovableObject());
-
-        MathHelper::getInstance()->getRaycastFromPoint(this->landingRayQuery, camera, hitPoint, (size_t&)hitObject, closestDistance, normal, &excludeObjects);
-
-        if (0 == hitObject)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Raycast missed terrain, allowing land. rayOrigin=" + Ogre::StringConverter::toString(rayOrigin));
+            // No camera — fall back to Terra radial height
+            outSurfaceHeight = radialHeights[0];
             outCanLand = true;
-            outSurfaceHeight = bodyRadius;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] No camera, using Terra height=" + Ogre::StringConverter::toString(outSurfaceHeight));
             return;
         }
 
-        float hitDist = (hitPoint - bodyCentre).length();
-        outSurfaceHeight = hitDist;
+        // Ray from ship straight toward planet centre.
+        const Ogre::Vector3 rayDir = -outwardDir;
+        this->landingRayQuery->setRay(Ogre::Ray(shipPos, rayDir));
 
-        // Slope = angle between surface normal and outward radial direction.
-        Ogre::Vector3 outwardNormal = -normal;
-        float slopeDot = outwardNormal.normalisedCopy().dotProduct(outwardDir);
-        float slopeAngleDeg = Ogre::Math::ACos(Ogre::Math::Clamp(slopeDot, -1.0f, 1.0f)).valueDegrees();
+        GameObjectPtr shipGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->playerGameObjectId->getULong());
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] rayOrigin=" + Ogre::StringConverter::toString(rayOrigin) + " hitPos=" + Ogre::StringConverter::toString(hitPoint) +
-                                                                               " hitNormal=" + Ogre::StringConverter::toString(normal) + " hitDist=" + Ogre::StringConverter::toString(hitDist) +
-                                                                               " slopeAngleDeg=" + Ogre::StringConverter::toString(slopeAngleDeg) + " bodyRadius=" + Ogre::StringConverter::toString(bodyRadius));
-
-        const float maxSlopeAngleDeg = 20.0f;
-        if (slopeAngleDeg > maxSlopeAngleDeg)
+        std::vector<Ogre::MovableObject*> excludeObjects;
+        if (nullptr != shipGo)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Too steep: " + Ogre::StringConverter::toString(slopeAngleDeg) + " deg > " + Ogre::StringConverter::toString(maxSlopeAngleDeg));
-            outCanLand = false;
-            return;
+            excludeObjects.emplace_back(shipGo->getMovableObject());
+        }
+
+        Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
+        Ogre::Vector3 hitNormal = outwardDir;
+        Ogre::MovableObject* hitObj = nullptr;
+        Ogre::Real hitDist = 0.0f;
+
+        bool hit = MathHelper::getInstance()->getRaycastFromPoint(this->landingRayQuery, camera, hitPoint, (size_t&)hitObj, hitDist, hitNormal, &excludeObjects);
+
+        if (hit && hitDist > 0.0f && hitDist < bodyRadius * 3.0f)
+        {
+            // hitDist = exact distance from ship physics centre to terrain surface.
+            // outSurfaceHeight = radial distance of hit point from planet centre.
+            outSurfaceHeight = (hitPoint - bodyCentre).length();
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[findFlatLandingSpot] RAYCAST hit: dist=" + Ogre::StringConverter::toString(hitDist) + " hitPoint=" + Ogre::StringConverter::toString(hitPoint) + " outSurfaceHeight=" + Ogre::StringConverter::toString(outSurfaceHeight));
+        }
+        else
+        {
+            // Raycast missed — fall back to Terra radial height
+            outSurfaceHeight = radialHeights[0];
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] RAYCAST missed, fallback Terra height=" + Ogre::StringConverter::toString(outSurfaceHeight));
         }
 
         outCanLand = true;
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Flat enough: " + Ogre::StringConverter::toString(slopeAngleDeg) + " deg, surfaceHeight=" + Ogre::StringConverter::toString(outSurfaceHeight));
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Flat enough: " + Ogre::StringConverter::toString(slopeAngleDeg) + " deg, outSurfaceHeight=" + Ogre::StringConverter::toString(outSurfaceHeight));
     }
 
     void UniversumComponent::pausePlanetOrbit(unsigned long planetGameObjectId, unsigned long gameObjectId)
@@ -2258,6 +2382,19 @@ namespace NOWA
 
         // playerActuallyOnSurface: ship (not camera) must be within 20 units of surface.
         bool playerActuallyOnSurface = false;
+
+        Ogre::Real targetSurfaceBlend = 0.0f;
+
+        if (true == this->playerOnSurface && this->landingBodyRadius > 0.0f && nullptr != shipGo)
+        {
+            float distToSurface = (shipGo->getPosition() - this->landingBodyCentre).length() - this->landingBodyRadius;
+
+            targetSurfaceBlend = 1.0f - Ogre::Math::Clamp(distToSurface / 50.0f, 0.0f, 1.0f);
+        }
+
+        // smooth transition using your helper
+        this->surfaceBlend = MathHelper::getInstance()->lowPassFilter(targetSurfaceBlend, this->surfaceBlend, dt * 3.0f);
+
         if (true == this->playerOnSurface && this->landingBodyRadius > 0.0f && nullptr != shipGo)
         {
             float distToSurface = (shipGo->getPosition() - this->landingBodyCentre).length() - this->landingBodyRadius;
@@ -2268,7 +2405,7 @@ namespace NOWA
         this->currentLightColor = this->currentLightColor + (nearestSystem->sunLightColor - this->currentLightColor) * dt * 0.5f;
 
         // Power lerp only in space/approach mode.
-        if (false == playerActuallyOnSurface)
+        if (this->surfaceBlend < 0.5f)
         {
             if (true == this->firstLightFrame)
             {
@@ -2284,58 +2421,149 @@ namespace NOWA
         Ogre::Vector3 dir;
         Ogre::Vector3 ambientUpper = Ogre::Vector3(0.03f, 0.03f, 0.04f);
         Ogre::Vector3 ambientLower = Ogre::Vector3(0.03f, 0.03f, 0.04f);
-        float finalLightPower = this->currentLightPower;
+        Ogre::Real spacePower = this->currentLightPower;
+        Ogre::Real surfacePower = this->currentLightPower;
+
+        Ogre::Real finalLightPower = MathHelper::getInstance()->lowPassFilter(spacePower * (1.0f - this->surfaceBlend) + surfacePower * this->surfaceBlend, this->currentLightPower, dt * 5.0f);
+
+        // ------------------------------
+        // SURFACE BLEND (already computed earlier)
+        // ------------------------------
+
+        const Ogre::Real blend = this->surfaceBlend;
+
+        // ------------------------------
+        // SPACE MODE BASE
+        // ------------------------------
+        const Ogre::Vector3 spaceAmbUpper(0.03f, 0.03f, 0.04f);
+        const Ogre::Vector3 spaceAmbLower(0.03f, 0.03f, 0.04f);
+
+        // ------------------------------
+        // SURFACE MODE COMPUTATION
+        // ------------------------------
+        Ogre::Vector3 surfaceDir;
+        Ogre::Vector3 surfaceAmbUpper;
+        Ogre::Vector3 surfaceAmbLower;
+
+        // ---- surface logic (your existing code) ----
+        this->fakeLightElapsed += dt;
+
+        Ogre::Vector3 baseDir = (this->landingBodyCentre - sunPos).normalisedCopy();
+
+        Ogre::Vector3 planetAxis = (this->landingBodyCentre - sunPos);
+        if (planetAxis.squaredLength() < 1e-6f)
+        {
+            planetAxis = Ogre::Vector3::UNIT_Y;
+        }
+        planetAxis.normalise();
+
+        Ogre::Radian fakeAngle(this->fakeLightElapsed * this->fakeLightAxialSpeed);
+        Ogre::Quaternion fakeRot(fakeAngle, planetAxis);
+
+        surfaceDir = fakeRot * baseDir;
+
+        if (surfaceDir.squaredLength() < 1e-6f)
+        {
+            surfaceDir = Ogre::Vector3::UNIT_Y;
+        }
+
+        const Ogre::Vector3 shipPos = (nullptr != shipGo) ? shipGo->getPosition() : this->landingBodyCentre;
+
+        const Ogre::Vector3 surfaceNormal = (shipPos - this->landingBodyCentre).normalisedCopy();
+
+        const float sunElevation = surfaceNormal.dotProduct(-surfaceDir.normalisedCopy());
+
+        float dayFactor = Ogre::Math::Clamp((sunElevation + 0.15f) / 0.30f, 0.0f, 1.0f);
+        dayFactor = dayFactor * dayFactor * (3.0f - 2.0f * dayFactor);
+
+        const Ogre::Vector3 nightUpper(0.01f, 0.01f, 0.02f);
+        const Ogre::Vector3 nightLower(0.005f, 0.005f, 0.01f);
+
+        const Ogre::Vector3 dayUpper = nearestSystem->sunLightColor * 0.4f;
+        const Ogre::Vector3 dayLower = nearestSystem->sunLightColor * 0.15f;
+
+        surfaceAmbUpper = nightUpper + (dayUpper - nightUpper) * dayFactor;
+        surfaceAmbLower = nightLower + (dayLower - nightLower) * dayFactor;
+
+        surfacePower = nearestSystem->sunLightPower * dayFactor;
+
+        // ------------------------------
+        // BLEND SPACE ↔ SURFACE (THIS IS THE FIX)
+        // ------------------------------
+
+        // direction blend (important: prevents lighting snap)
+        dir = (camPos - sunPos) * (1.0f - blend) + surfaceDir * blend;
+
+        // ambient blend
+        Ogre::Vector3 targetUpper = spaceAmbUpper * (1.0f - blend) + surfaceAmbUpper * blend;
+
+        Ogre::Vector3 targetLower = spaceAmbLower * (1.0f - blend) + surfaceAmbLower * blend;
+
+        // smooth final result (low-pass filter = stabilizer)
+        this->currentAmbientUpper = MathHelper::getInstance()->lowPassFilter(targetUpper, this->currentAmbientUpper, dt * 3.0f);
+
+        this->currentAmbientLower = MathHelper::getInstance()->lowPassFilter(targetLower, this->currentAmbientLower, dt * 3.0f);
+
+        // light power smoothing
+        this->currentLightPower = MathHelper::getInstance()->lowPassFilter(surfacePower, this->currentLightPower, dt * 2.0f);
+
+        finalLightPower = this->currentLightPower;
+        ambientUpper = this->currentAmbientUpper;
+        ambientLower = this->currentAmbientLower;
+    #if 0
+        Ogre::String debugMsg;
+
+        debugMsg += "---- LIGHT DEBUG FRAME ----\n";
+
+        debugMsg += "playerActuallyOnSurface: " + Ogre::StringConverter::toString(playerActuallyOnSurface) + "\n";
+
+        debugMsg += "dt: " + Ogre::StringConverter::toString(dt) + "\n";
+
+        debugMsg += "camPos: " + Ogre::StringConverter::toString(camPos) + "\n";
+
+        debugMsg += "sunPos: " + Ogre::StringConverter::toString(sunPos) + "\n";
+
+        debugMsg += "currentLightPower (before): " + Ogre::StringConverter::toString(this->currentLightPower) + "\n";
 
         if (false == playerActuallyOnSurface)
         {
-            // SPACE / APPROACH MODE
-            dir = camPos - sunPos;
-            // Lerp ambient back to space values in case we just left a surface.
-            const Ogre::Vector3 spaceAmb = Ogre::Vector3(0.03f, 0.03f, 0.04f);
-            this->currentAmbientUpper = this->currentAmbientUpper + (spaceAmb - this->currentAmbientUpper) * dt * 2.0f;
-            this->currentAmbientLower = this->currentAmbientLower + (spaceAmb - this->currentAmbientLower) * dt * 2.0f;
-            ambientUpper = this->currentAmbientUpper;
-            ambientLower = this->currentAmbientLower;
+            debugMsg += "MODE: SPACE / APPROACH\n";
+
+            debugMsg += "firstLightFrame: " + Ogre::StringConverter::toString(this->firstLightFrame) + "\n";
+
+            debugMsg += "nearestSystem sunLightPower: " + Ogre::StringConverter::toString(nearestSystem->sunLightPower) + "\n";
+
+            debugMsg += "currentAmbientUpper (space): " + Ogre::StringConverter::toString(this->currentAmbientUpper) + "\n";
+
+            debugMsg += "currentAmbientLower (space): " + Ogre::StringConverter::toString(this->currentAmbientLower) + "\n";
         }
         else
         {
-            // SURFACE MODE
-            this->fakeLightElapsed += dt;
-            Ogre::Vector3 baseDir = (this->landingBodyCentre - sunPos).normalisedCopy();
-            Ogre::Radian fakeAngle(this->fakeLightElapsed * this->fakeLightAxialSpeed);
-            Ogre::Quaternion fakeRot(fakeAngle, Ogre::Vector3::UNIT_Y);
-            dir = fakeRot * baseDir;
-            if (dir.squaredLength() < 1e-6f)
-            {
-                dir = Ogre::Vector3::UNIT_Y;
-            }
+            debugMsg += "MODE: SURFACE\n";
 
-            const Ogre::Vector3 shipPos = (nullptr != shipGo) ? shipGo->getPosition() : this->landingBodyCentre;
-            const Ogre::Vector3 surfaceNormal = (shipPos - this->landingBodyCentre).normalisedCopy();
-            const float sunElevation = surfaceNormal.dotProduct(-dir.normalisedCopy());
-            float dayFactor = Ogre::Math::Clamp((sunElevation + 0.15f) / 0.30f, 0.0f, 1.0f);
-            dayFactor = dayFactor * dayFactor * (3.0f - 2.0f * dayFactor);
+            debugMsg += "fakeLightElapsed: " + Ogre::StringConverter::toString(this->fakeLightElapsed) + "\n";
 
-            const Ogre::Vector3 nightUpper = Ogre::Vector3(0.01f, 0.01f, 0.02f);
-            const Ogre::Vector3 nightLower = Ogre::Vector3(0.005f, 0.005f, 0.01f);
-            const Ogre::Vector3 dayUpper = nearestSystem->sunLightColor * 0.4f;
-            const Ogre::Vector3 dayLower = nearestSystem->sunLightColor * 0.15f;
+            debugMsg += "fakeLightAxialSpeed: " + Ogre::StringConverter::toString(this->fakeLightAxialSpeed) + "\n";
 
-            const Ogre::Vector3 targetAmbUpper = nightUpper + (dayUpper - nightUpper) * dayFactor;
-            const Ogre::Vector3 targetAmbLower = nightLower + (dayLower - nightLower) * dayFactor;
-            const float targetPower = nearestSystem->sunLightPower * dayFactor;
+            debugMsg += "landingBodyCentre: " + Ogre::StringConverter::toString(this->landingBodyCentre) + "\n";
 
-            // Lerp everything so the day/night transition is smooth and there is no
-            // sudden jump when playerActuallyOnSurface first becomes true.
-            const float lerpSpeed = 2.0f;
-            this->currentLightPower = this->currentLightPower + (targetPower - this->currentLightPower) * dt * lerpSpeed;
-            this->currentAmbientUpper = this->currentAmbientUpper + (targetAmbUpper - this->currentAmbientUpper) * dt * lerpSpeed;
-            this->currentAmbientLower = this->currentAmbientLower + (targetAmbLower - this->currentAmbientLower) * dt * lerpSpeed;
+            Ogre::Vector3 shipPos = (nullptr != shipGo) ? shipGo->getPosition() : this->landingBodyCentre;
 
-            finalLightPower = this->currentLightPower;
-            ambientUpper = this->currentAmbientUpper;
-            ambientLower = this->currentAmbientLower;
+            debugMsg += "shipPos: " + Ogre::StringConverter::toString(shipPos) + "\n";
+
+            debugMsg += "currentAmbientUpper (surface): " + Ogre::StringConverter::toString(this->currentAmbientUpper) + "\n";
+
+            debugMsg += "currentAmbientLower (surface): " + Ogre::StringConverter::toString(this->currentAmbientLower) + "\n";
         }
+
+        debugMsg += "finalLightPower: " + Ogre::StringConverter::toString(finalLightPower) + "\n";
+
+        debugMsg += "ambientUpper: " + Ogre::StringConverter::toString(ambientUpper) + "\n";
+
+        debugMsg += "ambientLower: " + Ogre::StringConverter::toString(ambientLower) + "\n";
+
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, debugMsg);
+    #endif
 
         if (dir.squaredLength() <= 0.0f)
         {
@@ -2350,16 +2578,31 @@ namespace NOWA
         Ogre::Vector3 ambUpper = ambientUpper;
         Ogre::Vector3 ambLower = ambientLower;
 
-        auto closureFunction = [light, dir, color, power, ambUpper, ambLower](Ogre::Real /*renderDt*/)
-        {
-            light->setDirection(dir);
-            light->setDiffuseColour(color.x, color.y, color.z);
-            light->setPowerScale(power);
-            light->_getManager()->setAmbientLight(Ogre::ColourValue(ambUpper.x, ambUpper.y, ambUpper.z), Ogre::ColourValue(ambLower.x, ambLower.y, ambLower.z), -dir);
-        };
+        // In your component's update() on the logic thread, throttle the sun update.
+        // Only push a new closure when direction or colour has changed beyond a threshold.
 
-        Ogre::String closureId = this->gameObjectPtr->getName() + "::sunLight";
-        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
+        constexpr float kDirThreshold = 0.001f; // ~0.057 degrees
+        constexpr float kColorThreshold = 0.002f;
+
+        bool dirChanged = !dir.positionEquals(this->lastSunDir, kDirThreshold);
+        bool colorChanged = !color.positionEquals(Ogre::Vector3(this->lastSunColor.r, this->lastSunColor.g, this->lastSunColor.b), kColorThreshold);
+
+        if (dirChanged || colorChanged)
+        {
+            this->lastSunDir = dir;
+            this->lastSunColor = Ogre::ColourValue(color.x, color.y, color.z);
+
+            auto closureFunction = [light, dir, color, power, ambUpper, ambLower](Ogre::Real)
+            {
+                light->setDirection(dir);
+                light->setDiffuseColour(color.x, color.y, color.z);
+                light->setPowerScale(power);
+                light->_getManager()->setAmbientLight(Ogre::ColourValue(ambUpper.x, ambUpper.y, ambUpper.z), Ogre::ColourValue(ambLower.x, ambLower.y, ambLower.z), -dir);
+            };
+
+            Ogre::String closureId = this->gameObjectPtr->getName() + "::sunLight";
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
+        }
     }
 
     // =========================================================================
@@ -3765,7 +4008,7 @@ namespace NOWA
             if (nullptr != aoiRaw)
             {
                 // Atmosphere zone = planet radius * 2 (above surface but well inside orbital lane).
-                aoiRaw->getAttribute("Radius")->setValue(radius * 2.0f);
+                aoiRaw->getAttribute("Radius")->setValue(radius * 0.8f);
                 aoiRaw->getAttribute("Categories")->setValue(Ogre::String("All"));
                 aoiRaw->getAttribute("Update Threshold")->setValue(0.1f);
                 aoiRaw->postInit();
@@ -4328,6 +4571,11 @@ namespace NOWA
         return this->farClipSurface->getReal();
     }
 
+    Ogre::Real UniversumComponent::getCurrentLandingPlanetGradient(void) const
+    {
+        return this->currentLandingPlanetGradient;
+    }
+
     void UniversumComponent::setFarClipTransitionSpeed(Ogre::Real speed)
     {
         this->farClipTransitionSpeed->setValue(speed);
@@ -4618,6 +4866,7 @@ namespace NOWA
                 .def("computeGravity", &UniversumComponent::computeGravity)
                 .def("setAutoPauseOrbit", &UniversumComponent::setAutoPauseOrbit)
                 .def("getAutoPauseOrbit", &UniversumComponent::getAutoPauseOrbit)
+                .def("getCurrentLandingPlanetGradient", &UniversumComponent::getCurrentLandingPlanetGradient)
                 .def("reactOnPlanetEntered", &UniversumComponent::reactOnPlanetEntered)
                 .def("reactOnPlanetLeft", &UniversumComponent::reactOnPlanetLeft)
                 .def("reactOnCannotLand", &UniversumComponent::reactOnCannotLand)
@@ -4646,6 +4895,9 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void setAutoPauseOrbit(bool enable)",
             "When enabled, orbital motion pauses automatically when any object enters a planet AreaOfInterest zone, and resumes when it leaves. Day/night is faked via directional light rotation during the pause.");
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "bool getAutoPauseOrbit()", "Gets whether automatic orbital pause on surface is enabled.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "number getCurrentLandingPlanetGradient()", "Gets the current gradient on planet for landing. If its to steep, landing is not possible. This can be use to show the current gradient for the spaceship armature for example.");
+
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnPlanetEntered(func closure(planetGameObject, enteredGameObject))",
             "Registers a Lua closure called when any object enters a planet or moon atmosphere zone. "
             "Receives the planet GameObject. Wire this in the LuaScriptComponent connect() of the "
