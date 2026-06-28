@@ -4,9 +4,9 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.0122556" g="0.0408293" b="0.101842"/>
-			<ambientLightLowerHemisphere r="0.0109192" g="0.0158305" b="0.0222796" a="1"/>
-			<hemisphereDir x="-0.000250128" y="1" z="2.44005e-05"/>
+			<ambientLightUpperHemisphere r="0.00835964" g="0.0303886" b="0.0758533"/>
+			<ambientLightLowerHemisphere r="0.0142503" g="0.015975" b="0.0144702" a="1"/>
+			<hemisphereDir x="-3.34553e-08" y="0.92388" z="-0.382683"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -101,7 +101,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
-			<rotation qw="0.705375" qx="-0.705384" qy="0.049571" qz="0.0492158"/>
+			<rotation qw="0.922156" qx="-0.38197" qy="-0.0233637" qz="-0.056405"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -150,7 +150,7 @@
 					<property type="2" name="PresetsCount" data="6"/>
 					<property type="7" name="Time0" data="06:30"/>
 					<property type="6" name="DensityCoefficient0" data="0.37"/>
-					<property type="6" name="DensityDiffusion0" data="2"/>
+					<property type="6" name="DensityDiffusion0" data="1"/>
 					<property type="6" name="HorizonLimit0" data="0.035"/>
 					<property type="6" name="SunPower0" data="1"/>
 					<property type="6" name="SkyPower0" data="1"/>
@@ -164,7 +164,7 @@
 					<property type="6" name="EnvmapScale0" data="1"/>
 					<property type="7" name="Time1" data="12:00"/>
 					<property type="6" name="DensityCoefficient1" data="0.58"/>
-					<property type="6" name="DensityDiffusion1" data="2"/>
+					<property type="6" name="DensityDiffusion1" data="1"/>
 					<property type="6" name="HorizonLimit1" data="0.025"/>
 					<property type="6" name="SunPower1" data="1"/>
 					<property type="6" name="SkyPower1" data="1"/>
@@ -178,7 +178,7 @@
 					<property type="6" name="EnvmapScale1" data="1"/>
 					<property type="7" name="Time2" data="20:00"/>
 					<property type="6" name="DensityCoefficient2" data="0.58"/>
-					<property type="6" name="DensityDiffusion2" data="2"/>
+					<property type="6" name="DensityDiffusion2" data="1"/>
 					<property type="6" name="HorizonLimit2" data="0.025"/>
 					<property type="6" name="SunPower2" data="0.05"/>
 					<property type="6" name="SkyPower2" data="0.3"/>
@@ -188,11 +188,11 @@
 					<property type="6" name="FogBreakFalloff2" data="0.1"/>
 					<property type="6" name="LinkedLightPower2" data="10"/>
 					<property type="6" name="LinkedAmbientUpperPower2" data="0.015708"/>
-					<property type="6" name="LinkedAmbientLowerPower2" data="0.0015708"/>
+					<property type="6" name="LinkedAmbientLowerPower2" data="0.01"/>
 					<property type="6" name="EnvmapScale2" data="1"/>
 					<property type="7" name="Time3" data="22:00"/>
 					<property type="6" name="DensityCoefficient3" data="0.08"/>
-					<property type="6" name="DensityDiffusion3" data="2"/>
+					<property type="6" name="DensityDiffusion3" data="1"/>
 					<property type="6" name="HorizonLimit3" data="0.025"/>
 					<property type="6" name="SunPower3" data="0.01"/>
 					<property type="6" name="SkyPower3" data="0.2"/>
@@ -201,12 +201,12 @@
 					<property type="6" name="FogBreakMinBrightness3" data="0.25"/>
 					<property type="6" name="FogBreakFalloff3" data="0.1"/>
 					<property type="6" name="LinkedLightPower3" data="10"/>
-					<property type="6" name="LinkedAmbientUpperPower3" data="0.000314159"/>
-					<property type="6" name="LinkedAmbientLowerPower3" data="3.14159e-05"/>
+					<property type="6" name="LinkedAmbientUpperPower3" data="0.01"/>
+					<property type="6" name="LinkedAmbientLowerPower3" data="0.01"/>
 					<property type="6" name="EnvmapScale3" data="1"/>
 					<property type="7" name="Time4" data="00:00"/>
 					<property type="6" name="DensityCoefficient4" data="0.021"/>
-					<property type="6" name="DensityDiffusion4" data="2"/>
+					<property type="6" name="DensityDiffusion4" data="1"/>
 					<property type="6" name="HorizonLimit4" data="0.025"/>
 					<property type="6" name="SunPower4" data="0.005"/>
 					<property type="6" name="SkyPower4" data="0.2"/>
@@ -215,12 +215,12 @@
 					<property type="6" name="FogBreakMinBrightness4" data="0.25"/>
 					<property type="6" name="FogBreakFalloff4" data="0.1"/>
 					<property type="6" name="LinkedLightPower4" data="1"/>
-					<property type="6" name="LinkedAmbientUpperPower4" data="0.000314159"/>
-					<property type="6" name="LinkedAmbientLowerPower4" data="3.14159e-05"/>
+					<property type="6" name="LinkedAmbientUpperPower4" data="0.01"/>
+					<property type="6" name="LinkedAmbientLowerPower4" data="0.01"/>
 					<property type="6" name="EnvmapScale4" data="1"/>
 					<property type="7" name="Time5" data="05:00"/>
 					<property type="6" name="DensityCoefficient5" data="0.08"/>
-					<property type="6" name="DensityDiffusion5" data="2"/>
+					<property type="6" name="DensityDiffusion5" data="1"/>
 					<property type="6" name="HorizonLimit5" data="0.025"/>
 					<property type="6" name="SunPower5" data="0.01"/>
 					<property type="6" name="SkyPower5" data="0.2"/>
@@ -229,8 +229,8 @@
 					<property type="6" name="FogBreakMinBrightness5" data="0.25"/>
 					<property type="6" name="FogBreakFalloff5" data="0.1"/>
 					<property type="6" name="LinkedLightPower5" data="10"/>
-					<property type="6" name="LinkedAmbientUpperPower5" data="0.000314159"/>
-					<property type="6" name="LinkedAmbientLowerPower5" data="3.14159e-05"/>
+					<property type="6" name="LinkedAmbientUpperPower5" data="0.01"/>
+					<property type="6" name="LinkedAmbientLowerPower5" data="0.01"/>
 					<property type="6" name="EnvmapScale5" data="1"/>
 				</userData>
 			</item>
@@ -543,7 +543,7 @@
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="5.11876" y="-8.5319" z="-95.5433"/>
-			<rotation qw="-0.0678291" qx="0.0162843" qy="0.970001" qz="0.232877"/>
+			<rotation qw="-0.0673774" qx="0.0139153" qy="0.969696" qz="0.234427"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -1689,6 +1689,69 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 					<property type="7" name="Collidable" data="false"/>
+				</userData>
+			</item>
+		</node>
+		<node name="MinimapCamera" id="197302691">
+			<position x="0" y="10" z="-2"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="MinimapCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="47676593"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Active" data="false"/>
+					<property type="9" name="CameraPosition" data="0 10 -2"/>
+					<property type="9" name="CameraOrientation" data="0 0 0"/>
+					<property type="6" name="NearClipDistance" data="0.1"/>
+					<property type="6" name="FarClipDistance" data="500"/>
+					<property type="6" name="Fovy" data="90"/>
+					<property type="12" name="Orthographic" data="false"/>
+					<property type="8" name="OrthoWindowSize" data="10 10"/>
+					<property type="12" name="FixedYawAxis" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ExcludeRenderCategories" data="All"/>
+					<property type="7" name="ComponentMinimapComponent" data="MinimapComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="TargetId" data="2108798949"/>
+					<property type="6" name="TextureSize" data="256"/>
+					<property type="10" name="MinimapGeometry" data="0.8 0 0.2 0.2"/>
+					<property type="12" name="Transparent" data="false"/>
+					<property type="12" name="UseFogOfWar" data="false"/>
+					<property type="12" name="UseDiscovery" data="false"/>
+					<property type="12" name="PersistDiscovery" data="false"/>
+					<property type="6" name="VisibilityRadius" data="5"/>
+					<property type="12" name="UseVisibilitySpotlight" data="false"/>
+					<property type="12" name="WholeSceneVisible" data="false"/>
+					<property type="6" name="CameraHeight" data="10"/>
+					<property type="7" name="MinimapMask" data="Circle_Ring.png"/>
+					<property type="12" name="UseRoundMinimap" data="true"/>
+					<property type="12" name="RotateMinimap" data="false"/>
 				</userData>
 			</item>
 		</node>

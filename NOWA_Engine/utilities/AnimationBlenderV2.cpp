@@ -511,7 +511,7 @@ namespace NOWA
 
         if (this->source != nullptr)
         {
-            auto closureFunction = [this, time](Ogre::Real renderDt)
+            auto closureFunction = [this](Ogre::Real renderDt)
             {
                 // Guard: if source was disabled by resetAnimation (disconnect),
                 // and timeleft somehow got reset but source is still non-null,
@@ -529,7 +529,7 @@ namespace NOWA
 
                 if (this->timeleft > 0.0f)
                 {
-                    this->timeleft -= time;
+                    this->timeleft -= renderDt;
                     if (this->timeleft <= 0.0f)
                     {
                         // Blend finished: promote target to source.
@@ -566,7 +566,7 @@ namespace NOWA
                         // with setFrame(0.0f) on promotion, producing a visible jump.
                         if (this->transition == AnimationBlenderV2::BlendWhileAnimating)
                         {
-                            this->target->addTime(time);
+                            this->target->addTime(renderDt);
                         }
                     }
                 }
@@ -644,12 +644,12 @@ namespace NOWA
                                     // Blend-in phase: weight 0 -> 1
                                     if (this->overlayTimeleft > 0.0f)
                                     {
-                                        this->overlayTimeleft -= time;
+                                        this->overlayTimeleft -= renderDt;
                                         this->overlaySource->mWeight = (this->overlayTimeleft <= 0.0f) ? 1.0f : 1.0f - (this->overlayTimeleft / this->overlayDuration);
                                     }
 
                                     // Advance the overlay animation
-                                    this->overlaySource->addTime(time);
+                                    this->overlaySource->addTime(renderDt);
 
                                     // Non-looping overlay finished on its own — auto-clear
                                     if (false == this->overlaySource->mLoop && this->overlaySource->getCurrentTime() >= this->overlaySource->getDuration() - overlayThreshold)
@@ -665,7 +665,7 @@ namespace NOWA
                                     // Blend-out phase: weight 1 -> 0
                                     if (this->overlayTimeleft > 0.0f)
                                     {
-                                        this->overlayTimeleft -= time;
+                                        this->overlayTimeleft -= renderDt;
 
                                         if (this->overlayTimeleft <= 0.0f)
                                         {
@@ -677,7 +677,7 @@ namespace NOWA
                                         else
                                         {
                                             this->overlaySource->mWeight = this->overlayTimeleft / this->overlayDuration;
-                                            this->overlaySource->addTime(time);
+                                            this->overlaySource->addTime(renderDt);
                                         }
                                     }
                                 }
@@ -699,7 +699,7 @@ namespace NOWA
 
                 // Advance the source. For looping animations Ogre's addFrame() wraps
                 // automatically because setLoop(true) was called before this point.
-                this->source->addTime(time);
+                this->source->addTime(renderDt);
 
                 if (true == this->debugLog)
                 {

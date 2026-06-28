@@ -156,7 +156,7 @@ namespace NOWA
         Ogre::Vector3 targetPosition = playerPosition + offsetXZ * this->cameraSpringLength + localOffset;
 
         // Velocity vector (primary spring movement toward target)
-        Ogre::Vector3 velocityVector = (targetPosition - cameraPosition) * this->cameraSpring * dt * 60.0f;
+        Ogre::Vector3 velocityVector = (targetPosition - cameraPosition) * this->cameraSpring * dt;
         velocityVector *= this->cameraFriction;
 
         // Support force -- pulls camera toward player's back using the canonical frame.

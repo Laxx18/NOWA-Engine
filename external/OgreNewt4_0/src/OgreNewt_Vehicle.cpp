@@ -568,9 +568,8 @@ void RayCastTire::processPreUpdate(Ogre::Real timestep, int threadIndex)
 
     OgreNewt::World* world = m_vehicle->getWorld();
 
-    const ndShapeInstance& tireShape = *m_collision;
-
-    OgreNewt::BasicConvexcast convex(world, tireShape, startpt, orientation, endpt, 1, threadIndex, m_thisBody);
+    OgreNewt::CollisionPtr collisionPtr = CollisionPtr(new Collision(world, ndSharedPtr<ndShapeInstance>(new ndShapeInstance(*m_collision))));
+    OgreNewt::BasicConvexcast convex(world, collisionPtr, startpt, orientation, endpt, 1, threadIndex, m_thisBody);
 
     // BasicConvexcast::ConvexcastContactInfo info = world->convexcastBlocking(tireShape, startpt, orientation, endpt, m_thisBody, 1, threadIndex);
     BasicConvexcast::ConvexcastContactInfo info;

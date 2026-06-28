@@ -625,7 +625,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="4000"/>
+					<property type="6" name="Radius" data="3500"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
@@ -880,7 +880,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="5284.46"/>
+					<property type="6" name="Radius" data="3500"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>

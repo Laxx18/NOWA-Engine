@@ -180,8 +180,6 @@ namespace NOWA
         landingContactTimer(0.0f),
         currentAmbientUpper(0.03f, 0.03f, 0.04f),
         currentAmbientLower(0.03f, 0.03f, 0.04f),
-        lastSunDir(Ogre::Vector3::ZERO),
-        lastSunColor(Ogre::ColourValue::Black),
         landingRayQuery(nullptr),
         resolvedLandingTargetValid(false),
         currentLandingPlanetGradient(90.0f),
@@ -629,6 +627,7 @@ namespace NOWA
             if (nullptr != lightComp)
             {
                 this->cachedSunLight = lightComp->getOgreLight();
+
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Cached scene directional light from '" + lightGo->getName() + "'.");
             }
         }
@@ -849,8 +848,6 @@ namespace NOWA
         this->resolvedLandingTargetValid = false;
         this->currentLandingPlanetGradient = 90.0f;
         this->surfaceBlend = 0.0f;
-        this->lastSunDir = Ogre::Vector3::ZERO;
-        this->lastSunColor = Ogre::ColourValue::Black;
 
         // When simulation stops, the undo system resets all planet/moon SceneNodes back
         // to their spawn positions (t=0 state). We must reset the per-body timers to match,
@@ -2578,31 +2575,18 @@ namespace NOWA
         Ogre::Vector3 ambUpper = ambientUpper;
         Ogre::Vector3 ambLower = ambientLower;
 
-        // In your component's update() on the logic thread, throttle the sun update.
-        // Only push a new closure when direction or colour has changed beyond a threshold.
-
-        constexpr float kDirThreshold = 0.001f; // ~0.057 degrees
-        constexpr float kColorThreshold = 0.002f;
-
-        bool dirChanged = !dir.positionEquals(this->lastSunDir, kDirThreshold);
-        bool colorChanged = !color.positionEquals(Ogre::Vector3(this->lastSunColor.r, this->lastSunColor.g, this->lastSunColor.b), kColorThreshold);
-
-        if (dirChanged || colorChanged)
+        // Totally expensive and does freeze for half second the scene
+        auto closureFunction = [light, dir, color, power, ambUpper, ambLower](Ogre::Real)
         {
-            this->lastSunDir = dir;
-            this->lastSunColor = Ogre::ColourValue(color.x, color.y, color.z);
+            light->setDirection(dir);
+            light->setDiffuseColour(color.x, color.y, color.z);
+            light->setPowerScale(power);
+            light->_getManager()->setAmbientLight(Ogre::ColourValue(ambUpper.x, ambUpper.y, ambUpper.z), Ogre::ColourValue(ambLower.x, ambLower.y, ambLower.z), -dir, 1.0f,
+                0xffffffff); // must match pre-warm value exactly
+        };
 
-            auto closureFunction = [light, dir, color, power, ambUpper, ambLower](Ogre::Real)
-            {
-                light->setDirection(dir);
-                light->setDiffuseColour(color.x, color.y, color.z);
-                light->setPowerScale(power);
-                light->_getManager()->setAmbientLight(Ogre::ColourValue(ambUpper.x, ambUpper.y, ambUpper.z), Ogre::ColourValue(ambLower.x, ambLower.y, ambLower.z), -dir);
-            };
-
-            Ogre::String closureId = this->gameObjectPtr->getName() + "::sunLight";
-            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
-        }
+        Ogre::String closureId = this->gameObjectPtr->getName() + "::sunLight";
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
     }
 
     // =========================================================================
@@ -4008,7 +3992,8 @@ namespace NOWA
             if (nullptr != aoiRaw)
             {
                 // Atmosphere zone = planet radius * 2 (above surface but well inside orbital lane).
-                aoiRaw->getAttribute("Radius")->setValue(radius * 0.8f);
+                // Note: Only working if universe is generated, later its stored in the areaofinterestcomponent in the scene, there it must be adjusted!
+                aoiRaw->getAttribute("Radius")->setValue(radius * 1.5f);
                 aoiRaw->getAttribute("Categories")->setValue(Ogre::String("All"));
                 aoiRaw->getAttribute("Update Threshold")->setValue(0.1f);
                 aoiRaw->postInit();

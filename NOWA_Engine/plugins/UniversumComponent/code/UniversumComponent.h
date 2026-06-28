@@ -689,8 +689,6 @@ namespace NOWA
 
         Ogre::Vector3 currentAmbientUpper;
         Ogre::Vector3 currentAmbientLower;
-        Ogre::Vector3 lastSunDir;
-        Ogre::ColourValue lastSunColor;
 
         // Ray query for flat landing spot search
         Ogre::RaySceneQuery* landingRayQuery;

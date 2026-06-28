@@ -245,11 +245,15 @@ namespace NOWA
 		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->showDummyEntity->getBool();
-			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::connect", _1(visible),
-			{
-				if (this->dummyItem)
-					this->dummyItem->setVisible(visible);
-			});
+
+			GraphicsModule::RenderCommand renderCommand = [this, visible]()
+            {
+                if (this->dummyItem)
+                {
+                    this->dummyItem->setVisible(visible);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CameraComponent::connect");
 		}
 
 		return true;
@@ -264,19 +268,25 @@ namespace NOWA
 			Ogre::String name = this->camera->getName();
 			if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 			{
-				ENQUEUE_RENDER_COMMAND("CameraComponent::disconnect1",
-				{
-					if (this->dummyItem)
-						this->dummyItem->setVisible(false);
-				});
+				GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    if (this->dummyItem)
+                    {
+                        this->dummyItem->setVisible(false);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CameraComponent::disconnect1");
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND("CameraComponent::disconnect2",
-				{
-					if (this->dummyItem)
-						this->dummyItem->setVisible(true);
-				});
+				GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    if (this->dummyItem)
+                    {
+                        this->dummyItem->setVisible(true);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CameraComponent::disconnect2");
 			}
 		}
 
@@ -478,10 +488,18 @@ namespace NOWA
 		else if (CameraComponent::AttrPosition() == attribute->getName())
 		{
 			this->setCameraPosition(attribute->getVector3());
+            if (this->gameObjectPtr)
+            {
+                this->gameObjectPtr->setAttributePosition(attribute->getVector3());
+            }
 		}
 		else if (CameraComponent::AttrOrientation() == attribute->getName())
 		{
 			this->setCameraDegreeOrientation(attribute->getVector3());
+            if (this->gameObjectPtr)
+            {
+                this->gameObjectPtr->setAttributeOrientation(MathHelper::getInstance()->degreesToQuat(attribute->getVector3()));
+            }
 		}
 		else if (CameraComponent::AttrNearClipDistance() == attribute->getName())
 		{
@@ -777,10 +795,10 @@ namespace NOWA
 	void CameraComponent::setCameraPosition(const Ogre::Vector3& position)
 	{
 		this->position->setValue(position);
-		if (this->gameObjectPtr)
+		/*if (this->gameObjectPtr)
 		{
 			this->gameObjectPtr->setAttributePosition(position);
-		}
+		}*/
 
 		if (this->camera)
 		{
@@ -797,10 +815,10 @@ namespace NOWA
 	void CameraComponent::setCameraDegreeOrientation(const Ogre::Vector3& orientationDeg)
 	{
 		this->orientation->setValue(orientationDeg);
-		if (this->gameObjectPtr)
+		/*if (this->gameObjectPtr)
 		{
 			this->gameObjectPtr->setAttributeOrientation(MathHelper::getInstance()->degreesToQuat(orientationDeg));
-		}
+		}*/
 
 		if (this->camera)
 		{
@@ -811,10 +829,10 @@ namespace NOWA
 	void CameraComponent::setCameraOrientation(const Ogre::Quaternion& orientation)
 	{
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegrees(orientation));
-		if (nullptr != this->gameObjectPtr)
+		/*if (nullptr != this->gameObjectPtr)
 		{
 			this->gameObjectPtr->setAttributeOrientation(orientation);
-		}
+		}*/
 		if (this->camera)
 		{
 			NOWA::GraphicsModule::getInstance()->setCameraOrientation(this->camera, orientation);
@@ -832,10 +850,11 @@ namespace NOWA
 		this->nearClipDistance->setValue(nearClipDistance);
 		if (nullptr != this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setNearClipDistance", _1(nearClipDistance),
-			{
-				this->camera->setNearClipDistance(nearClipDistance);
-			});
+			GraphicsModule::RenderCommand renderCommand = [this, nearClipDistance]()
+            {
+                this->camera->setNearClipDistance(nearClipDistance);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setNearClipDistance");
 		}
 	}
 
@@ -849,10 +868,11 @@ namespace NOWA
 		this->farClipDistance->setValue(farClipDistance);
 		if (nullptr != this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setFarClipDistance", _1(farClipDistance),
-			{
-				this->camera->setFarClipDistance(farClipDistance);
-			});
+			GraphicsModule::RenderCommand renderCommand = [this, farClipDistance]()
+            {
+                this->camera->setFarClipDistance(farClipDistance);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setFarClipDistance");
 		}
 	}
 
@@ -866,10 +886,11 @@ namespace NOWA
 		this->fovy->setValue(fovy.valueDegrees());
 		if (nullptr != this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setFovy", _1(fovy),
-			{
-				this->camera->setFOVy(fovy);
-			});
+			GraphicsModule::RenderCommand renderCommand = [this, fovy]()
+            {
+                this->camera->setFOVy(fovy);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setFovy");
 		}
 	}
 
@@ -885,10 +906,12 @@ namespace NOWA
 		{
 			this->orthoWindowSize->setVisible(this->orthographic->getBool());
 
-			ENQUEUE_RENDER_COMMAND("CameraComponent::setOrthographic",
-			{
-				this->camera->setProjectionType(static_cast<Ogre::ProjectionType>(this->orthographic->getBool() == true ? 0 : 1));
-			});
+			GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->camera->setProjectionType(static_cast<Ogre::ProjectionType>(this->orthographic->getBool() == true ? 0 : 1));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setOrthographic");
+
 			this->setOrthoWindowSize(this->orthoWindowSize->getVector2());
 		}
 	}
@@ -905,10 +928,11 @@ namespace NOWA
 		{
 			if (true == this->orthographic->getBool())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setOrthoWindowSize", _1(orthoWindowSize),
-				{
-					this->camera->setOrthoWindow(orthoWindowSize.x, orthoWindowSize.y);
-				});
+				GraphicsModule::RenderCommand renderCommand = [this, orthoWindowSize]()
+                {
+                    this->camera->setOrthoWindow(orthoWindowSize.x, orthoWindowSize.y);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setOrthoWindowSize");
 			}
 		}
 	}
@@ -937,10 +961,11 @@ namespace NOWA
 	{
 		if (nullptr != this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setAspectRatio", _1(aspectRatio),
-			{
-				this->camera->setAspectRatio(aspectRatio);
-			});
+			GraphicsModule::RenderCommand renderCommand = [this, aspectRatio]()
+            {
+                this->camera->setAspectRatio(aspectRatio);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setAspectRatio");
 		}
 	}
 
@@ -969,10 +994,11 @@ namespace NOWA
 		this->fixedYawAxis->setValue(fixedYawAxis);
 		if (nullptr != this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setFixedYawAxis", _1(fixedYawAxis),
-			{
-				this->camera->setFixedYawAxis(fixedYawAxis);
-			});
+			GraphicsModule::RenderCommand renderCommand = [this, fixedYawAxis]()
+            {
+                this->camera->setFixedYawAxis(fixedYawAxis);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setFixedYawAxis");
 		}
 	}
 

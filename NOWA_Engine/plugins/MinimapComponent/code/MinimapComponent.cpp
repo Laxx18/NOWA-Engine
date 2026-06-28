@@ -1,5 +1,6 @@
 #include "NOWAPrecompiled.h"
 #include "MinimapComponent.h"
+#include "RenderQueueEnums.h"
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
@@ -96,17 +97,6 @@ namespace NOWA
 	void MinimapComponent::install(const Ogre::NameValuePairList* options)
 	{
 		Ogre::ResourceGroupManager::getSingletonPtr()->addResourceLocation("../../media/MyGUI_Media/minimap", "FileSystem", "Minimap");
-
-		/*Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames("Minimap", "*.png");
-		std::vector<Ogre::String> compatibleNames(names.getPointer()->size() + 1);
-		unsigned int i = 0;
-		compatibleNames[i++] = "";
-		for (auto it = names.getPointer()->cbegin(); it != names.getPointer()->cend(); it++)
-		{
-			compatibleNames[i++] = *it;
-		}
-
-		this->minimapMask->setValue(compatibleNames);*/
 
 		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<MinimapComponent>(MinimapComponent::getStaticClassId(), MinimapComponent::getStaticClassName());
 	}
@@ -350,13 +340,13 @@ namespace NOWA
                     4096x4096) Alternatively, set m_basePixelDimension to a very high value to have very little LOD.
                     */
                     // Adjust this via height of camera?
-                    this->terraComponent->setBasePixelDimension(128);
+                    // this->terraComponent->setBasePixelDimension(128);
 
-                    if (this->cameraComponent->getOwner()->getId() != this->terraComponent->geCameraId())
+                    /*if (this->cameraComponent->getOwner()->getId() != this->terraComponent->geCameraId())
                     {
                         this->terraComponent->setCameraId(this->cameraComponent->getOwner()->getId());
                         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MinimapComponent] Attention: Changed camera for terra, in order to get minimap working for game object: " + this->gameObjectPtr->getName());
-                    }
+                    }*/
                 }
             }
 
@@ -365,7 +355,7 @@ namespace NOWA
             if (nullptr != workspaceCompPtr)
             {
                 this->gameObjectPtr->deleteComponent(workspaceCompPtr.get());
-                return;
+                // return;
             }
 
             if (true == this->persistDiscovery->getBool())
@@ -553,6 +543,12 @@ namespace NOWA
 						// Sets the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
 						// Note: MyGui is added to the final split combined workspace, so it does not make sense to exclude mygui objects from rendering
 						unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
+
+						// Always exclude procedural grass from minimap -- it serves no navigational
+                        // purpose overhead and costs significant GPU time (wind shader, alpha hash).
+                        finalRenderMask &= ~NOWA::VISIBILITY_FLAG_GRASS;
+                        finalRenderMask &= ~NOWA::VISIBILITY_FLAG_TREE;
+
 						passScene->setVisibilityMask(finalRenderMask);
 
 						passScene->mIncludeOverlays = false;
@@ -692,6 +688,11 @@ namespace NOWA
 
 	void MinimapComponent::updateFogOfWarTexture(const Ogre::Vector3& position, Ogre::Real radius)
 	{
+		if (nullptr == this->fogOfWarStagingTexture)
+		{
+            return;
+		}
+
 		// Threadsafe from the outside
 		// Use code from EndFrameOnceFailureGameState.h for parallelization!
 		unsigned int texSize = this->textureSize->getUInt();
@@ -882,88 +883,92 @@ namespace NOWA
 	}
 
 	void MinimapComponent::removeWorkspace(void)
-	{
-		if (nullptr != this->workspace)
-		{
-			Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+    {
+        if (nullptr != this->workspace)
+        {
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 
-			compositorManager->removeWorkspace(this->workspace);
+                compositorManager->removeWorkspace(this->workspace);
 
-			// Note: Each time addWorkspaceDefinition is called, an "AutoGen Hash..." node is internally created by Ogre, this one must also be removed, else a crash occurs (bug in Ogre?)
-			if (true == compositorManager->hasNodeDefinition(this->minimapNodeName))
-			{
-				compositorManager->removeNodeDefinition(this->minimapNodeName);
-			}
-			if (true == compositorManager->hasWorkspaceDefinition(this->minimapWorkspaceName))
-			{
-				compositorManager->removeWorkspaceDefinition(this->minimapWorkspaceName);
-			}
+                // Note: Each time addWorkspaceDefinition is called, an "AutoGen Hash..." node is internally created by Ogre, this one must also be removed, else a crash occurs (bug in Ogre?)
+                if (true == compositorManager->hasNodeDefinition(this->minimapNodeName))
+                {
+                    compositorManager->removeNodeDefinition(this->minimapNodeName);
+                }
+                if (true == compositorManager->hasWorkspaceDefinition(this->minimapWorkspaceName))
+                {
+                    compositorManager->removeWorkspaceDefinition(this->minimapWorkspaceName);
+                }
 
-			// auto texture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->minimapTexture->getNameStr());
-			// texture->destroy();
+                // auto texture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->minimapTexture->getNameStr());
+                // texture->destroy();
 
-			// auto texture2 = MyGUI::RenderManager::getInstancePtr()->getTexture(this->fogOfWarTexture->getNameStr());
-			// texture2->destroy();
+                // auto texture2 = MyGUI::RenderManager::getInstancePtr()->getTexture(this->fogOfWarTexture->getNameStr());
+                // texture2->destroy();
 
-			if (nullptr != this->maskWidget)
-			{
-				// Must be done, because mygui also holds a reference to the Ogre::TextureGpu texture.
-				auto myGuiTexture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->minimapMask->getString());
-				if (nullptr != myGuiTexture)
-				{
-					static_cast<MyGUI::Ogre2RenderManager*>(MyGUI::RenderManager::getInstancePtr())->removeTexture(myGuiTexture);
-				}
-				this->maskWidget->setImageTexture("");
-				MyGUI::Gui::getInstancePtr()->destroyWidget(this->maskWidget);
-				this->maskWidget = nullptr;
-			}
-			if (nullptr != this->minimapWidget)
-			{
-				// Must be done, because mygui also holds a reference to the Ogre::TextureGpu texture.
-				auto myGuiTexture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->minimapTexture->getNameStr());
-				if (nullptr != myGuiTexture)
-				{
-					static_cast<MyGUI::Ogre2RenderManager*>(MyGUI::RenderManager::getInstancePtr())->removeTexture(myGuiTexture);
-				}
-				this->minimapWidget->setImageTexture("");
-				MyGUI::Gui::getInstancePtr()->destroyWidget(this->minimapWidget);
-				this->minimapWidget = nullptr;
-			}
-			if (nullptr != this->fogOfWarWidget)
-			{
-				// Must be done, because mygui also holds a reference to the Ogre::TextureGpu texture.
-				auto myGuiTexture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->fogOfWarTexture->getNameStr());
-				if (nullptr != myGuiTexture)
-				{
-					static_cast<MyGUI::Ogre2RenderManager*>(MyGUI::RenderManager::getInstancePtr())->removeTexture(myGuiTexture);
-				}
-				this->fogOfWarWidget->setImageTexture("");
-				MyGUI::Gui::getInstancePtr()->destroyWidget(this->fogOfWarWidget);
-				this->fogOfWarWidget = nullptr;
-			}
+                if (nullptr != this->maskWidget)
+                {
+                    // Must be done, because mygui also holds a reference to the Ogre::TextureGpu texture.
+                    auto myGuiTexture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->minimapMask->getString());
+                    if (nullptr != myGuiTexture)
+                    {
+                        static_cast<MyGUI::Ogre2RenderManager*>(MyGUI::RenderManager::getInstancePtr())->removeTexture(myGuiTexture);
+                    }
+                    this->maskWidget->setImageTexture("");
+                    MyGUI::Gui::getInstancePtr()->destroyWidget(this->maskWidget);
+                    this->maskWidget = nullptr;
+                }
+                if (nullptr != this->minimapWidget)
+                {
+                    // Must be done, because mygui also holds a reference to the Ogre::TextureGpu texture.
+                    auto myGuiTexture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->minimapTexture->getNameStr());
+                    if (nullptr != myGuiTexture)
+                    {
+                        static_cast<MyGUI::Ogre2RenderManager*>(MyGUI::RenderManager::getInstancePtr())->removeTexture(myGuiTexture);
+                    }
+                    this->minimapWidget->setImageTexture("");
+                    MyGUI::Gui::getInstancePtr()->destroyWidget(this->minimapWidget);
+                    this->minimapWidget = nullptr;
+                }
+                if (nullptr != this->fogOfWarWidget)
+                {
+                    // Must be done, because mygui also holds a reference to the Ogre::TextureGpu texture.
+                    auto myGuiTexture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->fogOfWarTexture->getNameStr());
+                    if (nullptr != myGuiTexture)
+                    {
+                        static_cast<MyGUI::Ogre2RenderManager*>(MyGUI::RenderManager::getInstancePtr())->removeTexture(myGuiTexture);
+                    }
+                    this->fogOfWarWidget->setImageTexture("");
+                    MyGUI::Gui::getInstancePtr()->destroyWidget(this->fogOfWarWidget);
+                    this->fogOfWarWidget = nullptr;
+                }
 
-			// Is deleted via destroy above 
-			/*if (nullptr != this->minimapTexture)
-			{
-				this->textureManager->destroyTexture(this->minimapTexture);
-				this->minimapTexture = nullptr;
-			}
-			if (nullptr != this->fogOfWarTexture)
-			{
-				this->textureManager->destroyTexture(this->fogOfWarTexture);
-				this->fogOfWarTexture = nullptr;
-			}*/
+                // Is deleted via destroy above
+                /*if (nullptr != this->minimapTexture)
+                {
+                    this->textureManager->destroyTexture(this->minimapTexture);
+                    this->minimapTexture = nullptr;
+                }
+                if (nullptr != this->fogOfWarTexture)
+                {
+                    this->textureManager->destroyTexture(this->fogOfWarTexture);
+                    this->fogOfWarTexture = nullptr;
+                }*/
 
-			if (nullptr != this->fogOfWarStagingTexture)
-			{
-				this->textureManager->removeStagingTexture(this->fogOfWarStagingTexture);
-				this->fogOfWarStagingTexture = nullptr;
-			}
-		
-			this->workspace = nullptr;
-			this->externalChannels.clear();
-		}
-	}
+                if (nullptr != this->fogOfWarStagingTexture)
+                {
+                    this->textureManager->removeStagingTexture(this->fogOfWarStagingTexture);
+                    this->fogOfWarStagingTexture = nullptr;
+                }
+
+                this->workspace = nullptr;
+                this->externalChannels.clear();
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MinimapComponent::removeWorksapce");
+        }
+    }
 
 	void MinimapComponent::adjustMinimapCamera(void)
 	{
@@ -1355,29 +1360,31 @@ namespace NOWA
 				auto minimapWidget = this->minimapWidget;
 				auto maskWidget = this->maskWidget;
 
-				ENQUEUE_RENDER_COMMAND_MULTI("MinimapComponent::setActivated maskWidget", _2(minimapWidget, maskWidget),
-				{
-					if (minimapWidget)
-					{
-						minimapWidget->setVisible(false);
-						if (maskWidget)
-						{
-							maskWidget->setVisible(false);
-						}
-					}
-				});
+				NOWA::GraphicsModule::RenderCommand cmd = [minimapWidget, maskWidget]()
+                {
+                    if (minimapWidget)
+                    {
+                        minimapWidget->setVisible(false);
+                        if (maskWidget)
+                        {
+                            maskWidget->setVisible(false);
+                        }
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MinimapComponent::setActivated maskWidget");
 			}
 			if (nullptr != this->fogOfWarWidget)
 			{
 				auto fogOfWarWidget = this->fogOfWarWidget;
 
-				ENQUEUE_RENDER_COMMAND_MULTI("MinimapComponent::setActivated fogOfWarWidget", _1(fogOfWarWidget),
-				{
-					if (fogOfWarWidget)
-					{
-						fogOfWarWidget->setVisible(false);
-					}
-				});
+				NOWA::GraphicsModule::RenderCommand cmd = [fogOfWarWidget]()
+                {
+                    if(fogOfWarWidget)
+                    {
+                        fogOfWarWidget->setVisible(false);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MinimapComponent::setActivated fogOfWarWidget");
 			}
 		}
 	}

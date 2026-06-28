@@ -14,7 +14,7 @@ namespace OgreNewt
 
         virtual ~Convexcast();
 
-        void go(const OgreNewt::World* world, const ndShapeInstance& shape, const Ogre::Vector3& startpt,
+        void go(const OgreNewt::World* world, const OgreNewt::CollisionPtr collisionPtr, const Ogre::Vector3& startpt,
             const Ogre::Quaternion& orientation, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex);
 
         virtual bool userPreFilterCallback(OgreNewt::Body* body) { return true; }
@@ -106,11 +106,11 @@ namespace OgreNewt
         {
         }
 
-        BasicConvexcast(const OgreNewt::World* world, const ndShapeInstance& shape, const Ogre::Vector3& startpt,
+        BasicConvexcast(const OgreNewt::World* world, const OgreNewt::CollisionPtr collisionPtr, const Ogre::Vector3& startpt,
             const Ogre::Quaternion& ori, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex, OgreNewt::Body* ignoreBody = nullptr)
             : mIgnoreBody(ignoreBody)
         {
-            go(world, shape, startpt, ori, endpt, maxcontactscount, threadIndex);
+            go(world, collisionPtr, startpt, ori, endpt, maxcontactscount, threadIndex);
         }
 
         bool userPreFilterCallback(OgreNewt::Body* body) override

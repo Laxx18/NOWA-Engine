@@ -1279,29 +1279,22 @@ namespace NOWA
         {
             this->acquireActiveCamera();
 
-            this->baseCamera = new ThirdPersonOcclusionCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(),
+            OgreNewt::World* ogreNewt = nullptr;
+            if (nullptr != this->physicsActiveComponent)
+            {
+                ogreNewt = this->physicsActiveComponent->getOgreNewt();
+            }
+
+            this->baseCamera = new ThirdPersonOcclusionCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), ogreNewt, this->gameObjectPtr->getDefaultDirection(),
                 this->offsetPosition->getVector3(), this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
 
             static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setProbeRadius(this->probeRadius->getReal());
             static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setSkinMargin(this->skinMargin->getReal());
             static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setMinDistance(this->minDistance->getReal());
             static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setReleaseSmoothValue(this->releaseSmoothValue->getReal());
-
-            // Exclude the owning game object's own mesh from occlusion casts, so the
-            // camera never treats its own target as an obstruction.
-            if (nullptr != this->gameObjectPtr->getMovableObject())
-            {
-                std::vector<Ogre::MovableObject*> excluded;
-                excluded.push_back(this->gameObjectPtr->getMovableObject());
-                static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setExcludedMovables(excluded);
-            }
-
-            // NOTE: mirrored as-is from CameraBehaviorThirdPersonComponent::setActivated -
-            // physComp here is unused; this->physicsActiveComponent (referenced below) must
-            // be getting populated as a side effect of CameraBehaviorComponent::setActivated()
-            // a few lines down, not from this local. Worth double-checking that's actually
-            // intentional rather than a leftover from a refactor.
-            auto physComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+            // setPullInSmoothValue() and setProbeCacheEpsilon() use their built-in defaults
+            // unless you want to expose them as additional Variants too, same pattern as
+            // the others - say so and I'll add them.
         }
         CameraBehaviorComponent::setActivated(activated);
 

@@ -14,7 +14,7 @@ namespace OgreNewt
     {
     }
 
-    void Convexcast::go(const OgreNewt::World* world, const ndShapeInstance& shape, const Ogre::Vector3& startpt, const Ogre::Quaternion& orientation, const Ogre::Vector3& endpt, int /*maxcontactscount*/, int /*threadIndex*/)
+    void Convexcast::go(const OgreNewt::World* world, const OgreNewt::CollisionPtr collisionPtr, const Ogre::Vector3& startpt, const Ogre::Quaternion& orientation, const Ogre::Vector3& endpt, int /*maxcontactscount*/, int /*threadIndex*/)
     {
         mContacts.clear();
         mFirstContactDistance = -1;
@@ -29,7 +29,7 @@ namespace OgreNewt
         // Perform convex cast against the world
         ConvexCastNotify notify(this);
         ndWorld* const ndworld = world->getNewtonWorld();
-        ndworld->ConvexCast(notify, shape, matrixStart, vecEnd);
+        ndworld->ConvexCast(notify, *collisionPtr->getShapeInstanceConst(), matrixStart, vecEnd);
 
         // Copy out contacts from notify's ndConvexCastNotify::m_contacts
         const ndInt32 count = notify.GetContactCount();

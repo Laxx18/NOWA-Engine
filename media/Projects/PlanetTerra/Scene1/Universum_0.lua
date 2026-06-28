@@ -41,7 +41,7 @@ local function activatePlayer()
         -- Place the player 3 units to the right of the ship in ship-local space
         -- and 1 unit up so they stand on the surface next to the ship.
         local shipRight = shipOrient:xAxis();
-        spawnPos = Vector3(shipPos.x + shipRight.x * 6.0, shipPos.y + 1.0, shipPos.z + shipRight.z * 6.0);
+        spawnPos = Vector3(shipPos.x + shipRight.x * 10.0, shipPos.y + 1.0, shipPos.z + shipRight.z * 10.0);
         -- Face the same direction as the ship.
         spawnOrient = shipOrient;
     elseif lastContactPos ~= nil and lastContactNorm ~= nil then

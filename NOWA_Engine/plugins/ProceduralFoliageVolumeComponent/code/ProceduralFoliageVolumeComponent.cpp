@@ -2591,6 +2591,8 @@ namespace NOWA
                     Ogre::Item* cellItem = sceneManager->createItem(cellMesh, Ogre::SCENE_STATIC);
                     cellItem->setName("FoliageCellItem_" + rule.name + "_S" + Ogre::StringConverter::toString(static_cast<unsigned int>(subMeshIdx)) + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)));
 
+                    cellItem->setVisibilityFlags(NOWA::VISIBILITY_FLAG_TREE);
+
                     if (nullptr != sd.datablock && cellItem->getNumSubItems() > 0u)
                     {
                         // For leaves submeshes with useProceduralTree enabled,
@@ -3008,6 +3010,7 @@ namespace NOWA
             }
 
             cellItem->setQueryFlags(this->gameObjectPtr->getCategoryId());
+            cellItem->setVisibilityFlags(NOWA::VISIBILITY_FLAG_GRASS);
 
             Ogre::SceneNode* cellNode = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
             cellNode->setPosition(cellCentre);

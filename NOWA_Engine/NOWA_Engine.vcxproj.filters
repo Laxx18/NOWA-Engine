@@ -681,9 +681,6 @@
     <ClInclude Include="camera\ThirdPersonOcclusionCamera.h">
       <Filter>camera</Filter>
     </ClInclude>
-    <ClInclude Include="utilities\LockFreeMailbox.h">
-      <Filter>utilities</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
