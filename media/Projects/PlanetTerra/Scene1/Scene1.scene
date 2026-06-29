@@ -4,9 +4,9 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.03" g="0.03" b="0.04"/>
-			<ambientLightLowerHemisphere r="0.03" g="0.03" b="0.04" a="1"/>
-			<hemisphereDir x="0.57735" y="0.577349" z="0.577351"/>
+			<ambientLightUpperHemisphere r="0.399999" g="0.399999" b="0.36"/>
+			<ambientLightLowerHemisphere r="0.15" g="0.15" b="0.135" a="1"/>
+			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -33,7 +33,7 @@
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-2331.27 -2574.42 -2502" mostRightFarPosition="19750 2854.89 24829.4"/>
+		<bounds mostLeftNearPosition="-3185.63 -2574.42 -2502" mostRightFarPosition="19750 3462.5 24829.4"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -110,7 +110,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
-			<rotation qw="-0.235617" qx="0.39965" qy="0.227166" qz="0.856248"/>
+			<rotation qw="-0.237327" qx="0.400103" qy="0.226368" qz="0.855775"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -1304,17 +1304,22 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="DeviceName" data="Win32InputManager"/>
 					<property type="12" name="IsExclusive" data="false"/>
-					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
+					<property type="7" name="ComponentCameraBehaviorThirdPersonOcclusionComponent" data="CameraBehaviorThirdPersonOcclusionComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
 					<property type="9" name="YOffset" data="0 5 7"/>
-					<property type="9" name="LookAtOffset" data="0 2 0"/>
-					<property type="6" name="SpringForce" data="0.3"/>
-					<property type="6" name="Friction" data="0.1"/>
+					<property type="9" name="LookAtOffset" data="0 1 0"/>
+					<property type="6" name="SpringForce" data="0.1"/>
+					<property type="6" name="Friction" data="0.5"/>
 					<property type="6" name="SpringLength" data="3"/>
+					<property type="6" name="ProbeRadius" data="0.25"/>
+					<property type="6" name="SkinMargin" data="0.4"/>
+					<property type="6" name="MinDistance" data="0.5"/>
+					<property type="6" name="ReleaseSmoothValue" data="0.85"/>
+					<property type="6" name="PullInSmoothValue" data="20"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1324,6 +1329,16 @@
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
 					<property type="2" name="OrderIndex" data="3"/>
+					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="12" name="ShortTimeActivation" data="false"/>
+					<property type="6" name="Radius" data="5"/>
+					<property type="6" name="UpdateThreshold" data="1"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="12" name="TriggerPermanentely" data="false"/>
 				</userData>
 			</item>
 		</node>
@@ -1431,15 +1446,7 @@
 					<property type="6" name="Acceleration" data="0"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="UseStandUp" data="false"/>
-					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="AttributesCount" data="1"/>
-					<property type="7" name="AttributeName0" data="isOnPlanet"/>
-					<property type="7" name="AttributeType0" data="Bool"/>
-					<property type="7" name="AttributeValue0" data="true"/>
-					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
+					<property type="7" name="ComponentCameraBehaviorThirdPersonOcclusionComponent" data="CameraBehaviorThirdPersonOcclusionComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1450,6 +1457,11 @@
 					<property type="6" name="SpringForce" data="0.6"/>
 					<property type="6" name="Friction" data="0.5"/>
 					<property type="6" name="SpringLength" data="10"/>
+					<property type="6" name="ProbeRadius" data="0.25"/>
+					<property type="6" name="SkinMargin" data="0.4"/>
+					<property type="6" name="MinDistance" data="0.5"/>
+					<property type="6" name="ReleaseSmoothValue" data="0.85"/>
+					<property type="6" name="PullInSmoothValue" data="20"/>
 					<property type="7" name="ComponentCompositorEffectRadialBlurComponent" data="CompositorEffectRadialBlurComponent"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
@@ -1457,6 +1469,67 @@
 					<property type="6" name="Min Distance" data="0.2"/>
 					<property type="6" name="Max Distance" data="0.95"/>
 					<property type="6" name="Exponent" data="4.5"/>
+					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="AttributesCount" data="1"/>
+					<property type="7" name="AttributeName0" data="isOnPlanet"/>
+					<property type="7" name="AttributeType0" data="Bool"/>
+					<property type="7" name="AttributeValue0" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Light (Spot)_0" id="2100318845">
+			<position x="-3184.98" y="3462.2" z="1887.51"/>
+			<rotation qw="0.642806" qx="0.0062546" qy="0.765981" qz="-0.00588827"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Light (Spot)_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4152948589"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="500"/>
+					<property type="6" name="LodDistance" data="500"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentLightSpotComponent" data="LightSpotComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="Diffuse" data="1 1 1"/>
+					<property type="9" name="Specular" data="1 1 1"/>
+					<property type="6" name="PowerScale" data="30"/>
+					<property type="7" name="AttenuationMode" data="Radius"/>
+					<property type="6" name="AttenuationRange" data="46"/>
+					<property type="6" name="AttenuationConstant" data="0.5"/>
+					<property type="6" name="AttenuationLinear" data="0"/>
+					<property type="6" name="AttenuationQuadratic" data="0.5"/>
+					<property type="6" name="AttenuationRadius" data="10"/>
+					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
+					<property type="12" name="CastShadows" data="true"/>
+					<property type="9" name="Size" data="30 40 1"/>
+					<property type="6" name="NearClipDistance" data="0.1"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ComponentTagChildNodeComponent" data="TagChildNodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="SourceId" data="2599276278"/>
 				</userData>
 			</item>
 		</node>
@@ -1557,15 +1630,15 @@
 				</userData>
 			</item>
 		</node>
-		<node name="Light (Spot)_0" id="2100318845">
-			<position x="-2317.27" y="1148.32" z="6562.53"/>
-			<rotation qw="0.939657" qx="0.00820026" qy="-0.342007" qz="0.00298465"/>
+		<node name="Planet Minimap_0" id="1418593167">
+			<position x="0" y="5" z="-2"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Light (Spot)_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+			<item name="Planet Minimap_0" meshFile="Camera.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="4152948589"/>
+					<property type="7" name="Id" data="3534518939"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
@@ -1578,35 +1651,46 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="500"/>
-					<property type="6" name="LodDistance" data="500"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
-					<property type="7" name="ComponentLightSpotComponent" data="LightSpotComponent"/>
+					<property type="7" name="ComponentPlanetMinimapComponent" data="PlanetMinimapComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="9" name="Diffuse" data="1 1 1"/>
-					<property type="9" name="Specular" data="1 1 1"/>
-					<property type="6" name="PowerScale" data="30"/>
-					<property type="7" name="AttenuationMode" data="Radius"/>
-					<property type="6" name="AttenuationRange" data="46"/>
-					<property type="6" name="AttenuationConstant" data="0.5"/>
-					<property type="6" name="AttenuationLinear" data="0"/>
-					<property type="6" name="AttenuationQuadratic" data="0.5"/>
-					<property type="6" name="AttenuationRadius" data="10"/>
-					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
-					<property type="12" name="CastShadows" data="true"/>
-					<property type="9" name="Size" data="30 40 1"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="PlanetId" data="0"/>
+					<property type="6" name="TargetId" data="0"/>
+					<property type="6" name="TextureSize" data="256"/>
+					<property type="10" name="MinimapGeometry" data="0.8 0 0.2 0.2"/>
+					<property type="12" name="Transparent" data="false"/>
+					<property type="12" name="UseFogOfWar" data="false"/>
+					<property type="12" name="UseDiscovery" data="false"/>
+					<property type="12" name="PersistDiscovery" data="false"/>
+					<property type="6" name="VisibilityRadius" data="5"/>
+					<property type="12" name="UseVisibilitySpotlight" data="false"/>
+					<property type="12" name="WholeSceneVisible" data="true"/>
+					<property type="6" name="CameraHeight" data="10"/>
+					<property type="7" name="MinimapMask" data="Circle_Ring.png"/>
+					<property type="12" name="UseRoundMinimap" data="true"/>
+					<property type="12" name="RotateMinimap" data="false"/>
+					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Active" data="false"/>
+					<property type="9" name="CameraPosition" data="0 5 -2"/>
+					<property type="9" name="CameraOrientation" data="0 0 0"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
+					<property type="6" name="FarClipDistance" data="500"/>
+					<property type="6" name="Fovy" data="90"/>
+					<property type="12" name="Orthographic" data="false"/>
+					<property type="8" name="OrthoWindowSize" data="10 10"/>
+					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
-					<property type="7" name="ComponentTagChildNodeComponent" data="TagChildNodeComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="SourceId" data="2599276278"/>
+					<property type="7" name="ExcludeRenderCategories" data="All"/>
 				</userData>
 			</item>
 		</node>

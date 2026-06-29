@@ -265,6 +265,12 @@ namespace OgreAL {
 		bool frameStarted(const Ogre::FrameEvent& evt);
 		/// Translate the OpenAL error code to a string
 		const Ogre::String errorToString(int code) const;
+
+		// Restores the OpenAL context if it was lost (e.g. due to a driver reset
+		// or a long main-thread stall during shader recompilation). Called at the
+		// top of any method that issues OpenAL calls so a momentary context loss
+		// does not permanently break all audio for the rest of the session.
+		bool ensureContext(void);
 		
 		SoundFactory *mSoundFactory;
 		ListenerFactory *mListenerFactory;

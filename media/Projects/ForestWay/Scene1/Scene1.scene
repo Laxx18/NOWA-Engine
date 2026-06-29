@@ -4,9 +4,9 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.00835964" g="0.0303886" b="0.0758533"/>
+			<ambientLightUpperHemisphere r="0.00835963" g="0.0303886" b="0.0758533"/>
 			<ambientLightLowerHemisphere r="0.0142503" g="0.015975" b="0.0144702" a="1"/>
-			<hemisphereDir x="-3.34553e-08" y="0.92388" z="-0.382683"/>
+			<hemisphereDir x="-6.69105e-08" y="0.92388" z="-0.382683"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -30,7 +30,7 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="500"/>
+			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-100 -75 -100" mostRightFarPosition="100 75 100.439"/>
@@ -101,7 +101,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
-			<rotation qw="0.922156" qx="-0.38197" qy="-0.0233637" qz="-0.056405"/>
+			<rotation qw="0.906898" qx="-0.37565" qy="-0.0730347" qz="-0.176321"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -573,8 +573,8 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
 					<property type="9" name="CameraPosition" data="5.11876 -8.5319 -95.5433"/>
-					<property type="9" name="CameraOrientation" data="-27.1628 -171.979 -0.296418"/>
-					<property type="6" name="NearClipDistance" data="1"/>
+					<property type="9" name="CameraOrientation" data="-27.1628 -171.979 -0.29642"/>
+					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="200"/>
 					<property type="6" name="Fovy" data="90"/>
 					<property type="12" name="Orthographic" data="false"/>
@@ -997,7 +997,7 @@
 		</node>
 		<node name="ViperTire_0" id="2549723094">
 			<position x="5.69076" y="-10.3997" z="-91.5514"/>
-			<rotation qw="-4.36515e-08" qx="2.28768e-09" qy="0.99863" qz="0.052336"/>
+			<rotation qw="4.36515e-08" qx="-2.28768e-09" qy="0.99863" qz="0.052336"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="ViperTire_0" meshFile="ViperTire.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Viper"/>
@@ -1090,7 +1090,7 @@
 		</node>
 		<node name="ViperTire_3" id="2549722659">
 			<position x="5.69076" y="-10.6078" z="-89.1758"/>
-			<rotation qw="-4.36515e-08" qx="2.28768e-09" qy="0.99863" qz="0.052336"/>
+			<rotation qw="4.36515e-08" qx="-2.28768e-09" qy="0.99863" qz="0.052336"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="ViperTire_3" meshFile="ViperTire.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Viper"/>
@@ -1404,7 +1404,7 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="RotationSpeed" data="10"/>
 					<property type="6" name="GoalRadius" data="0.5"/>
-					<property type="6" name="AnimationSpeed" data="2"/>
+					<property type="6" name="AnimationSpeed" data="3"/>
 					<property type="6" name="Acceleration" data="0"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="UseStandUp" data="false"/>
@@ -1443,11 +1443,12 @@
 					<property type="9" name="LookAtOffset" data="0 1 0"/>
 					<property type="6" name="SpringForce" data="0.1"/>
 					<property type="6" name="Friction" data="0.5"/>
-					<property type="6" name="SpringLength" data="6"/>
+					<property type="6" name="SpringLength" data="4"/>
 					<property type="6" name="ProbeRadius" data="0.25"/>
-					<property type="6" name="SkinMargin" data="0.15"/>
+					<property type="6" name="SkinMargin" data="0.25"/>
 					<property type="6" name="MinDistance" data="1.5"/>
 					<property type="6" name="ReleaseSmoothValue" data="0.85"/>
+					<property type="6" name="PullInSmoothValue" data="10"/>
 					<property type="7" name="ComponentWindInteractionComponent" data="WindInteractionComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1705,7 +1706,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>

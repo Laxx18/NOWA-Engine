@@ -505,6 +505,7 @@ namespace NOWA
     }
 #endif
 
+#if 1
 	void AppStateManager::multiThreadedRendering(void)
     {
         this->markCurrentThreadAsLogicThread();
@@ -580,6 +581,7 @@ namespace NOWA
         this->bStall = true;
         this->clearLogicQueue();
     }
+#endif
 
 	void AppStateManager::internalChangeAppState(AppState* state, bool initial)
 	{

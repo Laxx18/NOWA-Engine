@@ -577,6 +577,9 @@ namespace NOWA
         void setReleaseSmoothValue(Ogre::Real releaseSmoothValue);
         Ogre::Real getReleaseSmoothValue(void) const;
 
+		void setPullInSmoothValue(Ogre::Real pullInSmoothValue);
+        Ogre::Real getPullInSmoothValue(void) const;
+
     public:
         static const Ogre::String AttrOffsetPosition(void)
         {
@@ -614,7 +617,10 @@ namespace NOWA
         {
             return "Release Smooth Value";
         }
-
+        static const Ogre::String AttrPullInSmoothValue(void)
+        {
+            return "Pull In Smooth Value";
+        }
     private:
         Variant* offsetPosition;
         Variant* springForce;
@@ -625,6 +631,7 @@ namespace NOWA
         Variant* skinMargin;
         Variant* minDistance;
         Variant* releaseSmoothValue;
+        Variant* pullInSmoothValue;
     };
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////

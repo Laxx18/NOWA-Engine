@@ -10540,6 +10540,30 @@ return {
 				returns = "(PlanetAtmosphereComponent)",
 				valuetype = "PlanetAtmosphereComponent"
 			},
+			getPlanetMinimapComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(PlanetMinimapComponent)",
+				valuetype = "PlanetMinimapComponent"
+			},
+			getPlanetMinimapComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(PlanetMinimapComponent)",
+				valuetype = "PlanetMinimapComponent"
+			},
+			getPlanetMinimapComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(PlanetMinimapComponent)",
+				valuetype = "PlanetMinimapComponent"
+			},
 			getPlanetOceanComponent =
 			{
 				type = "function",
@@ -12747,6 +12771,14 @@ return {
 				args = "(PlanetAtmosphereComponent other)",
 				returns = "(PlanetAtmosphereComponent)",
 				valuetype = "PlanetAtmosphereComponent"
+			},
+			castPlanetMinimapComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(PlanetMinimapComponent other)",
+				returns = "(PlanetMinimapComponent)",
+				valuetype = "PlanetMinimapComponent"
 			},
 			castPlanetOceanComponent =
 			{
@@ -19273,6 +19305,14 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getTargetId =
+			{
+				type = "function",
+				description = "Gets target id, at which this game object bone head is rotated to.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
 			setLookSpeed =
 			{
 				type = "method",
@@ -20262,6 +20302,22 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			setTargetId =
+			{
+				type = "method",
+				description = "Sets the game object id of the target object that the minimap camera should follow.",
+				args = "(string targetId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTargetId =
+			{
+				type = "function",
+				description = "Gets the game object id of the target object that the minimap camera is following.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			},
 			setVisibilityRadius =
 			{
@@ -26807,6 +26863,127 @@ return {
 				args = "()",
 				returns = "(unumber)",
 				valuetype = "unumber"
+			}
+		}
+	},
+	PlanetMinimapComponent =
+	{
+		type = "class",
+		description = "Usage: Can be used for painting a minimap for a sphere planet/moon. Also fog of war is possible and the given game object id is tracked on the planet's surface. Requirements: This component must be placed under a separate game object with a camera component, which is not the MainCamera. The referenced planet game object must hold a PlanetTerraComponent. Note: The minimap can only be used with default direction of -z, which is also the default graphics engine mesh direction. Note: If WholeSceneVisible is true, fog of war and discovery are available, exactly like MinimapComponent, but only the hemisphere facing the fixed overhead camera can ever be revealed. Note: If WholeSceneVisible is false, the camera follows the target along the planet's surface, oriented toward the planet's center; fog of war is not available in this mode.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this component should be activated or not.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setPlanetId =
+			{
+				type = "method",
+				description = "Sets the game object id of the planet (must hold a PlanetTerraComponent), which shall be displayed on the minimap.",
+				args = "(string planetId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPlanetId =
+			{
+				type = "function",
+				description = "Gets the game object id of the planet, which is displayed on the minimap.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setTargetId =
+			{
+				type = "method",
+				description = "Sets the game object id of the target object that the minimap camera should follow.",
+				args = "(string targetId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTargetId =
+			{
+				type = "function",
+				description = "Gets the game object id of the target object that the minimap camera is following.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setVisibilityRadius =
+			{
+				type = "method",
+				description = "If fog of war is used, sets the visibilty radius which discovers the fog of war.",
+				args = "(number visibilityRadius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getVisibilityRadius =
+			{
+				type = "function",
+				description = "Gets the visibilty radius which discovers the fog of war.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			clearDiscoveryState =
+			{
+				type = "method",
+				description = "Clears the area which has been already discovered and saves the state.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			saveDiscoveryState =
+			{
+				type = "method",
+				description = "Saves the area which has been already discovered.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			loadDiscoveryState =
+			{
+				type = "method",
+				description = "Loads the area which has been already discovered.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setCameraHeight =
+			{
+				type = "method",
+				description = "If whole scene visible is set to false, sets the camera height, which is added along the local outward direction at the top of the target game object's position.",
+				args = "(number cameraHeight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCameraHeight =
+			{
+				type = "function",
+				description = "If whole scene visible is set to false, gets the camera height, which is added along the local outward direction at the top of the target game object's position.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			refreshPlanetBounds =
+			{
+				type = "method",
+				description = "Recomputes the overhead camera bounds from the planet's current world position and max radius. Call after sculpting has changed the planet's max height, in WholeSceneVisible mode.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

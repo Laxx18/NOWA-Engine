@@ -582,6 +582,16 @@ namespace NOWA
 		return makeStrongPtr<FollowTargetComponent>(gameObject->getComponentFromName<FollowTargetComponent>(name)).get();
 	}
 
+	void setTargetId(FollowTargetComponent* instance, const Ogre::String& targetId)
+    {
+        instance->setTargetId(Ogre::StringConverter::parseUnsignedLong(targetId));
+    }
+
+    Ogre::String getTargetId(FollowTargetComponent* instance)
+    {
+        return Ogre::StringConverter::toString(instance->getTargetId());
+    }
+
 	void FollowTargetComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
@@ -589,8 +599,8 @@ namespace NOWA
 			class_<FollowTargetComponent, GameObjectComponent>("FollowTargetComponent")
 			.def("setActivated", &FollowTargetComponent::setActivated)
 			.def("isActivated", &FollowTargetComponent::isActivated)
-			.def("setTargetId", &FollowTargetComponent::setTargetId)
-			.def("getTargetId", &FollowTargetComponent::getTargetId)
+			.def("setTargetId", &setTargetId)
+			.def("getTargetId", &getTargetId)
 			.def("setOffsetAngle", &FollowTargetComponent::setOffsetAngle)
 			.def("getOffsetAngle", &FollowTargetComponent::getOffsetAngle)
 			.def("setYOffset", &FollowTargetComponent::setYOffset)

@@ -533,6 +533,11 @@ namespace NOWA
 		instance->setTargetId(Ogre::StringConverter::parseUnsignedLong(id));
 	}
 
+    Ogre::String getTargetId(LookAfterComponent* instance)
+    {
+        return Ogre::StringConverter::toString(instance->getTargetId());
+    }
+
 	void LookAfterComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
@@ -541,6 +546,7 @@ namespace NOWA
 			.def("setHeadBoneName", &LookAfterComponent::setHeadBoneName)
 			.def("getHeadBoneName", &LookAfterComponent::getHeadBoneName)
 			.def("setTargetId", &setTargetId)
+            .def("getTargetId", &getTargetId)
 			.def("setLookSpeed", &LookAfterComponent::setLookSpeed)
 			.def("getLookSpeed", &LookAfterComponent::getLookSpeed)
 			.def("setMaxPitch", &LookAfterComponent::setMaxPitch)
@@ -553,6 +559,7 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "void setHeadBoneName(String headBoneName)", "Sets the head bone name of the skeleton file, which should be rotated.");
 		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "String getHeadBoneName()", "Gets the head bone name of the skeleton file, which should be rotated.");
 		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "void setTargetId(String id)", "Sets target id, at which this game object bone head should be rotated to.");
+        LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "string getTargetId()", "Gets target id, at which this game object bone head is rotated to.");
 		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "void setLookSpeed(number lookSpeed)", "Sets the look (rotation) speed.");
 		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "number getLookSpeed()", "Gets the look (rotation) speed.");
 		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "void setMaxPitch(number maxPitch)", "Sets the maximum degree of pitch for rotation.");

@@ -1625,6 +1625,16 @@ namespace NOWA
 		return makeStrongPtr<MinimapComponent>(gameObject->getComponentFromName<MinimapComponent>(name)).get();
 	}
 
+	void setTargetId(MinimapComponent* instance, const Ogre::String& targetId)
+    {
+        instance->setTargetId(Ogre::StringConverter::parseUnsignedLong(targetId));
+    }
+
+    Ogre::String getTargetId(MinimapComponent* instance)
+    {
+        return Ogre::StringConverter::toString(instance->getTargetId());
+    }
+
 	void MinimapComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
@@ -1632,6 +1642,8 @@ namespace NOWA
 			class_<MinimapComponent, GameObjectComponent>("MinimapComponent")
 			.def("setActivated", &MinimapComponent::setActivated)
 			.def("isActivated", &MinimapComponent::isActivated)
+            .def("setTargetId", &setTargetId)
+            .def("getTargetId", &getTargetId)
 			.def("setVisibilityRadius", &MinimapComponent::setVisibilityRadius)
 			.def("getVisibilityRadius", &MinimapComponent::getVisibilityRadius)
 			.def("clearDiscoveryState", &MinimapComponent::clearDiscoveryState)
@@ -1644,6 +1656,8 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "class inherits GameObjectComponent", MinimapComponent::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "bool isActivated()", "Gets whether this component is activated.");
+        LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void setTargetId(String targetId)", "Sets the game object id of the target object that the minimap camera should follow.");
+        LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "String getTargetId()", "Gets the game object id of the target object that the minimap camera is following.");
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void setVisibilityRadius(number visibilityRadius)", "If fog of war is used, sets the visibilty radius which discovers the fog of war.");
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "number getVisibilityRadius()", "Gets the visibilty radius which discovers the fog of war.");
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void clearDiscoveryState()", "Clears the area which has been already discovered and saves the state.");
@@ -1663,31 +1677,23 @@ namespace NOWA
 
 		gameObjectControllerClass.def("castMinimapComponent", &GameObjectController::cast<MinimapComponent>);
 		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "MinimapComponent castMinimapComponent(MinimapComponent other)", "Casts an incoming type from function for lua auto completion.");
-	}
+    }
+
+    std::optional<NOWA::GameObjectTypeDescriptor> MinimapComponent::getStaticTypeDescriptor()
+    {
+        NOWA::GameObjectTypeDescriptor desc;
+        desc.type = eType::CUSTOM;
+        desc.displayName = "Minimap";
+        desc.meshToDisplay = "Camera.mesh";
+        desc.needsMeshItem = true;
+        desc.forceZeroTransform = false;
+        desc.autoComponents = {MinimapComponent::getStaticClassName(), CameraComponent::getStaticClassName()};
+        return desc;
+    }
 
 	bool MinimapComponent::canStaticAddComponent(GameObject* gameObject)
 	{
-		// Can only be added once
-		auto minimapCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<MinimapComponent>());
-		if (nullptr != minimapCompPtr)
-		{
-			return false;
-		}
-
-		auto cameraCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<CameraComponent>());
-		if (nullptr == cameraCompPtr)
-		{
-			return false;
-		}
-		else
-		{
-			if (cameraCompPtr->getOwner()->getId() == GameObjectController::MAIN_CAMERA_ID)
-			{
-				return false;
-			}
-		}
-
-		return true;
+		return false;
 	}
 
 }; //namespace end

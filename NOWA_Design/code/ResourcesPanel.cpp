@@ -287,6 +287,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
 			child = new MyGUI::TreeControl::Node("Camera", "Data");
 			parent->add(child);
 		}
+        // Add Minimap
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("MinimapComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Minimap", "Data");
+                parent->add(child);
+            }
+        }
 		// Add Reflection Camera
 		{
 			child = new MyGUI::TreeControl::Node("Reflection Camera", "Data");
@@ -380,6 +388,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
             if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("PlanetTerraComponent"))
             {
                 child = new MyGUI::TreeControl::Node("Planet Terra", "Data");
+                parent->add(child);
+            }
+        }
+        // Add Planet Minimap
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("PlanetMinimapComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Planet Minimap", "Data");
                 parent->add(child);
             }
         }

@@ -1752,7 +1752,7 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] GRADIENT: validCount=" + Ogre::StringConverter::toString(validCount) + " heightDelta=" + Ogre::StringConverter::toString(heightDelta) +
                                                                                " footprintArc=" + Ogre::StringConverter::toString(footprintArc) + " slopeAngleDeg=" + Ogre::StringConverter::toString(slopeAngleDeg));
 
-        const float maxSlopeAngleDeg = 20.0f;
+        const float maxSlopeAngleDeg = 26.0f;
         if (slopeAngleDeg > maxSlopeAngleDeg)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Too steep: " + Ogre::StringConverter::toString(slopeAngleDeg) + " deg");

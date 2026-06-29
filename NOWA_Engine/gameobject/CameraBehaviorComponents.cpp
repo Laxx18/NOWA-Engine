@@ -1061,7 +1061,8 @@ namespace NOWA
         probeRadius(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrProbeRadius(), 0.25f, this->attributes)),
         skinMargin(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSkinMargin(), 0.15f, this->attributes)),
         minDistance(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrMinDistance(), 0.5f, this->attributes)),
-        releaseSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrReleaseSmoothValue(), 0.85f, this->attributes))
+        releaseSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrReleaseSmoothValue(), 0.85f, this->attributes)),
+        pullInSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrPullInSmoothValue(), 20.0f, this->attributes))
     {
     }
 
@@ -1119,7 +1120,11 @@ namespace NOWA
             this->releaseSmoothValue->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.85f));
             propertyElement = propertyElement->next_sibling("property");
         }
-
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PullInSmoothValue")
+        {
+            this->pullInSmoothValue->setValue(XMLConverter::getAttribReal(propertyElement, "data", 20.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         return success;
     }
 
@@ -1136,6 +1141,7 @@ namespace NOWA
         clonedCompPtr->setSkinMargin(this->skinMargin->getReal());
         clonedCompPtr->setMinDistance(this->minDistance->getReal());
         clonedCompPtr->setReleaseSmoothValue(this->releaseSmoothValue->getReal());
+        clonedCompPtr->setPullInSmoothValue(this->pullInSmoothValue->getReal());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -1212,6 +1218,10 @@ namespace NOWA
         {
             this->setReleaseSmoothValue(attribute->getReal());
         }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrPullInSmoothValue() == attribute->getName())
+        {
+            this->setPullInSmoothValue(attribute->getReal());
+        }
     }
 
     void CameraBehaviorThirdPersonOcclusionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -1271,6 +1281,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("name", "ReleaseSmoothValue"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->releaseSmoothValue->getReal())));
         propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "PullInSmoothValue"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pullInSmoothValue->getReal())));
+        propertiesXML->append_node(propertyXML);
     }
 
     void CameraBehaviorThirdPersonOcclusionComponent::setActivated(bool activated)
@@ -1292,6 +1308,9 @@ namespace NOWA
             static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setSkinMargin(this->skinMargin->getReal());
             static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setMinDistance(this->minDistance->getReal());
             static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setReleaseSmoothValue(this->releaseSmoothValue->getReal());
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setPullInSmoothValue(this->pullInSmoothValue->getReal());
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setIgnoreGameObjectId(this->gameObjectPtr->getId());
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setShowDebugData(this->bShowDebugData);
             // setPullInSmoothValue() and setProbeCacheEpsilon() use their built-in defaults
             // unless you want to expose them as additional Variants too, same pattern as
             // the others - say so and I'll add them.
@@ -1392,6 +1411,16 @@ namespace NOWA
     Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getReleaseSmoothValue(void) const
     {
         return this->releaseSmoothValue->getReal();
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::setPullInSmoothValue(Ogre::Real pullInSmoothValue)
+    {
+        this->pullInSmoothValue->setValue(pullInSmoothValue);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getPullInSmoothValue(void) const
+    {
+        return this->pullInSmoothValue->getReal();
     }
 
     Ogre::String CameraBehaviorThirdPersonOcclusionComponent::getClassName(void) const

@@ -393,6 +393,8 @@ namespace NOWA
 
     bool WorkspaceBaseComponent::disconnect(void)
     {
+        GraphicsModule::getInstance()->beginWorkspaceTransition();
+
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->canUseOcean = false;
@@ -416,6 +418,8 @@ namespace NOWA
             this->reconnectAllNodes();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::disconnect");
+
+        GraphicsModule::getInstance()->endWorkspaceTransition();
 
         return true;
     }

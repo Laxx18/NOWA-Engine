@@ -256,6 +256,8 @@ namespace NOWA
 		 * @see	GameObjectComponent::createStaticApiForLua
 		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor();
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrTargetId(void) { return "Target Id"; }

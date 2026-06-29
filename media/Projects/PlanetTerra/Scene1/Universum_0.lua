@@ -15,6 +15,7 @@ require("init");
 
 local FIGHTER_GO_ID = "2599276278";
 local PLAYER_GO_ID       = "1959649159";
+local PLANET_MINIMAP_GO_ID = "3534518939";
 
 local universumGameObject    = nil;
 local universumComp  = nil;
@@ -22,6 +23,7 @@ local window = nil;
 local landDegreeText = nil;
 local playerGo = nil;
 local fighterGo = nil;
+local planetMinimapGo = nil;
 
 Universum_0 = {}
 
@@ -54,6 +56,7 @@ local function activatePlayer()
  
     -- Make player visible and move them to the spawn point.
     playerGo:setVisible(true);
+    playerGo:getAreaOfInterestComponent():setActivated(true);
  
     local physComp = playerGo:getPhysicsActiveComponent();
     if physComp ~= nil then
@@ -87,6 +90,8 @@ Universum_0["connect"] = function(gameObject)
     fighterGo = AppStateManager:getGameObjectController():getGameObjectFromId(FIGHTER_GO_ID);
     playerGo = AppStateManager:getGameObjectController():getGameObjectFromId(PLAYER_GO_ID);
     playerGo:getPhysicsActiveComponent():setActivated(false);
+    
+    planetMinimapGo = AppStateManager:getGameObjectController():getGameObjectFromId(PLANET_MINIMAP_GO_ID);
     
     local fadeWindowComponent = universumGameObject:getMyGUIFadeAlphaControllerComponent();
     local landStartButton     = universumGameObject:getMyGUIButtonComponentFromName("LandStartButton");
@@ -141,7 +146,7 @@ Universum_0["connect"] = function(gameObject)
  
     -- Fired when ship is close enough to land (within landingAltitudeThreshold).
     -- Show "Land" button here, or auto-trigger for testing.
-    universumComp:reactOnLanding(function(planetGO, shipGO)
+    universumComp:reactOnLanding(function(planetGameObject, shipGameObject)
         cannotLandText:setActivated(false);
         if fadeWindowComponent ~= nil then
             fadeWindowComponent:setAlpha(1);
@@ -152,17 +157,23 @@ Universum_0["connect"] = function(gameObject)
     end)
  
     -- Fired when autopilot has fully settled the ship.
-    universumComp:reactOnLanded(function(planetGO, shipGO)
+    universumComp:reactOnLanded(function(planetGameObject, shipGameObject)
+        planetGameObject = AppStateManager:getGameObjectController():castGameObject(planetGameObject);
         log("[Universum] reactOnLanded fired -- spawning player");
         activatePlayer();
         fadeWindowComponent:setAlpha(0);
         fadeWindowComponent:setActivated(true);
+        
+        planetMinimapGo:getPlanetMinimapComponent():setPlanetId(planetGameObject:getId());
+        planetMinimapGo:getPlanetMinimapComponent():setTargetId(playerGo:getId());
+        planetMinimapGo:getPlanetMinimapComponent():setActivated(true);
     end)
  
 end
 
 Universum_0["disconnect"] = function()
     AppStateManager:getGameObjectController():undoAll();
+    landStartButton:setActivated(true);
 end
 
 Universum_0["update"] = function(dt)

@@ -467,6 +467,12 @@ namespace OgreAL {
 
 	bool SoundManager::frameStarted(const Ogre::FrameEvent& evt)
 	{
+		// Restore OpenAL context if it was lost during a long main-thread stall
+		// (shader recompilation, ambient light change, etc.). Without this, every
+		// alSourcei/alSourcePlay call fails permanently for the rest of the session
+		// with "no current context" or "invalid source name".
+		this->ensureContext();
+
 		// Do this before any fading gets updated
 		mLastDeltaTime = evt.timeSinceLastFrame;
 		
@@ -476,6 +482,37 @@ namespace OgreAL {
 		}
 		
 		updateSounds();
+		return true;
+	}
+
+	bool SoundManager::ensureContext(void)
+	{
+		if (nullptr == mContext || nullptr == mDevice)
+		{
+			return false;
+		}
+
+		// alcGetCurrentContext() returns NULL if no context is current on this
+		// thread -- which happens when a driver reset or a long stall on the
+		// main thread causes the context to be implicitly released.
+		ALCcontext* current = alcGetCurrentContext();
+		if (current != mContext)
+		{
+			// Context was lost -- restore it.  This is cheap (a single driver
+			// call) and completely safe to call redundantly when not needed.
+			ALCboolean result = alcMakeContextCurrent(mContext);
+			if (ALC_FALSE == result)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+					"[OgreAL] ensureContext: alcMakeContextCurrent failed -- "
+					"audio will remain silent until the next successful restore.");
+				return false;
+			}
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+				"[OgreAL] ensureContext: OpenAL context was lost and has been restored.");
+		}
+
 		return true;
 	}
 
@@ -714,6 +751,15 @@ namespace OgreAL {
 
 	SourceRef SoundManager::_releaseSource(Sound *sound)
 	{
+		// Restore context first -- a long stall (shader recompile, ambient light
+		// change) can cause the driver to drop the current context, making every
+		// subsequent alSourcei/alSourcePlay fail with AL_INVALID_OPERATION or
+		// AL_INVALID_NAME. Restoring here prevents the cascade of errors.
+		if (false == this->ensureContext())
+		{
+			return AL_NONE;
+		}
+
 		// Lock Mutex
 		OGREAL_LOCK_AUTO_MUTEX
 
