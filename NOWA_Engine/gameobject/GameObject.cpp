@@ -1922,10 +1922,10 @@ namespace NOWA
 
     void GameObject::setAttributePosition(const Ogre::Vector3& position)
     {
-        if (this->sceneNode->getPosition() == position && false == this->bIsLoadingFromFile)
+        /*if (this->sceneNode->getPosition() == position && false == this->bIsLoadingFromFile)
         {
             return;
-        }
+        }*/
         this->position->setValue(position);
 
         auto physicsComponent = NOWA::makeStrongPtr(this->getComponent<NOWA::PhysicsComponent>());
@@ -1937,10 +1937,10 @@ namespace NOWA
 
     void GameObject::setAttributeScale(const Ogre::Vector3& scale)
     {
-        if (this->sceneNode->getScale() == scale && false == this->bIsLoadingFromFile)
+        /*if (this->sceneNode->getScale() == scale && false == this->bIsLoadingFromFile)
         {
             return;
-        }
+        }*/
         this->scale->setValue(scale);
         auto physicsComponent = NOWA::makeStrongPtr(this->getComponent<NOWA::PhysicsComponent>());
         if (nullptr == physicsComponent || nullptr == physicsComponent->getBody())
@@ -1952,10 +1952,10 @@ namespace NOWA
 
     void GameObject::setAttributeOrientation(const Ogre::Quaternion& orientation)
     {
-        if (this->sceneNode->getOrientation() == orientation && false == this->bIsLoadingFromFile)
+        /*if (this->sceneNode->getOrientation() == orientation && false == this->bIsLoadingFromFile)
         {
             return;
-        }
+        }*/
         // Set in the form degree, x-axis, y-axis, z-axis
         this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(orientation));
         auto physicsComponent = NOWA::makeStrongPtr(this->getComponent<NOWA::PhysicsComponent>());

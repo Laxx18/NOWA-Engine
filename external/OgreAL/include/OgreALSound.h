@@ -526,6 +526,9 @@ namespace OgreAL {
 		/// are *not* in effect (being used [mStateCached == false]).
 		void updateStateCache() const;
 
+		/// Perform an update.
+		void _update() const;
+
 		/// Postion taking into account the parent node
 		mutable Ogre::Vector3 mDerivedPosition;
 		/// Direction taking into account the parent node
@@ -618,8 +621,6 @@ namespace OgreAL {
 		friend class SoundFactory;
 
 	private:
-		/// Perform an update.
-		void _update() const;
 		/// Perform an update of any active fades.
 		void _updateFading();
 

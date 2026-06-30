@@ -35,14 +35,14 @@
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-3185.63 -2574.42 -2502" mostRightFarPosition="19750 3462.5 24829.4"/>
 	</environment>
-	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
+	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
 		<globalGravity x="0" y="-19.8" z="0"/>
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-2330.39" y="1153.47" z="6577.37"/>
-			<rotation qw="0.913699" qx="-0.079486" qy="-0.396941" qz="-0.0356906"/>
+			<position x="-2323.92" y="1157.75" z="6574.77"/>
+			<rotation qw="0.878601" qx="-0.302445" qy="-0.349422" qz="-0.120378"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -71,8 +71,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-2330.39 1153.47 6577.37"/>
-					<property type="9" name="CameraOrientation" data="-9.99642 -46.9526 -0.123259"/>
+					<property type="9" name="CameraPosition" data="-2323.92 1157.75 6574.77"/>
+					<property type="9" name="CameraOrientation" data="-37.9943 -43.3715 -0.0121728"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -177,7 +177,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
-					<property type="7" name="Name" data=""/>
+					<property type="7" name="Name" data="FlyMusic"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
@@ -457,11 +457,11 @@
 				</userData>
 			</item>
 		</node>
-		<node name="Universum_Planet_1" id="3109368668">
+		<node name="Eri" id="2383878157">
 			<position x="4172.55" y="184.37" z="7768.26"/>
 			<rotation qw="1" qx="0" qy="0.00033643" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_1_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Eri_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="560244364"/>
@@ -1403,7 +1403,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
+					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="TemplateName" data="Nucleus_Outer"/>
 					<property type="12" name="Repeat" data="false"/>
 					<property type="6" name="PlayTime" data="0"/>
@@ -1638,7 +1638,7 @@
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="3534518939"/>
+					<property type="7" name="Id" data="1527832358"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
@@ -1660,21 +1660,34 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
+					<property type="12" name="Activated" data="true"/>
 					<property type="6" name="PlanetId" data="0"/>
 					<property type="6" name="TargetId" data="0"/>
 					<property type="6" name="TextureSize" data="256"/>
-					<property type="10" name="MinimapGeometry" data="0.8 0 0.2 0.2"/>
+					<property type="10" name="MinimapGeometry" data="0.8 0 0.1 0.2"/>
 					<property type="12" name="Transparent" data="false"/>
 					<property type="12" name="UseFogOfWar" data="false"/>
 					<property type="12" name="UseDiscovery" data="false"/>
 					<property type="12" name="PersistDiscovery" data="false"/>
 					<property type="6" name="VisibilityRadius" data="5"/>
 					<property type="12" name="UseVisibilitySpotlight" data="false"/>
-					<property type="12" name="WholeSceneVisible" data="true"/>
-					<property type="6" name="CameraHeight" data="10"/>
-					<property type="7" name="MinimapMask" data="Circle_Ring.png"/>
+					<property type="12" name="WholeSceneVisible" data="false"/>
+					<property type="6" name="CameraHeight" data="20"/>
+					<property type="7" name="MinimapMask" data="Rect_Mask.png"/>
 					<property type="12" name="UseRoundMinimap" data="true"/>
+					<property type="12" name="TargetMarkerImage" data="MarkerRed.png"/>
+					<property type="2" name="CompassObjectCount" data="2"/>
+					<property type="6" name="CompassGameObjectId0" data="0"/>
+					<property type="7" name="CompassImage0" data="CompassBlue.png"/>
+					<property type="7" name="CompassToolTipText0" data="Spaceship"/>
+					<property type="6" name="CompassGameObjectId1" data="0"/>
+					<property type="7" name="CompassImage1" data="MarkerQuest.png"/>
+					<property type="7" name="CompassToolTipText1" data="Quest"/>
+					<property type="9" name="BaseTerrainColor" data="0.3 0.5 0.2"/>
+					<property type="9" name="Layer0Color" data="0.76 0.7 0.5"/>
+					<property type="9" name="Layer1Color" data="0.55 0.2 0.1"/>
+					<property type="9" name="Layer2Color" data="0.45 0.42 0.38"/>
+					<property type="9" name="Layer3Color" data="0.15 0.1 0.08"/>
 					<property type="12" name="RotateMinimap" data="false"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1684,13 +1697,233 @@
 					<property type="9" name="CameraPosition" data="0 5 -2"/>
 					<property type="9" name="CameraOrientation" data="0 0 0"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
-					<property type="6" name="FarClipDistance" data="500"/>
+					<property type="6" name="FarClipDistance" data="100"/>
 					<property type="6" name="Fovy" data="90"/>
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Dungeon_0" id="2358939090">
+			<position x="1855.48" y="-1002.57" z="7063.21"/>
+			<rotation qw="0.552719" qx="-0.102182" qy="0.105759" qz="0.82029"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="561215262"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="200"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="200"/>
+					<property type="7" name="ComponentProceduralDungeonComponent" data="ProceduralDungeonComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="2" name="Seed" data="42"/>
+					<property type="6" name="Dungeon Width" data="40"/>
+					<property type="6" name="Dungeon Depth" data="40"/>
+					<property type="6" name="Cell Size" data="2"/>
+					<property type="2" name="Min Room Cells" data="3"/>
+					<property type="2" name="Max Room Cells" data="8"/>
+					<property type="2" name="Corridor Width Cells" data="2"/>
+					<property type="6" name="Wall Height" data="3"/>
+					<property type="6" name="Jitter" data="0.5"/>
+					<property type="6" name="Floor Depth" data="0.02"/>
+					<property type="12" name="Add Ceiling" data="true"/>
+					<property type="6" name="Loop Probability" data="0.15"/>
+					<property type="7" name="Dungeon Theme" data="Dungeon"/>
+					<property type="12" name="Adapt To Ground" data="true"/>
+					<property type="6" name="Height Offset" data="0.05"/>
+					<property type="12" name="Add Pillars" data="true"/>
+					<property type="6" name="Pillar Size" data="0.3"/>
+					<property type="7" name="Floor Datablock" data="Stone 4"/>
+					<property type="7" name="Wall Datablock" data="proceduralWall1"/>
+					<property type="7" name="Ceiling Datablock" data="proceduralWall1"/>
+					<property type="9" name="Floor UV Tiling" data="2 2"/>
+					<property type="9" name="Wall UV Tiling" data="1 1"/>
+					<property type="12" name="Add Windows" data="true"/>
+					<property type="6" name="Window Probability" data="0.1"/>
+					<property type="6" name="Window Width" data="0.8"/>
+					<property type="6" name="Window Height" data="0.6"/>
+					<property type="6" name="Window Sill Height" data="0.3"/>
+					<property type="6" name="Level Count" data="1"/>
+					<property type="6" name="Stairs Probability" data="0.15"/>
+					<property type="12" name="Add Stairs" data="true"/>
+					<property type="6" name="Stair Height" data="0.15"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
+					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Target Planet Id" data="560244364"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Pillar1_1" id="1996607252">
+			<position x="1854.02" y="-994.66" z="7063.53"/>
+			<rotation qw="-0.0726496" qx="-0.857525" qy="0.5002" qz="-0.0957724"/>
+			<scale x="1" y="1.1" z="1"/>
+			<item name="Pillar1_1" meshFile="Pillar1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/wall1.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="441243508"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/wall1.png"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
+					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Target Planet Id" data="560244364"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Pillar1_0" id="1996607687">
+			<position x="1854.79" y="-995.863" z="7066.51"/>
+			<rotation qw="0.505449" qx="0.0284764" qy="9.31323e-10" qz="0.862387"/>
+			<scale x="1" y="1.15" z="1"/>
+			<item name="Pillar1_0" meshFile="Pillar1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/wall1.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="371659677"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/wall1.png"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
+					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Target Planet Id" data="560244364"/>
+				</userData>
+			</item>
+		</node>
+		<node name="plate_0" id="1577872364">
+			<position x="1852.94" y="-996.97" z="7066.7"/>
+			<rotation qw="0.964433" qx="0" qy="0" qz="0.264326"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="plate_0" meshFile="plate.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Plate_Blank"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4137858424"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Plate_Blank"/>
+					<property type="7" name="ComponentTransformEaseComponent" data="TransformEaseComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="RotationActivated" data="true"/>
+					<property type="9" name="RotationAxis" data="0 1 0"/>
+					<property type="6" name="RotationMin" data="0"/>
+					<property type="7" name="RotationMax" data="360"/>
+					<property type="6" name="RotationDuration" data="1"/>
+					<property type="12" name="RotationRepeat" data="true"/>
+					<property type="12" name="RotationDirectionChange" data="false"/>
+					<property type="7" name="RotationEaseFunction" data="linear"/>
+					<property type="12" name="TranslationActivated" data="false"/>
+					<property type="9" name="TranslationAxis" data="0 0 0"/>
+					<property type="6" name="TranslationMin" data="0"/>
+					<property type="7" name="TranslationMax" data="10"/>
+					<property type="6" name="TranslationDuration" data="1"/>
+					<property type="12" name="TranslationRepeat" data="true"/>
+					<property type="12" name="TranslationDirectionChange" data="true"/>
+					<property type="7" name="TranslationEaseFunction" data="linear"/>
+					<property type="12" name="ScaleActivated" data="false"/>
+					<property type="9" name="ScaleAxis" data="1 1 1"/>
+					<property type="6" name="ScaleMin" data="0.5"/>
+					<property type="7" name="ScaleMax" data="10"/>
+					<property type="6" name="ScaleDuration" data="2"/>
+					<property type="12" name="ScaleRepeat" data="true"/>
+					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ScaleEaseFunction" data="linear"/>
+					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Target Planet Id" data="560244364"/>
 				</userData>
 			</item>
 		</node>

@@ -9,6 +9,7 @@
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
+#include "utilities/Helper.h"
 
 #include "OgreHlmsManager.h"
 #include "OgreHlmsPbs.h"
@@ -688,7 +689,7 @@ namespace NOWA
             }
         }
 
-        geomMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName);
+        geomMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName, &NOWA::gDummyMeshLoader);
 
         // ── Vertex element declaration: pos3 + normal3 + tangent4 + uv2 ───────
         Ogre::VertexElement2Vec vertexElements;

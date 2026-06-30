@@ -13,6 +13,7 @@ GPL v3
 #include "main/Core.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
+#include "utilities/Helper.h"
 
 #include "OgreAbiUtils.h"
 #include "OgreMeshManager2.h"
@@ -1288,7 +1289,7 @@ namespace NOWA
 
         Ogre::String meshName = this->gameObjectPtr->getName() + "_Editable_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
-        this->editableMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+        this->editableMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
         this->editableMesh->_setVaoManager(vaoManager);
 
         // Global AABB across all submeshes

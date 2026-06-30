@@ -9,6 +9,7 @@
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
+#include "utilities/Helper.h"
 
 #include "OgreHlmsManager.h"
 #include "OgreHlmsPbs.h"
@@ -2075,7 +2076,7 @@ namespace NOWA
             }
         }
 
-        this->wallMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName);
+        this->wallMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName, &NOWA::gDummyMeshLoader);
 
         // Vertex elements with tangents for normal mapping
         Ogre::VertexElement2Vec vertexElements;
@@ -2606,7 +2607,7 @@ namespace NOWA
             Ogre::String meshName = "WallPreview_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
             const Ogre::String groupName = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME;
 
-            this->previewMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName);
+            this->previewMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName, &NOWA::gDummyMeshLoader);
             Ogre::SubMesh* subMesh = this->previewMesh->createSubMesh();
 
             // ADD TANGENTS to vertex format (same as main mesh)

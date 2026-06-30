@@ -218,6 +218,7 @@ namespace NOWA
 
         // ── GeometricComponentBase interface ──────────────────────────────────
         virtual std::vector<GeometricComponentBase::ConvexPart> getConvexParts(void) const override;
+
         virtual bool hasConvexParts(void) const override
         {
             return true;
@@ -399,10 +400,6 @@ namespace NOWA
             const std::vector<float>& stringerVerts, const std::vector<Ogre::uint32>& stringerIdx, size_t numStringerVerts, const std::vector<float>& rampVerts, const std::vector<Ogre::uint32>& rampIdx, size_t numRampVerts);
         void destroyStairsMesh(void);
 
-        // ── Preview mesh ──────────────────────────────────────────────────────
-        void createPreviewMesh(void);
-        void destroyPreviewMesh(void);
-
         // ── Per-shape generators ──────────────────────────────────────────────
         void generateLinearStairs(void);
         void generateCurvedStairs(void);
@@ -516,10 +513,6 @@ namespace NOWA
         // ── Ogre-Next scene objects ───────────────────────────────────────────
         Ogre::MeshPtr stairsMesh;
         Ogre::Item* stairsItem;
-
-        Ogre::MeshPtr previewMesh;
-        Ogre::Item* previewItem;
-        Ogre::SceneNode* previewNode;
 
         // ── Physics ───────────────────────────────────────────────────────────
         PhysicsArtifactComponent* physicsArtifactComponent;

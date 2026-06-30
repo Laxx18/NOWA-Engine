@@ -28,14 +28,15 @@ namespace NOWA
      * - Five dungeon themes with theme-specific geometry extras (caps, stalactites, grating)
      * - Three-submesh system: floor / wall / ceiling – each with its own datablock
      * - Terrain adaptation: dungeon floor follows terrain at origin; ground raycasting included
-     * - Real-time interactive placement: click on terrain to position dungeon, preview bounding box first
+     * - Generated immediately at the GameObject's current SceneNode position, on load and
+     *   via the "Generate Now" button - no mouse-driven placement, no drag preview
      * - Full undo / redo support via NOWA event system
      * - Binary save/load (room + corridor data + cached vertex data)
      * - ConvertToMesh export: bake to static .mesh for optimal GPU caching
      * - Optional corner pillars with configurable size
      * - Seed-reproducible generation: same seed always yields the same layout
      */
-    class EXPORTED ProceduralDungeonComponent : public GameObjectComponent, public Ogre::Plugin, public OIS::MouseListener, public OIS::KeyListener
+    class EXPORTED ProceduralDungeonComponent : public GameObjectComponent, public Ogre::Plugin
     {
     public:
         typedef boost::shared_ptr<ProceduralDungeonComponent> ProceduralDungeonComponentPtr;
@@ -50,16 +51,6 @@ namespace NOWA
             SCIFI = 2,   ///< Sci-fi facility – ceiling always enabled, floor channel strips
             ICE = 3,     ///< Ice dungeon     – wall faces angled inward at the top
             CRYPT = 4    ///< Undead crypt    – tall battlement caps, forced narrow corridors
-        };
-
-        /**
-         * @brief Interaction state machine for the placement workflow.
-         */
-        enum class BuildState
-        {
-            IDLE = 0, ///< Waiting; no listeners
-            PLACING,  ///< Mouse over terrain – bounding-box preview visible
-            GENERATED ///< Dungeon mesh placed; can re-generate with new seed
         };
 
         /**
@@ -86,7 +77,7 @@ namespace NOWA
             int row = 0;                   ///< Top row      (inclusive)
             int cols = 0;                  ///< Width  in cells
             int rows = 0;                  ///< Depth  in cells
-            Ogre::Real floorHeight = 0.0f; ///< World-space Y of the floor surface
+            Ogre::Real floorHeight = 0.0f; ///< Y RELATIVE to dungeonOrigin (level 0 = 0), NOT world-space - see generateDungeonAtPosition()
 
             /// Convenience: centre cell column
             int centerCol(void) const
@@ -252,6 +243,11 @@ namespace NOWA
          */
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
+        /**
+         * @see GameObjectComponent::executeAction
+         */
+        virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
+
         // -------------------------------------------------------------------------
         // Static identity
         // -------------------------------------------------------------------------
@@ -270,10 +266,10 @@ namespace NOWA
 
         static Ogre::String getStaticInfoText(void)
         {
-            return "Usage: In Mesh-Modify mode select this object, then left-click on the terrain "
-                   "to place the dungeon. Hold Shift while clicking to re-generate with a new seed. "
-                   "Press Ctrl+Z to undo. Press ESC to cancel. "
-                   "Use 'Generate Now' to re-generate at the current position.";
+            return "Usage: Generates immediately at this GameObject's current position - on scene "
+                   "load and whenever 'Generate Now' is pressed. Move the GameObject and press "
+                   "'Generate Now' again to relocate. Change Seed and press 'Generate Now' for a "
+                   "different layout at the same position.";
         }
 
         static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
@@ -283,7 +279,7 @@ namespace NOWA
             desc.displayName = "Dungeon";
             desc.meshToDisplay = "Node.mesh";
             desc.needsMeshItem = false;
-            desc.enterMeshModifyMode = true;
+            desc.enterMeshModifyMode = false; // no more interactive placement workflow - see class comment
             desc.autoComponents = {"ProceduralDungeonComponent"};
             desc.guardWithPluginCheck = true;
             return desc;
@@ -344,8 +340,6 @@ namespace NOWA
         // -------------------------------------------------------------------------
 
         Ogre::Real getGroundHeight(const Ogre::Vector3& position);
-
-        bool raycastGround(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPosition);
 
         // -------------------------------------------------------------------------
         // Attribute setters / getters
@@ -604,18 +598,6 @@ namespace NOWA
             return "Convert To Mesh";
         }
 
-    protected:
-        // -------------------------------------------------------------------------
-        // OIS mouse & key callbacks
-        // -------------------------------------------------------------------------
-
-        virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
-        virtual bool mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
-        virtual bool mouseMoved(const OIS::MouseEvent& evt) override;
-        virtual bool keyPressed(const OIS::KeyEvent& evt) override;
-        virtual bool keyReleased(const OIS::KeyEvent& evt) override;
-        virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
-
     private:
         // -------------------------------------------------------------------------
         // BSP generation
@@ -818,15 +800,6 @@ namespace NOWA
         Ogre::VertexArrayObject* createDummyVao(Ogre::VaoManager* vaoManager);
 
         void destroyDungeonMesh(void);
-        void destroyPreviewMesh(void);
-
-        /**
-         * @brief Updates / recreates the bounding-box preview mesh at @p position.
-         *
-         * Called every mouse-move while in PLACING state. Uses a cheap axis-aligned
-         * wire-box mesh rather than running the full generator.
-         */
-        void updatePreviewMesh(const Ogre::Vector3& position);
 
         // -------------------------------------------------------------------------
         // Save / Load
@@ -841,24 +814,13 @@ namespace NOWA
         // Event handlers
         // -------------------------------------------------------------------------
 
-        void handleMeshModifyMode(NOWA::EventDataPtr eventData);
-        void handleGameObjectSelected(NOWA::EventDataPtr eventData);
         void handleComponentManuallyDeleted(NOWA::EventDataPtr eventData);
-
-        // -------------------------------------------------------------------------
-        // Input listener management
-        // -------------------------------------------------------------------------
-
-        void addInputListener(void);
-        void removeInputListener(void);
-        void updateModificationState(void);
 
         // -------------------------------------------------------------------------
         // Helpers
         // -------------------------------------------------------------------------
 
         DungeonTheme getDungeonThemeEnum(void) const;
-        Ogre::Vector3 snapToGridFunc(const Ogre::Vector3& position);
 
         /**
          * @brief Per-cell "random" height modifier for CAVE theme.
@@ -966,16 +928,6 @@ namespace NOWA
         // ---- Ogre objects --------------------------------------------------------
         Ogre::MeshPtr dungeonMesh;
         Ogre::Item* dungeonItem;
-        Ogre::MeshPtr previewMesh;
-        Ogre::Item* previewItem;
-        Ogre::SceneNode* previewNode;
-
-        // ---- State ---------------------------------------------------------------
-        BuildState buildState;
-        bool isEditorMeshModifyMode;
-        bool isSelected;
-        bool isCtrlPressed;
-        bool isShiftPressed;
 
         // ---- Ground detection ---------------------------------------------------
         Ogre::RaySceneQuery* groundQuery;

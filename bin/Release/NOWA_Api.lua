@@ -26869,7 +26869,7 @@ return {
 	PlanetMinimapComponent =
 	{
 		type = "class",
-		description = "Usage: Can be used for painting a minimap for a sphere planet/moon. Also fog of war is possible and the given game object id is tracked on the planet's surface. Requirements: This component must be placed under a separate game object with a camera component, which is not the MainCamera. The referenced planet game object must hold a PlanetTerraComponent. Note: The minimap can only be used with default direction of -z, which is also the default graphics engine mesh direction. Note: If WholeSceneVisible is true, fog of war and discovery are available, exactly like MinimapComponent, but only the hemisphere facing the fixed overhead camera can ever be revealed. Note: If WholeSceneVisible is false, the camera follows the target along the planet's surface, oriented toward the planet's center; fog of war is not available in this mode.",
+		description = "Usage: Can be used for painting a minimap for a sphere planet/moon. Also fog of war is possible and the given game object id is tracked on the planet's surface. Requirements: This component must be placed under a separate game object with a camera component, which is not the MainCamera. The referenced planet game object must hold a PlanetTerraComponent. Note: The minimap can only be used with default direction of -z, which is also the default graphics engine mesh direction. Note: If WholeSceneVisible is true, the WHOLE planet is shown as a baked equirectangular (height-shaded) snapshot, with fog of war/discovery and the tracked target's marker computed in the same UV space -- no camera is used in this mode. Call rebakePlanetOverview() after sculpting changes the terrain. Note: If WholeSceneVisible is false, a real camera follows the target along the planet's surface, oriented toward the planet's center; fog of war is not available in this mode.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -26977,11 +26977,179 @@ return {
 				returns = "(number)",
 				valuetype = "number"
 			},
-			refreshPlanetBounds =
+			rebakePlanetOverview =
 			{
 				type = "method",
-				description = "Recomputes the overhead camera bounds from the planet's current world position and max radius. Call after sculpting has changed the planet's max height, in WholeSceneVisible mode.",
+				description = "Re-bakes the equirectangular planet overview texture from the planet's current height data. Call after sculpting has changed the terrain, in WholeSceneVisible mode.",
 				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setTargetMarkerImage =
+			{
+				type = "method",
+				description = "If whole scene visible is true, sets the icon image shown at the tracked target's position on the overview map (same folder as MinimapMask). Left empty, no marker is shown.",
+				args = "(string image)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTargetMarkerImage =
+			{
+				type = "function",
+				description = "Gets the icon image shown at the tracked target's position on the overview map.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setCompassObjectCount =
+			{
+				type = "method",
+				description = "Sets the count of generic compass objects to find/track (e.g. the player's ship, a quest objective, an NPC). Each gets its own CompassGameObjectId/CompassImage/CompassToolTipText.",
+				args = "(number count)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCompassObjectCount =
+			{
+				type = "function",
+				description = "Gets the count of generic compass objects.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCompassGameObjectId =
+			{
+				type = "method",
+				description = "Sets the game object id to track for the compass object at the given index. Shown as a true-position marker on the baked overview in WholeSceneVisible mode, or as a marker wandering the rim of the local minimap in follow mode. 0 disables that slot.",
+				args = "(number index, string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCompassGameObjectId =
+			{
+				type = "function",
+				description = "Gets the game object id tracked for the compass object at the given index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setCompassImage =
+			{
+				type = "method",
+				description = "Sets the marker icon image for the compass object at the given index (same folder as MinimapMask). Left empty, no marker is shown for that slot even if CompassGameObjectId is set.",
+				args = "(number index, string image)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCompassImage =
+			{
+				type = "function",
+				description = "Gets the marker icon image for the compass object at the given index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setCompassToolTipText =
+			{
+				type = "method",
+				description = "Sets the tooltip text shown when hovering the compass object's marker at the given index. Left empty, no tooltip is shown for that slot.",
+				args = "(number index, string text)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCompassToolTipText =
+			{
+				type = "function",
+				description = "Gets the tooltip text for the compass object at the given index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setBaseTerrainColor =
+			{
+				type = "method",
+				description = "If whole scene visible is true, sets the colour shown where none of the 4 paint layers are active. Call rebakePlanetOverview() afterwards to see the change.",
+				args = "(Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBaseTerrainColor =
+			{
+				type = "function",
+				description = "Gets the colour shown where none of the 4 paint layers are active.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setLayer0Color =
+			{
+				type = "method",
+				description = "If whole scene visible is true, sets the colour for paint layer 0 (blend weight R channel). Call rebakePlanetOverview() afterwards to see the change.",
+				args = "(Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLayer0Color =
+			{
+				type = "function",
+				description = "Gets the colour for paint layer 0.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setLayer1Color =
+			{
+				type = "method",
+				description = "If whole scene visible is true, sets the colour for paint layer 1 (blend weight G channel). Call rebakePlanetOverview() afterwards to see the change.",
+				args = "(Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLayer1Color =
+			{
+				type = "function",
+				description = "Gets the colour for paint layer 1.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setLayer2Color =
+			{
+				type = "method",
+				description = "If whole scene visible is true, sets the colour for paint layer 2 (blend weight B channel). Call rebakePlanetOverview() afterwards to see the change.",
+				args = "(Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLayer2Color =
+			{
+				type = "function",
+				description = "Gets the colour for paint layer 2.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setLayer3Color =
+			{
+				type = "method",
+				description = "If whole scene visible is true, sets the colour for paint layer 3 (blend weight A channel). Call rebakePlanetOverview() afterwards to see the change.",
+				args = "(Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLayer3Color =
+			{
+				type = "function",
+				description = "Gets the colour for paint layer 3.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			switchPlanet =
+			{
+				type = "method",
+				description = "Saves discovery for the current planet, tears down the workspace, switches to the given planet (and target, if non-zero) and sets the minimap back up, loading that planet's discovery state.",
+				args = "(number newPlanetId, number newTargetId)",
 				returns = "(nil)",
 				valuetype = "nil"
 			}

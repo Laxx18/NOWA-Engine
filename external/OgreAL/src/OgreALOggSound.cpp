@@ -319,12 +319,40 @@ namespace OgreAL {
 
 	bool OggSound::updateSound()
 	{
-		// Call the parent method to update the position
-		Sound::updateSound();
+		// Check for buffer underrun BEFORE calling the base class -- otherwise
+		// Sound::updateSound() sees AL_STOPPED and releases the source before
+		// we get a chance to detect this was an underrun, not a real end-of-stream.
+		bool wasUnderrun = false;
+		if (mStream && (mSource != AL_NONE) && !isPlaying() && !mManualStop)
+		{
+			ALint buffersQueued = 0;
+			alGetSourcei(mSource, AL_BUFFERS_QUEUED, &buffersQueued);
+
+			if (buffersQueued > 0)
+			{
+				wasUnderrun = true;
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+					"[OgreAL] OggSound buffer underrun detected for '" + this->getName() +
+					"' -- " + Ogre::StringConverter::toString((int)buffersQueued) +
+					" buffers still queued. Refilling and resuming instead of stopping.");
+			}
+		}
+
+		// Skip the base class's "treat AL_STOPPED as finished" logic this frame
+		// if this was an underrun -- we are about to resume playback below, not
+		// release the source. Still call _update() so position/orientation stay current.
+		if (!wasUnderrun)
+		{
+			Sound::updateSound();
+		}
+		else
+		{
+			_update();
+		}
 
 		bool eof = false;
 
-		if (mStream && (mSource != AL_NONE) && isPlaying())
+		if (mStream && (mSource != AL_NONE) && (isPlaying() || wasUnderrun))
 		{
 			// Update the stream
 			int processed;
@@ -370,6 +398,15 @@ namespace OgreAL {
 							mFinishedCallback->execute(static_cast<Sound*>(this));
 					}
 				}
+			}
+
+			// If this was an underrun (not genuine end-of-stream), explicitly
+			// restart the source now that fresh data has been queued. Without
+			// this, the source stays AL_STOPPED even though buffers are full.
+			if (wasUnderrun && !eof)
+			{
+				alSourcePlay(mSource);
+				CheckError(alGetError(), "Failed to resume sound after buffer underrun");
 			}
 
 			if (mSpectrumCallback && mSpectrumProcessingSize > 0)

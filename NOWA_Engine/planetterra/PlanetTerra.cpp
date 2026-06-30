@@ -509,17 +509,6 @@ namespace NOWA
 
         const size_t bytesPerPixel = texBox.bytesPerPixel;
 
-        // Default: layer 0 fully active everywhere (R=1, G=0, B=0, A=0)
-        /*for (Ogre::uint32 y = 0u; y < static_cast<Ogre::uint32>(blendTexSize); ++y)
-        {
-            Ogre::uint8* RESTRICT_ALIAS pix = reinterpret_cast<Ogre::uint8 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
-            for (Ogre::uint32 x = 0u; x < static_cast<Ogre::uint32>(blendTexSize); ++x)
-            {
-                float rgba[4] = {1.0f, 0.0f, 0.0f, 0.0f};
-                Ogre::PixelFormatGpuUtils::packColour(rgba, Ogre::PFG_RGBA8_UNORM_SRGB, &pix[x * bytesPerPixel]);
-            }
-        }*/
-
         //// Default: NO detail layer active -> base diffuse (ground_dirt_gardenD) shows
         for (Ogre::uint32 y = 0u; y < static_cast<Ogre::uint32>(blendTexSize); ++y)
         {

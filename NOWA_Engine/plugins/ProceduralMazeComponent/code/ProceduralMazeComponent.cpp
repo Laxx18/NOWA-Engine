@@ -13,6 +13,7 @@ GPL v3
 #include "gameobject/PhysicsArtifactComponent.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
+#include "utilities/Helper.h"
 
 #include "OgreAbiUtils.h"
 #include "OgreHlmsManager.h"
@@ -1094,7 +1095,7 @@ namespace NOWA
             }
         }
 
-        this->mazeMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName);
+        this->mazeMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName, &NOWA::gDummyMeshLoader);
 
         Ogre::SubMesh* subMesh = this->mazeMesh->createSubMesh();
 

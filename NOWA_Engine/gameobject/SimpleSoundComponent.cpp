@@ -307,10 +307,7 @@ namespace NOWA
 	{
 		GameObjectComponent::connect();
 
-		// ENQUEUE_RENDER_COMMAND_WAIT("",
-		// {
-			this->setupSound();
-		// });
+		this->setupSound();
 		
 		return true;
 	}
@@ -490,24 +487,36 @@ namespace NOWA
 	}
 
 	void SimpleSoundComponent::setActivated(bool activated)
-	{
-		this->activated->setValue(activated);
-		if (false == activated)
-		{
-			if (nullptr != this->sound)
-				this->sound->stop();
-		}
-		else
-		{
-			if (true == this->bConnected)
-			{
-				// ENQUEUE_RENDER_COMMAND_WAIT("",
-				// {
-					this->setupSound();
-				// });
-			}
-		}
-	}
+    {
+        this->activated->setValue(activated);
+        if (false == activated)
+        {
+            if (nullptr != this->sound)
+            {
+                if (true == this->sound->isPlaying())
+                {
+                    // Fade out smoothly instead of stopping abruptly. The fade
+                    // duration is read from the configured fadeInOutTime attribute
+                    // (y component = fade-out seconds) so it stays consistent with
+                    // whatever the user already configured for this sound.
+                    Ogre::Real fadeOutSeconds = 2.0f; /*this->fadeInOutTime->getVector2().y;*/
+     
+                    if (fadeOutSeconds <= 0.0f)
+                    {
+                        fadeOutSeconds = 0.5f; // sensible default if not configured
+                    }
+                    this->sound->fadeOut(fadeOutSeconds);
+                }
+            }
+        }
+        else
+        {
+            if (true == this->bConnected)
+            {
+                this->setupSound();
+            }
+        }
+    }
 
 	bool SimpleSoundComponent::isActivated(void) const
 	{
@@ -517,10 +526,7 @@ namespace NOWA
 	void SimpleSoundComponent::setSoundName(const Ogre::String& soundName)
 	{
 		this->soundName->setValue(soundName);
-		// ENQUEUE_RENDER_COMMAND_WAIT("",
-		// {
-			this->createSound();
-		// });
+		this->createSound();
 		this->oldSoundName = soundName;
 	}
 
@@ -562,10 +568,7 @@ namespace NOWA
 		if (stream != this->stream->getBool())
 		{
 			this->stream->setValue(stream);
-			// ENQUEUE_RENDER_COMMAND_WAIT("",
-			// {
-				this->createSound();
-			// });
+			this->createSound();
 		}
 	}
 
@@ -608,12 +611,6 @@ namespace NOWA
                 this->sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
             };
             GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SimpleSoundComponent::enableSpectrumAnalysis");
-
-			/*NOWA::AppStateManager::LogicCommand logicCommand = [this, enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor]()
-				{
-					this->sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
-				};
-			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));*/
 		}
 	}
 
@@ -761,11 +758,6 @@ namespace NOWA
 		}
 	}
 
-	/*Ogre::Vector3 SimpleSoundComponent::getDistanceValues(void) const
-	{
-		return this->distanceValues->getVector3();
-	}*/
-
 	void SimpleSoundComponent::setSecondOffset(Ogre::Real secondOffset)
 	{
 		if (nullptr != this->sound)
@@ -818,39 +810,52 @@ namespace NOWA
 	}
 
 	void SimpleSoundComponent::setupSound(void)
-	{
-		this->oldPosition = this->gameObjectPtr->getPosition();
-		this->oldOrientation = this->gameObjectPtr->getOrientation();
+    {
+        this->oldPosition = this->gameObjectPtr->getPosition();
+        this->oldOrientation = this->gameObjectPtr->getOrientation();
 
-		if (true == this->activated->getBool())
-		{
-			if (nullptr != this->sound)
-			{
-				// Do not interrupt sound, when it is currently playing
-				if (this->sound->isPlaying())
-				{
-					return;
-				}
-			}
-		}
-		this->createSound();
-		if (nullptr != this->sound)
-		{
-			if (true == this->activated->getBool())
-			{
-				if (this->sound->isPlaying())
-				{
-					this->sound->stop();
-				}
-				this->sound->play();
-			}
-			else
-			{
-				this->sound->stop();
-				this->destroySound();
-			}
-		}
-	}
+        if (true == this->activated->getBool())
+        {
+            if (nullptr != this->sound)
+            {
+                // Do not interrupt sound if it's stably playing AND not in the
+                // middle of a fade-out. A fade-out in progress still reports
+                // isPlaying() == true (the source hasn't stopped yet, gain is
+                // just ramping down) -- without this extra check, re-activating
+                // during a fade-out silently does nothing and the sound is lost
+                // once the fade-out timer eventually stops the source.
+                if (true == this->sound->isPlaying() && false == this->sound->isFading())
+                {
+                    return;
+                }
+            }
+        }
+        this->createSound();
+        if (nullptr != this->sound)
+        {
+            if (true == this->activated->getBool())
+            {
+                if (this->sound->isPlaying())
+                {
+                    this->sound->stop();
+                }
+
+                Ogre::Real fadeInSeconds = 2.0f; /*this->fadeInOutTime->getVector2().x;*/
+                if (fadeInSeconds <= 0.0f)
+                {
+                    fadeInSeconds = 0.5f;
+                }
+
+                this->sound->play();
+                this->sound->fadeIn(fadeInSeconds);
+            }
+            else
+            {
+                this->sound->stop();
+                this->destroySound();
+            }
+        }
+    }
 		
 	OgreAL::Sound* SimpleSoundComponent::getSound(void) const
 	{

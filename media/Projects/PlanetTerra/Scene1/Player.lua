@@ -6,8 +6,9 @@ require("init");
 playerGo = nil;
 areaOfInterestComp = nil;
 planetMinimapGo = nil;
+planetMinimapGo = nil;
 
-local PLANET_MINIMAP_GO_ID = "3534518939";
+PLANET_MINIMAP_GO_ID = "1527832358";
 
 Player = {}
 
@@ -23,6 +24,7 @@ Player["connect"] = function(gameObject)
     local fighterGo = AppStateManager:getGameObjectController():getGameObjectFromId("2599276278");
     
     planetMinimapGo = AppStateManager:getGameObjectController():getGameObjectFromId(PLANET_MINIMAP_GO_ID);
+    mainGo = AppStateManager:getGameObjectController():getGameObjectFromId(MAIN_GAMEOBJECT_ID);
  
     -- Button toggles between Land and Start (takeoff).
     landStartButton:reactOnMouseButtonClick(function()
@@ -37,7 +39,11 @@ Player["connect"] = function(gameObject)
             AppStateManager:getGameObjectController():activatePlayerController(true, fighterGo:getId(), true);
             playerGo:getPhysicsActiveComponent():setActivated(false);
             
+            planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(0, 0);
+            planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(1, 0);
             planetMinimapGo:getPlanetMinimapComponent():setActivated(false);
+            
+            mainGo:getSimpleSoundComponentFromName("FlyMusic"):setActivated(true);
         end
     end);
     

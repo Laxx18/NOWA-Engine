@@ -1478,15 +1478,10 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->cameraResetButton == sender)
 	{
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-        {
             if (!GetAsyncKeyState(VK_LSHIFT))
             {
-                Ogre::Vector3 position = this->camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f));
-                this->camera->setPosition(position);
+                NOWA::GraphicsModule::getInstance()->setCameraTransform(this->camera, Ogre::Vector3(0.0f, 5.0f, -2.0f), Ogre::Quaternion::IDENTITY);
             }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::resetCameraTransform");
 
 		// NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(0.0f, 1.0f, 0.0f), true);
         // NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY, true);
@@ -1796,6 +1791,7 @@ void DesignState::update(Ogre::Real dt)
             // OnTransform fires here and writes the NEW m_curRotation —
             // Lua will read it next frame, which is the correct order.
             this->ogreNewt->update(dt);
+            // this->ogreNewt->updateFixed(dt);
 
 			// Newton has stepped, interalPostUpdate has set m_nodePosit.
             // Camera reads the correct interpolated position and writes

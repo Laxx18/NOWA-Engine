@@ -373,6 +373,7 @@
     <ClInclude Include="utilities\DrawDynamicLines.hpp" />
     <ClInclude Include="utilities\FastDelegate.h" />
     <ClInclude Include="utilities\FastDelegateBind.h" />
+    <ClInclude Include="Utilities\Helper.h" />
     <ClInclude Include="utilities\IAnimationBlender.h" />
     <ClInclude Include="utilities\Interpolator.h" />
     <ClInclude Include="utilities\LensFlare.h" />

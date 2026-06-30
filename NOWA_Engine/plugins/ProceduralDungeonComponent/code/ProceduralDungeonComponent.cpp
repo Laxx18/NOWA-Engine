@@ -15,6 +15,7 @@ GPL v3
 #include "modules/GraphicsModule.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
+#include "utilities/Helper.h"
 
 #include "OgreAbiUtils.h"
 #include "OgreHlmsManager.h"
@@ -71,7 +72,7 @@ namespace
         indices.push_back(base + 3);
     }
 
-    // Back face: CW winding  (v0,v3,v2,v1) — sits 4 verts after the front face
+    // Back face: CW winding  (v0,v3,v2,v1) ï¿½ sits 4 verts after the front face
     inline void pushQuadIndicesBack(std::vector<Ogre::uint32>& indices, Ogre::uint32 base)
     {
         // base+4..+7 are the back-face duplicates with negated normal
@@ -176,13 +177,6 @@ namespace NOWA
         cachedNumWallVertices(0),
         cachedNumCeilVertices(0),
         dungeonItem(nullptr),
-        previewItem(nullptr),
-        previewNode(nullptr),
-        buildState(BuildState::IDLE),
-        isEditorMeshModifyMode(false),
-        isSelected(false),
-        isCtrlPressed(false),
-        isShiftPressed(false),
         groundQuery(nullptr)
     {
         this->seed->setDescription("Random seed. Same value always produces the same layout.");
@@ -193,7 +187,7 @@ namespace NOWA
         this->maxRoomCells->setDescription("Maximum room dimension in cells.");
         this->corridorWidthCells->setDescription("Width of connecting corridors in cells.");
         this->wallHeight->setDescription("Height of dungeon walls in world units.");
-        this->jitter->setDescription("Sets jitter for cave theme. A jitter value of 0.35 gives the current subtle look. 0.6–0.8 gives a very rough dramatic cave. 1.0 is extreme/chaotic.");
+        this->jitter->setDescription("Sets jitter for cave theme. A jitter value of 0.35 gives the current subtle look. 0.6ï¿½0.8 gives a very rough dramatic cave. 1.0 is extreme/chaotic.");
         this->floorDepth->setDescription("Visual thickness of the floor slab in world units. Adds a bottom face and border edges so the floor doesn't look paper-thin.");
         this->addCeiling->setDescription("Whether to generate a ceiling mesh (submesh 2).");
         this->loopProbability->setDescription("Probability [0-1] of adding extra loop corridors for non-linear layouts.");
@@ -242,7 +236,7 @@ namespace NOWA
                                          "Ensure sill + Window Height <= 1 to avoid the window exceeding the wall top.");
 
         this->levelCount->setDescription("Number of dungeon levels stacked vertically. Each level is generated with the same width/depth/seed but offset vertically. Levels connect via staircases.");
-        this->stairsProbability->setDescription("Probability (0-1) that a given ROOM cell gets an upward staircase. Only one staircase per level is placed — the first cell that passes the check.");
+        this->stairsProbability->setDescription("Probability (0-1) that a given ROOM cell gets an upward staircase. Only one staircase per level is placed ï¿½ the first cell that passes the check.");
         this->addStairs->setDescription("If connections between floor levels are created, this controls whether to add stairs geometry, or maybe the designer has its own stairs.");
         this->stairHeight->setDescription("Height of each stair step as a fraction of wall height. Total stair run = wallHeight / stairHeight steps.");
     }
@@ -457,21 +451,15 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] postInit for: " + this->gameObjectPtr->getName());
 
-        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
-        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
 
         this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
         this->groundQuery->setSortByDistance(true);
         this->groundPlane = Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f);
 
-        this->previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-
-        /*if (this->loadDungeonDataFromFile() && !this->dungeonRooms.empty())
-        {
-            this->createDungeonMesh();
-        }*/
-
+        // Generated immediately at this->gameObjectPtr->getSceneNode()'s current position -
+        // see generateDungeon(). No drag-preview, no mouse listeners - matches
+        // ProceduralGeometryComponent's pattern.
         this->generateDungeon();
 
         return true;
@@ -484,9 +472,6 @@ namespace NOWA
 
     bool ProceduralDungeonComponent::disconnect(void)
     {
-        this->removeInputListener();
-        this->buildState = BuildState::IDLE;
-        this->destroyPreviewMesh();
         return true;
     }
 
@@ -500,24 +485,14 @@ namespace NOWA
 
     void ProceduralDungeonComponent::onRemoveComponent(void)
     {
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
 
-        this->removeInputListener();
-        this->destroyPreviewMesh();
         this->destroyDungeonMesh();
 
         if (this->groundQuery)
         {
             this->gameObjectPtr->getSceneManager()->destroyQuery(this->groundQuery);
             this->groundQuery = nullptr;
-        }
-        if (this->previewNode)
-        {
-            NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->previewNode);
-            this->gameObjectPtr->getSceneManager()->destroySceneNode(this->previewNode);
-            this->previewNode = nullptr;
         }
     }
 
@@ -950,170 +925,11 @@ namespace NOWA
         return false;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Input
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    bool ProceduralDungeonComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
-    {
-        if (!this->activated->getBool() || id != OIS::MB_Left)
-        {
-            return true; // not handled -> bubble
-        }
-
-        // Check for MyGUI focus FIRST, before handling
-        if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
-        {
-            return true;
-        }
-
-        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-        if (!camera)
-        {
-            return true;
-        }
-
-        // Exclude own mesh from raycast
-        std::vector<Ogre::MovableObject*> excludeMovableObjects;
-        if (this->dungeonItem)
-        {
-            excludeMovableObjects.push_back(this->dungeonItem);
-        }
-        if (this->previewItem)
-        {
-            excludeMovableObjects.push_back(this->previewItem);
-        }
-
-        const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-        Ogre::Vector3 dummyHit;
-        Ogre::MovableObject* hitObj = nullptr;
-        Ogre::Real hitDist = 0.0f;
-        Ogre::Vector3 hitNormal;
-        bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(ms.X.abs, ms.Y.abs, camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, dummyHit, (size_t&)hitObj, hitDist, hitNormal, &excludeMovableObjects, false);
-
-        // Don't react if we hit our own mesh
-        if (hitFound && (hitObj == this->dungeonItem || hitObj == this->previewItem))
-        {
-            return true;
-        }
-
-        Ogre::Real screenX = 0.0f, screenY = 0.0f;
-        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, screenX, screenY, Core::getSingletonPtr()->getOgreRenderWindow());
-
-        Ogre::Vector3 hitPos;
-        if (this->raycastGround(screenX, screenY, hitPos))
-        {
-            hitPos = this->snapToGridFunc(hitPos);
-
-            // Shift: increment seed for a new layout at same position
-            if (this->isShiftPressed)
-            {
-                this->seed->setValue(this->seed->getInt() + 1);
-            }
-
-            // boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> beginEvt(new NOWA::EventDataCommandTransactionBegin("Place Dungeon"));
-            // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(beginEvt);
-
-            std::vector<unsigned char> oldData = this->getDungeonData();
-
-            this->generateDungeonAtPosition(hitPos);
-
-            std::vector<unsigned char> newData = this->getDungeonData();
-
-            // boost::shared_ptr<EventDataDungeonModifyEnd> modEvt(new EventDataDungeonModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
-            // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(modEvt);
-
-            // boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> endEvt(new NOWA::EventDataCommandTransactionEnd());
-            // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(endEvt);
-
-            this->buildState = BuildState::PLACING; // stay in placing so user can click again
-        }
-
-        return false; // handled -> do not bubble
-    }
-
-    bool ProceduralDungeonComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
-    {
-        if (!this->activated->getBool())
-        {
-            return true;
-        }
-
-        if (id == OIS::MB_Right)
-        {
-            this->destroyPreviewMesh();
-            this->buildState = BuildState::IDLE;
-            this->removeInputListener();
-            return false; // handled
-        }
-
-        return true; // not handled -> bubble
-    }
-
-    bool ProceduralDungeonComponent::mouseMoved(const OIS::MouseEvent& evt)
-    {
-        if (!this->activated->getBool() || this->buildState != BuildState::PLACING)
-        {
-            return true;
-        }
-
-        Ogre::Real screenX = 0.0f, screenY = 0.0f;
-        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, screenX, screenY, Core::getSingletonPtr()->getOgreRenderWindow());
-        Ogre::Vector3 hitPos;
-        if (this->raycastGround(screenX, screenY, hitPos))
-        {
-            this->updatePreviewMesh(this->snapToGridFunc(hitPos));
-        }
-
-        return true;
-    }
-
-    bool ProceduralDungeonComponent::keyPressed(const OIS::KeyEvent& evt)
-    {
-        if (!this->activated->getBool())
-        {
-            return true;
-        }
-
-        if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
-        {
-            this->isShiftPressed = true;
-            return false;
-        }
-        if (evt.key == OIS::KC_LCONTROL || evt.key == OIS::KC_RCONTROL)
-        {
-            this->isCtrlPressed = true;
-            return false;
-        }
-        if (evt.key == OIS::KC_ESCAPE)
-        {
-            this->destroyPreviewMesh();
-            this->buildState = BuildState::IDLE;
-            this->removeInputListener();
-            return false; // consume — stop DesignState ESC
-        }
-
-        return true;
-    }
-
-    bool ProceduralDungeonComponent::keyReleased(const OIS::KeyEvent& evt)
-    {
-        if (!this->activated->getBool())
-        {
-            return true;
-        }
-
-        if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
-        {
-            this->isShiftPressed = false;
-        }
-        if (evt.key == OIS::KC_LCONTROL || evt.key == OIS::KC_RCONTROL)
-        {
-            this->isCtrlPressed = false;
-        }
-
-        return false; // handled
-    }
+    // No mouse/key input handling at all anymore - matches ProceduralGeometryComponent,
+    // which has none either. Generation happens at this->gameObjectPtr->getSceneNode()'s
+    // current position via generateDungeon()/generateDungeonAtPosition(), triggered by
+    // postInit() (on load) and the "Generate Now" button (executeAction below) - never
+    // by mouse clicks or a live drag-preview.
 
     bool ProceduralDungeonComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
     {
@@ -1409,6 +1225,15 @@ namespace NOWA
         this->generateDungeonAtPosition(origin);
     }
 
+    // IMPORTANT: every vertex this function emits (floor/wall/ceiling/staircase) uses
+    // Y RELATIVE to dungeonOrigin (i.e. level 0 starts at Y=0, level N at
+    // N*levelSpacing) - NEVER the absolute world floorY. X/Z are likewise grid-local
+    // (0..gridCols*cellSz / 0..gridRows*cellSz), never offset by worldPosition.x/z.
+    // The actual world placement (X, Y=floorY, Z) is applied exactly once, via
+    // this->gameObjectPtr->getSceneNode()->setPosition(origin) in
+    // createDungeonMeshInternal(). Baking the absolute world floorY into the geometry
+    // AND setting the node's Y to floorY would double-apply it - that was the bug
+    // behind the dungeon mesh rendering far above the gizmo on a planet-scale scene.
     void ProceduralDungeonComponent::generateDungeonAtPosition(const Ogre::Vector3& worldPosition)
     {
         Ogre::Real floorY = this->getGroundHeight(worldPosition);
@@ -1449,11 +1274,11 @@ namespace NOWA
         std::vector<std::vector<DungeonCorridor>> allCorridors(numLevels);
 
         // =========================================================
-        // PASS 1 — build ALL grids before picking any staircases
+        // PASS 1 ï¿½ build ALL grids before picking any staircases
         // =========================================================
         for (int lvl = 0; lvl < numLevels; ++lvl)
         {
-            const Ogre::Real lvlFloorY = floorY + static_cast<Ogre::Real>(lvl) * levelSpacing;
+            const Ogre::Real lvlFloorY = static_cast<Ogre::Real>(lvl) * levelSpacing; // relative to dungeonOrigin - see top-of-function comment
 
             std::mt19937 lvlRng(static_cast<uint32_t>(seedVal + lvl * 999983));
             BSPNode lvlRoot;
@@ -1478,7 +1303,7 @@ namespace NOWA
                 {
                     Ogre::Real cx = worldPosition.x + (room.centerCol() + 0.5f) * cellSz;
                     Ogre::Real cz = worldPosition.z + (room.centerRow() + 0.5f) * cellSz;
-                    room.floorHeight = this->getGroundHeight({cx, worldPosition.y, cz});
+                    room.floorHeight = this->getGroundHeight({cx, worldPosition.y, cz}) - floorY; // relative to dungeonOrigin now, see top-of-function comment
                 }
                 else
                 {
@@ -1501,7 +1326,7 @@ namespace NOWA
         }
 
         // =========================================================
-        // PASS 2 — now ALL grids exist, pick staircases safely
+        // PASS 2 ï¿½ now ALL grids exist, pick staircases safely
         // =========================================================
         for (int lvl = 0; lvl < numLevels - 1; ++lvl)
         {
@@ -1518,13 +1343,13 @@ namespace NOWA
                 stair.gridCol = sc;
                 stair.gridRow = sr;
                 stair.fromLevel = lvl;
-                stair.worldPos = Ogre::Vector3(sc * cellSz + cellSz * 0.5f, floorY + static_cast<Ogre::Real>(lvl) * levelSpacing, sr * cellSz);
+                stair.worldPos = Ogre::Vector3(sc * cellSz + cellSz * 0.5f, static_cast<Ogre::Real>(lvl) * levelSpacing, sr * cellSz); // Y relative, see top-of-function comment
                 this->dungeonStaircases.push_back(stair);
             }
         }
 
         // =========================================================
-        // PASS 3 — generate geometry for each level
+        // PASS 3 ï¿½ generate geometry for each level
         // =========================================================
         for (int lvl = 0; lvl < numLevels; ++lvl)
         {
@@ -1533,7 +1358,7 @@ namespace NOWA
                 continue;
             }
 
-            const Ogre::Real lvlFloorY = floorY + static_cast<Ogre::Real>(lvl) * levelSpacing;
+            const Ogre::Real lvlFloorY = static_cast<Ogre::Real>(lvl) * levelSpacing; // relative to dungeonOrigin - see generateDungeonAtPosition's top comment
 
             // Ceiling holes: staircase going UP from this level
             this->pendingCeilingHoles.clear();
@@ -1577,7 +1402,12 @@ namespace NOWA
         this->cachedCeilIndices = this->ceilIndices;
         this->cachedNumCeilVertices = this->currentCeilVertexIndex;
 
-        this->destroyPreviewMesh();
+        // No preview mesh to clean up anymore - the preview system was removed
+        // entirely (createPreviewMesh/destroyPreviewMesh/updatePreviewMesh, the mouse
+        // drag-placement workflow, and the buildState state machine that drove it).
+        // This component now generates directly at this->gameObjectPtr->getSceneNode()'s
+        // current position, on postInit() and on "Generate Now" - same pattern as
+        // ProceduralGeometryComponent.
         this->createDungeonMesh();
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Generated " + Ogre::StringConverter::toString(numLevels) + " level(s): " + Ogre::StringConverter::toString((int)this->dungeonRooms.size()) +
@@ -1616,7 +1446,7 @@ namespace NOWA
         this->ceilIndices.clear();
         this->currentCeilVertexIndex = 0;
 
-        // If we have cached level grids use them directly — no BSP rebuild needed
+        // If we have cached level grids use them directly ï¿½ no BSP rebuild needed
         const int numLevels = (int)this->levelGrids.size();
 
         if (numLevels == 0)
@@ -1712,7 +1542,7 @@ namespace NOWA
         else
         {
             // In generateGeometry, replace generateFloorGeometry call:
-            // For upper levels the staircase opening cell needs a floor hole too —
+            // For upper levels the staircase opening cell needs a floor hole too ï¿½
             // pendingCeilingHoles holds the staircase cell for THIS level's ceiling,
             // but the upper level's floor hole is from the level BELOW's staircase.
             // Pass pendingFloorHoles separately via member, same pattern as ceiling.
@@ -1776,10 +1606,10 @@ namespace NOWA
                 // Top face (upward)
                 this->addFloorQuad({x0, yTop, z1}, {x1, yTop, z1}, {x1, yTop, z0}, {x0, yTop, z0}, u0, u1, v0, v1);
 
-                // Bottom face (downward) — single-sided, only visible from below
+                // Bottom face (downward) ï¿½ single-sided, only visible from below
                 pushQuad(this->floorVertices, this->floorIndices, this->currentFloorVertexIndex, {x0, yBot, z0}, {x1, yBot, z0}, {x1, yBot, z1}, {x0, yBot, z1}, -Ogre::Vector3::UNIT_Y, u0, u1, v0, v1);
 
-                // Border edges — only where there is no neighbour (exposed slab edge)
+                // Border edges ï¿½ only where there is no neighbour (exposed slab edge)
                 if (!isF(row + 1, col)) // North
                 {
                     this->addWallQuad({x0, yBot, z1}, {x1, yBot, z1}, {x1, yTop, z1}, {x0, yTop, z1}, {0, 0, 1}, 0, uW, 0, vD);
@@ -1839,14 +1669,14 @@ namespace NOWA
         const Ogre::Real uS = std::max(0.001f, uvTile.x);
         const Ogre::Real vS = std::max(0.001f, uvTile.y);
 
-        // Windows only on plain rectangular walls — not bevelled ICE, not CAVE
+        // Windows only on plain rectangular walls ï¿½ not bevelled ICE, not CAVE
         const bool doWindows = this->addWindows->getBool() && !bev;
         const Ogre::Real winW = this->windowWidth->getReal();
         const Ogre::Real winH = this->windowHeight->getReal();
         const Ogre::Real winSill = this->windowSill->getReal();
         const Ogre::Real winProb = this->windowProb->getReal();
 
-        // Deterministic per-face hash — same seed always gives same window pattern
+        // Deterministic per-face hash ï¿½ same seed always gives same window pattern
         auto winRng = [&](int row, int col, int dir) -> Ogre::Real
         {
             uint32_t h = static_cast<uint32_t>(row * 73856093 ^ col * 19349663 ^ dir * 83492791 ^ this->seed->getInt());
@@ -2053,7 +1883,7 @@ namespace NOWA
                     continue;
                 }
 
-                // Skip fully interior cells — their tops are never visible
+                // Skip fully interior cells ï¿½ their tops are never visible
                 if (isF(row - 1, col) && isF(row + 1, col) && isF(row, col - 1) && isF(row, col + 1))
                 {
                     continue;
@@ -2063,10 +1893,10 @@ namespace NOWA
                 Ogre::Real z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
                 Ogre::Real uW = cellSz / uS, vC = capH / vS;
 
-                // ONE full-cell top slab — covers the whole cell, no corner gaps
+                // ONE full-cell top slab ï¿½ covers the whole cell, no corner gaps
                 this->addWallQuad({x0, y1, z1}, {x1, y1, z1}, {x1, y1, z0}, {x0, y1, z0}, {0, 1, 0}, x0 / uS, x1 / uS, z0 / vS, z1 / vS);
 
-                // Outer vertical faces — one per empty neighbour direction
+                // Outer vertical faces ï¿½ one per empty neighbour direction
                 if (!isF(row + 1, col))
                 {
                     this->addWallQuad({x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1}, {0, 0, 1}, 0, uW, 0, vC);
@@ -2207,7 +2037,7 @@ namespace NOWA
                 Ogre::Real z0 = row * cellSz, z1 = z0 + cellSz;
                 Ogre::Real uU = x0 / uS, uV = x1 / uS, vU = z0 / vS, vV = z1 / vS;
 
-                // Per-corner Y displacement — always positive (bumps up from floor)
+                // Per-corner Y displacement ï¿½ always positive (bumps up from floor)
                 auto h = [&](int c, int r) -> Ogre::Real
                 {
                     return floorY + ((caveHeightNoise(c, r, seed) + 1.0f) * 0.5f) * maxBump;
@@ -2280,12 +2110,12 @@ namespace NOWA
             return r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] != CellType::EMPTY;
         };
 
-        // Floor height at a grid corner (col,row) — matches generateCaveFloorGeometry
+        // Floor height at a grid corner (col,row) ï¿½ matches generateCaveFloorGeometry
         auto floorH = [&](int c, int r) -> Ogre::Real
         {
             return floorY + ((caveHeightNoise(c, r, seed) + 1.0f) * 0.5f) * maxBump;
         };
-        // Ceiling height at a grid corner — matches generateCaveCeilingGeometry
+        // Ceiling height at a grid corner ï¿½ matches generateCaveCeilingGeometry
         auto ceilH = [&](int c, int r) -> Ogre::Real
         {
             return baseY - ((caveHeightNoise(c, r, seed + 999) + 1.0f) * 0.5f) * maxDroop;
@@ -2423,7 +2253,7 @@ namespace NOWA
                     continue;
                 }
 
-                // Must be interior on current level — not touching any wall
+                // Must be interior on current level ï¿½ not touching any wall
                 if (!isInterior(grid, row, col))
                 {
                     continue;
@@ -2436,7 +2266,7 @@ namespace NOWA
                     continue;
                 }
 
-                // Must also be interior on the next level — landing not at a wall edge
+                // Must also be interior on the next level ï¿½ landing not at a wall edge
                 if (nextGrid && !isInterior(*nextGrid, row, col))
                 {
                     continue;
@@ -2473,7 +2303,7 @@ namespace NOWA
         const Ogre::Real stairW = cellSz * 0.7f;
         const Ogre::Real hw = stairW * 0.5f;
 
-        // Staircase sits exactly within its hole cell — no offset, fits z0..z0+cellSz
+        // Staircase sits exactly within its hole cell ï¿½ no offset, fits z0..z0+cellSz
         const Ogre::Real baseX = stair.worldPos.x; // cell center X
         const Ogre::Real baseY = stair.worldPos.y; // lower level floor Y
         const Ogre::Real baseZ = stair.worldPos.z; // cell front edge (z0)
@@ -2495,17 +2325,17 @@ namespace NOWA
             const Ogre::Real vH = stepH / vS;
             const Ogre::Real vD = stepD / vS;
 
-            // Tread — horizontal top of step
+            // Tread ï¿½ horizontal top of step
             this->addWallTopCapQuad({x0, sy1, sz0}, {x1, sy1, sz0}, {x1, sy1, sz1}, {x0, sy1, sz1}, 0, uW, 0, vD);
 
-            // Riser — vertical front face
+            // Riser ï¿½ vertical front face
             this->addWallQuad({x0, sy0, sz0}, {x1, sy0, sz0}, {x1, sy1, sz0}, {x0, sy1, sz0}, {0, 0, -1}, 0, uW, 0, vH);
         }
 
-        // ---- Back wall — full height, at back edge of cell ----
+        // ---- Back wall ï¿½ full height, at back edge of cell ----
         this->addWallQuad({x1, baseY, endZ}, {x0, baseY, endZ}, {x0, topY, endZ}, {x1, topY, endZ}, {0, 0, 1}, 0, uW, 0, vFull);
 
-        // ---- Left side wall — stair-profile per step (floor to step top) ----
+        // ---- Left side wall ï¿½ stair-profile per step (floor to step top) ----
         for (int s = 0; s < steps; ++s)
         {
             const Ogre::Real sy1 = baseY + (s + 1) * stepH;
@@ -2518,7 +2348,7 @@ namespace NOWA
             this->addWallQuad({x0, baseY, sz0}, {x0, baseY, sz1}, {x0, sy1, sz1}, {x0, sy1, sz0}, {-1, 0, 0}, ud0, ud1, 0, vH);
         }
 
-        // ---- Right side wall — mirror ----
+        // ---- Right side wall ï¿½ mirror ----
         for (int s = 0; s < steps; ++s)
         {
             const Ogre::Real sy1 = baseY + (s + 1) * stepH;
@@ -2531,7 +2361,7 @@ namespace NOWA
             this->addWallQuad({x1, baseY, sz1}, {x1, baseY, sz0}, {x1, sy1, sz0}, {x1, sy1, sz1}, {1, 0, 0}, ud0, ud1, 0, vH);
         }
 
-        // ---- Under-stair bottom face — closes the staircase box from below ----
+        // ---- Under-stair bottom face ï¿½ closes the staircase box from below ----
         pushQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, {x0, baseY, baseZ}, {x1, baseY, baseZ}, {x1, baseY, endZ}, {x0, baseY, endZ}, -Ogre::Vector3::UNIT_Y, 0, uW, 0, cellSz / vS);
     }
 
@@ -2644,7 +2474,7 @@ namespace NOWA
         Ogre::Root* root = Ogre::Root::getSingletonPtr();
         Ogre::VaoManager* vm = root->getRenderSystem()->getVaoManager();
         const Ogre::String meshName = "DungeonMesh_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        this->dungeonMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+        this->dungeonMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
 
         Ogre::Vector3 minB(std::numeric_limits<float>::max()), maxB(-std::numeric_limits<float>::max());
         auto updateB = [&](const std::vector<float>& v, size_t n)
@@ -2746,141 +2576,6 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::destroyDungeonMesh");
     }
 
-    void ProceduralDungeonComponent::destroyPreviewMesh(void)
-    {
-        if (!this->previewItem && !this->previewMesh)
-        {
-            return;
-        }
-        GraphicsModule::RenderCommand cmd = [this]()
-        {
-            if (this->previewItem)
-            {
-                if (this->previewItem->getParentSceneNode())
-                {
-                    this->previewItem->getParentSceneNode()->detachObject(this->previewItem);
-                }
-                this->gameObjectPtr->getSceneManager()->destroyItem(this->previewItem);
-                this->previewItem = nullptr;
-            }
-            if (this->previewMesh)
-            {
-                Ogre::MeshManager::getSingleton().remove(this->previewMesh->getHandle());
-                this->previewMesh.reset();
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::destroyPreviewMesh");
-    }
-
-    void ProceduralDungeonComponent::updatePreviewMesh(const Ogre::Vector3& position)
-    {
-        const Ogre::Real w = this->dungeonWidth->getReal(), d = this->dungeonDepth->getReal(), wH = this->wallHeight->getReal();
-        const Ogre::Real fY = this->getGroundHeight(position);
-        std::vector<float> pv;
-        std::vector<Ogre::uint32> pi;
-        Ogre::uint32 pvi = 0;
-        auto pV = [&](float x, float y, float z, float nx, float ny, float nz)
-        {
-            pv.push_back(x);
-            pv.push_back(y);
-            pv.push_back(z);
-            pv.push_back(nx);
-            pv.push_back(ny);
-            pv.push_back(nz);
-            pv.push_back(1);
-            pv.push_back(0);
-            ++pvi;
-        };
-        auto pT = [&](Ogre::uint32 a, Ogre::uint32 b, Ogre::uint32 c)
-        {
-            pi.push_back(a);
-            pi.push_back(b);
-            pi.push_back(c);
-        };
-        Ogre::uint32 b0 = pvi;
-        pV(0, fY, 0, 0, 1, 0);
-        pV(w, fY, 0, 0, 1, 0);
-        pV(w, fY, d, 0, 1, 0);
-        pV(0, fY, d, 0, 1, 0);
-        pT(b0, b0 + 1, b0 + 2);
-        pT(b0, b0 + 2, b0 + 3);
-        b0 = pvi;
-        pV(0, fY, d, 0, 0, 1);
-        pV(w, fY, d, 0, 0, 1);
-        pV(w, fY + wH, d, 0, 0, 1);
-        pV(0, fY + wH, d, 0, 0, 1);
-        pT(b0, b0 + 1, b0 + 2);
-        pT(b0, b0 + 2, b0 + 3);
-        b0 = pvi;
-        pV(w, fY, 0, 0, 0, -1);
-        pV(0, fY, 0, 0, 0, -1);
-        pV(0, fY + wH, 0, 0, 0, -1);
-        pV(w, fY + wH, 0, 0, 0, -1);
-        pT(b0, b0 + 1, b0 + 2);
-        pT(b0, b0 + 2, b0 + 3);
-        b0 = pvi;
-        pV(w, fY, d, 1, 0, 0);
-        pV(w, fY, 0, 1, 0, 0);
-        pV(w, fY + wH, 0, 1, 0, 0);
-        pV(w, fY + wH, d, 1, 0, 0);
-        pT(b0, b0 + 1, b0 + 2);
-        pT(b0, b0 + 2, b0 + 3);
-        b0 = pvi;
-        pV(0, fY, 0, -1, 0, 0);
-        pV(0, fY, d, -1, 0, 0);
-        pV(0, fY + wH, d, -1, 0, 0);
-        pV(0, fY + wH, 0, -1, 0, 0);
-        pT(b0, b0 + 1, b0 + 2);
-        pT(b0, b0 + 2, b0 + 3);
-        size_t tv = pvi;
-        Ogre::Vector3 pp = position;
-        pp.y = fY;
-        GraphicsModule::RenderCommand cmd = [this, pv, pi, tv, pp, w, d, wH]()
-        {
-            if (this->previewItem)
-            {
-                if (this->previewItem->getParentSceneNode())
-                {
-                    this->previewItem->getParentSceneNode()->detachObject(this->previewItem);
-                }
-                this->gameObjectPtr->getSceneManager()->destroyItem(this->previewItem);
-                this->previewItem = nullptr;
-            }
-            if (this->previewMesh)
-            {
-                Ogre::MeshManager::getSingleton().remove(this->previewMesh->getHandle());
-                this->previewMesh.reset();
-            }
-            Ogre::Root* root = Ogre::Root::getSingletonPtr();
-            Ogre::VaoManager* vm = root->getRenderSystem()->getVaoManager();
-            const Ogre::String mn = "DungeonPreview_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-            this->previewMesh = Ogre::MeshManager::getSingleton().createManual(mn, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-            Ogre::SubMesh* sm = this->previewMesh->createSubMesh();
-            Ogre::VertexBufferPackedVec vbv;
-            vbv.push_back(buildVBO(vm, pv, tv));
-            auto* vao = vm->createVertexArrayObject(vbv, buildIBO(vm, pi), Ogre::OT_TRIANGLE_LIST);
-            sm->mVao[Ogre::VpNormal].push_back(vao);
-            sm->mVao[Ogre::VpShadow].push_back(vao);
-            Ogre::Aabb bounds;
-            bounds.setExtents({0, 0, 0}, {w, wH, d});
-            this->previewMesh->_setBounds(bounds, false);
-            this->previewMesh->_setBoundingSphereRadius(bounds.getRadius());
-            this->previewItem = this->gameObjectPtr->getSceneManager()->createItem(this->previewMesh, Ogre::SCENE_DYNAMIC);
-            Ogre::String dn = this->floorDatablock->getString();
-            if (!dn.empty())
-            {
-                auto* db = root->getHlmsManager()->getDatablockNoDefault(dn);
-                if (db)
-                {
-                    this->previewItem->getSubItem(0)->setDatablock(db);
-                }
-            }
-            this->previewNode->setPosition(pp);
-            this->previewNode->attachObject(this->previewItem);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::updatePreviewMesh");
-    }
-
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Ground
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -2899,10 +2594,6 @@ namespace NOWA
         {
             ex.push_back(this->dungeonItem);
         }
-        if (this->previewItem)
-        {
-            ex.push_back(this->previewItem);
-        }
         Ogre::Vector3 hp;
         Ogre::MovableObject* ho = nullptr;
         Ogre::Real hd = 0;
@@ -2918,43 +2609,6 @@ namespace NOWA
             return (ro.y - p.second) + this->heightOffset->getReal();
         }
         return position.y + this->heightOffset->getReal();
-    }
-
-    bool ProceduralDungeonComponent::raycastGround(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPos)
-    {
-        Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-        if (!cam)
-        {
-            return false;
-        }
-        const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-        std::vector<Ogre::MovableObject*> ex;
-        if (this->dungeonItem)
-        {
-            ex.push_back(this->dungeonItem);
-        }
-        if (this->previewItem)
-        {
-            ex.push_back(this->previewItem);
-        }
-        Ogre::Vector3 hp;
-        Ogre::MovableObject* ho = nullptr;
-        Ogre::Real hd = 0;
-        Ogre::Vector3 hn;
-        bool hit = MathHelper::getInstance()->getRaycastFromPoint(ms.X.abs, ms.Y.abs, cam, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, hp, (size_t&)ho, hd, hn, &ex, false);
-        if (hit && ho)
-        {
-            hitPos = hp;
-            return true;
-        }
-        Ogre::Ray r = cam->getCameraToViewportRay(screenX, screenY);
-        auto p = r.intersects(this->groundPlane);
-        if (p.first && p.second > 0)
-        {
-            hitPos = r.getPoint(p.second);
-            return true;
-        }
-        return false;
     }
 
     Ogre::String ProceduralDungeonComponent::getDungeonDataFilePath(void) const
@@ -3527,29 +3181,6 @@ namespace NOWA
     // Event handlers
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    void ProceduralDungeonComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
-    {
-        auto castData = boost::static_pointer_cast<EventDataEditorMode>(eventData);
-        this->isEditorMeshModifyMode = (castData->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
-        this->updateModificationState();
-    }
-
-    void ProceduralDungeonComponent::handleGameObjectSelected(NOWA::EventDataPtr eventData)
-    {
-        auto castData = boost::static_pointer_cast<EventDataGameObjectSelected>(eventData);
-
-        if (castData->getGameObjectId() == this->gameObjectPtr->getId())
-        {
-            this->isSelected = castData->getIsSelected();
-        }
-        else if (castData->getIsSelected())
-        {
-            this->isSelected = false;
-        }
-
-        this->updateModificationState();
-    }
-
     void ProceduralDungeonComponent::handleComponentManuallyDeleted(NOWA::EventDataPtr eventData)
     {
         auto castData = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
@@ -3559,54 +3190,7 @@ namespace NOWA
         }
     }
 
-    void ProceduralDungeonComponent::addInputListener(void)
-    {
-        const Ogre::String listenerName = ProceduralDungeonComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
-        GraphicsModule::RenderCommand cmd = [this, listenerName]()
-        {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->addKeyListener(this, listenerName);
-                core->addMouseListener(this, listenerName);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::addInputListener");
-    }
-
-    void ProceduralDungeonComponent::removeInputListener(void)
-    {
-        const Ogre::String listenerName = ProceduralDungeonComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-
-        GraphicsModule::RenderCommand cmd = [this, listenerName]()
-        {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->removeKeyListener(listenerName);
-                core->removeMouseListener(listenerName);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::removeInputListener");
-    }
-
-    void ProceduralDungeonComponent::updateModificationState(void)
-    {
-        bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected;
-
-        if (shouldBeActive)
-        {
-            this->addInputListener();
-            this->buildState = BuildState::PLACING;
-        }
-        else
-        {
-            this->removeInputListener();
-            this->destroyPreviewMesh();
-            this->buildState = BuildState::IDLE;
-            this->isShiftPressed = false;
-            this->isCtrlPressed = false;
-        }
-    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Helpers
@@ -3632,12 +3216,6 @@ namespace NOWA
             return DungeonTheme::CRYPT;
         }
         return DungeonTheme::DUNGEON;
-    }
-
-    Ogre::Vector3 ProceduralDungeonComponent::snapToGridFunc(const Ogre::Vector3& position)
-    {
-        const Ogre::Real cellSz = maxValue(0.1f, this->cellSize->getReal());
-        return Ogre::Vector3(Ogre::Math::Floor(position.x / cellSz + 0.5f) * cellSz, position.y, Ogre::Math::Floor(position.z / cellSz + 0.5f) * cellSz);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -3777,7 +3355,6 @@ namespace NOWA
                 return;
             }
 
-            this->destroyPreviewMesh();
             this->destroyDungeonMesh();
 
             // Update GameObject to use the new mesh
@@ -4235,7 +3812,7 @@ namespace NOWA
 
     void ProceduralDungeonComponent::setWindowWidth(Ogre::Real windowWidth)
     {
-        // Clamp to (0, 1) — zero width makes no sense, 1.0 would erase the whole face
+        // Clamp to (0, 1) ï¿½ zero width makes no sense, 1.0 would erase the whole face
         this->windowWidth->setValue(std::max(0.05f, std::min(0.95f, windowWidth)));
         if (this->hasDungeonOrigin && this->addWindows->getBool())
         {

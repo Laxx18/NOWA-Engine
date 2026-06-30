@@ -14,6 +14,7 @@ GPL v3
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
+#include "utilities/Helper.h"
 
 #include "OgreMeshManager2.h"
 #include "OgreAbiUtils.h"
@@ -2196,7 +2197,7 @@ namespace NOWA
             }
         }
 
-        this->editableMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+        this->editableMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
         this->editableMesh->_setVaoManager(vm);
 
         Ogre::Vector3 minBB(std::numeric_limits<float>::max());
@@ -2367,7 +2368,7 @@ namespace NOWA
 
             const Ogre::String tmpName = this->gameObjectPtr->getName() + "_MeshEditTmp_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->meshRebuildCounter++);
 
-            Ogre::MeshPtr newMesh = Ogre::MeshManager::getSingleton().createManual(tmpName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+            Ogre::MeshPtr newMesh = Ogre::MeshManager::getSingleton().createManual(tmpName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
             newMesh->_setVaoManager(vm);
 
             Ogre::Vector3 globalMinBB(std::numeric_limits<float>::max());

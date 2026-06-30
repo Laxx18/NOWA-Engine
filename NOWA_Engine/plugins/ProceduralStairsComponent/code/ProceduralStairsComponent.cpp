@@ -15,6 +15,7 @@ GPL v3
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
+#include "utilities/Helper.h"
 
 #include "OgreAbiUtils.h"
 #include "OgreHlmsManager.h"
@@ -69,9 +70,6 @@ namespace NOWA
         stringerVertexBase(0u),
         stairsMesh(nullptr),
         stairsItem(nullptr),
-        previewMesh(nullptr),
-        previewItem(nullptr),
-        previewNode(nullptr),
         physicsArtifactComponent(nullptr)
     {
         this->activated = new Variant(ProceduralStairsComponent::AttrActivated(), true, this->attributes);
@@ -357,14 +355,6 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralStairsComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-        // Create preview scene node on render thread
-        NOWA::GraphicsModule::RenderCommand makeNode = [this]()
-        {
-            this->previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-            this->previewNode->setVisible(false);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(makeNode), "ProceduralStairsComponent::postInit_previewNode");
-
         this->physicsArtifactComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>()).get();
 
         this->rebuildMesh();
@@ -379,7 +369,6 @@ namespace NOWA
 
     bool ProceduralStairsComponent::disconnect(void)
     {
-        this->destroyPreviewMesh();
         return true;
     }
 
@@ -395,19 +384,7 @@ namespace NOWA
 
     void ProceduralStairsComponent::onRemoveComponent(void)
     {
-        this->destroyPreviewMesh();
         this->destroyStairsMesh();
-
-        NOWA::GraphicsModule::RenderCommand destroyNode = [this]()
-        {
-            if (nullptr != this->previewNode)
-            {
-                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->previewNode);
-                this->gameObjectPtr->getSceneManager()->destroySceneNode(this->previewNode);
-                this->previewNode = nullptr;
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(destroyNode), "ProceduralStairsComponent::onRemoveComponent_node");
 
         this->physicsArtifactComponent = nullptr;
     }
@@ -1803,7 +1780,7 @@ namespace NOWA
             }
         }
 
-        this->stairsMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName);
+        this->stairsMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName, &NOWA::gDummyMeshLoader);
 
         Ogre::Vector3 minBB(std::numeric_limits<float>::max());
         Ogre::Vector3 maxBB(-std::numeric_limits<float>::max());
@@ -1997,145 +1974,6 @@ namespace NOWA
     }
 
     // =========================================================================
-    //  Preview mesh  (same lazy pattern as ProceduralWallComponent)
-    // =========================================================================
-
-    void ProceduralStairsComponent::createPreviewMesh(void)
-    {
-        this->buildGeometry();
-
-        if (this->treadVertices.empty())
-        {
-            return;
-        }
-
-        // Merge all 3 buffers into one flat list for the preview
-        std::vector<float> allVerts;
-        std::vector<Ogre::uint32> allIdx;
-
-        auto appendBuffer = [&](const std::vector<float>& verts, const std::vector<Ogre::uint32>& idxs)
-        {
-            const Ogre::uint32 offset = static_cast<Ogre::uint32>(allVerts.size() / 8u);
-            allVerts.insert(allVerts.end(), verts.begin(), verts.end());
-            for (Ogre::uint32 i : idxs)
-            {
-                allIdx.push_back(i + offset);
-            }
-        };
-
-        appendBuffer(this->treadVertices, this->treadIndices);
-        appendBuffer(this->riserVertices, this->riserIndices);
-        appendBuffer(this->stringerVertices, this->stringerIndices);
-
-        const size_t numVerts = allVerts.size() / 8u;
-        const Ogre::String mn = this->gameObjectPtr->getName() + "_StairsPrev_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-
-        std::vector<float> vertsCopy = allVerts;
-        std::vector<Ogre::uint32> idxsCopy = allIdx;
-
-        NOWA::GraphicsModule::RenderCommand cmd = [this, vertsCopy, idxsCopy, numVerts, mn]()
-        {
-            if (nullptr == this->previewNode)
-            {
-                this->previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-                this->previewNode->setVisible(false);
-            }
-
-            // Destroy previous preview
-            if (nullptr != this->previewItem)
-            {
-                if (this->previewItem->getParentSceneNode())
-                {
-                    this->previewItem->getParentSceneNode()->detachObject(this->previewItem);
-                }
-                this->gameObjectPtr->getSceneManager()->destroyItem(this->previewItem);
-                this->previewItem = nullptr;
-            }
-            if (false == this->previewMesh.isNull())
-            {
-                Ogre::MeshManager::getSingleton().remove(this->previewMesh->getHandle());
-                this->previewMesh.reset();
-            }
-
-            // Remove stale by name
-            {
-                const Ogre::String grp = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME;
-                Ogre::MeshPtr ex = Ogre::MeshManager::getSingleton().getByName(mn, grp);
-                if (false == ex.isNull())
-                {
-                    Ogre::MeshManager::getSingleton().remove(ex->getHandle());
-                }
-            }
-
-            Ogre::Root* root = Ogre::Root::getSingletonPtr();
-            Ogre::VaoManager* vm = root->getRenderSystem()->getVaoManager();
-            const Ogre::String grp = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME;
-
-            this->previewMesh = Ogre::MeshManager::getSingleton().createManual(mn, grp);
-
-            Ogre::Vector3 minBB(std::numeric_limits<float>::max());
-            Ogre::Vector3 maxBB(-std::numeric_limits<float>::max());
-
-            Ogre::SubMesh* sm = this->previewMesh->createSubMesh();
-            this->uploadSubMesh(sm, vertsCopy, idxsCopy, numVerts, vm, minBB, maxBB);
-
-            if (minBB.x > maxBB.x)
-            {
-                minBB = Ogre::Vector3(-1.0f);
-                maxBB = Ogre::Vector3(1.0f);
-            }
-            Ogre::Aabb aabb;
-            aabb.setExtents(minBB, maxBB);
-            this->previewMesh->_setBounds(aabb, false);
-            this->previewMesh->_setBoundingSphereRadius(aabb.getRadius());
-
-            this->previewItem = this->gameObjectPtr->getSceneManager()->createItem(this->previewMesh, Ogre::SCENE_DYNAMIC);
-
-            Ogre::HlmsDatablock* previewDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault("BaseWhiteNoLighting");
-            if (nullptr != previewDb)
-            {
-                this->previewItem->getSubItem(0)->setDatablock(previewDb);
-            }
-
-            this->previewItem->setQueryFlags(0u);
-            this->previewItem->setCastShadows(false);
-            this->previewNode->attachObject(this->previewItem);
-            this->previewNode->setVisible(true);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralStairsComponent::createPreviewMesh");
-    }
-
-    void ProceduralStairsComponent::destroyPreviewMesh(void)
-    {
-        if (nullptr == this->previewItem && this->previewMesh.isNull())
-        {
-            return;
-        }
-        NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            if (nullptr != this->previewItem)
-            {
-                if (this->previewItem->getParentSceneNode())
-                {
-                    this->previewItem->getParentSceneNode()->detachObject(this->previewItem);
-                }
-                this->gameObjectPtr->getSceneManager()->destroyItem(this->previewItem);
-                this->previewItem = nullptr;
-            }
-            if (false == this->previewMesh.isNull())
-            {
-                Ogre::MeshManager::getSingleton().remove(this->previewMesh->getHandle());
-                this->previewMesh.reset();
-            }
-            if (nullptr != this->previewNode)
-            {
-                this->previewNode->setVisible(false);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralStairsComponent::destroyPreviewMesh");
-    }
-
-    // =========================================================================
     //  Convert to mesh  (same pattern as ProceduralWallComponent)
     // =========================================================================
 
@@ -2219,7 +2057,6 @@ namespace NOWA
                 return;
             }
 
-            this->destroyPreviewMesh();
             this->destroyStairsMesh();
 
             if (!capturedGOPtr->assignMesh(newItem))

@@ -9,6 +9,7 @@
 #include "modules/GraphicsModule.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
+#include "utilities/Helper.h"
 
 #include "OgreBitwise.h"
 #include "OgreConfigFile.h"
@@ -33,25 +34,8 @@
 #include <future>
 #include <random>
 
-// Dummy ManualResourceLoader for procedurally generated foliage cell meshes.
-// These meshes are built entirely in memory and never need reloading from disk.
-// Providing a loader suppresses Ogre's "no manual loader provided" warning which
-// fires when createManual() is called without one.
 namespace
 {
-    class FoliageCellMeshLoader : public Ogre::ManualResourceLoader
-    {
-    public:
-        void prepareResource(Ogre::Resource* resource) override
-        {
-        }
-        void loadResource(Ogre::Resource* resource) override
-        {
-        }
-    };
-
-    FoliageCellMeshLoader gFoliageCellMeshLoader;
-
     // ------------------------------------------------------------------
     // Small helpers for ProceduralFoliageVolumeComponent::computeRulesChecksum.
     // 64-bit variant of boost::hash_combine: folds value into seed in a way
@@ -2565,7 +2549,7 @@ namespace NOWA
                         }
                     }
 
-                    Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &gFoliageCellMeshLoader);
+                    Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
                     cellMesh->_setVaoManager(vaoManager);
 
                     Ogre::SubMesh* cellSM = cellMesh->createSubMesh();
@@ -2970,7 +2954,7 @@ namespace NOWA
                 }
             }
 
-            Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &gFoliageCellMeshLoader);
+            Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
             cellMesh->_setVaoManager(vaoManager);
 
             Ogre::SubMesh* cellSM = cellMesh->createSubMesh();

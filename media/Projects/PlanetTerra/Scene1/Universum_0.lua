@@ -13,17 +13,18 @@ require("init");
 -- reactOnPlanetLeft fires.
 -- =========================================================================
 
-local FIGHTER_GO_ID = "2599276278";
-local PLAYER_GO_ID       = "1959649159";
-local PLANET_MINIMAP_GO_ID = "3534518939";
+FIGHTER_GO_ID = "2599276278";
+PLAYER_GO_ID       = "1959649159";
+PLANET_MINIMAP_GO_ID = "1527832358";
 
-local universumGameObject    = nil;
-local universumComp  = nil;
-local window = nil;
-local landDegreeText = nil;
-local playerGo = nil;
-local fighterGo = nil;
-local planetMinimapGo = nil;
+universumGameObject    = nil;
+universumComp  = nil;
+window = nil;
+landDegreeText = nil;
+playerGo = nil;
+fighterGo = nil;
+planetMinimapGo = nil;
+mainGo = nil;
 
 Universum_0 = {}
 
@@ -92,6 +93,8 @@ Universum_0["connect"] = function(gameObject)
     playerGo:getPhysicsActiveComponent():setActivated(false);
     
     planetMinimapGo = AppStateManager:getGameObjectController():getGameObjectFromId(PLANET_MINIMAP_GO_ID);
+    
+    mainGo = AppStateManager:getGameObjectController():getGameObjectFromId(MAIN_GAMEOBJECT_ID);
     
     local fadeWindowComponent = universumGameObject:getMyGUIFadeAlphaControllerComponent();
     local landStartButton     = universumGameObject:getMyGUIButtonComponentFromName("LandStartButton");
@@ -166,7 +169,16 @@ Universum_0["connect"] = function(gameObject)
         
         planetMinimapGo:getPlanetMinimapComponent():setPlanetId(planetGameObject:getId());
         planetMinimapGo:getPlanetMinimapComponent():setTargetId(playerGo:getId());
+        planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(0, fighterGo:getId());
+        
+        if (planetGameObject:getName() == "Eri") then
+            -- Dungeon
+            planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(1, "561215262");
+        end
+        
         planetMinimapGo:getPlanetMinimapComponent():setActivated(true);
+        
+        mainGo:getSimpleSoundComponentFromName("FlyMusic"):setActivated(false);
     end)
  
 end

@@ -13,6 +13,7 @@ GPL v3
 #include "utilities/MathHelper.h"
 #include "utilities/MovableText.h"
 #include "utilities/XMLConverter.h"
+#include "utilities/Helper.h"
 
 #include "RenderQueueEnums.h"
 
@@ -1247,7 +1248,7 @@ namespace NOWA
             }
         }
 
-        this->constructionMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+        this->constructionMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
         this->constructionMesh->_setVaoManager(vm);
 
         Ogre::Vector3 minBB(std::numeric_limits<float>::max());

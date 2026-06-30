@@ -764,6 +764,7 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 				}
 			}*/
 		}
+
 		if (true == filter.empty())
 		{
 			root->add(categoryNode);
@@ -816,6 +817,9 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 			}
 		}
 	}
+
+	MyGUI::TreeControl::Node* emptyNode = new MyGUI::TreeControl::Node("", "Data");
+    root->add(emptyNode);
 
 	root->setExpanded(true);
 }
