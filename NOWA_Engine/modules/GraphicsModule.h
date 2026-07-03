@@ -721,6 +721,10 @@ namespace NOWA
         // Update full transform for a node in the current buffer
         void setNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE, bool useDerived = false);
 
+        void teleportNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived);
+
+        void teleportNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation);
+
         // Add a Camera to be tracked and transformed
         void addTrackedCamera(Ogre::Camera* camera);
 

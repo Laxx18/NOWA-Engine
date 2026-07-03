@@ -848,7 +848,10 @@ namespace NOWA
                 {
                     // Preserve the Power Scale explicitly set by the sample
                     Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-                    preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
+                    if (nullptr != this->lightDirectionalComponent->getOgreLight())
+                    {
+                        preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
+                    }
                     this->atmosphereNpr->setPreset(preset);
                 }
 
@@ -871,6 +874,39 @@ namespace NOWA
     bool AtmosphereComponent::connect(void)
     {
         this->setActivated(this->activated->getBool());
+
+        if (true == this->activated->getBool())
+        {
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                if (nullptr != this->atmosphereNpr)
+                {
+                    this->atmosphereNpr->setLight(nullptr);
+                    delete this->atmosphereNpr;
+                    this->atmosphereNpr = nullptr;
+                }
+
+                this->atmosphereNpr = new Ogre::AtmosphereNpr(this->gameObjectPtr->getSceneManager()->getDestinationRenderSystem()->getVaoManager());
+
+                this->oldLightDirection = this->lightDirectionalComponent->getDirection();
+                // Todo: If terra is set, update for terra, see sample
+                this->atmosphereNpr->setLight(this->lightDirectionalComponent->getOgreLight());
+
+                {
+                    // Preserve the Power Scale explicitly set by the sample
+                    Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+                    if (nullptr != this->lightDirectionalComponent->getOgreLight())
+                    {
+                        preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
+                    }
+                    this->atmosphereNpr->setPreset(preset);
+                }
+
+                this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), this->enableSky->getBool());
+                this->setShowSun(this->showSun->getBool());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::postInit");
+        }
 
         return true;
     }
@@ -912,118 +948,6 @@ namespace NOWA
 
         return true;
     }
-
-    //void AtmosphereComponent::update(Ogre::Real dt, bool notSimulating)
-    //{
-    //    if (false == notSimulating)
-    //    {
-    //        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-
-    //        // Update time of day — stabilisationFactor is always 1.0 across all branches,
-    //        // kept here in case you want to tune per-segment speed later.
-    //        Ogre::Real stabilisationFactor = 1.0f;
-
-    //        this->timeOfDay += this->timeMultiplicator->getReal() * stabilisationFactor * dt;
-
-    //        // Smooth wrap — the seam is at ±1.0 which maps to 18:00.
-    //        if (this->timeOfDay >= 1.0f)
-    //        {
-    //            this->timeOfDay = -1.0f + (this->timeOfDay - 1.0f);
-    //        }
-    //        else if (this->timeOfDay < -1.0f)
-    //        {
-    //            this->timeOfDay = 1.0f + (this->timeOfDay + 1.0f);
-    //        }
-
-    //        this->azimuth += this->timeMultiplicator->getReal() * dt;
-    //        this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
-
-    //        auto closureFunction = [atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(), lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(),
-    //                                   defaultDir = this->lightDirectionalComponent->getOwner()->getDefaultDirection(), externalLightMode = this->externalLightMode, cachedSunDir = this->cachedExternalSunDir, timeOfDay = this->timeOfDay,
-    //                                   azimuth = this->azimuth](Ogre::Real renderDt) mutable
-    //        {
-    //            sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere(), sceneManager->getAmbientLightLowerHemisphere(), sceneManager->getAmbientLightHemisphereDir());
-
-    //            Ogre::Vector3 sd;
-    //            if (false == externalLightMode)
-    //            {
-    //                const float sunAngle = timeOfDay * Ogre::Math::PI;
-    //                const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
-    //                sd = (Ogre::Quaternion(Ogre::Radian(azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy();
-
-    //                Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(lightNode->getOrientation(), sd, defaultDir, renderDt, 60.0f);
-    //                lightNode->_setDerivedOrientation(newOrientation);
-    //            }
-    //            else
-    //            {
-    //                sd = cachedSunDir;
-    //                if (sd.squaredLength() > 0.0f)
-    //                {
-    //                    sd.normalise();
-    //                }
-    //            }
-
-    //            // Convert timeOfDay to a clock hour first, then to time01.
-    //            //
-    //            // timeOfDay range -> clock:
-    //            //   [ 0.0,  1.0) ->  6:00 to 18:00
-    //            //   [-1.0, -0.5) -> 18:00 to 24:00
-    //            //   [-0.5,  0.0) ->  0:00 to  6:00
-    //            //
-    //            // This gives time01 = clockHour / 24 which runs:
-    //            //   midnight  (0:00) -> 0.00
-    //            //   sunrise   (6:00) -> 0.25
-    //            //   noon     (12:00) -> 0.50
-    //            //   sunset   (18:00) -> 0.75
-    //            //   midnight (24:00) -> 1.00 (== 0.00)
-    //            //
-    //            // The seam is now at midnight — a uniformly dark sky — so any tiny
-    //            // preset discontinuity at time01=0/1 is invisible. Previously the
-    //            // seam was at 18:00 (sunset), which is the most visually dramatic
-    //            // moment and caused the power-scale jump from 1 to 16.
-
-    //            float clockHour;
-    //            if (timeOfDay >= -1.0f && timeOfDay < -0.5f)
-    //            {
-    //                // Evening: -1.0 to -0.5 -> 18:00 to 24:00
-    //                clockHour = 18.0f + (timeOfDay + 1.0f) * 12.0f;
-    //            }
-    //            else if (timeOfDay >= -0.5f && timeOfDay < 0.0f)
-    //            {
-    //                // Night: -0.5 to 0.0 -> 0:00 to 6:00
-    //                clockHour = (timeOfDay + 0.5f) * 12.0f;
-    //            }
-    //            else
-    //            {
-    //                // Morning + afternoon: 0.0 to 1.0 -> 6:00 to 18:00
-    //                clockHour = 6.0f + timeOfDay * 12.0f;
-    //            }
-
-    //            float time01 = clockHour / 24.0f;
-    //            time01 = Ogre::Math::Clamp(time01, 0.0f, 0.999999f);
-
-    //            atmosphereNpr->updatePreset(sd, time01);
-
-    //            Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-    //            if (nullptr != camera)
-    //            {
-    //                atmosphereNpr->_update(sceneManager, camera);
-    //            }
-    //        };
-
-    //        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-    //        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-
-    //        if (true == this->bShowDebugData)
-    //        {
-    //            Ogre::String time = getCurrentTimeOfDay();
-    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
-    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] OgreLight PowerScale: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getOgreLight()->getPowerScale()));
-    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset SunPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().sunPower));
-    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset LinkedLightPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().linkedLightPower));
-    //        }
-    //    }
-    //}
 
     void AtmosphereComponent::update(Ogre::Real dt, bool notSimulating)
     {
@@ -1228,34 +1152,34 @@ namespace NOWA
             presets.back().envmapScale = this->envmapScales[i]->getReal();
         }
 
-        // Sentinel presets at the absolute boundaries [-1.0, +1.0] (time01: 0.0 and 1.0).
-        // Without these, Ogre::AtmosphereNpr::updatePreset extrapolates outside the defined
-        // range at the wrap point and produces a massive HDR spike — the visible brightness jump.
-        // We use case 4 (midnight, darkest preset) for both sentinels so the boundary is dark
-        // and any extrapolation beyond it stays dark rather than spiking bright.
-        const size_t nightIdx = 4; // case 4 = midnight
-        Ogre::AtmosphereNpr::Preset sentinel;
-        sentinel.densityCoeff = this->densityCoefficients[nightIdx]->getReal();
-        sentinel.densityDiffusion = this->densityDiffusions[nightIdx]->getReal();
-        sentinel.horizonLimit = this->horizonLimits[nightIdx]->getReal();
-        sentinel.sunPower = bShowSun ? this->sunPowers[nightIdx]->getReal() : 0.0f;
-        sentinel.skyPower = this->enableSky->getBool() ? this->skyPowers[nightIdx]->getReal() : 0.0f;
-        sentinel.skyColour = this->skyColors[nightIdx]->getVector3();
-        sentinel.fogDensity = this->fogDensities[nightIdx]->getReal();
-        sentinel.fogBreakMinBrightness = this->fogBreakMinBrightnesses[nightIdx]->getReal();
-        sentinel.fogBreakFalloff = this->fogBreakFalloffs[nightIdx]->getReal();
-        sentinel.linkedLightPower = bShowSun ? this->linkedLightPowers[nightIdx]->getReal() : 0.0f;
-        sentinel.linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[nightIdx]->getReal();
-        sentinel.linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[nightIdx]->getReal();
-        sentinel.envmapScale = this->envmapScales[nightIdx]->getReal();
+        //// Sentinel presets at the absolute boundaries [-1.0, +1.0] (time01: 0.0 and 1.0).
+        //// Without these, Ogre::AtmosphereNpr::updatePreset extrapolates outside the defined
+        //// range at the wrap point and produces a massive HDR spike — the visible brightness jump.
+        //// We use case 4 (midnight, darkest preset) for both sentinels so the boundary is dark
+        //// and any extrapolation beyond it stays dark rather than spiking bright.
+        //const size_t nightIdx = 4; // case 4 = midnight
+        //Ogre::AtmosphereNpr::Preset sentinel;
+        //sentinel.densityCoeff = this->densityCoefficients[nightIdx]->getReal();
+        //sentinel.densityDiffusion = this->densityDiffusions[nightIdx]->getReal();
+        //sentinel.horizonLimit = this->horizonLimits[nightIdx]->getReal();
+        //sentinel.sunPower = bShowSun ? this->sunPowers[nightIdx]->getReal() : 0.0f;
+        //sentinel.skyPower = this->enableSky->getBool() ? this->skyPowers[nightIdx]->getReal() : 0.0f;
+        //sentinel.skyColour = this->skyColors[nightIdx]->getVector3();
+        //sentinel.fogDensity = this->fogDensities[nightIdx]->getReal();
+        //sentinel.fogBreakMinBrightness = this->fogBreakMinBrightnesses[nightIdx]->getReal();
+        //sentinel.fogBreakFalloff = this->fogBreakFalloffs[nightIdx]->getReal();
+        //sentinel.linkedLightPower = bShowSun ? this->linkedLightPowers[nightIdx]->getReal() : 0.0f;
+        //sentinel.linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[nightIdx]->getReal();
+        //sentinel.linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[nightIdx]->getReal();
+        //sentinel.envmapScale = this->envmapScales[nightIdx]->getReal();
 
-        Ogre::AtmosphereNpr::Preset lowerSentinel = sentinel;
-        lowerSentinel.time = -1.0f; // time01 = 0.0
-        presets.push_back(lowerSentinel);
+        //Ogre::AtmosphereNpr::Preset lowerSentinel = sentinel;
+        //lowerSentinel.time = -1.0f; // time01 = 0.0
+        //presets.push_back(lowerSentinel);
 
-        Ogre::AtmosphereNpr::Preset upperSentinel = sentinel;
-        upperSentinel.time = 0.999999f; // time01 = 1.0
-        presets.push_back(upperSentinel);
+        //Ogre::AtmosphereNpr::Preset upperSentinel = sentinel;
+        //upperSentinel.time = 0.999999f; // time01 = 1.0
+        //presets.push_back(upperSentinel);
 
         // Everything above is pushed in case-index order (0,1,2,3,4,5, lowerSentinel,
         // upperSentinel), which is NOT the same as ascending order by .time - e.g. case1

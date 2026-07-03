@@ -330,7 +330,7 @@ namespace NOWA
 					Ogre::Vector3 localPos = Ogre::Vector3::ZERO;
 					if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
 					{
-						this->hitBody->setPositionOrientation(globalPos, this->hitBody->getOrientation());
+                        this->hitBody->setKinematicPositionOrientation(globalPos, this->hitBody->getOrientation());
 					}
 					else
 					{
@@ -338,7 +338,7 @@ namespace NOWA
 						Ogre::Quaternion bodyOrientation;
 
 						// Store the body position and orientation
-						this->hitBody->getPositionOrientation(bodyPos, bodyOrientation);
+                        this->hitBody->setKinematicPositionOrientation(bodyPos, bodyOrientation);
 						localPos = bodyOrientation.Inverse() * (globalPos - bodyPos);
 					}
 
@@ -875,14 +875,14 @@ namespace NOWA
 
 				if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
 				{
-					this->hitBody->setPositionOrientation(globalPos, this->hitBody->getOrientation());
+                    this->hitBody->setKinematicPositionOrientation(globalPos, this->hitBody->getOrientation());
 				}
 				else
 				{
 					Ogre::Quaternion bodyOrientation;
 
 					// Store the body position and orientation
-					this->hitBody->getPositionOrientation(globalPos, bodyOrientation);
+                    this->hitBody->setKinematicPositionOrientation(globalPos, bodyOrientation);
 				}
 
 				// Try to cast to physics component

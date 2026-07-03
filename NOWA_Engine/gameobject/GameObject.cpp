@@ -940,6 +940,10 @@ namespace NOWA
 
     bool GameObject::disconnect(void)
     {
+        // Reset stuff from life AdaptiveQualityLevel from WorkspaceModule
+        this->setPerformanceRenderDistance(this->renderDistance->getUInt());
+        this->setPerformanceShadowRenderingDistance(this->shadowRenderingDistance->getUInt());
+
         for (const auto& component : this->gameObjectComponents)
         {
             std::get<COMPONENT>(component)->disconnect();
@@ -2401,6 +2405,30 @@ namespace NOWA
         return this->renderQueueIndex->getUInt();
     }
 
+    void GameObject::setPerformanceRenderDistance(unsigned int renderDistance)
+    {
+        if (nullptr != this->movableObject && renderDistance > 0)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, renderDistance]()
+            {
+                this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setRenderDistance");
+        }
+    }
+
+    void GameObject::setPerformanceShadowRenderingDistance(unsigned int shadowRenderingDistance)
+    {
+        if (nullptr != this->movableObject && shadowRenderingDistance > 0)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, shadowRenderingDistance]()
+            {
+                this->movableObject->setShadowRenderingDistance(static_cast<Ogre::Real>(shadowRenderingDistance));
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setShadowRenderingDistance");
+        }
+    }
+
     void GameObject::setRenderDistance(unsigned int renderDistance)
     {
         // TODO debug, because else it was never set
@@ -2480,14 +2508,15 @@ namespace NOWA
             return;
         }
 
-        if (Ogre::Item* item = this->getMovableObject<Ogre::Item>())
+        // Commented out, waiting for v2 lod system
+        /*if (Ogre::Item* item = this->getMovableObject<Ogre::Item>())
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, lodDistance]()
             {
                 this->applyLodDistanceToItem(item, lodDistance);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setLodDistance");
-        }
+        }*/
     }
 
     void GameObject::applyLodDistanceToItem(Ogre::Item* item, Ogre::Real lodDistance)

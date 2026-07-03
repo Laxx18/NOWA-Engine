@@ -367,6 +367,15 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
                 parent->add(child);
             }
         }
+        // Add Procedural City
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralCityComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Procedural City", "Data");
+                parent->add(child);
+            }
+        }
+
 		// Add Geometry
 		{
 			if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralGeometryComponent"))
@@ -603,7 +612,7 @@ void ResourcesPanelGameObjects::initialise()
 	assignWidget(this->imageBox, "previewImage");
 	this->gameObjectsTree->eventTreeNodeSelected += newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
 	this->gameObjectsTree->eventKeyButtonPressed += newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
-	this->gameObjectsTree->setSize(MyGUI::IntSize(mWidgetClient->getWidth() - 8, 400));
+	this->gameObjectsTree->setSize(MyGUI::IntSize(mWidgetClient->getWidth() - 8, 350));
 	// Not necessary, else game objects are filled two times -> performance
 	// this->refresh();
 	assignWidget(this->resourcesSearchEdit, "ResourcesSearchEdit");
@@ -818,8 +827,8 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 		}
 	}
 
-	MyGUI::TreeControl::Node* emptyNode = new MyGUI::TreeControl::Node("", "Data");
-    root->add(emptyNode);
+	/*MyGUI::TreeControl::Node* emptyNode = new MyGUI::TreeControl::Node("", "Data");
+    root->add(emptyNode);*/
 
 	root->setExpanded(true);
 }

@@ -122,7 +122,7 @@ namespace NOWA
         name("UniversumComponent"),
         randomSeed(new Variant(UniversumComponent::AttrRandomSeed(), static_cast<unsigned int>(12345u), this->attributes)),
         solarSystemCount(new Variant(UniversumComponent::AttrSolarSystemCount(), static_cast<unsigned int>(1u), this->attributes)),
-        solarSystemDistanceMin(new Variant(UniversumComponent::AttrSolarSystemDistanceMin(), 500.0f, this->attributes)),
+        solarSystemDistanceMin(new Variant(UniversumComponent::AttrSolarSystemDistanceMin(), 1000.0f, this->attributes)),
         solarSystemDistanceMax(new Variant(UniversumComponent::AttrSolarSystemDistanceMax(), 2000.0f, this->attributes)),
         planetsPerSystemMin(new Variant(UniversumComponent::AttrPlanetsPerSystemMin(), static_cast<unsigned int>(2u), this->attributes)),
         planetsPerSystemMax(new Variant(UniversumComponent::AttrPlanetsPerSystemMax(), static_cast<unsigned int>(6u), this->attributes)),
@@ -132,25 +132,25 @@ namespace NOWA
         useMotion(new Variant(UniversumComponent::AttrUseMotion(), true, this->attributes)),
         useOcean(new Variant(UniversumComponent::AttrUseOcean(), true, this->attributes)),
         oceanProbability(new Variant(UniversumComponent::AttrOceanProbability(), 0.4f, this->attributes)),
-        sunRadius(new Variant(UniversumComponent::AttrSunRadius(), 25.0f, this->attributes)),
+        sunRadius(new Variant(UniversumComponent::AttrSunRadius(), 50.0f, this->attributes)),
         planetRadiusMin(new Variant(UniversumComponent::AttrPlanetRadiusMin(), 8.0f, this->attributes)),
         planetRadiusMax(new Variant(UniversumComponent::AttrPlanetRadiusMax(), 30.0f, this->attributes)),
         moonRadius(new Variant(UniversumComponent::AttrMoonRadius(), 5.0f, this->attributes)),
-        orbitalDistanceMin(new Variant(UniversumComponent::AttrOrbitalDistanceMin(), 160.0f, this->attributes)),
-        orbitalDistanceMax(new Variant(UniversumComponent::AttrOrbitalDistanceMax(), 600.0f, this->attributes)),
-        moonOrbitalDistanceMin(new Variant(UniversumComponent::AttrMoonOrbitalDistanceMin(), 80.0f, this->attributes)),
-        moonOrbitalDistanceMax(new Variant(UniversumComponent::AttrMoonOrbitalDistanceMax(), 200.0f, this->attributes)),
-        orbitalSpeedMin(new Variant(UniversumComponent::AttrOrbitalSpeedMin(), 0.02f, this->attributes)),
-        orbitalSpeedMax(new Variant(UniversumComponent::AttrOrbitalSpeedMax(), 0.15f, this->attributes)),
-        axialSpeedMin(new Variant(UniversumComponent::AttrAxialSpeedMin(), 0.01f, this->attributes)),
-        axialSpeedMax(new Variant(UniversumComponent::AttrAxialSpeedMax(), 0.05f, this->attributes)),
+        orbitalDistanceMin(new Variant(UniversumComponent::AttrOrbitalDistanceMin(), 320.0f, this->attributes)),
+        orbitalDistanceMax(new Variant(UniversumComponent::AttrOrbitalDistanceMax(), 800.0f, this->attributes)),
+        moonOrbitalDistanceMin(new Variant(UniversumComponent::AttrMoonOrbitalDistanceMin(), 160.0f, this->attributes)),
+        moonOrbitalDistanceMax(new Variant(UniversumComponent::AttrMoonOrbitalDistanceMax(), 320.0f, this->attributes)),
+        orbitalSpeedMin(new Variant(UniversumComponent::AttrOrbitalSpeedMin(), 0.001f, this->attributes)),
+        orbitalSpeedMax(new Variant(UniversumComponent::AttrOrbitalSpeedMax(), 0.0075f, this->attributes)),
+        axialSpeedMin(new Variant(UniversumComponent::AttrAxialSpeedMin(), 0.0005f, this->attributes)),
+        axialSpeedMax(new Variant(UniversumComponent::AttrAxialSpeedMax(), 0.0025f, this->attributes)),
         playerGameObjectId(new Variant(UniversumComponent::AttrPlayerGameObjectId(), static_cast<unsigned long>(0ul), this->attributes)),
         cameraGameObjectId(new Variant(UniversumComponent::AttrCameraGameObjectId(), static_cast<unsigned long>(GameObjectController::MAIN_CAMERA_ID), this->attributes)),
         sunLightGameObjectId(new Variant(UniversumComponent::AttrSunLightGameObjectId(), static_cast<unsigned long>(GameObjectController::MAIN_LIGHT_ID), this->attributes)),
         farClipSpace(new Variant(UniversumComponent::AttrFarClipSpace(), 1000000.0f, this->attributes)),
         farClipSurface(new Variant(UniversumComponent::AttrFarClipSurface(), 5000.0f, this->attributes)),
         farClipTransitionSpeed(new Variant(UniversumComponent::AttrFarClipTransitionSpeed(), 0.5f, this->attributes)),
-        scale(new Variant(UniversumComponent::AttrScale(), 1.0f, this->attributes)),
+        scale(new Variant(UniversumComponent::AttrScale(), 2.0f, this->attributes)),
         autoPauseOrbit(new Variant(UniversumComponent::AttrAutoPauseOrbit(), true, this->attributes)),
         generate(new Variant(UniversumComponent::AttrGenerate(), Ogre::String("Generate"), this->attributes)),
         elapsedTime(0.0f),
@@ -2209,6 +2209,9 @@ namespace NOWA
         {
             return;
         }
+
+        // Ogre::Timer diagTimer;
+
         this->elapsedTime += dt;
 
         // ---- Orbital motion ----
@@ -2246,7 +2249,8 @@ namespace NOWA
                     planet.currentPosition = newPos;
                     Ogre::Radian axialAngle(planet.axialElapsed * planet.axialSpeed);
                     Ogre::Quaternion axialRot(axialAngle, Ogre::Vector3::UNIT_Y);
-                    physComp->setPositionOrientation(newPos, axialRot);
+                    // Do set lots of positions without enqueue and wait, but use lock free queue without interpolation
+                    physComp->setKinematicPositionOrientation(newPos, axialRot);
                 }
 
                 for (auto& moonPair : system.moons)
@@ -2277,10 +2281,22 @@ namespace NOWA
                     }
                     Ogre::Radian axialAngle(moon.axialElapsed * moon.axialSpeed);
                     Ogre::Quaternion axialRot(axialAngle, Ogre::Vector3::UNIT_Y);
-                    physComp->setPositionOrientation(newPos, axialRot);
+                    // Do set lots of positions without enqueue and wait, but use lock free queue without interpolation
+                    physComp->setKinematicPositionOrientation(newPos, axialRot);
                 }
             }
         }
+
+       /* static float accumMs = 0.0f;
+        static int accumCount = 0;
+        accumMs += diagTimer.getMicroseconds() * 0.001f;
+        ++accumCount;
+        if (accumCount >= 60)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] Orbital update avg cost: " + Ogre::StringConverter::toString(accumMs / accumCount) + "ms");
+            accumMs = 0.0f;
+            accumCount = 0;
+        }*/
 
         this->updateLandingStateMachine(dt);
 
@@ -3661,16 +3677,57 @@ namespace NOWA
         // Create planets.
         const int planetCount = this->randInt(rng, static_cast<int>(this->planetsPerSystemMin->getUInt()), static_cast<int>(this->planetsPerSystemMax->getUInt()));
 
-        const float sunScaledRadius = this->sunRadius->getReal() * scaleFactor;
+        //const float sunScaledRadius = this->sunRadius->getReal() * scaleFactor;
+        //const float planetMaxRadius = this->planetRadiusMax->getReal() * scaleFactor;
+
+        //// Planet orbits must start outside the sun: enforce hard clearance.
+        //const float minPlanetOrbit = sunScaledRadius + planetMaxRadius + sunScaledRadius * 0.5f;
+        //const float configOrbMin = this->orbitalDistanceMin->getReal() * scaleFactor;
+        //const float configOrbMax = this->orbitalDistanceMax->getReal() * scaleFactor;
+        //const float safeOrbMin = std::max(configOrbMin, minPlanetOrbit);
+        //const float safeOrbMax = std::max(configOrbMax, safeOrbMin + planetMaxRadius * 2.0f * static_cast<float>(planetCount));
+        //const float orbitalStep = (safeOrbMax - safeOrbMin) / static_cast<float>(std::max(1, planetCount));
+
+        //float currentOrbitalRadius = safeOrbMin;
+
+            const float sunScaledRadius = this->sunRadius->getReal() * scaleFactor;
         const float planetMaxRadius = this->planetRadiusMax->getReal() * scaleFactor;
 
-        // Planet orbits must start outside the sun: enforce hard clearance.
-        const float minPlanetOrbit = sunScaledRadius + planetMaxRadius + sunScaledRadius * 0.5f;
+        // --- Worst-case moon system extent -------------------------------------
+        // A planet's moons can orbit as far out as moonOrbMax + one moon radius.
+        // We must reserve this room on BOTH sides of every planet lane, otherwise
+        // the outer moons of planet N can reach into planet N+1 (and vice versa).
+        float moonSystemReach = 0.0f;
+        if (true == this->useMoons->getBool())
+        {
+            const int maxMoonCount = static_cast<int>(this->moonsPerPlanetMax->getUInt());
+            const float moonScaledRadius = this->moonRadius->getReal() * scaleFactor;
+            // Mirror the per-planet moon orbit math using the largest planet so the
+            // reserved gap is a safe upper bound for every planet in the system.
+            const float moonClearance = planetMaxRadius + moonScaledRadius + planetMaxRadius * 0.3f;
+            const float moonOrbMin = std::max(this->moonOrbitalDistanceMin->getReal() * scaleFactor, moonClearance);
+            const float moonOrbMax = std::max(this->moonOrbitalDistanceMax->getReal() * scaleFactor, moonOrbMin + moonScaledRadius * 3.0f * static_cast<float>(std::max(1, maxMoonCount)));
+            moonSystemReach = moonOrbMax + moonScaledRadius;
+        }
+
+        // Total radial half-width a single planet occupies: its own body plus its
+        // moon system, with a little breathing room.
+        const float planetHalfWidth = planetMaxRadius + moonSystemReach;
+        const float laneClearance = planetMaxRadius; // extra gap between neighbours
+        const float requiredStep = 2.0f * planetHalfWidth + laneClearance;
+
+        // Planet orbits must start outside the sun AND leave room for the innermost
+        // planet's inner moons.
+        const float minPlanetOrbit = sunScaledRadius + planetHalfWidth + sunScaledRadius * 0.5f;
         const float configOrbMin = this->orbitalDistanceMin->getReal() * scaleFactor;
         const float configOrbMax = this->orbitalDistanceMax->getReal() * scaleFactor;
         const float safeOrbMin = std::max(configOrbMin, minPlanetOrbit);
-        const float safeOrbMax = std::max(configOrbMax, safeOrbMin + planetMaxRadius * 2.0f * static_cast<float>(planetCount));
-        const float orbitalStep = (safeOrbMax - safeOrbMin) / static_cast<float>(std::max(1, planetCount));
+
+        // Ensure the span is large enough that every lane is at least requiredStep
+        // wide, so neighbouring moon systems can never overlap.
+        const float neededSpan = requiredStep * static_cast<float>(std::max(1, planetCount));
+        const float safeOrbMax = std::max(configOrbMax, safeOrbMin + neededSpan);
+        const float orbitalStep = std::max(requiredStep, (safeOrbMax - safeOrbMin) / static_cast<float>(std::max(1, planetCount)));
 
         float currentOrbitalRadius = safeOrbMin;
 

@@ -2145,7 +2145,9 @@ namespace NOWA
             // Calculate the adjusted distance
             Ogre::Real adjustedDistance = baseRadius * factor;
 
-            NOWA::GraphicsModule::getInstance()->setCameraPosition(this->camera, gameObject->getMovableObject()->getWorldAabbUpdated().mCenter + (this->camera->getOrientation() * Ogre::Vector3(0, 0, adjustedDistance)));
+            // NOWA::GraphicsModule::getInstance()->setCameraPosition(this->camera, gameObject->getMovableObject()->getWorldAabbUpdated().mCenter + (this->camera->getOrientation() * Ogre::Vector3(0, 0, adjustedDistance)));
+
+            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, gameObject->getMovableObject()->getWorldAabbUpdated().mCenter + (this->camera->getOrientation() * Ogre::Vector3(0, 0, adjustedDistance)));
 
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObject]()
             {

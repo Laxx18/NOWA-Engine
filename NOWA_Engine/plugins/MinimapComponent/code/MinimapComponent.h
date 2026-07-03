@@ -12,6 +12,10 @@ GPL v3
 #include "OgrePlugin.h"
 #include "utilities/LowPassAngleFilter.h"
 
+// Forward-declare MyGUI::ToolTipInfo as struct in namespace (not class) -- sufficient for const& parameter
+// declarations without including MyGUI_WidgetToolTip.h, which causes PCH issues in plugin projects.
+namespace MyGUI { struct ToolTipInfo; }
+
 namespace NOWA
 {
 	class CameraComponent;
@@ -274,6 +278,32 @@ namespace NOWA
 		static const Ogre::String AttrMinimapMask(void) { return "Minimap Mask"; }
 		static const Ogre::String AttrUseRoundMinimap(void) { return "Use Round Minimap"; }
 		static const Ogre::String AttrRotateMinimap(void) { return "Rotate Minimap"; }
+		static const Ogre::String AttrCompassObjectCount(void) { return "Compass Object Count"; }
+		static const Ogre::String AttrCompassGameObjectId(void) { return "Compass Game Object Id "; }
+		static const Ogre::String AttrCompassImage(void) { return "Compass Image "; }
+		static const Ogre::String AttrCompassToolTipText(void) { return "Compass ToolTip Text "; }
+		/**
+		 * @brief Sets the count of generic compass objects to track (e.g. quest target, NPC, ship). Each is
+		 *        independently configured with CompassGameObjectId/CompassImage/CompassToolTipText and renders
+		 *        either at its true minimap position (if within the current camera view) or as a rim marker
+		 *        wandering the edge of the minimap at the correct bearing. Mirrors
+		 *        AnimationSequenceComponent::setAnimationCount indexed-Variant-list convention.
+		 */
+		void setCompassObjectCount(unsigned int compassObjectCount);
+		unsigned int getCompassObjectCount(void) const;
+
+		/** @brief Sets the game object id to track for compass object at index. 0 disables that slot. */
+		void setCompassGameObjectId(unsigned int index, unsigned long compassGameObjectId);
+		unsigned long getCompassGameObjectId(unsigned int index) const;
+
+		/** @brief Sets the marker icon image for compass object at index (same folder as MinimapMask). */
+		void setCompassImage(unsigned int index, const Ogre::String& compassImage);
+		Ogre::String getCompassImage(unsigned int index) const;
+
+		/** @brief Sets the tooltip text for compass object at index. */
+		void setCompassToolTipText(unsigned int index, const Ogre::String& compassToolTipText);
+		Ogre::String getCompassToolTipText(unsigned int index) const;
+
 	private:
 		void setupMinimapWithFogOfWar(void);
 
@@ -304,6 +334,15 @@ namespace NOWA
 		void updateMinimapCamera(const Ogre::Vector3& targetPosition, const Ogre::Quaternion& targetOrientation);
 
 		void clearFogOfWar(void);
+		void generateCompassObjects(void);
+		void destroyCompassObjects(void);
+		void updateCompassObjects(void);
+		void updateSingleCompassObject(unsigned int index);
+		void initToolTipData(void);
+		void notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo& info);
+		void boundedMove(MyGUI::Widget* moving, const MyGUI::IntPoint& point);
+		void placeDistanceLabel(MyGUI::TextBox* distanceWidget, int markerCenterX, int markerCenterY, int markerHalfWidth, int markerHalfHeight, int widgetWidth, int widgetHeight) const;
+		Ogre::String formatDistanceMeters(Ogre::Real distanceMeters) const;
 	private:
 		void deleteGameObjectDelegate(EventDataPtr eventData);
 		void handleUpdateBounds(EventDataPtr eventData);
@@ -351,6 +390,19 @@ namespace NOWA
 		Variant* minimapMask;
 		Variant* useRoundMinimap;
 		Variant* rotateMinimap;
+
+		// --- Compass objects ---
+		std::vector<MyGUI::ImageBox*> compassObjectWidgets;
+		std::vector<MyGUI::TextBox*> compassObjectDistanceTexts;
+		MyGUI::Widget* toolTipPanel;
+		MyGUI::EditBox* toolTipText;
+
+		Variant* compassObjectCount;
+		std::vector<Variant*> compassGameObjectIds;
+		std::vector<Variant*> compassImages;
+		std::vector<Variant*> compassToolTipTexts;
+
+		unsigned int compassLogCounter;
 	};
 
 }; // namespace end

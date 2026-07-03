@@ -4,7 +4,7 @@
 		<Widget type="EditBox" skin="EditBox" position="2 2 200 26" name="ResourcesSearchEdit" align="HStretch Top">
             <Property key="Caption"/>
         </Widget>
-        <Widget type="TreeControl" skin="Tree" position="2 28 200 375" align="Stretch" name="Tree"/>
+        <Widget type="TreeControl" skin="Tree" position="2 28 200 330" align="Stretch" name="Tree"/>
 		<Widget type="ImageBox" skin="ImageBox" position="2 76 200 200" align="Stretch" layer="Main" name="previewImage" />
     </Widget>
 </MyGUI>

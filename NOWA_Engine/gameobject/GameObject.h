@@ -729,6 +729,10 @@ namespace NOWA
 		void actualizeDatablockName(const Ogre::String& datablockName, unsigned short index);
 
 		void actualizeDatablocks(void);
+
+		void setPerformanceRenderDistance(unsigned int renderDistance);
+
+        void setPerformanceShadowRenderingDistance(unsigned int shadowRenderingDistance);
 	public:
 
 		/**

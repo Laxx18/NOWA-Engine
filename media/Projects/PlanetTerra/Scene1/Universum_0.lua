@@ -171,9 +171,12 @@ Universum_0["connect"] = function(gameObject)
         planetMinimapGo:getPlanetMinimapComponent():setTargetId(playerGo:getId());
         planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(0, fighterGo:getId());
         
+        planetMinimapGo:getPlanetMinimapComponent():setCompassToolTipText(0, "Spaceship");
+        
         if (planetGameObject:getName() == "Eri") then
             -- Dungeon
             planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(1, "561215262");
+            planetMinimapGo:getPlanetMinimapComponent():setCompassToolTipText(1, "Quest: Find relict")
         end
         
         planetMinimapGo:getPlanetMinimapComponent():setActivated(true);

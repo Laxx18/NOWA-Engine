@@ -1055,8 +1055,8 @@ namespace NOWA
         CameraBehaviorComponent(),
         offsetPosition(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrOffsetPosition(), Ogre::Vector3(0.0f, 2.0f, 5.0f), this->attributes)),
         lookAtOffset(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrLookAtOffset(), Ogre::Vector3(0.0f, 1.0f, 0.0f), this->attributes)),
-        springForce(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSpringForce(), 0.1f, this->attributes)),
-        friction(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrFriction(), 0.5f, this->attributes)),
+        springForce(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSpringForce(), 0.8f, this->attributes)),
+        friction(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrFriction(), 0.6f, this->attributes)),
         springLength(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSpringLength(), 6.0f, this->attributes)),
         probeRadius(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrProbeRadius(), 0.25f, this->attributes)),
         skinMargin(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSkinMargin(), 0.15f, this->attributes)),
@@ -1452,17 +1452,20 @@ namespace NOWA
 
     void CameraBehaviorThirdPersonOcclusionComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<CameraBehaviorThirdPersonOcclusionComponent, GameObjectComponent>("CameraBehaviorThirdPersonOcclusionComponent")
-                .def("setOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::setOffsetPosition)
-                .def("getOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::getOffsetPosition)
-                .def("setLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::setLookAtOffset)
-                .def("getLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::getLookAtOffset)
-                .def("setSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::setSpringForce)
-                .def("getSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::getSpringForce)
-                .def("setFriction", &CameraBehaviorThirdPersonOcclusionComponent::setFriction)
-                .def("getFriction", &CameraBehaviorThirdPersonOcclusionComponent::getFriction)
-                .def("setSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::setSpringLength)
-                .def("getSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::getSpringLength)];
+        module(lua)
+        [
+            class_<CameraBehaviorThirdPersonOcclusionComponent, GameObjectComponent>("CameraBehaviorThirdPersonOcclusionComponent")
+            .def("setOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::setOffsetPosition)
+            .def("getOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::getOffsetPosition)
+            .def("setLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::setLookAtOffset)
+            .def("getLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::getLookAtOffset)
+            .def("setSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::setSpringForce)
+            .def("getSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::getSpringForce)
+            .def("setFriction", &CameraBehaviorThirdPersonOcclusionComponent::setFriction)
+            .def("getFriction", &CameraBehaviorThirdPersonOcclusionComponent::getFriction)
+            .def("setSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::setSpringLength)
+            .def("getSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::getSpringLength)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the camera offset position, it should be away from the game object.");
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "Vector3 getOffsetPosition()", "Gets the offset position, the camera is away from the game object.");

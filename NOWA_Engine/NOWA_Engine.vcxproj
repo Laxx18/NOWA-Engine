@@ -226,6 +226,7 @@
     <ClInclude Include="gameobject\PhysicsRagDollComponentV2.h" />
     <ClInclude Include="gameobject\PhysicsRagDollComponentV3.h" />
     <ClInclude Include="gameobject\PlanetTerraComponentBase.h" />
+    <ClInclude Include="gameobject\ProceduralFoliageVolumeComponentBase.h" />
     <ClInclude Include="gameobject\RoadComponentBase.h" />
     <ClInclude Include="gameobject\ValueBarComponent.h" />
     <ClInclude Include="gameobject\ExitComponent.h" />

@@ -684,6 +684,9 @@
     <ClInclude Include="Utilities\Helper.h">
       <Filter>utilities</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\ProceduralFoliageVolumeComponentBase.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">

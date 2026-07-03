@@ -511,8 +511,11 @@ namespace NOWA
         this->markCurrentThreadAsLogicThread();
 
         const double fixedDt = 1.0 / static_cast<double>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
-        const double maxDeltaTime = fixedDt * 2.0;
-        const int maxStepsPerFrame = 1;
+        // Allow real catch-up instead of dropping time on every minor hitch.
+        // This must be large enough to consume whatever maxDeltaTime can dump
+        // into the accumulator in one frame.
+        const int maxStepsPerFrame = 8;
+        const double maxDeltaTime = fixedDt * maxStepsPerFrame;
 
         Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
         this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
@@ -522,6 +525,25 @@ namespace NOWA
 
         NOWA::GraphicsModule* graphicsModule = NOWA::GraphicsModule::getInstance();
         graphicsModule->setFrameTime(static_cast<Ogre::Real>(fixedDt));
+
+		// Configure fps performance profiles
+         WorkspaceModule::getInstance()->configureAdaptiveQuality(
+            {
+                {/*shadowFarDistance*/ 500.0f, /*foliageDistanceMultiplier*/ 1.0f}, // level 0: best
+                {300.0f, 0.9f},                                                    // level 1
+                {150.0f, 0.8f},                                                     // level 2
+                {80.0f, 0.75f},                                                      // level 3: worst
+            },
+            /*targetFrameTimeMs*/ 16.6f);
+
+        //WorkspaceModule::getInstance()->configureAdaptiveQuality(
+        //    {
+        //        {/*shadowFarDistance*/ 100.0f, /*foliageDistanceMultiplier*/ 1.0f}, // level 0: best
+        //        {60.0f, 0.75f},                                                     // level 1
+        //        {35.0f, 0.5f},                                                      // level 2
+        //        {15.0f, 0.3f},                                                      // level 3: worst
+        //    },
+        //    /*targetFrameTimeMs*/ 16.6f);
 
         while (false == this->bShutdown)
         {
@@ -539,16 +561,11 @@ namespace NOWA
                 this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
             }
 
-            bool didUpdate = false;
             int steps = 0;
 
             while (accumulator >= fixedDt && steps < maxStepsPerFrame)
             {
-                if (!didUpdate)
-                {
-                    graphicsModule->beginLogicFrame();
-                    didUpdate = true;
-                }
+                graphicsModule->beginLogicFrame(); // advance the buffer for THIS step, every step
 
                 this->processAll();
 
@@ -562,11 +579,17 @@ namespace NOWA
 
                 accumulator -= fixedDt;
                 ++steps;
+
+                graphicsModule->endLogicFrame(); // publish this step's snapshot as ready, every step
             }
 
-            if (accumulator >= fixedDt)
+            // Spiral-of-death guard — only trips if we genuinely couldn't catch up
+            // even after maxStepsPerFrame steps. This should be rare/never in
+            // practice now that maxStepsPerFrame matches maxDeltaTime.
+            if (steps == maxStepsPerFrame && accumulator >= fixedDt)
             {
-                accumulator = fixedDt * 0.5;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager]: Logic thread falling behind, dropping " + Ogre::StringConverter::toString(static_cast<float>(accumulator)) + "s of backlog.");
+                accumulator = std::fmod(accumulator, fixedDt); // keep phase instead of an arbitrary half-step
             }
 
             const float alpha = (fixedDt > 0.0) ? static_cast<float>(accumulator / fixedDt) : 0.0f;

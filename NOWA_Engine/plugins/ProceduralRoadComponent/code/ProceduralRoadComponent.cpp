@@ -102,7 +102,8 @@ namespace NOWA
         snapToRoadSegmentIdx(-1),
         snapToRoadT(0.0f),
         snapRadius(0.0f),
-        isExtendingFromSegment(false)
+        isExtendingFromSegment(false),
+        bBatchMode(false)
     {
         this->roadStyle->setDescription("Style of the road to generate");
         this->roadWidth->setDescription("Width of the main road surface (meters)");
@@ -1596,7 +1597,7 @@ namespace NOWA
             return bestIdx;
         };
 
-        auto storePatchCorners = [&](size_t ji, const Ogre::Vector3& boundaryPosXZ, const Ogre::Vector3& armDirAtBoundary)
+        auto storePatchCorners = [&](size_t ji, const Ogre::Vector3& boundaryPosXZ, const Ogre::Vector3& armDirAtBoundary, Ogre::Real boundaryHeight)
         {
             Ogre::Vector3 perp = Ogre::Vector3::UNIT_Y.crossProduct(armDirAtBoundary);
             if (perp.squaredLength() < 1e-6f)
@@ -1604,7 +1605,11 @@ namespace NOWA
                 perp = Ogre::Vector3::UNIT_X;
             }
             perp.normalise();
-            const Ogre::Real worldY = junctions[ji].worldPos.y;
+
+            // CRITICAL: use the REAL height of the road arm at this boundary, NOT the single
+            // flat junction height. On sloped terrain each arm meets the junction at a
+            // different height — storing the true per-arm height is what makes it snap.
+            const Ogre::Real worldY = boundaryHeight;
 
             junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * totalHalfW, worldY, boundaryPosXZ.z + perp.z * totalHalfW));
             junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -totalHalfW, worldY, boundaryPosXZ.z + perp.z * -totalHalfW));
@@ -1777,10 +1782,13 @@ namespace NOWA
                                 RoadControlPoint bp;
                                 bp.position = bnd;
                                 bp.position.y = 0.0f;
-                                bp.groundHeight = bp.smoothedHeight = finalPath.front().groundHeight;
+                                // Sample terrain at the ACTUAL boundary position, not at the
+                                // surviving point several meters away. On a gradient the old
+                                // code stamped a height from the wrong XZ, floating the seam.
+                                bp.groundHeight = this->getGroundHeight(bp.position);
+                                bp.smoothedHeight = bp.groundHeight;
                                 bp.bankingAngle = finalPath.front().bankingAngle;
                                 bp.distFromStart = 0.0f;
-                                finalPath.insert(finalPath.begin(), bp);
                             }
                             Ogre::Vector3 armDir = finalPath[1].position - finalPath[0].position;
                             armDir.y = 0.0f;
@@ -1788,7 +1796,7 @@ namespace NOWA
                             {
                                 armDir.normalise();
                             }
-                            storePatchCorners(ji, finalPath[0].position, armDir);
+                            storePatchCorners(ji, finalPath[0].position, armDir, finalPath[0].smoothedHeight);
                         }
                     }
                 }
@@ -1833,10 +1841,11 @@ namespace NOWA
                                 RoadControlPoint bp;
                                 bp.position = bnd;
                                 bp.position.y = 0.0f;
-                                bp.groundHeight = bp.smoothedHeight = finalPath.back().groundHeight;
+                                // Same fix as the front boundary: sample at bp's true location.
+                                bp.groundHeight = this->getGroundHeight(bp.position);
+                                bp.smoothedHeight = bp.groundHeight;
                                 bp.bankingAngle = finalPath.back().bankingAngle;
                                 bp.distFromStart = finalPath.back().distFromStart + (d - myTrimDist);
-                                finalPath.push_back(bp);
                             }
                             const int last2 = static_cast<int>(finalPath.size()) - 1;
                             Ogre::Vector3 armDir = finalPath[last2 - 1].position - finalPath[last2].position;
@@ -1845,7 +1854,7 @@ namespace NOWA
                             {
                                 armDir.normalise();
                             }
-                            storePatchCorners(ji, finalPath[last2].position, armDir);
+                            storePatchCorners(ji, finalPath[last2].position, armDir, finalPath[last2].smoothedHeight);
                         }
                     }
                 }
@@ -3370,11 +3379,13 @@ namespace NOWA
         const Ogre::Real curbH = this->curbHeight->getReal();
         const bool hasCurb = (curbH > 0.001f);
 
-        const Ogre::Real roadY = jp.worldPos.y - origin.y;
-        const Ogre::Real patchY = roadY - 0.02f;
+        // NOTE: we no longer force a single flat road height here. Each patch corner
+        // already carries its own true per-arm world height in .y (see storePatchCorners),
+        // so the junction surface follows the sloped arms exactly. roadYApprox is only
+        // used for the outward-direction sign test below.
+        const Ogre::Real roadYApprox = jp.worldPos.y - origin.y;
 
         const Ogre::Vector3 localCentre(jp.worldPos.x - origin.x, 0.0f, jp.worldPos.z - origin.z);
-        const Ogre::Vector3 centre3(localCentre.x, patchY, localCentre.z);
 
         const Ogre::Vector2 cUV = this->centerUVTiling->getVector2();
         const Ogre::Vector2 eUV = this->edgeUVTiling->getVector2();
@@ -3385,13 +3396,11 @@ namespace NOWA
             return Ogre::Vector2((pos.z - localCentre.z) / std::max(uvWidth / std::max(cUV.y, 0.001f), 0.001f), (pos.x - localCentre.x) / std::max(uvWidth / std::max(cUV.x, 0.001f), 0.001f));
         };
 
-        auto toLocalPatch = [&](const Ogre::Vector3& w) -> Ogre::Vector3
-        {
-            return Ogre::Vector3(w.x - origin.x, patchY, w.z - origin.z);
-        };
+        // Every corner keeps its true world height (w.y). This is what makes the
+        // junction surface coplanar with the arms and closes the seam crack.
         auto toLocalEdge = [&](const Ogre::Vector3& w) -> Ogre::Vector3
         {
-            return Ogre::Vector3(w.x - origin.x, roadY, w.z - origin.z);
+            return Ogre::Vector3(w.x - origin.x, w.y - origin.y, w.z - origin.z);
         };
 
         struct ArmData
@@ -3399,7 +3408,6 @@ namespace NOWA
             float angle;
             Ogre::Vector3 outerL, outerR;
             Ogre::Vector3 innerL, innerR;
-            Ogre::Vector3 innerL_patch, innerR_patch;
         };
 
         std::vector<ArmData> arms;
@@ -3412,8 +3420,6 @@ namespace NOWA
             a.outerR = toLocalEdge(jp.patchCorners[ai * 2 + 1]);
             a.innerL = toLocalEdge(jp.patchCornersInner[ai * 2]);
             a.innerR = toLocalEdge(jp.patchCornersInner[ai * 2 + 1]);
-            a.innerL_patch = toLocalPatch(jp.patchCornersInner[ai * 2]);
-            a.innerR_patch = toLocalPatch(jp.patchCornersInner[ai * 2 + 1]);
 
             const Ogre::Vector3 mid = (a.innerL + a.innerR) * 0.5f;
             a.angle = std::atan2(mid.z - localCentre.z, mid.x - localCentre.x);
@@ -3426,7 +3432,7 @@ namespace NOWA
                 return a.angle < b.angle;
             });
 
-        // ── Center patch: fan of inner ring at patchY ─────────────────────────
+        // ── Center patch: fan of inner ring at the arms' true heights ───────────
         struct InnerCorner
         {
             float angle;
@@ -3435,28 +3441,36 @@ namespace NOWA
         std::vector<InnerCorner> innerRing;
         innerRing.reserve(numArms * 2);
 
+        // Accumulate ring heights so the centre vertex interpolates between arms
+        // that arrive at different heights on a gradient.
+        Ogre::Real sumY = 0.0f;
+
         for (const ArmData& a : arms)
         {
-            innerRing.push_back({std::atan2(a.innerL_patch.z - localCentre.z, a.innerL_patch.x - localCentre.x), a.innerL_patch});
-            innerRing.push_back({std::atan2(a.innerR_patch.z - localCentre.z, a.innerR_patch.x - localCentre.x), a.innerR_patch});
+            innerRing.push_back({std::atan2(a.innerL.z - localCentre.z, a.innerL.x - localCentre.x), a.innerL});
+            innerRing.push_back({std::atan2(a.innerR.z - localCentre.z, a.innerR.x - localCentre.x), a.innerR});
+            sumY += a.innerL.y + a.innerR.y;
         }
 
-        std::sort(innerRing.begin(), innerRing.end(),
-            [](const InnerCorner& a, const InnerCorner& b)
+        std::sort(innerRing.begin(), innerRing.end(), [](const InnerCorner& a, const InnerCorner& b)
             {
                 return a.angle < b.angle;
             });
 
-        innerRing.erase(std::unique(innerRing.begin(), innerRing.end(),
-                            [](const InnerCorner& a, const InnerCorner& b)
-                            {
-                                return std::abs(a.angle - b.angle) < 0.04f;
-                            }),
-            innerRing.end());
+        innerRing.erase(std::unique(innerRing.begin(), innerRing.end(), [](const InnerCorner& a, const InnerCorner& b)
+            {
+                return std::abs(a.angle - b.angle) < 0.04f;
+            }), innerRing.end());
 
         if (innerRing.size() >= 3)
         {
-            const Ogre::Vector2 uvCentre = centerUVfn(centre3);
+            // The boundary ring stays EXACTLY at road-surface height (no drop) so it
+            // is coplanar with the arms. Only the isolated centre point is nudged
+            // down 2 cm as a z-fight guard against terrain — there is no seam there,
+            // so it cannot be seen through.
+            const Ogre::Real centreY = (sumY / static_cast<Ogre::Real>(arms.size() * 2)) - 0.02f;
+            const Ogre::Vector3 centre3(localCentre.x, centreY, localCentre.z);
+
             for (size_t k = 0; k < innerRing.size(); ++k)
             {
                 const size_t next = (k + 1) % innerRing.size();
@@ -3497,7 +3511,7 @@ namespace NOWA
             Ogre::Vector3 outward(-segDir.z, 0.0f, segDir.x);
             // Ensure it points AWAY from junction centre
             const Ogre::Vector3 midInner = (aK.innerR + aJ.innerL) * 0.5f;
-            const Ogre::Vector3 toMid = midInner - Ogre::Vector3(localCentre.x, roadY, localCentre.z);
+            const Ogre::Vector3 toMid = midInner - Ogre::Vector3(localCentre.x, roadYApprox, localCentre.z);
             if (outward.dotProduct(toMid) < 0.0f)
             {
                 outward = -outward;
@@ -5318,7 +5332,10 @@ namespace NOWA
         seg.controlPoints.push_back(cpStart);
         seg.controlPoints.push_back(cpEnd);
         this->roadSegments.push_back(seg);
-        this->rebuildMesh();
+        if (false == this->bBatchMode)
+        {
+            this->rebuildMesh();
+        }
         this->updateContinuationPoint();
     }
 
@@ -5656,6 +5673,130 @@ namespace NOWA
             this->selectedSegmentIndex = -1;
             this->scheduleSegmentOverlayUpdate();
         }
+    }
+
+    Ogre::Vector3 ProceduralRoadComponent::getRoadConnectionPoint(bool atStart) const
+    {
+        if (this->roadSegments.empty())
+        {
+            return this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
+        }
+
+        if (atStart)
+        {
+            // roadOrigin is the world-space XZ origin recorded when the first segment
+            // was placed. First control point is at roadOrigin + cp.position (where
+            // cp.position is local-to-origin offset in world XZ from addRoadSegmentLua).
+            // Since addRoadSegmentLua stores the world-space XZ directly in cp.position
+            // (before the origin-subtraction pass in rebuildMesh), we can use it directly.
+            const RoadControlPoint& cp = this->roadSegments.front().controlPoints.front();
+            return Ogre::Vector3(cp.position.x, cp.smoothedHeight, cp.position.z);
+        }
+        else
+        {
+            // loadedRoadEndpoint is maintained by updateContinuationPoint() which
+            // is called at the end of every addRoadSegmentLua(). It holds the world-
+            // space XZ position of the last control point of the last segment, and
+            // loadedRoadEndpointHeight holds its terrain Y.
+            return Ogre::Vector3(this->loadedRoadEndpoint.x, this->loadedRoadEndpointHeight, this->loadedRoadEndpoint.z);
+        }
+    }
+
+    Ogre::Vector3 ProceduralRoadComponent::getRoadApproachDirection(bool atStart) const
+    {
+        if (this->roadSegments.empty())
+        {
+            return Ogre::Vector3::UNIT_Z;
+        }
+
+        Ogre::Vector3 dir;
+        if (atStart)
+        {
+            // Direction pointing AWAY from the city at the start = reverse of
+            // the first segment's travel direction.
+            const auto& cps = this->roadSegments.front().controlPoints;
+            if (cps.size() >= 2)
+            {
+                dir = cps[0].position - cps[1].position; // reversed = away from city
+            }
+            else
+            {
+                dir = -Ogre::Vector3::UNIT_Z;
+            }
+        }
+        else
+        {
+            // Direction pointing AWAY from city at end = same as last segment's direction.
+            const auto& cps = this->roadSegments.back().controlPoints;
+            const size_t n = cps.size();
+            if (n >= 2)
+            {
+                dir = cps[n - 1].position - cps[n - 2].position;
+            }
+            else
+            {
+                dir = Ogre::Vector3::UNIT_Z;
+            }
+        }
+
+        dir.y = 0.f;
+        if (dir.isZeroLength())
+        {
+            return Ogre::Vector3::UNIT_Z;
+        }
+
+        dir.normalise();
+        return dir;
+    }
+
+    void ProceduralRoadComponent::addRoadSegmentBatch(const Ogre::Vector3& start, const Ogre::Vector3& end)
+    {
+        // Identical to addRoadSegmentLua() but WITHOUT the rebuildMesh() call.
+        // After adding all segments, call finalizeBatch() once to build the mesh.
+
+        if (!this->originPositionSet)
+        {
+            this->roadOrigin = start;
+            this->roadOrigin.y = 0.0f;
+            this->originPositionSet = true;
+        }
+
+        RoadSegment seg;
+        seg.isCurved = false;
+        seg.curvature = 0.5f;
+
+        RoadControlPoint cp0;
+        cp0.position = start;
+        cp0.groundHeight = this->getGroundHeight(start);
+        cp0.smoothedHeight = cp0.groundHeight;
+        seg.controlPoints.push_back(cp0);
+
+        RoadControlPoint cp1;
+        cp1.position = end;
+        cp1.groundHeight = this->getGroundHeight(end);
+        cp1.smoothedHeight = cp1.groundHeight;
+        seg.controlPoints.push_back(cp1);
+
+        this->roadSegments.push_back(std::move(seg));
+        this->updateContinuationPoint();
+        // NOTE: rebuildMesh() intentionally NOT called here
+    }
+
+    void ProceduralRoadComponent::finalizeBatch(void)
+    {
+        // Rebuild mesh once after all batch segments have been added.
+        this->rebuildMesh();
+    }
+
+    void ProceduralRoadComponent::beginBatch(void)
+    {
+        this->bBatchMode = true;
+    }
+
+    void ProceduralRoadComponent::endBatch(void)
+    {
+        this->bBatchMode = false;
+        this->rebuildMesh();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

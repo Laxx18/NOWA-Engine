@@ -1478,13 +1478,14 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->cameraResetButton == sender)
 	{
-            if (!GetAsyncKeyState(VK_LSHIFT))
-            {
-                NOWA::GraphicsModule::getInstance()->setCameraTransform(this->camera, Ogre::Vector3(0.0f, 5.0f, -2.0f), Ogre::Quaternion::IDENTITY);
-            }
+        if (!GetAsyncKeyState(VK_LSHIFT))
+        {
+            /*NOWA::GraphicsModule::getInstance()->setCameraPosition(this->camera, Ogre::Vector3(0.0f, 5.0f, -2.0f));
+            NOWA::GraphicsModule::getInstance()->setCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY);*/
 
-		// NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(0.0f, 1.0f, 0.0f), true);
-        // NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY, true);
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(0.0f, 5.0f, -2.0f));
+            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY);
+        }
 
 		this->cameraMoveSpeed = 10.0f;
 		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
@@ -1793,6 +1794,48 @@ void DesignState::update(Ogre::Real dt)
             this->ogreNewt->update(dt);
             // this->ogreNewt->updateFixed(dt);
 
+			// Direkt nach: this->ogreNewt->update(dt);
+            // und VOR: cameraManager->moveCamera(dt);
+            {
+                static Ogre::Vector3 s_lastShipPos = Ogre::Vector3::ZERO;
+                static Ogre::Vector3 s_lastShipVelocity = Ogre::Vector3::ZERO;
+                static bool s_hasLastShipPos = false;
+
+
+				NOWA::GameObjectPtr mainLightGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(2599276278);
+
+				OgreNewt::Body* shipBody = nullptr;
+
+                if (nullptr != mainLightGameObjectPtr)
+                {
+
+                    auto lightComponentPtr = NOWA::makeStrongPtr(mainLightGameObjectPtr->getComponent<NOWA::PhysicsActiveComponent>());
+                    if (nullptr != lightComponentPtr)
+                    {
+                        shipBody = lightComponentPtr->getBody();
+                    }
+                }
+
+                if (nullptr != shipBody)
+                {
+                    Ogre::Vector3 pos = shipBody->getPosition();
+                    Ogre::Vector3 vel = shipBody->getVelocity(); // Methodenname ggf. anpassen
+
+                    if (true == s_hasLastShipPos)
+                    {
+                        const Ogre::Vector3 posDelta = pos - s_lastShipPos;
+                        const Ogre::Vector3 velDelta = vel - s_lastShipVelocity;
+
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SHIP-DIAG] pos=" + Ogre::StringConverter::toString(pos) + " posDeltaLen=" + Ogre::StringConverter::toString(posDelta.length()) +
+                                                                                                " vel=" + Ogre::StringConverter::toString(vel) + " velLen=" + Ogre::StringConverter::toString(vel.length()) +
+                                                                                                " velDeltaLen=" + Ogre::StringConverter::toString(velDelta.length()));
+                    }
+                    s_lastShipPos = pos;
+                    s_lastShipVelocity = vel;
+                    s_hasLastShipPos = true;
+                }
+            }
+
 			// Newton has stepped, interalPostUpdate has set m_nodePosit.
             // Camera reads the correct interpolated position and writes
             // into the transform buffer. Render thread lerps it at 400fps.
@@ -1873,21 +1916,33 @@ void DesignState::renderUpdate(Ogre::Real dt)
 		{
 			this->orbitCamera(dt);
 		}
-		else if (ms.buttonDown(OIS::MB_Right))
-		{
-			this->firstTimeValueSet = true;
+        else if (ms.buttonDown(OIS::MB_Right))
+        {
+            this->firstTimeValueSet = true;
 
-			Ogre::Vector3 gravityDir = Ogre::Vector3::UNIT_Y;
+            Ogre::Vector3 gravityDir = Ogre::Vector3::NEGATIVE_UNIT_Y; // gravity points down by default
 
-			if (nullptr != this->selectedGameObject && GetAsyncKeyState(VK_LMENU))
-			{
-				gravityDir = this->camera->getDerivedPosition() - this->selectedGameObject->getPosition();
-				gravityDir.normalise();
-			}
+            if (nullptr != this->selectedGameObject)
+            {
+                if (GetAsyncKeyState(VK_RMENU) & 0x8000)
+                {
+                    // RIGHT ALT: the selected object's own orientation defines the frame.
+                    // Its local up becomes camera up -> gravity is the inverse of that.
+                    Ogre::Vector3 objectUp = this->selectedGameObject->getOrientation() * Ogre::Vector3::UNIT_Y;
+                    gravityDir = -objectUp;
+                }
+                else if (GetAsyncKeyState(VK_LMENU) & 0x8000)
+                {
+                    // LEFT ALT: planet mode. Gravity points from the camera to the planet centre.
+                    gravityDir = this->selectedGameObject->getPosition() - this->camera->getDerivedPosition();
+                }
+                gravityDir.normalise();
+            }
 
-			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())->applyGravityDirection(-gravityDir);
-			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->rotateCamera(dt, false);
-		}
+            auto* cameraManager = NOWA::AppStateManager::getSingletonPtr()->getCameraManager();
+            cameraManager->getActiveCameraBehavior(cameraManager->getActiveCamera())->applyGravityDirection(gravityDir);
+            cameraManager->rotateCamera(dt, false);
+        }
 		else if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(0))
 		{
 			this->firstTimeValueSet = true;

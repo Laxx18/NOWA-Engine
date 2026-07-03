@@ -176,6 +176,8 @@ namespace NOWA
          */
         virtual void setPositionOrientation(const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
+		virtual void setKinematicPositionOrientation(const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+
 		virtual Ogre::Vector3 getPosition(void) const;
 
 		virtual void setScale(const Ogre::Vector3& scale);

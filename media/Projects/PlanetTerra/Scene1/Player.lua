@@ -6,7 +6,7 @@ require("init");
 playerGo = nil;
 areaOfInterestComp = nil;
 planetMinimapGo = nil;
-planetMinimapGo = nil;
+mainGo = nil;
 
 PLANET_MINIMAP_GO_ID = "1527832358";
 
@@ -39,8 +39,8 @@ Player["connect"] = function(gameObject)
             AppStateManager:getGameObjectController():activatePlayerController(true, fighterGo:getId(), true);
             playerGo:getPhysicsActiveComponent():setActivated(false);
             
-            planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(0, 0);
-            planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(1, 0);
+            planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(0, "0");
+            planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(1, "0");
             planetMinimapGo:getPlanetMinimapComponent():setActivated(false);
             
             mainGo:getSimpleSoundComponentFromName("FlyMusic"):setActivated(true);

@@ -182,6 +182,8 @@ namespace NOWA
             lastFrameTime = currentTime;
             this->currentRenderDt = deltaTime;
 
+            WorkspaceModule::getInstance()->updateAdaptiveQuality(deltaTime);
+
             GameProgressModule* gameProgressModule = appStateManager->getActiveGameProgressModuleSafe();
             const bool isStalled = appStateManager->bStall.load();
             const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : false;
@@ -1607,6 +1609,31 @@ namespace NOWA
             };
             this->enqueueAndWait(std::move(command), "GraphicsModule::setNodeTransform");
         }
+    }
+
+    void GraphicsModule::teleportNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived)
+    {
+        GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+
+        // Writes all values to all buffers and permits interpolation so its a real teleport
+        for (size_t b = 0; b < NUM_TRANSFORM_BUFFERS; ++b)
+        {
+            nodeTransforms->transforms[b].position = position;
+        }
+        nodeTransforms->active.store(true, std::memory_order_relaxed);
+        nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);
+    }
+
+    void GraphicsModule::teleportNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation)
+    {
+        GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
+
+        // Writes all values to all buffers and permits interpolation so its a real teleport
+        for (size_t b = 0; b < NUM_TRANSFORM_BUFFERS; ++b)
+        {
+            nodeTransforms->transforms[b].orientation = orientation;
+        }
+        nodeTransforms->active.store(true, std::memory_order_relaxed);
     }
 
     void GraphicsModule::setNodeTransformOnRenderThread(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived)

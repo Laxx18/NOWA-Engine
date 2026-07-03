@@ -283,7 +283,6 @@ namespace NOWA
                 if (true == updateStatic || true == isTeleport)
                 {
                     // Static path unchanged
-                    const bool fireAndForget = isTeleport;
                     Ogre::Node* parent = node->getParent();
                     const Ogre::Vector3 localPos = (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated();
                     const Ogre::Quaternion localRot = parent->_getDerivedOrientationUpdated().Inverse() * rot;
@@ -293,15 +292,22 @@ namespace NOWA
 				// 3. In OgreNewt::Body movecallback transformcallback, force, velocity, etc. is called which only runs on a dynamic body, so this case is called
                 else if (!node->isStatic())
                 {
-                    // Write into the transform buffer — NOT directly to the SceneNode.
-                    // updateAllTransforms on the render thread reads from this buffer
-                    // and interpolates correctly between physics steps.
-                    // Direct _setDerivedPosition bypasses interpolation and fights
-                    // with updateAllTransforms, causing visual jitter.
-                    NOWA::GraphicsModule::getInstance()->updateNodePosition(node, pos, true);
-                    if (updateRot)
+                    if (true == isTeleport)
                     {
-                        NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, rot, true);
+						// Dynamic node, but explicit desired teleport (Respawn, editor drag). So no interpolation
+                        NOWA::GraphicsModule::getInstance()->teleportNodePosition(node, pos, false);
+                        if (updateRot)
+                        {
+                            NOWA::GraphicsModule::getInstance()->teleportNodeOrientation(node, rot);
+                        }
+                    }
+                    else
+                    {
+                        NOWA::GraphicsModule::getInstance()->updateNodePosition(node, pos, true);
+                        if (updateRot)
+                        {
+                            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, rot, true);
+                        }
                     }
                 }
             });

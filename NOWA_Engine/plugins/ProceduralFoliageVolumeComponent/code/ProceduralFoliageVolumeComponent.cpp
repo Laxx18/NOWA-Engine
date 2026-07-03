@@ -70,8 +70,8 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    ProceduralFoliageVolumeComponent::ProceduralFoliageVolumeComponent() :
-        GameObjectComponent(),
+    ProceduralFoliageVolumeComponent::ProceduralFoliageVolumeComponent()
+        : ProceduralFoliageVolumeComponentBase(),
         name("ProceduralFoliageVolumeComponent"),
         isDirty(true),
         foliageLoadedFromScene(false),
@@ -80,6 +80,7 @@ namespace NOWA
         raySceneQuery(nullptr),
         sphereSceneQuery(nullptr),
         physicsArtifactComponent(nullptr),
+        currentDistanceMultiplier(1.0f),
         volumeBounds(new Variant(ProceduralFoliageVolumeComponent::AttrVolumeBounds(), Ogre::Vector4(-50.0f, -50.0f, 50.0f, 50.0f), this->attributes)), // 100x100m area
         masterSeed(new Variant(ProceduralFoliageVolumeComponent::AttrMasterSeed(), static_cast<unsigned int>(12345), this->attributes)),
         gridResolution(new Variant(ProceduralFoliageVolumeComponent::AttrGridResolution(), 2.0f, this->attributes)), // 1 meter sample resolution
@@ -1159,6 +1160,59 @@ namespace NOWA
                 propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRuleTreeSwayStrength() + Ogre::StringConverter::toString(i))));
                 propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleTreeSwayStrengths[i]->getReal())));
                 propertiesXML->append_node(propertyXML);
+            }
+        }
+    }
+
+    void ProceduralFoliageVolumeComponent::setDistanceMultiplier(Ogre::Real distanceMultiplier)
+    {
+        // Clamp defensively - a multiplier of 0 would set every item's rendering
+        // distance to 0, which Ogre interprets as "always render" (see the
+        // setRenderDistance doc comment on GameObject), i.e. the OPPOSITE of what
+        // an adaptive-quality "worst" level intends.
+        if (distanceMultiplier <= 0.0f)
+        {
+            distanceMultiplier = 0.01f;
+        }
+
+        if (Ogre::Math::RealEqual(distanceMultiplier, this->currentDistanceMultiplier, 0.001f))
+        {
+            // No meaningful change - avoid touching every Item for nothing when
+            // called every frame or at every adaptive-quality re-evaluation.
+            return;
+        }
+        this->currentDistanceMultiplier = distanceMultiplier;
+
+        for (auto& batch : this->vegetationBatches)
+        {
+            if (batch.ruleIndex >= this->rules.size())
+            {
+                continue;
+            }
+
+            const FoliageRule& rule = this->rules[batch.ruleIndex];
+
+            // rule.renderDistance is the AUTHORED base value from generation time -
+            // never overwritten by this function - so scaling from it every call
+            // is always correct and never compounds, unlike a value we'd be
+            // repeatedly multiplying in place.
+            if (rule.renderDistance <= 0.0f)
+            {
+                // 0 means "always render" per the authoring convention (mirrors
+                // GameObject::setRenderDistance's documented default) - leave
+                // those items alone, scaling zero is meaningless and scaling
+                // TOWARD zero would wrongly make them infinite-range instead.
+                continue;
+            }
+
+            const float scaledDistance = rule.renderDistance * static_cast<float>(distanceMultiplier);
+
+            for (Ogre::Item* item : batch.items)
+            {
+                if (nullptr != item)
+                {
+                    item->setRenderingDistance(scaledDistance);
+                }
             }
         }
     }

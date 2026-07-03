@@ -20374,6 +20374,70 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			setCompassObjectCount =
+			{
+				type = "method",
+				description = "Sets the count of generic compass objects to track (e.g. quest target, NPC, ship). Each gets CompassGameObjectId/CompassImage/CompassToolTipText.",
+				args = "(number count)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCompassObjectCount =
+			{
+				type = "function",
+				description = "Gets the count of generic compass objects.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCompassGameObjectId =
+			{
+				type = "method",
+				description = "Sets the game object id to track for compass object at index. Shown at true minimap position or as a rim marker when outside the view. 0 disables that slot.",
+				args = "(number index, string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCompassGameObjectId =
+			{
+				type = "function",
+				description = "Gets the game object id tracked for compass object at index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setCompassImage =
+			{
+				type = "method",
+				description = "Sets the marker icon image for compass object at index (same folder as MinimapMask).",
+				args = "(number index, string image)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCompassImage =
+			{
+				type = "function",
+				description = "Gets the marker icon image for compass object at index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setCompassToolTipText =
+			{
+				type = "method",
+				description = "Sets the tooltip text for compass object at index.",
+				args = "(number index, string text)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCompassToolTipText =
+			{
+				type = "function",
+				description = "Gets the tooltip text for compass object at index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
 			}
 		}
 	},

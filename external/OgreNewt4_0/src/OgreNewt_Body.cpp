@@ -500,6 +500,24 @@ namespace OgreNewt
         }
     }
 
+    void Body::setKinematicPositionOrientation(const Ogre::Vector3& pos, const Ogre::Quaternion& orient, int threadIndex)
+    {
+        if (getNewtonBody())
+        {
+            m_prevPosit = m_curPosit;
+            m_prevRotation = m_curRotation;
+            m_curPosit = pos;
+            m_curRotation = orient;
+            m_validToUpdateStatic = m_node->isStatic();
+
+            ndMatrix matrix;
+            OgreNewt::Converters::QuatPosToMatrix(orient, pos, matrix);
+            getNewtonBody()->SetMatrix(matrix);
+
+            updateNode(1.0f, m_node->isStatic());
+        }
+    }
+
     void Body::setMassMatrix(Ogre::Real mass, const Ogre::Vector3& inertia)
     {
         if (getNewtonBody())

@@ -137,6 +137,9 @@ namespace OgreNewt
         Ogre::Vector3 getGravity(void) const;
 
         void setPositionOrientation(const Ogre::Vector3& pos, const Ogre::Quaternion& orient, int threadIndex = -1);
+
+        void setKinematicPositionOrientation(const Ogre::Vector3& pos, const Ogre::Quaternion& orient, int threadIndex = -1);
+
         void setMassMatrix(Ogre::Real mass, const Ogre::Vector3& inertia);
         void setCenterOfMass(const Ogre::Vector3& centerOfMass);
         Ogre::Vector3 getCenterOfMass() const;

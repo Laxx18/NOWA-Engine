@@ -5,6 +5,7 @@
 #include "main/Core.h"
 #include "main/AppStateManager.h"
 #include "gameObject/WorkspaceComponents.h"
+#include "gameobject/ProceduralFoliageVolumeComponentBase.h"
 #include "camera/CameraManager.h"
 #include "GraphicsModule.h"
 
@@ -24,7 +25,11 @@ namespace NOWA
 		compositorManager(nullptr),
 		shadowFilter(Ogre::HlmsPbs::PCF_4x4),
 		ambientLightMode(Ogre::HlmsPbs::AmbientAutoNormal),
-		splitScreenScenarioActive(false)
+		splitScreenScenarioActive(false),
+        adaptiveCurrentLevel(0),
+		adaptiveTargetMs(16.6f),
+		adaptiveAvgFrameTimeMs(0.0f),
+        adaptiveCooldownMs(0.0f)
 	{
 		// Get hlms data
 		this->hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
@@ -62,6 +67,10 @@ namespace NOWA
 
 		this->workspaceMap.clear();
 		this->splitScreenScenarioActive = false;
+        this->adaptiveCurrentLevel = 0;
+		this->adaptiveTargetMs = 16.6f;
+        this->adaptiveAvgFrameTimeMs = 0.0f;
+        this->adaptiveCooldownMs = 0.0f;
 	}
 
 	WorkspaceModule* WorkspaceModule::getInstance()
@@ -982,5 +991,144 @@ namespace NOWA
 
 		return this->compositorManager->addWorkspace(sceneManager, Core::getSingletonPtr()->getOgreRenderWindow()->getTexture(), camera, "NOWAPbsWorkspace", true);
 	}
+
+	void WorkspaceModule::updateAdaptiveQuality(Ogre::Real renderDt)
+    {
+        if (true == this->adaptiveLevels.empty())
+        {
+            return;
+        }
+
+		// Ignore frame time entirely during scene loading / transitions - these
+        // are expected one-off costs (workspace rebuilds, resource loads, spawn
+        // logic), not sustained rendering load. Feeding them into the EMA
+        // corrupts the signal the controller is supposed to react to.
+        GameProgressModule* gameProgressModule = AppStateManager::getSingletonPtr()->getActiveGameProgressModuleSafe();
+        if (nullptr != gameProgressModule && true == gameProgressModule->bSceneLoading.load())
+        {
+            return;
+        }
+
+        const float frameMs = static_cast<float>(renderDt) * 1000.0f;
+
+        // Defensive clamp: even outside a recognized "loading" flag, a single
+        // pathological frame (exception storm, GC-like stall, resource hiccup)
+        // should not be allowed to blow the EMA up by two orders of magnitude
+        // in one sample. Cap each sample's contribution at e.g. 5x target.
+        const float clampedFrameMs = std::min(frameMs, this->adaptiveTargetMs * 5.0f);
+
+        constexpr float emaAlpha = 0.05f;
+        this->adaptiveAvgFrameTimeMs = (this->adaptiveAvgFrameTimeMs <= 0.0f) ? clampedFrameMs : (this->adaptiveAvgFrameTimeMs * (1.0f - emaAlpha) + clampedFrameMs * emaAlpha);
+
+        this->adaptiveCooldownMs -= frameMs;
+        if (this->adaptiveCooldownMs > 0.0f)
+        {
+            return;
+        }
+
+        const float downThreshold = this->adaptiveTargetMs * 1.15f;
+        const float upThreshold = this->adaptiveTargetMs * 0.85f;
+
+        if (this->adaptiveAvgFrameTimeMs > downThreshold && this->adaptiveCurrentLevel < static_cast<int>(this->adaptiveLevels.size()) - 1)
+        {
+            ++this->adaptiveCurrentLevel; // schlechte Frametime -> Qualität SENKEN (Index hoch)
+            this->adaptiveCooldownMs = 2000.0f;
+            this->applyAdaptiveQualityLevel(this->adaptiveCurrentLevel);
+        }
+        else if (this->adaptiveAvgFrameTimeMs < upThreshold && this->adaptiveCurrentLevel > 0)
+        {
+            --this->adaptiveCurrentLevel; // gute Frametime -> Qualität ANHEBEN (Index runter)
+            this->adaptiveCooldownMs = 5000.0f;
+            this->applyAdaptiveQualityLevel(this->adaptiveCurrentLevel);
+        }
+    }
+
+    void WorkspaceModule::applyAdaptiveQualityLevel(int idx)
+    {
+        const AdaptiveQualityLevel& lvl = this->adaptiveLevels[idx];
+
+        // We ARE the render thread here (called from renderThreadFunction) - direct
+        // calls, no enqueueAndWait. Mirrors what updateShadowGlobalBias already does
+        // for shadowGlobalNormalOffset etc., just driven by the controller instead
+        // of a user-facing property.
+        Ogre::CompositorShadowNodeDef* node = this->compositorManager->getShadowNodeDefinitionNonConst(this->shadowNodeName);
+        // If you want the far distance baked per-split rather than via SceneManager,
+        // this is also where you'd touch texture->splitPadding etc. per split -
+        // but if you already have a SceneManager::setShadowFarDistance() path from
+        // your earlier planet-shadow work, prefer reusing that directly here instead.
+
+		auto workspaceComponent = this->getWorkspaceComponent();
+
+        if (nullptr != workspaceComponent)
+        {
+            workspaceComponent->getOwner()->getSceneManager()->setShadowFarDistance(lvl.shadowFarDistance);
+        }
+
+		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+        for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
+        {
+            GameObject* gameObject = it->second.get();
+
+            // Foliage volumes: scale their internal culling distance
+            auto foliageComponent = NOWA::makeStrongPtr(gameObject->getComponent<ProceduralFoliageVolumeComponentBase>());
+            if (nullptr != foliageComponent)
+            {
+                foliageComponent->setDistanceMultiplier(lvl.foliageDistanceMultiplier);
+            }
+
+            // Per-object render/shadow distance - only touch objects that
+            // actually opted into a finite distance (0 == "always render"),
+            // scale relative to whatever the object's own baseline was set to.
+            unsigned int baseRenderDistance = gameObject->getRenderDistance(); // see note below
+            if (0u != baseRenderDistance)
+            {
+                gameObject->setPerformanceRenderDistance(static_cast<unsigned int>(baseRenderDistance * lvl.foliageDistanceMultiplier));
+            }
+
+            unsigned int baseShadowDistance = gameObject->getShadowRenderingDistance();
+            if (0u != baseShadowDistance)
+            {
+                gameObject->setPerformanceShadowRenderingDistance(static_cast<unsigned int>(baseShadowDistance * lvl.foliageDistanceMultiplier));
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+            "[WorkspaceModule] AdaptiveQuality switched to level " + Ogre::StringConverter::toString(idx) + " (avgFrameTimeMs=" + Ogre::StringConverter::toString(this->adaptiveAvgFrameTimeMs) + ")");
+
+    }
+
+	void WorkspaceModule::configureAdaptiveQuality(std::vector<AdaptiveQualityLevel> levels, float targetFrameTimeMs)
+    {
+        if (true == levels.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] configureAdaptiveQuality called with an empty levels list - adaptive quality will remain disabled.");
+            return;
+        }
+
+        if (targetFrameTimeMs <= 0.0f)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[WorkspaceModule] configureAdaptiveQuality called with invalid targetFrameTimeMs=" + Ogre::StringConverter::toString(targetFrameTimeMs) + ", clamping to 16.6ms (60fps).");
+            targetFrameTimeMs = 16.6f;
+        }
+
+        this->adaptiveLevels = std::move(levels);
+        this->adaptiveTargetMs = targetFrameTimeMs;
+
+        // Reset controller state so a re-configure (e.g. player changes target
+        // fps in settings) starts clean rather than carrying over a stale
+        // cooldown/average from the previous configuration.
+        this->adaptiveCurrentLevel = 0;
+        this->adaptiveAvgFrameTimeMs = 0.0f;
+        this->adaptiveCooldownMs = 0.0f;
+
+        // Apply level 0 immediately so state (shadow distance, foliage multiplier)
+        // is consistent with the new table right away, rather than waiting for
+        // the next frame-time evaluation to happen to trigger a change.
+        this->applyAdaptiveQualityLevel(this->adaptiveCurrentLevel);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+            "[WorkspaceModule] AdaptiveQuality configured with " + Ogre::StringConverter::toString(static_cast<unsigned int>(this->adaptiveLevels.size())) + " levels, targetFrameTimeMs=" + Ogre::StringConverter::toString(this->adaptiveTargetMs));
+    }
 
 } // namespace end

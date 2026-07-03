@@ -1177,7 +1177,7 @@ namespace NOWA
         this->forceCommand.pending.store(true);
     }
 
-     void PhysicsActiveComponent::applyRequiredForceForVelocity(const Ogre::Vector3& velocity)
+    void PhysicsActiveComponent::applyRequiredForceForVelocity(const Ogre::Vector3& velocity)
     {
         // Set the command values
         this->requiredVelocityForForceCommand.vectorValue = velocity;

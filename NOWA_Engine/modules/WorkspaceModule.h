@@ -12,7 +12,8 @@ namespace NOWA
 
 	class EXPORTED WorkspaceModule
 	{
-	public:
+    public:
+
 		WorkspaceModule* getPrimaryWorkspaceModule(void);
 
 		WorkspaceModule* getAdditionalWorkspaceModule(Ogre::Camera* camera);
@@ -91,6 +92,22 @@ namespace NOWA
 		void logAllCompositorNodeDefinitions(void);
 
 		void logLiveNodeGraph(Ogre::CompositorWorkspace* workspace, const Ogre::String& label);
+
+	public:
+    public:
+        struct AdaptiveQualityLevel
+        {
+            Ogre::Real shadowFarDistance;
+            Ogre::Real foliageDistanceMultiplier;
+            // resolutionScale can join this table later once you tackle it
+        };
+
+        // Call once per render frame from GraphicsModule::renderThreadFunction.
+        // Must be called FROM the render thread - it touches scene manager /
+        // shadow state directly, no enqueueAndWait needed since we already are it.
+        void updateAdaptiveQuality(Ogre::Real renderDt);
+
+        void configureAdaptiveQuality(std::vector<AdaptiveQualityLevel> levels, Ogre::Real targetFrameTimeMs);
 	public:
 		static WorkspaceModule* getInstance();
 		const Ogre::String workspaceNamePbs = "NOWAPbsWorkspace";
@@ -121,7 +138,7 @@ namespace NOWA
 			edge cases ESM does not deal well, while small K (< 8) may hide those artifacts,
 			but makes the shadows fat (fatter than normal, still blurry) and very dark.
 			Small K combined with large radius (radius > 8) may cause self shadowing artifacts.
-			A K larger than 80 may run into floating point precision issues (which means light
+			A K larger than 80 may run into Ogre::Realing point precision issues (which means light
 			bleeding or weird shadows appearing caused by NaNs).
 			Changing this parameter will trigger a recompile.
 		*/
@@ -131,6 +148,8 @@ namespace NOWA
 		void setGaussianLogFilterParams(const Ogre::String& materialName, Ogre::uint8 kernelRadius, Ogre::Real gaussianDeviationFactor, Ogre::uint16 K);
 
 		Ogre::CompositorWorkspace* createDummyWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera);
+
+		void applyAdaptiveQualityLevel(int idx);
 	private:
 		Ogre::Hlms* hlms;
 		Ogre::HlmsPbs* pbs;
@@ -152,6 +171,12 @@ namespace NOWA
 		std::map<Ogre::Camera*, WorkspaceData> workspaceMap;
 
 		bool splitScreenScenarioActive;
+
+		std::vector<AdaptiveQualityLevel> adaptiveLevels;
+        int adaptiveCurrentLevel = 0;
+        Ogre::Real adaptiveTargetMs = 16.6f;
+        Ogre::Real adaptiveAvgFrameTimeMs = 0.0f;
+        Ogre::Real adaptiveCooldownMs = 0.0f;
 	};
 
 }; //namespace end

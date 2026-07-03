@@ -17,10 +17,20 @@ namespace
     {
         int key;
         Ogre::ColourValue value;
-    } colourMap[10] = {{0, Ogre::ColourValue(1.0f, 1.0f, 0.0f, 0.5f)}, {1, Ogre::ColourValue(1.0f, 1.0f, 0.0f, 1.0f)}, {2, Ogre::ColourValue(1.0f, 0.0f, 0.0f, 1.0f)}, {3, Ogre::ColourValue(0.0f, 1.0f, 0.0f, 1.0f)},
-        {4, Ogre::ColourValue(0.0f, 0.0f, 1.0f, 1.0f)}, {5, Ogre::ColourValue(1.0f, 0.0f, 1.0f, 1.0f)}, {6, Ogre::ColourValue(0.0f, 1.0f, 1.0f, 1.0f)}, {7, Ogre::ColourValue(0.5f, 0.5f, 0.0f, 1.0f)}, {8, Ogre::ColourValue(0.0f, 0.5f, 0.5f, 1.0f)},
-        {8, Ogre::ColourValue(0.5f, 0.0f, 0.5f, 1.0f)}};
-
+    } 
+    colourMap[10] = 
+    {
+        {0, Ogre::ColourValue(1.0f, 1.0f, 0.0f, 0.5f)}, 
+        {1, Ogre::ColourValue(1.0f, 1.0f, 0.0f, 1.0f)}, 
+        {2, Ogre::ColourValue(1.0f, 0.0f, 0.0f, 1.0f)}, 
+        {3, Ogre::ColourValue(0.0f, 1.0f, 0.0f, 1.0f)},
+        {4, Ogre::ColourValue(0.0f, 0.0f, 1.0f, 1.0f)}, 
+        {5, Ogre::ColourValue(1.0f, 0.0f, 1.0f, 1.0f)}, 
+        {6, Ogre::ColourValue(0.0f, 1.0f, 1.0f, 1.0f)}, 
+        {7, Ogre::ColourValue(0.5f, 0.5f, 0.0f, 1.0f)}, 
+        {8, Ogre::ColourValue(0.0f, 0.5f, 0.5f, 1.0f)},
+        {8, Ogre::ColourValue(0.5f, 0.0f, 0.5f, 1.0f)}
+    };
 }
 
 namespace NOWA
@@ -131,7 +141,7 @@ namespace NOWA
         // Register default category for gizmo
         this->defaultCategory = AppStateManager::getSingletonPtr()->getGameObjectController()->registerCategory("Default");
 
-        ENQUEUE_RENDER_COMMAND("Gizmo::init", {
+        ENQUEUE_RENDER_COMMAND_WAIT("Gizmo::init", {
             // Create the three arrows in x-y-z axes
             // This is the main node for selected objects, at which the gizmo will be placed
             this->selectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
@@ -268,7 +278,7 @@ namespace NOWA
 
         auto thisPtr = this;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::changeToTranslateGizmo",
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::changeToTranslateGizmo",
             _14(sceneManager, defaultCategory, materialNameX, materialNameY, materialNameZ, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, constraintAxis, oldArrowItemX, oldArrowItemY, oldArrowItemZ, thisPtr), {
                 // Destroy old entities
                 if (oldArrowItemX && sceneManager->hasMovableObject(oldArrowItemX))
@@ -369,7 +379,7 @@ namespace NOWA
 
         auto thisPtr = this;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::changeToScaleGizmo",
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::changeToScaleGizmo",
             _13(sceneManager, defaultCategory, materialNameX, materialNameY, materialNameZ, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, oldArrowItemX, oldArrowItemY, oldArrowItemZ, thisPtr), {
                 if (oldArrowItemX && sceneManager->hasMovableObject(oldArrowItemX))
                 {
@@ -459,7 +469,7 @@ namespace NOWA
         // Pointers to this to update members inside render thread
         auto thisPtr = this;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::changeToRotateGizmo",
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::changeToRotateGizmo",
             _13(sceneManager, defaultCategory, materialNameX, materialNameY, materialNameZ, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, oldArrowItemX, oldArrowItemY, oldArrowItemZ, thisPtr), {
                 // Destroy old entities if valid
                 if (oldArrowItemX && sceneManager->hasMovableObject(oldArrowItemX))
@@ -549,7 +559,7 @@ namespace NOWA
         auto constraintAxis = this->constraintAxis;
 
         // Enqueue render commands for all render state changes
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::setEnabled",
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::setEnabled",
             _11(arrowItemX, arrowItemY, arrowItemZ, sphereItem, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, defaultCategory, constraintAxis, enable), {
                 if (arrowItemZ && arrowItemZ->getParentSceneNode()) // safer check than hasMovableObject
                 {
@@ -659,7 +669,7 @@ namespace NOWA
     void Gizmo::setSphereEnabled(bool enable)
     {
         auto sphereNode = this->sphereNode;
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::setSphereEnabled", _2(sphereNode, enable), {
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::setSphereEnabled", _2(sphereNode, enable), {
             if (sphereNode)
             {
                 sphereNode->setVisible(enable);
@@ -676,7 +686,7 @@ namespace NOWA
         auto materialNameY = this->materialNameY;
         auto materialNameZ = this->materialNameZ;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::highlightXArrow", _6(arrowItemX, arrowItemY, arrowItemZ, materialNameHighlight, materialNameY, materialNameZ), {
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::highlightXArrow", _6(arrowItemX, arrowItemY, arrowItemZ, materialNameHighlight, materialNameY, materialNameZ), {
             if (arrowItemX)
             {
                 arrowItemX->setDatablock(materialNameHighlight);
@@ -704,7 +714,7 @@ namespace NOWA
         auto materialNameHighlight = this->materialNameHighlight;
         auto materialNameZ = this->materialNameZ;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::highlightYArrow", _6(arrowItemX, arrowItemY, arrowItemZ, materialNameX, materialNameHighlight, materialNameZ), {
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::highlightYArrow", _6(arrowItemX, arrowItemY, arrowItemZ, materialNameX, materialNameHighlight, materialNameZ), {
             if (arrowItemX)
             {
                 arrowItemX->setDatablock(materialNameX);
@@ -731,7 +741,7 @@ namespace NOWA
         auto materialNameY = this->materialNameY;
         auto materialNameHighlight = this->materialNameHighlight;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::highlightZArrow", _6(arrowItemX, arrowItemY, arrowItemZ, materialNameX, materialNameY, materialNameHighlight), {
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::highlightZArrow", _6(arrowItemX, arrowItemY, arrowItemZ, materialNameX, materialNameY, materialNameHighlight), {
             if (arrowItemX)
             {
                 arrowItemX->setDatablock(materialNameX);
@@ -754,7 +764,7 @@ namespace NOWA
         auto sphereItem = this->sphereItem;
         auto materialNameHighlight = this->materialNameHighlight;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::highlightSphere", _2(sphereItem, materialNameHighlight), {
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::highlightSphere", _2(sphereItem, materialNameHighlight), {
             if (sphereItem)
             {
                 sphereItem->setDatablock(materialNameHighlight);
@@ -774,7 +784,7 @@ namespace NOWA
         auto materialNameY = this->materialNameY;
         auto materialNameZ = this->materialNameZ;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::unHighlightGizmo", _7(arrowItemX, arrowItemY, arrowItemZ, sphereItem, materialNameX, materialNameY, materialNameZ), {
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::unHighlightGizmo", _7(arrowItemX, arrowItemY, arrowItemZ, sphereItem, materialNameX, materialNameY, materialNameZ), {
             if (arrowItemX)
             {
                 arrowItemX->setDatablock(materialNameX);
@@ -804,7 +814,7 @@ namespace NOWA
         auto arrowItemZ = this->arrowItemZ;
         auto sphereItem = this->sphereItem;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::setupFlag", _4(arrowItemX, arrowItemY, arrowItemZ, sphereItem), {
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::setupFlag", _4(arrowItemX, arrowItemY, arrowItemZ, sphereItem), {
             if (arrowItemX)
             {
                 arrowItemX->setVisibilityFlags(NOWA::GIZMO_VISIBLE_MASK_VISIBLE);

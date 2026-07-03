@@ -304,10 +304,7 @@ namespace NOWA
         {
             NOWA::GraphicsModule::getInstance()->updateTrackedClosure(this->oceanUpdateClosureId, [this](Ogre::Real renderDt)
             {
-                if (nullptr != this->ocean && true == this->activated->getBool())
-                {
-                    this->ocean->update(static_cast<float>(renderDt));
-                }
+               this->ocean->update(static_cast<float>(renderDt));
             }, false);
         }
     }

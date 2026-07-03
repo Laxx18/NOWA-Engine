@@ -399,12 +399,14 @@ namespace NOWA
             playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
         }
 
-        if (true == this->firstSpringSample)
+        /*if (true == this->firstSpringSample)
         {
             this->internalSpringPosition = this->camera->getPosition();
             this->firstSpringSample = false;
         }
-        Ogre::Vector3 cameraPosition = this->internalSpringPosition;
+        Ogre::Vector3 cameraPosition = this->internalSpringPosition;*/
+
+        Ogre::Vector3 cameraPosition = this->camera->getPosition();
 
         playerPosition += this->lookAtOffset;
 
@@ -434,7 +436,7 @@ namespace NOWA
 
         Ogre::Vector3 targetPosition = playerPosition + offsetXZ * this->cameraSpringLength + localOffset;
 
-        Ogre::Vector3 velocityVector = (targetPosition - cameraPosition) * this->cameraSpring;
+        Ogre::Vector3 velocityVector = (targetPosition - cameraPosition) * this->cameraSpring /** dt*/;
         velocityVector *= this->cameraFriction;
 
         Ogre::Vector3 tVector = -camForward * this->cameraSpringLength;
@@ -476,7 +478,7 @@ namespace NOWA
                 }
             }
 
-            if (true == shouldRecast)
+            /*if (true == shouldRecast)
             {
                 targetDistance = this->performOcclusionProbe(castOrigin, idealPositionVector, desiredDistance);
 
@@ -484,7 +486,7 @@ namespace NOWA
                 this->lastProbedTarget = idealPositionVector;
                 this->lastProbeResultDistance = targetDistance;
                 this->hasProbedOnce = true;
-            }
+            }*/
 
             if (true == this->firstOcclusionSample)
             {

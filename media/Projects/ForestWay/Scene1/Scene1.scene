@@ -10,7 +10,7 @@
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
-			<shadowFarDistance distance="200"/>
+			<shadowFarDistance distance="500"/>
 			<shadowDirectionalLightExtrusionDistance distance="10000"/>
 			<shadowDirLightTextureOffset offset="0.6"/>
 			<shadowColor r="0.25" g="0.25" b="0.25"/>
@@ -33,7 +33,7 @@
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-100 -75 -100" mostRightFarPosition="100 75 100.439"/>
+		<bounds mostLeftNearPosition="-100 -75 -100" mostRightFarPosition="100.391 75.4883 100.927"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -100,8 +100,8 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="0" y="35" z="50"/>
-			<rotation qw="0.906898" qx="-0.37565" qy="-0.0730347" qz="-0.176321"/>
+			<position x="100" y="75" z="100.439"/>
+			<rotation qw="0.906898" qx="-0.37565" qy="-0.0730346" qz="-0.176321"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -844,8 +844,9 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="SoundName" data="gushing_wind_22khz_16bit_mono_golgotha.wav"/>
-					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Volume" data="80"/>
 					<property type="12" name="Loop" data="true"/>
+					<property type="8" name="FadeInFadeOut" data="0 0"/>
 					<property type="12" name="Stream" data="false"/>
 					<property type="12" name="RelativeToListener" data="true"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
@@ -976,6 +977,7 @@
 					<property type="7" name="SoundName" data="engineering_vehicle_22khz_16bit_mono_golgotha.wav"/>
 					<property type="6" name="Volume" data="100"/>
 					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="0 0"/>
 					<property type="12" name="Stream" data="false"/>
 					<property type="12" name="RelativeToListener" data="true"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
@@ -988,6 +990,7 @@
 					<property type="7" name="SoundName" data="tire_skid.wav"/>
 					<property type="6" name="Volume" data="100"/>
 					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="0 0"/>
 					<property type="12" name="Stream" data="false"/>
 					<property type="12" name="RelativeToListener" data="true"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
@@ -1753,6 +1756,7 @@
 					<property type="7" name="MinimapMask" data="Circle_Ring.png"/>
 					<property type="12" name="UseRoundMinimap" data="true"/>
 					<property type="12" name="RotateMinimap" data="false"/>
+					<property type="2" name="CompassObjectCount" data="0"/>
 				</userData>
 			</item>
 		</node>

@@ -12,6 +12,12 @@ GPL v3
 #include "main/Events.h"
 #include "utilities/LowPassAngleFilter.h"
 
+// Forward-declare MyGUI::ToolTipInfo as a struct (not class -- MyGUI defines it as struct) inside its namespace.
+// A const-reference to an incomplete type is legal in a function declaration, so this is enough for notifyToolTip's
+// signature. The full definition arrives in the .cpp through the engine's transitive includes (which is why VS
+// can navigate to the file but including it directly in a plugin header triggers PCH/order issues).
+namespace MyGUI { struct ToolTipInfo; }
+
 namespace NOWA
 {
     class CameraComponent;
@@ -434,6 +440,26 @@ namespace NOWA
         void removeWorkspace(void);
 
         /**
+         * @brief Loads ToolTip2.layout and caches the panel + EditBox widgets for the shared tooltip popup. Called
+         *		  once from setupPlanetMinimap; safe to call multiple times (no-op if already initialised). Must
+         *		  run on the render thread.
+         */
+        void initToolTipData(void);
+
+        /**
+         * @brief MyGUI ToolTip event handler. Wired to eventToolTip on every compass object marker widget that has
+         *		  a non-empty CompassToolTipText. Reads the tooltip text from the sender widget's "ToolTip" user
+         *		  string, resizes the panel to fit, and positions it near the cursor (bounded to the viewport).
+         */
+        void notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo& info);
+
+        /**
+         * @brief Moves the tooltip panel to point + (16,16) offset, clamping it inside the viewport so it never
+         *		  clips off-screen. Same logic as MyGUIHelper::boundedMove in NOWA-Design.
+         */
+        void boundedMove(MyGUI::Widget* moving, const MyGUI::IntPoint& point);
+
+        /**
          * @brief Converts a world-space direction from the planet's center into the same (u,v) in [0,1)x[0,1]
          *		  equirectangular parameterization PlanetTerra::generateBaseSphere uses for its vertices/UVs and
          *		  sampleHeightAndNormalAtDirection uses internally: u = theta / (2*PI), v = phi / PI, with
@@ -524,6 +550,16 @@ namespace NOWA
          */
         Ogre::String formatDistanceMeters(Ogre::Real distanceMeters) const;
 
+        /**
+         * @brief Positions a distance-text label relative to its marker icon, choosing above/below/left/right so
+         *		  the label always stays inside the minimap widget bounds. markerCenterX/Y is the pixel center of
+         *		  the marker icon. widgetWidth/Height is the minimap widget's pixel size. The label is placed below
+         *		  by default; if that would clip below the widget's bottom edge it moves above; if it would clip to
+         *		  the left it moves right, and so on. Called from updateSingleCompassObject for both Overview and
+         *		  Follow modes.
+         */
+        void placeDistanceLabel(MyGUI::TextBox* distanceWidget, int markerCenterX, int markerCenterY, int markerHalfWidth, int markerHalfHeight, int widgetWidth, int widgetHeight) const;
+
         void clearFogOfWar(void);
 
     private:
@@ -549,6 +585,11 @@ namespace NOWA
         MyGUI::ImageBox* targetMarkerWidget;
         std::vector<MyGUI::ImageBox*> compassObjectWidgets;
         std::vector<MyGUI::TextBox*> compassObjectDistanceTexts;
+
+        // Tooltip popup panel (loaded from ToolTip2.layout, same mechanism as NOWA-Design's MyGUIHelper).
+        // Shared by all compass object markers in this component; only one tooltip is visible at a time.
+        MyGUI::Widget* toolTipPanel;
+        MyGUI::EditBox* toolTipText;
 
         CameraComponent* cameraComponent;
 

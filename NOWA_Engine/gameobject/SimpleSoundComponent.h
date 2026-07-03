@@ -304,6 +304,7 @@ namespace NOWA
 		static const Ogre::String AttrSoundName(void) { return "Sound Name"; }
 		static const Ogre::String AttrVolume(void) { return "Volume"; }
 		static const Ogre::String AttrLoop(void) { return "Loop"; }
+        static const Ogre::String AttrFadeInFadeOut(void) { return "Fadein Fadeout"; }
 		static const Ogre::String AttrStream(void) { return "Stream"; }
 		static const Ogre::String AttrRelativeToListener(void) { return "Relative To Listener"; }
 		static const Ogre::String AttrPlayWhenInMotion(void) { return "Play when in Motion"; }
@@ -319,6 +320,7 @@ namespace NOWA
 		Variant* soundName;
 		Variant* volume;
 		Variant* loop;
+        Variant* fadeInFadeOut;
 		Variant* stream;
 		Variant* relativeToListener;
 		Variant* playWhenInMotion;

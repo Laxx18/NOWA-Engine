@@ -1,221 +1,222 @@
 #include "NOWAPrecompiled.h"
 #include "SimpleSoundComponent.h"
 
-#include <boost/make_shared.hpp>
-#include "utilities/XMLConverter.h"
+#include "main/AppStateManager.h"
 #include "modules/LuaScriptApi.h"
 #include "modules/OgreALModule.h"
-#include "main/AppStateManager.h"
+#include "utilities/XMLConverter.h"
+#include <boost/make_shared.hpp>
 
 #include "RenderQueueEnums.h"
 
 namespace NOWA
 {
-	using namespace rapidxml;
-	using namespace luabind;
+    using namespace rapidxml;
+    using namespace luabind;
 
-	SimpleSoundComponent::SimpleSoundComponent()
-		: GameObjectComponent(),
-		sound(nullptr),
-		oldPosition(Ogre::Vector3::ZERO),
-		oldOrientation(Ogre::Quaternion::IDENTITY),
-		activated(new Variant(SimpleSoundComponent::AttrActivated(), false, this->attributes)),
-		soundName(new Variant(SimpleSoundComponent::AttrSoundName(), "Health.wav", this->attributes)),
-		volume(new Variant(SimpleSoundComponent::AttrVolume(), 100.0f, this->attributes)),
-		loop(new Variant(SimpleSoundComponent::AttrLoop(), false, this->attributes)),
-		stream(new Variant(SimpleSoundComponent::AttrStream(), false, this->attributes)),
-		relativeToListener(new Variant(SimpleSoundComponent::AttrRelativeToListener(), false, this->attributes)),
-		playWhenInMotion(new Variant(SimpleSoundComponent::AttrPlayWhenInMotion(), false, this->attributes)),
-		onSpectrumAnalysisFunctionName(new Variant(SimpleSoundComponent::AttrSpectrumAnalysisFunctionName(), Ogre::String(""), this->attributes))
-	{
-		// Really important line of code, ogreal must be not null, when using it
-		this->soundManager = OgreALModule::getInstance()->getSoundManager();
-		this->oldSoundName = soundName->getString();
-		this->soundName->addUserData(GameObject::AttrActionFileOpenDialog(), "Audio");
-		this->stream->setDescription("Should be used for bigger sound files, so that they will be streamed instead of loaded completely into buffer (performance issue).");
+    SimpleSoundComponent::SimpleSoundComponent() :
+        GameObjectComponent(),
+        sound(nullptr),
+        oldPosition(Ogre::Vector3::ZERO),
+        oldOrientation(Ogre::Quaternion::IDENTITY),
+        activated(new Variant(SimpleSoundComponent::AttrActivated(), false, this->attributes)),
+        soundName(new Variant(SimpleSoundComponent::AttrSoundName(), "Health.wav", this->attributes)),
+        volume(new Variant(SimpleSoundComponent::AttrVolume(), 100.0f, this->attributes)),
+        loop(new Variant(SimpleSoundComponent::AttrLoop(), false, this->attributes)),
+        fadeInFadeOut(new Variant(SimpleSoundComponent::AttrFadeInFadeOut(), Ogre::Vector2(0.0f, 0.0f), this->attributes)),
+        stream(new Variant(SimpleSoundComponent::AttrStream(), false, this->attributes)),
+        relativeToListener(new Variant(SimpleSoundComponent::AttrRelativeToListener(), false, this->attributes)),
+        playWhenInMotion(new Variant(SimpleSoundComponent::AttrPlayWhenInMotion(), false, this->attributes)),
+        onSpectrumAnalysisFunctionName(new Variant(SimpleSoundComponent::AttrSpectrumAnalysisFunctionName(), Ogre::String(""), this->attributes))
+    {
+        // Really important line of code, ogreal must be not null, when using it
+        this->soundManager = OgreALModule::getInstance()->getSoundManager();
+        this->oldSoundName = soundName->getString();
+        this->soundName->addUserData(GameObject::AttrActionFileOpenDialog(), "Audio");
+        this->stream->setDescription("Should be used for bigger sound files, so that they will be streamed instead of loaded completely into buffer (performance issue).");
 
-		this->volume->setDescription("Range [0, 100]");
-		this->volume->setConstraints(0.0f, 100.0f);
+        this->volume->setDescription("Range [0, 100]");
+        this->volume->setConstraints(0.0f, 100.0f);
 
-		this->onSpectrumAnalysisFunctionName->setDescription("Sets the lua function name to react on spectrum as long as the audio is played. Note: Streaming must be activated.");
-	}
+        this->onSpectrumAnalysisFunctionName->setDescription("Sets the lua function name to react on spectrum as long as the audio is played. Note: Streaming must be activated.");
+    }
 
-	SimpleSoundComponent::~SimpleSoundComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SimpleSoundComponent] Destructor simple sound component for game object: " + this->gameObjectPtr->getName());
-		this->destroySound();
-	}
+    SimpleSoundComponent::~SimpleSoundComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SimpleSoundComponent] Destructor simple sound component for game object: " + this->gameObjectPtr->getName());
+        this->destroySound();
+    }
 
-	bool SimpleSoundComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		GameObjectComponent::init(propertyElement);
+    bool SimpleSoundComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        GameObjectComponent::init(propertyElement);
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
-		{
-			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
+        {
+            this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SoundName")
-		{
-			this->soundName->setValue(XMLConverter::getAttrib(propertyElement, "data", ""));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Volume")
-		{
-			this->volume->setValue(XMLConverter::getAttribReal(propertyElement, "data", 100.0f));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Loop")
-		{
-			this->loop->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Stream")
-		{
-			this->stream->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RelativeToListener")
-		{
-			this->relativeToListener->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PlayWhenInMotion")
-		{
-			this->playWhenInMotion->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnSpectrumAnalysisFunctionName")
-		{
-			this->onSpectrumAnalysisFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-			this->onSpectrumAnalysisFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onSpectrumAnalysisFunctionName->getString() + "()");
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		return true;
-	}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SoundName")
+        {
+            this->soundName->setValue(XMLConverter::getAttrib(propertyElement, "data", ""));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Volume")
+        {
+            this->volume->setValue(XMLConverter::getAttribReal(propertyElement, "data", 100.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Loop")
+        {
+            this->loop->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FadeInFadeOut")
+        {
+            this->fadeInFadeOut->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Stream")
+        {
+            this->stream->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RelativeToListener")
+        {
+            this->relativeToListener->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PlayWhenInMotion")
+        {
+            this->playWhenInMotion->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnSpectrumAnalysisFunctionName")
+        {
+            this->onSpectrumAnalysisFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            this->onSpectrumAnalysisFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onSpectrumAnalysisFunctionName->getString() + "()");
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        return true;
+    }
 
-	GameObjectCompPtr SimpleSoundComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		SimpleSoundCompPtr clonedCompPtr(boost::make_shared<SimpleSoundComponent>());
+    GameObjectCompPtr SimpleSoundComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        SimpleSoundCompPtr clonedCompPtr(boost::make_shared<SimpleSoundComponent>());
 
-		
-		clonedCompPtr->setSoundName(this->soundName->getString());
-		clonedCompPtr->setVolume(this->volume->getReal());
-		clonedCompPtr->setLoop(this->loop->getBool());
-		clonedCompPtr->setStream(this->stream->getBool());
-		clonedCompPtr->setRelativeToListener(this->relativeToListener->getBool());
+        clonedCompPtr->setSoundName(this->soundName->getString());
+        clonedCompPtr->setVolume(this->volume->getReal());
+        clonedCompPtr->setLoop(this->loop->getBool());
+        clonedCompPtr->setFadeInOutTime(this->fadeInFadeOut->getVector2());
+        clonedCompPtr->setStream(this->stream->getBool());
+        clonedCompPtr->setRelativeToListener(this->relativeToListener->getBool());
 
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-		clonedCompPtr->setActivated(this->activated->getBool());
-		clonedCompPtr->setPlayWhenInMotion(this->playWhenInMotion->getBool());
-		clonedCompPtr->setOnSpectrumAnalysisFunctionName(this->onSpectrumAnalysisFunctionName->getString());
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setPlayWhenInMotion(this->playWhenInMotion->getBool());
+        clonedCompPtr->setOnSpectrumAnalysisFunctionName(this->onSpectrumAnalysisFunctionName->getString());
 
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
 
-	bool SimpleSoundComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SimpleSoundComponent] Init simple sound component for game object: " + this->gameObjectPtr->getName());
-		
-		this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+    bool SimpleSoundComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SimpleSoundComponent] Init simple sound component for game object: " + this->gameObjectPtr->getName());
 
-		// ENQUEUE_RENDER_COMMAND_WAIT("",
-		// {
-			this->createSound();
-		// });
-		
-		return true;
-	}
+        this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 
-	bool SimpleSoundComponent::createSound(void)
-	{
-		if (nullptr == this->gameObjectPtr)
-			return true;
+        this->createSound();
 
-		if (this->oldSoundName != this->soundName->getString())
-		{
-			this->destroySound();
-			this->oldSoundName = this->soundName->getString();
-		}
+        return true;
+    }
 
-		bool loop = this->loop->getBool();
+    bool SimpleSoundComponent::createSound(void)
+    {
+        if (nullptr == this->gameObjectPtr)
+        {
+            return true;
+        }
 
-		if (true == this->playWhenInMotion->getBool())
-			loop = true;
+        if (this->oldSoundName != this->soundName->getString())
+        {
+            this->destroySound();
+            this->oldSoundName = this->soundName->getString();
+        }
 
-		if (nullptr == this->sound)
-		{
-			this->sound = OgreALModule::getInstance()->createSound(this->gameObjectPtr->getSceneManager(), Ogre::StringConverter::toString(NOWA::makeUniqueID()), this->soundName->getString(),
-				loop, this->stream->getBool());
-			if (nullptr == this->sound)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SimpleSoundComponent] Error: Could not create sound: " + this->soundName->getString());
-				return false;
-			}
-			this->sound->setStatic(!this->gameObjectPtr->isDynamic());
-			this->sound->setGain(this->volume->getReal() * 0.01f);
-			this->sound->setRelativeToListener(this->relativeToListener->getBool());
-			this->sound->setQueryFlags(0);
-			this->gameObjectPtr->getSceneNode()->attachObject(this->sound);
+        bool loop = this->loop->getBool();
 
-			// hier attach to node? wenn relative zu listener? Beispiele anschauen
+        if (true == this->playWhenInMotion->getBool())
+        {
+            loop = true;
+        }
 
-			// wenn on hit, dann schauen ob physicscomponent gibt die activephysicscomponent ist, dann in physicscomponent, wo auch materialien erstellt werden, coll function einfuehren,
-			// die alles behandelt und dann per delegate verteilt, dann hier die delegate function, um zu schauen, ob diese sound component angesprochen wurde, dann sound abspielen
-		}
+        if (nullptr == this->sound)
+        {
+            this->sound = OgreALModule::getInstance()->createSound(this->gameObjectPtr->getSceneManager(), Ogre::StringConverter::toString(NOWA::makeUniqueID()), this->soundName->getString(), loop, this->stream->getBool());
+            if (nullptr == this->sound)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SimpleSoundComponent] Error: Could not create sound: " + this->soundName->getString());
+                return false;
+            }
+            this->sound->setStatic(!this->gameObjectPtr->isDynamic());
+            this->sound->setGain(this->volume->getReal() * 0.01f);
+            this->sound->setRelativeToListener(this->relativeToListener->getBool());
+            this->sound->setQueryFlags(0);
+            this->gameObjectPtr->getSceneNode()->attachObject(this->sound);
+        }
 
-		this->sound->setStream(this->stream->getBool());
-		this->sound->setLoop(loop);
-		this->sound->setGain(this->volume->getReal() * 0.01f);
-		this->sound->setRelativeToListener(this->relativeToListener->getBool());
-		this->sound->setQueryFlags(0);
+        this->sound->setStream(this->stream->getBool());
+        this->sound->setLoop(loop);
+        this->sound->setGain(this->volume->getReal() * 0.01f);
+        this->sound->setRelativeToListener(this->relativeToListener->getBool());
+        this->sound->setQueryFlags(0);
 
-		this->setOnSpectrumAnalysisFunctionName(this->onSpectrumAnalysisFunctionName->getString());
+        this->setOnSpectrumAnalysisFunctionName(this->onSpectrumAnalysisFunctionName->getString());
 
-		return true;
-	}
+        return true;
+    }
 
-	void SimpleSoundComponent::destroySound(void)
-	{
-		if (nullptr != this->sound)
-		{
-			if (this->sound->isAttached())
-			{
-				this->gameObjectPtr->getSceneNode()->detachObject(this->sound);
-			}
-			OgreALModule::getInstance()->deleteSound(this->gameObjectPtr->getSceneManager(), this->sound);
-			this->sound = nullptr;
-		}
-	}
+    void SimpleSoundComponent::destroySound(void)
+    {
+        if (nullptr != this->sound)
+        {
+            if (this->sound->isAttached())
+            {
+                this->gameObjectPtr->getSceneNode()->detachObject(this->sound);
+            }
+            OgreALModule::getInstance()->deleteSound(this->gameObjectPtr->getSceneManager(), this->sound);
+            this->sound = nullptr;
+        }
+    }
 
-	inline float norm(float v, float max, float dest, float offset)
-	{
-		return (v * (dest / max)) + offset;
-	}
+    inline float norm(float v, float max, float dest, float offset)
+    {
+        return (v * (dest / max)) + offset;
+    }
 
-	void SimpleSoundComponent::soundSpectrumFuncPtr(OgreAL::Sound* sound)
-	{
-		if (false == this->bConnected)
-		{
-			return;
-		}
+    void SimpleSoundComponent::soundSpectrumFuncPtr(OgreAL::Sound* sound)
+    {
+        if (false == this->bConnected)
+        {
+            return;
+        }
 
-		OgreAL::Sound::SpectrumParameter* spectrumParameter = sound->getSpectrumParameter();
-		if (nullptr != spectrumParameter)
-		{
-			// Call also function in lua script, if it does exist in the lua script component
-			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onSpectrumAnalysisFunctionName->getString().empty())
-			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-				{
-					this->gameObjectPtr->getLuaScript()->callTableFunction(this->onSpectrumAnalysisFunctionName->getString());
-				};
-				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-			}
+        OgreAL::Sound::SpectrumParameter* spectrumParameter = sound->getSpectrumParameter();
+        if (nullptr != spectrumParameter)
+        {
+            // Call also function in lua script, if it does exist in the lua script component
+            if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onSpectrumAnalysisFunctionName->getString().empty())
+            {
+                NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+                {
+                    this->gameObjectPtr->getLuaScript()->callTableFunction(this->onSpectrumAnalysisFunctionName->getString());
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
 
 #if 0
 			/*for (int i = 0; i < this->sound->getBufferSize() - 1; ++i)
@@ -300,193 +301,205 @@ namespace NOWA
 				this->lines[i]->end();
 			}
 #endif
-		}
-	}
+        }
+    }
 
-	bool SimpleSoundComponent::connect(void)
-	{
-		GameObjectComponent::connect();
+    bool SimpleSoundComponent::connect(void)
+    {
+        GameObjectComponent::connect();
 
-		this->setupSound();
-		
-		return true;
-	}
+        this->setupSound();
 
-	bool SimpleSoundComponent::disconnect(void)
-	{
-		GameObjectComponent::disconnect();
+        return true;
+    }
 
-		this->oldPosition = this->gameObjectPtr->getPosition();
-		this->oldOrientation = this->gameObjectPtr->getOrientation();
+    bool SimpleSoundComponent::disconnect(void)
+    {
+        GameObjectComponent::disconnect();
 
-		if (nullptr != this->sound)
-		{
+        this->oldPosition = this->gameObjectPtr->getPosition();
+        this->oldOrientation = this->gameObjectPtr->getOrientation();
+
+        if (nullptr != this->sound)
+        {
             this->sound->stop();
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->sound->enableSpectrumAnalysis(false, 1, 1, OgreAL::MathWindows::BARLETT, OgreAL::AudioProcessor::SpectrumPreparationType::LINEAR, 0.0f);
             };
             GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SimpleSoundComponent::enableSpectrumAnalysis");
-			
-		}
-		return true;
-	}
+        }
+        return true;
+    }
 
-	void SimpleSoundComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (false == notSimulating && true == this->playWhenInMotion->getBool())
-		{
-			bool canPlay = false;
+    void SimpleSoundComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        if (false == notSimulating && true == this->playWhenInMotion->getBool())
+        {
+            bool canPlay = false;
 
-			// Check if position or orientation changed
-			if (false == this->oldPosition.positionEquals(this->gameObjectPtr->getPosition(), 0.001f))
-			{
-				canPlay = true;
-			}
-			else if (false == this->gameObjectPtr->getOrientation().equals(this->oldOrientation, Ogre::Degree(0.001f)))
-			{
-				canPlay = true;
-			}
+            // Check if position or orientation changed
+            if (false == this->oldPosition.positionEquals(this->gameObjectPtr->getPosition(), 0.001f))
+            {
+                canPlay = true;
+            }
+            else if (false == this->gameObjectPtr->getOrientation().equals(this->oldOrientation, Ogre::Degree(0.001f)))
+            {
+                canPlay = true;
+            }
 
-			this->oldPosition = this->gameObjectPtr->getPosition();
-			this->oldOrientation = this->gameObjectPtr->getOrientation();
+            this->oldPosition = this->gameObjectPtr->getPosition();
+            this->oldOrientation = this->gameObjectPtr->getOrientation();
 
-			if (true == canPlay)
-			{
-				if (nullptr != this->sound)
-				{
-					// Do not interrupt sound, when it is currently playing
-					if (this->sound->isPlaying())
-					{
-						return;
-					}
-				}
-				else
-				{
-					this->createSound();
-					this->sound->play();
-				}
-			}
-			else
-			{
-				if (nullptr != this->sound)
-				{
-					this->sound->fadeOut(0.2f);
-				}
-			}
-		}
-	}
+            if (true == canPlay)
+            {
+                if (nullptr != this->sound)
+                {
+                    // Do not interrupt sound, when it is currently playing
+                    if (this->sound->isPlaying())
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    this->createSound();
+                    this->sound->play();
+                }
+            }
+            else
+            {
+                if (nullptr != this->sound)
+                {
+                    if (this->fadeInFadeOut->getVector2().y > 0.0f)
+                    {
+                        this->sound->fadeOut(this->fadeInFadeOut->getVector2().y);
+                    }
+                }
+            }
+        }
+    }
 
-	void SimpleSoundComponent::actualizeValue(Variant* attribute)
-	{
-		GameObjectComponent::actualizeValue(attribute);
+    void SimpleSoundComponent::actualizeValue(Variant* attribute)
+    {
+        GameObjectComponent::actualizeValue(attribute);
 
-		if (SimpleSoundComponent::AttrActivated() == attribute->getName())
-		{
-			this->setActivated(attribute->getBool());
-		}
-		else if (SimpleSoundComponent::AttrSoundName() == attribute->getName())
-		{
-			this->setSoundName(attribute->getString());
-		}
-		else if (SimpleSoundComponent::AttrVolume() == attribute->getName())
-		{
-			this->setVolume(attribute->getReal());
-		}
-		else if (SimpleSoundComponent::AttrLoop() == attribute->getName())
-		{
-			this->setLoop(attribute->getBool());
-		}
-		else if (SimpleSoundComponent::AttrStream() == attribute->getName())
-		{
-			this->setStream(attribute->getBool());
-		}
-		else if (SimpleSoundComponent::AttrRelativeToListener() == attribute->getName())
-		{
-			this->setRelativeToListener(attribute->getBool());
-		}
-		else if (SimpleSoundComponent::AttrPlayWhenInMotion() == attribute->getName())
-		{
-			this->setPlayWhenInMotion(attribute->getBool());
-		}
-		else if (SimpleSoundComponent::AttrSpectrumAnalysisFunctionName() == attribute->getName())
-		{
-			this->setOnSpectrumAnalysisFunctionName(attribute->getString());
-		}
-	}
+        if (SimpleSoundComponent::AttrActivated() == attribute->getName())
+        {
+            this->setActivated(attribute->getBool());
+        }
+        else if (SimpleSoundComponent::AttrSoundName() == attribute->getName())
+        {
+            this->setSoundName(attribute->getString());
+        }
+        else if (SimpleSoundComponent::AttrVolume() == attribute->getName())
+        {
+            this->setVolume(attribute->getReal());
+        }
+        else if (SimpleSoundComponent::AttrLoop() == attribute->getName())
+        {
+            this->setLoop(attribute->getBool());
+        }
+        else if (SimpleSoundComponent::AttrFadeInFadeOut() == attribute->getName())
+        {
+            this->setFadeInOutTime(attribute->getVector2());
+        }
+        else if (SimpleSoundComponent::AttrStream() == attribute->getName())
+        {
+            this->setStream(attribute->getBool());
+        }
+        else if (SimpleSoundComponent::AttrRelativeToListener() == attribute->getName())
+        {
+            this->setRelativeToListener(attribute->getBool());
+        }
+        else if (SimpleSoundComponent::AttrPlayWhenInMotion() == attribute->getName())
+        {
+            this->setPlayWhenInMotion(attribute->getBool());
+        }
+        else if (SimpleSoundComponent::AttrSpectrumAnalysisFunctionName() == attribute->getName())
+        {
+            this->setOnSpectrumAnalysisFunctionName(attribute->getString());
+        }
+    }
 
-	void SimpleSoundComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
+    void SimpleSoundComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        // 2 = int
+        // 6 = real
+        // 7 = string
+        // 8 = vector2
+        // 9 = vector3
+        // 10 = vector4 -> also quaternion
+        // 12 = bool
 
-		GameObjectComponent::writeXML(propertiesXML, doc);
+        GameObjectComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "SoundName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->soundName->getString())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "SoundName"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->soundName->getString())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Volume"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->volume->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Volume"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->volume->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Loop"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->loop->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Loop"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->loop->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Stream"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->stream->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "FadeInFadeOut"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fadeInFadeOut->getVector2())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RelativeToListener"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->relativeToListener->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Stream"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->stream->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "PlayWhenInMotion"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->playWhenInMotion->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "RelativeToListener"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->relativeToListener->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "OnSpectrumAnalysisFunctionName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onSpectrumAnalysisFunctionName->getString())));
-		propertiesXML->append_node(propertyXML);
-	}
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "PlayWhenInMotion"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->playWhenInMotion->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-	Ogre::String SimpleSoundComponent::getClassName(void) const
-	{
-		return "SimpleSoundComponent";
-	}
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "OnSpectrumAnalysisFunctionName"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onSpectrumAnalysisFunctionName->getString())));
+        propertiesXML->append_node(propertyXML);
+    }
 
-	Ogre::String SimpleSoundComponent::getParentClassName(void) const
-	{
-		return "GameObjectComponent";
-	}
+    Ogre::String SimpleSoundComponent::getClassName(void) const
+    {
+        return "SimpleSoundComponent";
+    }
 
-	void SimpleSoundComponent::setActivated(bool activated)
+    Ogre::String SimpleSoundComponent::getParentClassName(void) const
+    {
+        return "GameObjectComponent";
+    }
+
+    void SimpleSoundComponent::setActivated(bool activated)
     {
         this->activated->setValue(activated);
         if (false == activated)
@@ -499,13 +512,10 @@ namespace NOWA
                     // duration is read from the configured fadeInOutTime attribute
                     // (y component = fade-out seconds) so it stays consistent with
                     // whatever the user already configured for this sound.
-                    Ogre::Real fadeOutSeconds = 2.0f; /*this->fadeInOutTime->getVector2().y;*/
-     
-                    if (fadeOutSeconds <= 0.0f)
+                    if (this->fadeInFadeOut->getVector2().y > 0)
                     {
-                        fadeOutSeconds = 0.5f; // sensible default if not configured
+                        this->sound->fadeOut(this->fadeInFadeOut->getVector2().y);
                     }
-                    this->sound->fadeOut(fadeOutSeconds);
                 }
             }
         }
@@ -518,299 +528,309 @@ namespace NOWA
         }
     }
 
-	bool SimpleSoundComponent::isActivated(void) const
-	{
-		return this->activated->getBool();
-	}
+    bool SimpleSoundComponent::isActivated(void) const
+    {
+        return this->activated->getBool();
+    }
 
-	void SimpleSoundComponent::setSoundName(const Ogre::String& soundName)
-	{
-		this->soundName->setValue(soundName);
-		this->createSound();
-		this->oldSoundName = soundName;
-	}
+    void SimpleSoundComponent::setSoundName(const Ogre::String& soundName)
+    {
+        this->soundName->setValue(soundName);
+        this->createSound();
+        this->oldSoundName = soundName;
+    }
 
-	Ogre::String SimpleSoundComponent::getSoundName(void) const
-	{
-		return this->soundName->getString();
-	}
+    Ogre::String SimpleSoundComponent::getSoundName(void) const
+    {
+        return this->soundName->getString();
+    }
 
-	void SimpleSoundComponent::setVolume(Ogre::Real volume)
-	{
-		this->volume->setValue(volume);
-		if (nullptr != this->sound)
-		{
-			this->sound->setGain(volume * 0.01f);
-		}
-	}
+    void SimpleSoundComponent::setVolume(Ogre::Real volume)
+    {
+        this->volume->setValue(volume);
+        if (nullptr != this->sound)
+        {
+            this->sound->setGain(volume * 0.01f);
+        }
+    }
 
-	Ogre::Real SimpleSoundComponent::getVolume(void) const
-	{
-		return this->volume->getReal();
-	}
+    Ogre::Real SimpleSoundComponent::getVolume(void) const
+    {
+        return this->volume->getReal();
+    }
 
-	void SimpleSoundComponent::setLoop(bool loop)
-	{
-		this->loop->setValue(loop);
-		if (nullptr != this->sound)
-		{
-			this->sound->setLoop(loop);
-		}
-	}
+    void SimpleSoundComponent::setLoop(bool loop)
+    {
+        this->loop->setValue(loop);
+        if (nullptr != this->sound)
+        {
+            this->sound->setLoop(loop);
+        }
+    }
 
-	bool SimpleSoundComponent::isLooped(void) const
-	{
-		return this->loop->getBool();
-	}
+    bool SimpleSoundComponent::isLooped(void) const
+    {
+        return this->loop->getBool();
+    }
 
-	void SimpleSoundComponent::setStream(bool stream)
-	{
-		if (stream != this->stream->getBool())
-		{
-			this->stream->setValue(stream);
-			this->createSound();
-		}
-	}
+    void SimpleSoundComponent::setStream(bool stream)
+    {
+        if (stream != this->stream->getBool())
+        {
+            this->stream->setValue(stream);
+            this->createSound();
+        }
+    }
 
-	bool SimpleSoundComponent::isStreamed(void) const
-	{
-		return this->stream->getBool();
-	}
+    bool SimpleSoundComponent::isStreamed(void) const
+    {
+        return this->stream->getBool();
+    }
 
-	void SimpleSoundComponent::setRelativeToListener(bool relativeToListener)
-	{
-		this->relativeToListener->setValue(relativeToListener);
-		if (nullptr != this->sound)
-		{
-			this->sound->setRelativeToListener(relativeToListener);
-		}
-	}
+    void SimpleSoundComponent::setRelativeToListener(bool relativeToListener)
+    {
+        this->relativeToListener->setValue(relativeToListener);
+        if (nullptr != this->sound)
+        {
+            this->sound->setRelativeToListener(relativeToListener);
+        }
+    }
 
-	bool SimpleSoundComponent::isRelativeToListener(void) const
-	{
-		return this->relativeToListener->getBool();
-	}
+    bool SimpleSoundComponent::isRelativeToListener(void) const
+    {
+        return this->relativeToListener->getBool();
+    }
 
-	void SimpleSoundComponent::setPlayWhenInMotion(bool playWhenInMotion)
-	{
-		this->playWhenInMotion->setValue(playWhenInMotion);
-	}
+    void SimpleSoundComponent::setPlayWhenInMotion(bool playWhenInMotion)
+    {
+        this->playWhenInMotion->setValue(playWhenInMotion);
+    }
 
-	bool SimpleSoundComponent::getPlayWhenInMotion(void) const
-	{
-		return this->playWhenInMotion->getBool();
-	}
+    bool SimpleSoundComponent::getPlayWhenInMotion(void) const
+    {
+        return this->playWhenInMotion->getBool();
+    }
 
-	void SimpleSoundComponent::enableSpectrumAnalysis(bool enable, int processingSize, int numberOfBands, OgreAL::MathWindows::WindowType windowType, 
-		OgreAL::AudioProcessor::SpectrumPreparationType spectrumPreparationType, Ogre::Real smoothFactor)
-	{
-		if (nullptr != this->sound)
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor]()
+    void SimpleSoundComponent::enableSpectrumAnalysis(bool enable, int processingSize, int numberOfBands, OgreAL::MathWindows::WindowType windowType, OgreAL::AudioProcessor::SpectrumPreparationType spectrumPreparationType, Ogre::Real smoothFactor)
+    {
+        if (nullptr != this->sound)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor]()
             {
                 this->sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
             };
             GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SimpleSoundComponent::enableSpectrumAnalysis");
-		}
-	}
+        }
+    }
 
-	void SimpleSoundComponent::setOnSpectrumAnalysisFunctionName(const Ogre::String& onSpectrumAnalysisFunctionName)
-	{
-		if (nullptr == this->sound)
-			return;
-
-		this->onSpectrumAnalysisFunctionName->setValue(onSpectrumAnalysisFunctionName);
-		this->onSpectrumAnalysisFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onSpectrumAnalysisFunctionName + "()");
-		if (false == onSpectrumAnalysisFunctionName.empty())
-		{
-			this->sound->addSoundSpectrumHandler(this, &SimpleSoundComponent::soundSpectrumFuncPtr);
-		}
-		else
-		{
-			this->sound->removeSoundSpectrumHandler();
-		}
-	}
-
-	Ogre::String SimpleSoundComponent::getOnSpectrumAnalysisFunctionName(void) const
-	{
-		return this->onSpectrumAnalysisFunctionName->getString();
-	}
-
-	Ogre::Real SimpleSoundComponent::getCurrentSpectrumTimePosSec(void) const
-	{
-		if (nullptr != this->sound)
-		{
-			return this->sound->getCurrentSpectrumTimePosSec();
-		}
-		return 0;
-	}
-
-	int SimpleSoundComponent::getActualSpectrumSize(void) const
-	{
-		if (nullptr != this->sound && this->sound->getSpectrumParameter())
-		{
-			return this->sound->getSpectrumParameter()->actualSpectrumSize;
-		}
-		return 0;
-	}
-
-	int SimpleSoundComponent::getFrequency(void) const
-	{
-		if (nullptr != this->sound)
-		{
-			return this->sound->getFrequency();
-		}
-		return 0;
-	}
-
-	bool SimpleSoundComponent::isSpectrumArea(OgreAL::AudioProcessor::SpectrumArea spectrumArea) const
-	{
-		if (nullptr != this->sound && this->sound->getAudioProcessor())
-		{
-			return this->sound->getAudioProcessor()->isSpectrumArea(spectrumArea);
-		}
-		return false;
-	}
-
-	Ogre::Real SimpleSoundComponent::getSpectrumAreaIntensity(OgreAL::AudioProcessor::SpectrumArea area) const
-	{
-		if (nullptr != this->sound && this->sound->getAudioProcessor())
-		{
-			return this->sound->getSpectrumAreaIntensity(area);
-		}
-		return 0.0f;
-	}
-
-	void SimpleSoundComponent::setFadeInOutTime(const Ogre::Vector2& fadeInOutTime)
-	{
-		if (nullptr != this->sound)
-		{
-			this->sound->fadeIn(fadeInOutTime.x);
-			this->sound->fadeOut(fadeInOutTime.y);
-		}
-	}
-
-	void SimpleSoundComponent::setInnerOuterConeAngle(const Ogre::Vector2& innerOuterConeAngle)
-	{
-		if (nullptr != this->sound)
-		{
-			this->sound->setInnerConeAngle(innerOuterConeAngle.x);
-			this->sound->setOuterConeAngle(innerOuterConeAngle.y);
-		}
-	}
-
-	void SimpleSoundComponent::setOuterConeGain(Ogre::Real outerConeGain)
-	{
-		if (nullptr != this->sound)
-		{
-			this->sound->setOuterConeGain(outerConeGain);
-		}
-	}
-
-	Ogre::Real SimpleSoundComponent::getOuterConeGain(void) const
-	{
-		if (nullptr != this->sound)
-		{
-			return this->sound->getOuterConeGain();
-		}
-		return 0.0f;
-	}
-
-	void SimpleSoundComponent::setPitch(Ogre::Real pitch)
-	{
-		if (nullptr != this->sound)
-		{
-			this->sound->setPitch(pitch);
-		}
-	}
-
-	Ogre::Real SimpleSoundComponent::getPitch(void) const
-	{
-		if (nullptr != this->sound)
-		{
-			return this->sound->getPitch();
-		}
-		return 0.0f;
-	}
-
-	void SimpleSoundComponent::setPriority(int priority)
-	{
-		if (nullptr != this->sound)
-		{
-			this->sound->setPriority(static_cast<OgreAL::Sound::Priority>(priority));
-		}
-	}
-
-	int SimpleSoundComponent::getPriority(void) const
-	{
-		if (nullptr != this->sound)
-		{
-			return this->sound->getPriority();
-		}
-		return 0;
-	}
-
-	void SimpleSoundComponent::setDistanceValues(const Ogre::Vector3& distanceValues)
-	{
-		if (nullptr != this->sound)
-		{
-			this->sound->setDistanceValues(distanceValues.x, distanceValues.y, distanceValues.z);
-		}
-	}
-
-	void SimpleSoundComponent::setSecondOffset(Ogre::Real secondOffset)
-	{
-		if (nullptr != this->sound)
-		{
-			this->sound->setSecondOffset(secondOffset);
-		}
-	}
-
-	Ogre::Real SimpleSoundComponent::getSecondOffset(void) const
-	{
-		if (nullptr != this->sound)
-		{
-			return this->sound->getSecondOffset();
-		}
-		return 0.0f;
-	}
-	
-	void SimpleSoundComponent::setVelocity(const Ogre::Vector3& velocity)
-	{
-		if (nullptr != this->sound)
-		{
-			this->sound->setVelocity(velocity);
-		}
-	}
-		
-	Ogre::Vector3 SimpleSoundComponent::getVelocity(void) const
-	{
-		if (nullptr != this->sound)
-		{
-			return this->sound->getVelocity();
-		}
-		return Ogre::Vector3::ZERO;
-	}
-
-	void SimpleSoundComponent::setDirection(const Ogre::Vector3& direction)
-	{
-		if (nullptr != this->sound)
-		{
-			this->sound->setDirection(direction);
-		}
-	}
-
-	Ogre::Vector3 SimpleSoundComponent::getDirection(void) const
-	{
-		if (nullptr != this->sound)
-		{
-			return this->sound->getDirection();
-		}
-		return Ogre::Vector3::NEGATIVE_UNIT_Z;
-	}
-
-	void SimpleSoundComponent::setupSound(void)
+    void SimpleSoundComponent::setOnSpectrumAnalysisFunctionName(const Ogre::String& onSpectrumAnalysisFunctionName)
     {
+        if (nullptr == this->sound)
+        {
+            return;
+        }
+
+        this->onSpectrumAnalysisFunctionName->setValue(onSpectrumAnalysisFunctionName);
+        this->onSpectrumAnalysisFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onSpectrumAnalysisFunctionName + "()");
+        if (false == onSpectrumAnalysisFunctionName.empty())
+        {
+            this->sound->addSoundSpectrumHandler(this, &SimpleSoundComponent::soundSpectrumFuncPtr);
+        }
+        else
+        {
+            this->sound->removeSoundSpectrumHandler();
+        }
+    }
+
+    Ogre::String SimpleSoundComponent::getOnSpectrumAnalysisFunctionName(void) const
+    {
+        return this->onSpectrumAnalysisFunctionName->getString();
+    }
+
+    Ogre::Real SimpleSoundComponent::getCurrentSpectrumTimePosSec(void) const
+    {
+        if (nullptr != this->sound)
+        {
+            return this->sound->getCurrentSpectrumTimePosSec();
+        }
+        return 0;
+    }
+
+    int SimpleSoundComponent::getActualSpectrumSize(void) const
+    {
+        if (nullptr != this->sound && this->sound->getSpectrumParameter())
+        {
+            return this->sound->getSpectrumParameter()->actualSpectrumSize;
+        }
+        return 0;
+    }
+
+    int SimpleSoundComponent::getFrequency(void) const
+    {
+        if (nullptr != this->sound)
+        {
+            return this->sound->getFrequency();
+        }
+        return 0;
+    }
+
+    bool SimpleSoundComponent::isSpectrumArea(OgreAL::AudioProcessor::SpectrumArea spectrumArea) const
+    {
+        if (nullptr != this->sound && this->sound->getAudioProcessor())
+        {
+            return this->sound->getAudioProcessor()->isSpectrumArea(spectrumArea);
+        }
+        return false;
+    }
+
+    Ogre::Real SimpleSoundComponent::getSpectrumAreaIntensity(OgreAL::AudioProcessor::SpectrumArea area) const
+    {
+        if (nullptr != this->sound && this->sound->getAudioProcessor())
+        {
+            return this->sound->getSpectrumAreaIntensity(area);
+        }
+        return 0.0f;
+    }
+
+    void SimpleSoundComponent::setFadeInOutTime(const Ogre::Vector2& fadeInOutTime)
+    {
+        this->fadeInFadeOut->setValue(fadeInOutTime);
+
+        if (nullptr != this->sound)
+        {
+            this->sound->fadeIn(fadeInOutTime.x);
+            this->sound->fadeOut(fadeInOutTime.y);
+        }
+    }
+
+    void SimpleSoundComponent::setInnerOuterConeAngle(const Ogre::Vector2& innerOuterConeAngle)
+    {
+        if (nullptr != this->sound)
+        {
+            this->sound->setInnerConeAngle(innerOuterConeAngle.x);
+            this->sound->setOuterConeAngle(innerOuterConeAngle.y);
+        }
+    }
+
+    void SimpleSoundComponent::setOuterConeGain(Ogre::Real outerConeGain)
+    {
+        if (nullptr != this->sound)
+        {
+            this->sound->setOuterConeGain(outerConeGain);
+        }
+    }
+
+    Ogre::Real SimpleSoundComponent::getOuterConeGain(void) const
+    {
+        if (nullptr != this->sound)
+        {
+            return this->sound->getOuterConeGain();
+        }
+        return 0.0f;
+    }
+
+    void SimpleSoundComponent::setPitch(Ogre::Real pitch)
+    {
+        if (nullptr != this->sound)
+        {
+            this->sound->setPitch(pitch);
+        }
+    }
+
+    Ogre::Real SimpleSoundComponent::getPitch(void) const
+    {
+        if (nullptr != this->sound)
+        {
+            return this->sound->getPitch();
+        }
+        return 0.0f;
+    }
+
+    void SimpleSoundComponent::setPriority(int priority)
+    {
+        if (nullptr != this->sound)
+        {
+            this->sound->setPriority(static_cast<OgreAL::Sound::Priority>(priority));
+        }
+    }
+
+    int SimpleSoundComponent::getPriority(void) const
+    {
+        if (nullptr != this->sound)
+        {
+            return this->sound->getPriority();
+        }
+        return 0;
+    }
+
+    void SimpleSoundComponent::setDistanceValues(const Ogre::Vector3& distanceValues)
+    {
+        if (nullptr != this->sound)
+        {
+            this->sound->setDistanceValues(distanceValues.x, distanceValues.y, distanceValues.z);
+        }
+    }
+
+    void SimpleSoundComponent::setSecondOffset(Ogre::Real secondOffset)
+    {
+        if (nullptr != this->sound)
+        {
+            this->sound->setSecondOffset(secondOffset);
+        }
+    }
+
+    Ogre::Real SimpleSoundComponent::getSecondOffset(void) const
+    {
+        if (nullptr != this->sound)
+        {
+            return this->sound->getSecondOffset();
+        }
+        return 0.0f;
+    }
+
+    void SimpleSoundComponent::setVelocity(const Ogre::Vector3& velocity)
+    {
+        if (nullptr != this->sound)
+        {
+            this->sound->setVelocity(velocity);
+        }
+    }
+
+    Ogre::Vector3 SimpleSoundComponent::getVelocity(void) const
+    {
+        if (nullptr != this->sound)
+        {
+            return this->sound->getVelocity();
+        }
+        return Ogre::Vector3::ZERO;
+    }
+
+    void SimpleSoundComponent::setDirection(const Ogre::Vector3& direction)
+    {
+        if (nullptr != this->sound)
+        {
+            this->sound->setDirection(direction);
+        }
+    }
+
+    Ogre::Vector3 SimpleSoundComponent::getDirection(void) const
+    {
+        if (nullptr != this->sound)
+        {
+            return this->sound->getDirection();
+        }
+        return Ogre::Vector3::NEGATIVE_UNIT_Z;
+    }
+
+    void SimpleSoundComponent::setupSound(void)
+    {
+        if (true == this->bShowDebugData)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[SimpleSoundComponent] setupSound() sound=" + Ogre::String(nullptr == this->sound ? "NULL" : "valid") + " activated=" + Ogre::String(this->activated->getBool() ? "true" : "false") +
+                    " isPlaying=" + Ogre::String(nullptr != this->sound && this->sound->isPlaying() ? "true" : "false") + " isFading=" + Ogre::String(nullptr != this->sound && this->sound->isFading() ? "true" : "false"));
+        }
+
         this->oldPosition = this->gameObjectPtr->getPosition();
         this->oldOrientation = this->gameObjectPtr->getOrientation();
 
@@ -818,48 +838,54 @@ namespace NOWA
         {
             if (nullptr != this->sound)
             {
-                // Do not interrupt sound if it's stably playing AND not in the
-                // middle of a fade-out. A fade-out in progress still reports
-                // isPlaying() == true (the source hasn't stopped yet, gain is
-                // just ramping down) -- without this extra check, re-activating
-                // during a fade-out silently does nothing and the sound is lost
-                // once the fade-out timer eventually stops the source.
-                if (true == this->sound->isPlaying() && false == this->sound->isFading())
+                if (true == this->sound->isPlaying())
                 {
+                    if (true == this->bShowDebugData)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SimpleSoundComponent] setupSound() -> already playing, early return");
+                    }
                     return;
                 }
             }
         }
+
         this->createSound();
+
+        if (true == this->bShowDebugData)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SimpleSoundComponent] setupSound() after createSound: sound=" + Ogre::String(nullptr == this->sound ? "NULL" : "valid"));
+        }
+
         if (nullptr != this->sound)
         {
             if (true == this->activated->getBool())
             {
-                if (this->sound->isPlaying())
+                if (true == this->sound->isPlaying())
                 {
                     this->sound->stop();
                 }
 
-                Ogre::Real fadeInSeconds = 2.0f; /*this->fadeInOutTime->getVector2().x;*/
-                if (fadeInSeconds <= 0.0f)
-                {
-                    fadeInSeconds = 0.5f;
-                }
-
                 this->sound->play();
-                this->sound->fadeIn(fadeInSeconds);
+                if (this->fadeInFadeOut->getVector2().x > 0)
+                {
+                    this->sound->fadeIn(this->fadeInFadeOut->getVector2().x);
+                }
             }
             else
             {
+                if (true == this->bShowDebugData)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SimpleSoundComponent] setupSound() -> activated=false, stop+destroy");
+                }
                 this->sound->stop();
                 this->destroySound();
             }
         }
     }
-		
-	OgreAL::Sound* SimpleSoundComponent::getSound(void) const
-	{
-		return this->sound;
-	}
+
+    OgreAL::Sound* SimpleSoundComponent::getSound(void) const
+    {
+        return this->sound;
+    }
 
 }; // namespace end

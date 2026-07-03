@@ -427,6 +427,18 @@ namespace NOWA
 
         int getSegmentCount(void) const;
 
+        Ogre::Vector3 getRoadConnectionPoint(bool atStart) const;
+
+        Ogre::Vector3 getRoadApproachDirection(bool atStart) const;
+
+        void addRoadSegmentBatch(const Ogre::Vector3& start, const Ogre::Vector3& end);
+
+        void finalizeBatch(void);
+
+        void beginBatch(void);
+
+        void endBatch(void);
+
     public:
         // Static attribute names
         static Ogre::String AttrActivated(void)
@@ -779,6 +791,7 @@ namespace NOWA
         int snapToRoadSegmentIdx;      // which segment we're snapping to
         float snapToRoadT;             // parametric t [0,1] along that segment
         Ogre::Real snapRadius;         // = roadWidth * 1.5f, set in postInit
+        bool bBatchMode;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

@@ -902,14 +902,12 @@ namespace OgreAL
 		if (mFadeMode != FADE_NONE)
 		{
 			mRunning += SoundManager::getSingletonPtr()->_getLastDeltaTime();
-			// Calculate volume between min and max Gain over fade time
 			Ogre::Real delta = mMaxGain - mMinGain;
 			Ogre::Real gain;
 
 			if (mFadeMode == FADE_IN)
 			{
 				gain = mMinGain + (delta * mRunning / mFadeTime);
-				// Clamp & stop if needed
 				if (gain > mMaxGain)
 				{
 					gain = mMaxGain;
@@ -919,15 +917,20 @@ namespace OgreAL
 			else if (mFadeMode == FADE_OUT)
 			{
 				gain = mMaxGain - (delta * mRunning / mFadeTime);
-				// Clamp & stop if needed
 				if (gain < mMinGain)
 				{
 					gain = mMinGain;
 					mFadeMode = FADE_NONE;
+
+					// Stop the source when fade-out completes. Without this the
+					// sound stays isPlaying()=true at gain=0 indefinitely --
+					// a zombie state where isFading()=false AND isPlaying()=true,
+					// causing setupSound() to treat it as "stably playing" and
+					// bail out when setActivated(true) is called afterward.
+					stop();
 				}
 			}
 
-			// Set the adjusted gain
 			setGain(gain);
 		}
 	}

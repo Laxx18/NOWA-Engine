@@ -31,10 +31,6 @@ namespace OgreNewt
 
     ndUnsigned32 Raycast::RayCastCallback::OnRayPrecastAction(const ndBody* const body, const ndShapeInstance* const shape)
     {
-        // TODO: Take parent OnRayPrecastAction into account?
-        // ndUnsigned32 result = ndRayCastClosestHitCallback::OnRayPrecastAction(body, shape);
-
-        // Map to OgreNewt::Body via notify
         ndBodyKinematic* const kBody = const_cast<ndBody*>(body)->GetAsBodyKinematic();
         if (!kBody)
         {
@@ -52,9 +48,24 @@ namespace OgreNewt
                 }
 
                 mOwner->mBodyAdded = false;
-                mOwner->mLastBody = ogreBody;
 
-                return mOwner->userPreFilterCallback(ogreBody) ? 1u : 0u;
+                // Only set mLastBody AFTER the filter passes.
+                // Previously mLastBody was set before calling userPreFilterCallback,
+                // so a rejected body (e.g. the player's own body) left mLastBody
+                // pointing to the rejected body. If no subsequent body was hit,
+                // BasicRaycast::go() then recorded the rejected body as a valid hit.
+                // This caused OcclusionRaycast to return the player's own body as
+                // an occlusion hit every time the ray passed through it first,
+                // making currentCollisionDistance flicker between desiredDistance
+                // and a slightly reduced value -- visible as camera flicker.
+                if (false == mOwner->userPreFilterCallback(ogreBody))
+                {
+                    // Rejected -- do NOT store in mLastBody.
+                    return 0u;
+                }
+
+                mOwner->mLastBody = ogreBody;
+                return 1u;
             }
         }
         return 0;

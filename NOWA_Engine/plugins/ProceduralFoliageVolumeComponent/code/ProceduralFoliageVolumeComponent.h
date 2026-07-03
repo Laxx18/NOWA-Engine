@@ -9,7 +9,7 @@ GPL v3
 
 #include "NOWAPrecompiled.h"
 #include "OgrePlugin.h"
-#include "gameobject/GameObjectComponent.h"
+#include "gameobject/ProceduralFoliageVolumeComponentBase.h"
 #include "gameobject/GameObjectController.h"
 #include "main/Events.h"
 #include <unordered_map>
@@ -211,7 +211,7 @@ namespace NOWA
      * - connect() -> Generates vegetation (simulation start)
      * - disconnect() -> Optionally clears (simulation stop)
      */
-    class EXPORTED ProceduralFoliageVolumeComponent : public GameObjectComponent, public Ogre::Plugin
+    class EXPORTED ProceduralFoliageVolumeComponent : public ProceduralFoliageVolumeComponentBase, public Ogre::Plugin
     {
     public:
         typedef boost::shared_ptr<ProceduralFoliageVolumeComponent> ProceduralFoliageVolumeComponentPtr;
@@ -319,6 +319,8 @@ namespace NOWA
         {
             return "GameObjectComponent";
         }
+
+        virtual void setDistanceMultiplier(Ogre::Real distanceMulitplier) override;
 
         static unsigned int getStaticClassId(void)
         {
@@ -889,6 +891,8 @@ namespace NOWA
         Ogre::RaySceneQuery* raySceneQuery;
         Ogre::SphereSceneQuery* sphereSceneQuery;
         PhysicsArtifactComponent* physicsArtifactComponent;
+
+        Ogre::Real currentDistanceMultiplier;
     };
 
 }; // namespace end

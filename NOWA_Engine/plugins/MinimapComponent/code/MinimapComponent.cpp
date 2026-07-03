@@ -46,6 +46,9 @@ namespace NOWA
 		terraComponent(nullptr),
 		timeSinceLastUpdate(0.25f),
 		lastMapRotation(0.0f),
+        toolTipPanel(nullptr),
+        toolTipText(nullptr),
+        compassLogCounter(0u),
 		activated(new Variant(MinimapComponent::AttrActivated(), true, this->attributes)),
 		targetId(new Variant(MinimapComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
 		textureSize(new Variant(MinimapComponent::AttrTextureSize(), static_cast<unsigned int>(256), this->attributes)),
@@ -60,7 +63,8 @@ namespace NOWA
 		cameraHeight(new Variant(MinimapComponent::AttrCameraHeight(), Ogre::Real(10.0f), this->attributes)),
 		minimapMask(new Variant(MinimapComponent::AttrMinimapMask(), "", this->attributes)),
 		useRoundMinimap(new Variant(MinimapComponent::AttrUseRoundMinimap(), false, this->attributes)),
-		rotateMinimap(new Variant(MinimapComponent::AttrRotateMinimap(), false, this->attributes))
+		rotateMinimap(new Variant(MinimapComponent::AttrRotateMinimap(), false, this->attributes)),
+		compassObjectCount(new Variant(MinimapComponent::AttrCompassObjectCount(), static_cast<unsigned int>(0), this->attributes))
 	{
 		this->targetId->setDescription("Sets the target id for the game object, which shall be tracked.");
 		this->textureSize->setDescription("Sets the minimap texture size in pixels. Note: The texture is quadratic. Also note: The higher the texture size, the less performant the application will run.");
@@ -82,6 +86,10 @@ namespace NOWA
 
 		this->useRoundMinimap->setDescription("If whole scene visible is set to false, sets whether to render a rounded minimap texture, for more sophistacted effects. This can e.g. be used in conjunction with the minimap mask to create a nice minimap overlay.");
 		this->rotateMinimap->setDescription("If whole scene visible is set to false, sets whether the minimap is rotated according to the target game object orientation.");
+
+		this->compassObjectCount->setDescription("Sets the count of generic compass objects to track (e.g. ship, quest target, NPC). Each gets its own CompassGameObjectId/CompassImage/CompassToolTipText. "
+			"In WholeSceneVisible mode shown at true minimap position. In follow mode shown as a rim marker when outside the visible area.");
+		this->compassObjectCount->addUserData(GameObject::AttrActionNeedRefresh());
 	}
 
 	MinimapComponent::~MinimapComponent(void)
@@ -186,7 +194,51 @@ namespace NOWA
 			this->rotateMinimap->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassObjectCount")
+		{
+			this->compassObjectCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
+		if (this->compassGameObjectIds.size() < this->compassObjectCount->getUInt())
+		{
+			this->compassGameObjectIds.resize(this->compassObjectCount->getUInt());
+			this->compassImages.resize(this->compassObjectCount->getUInt());
+			this->compassToolTipTexts.resize(this->compassObjectCount->getUInt());
+		}
+
+		for (size_t i = 0; i < this->compassGameObjectIds.size(); i++)
+		{
+			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassGameObjectId" + Ogre::StringConverter::toString(i))
+			{
+				if (nullptr == this->compassGameObjectIds[i])
+					this->compassGameObjectIds[i] = new Variant(MinimapComponent::AttrCompassGameObjectId() + Ogre::StringConverter::toString(i), XMLConverter::getAttribUnsignedLong(propertyElement, "data"), this->attributes, true);
+				else
+					this->compassGameObjectIds[i]->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+				propertyElement = propertyElement->next_sibling("property");
+			}
+			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassImage" + Ogre::StringConverter::toString(i))
+			{
+				if (nullptr == this->compassImages[i])
+				{
+					this->compassImages[i] = new Variant(MinimapComponent::AttrCompassImage() + Ogre::StringConverter::toString(i), XMLConverter::getAttrib(propertyElement, "data"), this->attributes);
+					this->compassImages[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Minimap");
+				}
+				else
+					this->compassImages[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+				propertyElement = propertyElement->next_sibling("property");
+			}
+			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassToolTipText" + Ogre::StringConverter::toString(i))
+			{
+				if (nullptr == this->compassToolTipTexts[i])
+					this->compassToolTipTexts[i] = new Variant(MinimapComponent::AttrCompassToolTipText() + Ogre::StringConverter::toString(i), XMLConverter::getAttrib(propertyElement, "data"), this->attributes);
+				else
+					this->compassToolTipTexts[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+				propertyElement = propertyElement->next_sibling("property");
+			}
+		}
+
 		return true;
 	}
 
@@ -216,25 +268,57 @@ namespace NOWA
 		if (false == notSimulating && nullptr != this->targetGameObject)
 		{
 			this->timeSinceLastUpdate += dt;
-
-			if (this->timeSinceLastUpdate >= 0.25f)
+			const bool doThrottled = (this->timeSinceLastUpdate >= 0.25f);
+			if (true == doThrottled)
 			{
-				if (true == this->useFogOfWar->getBool())
-				{
-					auto closureFunction = [this](Ogre::Real renderDt)
-					{
-						this->updateFogOfWarTexture(this->targetGameObject->getPosition(), this->visibilityRadius->getReal());
-					};
-					Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-					NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-				}
-
 				this->timeSinceLastUpdate = 0.0f;
 			}
 
+			// scrollMinimap only calls CameraComponent::setCameraPosition/Orientation, which are safe to call
+			// from the logic thread directly -- no closure needed for it.
 			if (false == this->wholeSceneVisible->getBool())
 			{
 				this->scrollMinimap(this->targetGameObject->getPosition());
+			}
+
+			// Snapshot all values the closure will read from the logic thread here (render thread must not access
+			// Variant values or Ogre game-object state directly).
+			const bool wholeScene = this->wholeSceneVisible->getBool();
+			const bool useFoW = this->useFogOfWar->getBool();
+			const bool hasCompass = (0u != this->compassObjectCount->getUInt());
+			const Ogre::Vector3 targetPos = this->targetGameObject->getPosition();
+			const Ogre::Real visRadius = this->visibilityRadius->getReal();
+
+			// Decide whether the render-thread closure needs to run this tick:
+			//   Follow mode  -- every tick (compass rim markers must be smooth, like scrollMinimap)
+			//   Overview mode -- only when the 0.25s throttle fires (camera is stationary)
+			const bool shouldUpdate = (false == wholeScene) || (true == doThrottled);
+
+			if (true == shouldUpdate)
+			{
+				// Single closure, single ID -- replaces the previous registration via updateTrackedClosure's
+				// replace-if-same-id semantics, so only one closure is ever live at a time, and no stale
+				// registrations accumulate from previous ticks.
+				auto closureFunction = [this, doThrottled, wholeScene, useFoW, hasCompass, targetPos, visRadius](Ogre::Real renderDt)
+				{
+					// FogOfWar: only on throttled ticks (expensive staging-texture write).
+					if (true == useFoW && true == doThrottled)
+					{
+						this->updateFogOfWarTexture(targetPos, visRadius);
+					}
+
+					// Compass: every tick in follow mode (smooth rim movement), throttled in overview mode.
+					if (true == hasCompass)
+					{
+						if (false == wholeScene || true == doThrottled)
+						{
+							this->updateCompassObjects();
+						}
+					}
+				};
+
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 			}
 		}
 	}
@@ -437,6 +521,10 @@ namespace NOWA
                     this->clearFogOfWar();
                 }
             }
+
+            // Generic compass objects -- created after minimapWidget exists.
+            this->generateCompassObjects();
+            this->initToolTipData();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "MinimapComponent::setupMinimapWithFogOfWar");
 	}
@@ -963,6 +1051,30 @@ namespace NOWA
                     this->fogOfWarStagingTexture = nullptr;
                 }
 
+                for (size_t i = 0; i < this->compassObjectWidgets.size(); i++)
+                {
+                    if (nullptr != this->compassObjectWidgets[i])
+                    {
+                        MyGUI::Gui::getInstancePtr()->destroyWidget(this->compassObjectWidgets[i]);
+                        this->compassObjectWidgets[i] = nullptr;
+                    }
+                }
+                this->compassObjectWidgets.clear();
+                for (size_t i = 0; i < this->compassObjectDistanceTexts.size(); i++)
+                {
+                    if (nullptr != this->compassObjectDistanceTexts[i])
+                    {
+                        MyGUI::Gui::getInstancePtr()->destroyWidget(this->compassObjectDistanceTexts[i]);
+                        this->compassObjectDistanceTexts[i] = nullptr;
+                    }
+                }
+                this->compassObjectDistanceTexts.clear();
+
+                if (nullptr != this->toolTipPanel)
+                {
+                    this->toolTipPanel->setVisible(false);
+                }
+
                 this->workspace = nullptr;
                 this->externalChannels.clear();
             };
@@ -1232,6 +1344,28 @@ namespace NOWA
 		{
 			this->setRotateMinimap(attribute->getBool());
 		}
+		else if (MinimapComponent::AttrCompassObjectCount() == attribute->getName())
+		{
+			this->setCompassObjectCount(attribute->getUInt());
+		}
+		else
+		{
+			for (unsigned int i = 0; i < static_cast<unsigned int>(this->compassGameObjectIds.size()); i++)
+			{
+				if (MinimapComponent::AttrCompassGameObjectId() + Ogre::StringConverter::toString(i) == attribute->getName())
+					this->setCompassGameObjectId(i, attribute->getULong());
+			}
+			for (unsigned int i = 0; i < static_cast<unsigned int>(this->compassImages.size()); i++)
+			{
+				if (MinimapComponent::AttrCompassImage() + Ogre::StringConverter::toString(i) == attribute->getName())
+					this->setCompassImage(i, attribute->getString());
+			}
+			for (unsigned int i = 0; i < static_cast<unsigned int>(this->compassToolTipTexts.size()); i++)
+			{
+				if (MinimapComponent::AttrCompassToolTipText() + Ogre::StringConverter::toString(i) == attribute->getName())
+					this->setCompassToolTipText(i, attribute->getString());
+			}
+		}
 	}
 
 	void MinimapComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -1334,6 +1468,33 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "RotateMinimap"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rotateMinimap->getBool())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "CompassObjectCount"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassObjectCount->getUInt())));
+		propertiesXML->append_node(propertyXML);
+
+		for (size_t i = 0; i < this->compassGameObjectIds.size(); i++)
+		{
+			propertyXML = doc.allocate_node(node_element, "property");
+			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CompassGameObjectId" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassGameObjectIds[i]->getULong())));
+			propertiesXML->append_node(propertyXML);
+
+			propertyXML = doc.allocate_node(node_element, "property");
+			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CompassImage" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassImages[i]->getString())));
+			propertiesXML->append_node(propertyXML);
+
+			propertyXML = doc.allocate_node(node_element, "property");
+			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CompassToolTipText" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassToolTipTexts[i]->getString())));
+			propertiesXML->append_node(propertyXML);
+		}
 	}
 
 	Ogre::String MinimapComponent::getClassName(void) const
@@ -1625,6 +1786,383 @@ namespace NOWA
 		return makeStrongPtr<MinimapComponent>(gameObject->getComponentFromName<MinimapComponent>(name)).get();
 	}
 
+	void setCompassGameObjectId(MinimapComponent* instance, unsigned int index, const Ogre::String& id)
+	{
+		instance->setCompassGameObjectId(index, Ogre::StringConverter::parseUnsignedLong(id));
+	}
+
+	Ogre::String getCompassGameObjectId(MinimapComponent* instance, unsigned int index)
+	{
+		return Ogre::StringConverter::toString(instance->getCompassGameObjectId(index));
+	}
+
+	// ─── Compass implementation ───────────────────────────────────────────────────
+
+	void MinimapComponent::setCompassObjectCount(unsigned int compassObjectCount)
+	{
+		this->compassObjectCount->setValue(compassObjectCount);
+		unsigned int oldSize = static_cast<unsigned int>(this->compassGameObjectIds.size());
+		bool changed = (compassObjectCount != oldSize);
+
+		if (compassObjectCount > oldSize)
+		{
+			this->compassGameObjectIds.resize(compassObjectCount);
+			this->compassImages.resize(compassObjectCount);
+			this->compassToolTipTexts.resize(compassObjectCount);
+			for (unsigned int i = oldSize; i < compassObjectCount; i++)
+			{
+				this->compassGameObjectIds[i] = new Variant(MinimapComponent::AttrCompassGameObjectId() + Ogre::StringConverter::toString(i), static_cast<unsigned long>(0), this->attributes, true);
+				this->compassImages[i] = new Variant(MinimapComponent::AttrCompassImage() + Ogre::StringConverter::toString(i), "", this->attributes);
+				this->compassImages[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Minimap");
+				this->compassToolTipTexts[i] = new Variant(MinimapComponent::AttrCompassToolTipText() + Ogre::StringConverter::toString(i), "", this->attributes);
+			}
+		}
+		else if (compassObjectCount < oldSize)
+		{
+			this->eraseVariants(this->compassGameObjectIds, compassObjectCount);
+			this->eraseVariants(this->compassImages, compassObjectCount);
+			this->eraseVariants(this->compassToolTipTexts, compassObjectCount);
+		}
+
+		if (true == changed && nullptr != this->minimapWidget)
+		{
+			NOWA::GraphicsModule::RenderCommand cmd = [this] { this->generateCompassObjects(); };
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MinimapComponent::setCompassObjectCount");
+		}
+	}
+
+	unsigned int MinimapComponent::getCompassObjectCount(void) const
+	{
+		return this->compassObjectCount->getUInt();
+	}
+
+	void MinimapComponent::setCompassGameObjectId(unsigned int index, unsigned long compassGameObjectId)
+	{
+		if (index >= this->compassGameObjectIds.size()) return;
+		this->compassGameObjectIds[index]->setValue(compassGameObjectId);
+
+		if (0 == compassGameObjectId && index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+		{
+			NOWA::GraphicsModule::RenderCommand cmd = [this, index]
+			{
+				if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+					this->compassObjectWidgets[index]->setVisible(false);
+				if (index < this->compassObjectDistanceTexts.size() && nullptr != this->compassObjectDistanceTexts[index])
+					this->compassObjectDistanceTexts[index]->setVisible(false);
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MinimapComponent::setCompassGameObjectId hide");
+		}
+	}
+
+	unsigned long MinimapComponent::getCompassGameObjectId(unsigned int index) const
+	{
+		if (index >= this->compassGameObjectIds.size()) return 0ul;
+		return this->compassGameObjectIds[index]->getULong();
+	}
+
+	void MinimapComponent::setCompassImage(unsigned int index, const Ogre::String& compassImage)
+	{
+		if (index >= this->compassImages.size()) return;
+		this->compassImages[index]->setValue(compassImage);
+
+		NOWA::GraphicsModule::RenderCommand cmd = [this, index, compassImage]
+		{
+			if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+			{
+				if (false == compassImage.empty())
+				{
+					this->compassObjectWidgets[index]->setImageTexture(compassImage);
+					this->compassObjectWidgets[index]->setImageRect(MyGUI::IntRect(0, 0, this->compassObjectWidgets[index]->getImageSize().width, this->compassObjectWidgets[index]->getImageSize().height));
+				}
+				else
+				{
+					this->generateCompassObjects();
+				}
+			}
+			else if (false == compassImage.empty())
+			{
+				this->generateCompassObjects();
+			}
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MinimapComponent::setCompassImage");
+	}
+
+	Ogre::String MinimapComponent::getCompassImage(unsigned int index) const
+	{
+		if (index >= this->compassImages.size()) return "";
+		return this->compassImages[index]->getString();
+	}
+
+	void MinimapComponent::setCompassToolTipText(unsigned int index, const Ogre::String& compassToolTipText)
+	{
+		if (index >= this->compassToolTipTexts.size()) return;
+		this->compassToolTipTexts[index]->setValue(compassToolTipText);
+
+		if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+		{
+			NOWA::GraphicsModule::RenderCommand cmd = [this, index, compassToolTipText]
+			{
+				if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+				{
+					this->compassObjectWidgets[index]->setNeedMouseFocus(false == compassToolTipText.empty());
+					this->compassObjectWidgets[index]->setNeedToolTip(false == compassToolTipText.empty());
+					this->compassObjectWidgets[index]->setUserString("ToolTip", compassToolTipText);
+				}
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MinimapComponent::setCompassToolTipText");
+		}
+	}
+
+	Ogre::String MinimapComponent::getCompassToolTipText(unsigned int index) const
+	{
+		if (index >= this->compassToolTipTexts.size()) return "";
+		return this->compassToolTipTexts[index]->getString();
+	}
+
+	void MinimapComponent::generateCompassObjects(void)
+	{
+		this->destroyCompassObjects();
+		if (nullptr == this->minimapWidget) return;
+
+		for (unsigned int i = 0; i < this->compassObjectCount->getUInt(); i++)
+		{
+			Ogre::String image = (i < this->compassImages.size() && nullptr != this->compassImages[i]) ? this->compassImages[i]->getString() : "";
+			if (true == image.empty())
+			{
+				this->compassObjectWidgets.push_back(nullptr);
+				this->compassObjectDistanceTexts.push_back(nullptr);
+				continue;
+			}
+
+			MyGUI::ImageBox* markerWidget = this->minimapWidget->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(0, 0, 32, 32), MyGUI::Align::Default);
+			markerWidget->setImageTexture(image);
+			markerWidget->setNeedMouseFocus(false);
+			markerWidget->setDepth(3);
+			markerWidget->setVisible(false);
+
+			Ogre::String toolTip = (i < this->compassToolTipTexts.size() && nullptr != this->compassToolTipTexts[i]) ? this->compassToolTipTexts[i]->getString() : "";
+			markerWidget->setNeedMouseFocus(false == toolTip.empty());
+			markerWidget->setNeedToolTip(false == toolTip.empty());
+			if (false == toolTip.empty())
+			{
+				markerWidget->setUserString("ToolTip", toolTip);
+			}
+			markerWidget->eventToolTip += MyGUI::newDelegate(this, &MinimapComponent::notifyToolTip);
+			this->compassObjectWidgets.push_back(markerWidget);
+
+			MyGUI::TextBox* distanceWidget = this->minimapWidget->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(0, 0, 90, 16), MyGUI::Align::Default);
+			distanceWidget->setTextAlign(MyGUI::Align::Center);
+			distanceWidget->setFontHeight(12);
+			distanceWidget->setTextColour(MyGUI::Colour::White);
+			distanceWidget->setNeedMouseFocus(false);
+			distanceWidget->setDepth(4);
+			distanceWidget->setVisible(false);
+			this->compassObjectDistanceTexts.push_back(distanceWidget);
+		}
+	}
+
+	void MinimapComponent::destroyCompassObjects(void)
+	{
+		for (size_t i = 0; i < this->compassObjectWidgets.size(); i++)
+		{
+			if (nullptr != this->compassObjectWidgets[i])
+				MyGUI::Gui::getInstancePtr()->destroyWidget(this->compassObjectWidgets[i]);
+		}
+		this->compassObjectWidgets.clear();
+		for (size_t i = 0; i < this->compassObjectDistanceTexts.size(); i++)
+		{
+			if (nullptr != this->compassObjectDistanceTexts[i])
+				MyGUI::Gui::getInstancePtr()->destroyWidget(this->compassObjectDistanceTexts[i]);
+		}
+		this->compassObjectDistanceTexts.clear();
+	}
+
+	void MinimapComponent::updateCompassObjects(void)
+	{
+		for (unsigned int i = 0; i < this->compassObjectCount->getUInt(); i++)
+		{
+			this->updateSingleCompassObject(i);
+		}
+	}
+
+	void MinimapComponent::updateSingleCompassObject(unsigned int index)
+	{
+		if (index >= this->compassObjectWidgets.size() || nullptr == this->compassObjectWidgets[index]
+			|| nullptr == this->cameraComponent || nullptr == this->minimapWidget)
+		{
+			return;
+		}
+
+		MyGUI::ImageBox* markerWidget = this->compassObjectWidgets[index];
+		MyGUI::TextBox* distanceWidget = (index < this->compassObjectDistanceTexts.size()) ? this->compassObjectDistanceTexts[index] : nullptr;
+
+		unsigned long compassId = (index < this->compassGameObjectIds.size() && nullptr != this->compassGameObjectIds[index]) ? this->compassGameObjectIds[index]->getULong() : 0ul;
+		if (0 == compassId)
+		{
+			markerWidget->setVisible(false);
+			if (nullptr != distanceWidget) distanceWidget->setVisible(false);
+			return;
+		}
+
+		const auto& compassGoPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(compassId);
+		if (nullptr == compassGoPtr)
+		{
+			markerWidget->setVisible(false);
+			if (nullptr != distanceWidget) distanceWidget->setVisible(false);
+			return;
+		}
+
+		const Ogre::Vector3 compassWorldPos = compassGoPtr->getPosition();
+		const Ogre::Vector3 targetPos = (nullptr != this->targetGameObject) ? this->targetGameObject->getPosition() : Ogre::Vector3::ZERO;
+		const Ogre::Real distanceMeters = (compassWorldPos - targetPos).length();
+		const Ogre::String distanceText = this->formatDistanceMeters(distanceMeters);
+
+		// Same camera-projection approach as PlanetMinimapComponent: transform world offset through the minimap
+		// camera's current orientation, then scale to pixels via the camera's view footprint. This correctly
+		// handles both WholeSceneVisible and follow (scroll) mode without needing a separate code path.
+		Ogre::Vector3 toObjectWorld = compassWorldPos - this->cameraComponent->getCamera()->getPosition();
+		if (toObjectWorld.squaredLength() < 0.000001f)
+		{
+			markerWidget->setVisible(false);
+			if (nullptr != distanceWidget) distanceWidget->setVisible(false);
+			return;
+		}
+
+		Ogre::Vector3 toObjectLocal = this->cameraComponent->getCamera()->getOrientation().Inverse() * toObjectWorld;
+
+		Ogre::Real worldOffsetX = toObjectLocal.x;
+		Ogre::Real worldOffsetY = toObjectLocal.y;
+
+		Ogre::Real fovY = this->cameraComponent->getCamera()->getFOVy().valueRadians();
+		Ogre::Real aspectRatio = this->cameraComponent->getCamera()->getAspectRatio();
+		Ogre::Real camDist = this->cameraComponent->getCamera()->getPosition().y;
+		if (camDist < 0.001f) camDist = this->cameraHeight->getReal();
+		Ogre::Real viewHeightWorld = 2.0f * camDist * tan(fovY / 2.0f);
+		Ogre::Real viewWidthWorld = viewHeightWorld * aspectRatio;
+
+		if (viewWidthWorld < 0.0001f || viewHeightWorld < 0.0001f) return;
+
+		Ogre::Real pixelsPerWorldUnitX = static_cast<Ogre::Real>(this->minimapWidget->getWidth()) / viewWidthWorld;
+		Ogre::Real pixelsPerWorldUnitY = static_cast<Ogre::Real>(this->minimapWidget->getHeight()) / viewHeightWorld;
+
+		Ogre::Real pixelOffsetX = worldOffsetX * pixelsPerWorldUnitX;
+		Ogre::Real pixelOffsetY = worldOffsetY * pixelsPerWorldUnitY;
+
+		const Ogre::Real halfWidth = static_cast<Ogre::Real>(this->minimapWidget->getWidth()) * 0.5f;
+		const Ogre::Real halfHeight = static_cast<Ogre::Real>(this->minimapWidget->getHeight()) * 0.5f;
+		const Ogre::Real ringMarginX = static_cast<Ogre::Real>(markerWidget->getWidth()) * 0.5f + 2.0f;
+		const Ogre::Real ringMarginY = static_cast<Ogre::Real>(markerWidget->getHeight()) * 0.5f + 2.0f;
+		const Ogre::Real ringRadiusX = halfWidth - ringMarginX;
+		const Ogre::Real ringRadiusY = halfHeight - ringMarginY;
+
+		// Elliptical clamp -- object in view: true position; out of view: rim at correct bearing.
+		Ogre::Real normalizedX = (ringRadiusX > 0.0001f) ? (pixelOffsetX / ringRadiusX) : 0.0f;
+		Ogre::Real normalizedY = (ringRadiusY > 0.0001f) ? (pixelOffsetY / ringRadiusY) : 0.0f;
+		Ogre::Real normalizedMagnitude = std::sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
+		if (normalizedMagnitude > 1.0f)
+		{
+			pixelOffsetX /= normalizedMagnitude;
+			pixelOffsetY /= normalizedMagnitude;
+		}
+
+		const int markerHalfWidth = static_cast<int>(markerWidget->getWidth() / 2);
+		const int markerHalfHeight = static_cast<int>(markerWidget->getHeight() / 2);
+		markerWidget->setVisible(true);
+		const int markerCenterX = static_cast<int>(halfWidth + pixelOffsetX);
+		const int markerCenterY = static_cast<int>(halfHeight - pixelOffsetY);
+		markerWidget->setPosition(markerCenterX - markerHalfWidth, markerCenterY - markerHalfHeight);
+
+		if (nullptr != distanceWidget)
+		{
+			distanceWidget->setCaption(distanceText);
+			distanceWidget->setVisible(true);
+			this->placeDistanceLabel(distanceWidget, markerCenterX, markerCenterY, markerHalfWidth, markerHalfHeight, this->minimapWidget->getWidth(), this->minimapWidget->getHeight());
+		}
+	}
+
+	void MinimapComponent::initToolTipData(void)
+	{
+		if (nullptr != this->toolTipPanel) return;
+
+		MyGUI::LayoutManager::getInstance().loadLayout("ToolTip2.layout");
+		this->toolTipPanel = MyGUI::Gui::getInstance().findWidget<MyGUI::Widget>("tooltipPanel");
+		this->toolTipText = MyGUI::Gui::getInstance().findWidget<MyGUI::EditBox>("text_Desc");
+
+		if (nullptr != this->toolTipPanel)
+			this->toolTipPanel->setVisible(false);
+	}
+
+	void MinimapComponent::notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo& info)
+	{
+		if (nullptr == this->toolTipPanel || nullptr == this->toolTipText) return;
+
+		if (info.type == MyGUI::ToolTipInfo::Show)
+		{
+			const MyGUI::IntSize& viewSize = this->toolTipPanel->getParentSize();
+			this->toolTipPanel->setSize(viewSize.width / 2, viewSize.height / 2);
+			MyGUI::UString tipText = sender->getUserString("ToolTip");
+			if (true == tipText.empty()) return;
+			this->toolTipText->setCaption(tipText);
+			const MyGUI::IntSize& textSize = this->toolTipText->getTextSize();
+			this->toolTipPanel->setSize(textSize.width + 6, textSize.height + 6);
+			this->toolTipPanel->setVisible(true);
+			this->boundedMove(this->toolTipPanel, info.point);
+		}
+		else if (info.type == MyGUI::ToolTipInfo::Hide)
+		{
+			this->toolTipPanel->setVisible(false);
+		}
+		else if (info.type == MyGUI::ToolTipInfo::Move)
+		{
+			this->boundedMove(this->toolTipPanel, info.point);
+		}
+	}
+
+	void MinimapComponent::boundedMove(MyGUI::Widget* moving, const MyGUI::IntPoint& point)
+	{
+		if (nullptr == moving) return;
+		const MyGUI::IntPoint offset(16, 16);
+		MyGUI::IntPoint boundedPoint = point + offset;
+		const MyGUI::IntSize& size = moving->getSize();
+		const MyGUI::IntSize& viewSize = moving->getParentSize();
+		if ((boundedPoint.left + size.width) > viewSize.width)
+			boundedPoint.left -= offset.left * 2 + size.width;
+		if ((boundedPoint.top + size.height) > viewSize.height)
+			boundedPoint.top -= offset.top * 2 + size.height;
+		moving->setPosition(boundedPoint);
+	}
+
+	void MinimapComponent::placeDistanceLabel(MyGUI::TextBox* distanceWidget, int markerCenterX, int markerCenterY, int markerHalfWidth, int markerHalfHeight, int widgetWidth, int widgetHeight) const
+	{
+		if (nullptr == distanceWidget) return;
+		const int labelW = distanceWidget->getWidth();
+		const int labelH = distanceWidget->getHeight();
+		const int gap = 2;
+		const int spaceBelow = widgetHeight - (markerCenterY + markerHalfHeight + gap + labelH);
+		const int spaceAbove = markerCenterY - markerHalfHeight - gap - labelH;
+		const int spaceRight = widgetWidth - (markerCenterX + markerHalfWidth + gap + labelW);
+		const int spaceLeft = markerCenterX - markerHalfWidth - gap - labelW;
+
+		int posX, posY;
+		if (spaceBelow >= 0) { posX = markerCenterX - labelW / 2; posY = markerCenterY + markerHalfHeight + gap; }
+		else if (spaceAbove >= 0) { posX = markerCenterX - labelW / 2; posY = markerCenterY - markerHalfHeight - gap - labelH; }
+		else if (spaceRight >= 0) { posX = markerCenterX + markerHalfWidth + gap; posY = markerCenterY - labelH / 2; }
+		else if (spaceLeft >= 0) { posX = markerCenterX - markerHalfWidth - gap - labelW; posY = markerCenterY - labelH / 2; }
+		else { posX = markerCenterX - labelW / 2; posY = markerCenterY - markerHalfHeight - gap - labelH; }
+
+		if (posX < 0) posX = 0;
+		if (posX + labelW > widgetWidth) posX = widgetWidth - labelW;
+		if (posY < 0) posY = 0;
+		if (posY + labelH > widgetHeight) posY = widgetHeight - labelH;
+		distanceWidget->setPosition(posX, posY);
+	}
+
+	Ogre::String MinimapComponent::formatDistanceMeters(Ogre::Real distanceMeters) const
+	{
+		if (distanceMeters < 0.0f) distanceMeters = 0.0f;
+		return Ogre::StringConverter::toString(static_cast<int>(distanceMeters + 0.5f)) + " m";
+	}
+
 	void setTargetId(MinimapComponent* instance, const Ogre::String& targetId)
     {
         instance->setTargetId(Ogre::StringConverter::parseUnsignedLong(targetId));
@@ -1651,6 +2189,14 @@ namespace NOWA
 			.def("loadDiscoveryState", &MinimapComponent::loadDiscoveryState)
 			.def("setCameraHeight", &MinimapComponent::setCameraHeight)
 			.def("getCameraHeight", &MinimapComponent::getCameraHeight)
+			.def("setCompassObjectCount", &MinimapComponent::setCompassObjectCount)
+			.def("getCompassObjectCount", &MinimapComponent::getCompassObjectCount)
+			.def("setCompassGameObjectId", &setCompassGameObjectId)
+			.def("getCompassGameObjectId", &getCompassGameObjectId)
+			.def("setCompassImage", &MinimapComponent::setCompassImage)
+			.def("getCompassImage", &MinimapComponent::getCompassImage)
+			.def("setCompassToolTipText", &MinimapComponent::setCompassToolTipText)
+			.def("getCompassToolTipText", &MinimapComponent::getCompassToolTipText)
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "class inherits GameObjectComponent", MinimapComponent::getStaticInfoText());
@@ -1665,6 +2211,14 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void loadDiscoveryState()", "Loads the area which has been already discovered.");
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void setCameraHeight(number cameraHeight)", "If whole scene visible is set to false, sets the camera height, which is added at the top of the y position of the target game object.");
 		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "bool getCameraHeight()", "If whole scene visible is set to false, gets the camera height, which is added at the top of the y position of the target game object.");
+		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void setCompassObjectCount(number count)", "Sets the count of generic compass objects to track (e.g. quest target, NPC, ship). Each gets CompassGameObjectId/CompassImage/CompassToolTipText.");
+		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "number getCompassObjectCount()", "Gets the count of generic compass objects.");
+		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void setCompassGameObjectId(number index, String id)", "Sets the game object id to track for compass object at index. Shown at true minimap position or as a rim marker when outside the view. 0 disables that slot.");
+		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "String getCompassGameObjectId(number index)", "Gets the game object id tracked for compass object at index.");
+		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void setCompassImage(number index, String image)", "Sets the marker icon image for compass object at index (same folder as MinimapMask).");
+		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "String getCompassImage(number index)", "Gets the marker icon image for compass object at index.");
+		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "void setCompassToolTipText(number index, String text)", "Sets the tooltip text for compass object at index.");
+		LuaScriptApi::getInstance()->addClassToCollection("MinimapComponent", "String getCompassToolTipText(number index)", "Gets the tooltip text for compass object at index.");
 
 		gameObjectClass.def("getMinimapComponentFromName", &getMinimapComponentFromName);
 		gameObjectClass.def("getMinimapComponent", (MinimapComponent * (*)(GameObject*)) & getMinimapComponent);

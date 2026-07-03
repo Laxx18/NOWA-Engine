@@ -1,15 +1,15 @@
 #include "NOWAPrecompiled.h"
 #include "PlanetMinimapComponent.h"
-#include "../../PlanetTerraComponent/code/PlanetTerraComponent.h"
 #include "RenderQueueEnums.h"
 #include "gameobject/CameraComponent.h"
 #include "gameobject/GameObjectFactory.h"
+#include "../../PlanetTerraComponent/code/PlanetTerraComponent.h"
+#include "planetTerra/PlanetTerra.h"
 #include "gameobject/WorkspaceComponents.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/EventManager.h"
 #include "modules/LuaScriptApi.h"
-#include "planetTerra/PlanetTerra.h"
 #include "utilities/XMLConverter.h"
 
 #include "Compositor/OgreCompositorNode.h"
@@ -34,7 +34,7 @@ namespace NOWA
         planetGameObject(nullptr),
         planetTerraComponent(nullptr),
         minimapTexture(nullptr),
-        minimapStagingTexture(nullptr),
+		minimapStagingTexture(nullptr),
         fogOfWarTexture(nullptr),
         fogOfWarStagingTexture(nullptr),
         textureManager(nullptr),
@@ -42,11 +42,13 @@ namespace NOWA
         minimapWidget(nullptr),
         maskWidget(nullptr),
         fogOfWarWidget(nullptr),
-        targetMarkerWidget(nullptr),
+		targetMarkerWidget(nullptr),
         cameraComponent(nullptr),
         timeSinceLastUpdate(0.25f),
-        followCameraLogged(false),
-        compassLogCounter(0u),
+		followCameraLogged(false),
+		compassLogCounter(0u),
+		toolTipPanel(nullptr),
+		toolTipText(nullptr),
         activated(new Variant(PlanetMinimapComponent::AttrActivated(), true, this->attributes)),
         planetId(new Variant(PlanetMinimapComponent::AttrPlanetId(), static_cast<unsigned long>(0), this->attributes, true)),
         targetId(new Variant(PlanetMinimapComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
@@ -61,15 +63,15 @@ namespace NOWA
         wholeSceneVisible(new Variant(PlanetMinimapComponent::AttrWholeSceneVisible(), true, this->attributes)),
         cameraHeight(new Variant(PlanetMinimapComponent::AttrCameraHeight(), Ogre::Real(10.0f), this->attributes)),
         minimapMask(new Variant(PlanetMinimapComponent::AttrMinimapMask(), "", this->attributes)),
-        targetMarkerImage(new Variant(PlanetMinimapComponent::AttrTargetMarkerImage(), "", this->attributes)),
-        compassObjectCount(new Variant(PlanetMinimapComponent::AttrCompassObjectCount(), static_cast<unsigned int>(0), this->attributes)),
-        baseTerrainColor(new Variant(PlanetMinimapComponent::AttrBaseTerrainColor(), Ogre::Vector3(0.3f, 0.5f, 0.2f), this->attributes)),
-        layer0Color(new Variant(PlanetMinimapComponent::AttrLayer0Color(), Ogre::Vector3(0.76f, 0.7f, 0.5f), this->attributes)),
-        layer1Color(new Variant(PlanetMinimapComponent::AttrLayer1Color(), Ogre::Vector3(0.55f, 0.2f, 0.1f), this->attributes)),
-        layer2Color(new Variant(PlanetMinimapComponent::AttrLayer2Color(), Ogre::Vector3(0.45f, 0.42f, 0.38f), this->attributes)),
-        layer3Color(new Variant(PlanetMinimapComponent::AttrLayer3Color(), Ogre::Vector3(0.15f, 0.1f, 0.08f), this->attributes)),
+		targetMarkerImage(new Variant(PlanetMinimapComponent::AttrTargetMarkerImage(), "", this->attributes)),
+		baseTerrainColor(new Variant(PlanetMinimapComponent::AttrBaseTerrainColor(), Ogre::Vector3(0.3f, 0.5f, 0.2f), this->attributes)),
+		layer0Color(new Variant(PlanetMinimapComponent::AttrLayer0Color(), Ogre::Vector3(0.76f, 0.7f, 0.5f), this->attributes)),
+		layer1Color(new Variant(PlanetMinimapComponent::AttrLayer1Color(), Ogre::Vector3(0.55f, 0.2f, 0.1f), this->attributes)),
+		layer2Color(new Variant(PlanetMinimapComponent::AttrLayer2Color(), Ogre::Vector3(0.45f, 0.42f, 0.38f), this->attributes)),
+		layer3Color(new Variant(PlanetMinimapComponent::AttrLayer3Color(), Ogre::Vector3(0.15f, 0.1f, 0.08f), this->attributes)),
         useRoundMinimap(new Variant(PlanetMinimapComponent::AttrUseRoundMinimap(), false, this->attributes)),
-        rotateMinimap(new Variant(PlanetMinimapComponent::AttrRotateMinimap(), false, this->attributes))
+        rotateMinimap(new Variant(PlanetMinimapComponent::AttrRotateMinimap(), false, this->attributes)),
+        compassObjectCount(new Variant(PlanetMinimapComponent::AttrCompassObjectCount(), static_cast<unsigned int>(0), this->attributes))
     {
         this->planetId->setDescription("Sets the game object id of the planet (must hold a PlanetTerraComponent), which shall be displayed on the minimap.");
         this->targetId->setDescription("Sets the target id for the game object, which shall be tracked on the planet's surface.");
@@ -82,34 +84,30 @@ namespace NOWA
         this->persistDiscovery->setDescription("If fog of war is used and use discovery, sets whether places in which the target game object has visited remain visible and also stored and loaded.");
         this->visibilityRadius->setDescription("If fog of war is used, sets the visibilty radius which discovers the fog of war.");
         this->useVisibilitySpotlight->setDescription("If fog of war is used, sets a spotlight instead of rounded radius area. The spotlight is as big as the visibility radius.");
-        this->wholeSceneVisible
-            ->setDescription("Sets whether the whole planet is visible. If set to true, the WHOLE planet is shown as a baked equirectangular height-shaded snapshot (no camera is used in this mode); the target is shown as a small marker icon. "
-                             " If set to false, a real camera follows the target along the planet's surface, always looking back toward the planet's center.");
+		this->wholeSceneVisible->setDescription("Sets whether the whole planet is visible. If set to true, the WHOLE planet is shown as a baked equirectangular height-shaded snapshot (no camera is used in this mode); the target is shown as a small marker icon. "
+												" If set to false, a real camera follows the target along the planet's surface, always looking back toward the planet's center.");
         this->wholeSceneVisible->addUserData(GameObject::AttrActionNeedRefresh());
         this->cameraHeight->setDescription("If whole scene visible is set to false, sets the camera height, which is added along the local outward (radial) direction at the top of the target game object's position.");
 
         this->minimapMask->addUserData(GameObject::AttrActionFileOpenDialog(), "Minimap");
         this->minimapMask->setDescription("Sets a minimap image mask, which can be created in gimp and added to the Minimap.xml in the MyGui/Minimap folder.");
 
-        this->targetMarkerImage->addUserData(GameObject::AttrActionFileOpenDialog(), "Minimap");
-        this->targetMarkerImage->setDescription("If whole scene visible is set to true, sets a small icon image (e.g. an arrow or dot, added to the Minimap.xml in the MyGui/Minimap folder like MinimapMask) shown at the tracked target's "
-                                                "position on the baked planet overview. Left empty, no marker is shown.");
+		this->targetMarkerImage->addUserData(GameObject::AttrActionFileOpenDialog(), "Minimap");
+		this->targetMarkerImage->setDescription("If whole scene visible is set to true, sets a small icon image (e.g. an arrow or dot, added to the Minimap.xml in the MyGui/Minimap folder like MinimapMask) shown at the tracked target's "
+			"position on the baked planet overview. Left empty, no marker is shown.");
 
-        this->compassObjectCount
-            ->setDescription("Sets the count of generic compass objects to find/track (e.g. the player's ship, a quest objective, an NPC). Each gets its own CompassGameObjectId/CompassImage/CompassToolTipText. "
-                             "In WholeSceneVisible mode each is shown as a true-position marker on the baked overview (always representable, the bake covers the whole sphere). In follow mode each is shown as a marker wandering around the rim "
-                             "of the local minimap once out of view, pointing in the direction to walk.");
-        this->compassObjectCount->addUserData(GameObject::AttrActionNeedRefresh());
+		this->compassObjectCount->setDescription("Sets the count of generic compass objects to find/track (e.g. the player's ship, a quest objective, an NPC). Each gets its own CompassGameObjectId/CompassImage/CompassToolTipText. "
+			"In WholeSceneVisible mode each is shown as a true-position marker on the baked overview (always representable, the bake covers the whole sphere). In follow mode each is shown as a marker wandering around the rim "
+			"of the local minimap once out of view, pointing in the direction to walk.");
+		this->compassObjectCount->addUserData(GameObject::AttrActionNeedRefresh());
 
-        this->baseTerrainColor->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where none of the 4 paint layers are active (PlanetTerra's base diffuse state). Tune to roughly match this planet's "
-                                               "base diffuse colour.");
-        this->layer0Color->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where paint layer 0 (PlanetTerra blend weight R channel, Detail0TextureName) dominates.");
-        this->layer1Color->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where paint layer 1 (PlanetTerra blend weight G channel, Detail1TextureName) dominates.");
-        this->layer2Color->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where paint layer 2 (PlanetTerra blend weight B channel, Detail2TextureName) dominates.");
-        this->layer3Color->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where paint layer 3 (PlanetTerra blend weight A channel, Detail3TextureName) dominates.");
+		this->baseTerrainColor->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where none of the 4 paint layers are active (PlanetTerra's base diffuse state). Tune to roughly match this planet's base diffuse colour.");
+		this->layer0Color->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where paint layer 0 (PlanetTerra blend weight R channel, Detail0TextureName) dominates.");
+		this->layer1Color->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where paint layer 1 (PlanetTerra blend weight G channel, Detail1TextureName) dominates.");
+		this->layer2Color->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where paint layer 2 (PlanetTerra blend weight B channel, Detail2TextureName) dominates.");
+		this->layer3Color->setDescription("If whole scene visible is set to true, sets the colour shown on the baked overview where paint layer 3 (PlanetTerra blend weight A channel, Detail3TextureName) dominates.");
 
-        this->useRoundMinimap
-            ->setDescription("If whole scene visible is set to false, sets whether to render a rounded minimap texture, for more sophistacted effects. This can e.g. be used in conjunction with the minimap mask to create a nice minimap overlay.");
+		this->useRoundMinimap->setDescription("If whole scene visible is set to false, sets whether to render a rounded minimap texture, for more sophistacted effects. This can e.g. be used in conjunction with the minimap mask to create a nice minimap overlay.");
         this->rotateMinimap->setDescription("If whole scene visible is set to false, sets whether the minimap is rotated according to the target game object's heading along the planet's surface tangent plane.");
     }
 
@@ -214,98 +212,101 @@ namespace NOWA
             propertyElement = propertyElement->next_sibling("property");
         }
 
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetMarkerImage")
-        {
-            this->targetMarkerImage->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetMarkerImage")
+		{
+			this->targetMarkerImage->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassObjectCount")
-        {
-            this->compassObjectCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassObjectCount")
+		{
+			this->compassObjectCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
-        // Only create new variants, if fresh loading. If a snapshot is done, no new variant must be created!
-        // Because the undo/redo algorithm relies on the changed-flag of each EXISTING variant (same convention as
-        // AnimationSequenceComponent::init).
-        if (this->compassGameObjectIds.size() < this->compassObjectCount->getUInt())
-        {
-            this->compassGameObjectIds.resize(this->compassObjectCount->getUInt());
-            this->compassImages.resize(this->compassObjectCount->getUInt());
-            this->compassToolTipTexts.resize(this->compassObjectCount->getUInt());
-        }
+		// Only create new variants, if fresh loading. If a snapshot is done, no new variant must be created!
+		// Because the undo/redo algorithm relies on the changed-flag of each EXISTING variant (same convention as
+		// AnimationSequenceComponent::init).
+		if (this->compassGameObjectIds.size() < this->compassObjectCount->getUInt())
+		{
+			this->compassGameObjectIds.resize(this->compassObjectCount->getUInt());
+			this->compassImages.resize(this->compassObjectCount->getUInt());
+			this->compassToolTipTexts.resize(this->compassObjectCount->getUInt());
+		}
 
-        for (size_t i = 0; i < this->compassGameObjectIds.size(); i++)
-        {
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassGameObjectId" + Ogre::StringConverter::toString(i))
-            {
-                if (nullptr == this->compassGameObjectIds[i])
-                {
-                    this->compassGameObjectIds[i] = new Variant(PlanetMinimapComponent::AttrCompassGameObjectId() + Ogre::StringConverter::toString(i), XMLConverter::getAttribUnsignedLong(propertyElement, "data"), this->attributes, true);
-                }
-                else
-                {
-                    this->compassGameObjectIds[i]->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
-                }
-                propertyElement = propertyElement->next_sibling("property");
-            }
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassImage" + Ogre::StringConverter::toString(i))
-            {
-                if (nullptr == this->compassImages[i])
-                {
-                    this->compassImages[i] = new Variant(PlanetMinimapComponent::AttrCompassImage() + Ogre::StringConverter::toString(i), XMLConverter::getAttrib(propertyElement, "data"), this->attributes);
-                    this->compassImages[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Minimap");
-                }
-                else
-                {
-                    this->compassImages[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-                }
-                propertyElement = propertyElement->next_sibling("property");
-            }
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassToolTipText" + Ogre::StringConverter::toString(i))
-            {
-                if (nullptr == this->compassToolTipTexts[i])
-                {
-                    this->compassToolTipTexts[i] = new Variant(PlanetMinimapComponent::AttrCompassToolTipText() + Ogre::StringConverter::toString(i), XMLConverter::getAttrib(propertyElement, "data"), this->attributes);
-                }
-                else
-                {
-                    this->compassToolTipTexts[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-                }
-                propertyElement = propertyElement->next_sibling("property");
-            }
-        }
+		for (size_t i = 0; i < this->compassGameObjectIds.size(); i++)
+		{
+			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassGameObjectId" + Ogre::StringConverter::toString(i))
+			{
+				if (nullptr == this->compassGameObjectIds[i])
+				{
+					this->compassGameObjectIds[i] = new Variant(PlanetMinimapComponent::AttrCompassGameObjectId() + Ogre::StringConverter::toString(i),
+						XMLConverter::getAttribUnsignedLong(propertyElement, "data"), this->attributes, true);
+				}
+				else
+				{
+					this->compassGameObjectIds[i]->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+				}
+				propertyElement = propertyElement->next_sibling("property");
+			}
+			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassImage" + Ogre::StringConverter::toString(i))
+			{
+				if (nullptr == this->compassImages[i])
+				{
+					this->compassImages[i] = new Variant(PlanetMinimapComponent::AttrCompassImage() + Ogre::StringConverter::toString(i),
+						XMLConverter::getAttrib(propertyElement, "data"), this->attributes);
+					this->compassImages[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Minimap");
+				}
+				else
+				{
+					this->compassImages[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+				}
+				propertyElement = propertyElement->next_sibling("property");
+			}
+			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CompassToolTipText" + Ogre::StringConverter::toString(i))
+			{
+				if (nullptr == this->compassToolTipTexts[i])
+				{
+					this->compassToolTipTexts[i] = new Variant(PlanetMinimapComponent::AttrCompassToolTipText() + Ogre::StringConverter::toString(i),
+						XMLConverter::getAttrib(propertyElement, "data"), this->attributes);
+				}
+				else
+				{
+					this->compassToolTipTexts[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+				}
+				propertyElement = propertyElement->next_sibling("property");
+			}
+		}
 
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BaseTerrainColor")
-        {
-            this->baseTerrainColor->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BaseTerrainColor")
+		{
+			this->baseTerrainColor->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Layer0Color")
-        {
-            this->layer0Color->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Layer0Color")
+		{
+			this->layer0Color->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Layer1Color")
-        {
-            this->layer1Color->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Layer1Color")
+		{
+			this->layer1Color->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Layer2Color")
-        {
-            this->layer2Color->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Layer2Color")
+		{
+			this->layer2Color->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Layer3Color")
-        {
-            this->layer3Color->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Layer3Color")
+		{
+			this->layer3Color->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RotateMinimap")
         {
@@ -418,9 +419,9 @@ namespace NOWA
         GameObjectComponent::connect();
 
         // setActivated(true) resolves targetGameObject/planetGameObject/planetTerraComponent from the current
-        // TargetId/PlanetId and sets up the workspace; setActivated(false) just clears pointers. Routing through it
-        // here too (instead of duplicating the resolution) keeps connect() and Lua-driven re-activation in sync.
-        this->setActivated(this->activated->getBool());
+		// TargetId/PlanetId and sets up the workspace; setActivated(false) just clears pointers. Routing through it
+		// here too (instead of duplicating the resolution) keeps connect() and Lua-driven re-activation in sync.
+		this->setActivated(this->activated->getBool());
 
         return true;
     }
@@ -499,14 +500,13 @@ namespace NOWA
 
         this->cameraComponent = cameraCompPtr.get();
 
-        // The camera is only actually used (and therefore only needs to be Active) in follow mode -- in
-        // WholeSceneVisible mode the overview is a CPU bake, no camera/compositor workspace is involved at all.
-        if (false == this->wholeSceneVisible->getBool() && false == this->cameraComponent->isActivated())
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[PlanetMinimapComponent] WARNING: CameraComponent on game object '" + this->gameObjectPtr->getName() +
-                    "' is not activated (Active=false). WholeSceneVisible is false here, so the follow camera's scene pass needs it active, otherwise the minimap RT stays blank/black. Check the CameraComponent's Active property.");
-        }
+		// The camera is only actually used (and therefore only needs to be Active) in follow mode -- in
+		// WholeSceneVisible mode the overview is a CPU bake, no camera/compositor workspace is involved at all.
+		if (false == this->wholeSceneVisible->getBool() && false == this->cameraComponent->isActivated())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] WARNING: CameraComponent on game object '" + this->gameObjectPtr->getName()
+				+ "' is not activated (Active=false). WholeSceneVisible is false here, so the follow camera's scene pass needs it active, otherwise the minimap RT stays blank/black. Check the CameraComponent's Active property.");
+		}
 
         NOWA::GraphicsModule::RenderCommand setupRdCmd = [this]
         {
@@ -522,13 +522,13 @@ namespace NOWA
                 this->loadDiscoveryState();
             }
 
-            Ogre::String minimapTextureName = "PlanetMinimapRT";
+            Ogre::String minimapTextureName = "MinimapRT";
 
             if (true == this->useRoundMinimap->getBool())
             {
-                minimapTextureName = "PlanetMinimapRT_Round";
+                minimapTextureName = "MinimapRT_Round";
             }
-            this->minimapTexture = this->createMinimapTexture(minimapTextureName, this->textureSize->getUInt(), this->textureSize->getUInt());
+			this->minimapTexture = this->createMinimapTexture(minimapTextureName, this->textureSize->getUInt(), this->textureSize->getUInt());
 
             if (true == this->useFogOfWar->getBool())
             {
@@ -541,29 +541,29 @@ namespace NOWA
                 this->discoveryState.resize((this->textureSize->getUInt()), std::vector<bool>(this->textureSize->getUInt(), false));
             }
 
-            if (true == this->wholeSceneVisible->getBool())
+			if (true == this->wholeSceneVisible->getBool())
+			{
+				// Whole-planet mode: no camera, no compositor workspace -- the overview is a one-shot CPU bake into
+				// minimapTexture, mirroring how PlanetTerra already represents the whole sphere as flat UV-indexed
+				// data (its blend weight texture / height array), rather than a literal camera render.
+				this->bakePlanetOverviewTexture();
+			}
+			else
+			{
+				// Follow mode: a real 3D camera renders the local surroundings, same compositor plumbing the flat
+				// MinimapComponent uses.
+				this->followCameraLogged = false;
+				this->cameraComponent->getOwner()->setDynamic(true);
+
+            if (false == this->useRoundMinimap->getBool())
             {
-                // Whole-planet mode: no camera, no compositor workspace -- the overview is a one-shot CPU bake into
-                // minimapTexture, mirroring how PlanetTerra already represents the whole sphere as flat UV-indexed
-                // data (its blend weight texture / height array), rather than a literal camera render.
-                this->bakePlanetOverviewTexture();
+                this->createMinimapWorkspace();
             }
             else
             {
-                // Follow mode: a real 3D camera renders the local surroundings, same compositor plumbing the flat
-                // MinimapComponent uses.
-                this->followCameraLogged = false;
-                this->cameraComponent->getOwner()->setDynamic(true);
-
-                if (false == this->useRoundMinimap->getBool())
-                {
-                    this->createMinimapWorkspace();
-                }
-                else
-                {
-                    this->createRoundMinimapWorkspace();
-                }
+                this->createRoundMinimapWorkspace();
             }
+			}
 
             // Create MyGUI widget for the planet minimap
             Ogre::Vector4 geometry = this->minimapGeometry->getVector4();
@@ -580,18 +580,17 @@ namespace NOWA
                 // Higher depth to ensure it's on top
                 this->maskWidget->setDepth(1);
 
-                // Diagnostic: MyGUI silently falls back to a default (often solid white, fully opaque) placeholder
-                // when an image resource can't be resolved -- which would sit on top of minimapWidget at depth 1
-                // and hide the correctly baked terrain underneath entirely. getImageSize() returning (0,0) or an
-                // unexpectedly small/round value (commonly 1x1 for the fallback) is the tell.
-                MyGUI::IntSize maskImageSize = this->maskWidget->getImageSize();
-                if (true == this->bShowDebugData)
-                {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                        "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' MinimapMask='" + this->minimapMask->getString() + "' loaded image size=" + Ogre::StringConverter::toString(maskImageSize.width) + "x" +
-                            Ogre::StringConverter::toString(maskImageSize.height) +
-                            (maskImageSize.width <= 1 || maskImageSize.height <= 1 ? " (SUSPICIOUS - likely failed to load, check the file exists in the 'Minimap' resource group and has been added to Minimap.xml)" : ""));
-                }
+				// Diagnostic: MyGUI silently falls back to a default (often solid white, fully opaque) placeholder
+				// when an image resource can't be resolved -- which would sit on top of minimapWidget at depth 1
+				// and hide the correctly baked terrain underneath entirely. getImageSize() returning (0,0) or an
+				// unexpectedly small/round value (commonly 1x1 for the fallback) is the tell.
+				MyGUI::IntSize maskImageSize = this->maskWidget->getImageSize();
+				if (true == this->bShowDebugData)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' MinimapMask='" + this->minimapMask->getString()
+						+ "' loaded image size=" + Ogre::StringConverter::toString(maskImageSize.width) + "x" + Ogre::StringConverter::toString(maskImageSize.height)
+						+ (maskImageSize.width <= 1 || maskImageSize.height <= 1 ? " (SUSPICIOUS - likely failed to load, check the file exists in the 'Minimap' resource group and has been added to Minimap.xml)" : ""));
+				}
             }
 
             if (true == this->useFogOfWar->getBool())
@@ -605,29 +604,32 @@ namespace NOWA
                 }
             }
 
-            if (true == this->wholeSceneVisible->getBool() && false == this->targetMarkerImage->getString().empty())
-            {
-                // Small marker icon for the tracked target's position on the baked overview, created as a child of
-                // the minimap widget (and above the fog of war widget) so it is positioned in the same pixel space
-                // and never hidden by either. This is the standard "blip on the map" approach -- the target is
-                // never baked into minimapTexture itself.
-                this->targetMarkerWidget = this->minimapWidget->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(0, 0, 32, 32), MyGUI::Align::Default);
-                this->targetMarkerWidget->setImageTexture(this->targetMarkerImage->getString());
-                this->targetMarkerWidget->setNeedMouseFocus(false);
-                this->targetMarkerWidget->setDepth(2);
-            }
-            else if (true == this->wholeSceneVisible->getBool())
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() +
-                        "' TargetMarkerImage is empty, no marker will be shown on the overview map for the tracked target. Set TargetMarkerImage to an icon in the MyGui/Minimap folder (same place as MinimapMask) to enable it.");
-            }
+			if (true == this->wholeSceneVisible->getBool() && false == this->targetMarkerImage->getString().empty())
+			{
+				// Small marker icon for the tracked target's position on the baked overview, created as a child of
+				// the minimap widget (and above the fog of war widget) so it is positioned in the same pixel space
+				// and never hidden by either. This is the standard "blip on the map" approach -- the target is
+				// never baked into minimapTexture itself.
+				this->targetMarkerWidget = this->minimapWidget->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(0, 0, 32, 32), MyGUI::Align::Default);
+				this->targetMarkerWidget->setImageTexture(this->targetMarkerImage->getString());
+				this->targetMarkerWidget->setNeedMouseFocus(false);
+				this->targetMarkerWidget->setDepth(2);
+			}
+			else if (true == this->wholeSceneVisible->getBool())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName()
+					+ "' TargetMarkerImage is empty, no marker will be shown on the overview map for the tracked target. Set TargetMarkerImage to an icon in the MyGui/Minimap folder (same place as MinimapMask) to enable it.");
+			}
 
-            // Generic compass objects (e.g. the player's ship, a quest objective, an NPC) -- valid in BOTH modes:
-            // true-position blips on the baked overview when WholeSceneVisible is true (the bake covers the whole
-            // sphere, so any of them are always representable, no matter how far away), or fixed-radius rim markers
-            // in follow mode. One marker + one distance label per configured compass object.
-            this->generateCompassObjects();
+			// Generic compass objects (e.g. the player's ship, a quest objective, an NPC) -- valid in BOTH modes:
+			// true-position blips on the baked overview when WholeSceneVisible is true (the bake covers the whole
+			// sphere, so any of them are always representable, no matter how far away), or fixed-radius rim markers
+			// in follow mode. One marker + one distance label per configured compass object.
+			this->generateCompassObjects();
+
+			// Tooltip popup used by compass object markers that have a non-empty CompassToolTipText. Loaded once
+			// here; generateCompassObjects() wires eventToolTip on individual widgets that need it.
+			this->initToolTipData();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(setupRdCmd), "PlanetMinimapComponent::setupPlanetMinimap");
     }
@@ -644,14 +646,14 @@ namespace NOWA
                 texture->setResolution(width, height);
                 texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
                 texture->setNumMipmaps(1u);
-                // MUST use _transitionTo (immediate/synchronous), NOT scheduleTransitionTo (async, queued to the
-                // TextureGpuManager streaming worker thread). In WholeSceneVisible mode this texture is written via
-                // a staging texture immediately afterwards (see bakePlanetOverviewTexture), in the SAME render
-                // command -- scheduleTransitionTo would leave the texture not-yet-actually-resident at that point,
-                // so the write either silently fails or lands on an invalid resource, which displays as a blank/
-                // white texture. Exactly matches PlanetTerra::createBlendWeightTexture's own documented pattern for
-                // a texture meant to be painted via staging texture right after creation.
-                texture->_transitionTo(Ogre::GpuResidency::Resident, reinterpret_cast<Ogre::uint8*>(0));
+				// MUST use _transitionTo (immediate/synchronous), NOT scheduleTransitionTo (async, queued to the
+				// TextureGpuManager streaming worker thread). In WholeSceneVisible mode this texture is written via
+				// a staging texture immediately afterwards (see bakePlanetOverviewTexture), in the SAME render
+				// command -- scheduleTransitionTo would leave the texture not-yet-actually-resident at that point,
+				// so the write either silently fails or lands on an invalid resource, which displays as a blank/
+				// white texture. Exactly matches PlanetTerra::createBlendWeightTexture's own documented pattern for
+				// a texture meant to be painted via staging texture right after creation.
+				texture->_transitionTo(Ogre::GpuResidency::Resident, reinterpret_cast<Ogre::uint8*>(0));
                 texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
             }
             else
@@ -660,7 +662,7 @@ namespace NOWA
                 texture->setResolution(width, height);
                 texture->setNumMipmaps(Ogre::PixelFormatGpuUtils::getMaxMipmapCount(width, height));
                 texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
-                texture->_transitionTo(Ogre::GpuResidency::Resident, reinterpret_cast<Ogre::uint8*>(0));
+				texture->_transitionTo(Ogre::GpuResidency::Resident, reinterpret_cast<Ogre::uint8*>(0));
                 texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
             }
         }
@@ -680,12 +682,12 @@ namespace NOWA
             texture->setResolution(width, height);
             texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
             texture->setNumMipmaps(1u);
-            // Same fix as createMinimapTexture above -- this texture is also written immediately via staging
-            // texture (clearFogOfWar/updateFogOfWarTexture), so it needs the synchronous transition too. This was
-            // silently working before mostly by luck: a not-yet-resident fog-of-war texture defaulting to
-            // undefined/black content happened to look correct for the "fully unexplored" starting state, masking
-            // the same underlying race that breaks the (non-black) planet overview bake outright.
-            texture->_transitionTo(Ogre::GpuResidency::Resident, reinterpret_cast<Ogre::uint8*>(0));
+			// Same fix as createMinimapTexture above -- this texture is also written immediately via staging
+			// texture (clearFogOfWar/updateFogOfWarTexture), so it needs the synchronous transition too. This was
+			// silently working before mostly by luck: a not-yet-resident fog-of-war texture defaulting to
+			// undefined/black content happened to look correct for the "fully unexplored" starting state, masking
+			// the same underlying race that breaks the (non-black) planet overview bake outright.
+			texture->_transitionTo(Ogre::GpuResidency::Resident, reinterpret_cast<Ogre::uint8*>(0));
             texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
         }
         else
@@ -707,20 +709,25 @@ namespace NOWA
 
             nodeDef->addTextureSourceName("rt0", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
 
-            // Texture definition
-            Ogre::TextureDefinitionBase::TextureDefinition* texDef = nodeDef->addTextureDefinition("PlanetMinimapRT");
+            // IMPORTANT: the internal scene-render target MUST be named "MinimapRT" -- that is the exact name the
+            // MinimapMask.material's texture_unit hard-codes (line "texture MinimapRT"). Ogre looks up that name
+            // inside the compositor resource group at material-bind time; if the texture is called anything else
+            // (e.g. "MinimapRT") the material throws FileNotFoundException and the ring mask never appears.
+            // The EXTERNAL channel (this->minimapTexture, the one MyGUI actually displays) is a separate GPU object
+            // and keeps its "MinimapRT_Round" name -- no conflict.
+            Ogre::TextureDefinitionBase::TextureDefinition* texDef = nodeDef->addTextureDefinition("MinimapRT");
             texDef->width = 1024;
             texDef->height = 1024;
             texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
 
-            Ogre::RenderTargetViewDef* rtv = nodeDef->addRenderTextureView("PlanetMinimapRT");
+            Ogre::RenderTargetViewDef* rtv = nodeDef->addRenderTextureView("MinimapRT");
             Ogre::RenderTargetViewEntry attachment;
-            attachment.textureName = "PlanetMinimapRT";
+            attachment.textureName = "MinimapRT";
             rtv->colourAttachments.push_back(attachment);
 
             nodeDef->setNumTargetPass(2);
             {
-                Ogre::CompositorTargetDef* targetDef = nodeDef->addTargetPass("PlanetMinimapRT");
+                Ogre::CompositorTargetDef* targetDef = nodeDef->addTargetPass("MinimapRT");
                 targetDef->setNumPasses(2);
                 {
                     // Clear Pass
@@ -741,13 +748,17 @@ namespace NOWA
 
                         passScene->setAllStoreActions(Ogre::StoreAction::Store);
 
-                        // Sets the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
                         unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
 
-                        // Always exclude procedural grass/trees from the planet minimap -- it serves no navigational
-                        // purpose overhead and costs significant GPU time (wind shader, alpha hash).
                         finalRenderMask &= ~NOWA::VISIBILITY_FLAG_GRASS;
                         finalRenderMask &= ~NOWA::VISIBILITY_FLAG_TREE;
+
+                        if (true == this->bShowDebugData)
+                        {
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' ExcludeRenderCategories='"
+                                + this->cameraComponent->getExcludeRenderCategories() + "' -> finalRenderMask=" + Ogre::StringConverter::toString(finalRenderMask)
+                                + (0u == finalRenderMask ? " (WARNING: mask is 0, nothing will be rendered)" : ""));
+                        }
 
                         passScene->setVisibilityMask(finalRenderMask);
 
@@ -758,18 +769,19 @@ namespace NOWA
                 targetDef = nodeDef->addTargetPass("rt0");
                 targetDef->setNumPasses(1);
                 {
-                    // Render Quad
+                    // Render Quad: composites the scene (MinimapRT) through the MinimapMask material, which applies
+                    // the circular ring mask shader, and writes the result to rt0 (= this->minimapTexture, MyGUI).
                     {
                         Ogre::CompositorPassQuadDef* passQuad;
                         passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
-                        passQuad->addQuadTextureSource(0, "PlanetMinimapRT");
+                        passQuad->addQuadTextureSource(0, "MinimapRT");
                         passQuad->mMaterialName = "MinimapMask";
                     }
                 }
             }
             nodeDef->setNumOutputChannels(1);
-            nodeDef->mapOutputChannel(0, "PlanetMinimapRT");
+            nodeDef->mapOutputChannel(0, "MinimapRT");
         }
 
         this->minimapWorkspaceName = "PlanetMinimapWorkspaceWithFoW_Round";
@@ -797,11 +809,11 @@ namespace NOWA
         {
             Ogre::CompositorNodeDef* nodeDef = compositorManager->addNodeDefinition(this->minimapNodeName);
 
-            nodeDef->addTextureSourceName("PlanetMinimapRT", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+            nodeDef->addTextureSourceName("MinimapRT", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
 
             nodeDef->setNumTargetPass(1);
             {
-                Ogre::CompositorTargetDef* targetDef = nodeDef->addTargetPass("PlanetMinimapRT");
+                Ogre::CompositorTargetDef* targetDef = nodeDef->addTargetPass("MinimapRT");
                 targetDef->setNumPasses(2);
                 {
                     // Clear Pass
@@ -834,7 +846,7 @@ namespace NOWA
                     }
                 }
             }
-            nodeDef->mapOutputChannel(0, "PlanetMinimapRT");
+            nodeDef->mapOutputChannel(0, "MinimapRT");
         }
 
         this->minimapWorkspaceName = "PlanetMinimapWorkspaceWithFoW";
@@ -889,7 +901,7 @@ namespace NOWA
 
     void PlanetMinimapComponent::updateFogOfWarTexture(const Ogre::Vector3& position, const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetDefaultDirection, Ogre::Real radius)
     {
-        if (nullptr == this->fogOfWarStagingTexture || nullptr == this->planetTerraComponent || nullptr == this->planetGameObject)
+		if (nullptr == this->fogOfWarStagingTexture || nullptr == this->planetTerraComponent || nullptr == this->planetGameObject)
         {
             return;
         }
@@ -897,76 +909,76 @@ namespace NOWA
         // Threadsafe from the outside
         unsigned int texSize = this->textureSize->getUInt();
 
-        const Ogre::Vector3 planetCenter = this->planetGameObject->getPosition();
-        Ogre::Vector3 direction = position - planetCenter;
-        if (direction.squaredLength() < 0.000001f)
-        {
-            return;
-        }
-        direction.normalise();
+		const Ogre::Vector3 planetCenter = this->planetGameObject->getPosition();
+		Ogre::Vector3 direction = position - planetCenter;
+		if (direction.squaredLength() < 0.000001f)
+		{
+			return;
+		}
+		direction.normalise();
 
-        const Ogre::Vector2 targetUV = this->worldDirectionToUV(direction);
-        const Ogre::Vector2 targetPixel = this->uvToPixelCoordinates(targetUV, texSize, texSize);
+		const Ogre::Vector2 targetUV = this->worldDirectionToUV(direction);
+		const Ogre::Vector2 targetPixel = this->uvToPixelCoordinates(targetUV, texSize, texSize);
 
-        // Converts the world-space visibility radius (a linear distance) into an angular radius on the sphere
-        // (s = r*theta -> theta = s/planetRadius), then into pixels along the v-axis, which spans phi in [0, PI]
-        // uniformly. The SAME pixel radius is then also used along the u-axis below; this is the standard
-        // equirectangular-projection distortion (longitude lines converge toward the poles, same reason Greenland
-        // looks huge on a Mercator map) -- acceptable for a minimap, but worth knowing if the circle looks
-        // stretched near a planet's poles.
-        const Ogre::Real planetRadius = this->planetTerraComponent->getRadius();
-        const Ogre::Real angularRadiusRad = (planetRadius > 0.0001f) ? (this->visibilityRadius->getReal() / planetRadius) : 0.0f;
-        int radiusInPixels = static_cast<int>((angularRadiusRad / Ogre::Math::PI) * static_cast<float>(texSize));
+		// Converts the world-space visibility radius (a linear distance) into an angular radius on the sphere
+		// (s = r*theta -> theta = s/planetRadius), then into pixels along the v-axis, which spans phi in [0, PI]
+		// uniformly. The SAME pixel radius is then also used along the u-axis below; this is the standard
+		// equirectangular-projection distortion (longitude lines converge toward the poles, same reason Greenland
+		// looks huge on a Mercator map) -- acceptable for a minimap, but worth knowing if the circle looks
+		// stretched near a planet's poles.
+		const Ogre::Real planetRadius = this->planetTerraComponent->getRadius();
+		const Ogre::Real angularRadiusRad = (planetRadius > 0.0001f) ? (this->visibilityRadius->getReal() / planetRadius) : 0.0f;
+		int radiusInPixels = static_cast<int>((angularRadiusRad / Ogre::Math::PI) * static_cast<float>(texSize));
 
-        // IMPORTANT: at planet scale, VisibilityRadius (a world-unit/meter distance) converts to a TINY angular
-        // fraction of the sphere -- e.g. VisibilityRadius=5 on a radius-2618 planet at texSize=256 works out to
-        // radiusInPixels=0, meaning "distance < radiusInPixels" is never true for ANY pixel (distance is always
-        // >= 0), so literally nothing ever gets revealed -- the fog stays fully opaque everywhere, even directly
-        // under the player. Floor it to a minimum of 2 pixels so there is always at least a visible reveal dot;
-        // increase VisibilityRadius (proportional to planetRadius, not to a flat scene's scale) for a bigger one.
-        if (radiusInPixels < 2)
-        {
-            if (true == this->bShowDebugData)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' updateFogOfWarTexture: computed radiusInPixels=" + Ogre::StringConverter::toString(radiusInPixels) +
-                        " (VisibilityRadius=" + Ogre::StringConverter::toString(this->visibilityRadius->getReal()) + " is far too small relative to planetRadius=" + Ogre::StringConverter::toString(planetRadius) +
-                        " at texSize=" + Ogre::StringConverter::toString(texSize) + ") -- flooring to 2 pixels so something is actually revealed. Increase VisibilityRadius for a larger reveal area.");
-            }
-            radiusInPixels = 2;
-        }
+		// IMPORTANT: at planet scale, VisibilityRadius (a world-unit/meter distance) converts to a TINY angular
+		// fraction of the sphere -- e.g. VisibilityRadius=5 on a radius-2618 planet at texSize=256 works out to
+		// radiusInPixels=0, meaning "distance < radiusInPixels" is never true for ANY pixel (distance is always
+		// >= 0), so literally nothing ever gets revealed -- the fog stays fully opaque everywhere, even directly
+		// under the player. Floor it to a minimum of 2 pixels so there is always at least a visible reveal dot;
+		// increase VisibilityRadius (proportional to planetRadius, not to a flat scene's scale) for a bigger one.
+		if (radiusInPixels < 2)
+		{
+			if (true == this->bShowDebugData)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName()
+					+ "' updateFogOfWarTexture: computed radiusInPixels=" + Ogre::StringConverter::toString(radiusInPixels)
+					+ " (VisibilityRadius=" + Ogre::StringConverter::toString(this->visibilityRadius->getReal()) + " is far too small relative to planetRadius=" + Ogre::StringConverter::toString(planetRadius)
+					+ " at texSize=" + Ogre::StringConverter::toString(texSize) + ") -- flooring to 2 pixels so something is actually revealed. Increase VisibilityRadius for a larger reveal area.");
+			}
+			radiusInPixels = 2;
+		}
 
         bool visibilitySpotlight = this->useVisibilitySpotlight->getBool();
 
         // Determines spotlight direction. Same convention as MinimapComponent -- this is only valid in
         // WholeSceneVisible mode, where the target is projected onto world X/Z exactly like a flat scene.
-        // onto its own local tangent plane -- same basis computeTangentHeadingDegrees uses for RotateMinimap.
-        Ogre::Vector2 spotlightDirection2D = Ogre::Vector2::ZERO;
-        if (true == visibilitySpotlight)
+		// onto its own local tangent plane -- same basis computeTangentHeadingDegrees uses for RotateMinimap.
+		Ogre::Vector2 spotlightDirection2D = Ogre::Vector2::ZERO;
+		if (true == visibilitySpotlight)
+		{
+			Ogre::Vector3 localNorth = Ogre::Vector3::UNIT_Y - direction * Ogre::Vector3::UNIT_Y.dotProduct(direction);
+			if (localNorth.squaredLength() < 0.000001f)
+			{
+				localNorth = Ogre::Vector3::UNIT_Z - direction * Ogre::Vector3::UNIT_Z.dotProduct(direction);
+			}
+			localNorth.normalise();
+			Ogre::Vector3 localEast = localNorth.crossProduct(direction);
+			localEast.normalise();
+
+			Ogre::Vector3 worldForward = targetOrientation * targetDefaultDirection;
+			Ogre::Vector3 forwardTangent = worldForward - direction * worldForward.dotProduct(direction);
+			if (forwardTangent.squaredLength() < 0.000001f)
+			{
+				forwardTangent = localNorth;
+			}
+			forwardTangent.normalise();
+
+			spotlightDirection2D.x = forwardTangent.dotProduct(localEast);
+			spotlightDirection2D.y = -forwardTangent.dotProduct(localNorth);
+			if (spotlightDirection2D.squaredLength() > 0.000001f)
         {
-            Ogre::Vector3 localNorth = Ogre::Vector3::UNIT_Y - direction * Ogre::Vector3::UNIT_Y.dotProduct(direction);
-            if (localNorth.squaredLength() < 0.000001f)
-            {
-                localNorth = Ogre::Vector3::UNIT_Z - direction * Ogre::Vector3::UNIT_Z.dotProduct(direction);
-            }
-            localNorth.normalise();
-            Ogre::Vector3 localEast = localNorth.crossProduct(direction);
-            localEast.normalise();
-
-            Ogre::Vector3 worldForward = targetOrientation * targetDefaultDirection;
-            Ogre::Vector3 forwardTangent = worldForward - direction * worldForward.dotProduct(direction);
-            if (forwardTangent.squaredLength() < 0.000001f)
-            {
-                forwardTangent = localNorth;
-            }
-            forwardTangent.normalise();
-
-            spotlightDirection2D.x = forwardTangent.dotProduct(localEast);
-            spotlightDirection2D.y = -forwardTangent.dotProduct(localNorth);
-            if (spotlightDirection2D.squaredLength() > 0.000001f)
-            {
-                spotlightDirection2D.normalise();
-            }
+				spotlightDirection2D.normalise();
+			}
         }
 
         this->fogOfWarStagingTexture->startMapRegion();
@@ -987,8 +999,8 @@ namespace NOWA
                 Ogre::uint8* RESTRICT_ALIAS pixBoxData = reinterpret_cast<Ogre::uint8 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
                 for (Ogre::uint32 x = 0; x < texSize; x++)
                 {
-                    float dx = static_cast<float>(x) - targetPixel.x;
-                    float dy = static_cast<float>(y) - targetPixel.y;
+					float dx = static_cast<float>(x) - targetPixel.x;
+					float dy = static_cast<float>(y) - targetPixel.y;
                     float distance = sqrt(dx * dx + dy * dy);
 
                     float distanceRound = 0.0f;
@@ -1021,8 +1033,8 @@ namespace NOWA
                 Ogre::uint8* RESTRICT_ALIAS pixBoxData = reinterpret_cast<Ogre::uint8 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
                 for (Ogre::uint32 x = 0; x < this->fogOfWarTexture->getWidth(); x++)
                 {
-                    float dx = static_cast<float>(x) - targetPixel.x;
-                    float dy = static_cast<float>(y) - targetPixel.y;
+					float dx = static_cast<float>(x) - targetPixel.x;
+					float dy = static_cast<float>(y) - targetPixel.y;
                     float distance = sqrt(dx * dx + dy * dy);
 
                     float distanceRound = 0.0f;
@@ -1037,20 +1049,20 @@ namespace NOWA
                     {
                         if (true == visibilitySpotlight)
                         {
-                            Ogre::Vector2 pointDirection2D(dx, dy);
-                            if (pointDirection2D.squaredLength() > 0.000001f)
+							Ogre::Vector2 pointDirection2D(dx, dy);
+							if (pointDirection2D.squaredLength() > 0.000001f)
+							{
+								pointDirection2D.normalise();
+								Ogre::Real angle = Ogre::Math::ACos(Ogre::Math::Clamp(spotlightDirection2D.dotProduct(pointDirection2D), -1.0f, 1.0f)).valueDegrees();
+                            if (angle <= 45.0f / 2)
                             {
-                                pointDirection2D.normalise();
-                                Ogre::Real angle = Ogre::Math::ACos(Ogre::Math::Clamp(spotlightDirection2D.dotProduct(pointDirection2D), -1.0f, 1.0f)).valueDegrees();
-                                if (angle <= 45.0f / 2)
-                                {
-                                    this->discoveryState[x][y] = true;
-                                    const size_t dstIdx = x * bytesPerPixel;
-                                    float rgba[4] = {1.0f, 0.0f, 0.0f, 0.0f};
-                                    Ogre::PixelFormatGpuUtils::packColour(rgba, this->fogOfWarTexture->getPixelFormat(), &pixBoxData[dstIdx]);
-                                }
+                                this->discoveryState[x][y] = true;
+                                const size_t dstIdx = x * bytesPerPixel;
+                                float rgba[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+                                Ogre::PixelFormatGpuUtils::packColour(rgba, this->fogOfWarTexture->getPixelFormat(), &pixBoxData[dstIdx]);
                             }
                         }
+						}
                         else
                         {
                             this->discoveryState[x][y] = true;
@@ -1073,7 +1085,7 @@ namespace NOWA
         this->fogOfWarStagingTexture->upload(texBox, this->fogOfWarTexture, 0u);
     }
 
-    void PlanetMinimapComponent::removeWorkspace(void)
+	void PlanetMinimapComponent::removeWorkspace(void)
     {
         // Projects the target's world X/Z onto the fixed overhead bounds (planetCenter +/- maxRadius), exactly like
         // MinimapComponent does for a flat scene's bounding box. Only valid in WholeSceneVisible mode.
@@ -1169,6 +1181,14 @@ namespace NOWA
                 this->fogOfWarWidget = nullptr;
             }
 
+            // Hide the shared tooltip popup if it happens to be showing when the workspace is torn down (e.g.
+            // when switching planets mid-hover). Do NOT destroy it -- the layout is process-global and may be
+            // reused by other components or after switchPlanet() re-creates the workspace.
+            if (nullptr != this->toolTipPanel)
+            {
+                this->toolTipPanel->setVisible(false);
+            }
+
             if (nullptr != this->fogOfWarStagingTexture)
             {
                 this->textureManager->removeStagingTexture(this->fogOfWarStagingTexture);
@@ -1183,623 +1203,642 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::removeWorkspace");
     }
 
-    Ogre::Vector2 PlanetMinimapComponent::worldDirectionToUV(const Ogre::Vector3& direction) const
-    {
-        Ogre::Vector3 dir = direction;
+	Ogre::Vector2 PlanetMinimapComponent::worldDirectionToUV(const Ogre::Vector3& direction) const
+	{
+		Ogre::Vector3 dir = direction;
 
-        // PlanetTerraComponent::mousePressed transforms the world-space hit position into the planet's LOCAL space
-        // (nodeInv * hitPos) before deriving theta/phi for painting -- so this must too, or the bake/markers would
-        // drift out of alignment with the actually-painted layers as soon as a planet has any non-trivial rotation
-        // (a tilted axis, or simply spinning). Direction vectors aren't affected by translation, only rotation, so
-        // the inverse of the planet's world ORIENTATION is sufficient here (scale is assumed uniform/1, matching
-        // PlanetTerraComponent's own assumption).
-        if (nullptr != this->planetGameObject)
-        {
-            dir = this->planetGameObject->getOrientation().Inverse() * dir;
-        }
-        dir.normalise();
+		// PlanetTerraComponent::mousePressed transforms the world-space hit position into the planet's LOCAL space
+		// (nodeInv * hitPos) before deriving theta/phi for painting -- so this must too, or the bake/markers would
+		// drift out of alignment with the actually-painted layers as soon as a planet has any non-trivial rotation
+		// (a tilted axis, or simply spinning). Direction vectors aren't affected by translation, only rotation, so
+		// the inverse of the planet's world ORIENTATION is sufficient here (scale is assumed uniform/1, matching
+		// PlanetTerraComponent's own assumption).
+		if (nullptr != this->planetGameObject)
+		{
+			dir = this->planetGameObject->getOrientation().Inverse() * dir;
+		}
+		dir.normalise();
 
-        // Same inverse mapping PlanetTerra::sampleHeightAndNormalAtDirection uses internally, kept identical on
-        // purpose so this always lines up with PlanetTerra's own UV parameterization (see
-        // PlanetTerra::generateBaseSphere): dir.y = cos(phi) -> phi = acos(dir.y); dir.x = sin(phi)*cos(theta),
-        // dir.z = sin(phi)*sin(theta) -> theta = atan2(dir.z, dir.x), wrapped into [0, 2*PI).
-        const float phi = Ogre::Math::ACos(Ogre::Math::Clamp(dir.y, -1.0f, 1.0f)).valueRadians();
-        float theta = Ogre::Math::ATan2(dir.z, dir.x).valueRadians();
-        if (theta < 0.0f)
-        {
-            theta += Ogre::Math::TWO_PI;
-        }
+		// Same inverse mapping PlanetTerra::sampleHeightAndNormalAtDirection uses internally, kept identical on
+		// purpose so this always lines up with PlanetTerra's own UV parameterization (see
+		// PlanetTerra::generateBaseSphere): dir.y = cos(phi) -> phi = acos(dir.y); dir.x = sin(phi)*cos(theta),
+		// dir.z = sin(phi)*sin(theta) -> theta = atan2(dir.z, dir.x), wrapped into [0, 2*PI).
+		const float phi = Ogre::Math::ACos(Ogre::Math::Clamp(dir.y, -1.0f, 1.0f)).valueRadians();
+		float theta = Ogre::Math::ATan2(dir.z, dir.x).valueRadians();
+		if (theta < 0.0f)
+		{
+			theta += Ogre::Math::TWO_PI;
+		}
 
-        Ogre::Vector2 uv;
-        uv.x = theta / Ogre::Math::TWO_PI;
-        uv.y = phi / Ogre::Math::PI;
-        return uv;
+		Ogre::Vector2 uv;
+		uv.x = theta / Ogre::Math::TWO_PI;
+		uv.y = phi / Ogre::Math::PI;
+		return uv;
+	}
+
+	Ogre::Vector2 PlanetMinimapComponent::uvToPixelCoordinates(const Ogre::Vector2& uv, unsigned int textureWidth, unsigned int textureHeight) const
+	{
+		Ogre::Vector2 pixel;
+		pixel.x = uv.x * static_cast<float>(textureWidth);
+		pixel.y = uv.y * static_cast<float>(textureHeight);
+		return pixel;
     }
 
-    Ogre::Vector2 PlanetMinimapComponent::uvToPixelCoordinates(const Ogre::Vector2& uv, unsigned int textureWidth, unsigned int textureHeight) const
+	void PlanetMinimapComponent::bakePlanetOverviewTexture(void)
     {
-        Ogre::Vector2 pixel;
-        pixel.x = uv.x * static_cast<float>(textureWidth);
-        pixel.y = uv.y * static_cast<float>(textureHeight);
-        return pixel;
-    }
-
-    void PlanetMinimapComponent::bakePlanetOverviewTexture(void)
-    {
-        // Threadsafe from the outside, same convention as updateFogOfWarTexture/clearFogOfWar -- call only from
-        // inside a GraphicsModule render command, since this writes via a staging texture.
-        if (nullptr == this->minimapTexture || nullptr == this->planetTerraComponent || nullptr == this->planetGameObject)
+		// Threadsafe from the outside, same convention as updateFogOfWarTexture/clearFogOfWar -- call only from
+		// inside a GraphicsModule render command, since this writes via a staging texture.
+		if (nullptr == this->minimapTexture || nullptr == this->planetTerraComponent || nullptr == this->planetGameObject)
         {
             return;
         }
 
-        const unsigned int texSize = this->textureSize->getUInt();
-        const Ogre::Vector3 planetCenter = this->planetGameObject->getPosition();
-        const Ogre::Real baseRadius = this->planetTerraComponent->getRadius();
+		const unsigned int texSize = this->textureSize->getUInt();
+		const Ogre::Vector3 planetCenter = this->planetGameObject->getPosition();
+		const Ogre::Real baseRadius = this->planetTerraComponent->getRadius();
 
-        // Pulls the same CPU blend weight data PlanetTerra paints with (R/G/B/A = layer 0..3 weight, see
-        // PlanetTerra::applyPaintBrush), so the overview reflects what is ACTUALLY painted on the planet instead of
-        // an arbitrary height-based tint. Requires PlanetTerraComponent::getPlanetTerra() to expose the underlying
-        // PlanetTerra instance -- if that accessor does not exist yet, add it as a one-line public getter:
-        //   PlanetTerra* getPlanetTerra(void) const { return this->planet; }
-        // (member name assumed from PlanetTerraComponent.cpp's own internal usage, e.g. this->planet->applyPaintBrush).
-        PlanetTerra* planetTerra = this->planetTerraComponent->getPlanetTerra();
-        std::vector<uint8_t> blendData;
-        int blendTexSize = 0;
-        bool hasBlendData = false;
-        if (nullptr != planetTerra)
-        {
-            blendTexSize = planetTerra->getBlendTexSize();
-            if (blendTexSize > 0)
-            {
-                blendData = planetTerra->getBlendDataCopy();
-                hasBlendData = (false == blendData.empty()) && (blendData.size() >= static_cast<size_t>(blendTexSize) * blendTexSize * 4u);
-            }
-        }
-        if (false == hasBlendData)
-        {
-            if (true == this->bShowDebugData)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() +
-                        "' bakePlanetOverviewTexture: no usable blend weight data from PlanetTerra (getPlanetTerra() missing/null, or blend texture not yet created) -- falling back to BaseTerrainColor only, with no layer painting shown.");
-            }
-        }
-        else if (true == this->bShowDebugData)
-        {
-            // Direct proof of what actually arrived: the center pixel's raw RGBA bytes, plus a count of how many
-            // bytes in the WHOLE array are non-zero. If everything is 0 (R=G=B=A=0 everywhere, default per
-            // PlanetTerra::createBlendWeightTexture's "no detail layer active" initial state), the planet was
-            // simply never painted -- that's a content/workflow question, not a bug in this bake function. If the
-            // center sample or the non-zero count show real data but the minimap still renders white, the problem
-            // is downstream of this point (GPU upload/display), not the CPU-side data itself.
-            const size_t centerX = static_cast<size_t>(blendTexSize) / 2u;
-            const size_t centerY = static_cast<size_t>(blendTexSize) / 2u;
-            const size_t centerIdx = (centerY * static_cast<size_t>(blendTexSize) + centerX) * 4u;
+		// Pulls the same CPU blend weight data PlanetTerra paints with (R/G/B/A = layer 0..3 weight, see
+		// PlanetTerra::applyPaintBrush), so the overview reflects what is ACTUALLY painted on the planet instead of
+		// an arbitrary height-based tint. Requires PlanetTerraComponent::getPlanetTerra() to expose the underlying
+		// PlanetTerra instance -- if that accessor does not exist yet, add it as a one-line public getter:
+		//   PlanetTerra* getPlanetTerra(void) const { return this->planet; }
+		// (member name assumed from PlanetTerraComponent.cpp's own internal usage, e.g. this->planet->applyPaintBrush).
+		PlanetTerra* planetTerra = this->planetTerraComponent->getPlanetTerra();
+		std::vector<uint8_t> blendData;
+		int blendTexSize = 0;
+		bool hasBlendData = false;
+		if (nullptr != planetTerra)
+		{
+			blendTexSize = planetTerra->getBlendTexSize();
+			if (blendTexSize > 0)
+			{
+				blendData = planetTerra->getBlendDataCopy();
+				hasBlendData = (false == blendData.empty()) && (blendData.size() >= static_cast<size_t>(blendTexSize) * blendTexSize * 4u);
+			}
+		}
+		if (false == hasBlendData)
+		{
+			if (true == this->bShowDebugData)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName()
+					+ "' bakePlanetOverviewTexture: no usable blend weight data from PlanetTerra (getPlanetTerra() missing/null, or blend texture not yet created) -- falling back to BaseTerrainColor only, with no layer painting shown.");
+			}
+		}
+		else if (true == this->bShowDebugData)
+		{
+			// Direct proof of what actually arrived: the center pixel's raw RGBA bytes, plus a count of how many
+			// bytes in the WHOLE array are non-zero. If everything is 0 (R=G=B=A=0 everywhere, default per
+			// PlanetTerra::createBlendWeightTexture's "no detail layer active" initial state), the planet was
+			// simply never painted -- that's a content/workflow question, not a bug in this bake function. If the
+			// center sample or the non-zero count show real data but the minimap still renders white, the problem
+			// is downstream of this point (GPU upload/display), not the CPU-side data itself.
+			const size_t centerX = static_cast<size_t>(blendTexSize) / 2u;
+			const size_t centerY = static_cast<size_t>(blendTexSize) / 2u;
+			const size_t centerIdx = (centerY * static_cast<size_t>(blendTexSize) + centerX) * 4u;
 
-            size_t nonZeroByteCount = 0u;
-            for (size_t i = 0u; i < blendData.size(); ++i)
-            {
-                if (0u != blendData[i])
-                {
-                    ++nonZeroByteCount;
-                }
-            }
+			size_t nonZeroByteCount = 0u;
+			for (size_t i = 0u; i < blendData.size(); ++i)
+			{
+				if (0u != blendData[i])
+				{
+					++nonZeroByteCount;
+				}
+			}
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' bakePlanetOverviewTexture: blendData.size()=" + Ogre::StringConverter::toString(blendData.size()) + " blendTexSize=" + Ogre::StringConverter::toString(blendTexSize) +
-                    " centerPixel(R,G,B,A)=" + Ogre::StringConverter::toString(static_cast<int>(blendData[centerIdx + 0u])) + "," + Ogre::StringConverter::toString(static_cast<int>(blendData[centerIdx + 1u])) + "," +
-                    Ogre::StringConverter::toString(static_cast<int>(blendData[centerIdx + 2u])) + "," + Ogre::StringConverter::toString(static_cast<int>(blendData[centerIdx + 3u])) +
-                    " nonZeroByteCount=" + Ogre::StringConverter::toString(nonZeroByteCount) + " / " + Ogre::StringConverter::toString(blendData.size()) +
-                    (0u == nonZeroByteCount ? " (ALL ZERO -- planet has never been painted with any layer, this is expected base-diffuse-only content, not a bug)" : " (real paint data present)"));
-        }
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName()
+				+ "' bakePlanetOverviewTexture: blendData.size()=" + Ogre::StringConverter::toString(blendData.size())
+				+ " blendTexSize=" + Ogre::StringConverter::toString(blendTexSize)
+				+ " centerPixel(R,G,B,A)=" + Ogre::StringConverter::toString(static_cast<int>(blendData[centerIdx + 0u])) + ","
+				+ Ogre::StringConverter::toString(static_cast<int>(blendData[centerIdx + 1u])) + ","
+				+ Ogre::StringConverter::toString(static_cast<int>(blendData[centerIdx + 2u])) + ","
+				+ Ogre::StringConverter::toString(static_cast<int>(blendData[centerIdx + 3u]))
+				+ " nonZeroByteCount=" + Ogre::StringConverter::toString(nonZeroByteCount) + " / " + Ogre::StringConverter::toString(blendData.size())
+				+ (0u == nonZeroByteCount ? " (ALL ZERO -- planet has never been painted with any layer, this is expected base-diffuse-only content, not a bug)" : " (real paint data present)"));
+		}
 
-        // First pass: inverse-map every pixel's (u,v) to a world direction and sample its height via the same
-        // public accessor PlanetTerraComponent already exposes for foliage placement -- this is the "unwrap" step,
-        // reading PlanetTerra's existing per-direction height/normal data into a flat equirectangular grid exactly
-        // like PlanetTerra's own blend weight texture is already organised. Track min/max so the second pass can
-        // normalise the height-based shading regardless of how tall/deep this particular planet's terrain is.
-        std::vector<float> heights(static_cast<size_t>(texSize) * texSize, 0.0f);
-        float minHeight = std::numeric_limits<float>::max();
-        float maxHeight = std::numeric_limits<float>::lowest();
+		// First pass: inverse-map every pixel's (u,v) to a world direction and sample its height via the same
+		// public accessor PlanetTerraComponent already exposes for foliage placement -- this is the "unwrap" step,
+		// reading PlanetTerra's existing per-direction height/normal data into a flat equirectangular grid exactly
+		// like PlanetTerra's own blend weight texture is already organised. Track min/max so the second pass can
+		// normalise the height-based shading regardless of how tall/deep this particular planet's terrain is.
+		std::vector<float> heights(static_cast<size_t>(texSize) * texSize, 0.0f);
+		float minHeight = std::numeric_limits<float>::max();
+		float maxHeight = std::numeric_limits<float>::lowest();
 
-        for (unsigned int y = 0u; y < texSize; ++y)
-        {
-            const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(texSize);
-            const float phi = v * Ogre::Math::PI;
-            for (unsigned int x = 0u; x < texSize; ++x)
-            {
-                const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(texSize);
-                const float theta = u * Ogre::Math::TWO_PI;
+		for (unsigned int y = 0u; y < texSize; ++y)
+		{
+			const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(texSize);
+			const float phi = v * Ogre::Math::PI;
+			for (unsigned int x = 0u; x < texSize; ++x)
+			{
+				const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(texSize);
+				const float theta = u * Ogre::Math::TWO_PI;
 
-                Ogre::Vector3 dir;
-                dir.x = Ogre::Math::Sin(phi) * Ogre::Math::Cos(theta);
-                dir.y = Ogre::Math::Cos(phi);
-                dir.z = Ogre::Math::Sin(phi) * Ogre::Math::Sin(theta);
+				Ogre::Vector3 dir;
+				dir.x = Ogre::Math::Sin(phi) * Ogre::Math::Cos(theta);
+				dir.y = Ogre::Math::Cos(phi);
+				dir.z = Ogre::Math::Sin(phi) * Ogre::Math::Sin(theta);
 
-                Ogre::Vector3 worldPos = Ogre::Vector3::ZERO;
-                Ogre::Vector3 worldNormal = Ogre::Vector3::ZERO;
-                float height = 0.0f;
-                if (true == this->planetTerraComponent->sampleHeightAndNormalAtDirection(dir, worldPos, worldNormal))
-                {
-                    height = (worldPos - planetCenter).length() - baseRadius;
-                }
+				Ogre::Vector3 worldPos = Ogre::Vector3::ZERO;
+				Ogre::Vector3 worldNormal = Ogre::Vector3::ZERO;
+				float height = 0.0f;
+				if (true == this->planetTerraComponent->sampleHeightAndNormalAtDirection(dir, worldPos, worldNormal))
+				{
+					height = (worldPos - planetCenter).length() - baseRadius;
+				}
 
-                heights[static_cast<size_t>(y) * texSize + x] = height;
-                if (height < minHeight)
-                {
-                    minHeight = height;
-                }
-                if (height > maxHeight)
-                {
-                    maxHeight = height;
-                }
-            }
-        }
+				heights[static_cast<size_t>(y) * texSize + x] = height;
+				if (height < minHeight)
+				{
+					minHeight = height;
+				}
+				if (height > maxHeight)
+				{
+					maxHeight = height;
+				}
+			}
+		}
 
-        Ogre::Real heightRange = maxHeight - minHeight;
-        if (heightRange < 0.0001f)
-        {
-            heightRange = 0.0001f;
-        }
+		Ogre::Real heightRange = maxHeight - minHeight;
+		if (heightRange < 0.0001f)
+		{
+			heightRange = 0.0001f;
+		}
 
-        const bool round = this->useRoundMinimap->getBool();
-        const float padding = (false == this->minimapMask->getString().empty()) ? 2.0f : 0.0f;
+		const bool round = this->useRoundMinimap->getBool();
+		const float padding = (false == this->minimapMask->getString().empty()) ? 2.0f : 0.0f;
 
-        const Ogre::Vector3 baseColorVec = this->baseTerrainColor->getVector3();
-        const Ogre::Vector3 layerColorVec[4] = {this->layer0Color->getVector3(), this->layer1Color->getVector3(), this->layer2Color->getVector3(), this->layer3Color->getVector3()};
+		const Ogre::Vector3 baseColorVec = this->baseTerrainColor->getVector3();
+		const Ogre::Vector3 layerColorVec[4] =
+		{
+			this->layer0Color->getVector3(),
+			this->layer1Color->getVector3(),
+			this->layer2Color->getVector3(),
+			this->layer3Color->getVector3()
+		};
 
-        // Same robustness guards PlanetTerra::uploadBlendData uses, which this code was missing: re-check residency
-        // (a texture can theoretically drop residency between creation and this bake call) and validate the staging
-        // texture's actual byte size against what this exact upload needs, recreating it if Ogre's staging pool
-        // handed back a differently-sized one than requested. A silent size mismatch here would write an
-        // incomplete/garbled region without any error, which can present as a blank/white result.
-        if (this->minimapTexture->getResidencyStatus() != Ogre::GpuResidency::Resident)
-        {
-            this->minimapTexture->_transitionTo(Ogre::GpuResidency::Resident, reinterpret_cast<Ogre::uint8*>(0));
-            this->minimapTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-        }
+		// Same robustness guards PlanetTerra::uploadBlendData uses, which this code was missing: re-check residency
+		// (a texture can theoretically drop residency between creation and this bake call) and validate the staging
+		// texture's actual byte size against what this exact upload needs, recreating it if Ogre's staging pool
+		// handed back a differently-sized one than requested. A silent size mismatch here would write an
+		// incomplete/garbled region without any error, which can present as a blank/white result.
+		if (this->minimapTexture->getResidencyStatus() != Ogre::GpuResidency::Resident)
+		{
+			this->minimapTexture->_transitionTo(Ogre::GpuResidency::Resident, reinterpret_cast<Ogre::uint8*>(0));
+			this->minimapTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
+		}
 
-        if (nullptr == this->minimapStagingTexture)
-        {
-            this->minimapStagingTexture = this->textureManager->getStagingTexture(this->minimapTexture->getWidth(), this->minimapTexture->getHeight(), 1u, 1u, this->minimapTexture->getPixelFormat());
-        }
+		if (nullptr == this->minimapStagingTexture)
+		{
+			this->minimapStagingTexture = this->textureManager->getStagingTexture(this->minimapTexture->getWidth(), this->minimapTexture->getHeight(), 1u, 1u, this->minimapTexture->getPixelFormat());
+		}
 
-        this->minimapStagingTexture->startMapRegion();
-        Ogre::TextureBox texBox = this->minimapStagingTexture->mapRegion(this->minimapTexture->getWidth(), this->minimapTexture->getHeight(), 1u, 1u, this->minimapTexture->getPixelFormat());
-        const size_t bytesPerPixel = texBox.bytesPerPixel;
+		this->minimapStagingTexture->startMapRegion();
+		Ogre::TextureBox texBox = this->minimapStagingTexture->mapRegion(this->minimapTexture->getWidth(), this->minimapTexture->getHeight(), 1u, 1u, this->minimapTexture->getPixelFormat());
+		const size_t bytesPerPixel = texBox.bytesPerPixel;
 
-        // Second pass: write the blend-layer-coloured, height-shaded, optionally round-masked equirectangular image.
-        for (unsigned int y = 0u; y < texSize; ++y)
-        {
-            Ogre::uint8* RESTRICT_ALIAS pixBoxData = reinterpret_cast<Ogre::uint8 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
-            for (unsigned int x = 0u; x < texSize; ++x)
-            {
-                // Same (u,v) the first pass used to derive the sample direction -- re-derived here rather than
-                // stored, since it is cheap and keeps the height array single-purpose.
-                const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(texSize);
-                const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(texSize);
+		// Second pass: write the blend-layer-coloured, height-shaded, optionally round-masked equirectangular image.
+		for (unsigned int y = 0u; y < texSize; ++y)
+		{
+			Ogre::uint8* RESTRICT_ALIAS pixBoxData = reinterpret_cast<Ogre::uint8 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
+			for (unsigned int x = 0u; x < texSize; ++x)
+			{
+				// Same (u,v) the first pass used to derive the sample direction -- re-derived here rather than
+				// stored, since it is cheap and keeps the height array single-purpose.
+				const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(texSize);
+				const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(texSize);
 
-                float r = baseColorVec.x;
-                float g = baseColorVec.y;
-                float b = baseColorVec.z;
+				float r = baseColorVec.x;
+				float g = baseColorVec.y;
+				float b = baseColorVec.z;
 
-                if (true == hasBlendData)
-                {
-                    // blendTexSize is independent of texSize (the minimap's own resolution) -- (u,v) is
-                    // resolution-agnostic, so it is rescaled separately into blend-pixel-space here. Indexing
-                    // matches PlanetTerraComponent::mousePressed's hitUV -> blendData lookup exactly (verified
-                    // against PlanetTerra::applyPaintBrush: cx = hitUV.x * blendTexSize, cy = hitUV.y * blendTexSize),
-                    // so this lines up pixel-for-pixel with what was actually painted.
-                    int bx = static_cast<int>(u * static_cast<float>(blendTexSize));
-                    int by = static_cast<int>(v * static_cast<float>(blendTexSize));
-                    if (bx < 0)
-                    {
-                        bx = 0;
-                    }
-                    if (bx >= blendTexSize)
-                    {
-                        bx = blendTexSize - 1;
-                    }
-                    if (by < 0)
-                    {
-                        by = 0;
-                    }
-                    if (by >= blendTexSize)
-                    {
-                        by = blendTexSize - 1;
-                    }
+				if (true == hasBlendData)
+				{
+					// blendTexSize is independent of texSize (the minimap's own resolution) -- (u,v) is
+					// resolution-agnostic, so it is rescaled separately into blend-pixel-space here. Indexing
+					// matches PlanetTerraComponent::mousePressed's hitUV -> blendData lookup exactly (verified
+					// against PlanetTerra::applyPaintBrush: cx = hitUV.x * blendTexSize, cy = hitUV.y * blendTexSize),
+					// so this lines up pixel-for-pixel with what was actually painted.
+					int bx = static_cast<int>(u * static_cast<float>(blendTexSize));
+					int by = static_cast<int>(v * static_cast<float>(blendTexSize));
+					if (bx < 0)
+					{
+						bx = 0;
+					}
+					if (bx >= blendTexSize)
+					{
+						bx = blendTexSize - 1;
+					}
+					if (by < 0)
+					{
+						by = 0;
+					}
+					if (by >= blendTexSize)
+					{
+						by = blendTexSize - 1;
+					}
 
-                    const size_t blendIdx = (static_cast<size_t>(by) * static_cast<size_t>(blendTexSize) + static_cast<size_t>(bx)) * 4u;
-                    const float w0 = static_cast<float>(blendData[blendIdx + 0u]) / 255.0f;
-                    const float w1 = static_cast<float>(blendData[blendIdx + 1u]) / 255.0f;
-                    const float w2 = static_cast<float>(blendData[blendIdx + 2u]) / 255.0f;
-                    const float w3 = static_cast<float>(blendData[blendIdx + 3u]) / 255.0f;
+					const size_t blendIdx = (static_cast<size_t>(by) * static_cast<size_t>(blendTexSize) + static_cast<size_t>(bx)) * 4u;
+					const float w0 = static_cast<float>(blendData[blendIdx + 0u]) / 255.0f;
+					const float w1 = static_cast<float>(blendData[blendIdx + 1u]) / 255.0f;
+					const float w2 = static_cast<float>(blendData[blendIdx + 2u]) / 255.0f;
+					const float w3 = static_cast<float>(blendData[blendIdx + 3u]) / 255.0f;
 
-                    const float totalWeight = w0 + w1 + w2 + w3;
-                    if (totalWeight > 0.0001f)
-                    {
-                        const float invTotal = 1.0f / totalWeight;
-                        const float blendR = (w0 * layerColorVec[0].x + w1 * layerColorVec[1].x + w2 * layerColorVec[2].x + w3 * layerColorVec[3].x) * invTotal;
-                        const float blendG = (w0 * layerColorVec[0].y + w1 * layerColorVec[1].y + w2 * layerColorVec[2].y + w3 * layerColorVec[3].y) * invTotal;
-                        const float blendB = (w0 * layerColorVec[0].z + w1 * layerColorVec[1].z + w2 * layerColorVec[2].z + w3 * layerColorVec[3].z) * invTotal;
+					const float totalWeight = w0 + w1 + w2 + w3;
+					if (totalWeight > 0.0001f)
+					{
+						const float invTotal = 1.0f / totalWeight;
+						const float blendR = (w0 * layerColorVec[0].x + w1 * layerColorVec[1].x + w2 * layerColorVec[2].x + w3 * layerColorVec[3].x) * invTotal;
+						const float blendG = (w0 * layerColorVec[0].y + w1 * layerColorVec[1].y + w2 * layerColorVec[2].y + w3 * layerColorVec[3].y) * invTotal;
+						const float blendB = (w0 * layerColorVec[0].z + w1 * layerColorVec[1].z + w2 * layerColorVec[2].z + w3 * layerColorVec[3].z) * invTotal;
 
-                        // Where totalWeight is small, the base diffuse still dominates (PlanetTerra shows base where
-                        // no layer is painted); where it approaches/exceeds 1, the layer-mix colour fully replaces
-                        // the base, matching how the blend weight texture drives the actual material on the planet.
-                        const float totalWeightClamped = (totalWeight < 1.0f) ? totalWeight : 1.0f;
-                        r = Ogre::Math::lerp(baseColorVec.x, blendR, totalWeightClamped);
-                        g = Ogre::Math::lerp(baseColorVec.y, blendG, totalWeightClamped);
-                        b = Ogre::Math::lerp(baseColorVec.z, blendB, totalWeightClamped);
-                    }
-                }
+						// Where totalWeight is small, the base diffuse still dominates (PlanetTerra shows base where
+						// no layer is painted); where it approaches/exceeds 1, the layer-mix colour fully replaces
+						// the base, matching how the blend weight texture drives the actual material on the planet.
+						const float totalWeightClamped = (totalWeight < 1.0f) ? totalWeight : 1.0f;
+						r = Ogre::Math::lerp(baseColorVec.x, blendR, totalWeightClamped);
+						g = Ogre::Math::lerp(baseColorVec.y, blendG, totalWeightClamped);
+						b = Ogre::Math::lerp(baseColorVec.z, blendB, totalWeightClamped);
+					}
+				}
 
-                // Mild height-based brightness modulation on top of the layer colour, purely for terrain relief
-                // readability (valleys slightly darker, peaks slightly brighter) -- secondary to the blend-layer
-                // colour now, not the primary signal anymore.
-                const float normalizedHeight = (heights[static_cast<size_t>(y) * texSize + x] - minHeight) / heightRange;
-                const float brightness = 0.85f + 0.3f * normalizedHeight;
-                r *= brightness;
-                g *= brightness;
-                b *= brightness;
+				// Mild height-based brightness modulation on top of the layer colour, purely for terrain relief
+				// readability (valleys slightly darker, peaks slightly brighter) -- secondary to the blend-layer
+				// colour now, not the primary signal anymore.
+				const float normalizedHeight = (heights[static_cast<size_t>(y) * texSize + x] - minHeight) / heightRange;
+				const float brightness = 0.85f + 0.3f * normalizedHeight;
+				r *= brightness;
+				g *= brightness;
+				b *= brightness;
 
-                float alpha = 1.0f;
-                if (true == round)
-                {
-                    const float rx = static_cast<float>(x) - (static_cast<float>(texSize) * 0.5f);
-                    const float ry = static_cast<float>(y) - (static_cast<float>(texSize) * 0.5f);
-                    const float distanceRound = std::sqrt(rx * rx + ry * ry);
-                    if (distanceRound >= (static_cast<float>(texSize) * 0.5f) - padding)
-                    {
-                        alpha = 0.0f;
-                    }
-                }
+				float alpha = 1.0f;
+				if (true == round)
+				{
+					const float rx = static_cast<float>(x) - (static_cast<float>(texSize) * 0.5f);
+					const float ry = static_cast<float>(y) - (static_cast<float>(texSize) * 0.5f);
+					const float distanceRound = std::sqrt(rx * rx + ry * ry);
+					if (distanceRound >= (static_cast<float>(texSize) * 0.5f) - padding)
+					{
+						alpha = 0.0f;
+					}
+				}
 
-                const size_t dstIdx = x * bytesPerPixel;
-                // NOTE: packColour expects [0,1] floats, not [0,255] bytes -- this is the convention
-                // PlanetTerra::createBlendWeightTexture/applyPaintBrush themselves use. An earlier version of this
-                // function multiplied by 255 here, which saturated every channel toward the format's maximum during
-                // packing -- the actual root cause of every "white background" report against this bake function,
-                // independent of blend data, residency, or upload() signature (all of which were red herrings).
-                float rgba[4] = {Ogre::Math::Clamp(r, 0.0f, 1.0f), Ogre::Math::Clamp(g, 0.0f, 1.0f), Ogre::Math::Clamp(b, 0.0f, 1.0f), alpha};
-                Ogre::PixelFormatGpuUtils::packColour(rgba, this->minimapTexture->getPixelFormat(), &pixBoxData[dstIdx]);
-            }
-        }
+				const size_t dstIdx = x * bytesPerPixel;
+				// NOTE: packColour expects [0,1] floats, not [0,255] bytes -- this is the convention
+				// PlanetTerra::createBlendWeightTexture/applyPaintBrush themselves use. An earlier version of this
+				// function multiplied by 255 here, which saturated every channel toward the format's maximum during
+				// packing -- the actual root cause of every "white background" report against this bake function,
+				// independent of blend data, residency, or upload() signature (all of which were red herrings).
+				float rgba[4] = { Ogre::Math::Clamp(r, 0.0f, 1.0f), Ogre::Math::Clamp(g, 0.0f, 1.0f), Ogre::Math::Clamp(b, 0.0f, 1.0f), alpha };
+				Ogre::PixelFormatGpuUtils::packColour(rgba, this->minimapTexture->getPixelFormat(), &pixBoxData[dstIdx]);
+			}
+		}
 
-        this->minimapStagingTexture->stopMapRegion();
-        this->minimapStagingTexture->upload(texBox, this->minimapTexture, 0u);
+		this->minimapStagingTexture->stopMapRegion();
+		this->minimapStagingTexture->upload(texBox, this->minimapTexture, 0u);
 
-        if (true == this->bShowDebugData)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' baked planet overview: planet='" + this->planetGameObject->getName() +
-                                                                                    "' texSize=" + Ogre::StringConverter::toString(texSize) + " baseRadius=" + Ogre::StringConverter::toString(baseRadius) +
-                                                                                    " minHeight=" + Ogre::StringConverter::toString(minHeight) + " maxHeight=" + Ogre::StringConverter::toString(maxHeight) +
-                                                                                    " hasBlendData=" + Ogre::StringConverter::toString(hasBlendData) + " blendTexSize=" + Ogre::StringConverter::toString(blendTexSize));
-        }
+		if (true == this->bShowDebugData)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' baked planet overview: planet='" + this->planetGameObject->getName()
+				+ "' texSize=" + Ogre::StringConverter::toString(texSize) + " baseRadius=" + Ogre::StringConverter::toString(baseRadius)
+				+ " minHeight=" + Ogre::StringConverter::toString(minHeight) + " maxHeight=" + Ogre::StringConverter::toString(maxHeight)
+				+ " hasBlendData=" + Ogre::StringConverter::toString(hasBlendData) + " blendTexSize=" + Ogre::StringConverter::toString(blendTexSize));
+		}
     }
 
-    void PlanetMinimapComponent::rebakePlanetOverview(void)
+	void PlanetMinimapComponent::rebakePlanetOverview(void)
+	{
+		if (nullptr == this->minimapTexture || false == this->wholeSceneVisible->getBool())
     {
-        if (nullptr == this->minimapTexture || false == this->wholeSceneVisible->getBool())
-        {
-            return;
-        }
+			return;
+		}
         // Mirrors MinimapComponent::adjustMinimapCamera, but centered on the planet's world position and sized from
-        NOWA::GraphicsModule::RenderCommand cmd = [this]
+		NOWA::GraphicsModule::RenderCommand cmd = [this]
+		{
+			this->bakePlanetOverviewTexture();
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::rebakePlanetOverview");
+	}
+
+	void PlanetMinimapComponent::updateOverviewTargetMarker(const Ogre::Vector3& targetWorldPosition)
+	{
+		// Threadsafe from the outside -- call only from inside a GraphicsModule render command/tracked closure,
+		// since this touches a MyGUI widget.
+		if (nullptr == this->targetMarkerWidget || nullptr == this->planetGameObject || nullptr == this->minimapWidget)
         {
-            this->bakePlanetOverviewTexture();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::rebakePlanetOverview");
+			return;
+        }
+
+		const Ogre::Vector3 planetCenter = this->planetGameObject->getPosition();
+		Ogre::Vector3 direction = targetWorldPosition - planetCenter;
+		if (direction.squaredLength() < 0.000001f)
+		{
+			// Degenerate: target sits exactly at the planet's center. Keep the marker at its previous position.
+			return;
+		}
+
+		const Ogre::Vector2 uv = this->worldDirectionToUV(direction);
+		const Ogre::Vector2 pixel = this->uvToPixelCoordinates(uv, this->minimapWidget->getWidth(), this->minimapWidget->getHeight());
+
+		const int markerHalfWidth = static_cast<int>(this->targetMarkerWidget->getWidth() / 2);
+		const int markerHalfHeight = static_cast<int>(this->targetMarkerWidget->getHeight() / 2);
+		this->targetMarkerWidget->setPosition(static_cast<int>(pixel.x) - markerHalfWidth, static_cast<int>(pixel.y) - markerHalfHeight);
     }
 
-    void PlanetMinimapComponent::updateOverviewTargetMarker(const Ogre::Vector3& targetWorldPosition)
-    {
-        // Threadsafe from the outside -- call only from inside a GraphicsModule render command/tracked closure,
-        // since this touches a MyGUI widget.
-        if (nullptr == this->targetMarkerWidget || nullptr == this->planetGameObject || nullptr == this->minimapWidget)
-        {
-            return;
-        }
+	void PlanetMinimapComponent::updateCompassObjects(const Ogre::Vector3& targetWorldPosition, const Ogre::Vector3& followCameraPosition, const Ogre::Quaternion& followCameraOrientation, Ogre::Real followCameraDistance)
+	{
+		// Threadsafe from the outside -- call only from inside a GraphicsModule render command/tracked closure,
+		// since this touches MyGUI widgets.
+		for (unsigned int i = 0; i < this->compassObjectCount->getUInt(); i++)
+		{
+			this->updateSingleCompassObject(i, targetWorldPosition, followCameraPosition, followCameraOrientation, followCameraDistance);
+		}
+	}
 
-        const Ogre::Vector3 planetCenter = this->planetGameObject->getPosition();
-        Ogre::Vector3 direction = targetWorldPosition - planetCenter;
-        if (direction.squaredLength() < 0.000001f)
-        {
-            // Degenerate: target sits exactly at the planet's center. Keep the marker at its previous position.
-            return;
-        }
+	void PlanetMinimapComponent::updateSingleCompassObject(unsigned int index, const Ogre::Vector3& targetWorldPosition, const Ogre::Vector3& followCameraPosition, const Ogre::Quaternion& followCameraOrientation, Ogre::Real followCameraDistance)
+	{
+		if (index >= this->compassObjectWidgets.size() || nullptr == this->compassObjectWidgets[index] || nullptr == this->planetGameObject)
+		{
+			return;
+		}
 
-        const Ogre::Vector2 uv = this->worldDirectionToUV(direction);
-        const Ogre::Vector2 pixel = this->uvToPixelCoordinates(uv, this->minimapWidget->getWidth(), this->minimapWidget->getHeight());
+		MyGUI::ImageBox* markerWidget = this->compassObjectWidgets[index];
+		MyGUI::TextBox* distanceWidget = (index < this->compassObjectDistanceTexts.size()) ? this->compassObjectDistanceTexts[index] : nullptr;
 
-        const int markerHalfWidth = static_cast<int>(this->targetMarkerWidget->getWidth() / 2);
-        const int markerHalfHeight = static_cast<int>(this->targetMarkerWidget->getHeight() / 2);
-        this->targetMarkerWidget->setPosition(static_cast<int>(pixel.x) - markerHalfWidth, static_cast<int>(pixel.y) - markerHalfHeight);
-    }
+		unsigned long compassId = (index < this->compassGameObjectIds.size() && nullptr != this->compassGameObjectIds[index]) ? this->compassGameObjectIds[index]->getULong() : 0ul;
+		if (0 == compassId)
+		{
+			markerWidget->setVisible(false);
+			if (nullptr != distanceWidget)
+			{
+				distanceWidget->setVisible(false);
+			}
+			return;
+		}
 
-    void PlanetMinimapComponent::updateCompassObjects(const Ogre::Vector3& targetWorldPosition, const Ogre::Vector3& followCameraPosition, const Ogre::Quaternion& followCameraOrientation, Ogre::Real followCameraDistance)
-    {
-        // Threadsafe from the outside -- call only from inside a GraphicsModule render command/tracked closure,
-        // since this touches MyGUI widgets.
-        for (unsigned int i = 0; i < this->compassObjectCount->getUInt(); i++)
-        {
-            this->updateSingleCompassObject(i, targetWorldPosition, followCameraPosition, followCameraOrientation, followCameraDistance);
-        }
-    }
+		const auto& compassGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(compassId);
+		if (nullptr == compassGameObjectPtr)
+		{
+			// Not currently spawned/already destroyed -- hide rather than show a stale position.
+			markerWidget->setVisible(false);
+			if (nullptr != distanceWidget)
+			{
+				distanceWidget->setVisible(false);
+			}
+			return;
+		}
 
-    void PlanetMinimapComponent::updateSingleCompassObject(unsigned int index, const Ogre::Vector3& targetWorldPosition, const Ogre::Vector3& followCameraPosition, const Ogre::Quaternion& followCameraOrientation, Ogre::Real followCameraDistance)
-    {
-        if (index >= this->compassObjectWidgets.size() || nullptr == this->compassObjectWidgets[index] || nullptr == this->planetGameObject)
-        {
-            return;
-        }
+		const Ogre::Vector3 compassWorldPosition = compassGameObjectPtr->getPosition();
+		const Ogre::Vector3 planetCenter = this->planetGameObject->getPosition();
 
-        MyGUI::ImageBox* markerWidget = this->compassObjectWidgets[index];
-        MyGUI::TextBox* distanceWidget = (index < this->compassObjectDistanceTexts.size()) ? this->compassObjectDistanceTexts[index] : nullptr;
+		// True distance from the tracked player/target to this compass object, independent of the follow camera's
+		// CameraHeight offset -- this is what the player actually cares about ("how far is it"), not the distance
+		// from wherever the minimap camera happens to be floating.
+		const Ogre::Real distanceMeters = (compassWorldPosition - targetWorldPosition).length();
+		const Ogre::String distanceText = this->formatDistanceMeters(distanceMeters);
 
-        unsigned long compassId = (index < this->compassGameObjectIds.size() && nullptr != this->compassGameObjectIds[index]) ? this->compassGameObjectIds[index]->getULong() : 0ul;
-        if (0 == compassId)
-        {
-            markerWidget->setVisible(false);
-            if (nullptr != distanceWidget)
-            {
-                distanceWidget->setVisible(false);
-            }
-            return;
-        }
+		if (true == this->wholeSceneVisible->getBool())
+		{
+			// Overview mode: the bake covers the ENTIRE sphere, so this object is always representable as a true
+			// position marker, exactly like updateOverviewTargetMarker -- no "off the edge" case can occur here,
+			// unlike follow mode below.
+			if (nullptr == this->minimapWidget)
+			{
+				return;
+			}
 
-        const auto& compassGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(compassId);
-        if (nullptr == compassGameObjectPtr)
-        {
-            // Not currently spawned/already destroyed -- hide rather than show a stale position.
-            markerWidget->setVisible(false);
-            if (nullptr != distanceWidget)
-            {
-                distanceWidget->setVisible(false);
-            }
-            return;
-        }
+			Ogre::Vector3 direction = compassWorldPosition - planetCenter;
+			if (direction.squaredLength() < 0.000001f)
+			{
+				markerWidget->setVisible(false);
+				if (nullptr != distanceWidget)
+				{
+					distanceWidget->setVisible(false);
+				}
+				return;
+			}
 
-        const Ogre::Vector3 compassWorldPosition = compassGameObjectPtr->getPosition();
-        const Ogre::Vector3 planetCenter = this->planetGameObject->getPosition();
+			const Ogre::Vector2 uv = this->worldDirectionToUV(direction);
+			const Ogre::Vector2 pixel = this->uvToPixelCoordinates(uv, this->minimapWidget->getWidth(), this->minimapWidget->getHeight());
 
-        // True distance from the tracked player/target to this compass object, independent of the follow camera's
-        // CameraHeight offset -- this is what the player actually cares about ("how far is it"), not the distance
-        // from wherever the minimap camera happens to be floating.
-        const Ogre::Real distanceMeters = (compassWorldPosition - targetWorldPosition).length();
-        const Ogre::String distanceText = this->formatDistanceMeters(distanceMeters);
+			const int markerHalfWidth = static_cast<int>(markerWidget->getWidth() / 2);
+			const int markerHalfHeight = static_cast<int>(markerWidget->getHeight() / 2);
+			markerWidget->setVisible(true);
+			markerWidget->setPosition(static_cast<int>(pixel.x) - markerHalfWidth, static_cast<int>(pixel.y) - markerHalfHeight);
 
-        if (true == this->wholeSceneVisible->getBool())
-        {
-            // Overview mode: the bake covers the ENTIRE sphere, so this object is always representable as a true
-            // position marker, exactly like updateOverviewTargetMarker -- no "off the edge" case can occur here,
-            // unlike follow mode below.
-            if (nullptr == this->minimapWidget)
-            {
-                return;
-            }
+			if (nullptr != distanceWidget)
+			{
+				distanceWidget->setCaption(distanceText);
+				distanceWidget->setVisible(true);
+				this->placeDistanceLabel(distanceWidget, static_cast<int>(pixel.x), static_cast<int>(pixel.y), markerHalfWidth, markerHalfHeight, this->minimapWidget->getWidth(), this->minimapWidget->getHeight());
+			}
+		}
+		else
+		{
+			// Follow mode: TRUE position when this object is within the local view's footprint, clamped onto the
+			// rim ring (at the correct bearing) once it would fall outside it -- the standard "off-screen indicator"
+			// pattern. Rather than re-deriving the camera's heading analytically (which would have to separately
+			// account for RotateMinimap's twist AND buildSurfaceLookOrientation's pole-roll ambiguity), this
+			// transforms the RAW (non-normalized) world-space offset through the minimap camera's CURRENT actual
+			// orientation (camOrientation.Inverse() * toObjectWorld). That guarantees this always matches whatever
+			// the camera is actually showing right now, with no separate logic to keep in sync if either changes.
+			if (nullptr == this->minimapWidget || nullptr == this->cameraComponent)
+			{
+				return;
+			}
 
-            Ogre::Vector3 direction = compassWorldPosition - planetCenter;
-            if (direction.squaredLength() < 0.000001f)
-            {
-                markerWidget->setVisible(false);
-                if (nullptr != distanceWidget)
-                {
-                    distanceWidget->setVisible(false);
-                }
-                return;
-            }
+			// IMPORTANT: do NOT normalize this -- the magnitude (world-space distance) is exactly what lets the
+			// same calculation place the marker at its TRUE position when nearby and clamp it onto the rim ring
+			// only once it's actually out of view, instead of always snapping to the ring regardless of distance.
+			// Uses the camera position freshly computed by updateFollowCamera THIS SAME TICK (passed in as
+			// followCameraPosition), not read back from the Camera object -- see updateFollowCamera's own comment
+			// for why that read-back was unreliable.
+			Ogre::Vector3 toObjectWorld = compassWorldPosition - followCameraPosition;
+			if (toObjectWorld.squaredLength() < 0.000001f)
+			{
+				markerWidget->setVisible(false);
+				if (nullptr != distanceWidget)
+				{
+					distanceWidget->setVisible(false);
+				}
+				return;
+			}
 
-            const Ogre::Vector2 uv = this->worldDirectionToUV(direction);
-            const Ogre::Vector2 pixel = this->uvToPixelCoordinates(uv, this->minimapWidget->getWidth(), this->minimapWidget->getHeight());
+			// Camera-local space: by Ogre/NOWA convention the camera looks down -Z, +X is right, +Y is up. Still in
+			// world units at this point (no normalisation), so .x/.y below carry real distance information.
+			Ogre::Vector3 toObjectLocal = followCameraOrientation.Inverse() * toObjectWorld;
 
-            const int markerHalfWidth = static_cast<int>(markerWidget->getWidth() / 2);
-            const int markerHalfHeight = static_cast<int>(markerWidget->getHeight() / 2);
-            markerWidget->setVisible(true);
-            markerWidget->setPosition(static_cast<int>(pixel.x) - markerHalfWidth, static_cast<int>(pixel.y) - markerHalfHeight);
+			// World-unit offset on the camera's local screen plane: local X (right) and local Y (up) -- NOT local Z
+			// (the camera's forward/depth axis).
+			Ogre::Real worldOffsetX = toObjectLocal.x;
+			Ogre::Real worldOffsetY = toObjectLocal.y;
 
-            if (nullptr != distanceWidget)
-            {
-                distanceWidget->setCaption(distanceText);
-                distanceWidget->setVisible(true);
-                const int textHalfWidth = static_cast<int>(distanceWidget->getWidth() / 2);
-                distanceWidget->setPosition(static_cast<int>(pixel.x) - textHalfWidth, static_cast<int>(pixel.y) + markerHalfHeight + 2);
-            }
-        }
-        else
-        {
-            // Follow mode: TRUE position when this object is within the local view's footprint, clamped onto the
-            // rim ring (at the correct bearing) once it would fall outside it -- the standard "off-screen indicator"
-            // pattern. Rather than re-deriving the camera's heading analytically (which would have to separately
-            // account for RotateMinimap's twist AND buildSurfaceLookOrientation's pole-roll ambiguity), this
-            // transforms the RAW (non-normalized) world-space offset through the minimap camera's CURRENT actual
-            // orientation (camOrientation.Inverse() * toObjectWorld). That guarantees this always matches whatever
-            // the camera is actually showing right now, with no separate logic to keep in sync if either changes.
-            if (nullptr == this->minimapWidget || nullptr == this->cameraComponent)
-            {
-                return;
-            }
+			// Convert world units to pixels via the same view-footprint formula updateFollowCamera uses for the
+			// orthographic window size, evaluated at CameraHeight -- i.e. "how many world units does the local
+			// minimap actually show edge-to-edge". fovY/aspectRatio come live from the Camera (intrinsic projection
+			// parameters), cameraDistance uses the value updateFollowCamera computed THIS tick (followCameraDistance).
+			Ogre::Real fovY = this->cameraComponent->getCamera()->getFOVy().valueRadians();
+			Ogre::Real aspectRatio = this->cameraComponent->getCamera()->getAspectRatio();
+			Ogre::Real cameraDistance = followCameraDistance;
+			Ogre::Real viewHeightWorld = 2.0f * cameraDistance * tan(fovY / 2.0f);
+			Ogre::Real viewWidthWorld = viewHeightWorld * aspectRatio;
 
-            // IMPORTANT: do NOT normalize this -- the magnitude (world-space distance) is exactly what lets the
-            // same calculation place the marker at its TRUE position when nearby and clamp it onto the rim ring
-            // only once it's actually out of view, instead of always snapping to the ring regardless of distance.
-            // Uses the camera position freshly computed by updateFollowCamera THIS SAME TICK (passed in as
-            // followCameraPosition), not read back from the Camera object -- see updateFollowCamera's own comment
-            // for why that read-back was unreliable.
-            Ogre::Vector3 toObjectWorld = compassWorldPosition - followCameraPosition;
-            if (toObjectWorld.squaredLength() < 0.000001f)
-            {
-                markerWidget->setVisible(false);
-                if (nullptr != distanceWidget)
-                {
-                    distanceWidget->setVisible(false);
-                }
-                return;
-            }
+			if (viewWidthWorld < 0.0001f || viewHeightWorld < 0.0001f)
+			{
+				return;
+			}
 
-            // Camera-local space: by Ogre/NOWA convention the camera looks down -Z, +X is right, +Y is up. Still in
-            // world units at this point (no normalisation), so .x/.y below carry real distance information.
-            Ogre::Vector3 toObjectLocal = followCameraOrientation.Inverse() * toObjectWorld;
+			Ogre::Real pixelsPerWorldUnitX = static_cast<Ogre::Real>(this->minimapWidget->getWidth()) / viewWidthWorld;
+			Ogre::Real pixelsPerWorldUnitY = static_cast<Ogre::Real>(this->minimapWidget->getHeight()) / viewHeightWorld;
 
-            // World-unit offset on the camera's local screen plane: local X (right) and local Y (up) -- NOT local Z
-            // (the camera's forward/depth axis).
-            Ogre::Real worldOffsetX = toObjectLocal.x;
-            Ogre::Real worldOffsetY = toObjectLocal.y;
+			Ogre::Real pixelOffsetX = worldOffsetX * pixelsPerWorldUnitX;
+			Ogre::Real pixelOffsetY = worldOffsetY * pixelsPerWorldUnitY;
 
-            // Convert world units to pixels via the same view-footprint formula updateFollowCamera uses for the
-            // orthographic window size, evaluated at CameraHeight -- i.e. "how many world units does the local
-            // minimap actually show edge-to-edge". fovY/aspectRatio come live from the Camera (intrinsic projection
-            // parameters), cameraDistance uses the value updateFollowCamera computed THIS tick (followCameraDistance).
-            Ogre::Real fovY = this->cameraComponent->getCamera()->getFOVy().valueRadians();
-            Ogre::Real aspectRatio = this->cameraComponent->getCamera()->getAspectRatio();
-            Ogre::Real cameraDistance = followCameraDistance;
-            Ogre::Real viewHeightWorld = 2.0f * cameraDistance * tan(fovY / 2.0f);
-            Ogre::Real viewWidthWorld = viewHeightWorld * aspectRatio;
+			// Elliptical rim, matching the widget's actual (often non-square) aspect ratio -- e.g. a 512x206 wide
+			// minimap needs a wide ellipse, not a circle capped at the SMALLER of the two half-dimensions.
+			const Ogre::Real halfWidth = static_cast<Ogre::Real>(this->minimapWidget->getWidth()) * 0.5f;
+			const Ogre::Real halfHeight = static_cast<Ogre::Real>(this->minimapWidget->getHeight()) * 0.5f;
+			const Ogre::Real ringMarginX = static_cast<Ogre::Real>(markerWidget->getWidth()) * 0.5f + 2.0f;
+			const Ogre::Real ringMarginY = static_cast<Ogre::Real>(markerWidget->getHeight()) * 0.5f + 2.0f;
+			const Ogre::Real ringRadiusX = halfWidth - ringMarginX;
+			const Ogre::Real ringRadiusY = halfHeight - ringMarginY;
 
-            if (viewWidthWorld < 0.0001f || viewHeightWorld < 0.0001f)
-            {
-                return;
-            }
+			// Clamp the TRUE pixel offset onto the ellipse only once it would actually exceed it -- this single
+			// calculation covers both cases: object in view -> true position; object out of view -> rim, at the
+			// correct angle. Normalising each axis by its own ellipse radius before measuring magnitude is what
+			// makes the clamp elliptical instead of circular.
+			Ogre::Real normalizedX = (ringRadiusX > 0.0001f) ? (pixelOffsetX / ringRadiusX) : 0.0f;
+			Ogre::Real normalizedY = (ringRadiusY > 0.0001f) ? (pixelOffsetY / ringRadiusY) : 0.0f;
+			Ogre::Real normalizedMagnitude = std::sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
+			Ogre::Real offsetMagnitude = std::sqrt(pixelOffsetX * pixelOffsetX + pixelOffsetY * pixelOffsetY);
+			if (normalizedMagnitude > 1.0f)
+			{
+				pixelOffsetX /= normalizedMagnitude;
+				pixelOffsetY /= normalizedMagnitude;
+			}
 
-            Ogre::Real pixelsPerWorldUnitX = static_cast<Ogre::Real>(this->minimapWidget->getWidth()) / viewWidthWorld;
-            Ogre::Real pixelsPerWorldUnitY = static_cast<Ogre::Real>(this->minimapWidget->getHeight()) / viewHeightWorld;
+			const int markerHalfWidth = static_cast<int>(markerWidget->getWidth() / 2);
+			const int markerHalfHeight = static_cast<int>(markerWidget->getHeight() / 2);
+			markerWidget->setVisible(true);
+			const int markerCenterX = static_cast<int>(halfWidth + pixelOffsetX);
+			const int markerCenterY = static_cast<int>(halfHeight - pixelOffsetY);
+			markerWidget->setPosition(markerCenterX - markerHalfWidth, markerCenterY - markerHalfHeight);
 
-            Ogre::Real pixelOffsetX = worldOffsetX * pixelsPerWorldUnitX;
-            Ogre::Real pixelOffsetY = worldOffsetY * pixelsPerWorldUnitY;
+			if (nullptr != distanceWidget)
+			{
+				distanceWidget->setCaption(distanceText);
+				distanceWidget->setVisible(true);
+				this->placeDistanceLabel(distanceWidget, markerCenterX, markerCenterY, markerHalfWidth, markerHalfHeight, this->minimapWidget->getWidth(), this->minimapWidget->getHeight());
+			}
 
-            // Elliptical rim, matching the widget's actual (often non-square) aspect ratio -- e.g. a 512x206 wide
-            // minimap needs a wide ellipse, not a circle capped at the SMALLER of the two half-dimensions.
-            const Ogre::Real halfWidth = static_cast<Ogre::Real>(this->minimapWidget->getWidth()) * 0.5f;
-            const Ogre::Real halfHeight = static_cast<Ogre::Real>(this->minimapWidget->getHeight()) * 0.5f;
-            const Ogre::Real ringMarginX = static_cast<Ogre::Real>(markerWidget->getWidth()) * 0.5f + 2.0f;
-            const Ogre::Real ringMarginY = static_cast<Ogre::Real>(markerWidget->getHeight()) * 0.5f + 2.0f;
-            const Ogre::Real ringRadiusX = halfWidth - ringMarginX;
-            const Ogre::Real ringRadiusY = halfHeight - ringMarginY;
+			// Throttled diagnostic (roughly once a second at 60 closure calls/sec, per object), only when bDebugData
+			// is enabled -- prints every value this calculation depends on, so a wrong result can be traced to the
+			// exact step that produced it.
+			this->compassLogCounter++;
+			if (true == this->bShowDebugData && 0u == (this->compassLogCounter % 60u))
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' compass[" + Ogre::StringConverter::toString(index) + "](follow): compassWorldPosition="
+					+ Ogre::StringConverter::toString(compassWorldPosition) + " followCameraPosition=" + Ogre::StringConverter::toString(followCameraPosition)
+					+ " followCameraOrientation=" + Ogre::StringConverter::toString(followCameraOrientation) + " followCameraDistance=" + Ogre::StringConverter::toString(followCameraDistance)
+					+ " toObjectWorld=" + Ogre::StringConverter::toString(toObjectWorld) + " toObjectLocal=" + Ogre::StringConverter::toString(toObjectLocal)
+					+ " worldOffsetX=" + Ogre::StringConverter::toString(worldOffsetX) + " worldOffsetY=" + Ogre::StringConverter::toString(worldOffsetY)
+					+ " fovY(deg)=" + Ogre::StringConverter::toString(Ogre::Radian(fovY).valueDegrees()) + " aspectRatio=" + Ogre::StringConverter::toString(aspectRatio)
+					+ " viewWidthWorld=" + Ogre::StringConverter::toString(viewWidthWorld) + " viewHeightWorld=" + Ogre::StringConverter::toString(viewHeightWorld)
+					+ " pixelOffsetX(final)=" + Ogre::StringConverter::toString(pixelOffsetX) + " pixelOffsetY(final)=" + Ogre::StringConverter::toString(pixelOffsetY)
+					+ " offsetMagnitude=" + Ogre::StringConverter::toString(offsetMagnitude) + " normalizedMagnitude=" + Ogre::StringConverter::toString(normalizedMagnitude)
+					+ " ringRadiusX=" + Ogre::StringConverter::toString(ringRadiusX) + " ringRadiusY=" + Ogre::StringConverter::toString(ringRadiusY)
+					+ " minimapWidgetSize=" + Ogre::StringConverter::toString(this->minimapWidget->getWidth()) + "x" + Ogre::StringConverter::toString(this->minimapWidget->getHeight())
+					+ " finalWidgetPos=" + Ogre::StringConverter::toString(markerCenterX - markerHalfWidth) + "," + Ogre::StringConverter::toString(markerCenterY - markerHalfHeight));
+			}
+		}
+	}
 
-            // Clamp the TRUE pixel offset onto the ellipse only once it would actually exceed it -- this single
-            // calculation covers both cases: object in view -> true position; object out of view -> rim, at the
-            // correct angle. Normalising each axis by its own ellipse radius before measuring magnitude is what
-            // makes the clamp elliptical instead of circular.
-            Ogre::Real normalizedX = (ringRadiusX > 0.0001f) ? (pixelOffsetX / ringRadiusX) : 0.0f;
-            Ogre::Real normalizedY = (ringRadiusY > 0.0001f) ? (pixelOffsetY / ringRadiusY) : 0.0f;
-            Ogre::Real normalizedMagnitude = std::sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
-            Ogre::Real offsetMagnitude = std::sqrt(pixelOffsetX * pixelOffsetX + pixelOffsetY * pixelOffsetY);
-            if (normalizedMagnitude > 1.0f)
-            {
-                pixelOffsetX /= normalizedMagnitude;
-                pixelOffsetY /= normalizedMagnitude;
-            }
+	void PlanetMinimapComponent::generateCompassObjects(void)
+	{
+		// Threadsafe from the outside -- call only from inside a GraphicsModule render command (matches the rest
+		// of this file's convention, e.g. createMinimapTexture/createFogOfWarTexture).
+		this->destroyCompassObjects();
 
-            const int markerHalfWidth = static_cast<int>(markerWidget->getWidth() / 2);
-            const int markerHalfHeight = static_cast<int>(markerWidget->getHeight() / 2);
-            markerWidget->setVisible(true);
-            const int markerCenterX = static_cast<int>(halfWidth + pixelOffsetX);
-            const int markerCenterY = static_cast<int>(halfHeight - pixelOffsetY);
-            markerWidget->setPosition(markerCenterX - markerHalfWidth, markerCenterY - markerHalfHeight);
+		if (nullptr == this->minimapWidget)
+		{
+			return;
+		}
 
-            if (nullptr != distanceWidget)
-            {
-                distanceWidget->setCaption(distanceText);
-                distanceWidget->setVisible(true);
-                const int textHalfWidth = static_cast<int>(distanceWidget->getWidth() / 2);
-                distanceWidget->setPosition(markerCenterX - textHalfWidth, markerCenterY + markerHalfHeight + 2);
-            }
+		for (unsigned int i = 0; i < this->compassObjectCount->getUInt(); i++)
+		{
+			Ogre::String image = (i < this->compassImages.size() && nullptr != this->compassImages[i]) ? this->compassImages[i]->getString() : "";
+			if (true == image.empty())
+			{
+				this->compassObjectWidgets.push_back(nullptr);
+				this->compassObjectDistanceTexts.push_back(nullptr);
+				continue;
+			}
 
-            // Throttled diagnostic (roughly once a second at 60 closure calls/sec, per object), only when bDebugData
-            // is enabled -- prints every value this calculation depends on, so a wrong result can be traced to the
-            // exact step that produced it.
-            this->compassLogCounter++;
-            if (true == this->bShowDebugData && 0u == (this->compassLogCounter % 60u))
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' compass[" + Ogre::StringConverter::toString(index) + "](follow): compassWorldPosition=" + Ogre::StringConverter::toString(compassWorldPosition) +
-                        " followCameraPosition=" + Ogre::StringConverter::toString(followCameraPosition) + " followCameraOrientation=" + Ogre::StringConverter::toString(followCameraOrientation) +
-                        " followCameraDistance=" + Ogre::StringConverter::toString(followCameraDistance) + " toObjectWorld=" + Ogre::StringConverter::toString(toObjectWorld) + " toObjectLocal=" + Ogre::StringConverter::toString(toObjectLocal) +
-                        " worldOffsetX=" + Ogre::StringConverter::toString(worldOffsetX) + " worldOffsetY=" + Ogre::StringConverter::toString(worldOffsetY) + " fovY(deg)=" + Ogre::StringConverter::toString(Ogre::Radian(fovY).valueDegrees()) +
-                        " aspectRatio=" + Ogre::StringConverter::toString(aspectRatio) + " viewWidthWorld=" + Ogre::StringConverter::toString(viewWidthWorld) + " viewHeightWorld=" + Ogre::StringConverter::toString(viewHeightWorld) +
-                        " pixelOffsetX(final)=" + Ogre::StringConverter::toString(pixelOffsetX) + " pixelOffsetY(final)=" + Ogre::StringConverter::toString(pixelOffsetY) + " offsetMagnitude=" + Ogre::StringConverter::toString(offsetMagnitude) +
-                        " normalizedMagnitude=" + Ogre::StringConverter::toString(normalizedMagnitude) + " ringRadiusX=" + Ogre::StringConverter::toString(ringRadiusX) + " ringRadiusY=" + Ogre::StringConverter::toString(ringRadiusY) +
-                        " minimapWidgetSize=" + Ogre::StringConverter::toString(this->minimapWidget->getWidth()) + "x" + Ogre::StringConverter::toString(this->minimapWidget->getHeight()) +
-                        " finalWidgetPos=" + Ogre::StringConverter::toString(markerCenterX - markerHalfWidth) + "," + Ogre::StringConverter::toString(markerCenterY - markerHalfHeight));
-            }
-        }
-    }
+			// Marker icon -- created as a child of minimapWidget so it always shares the exact same pixel rect as
+			// the map texture/other markers, regardless of which mode (overview/follow) is active.
+			MyGUI::ImageBox* markerWidget = this->minimapWidget->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(0, 0, 32, 32), MyGUI::Align::Default);
+			markerWidget->setImageTexture(image);
+			markerWidget->setNeedMouseFocus(false);
+			markerWidget->setDepth(3);
+			markerWidget->setVisible(false);
 
-    void PlanetMinimapComponent::generateCompassObjects(void)
-    {
-        // Threadsafe from the outside -- call only from inside a GraphicsModule render command (matches the rest
-        // of this file's convention, e.g. createMinimapTexture/createFogOfWarTexture).
-        this->destroyCompassObjects();
+			Ogre::String toolTip = (i < this->compassToolTipTexts.size() && nullptr != this->compassToolTipTexts[i]) ? this->compassToolTipTexts[i]->getString() : "";
 
-        if (nullptr == this->minimapWidget)
-        {
-            return;
-        }
+			// IMPORTANT: always wire eventToolTip unconditionally here -- do NOT skip it when toolTip is empty.
+			// setCompassToolTipText() can be called from Lua AFTER generateCompassObjects() has already run (e.g.
+			// at game-start in a connect() script), so the text is legitimately empty at widget-creation time but
+			// will be filled in later. setCompassToolTipText() already calls setUserString/setNeedMouseFocus at that
+			// later point, but it cannot retroactively add the eventToolTip delegate -- that can only be done once,
+			// here, when the widget is first created. The notifyToolTip handler checks getUserString("ToolTip") at
+			// show-time and returns early if still empty, so wiring it on an empty-tooltip widget is a no-op.
+			markerWidget->setNeedMouseFocus(false == toolTip.empty());
+			// CRITICAL: MyGUI's ToolTipManager only fires eventToolTip on widgets where NeedToolTip is true.
+			// NeedMouseFocus alone does NOT trigger tooltip events -- they are two separate flags. Without
+			// setNeedToolTip(true), the eventToolTip delegate below will never fire regardless of hover time.
+			markerWidget->setNeedToolTip(false == toolTip.empty());
+			if (false == toolTip.empty())
+			{
+				markerWidget->setUserString("ToolTip", toolTip);
+			}
+				// multiple components can subscribe to the same widget without clearing each other's handlers.
+				markerWidget->eventToolTip += MyGUI::newDelegate(this, &PlanetMinimapComponent::notifyToolTip);
 
-        for (unsigned int i = 0; i < this->compassObjectCount->getUInt(); i++)
-        {
-            Ogre::String image = (i < this->compassImages.size() && nullptr != this->compassImages[i]) ? this->compassImages[i]->getString() : "";
-            if (true == image.empty())
-            {
-                this->compassObjectWidgets.push_back(nullptr);
-                this->compassObjectDistanceTexts.push_back(nullptr);
-                continue;
-            }
+			this->compassObjectWidgets.push_back(markerWidget);
 
-            // Marker icon -- created as a child of minimapWidget so it always shares the exact same pixel rect as
-            // the map texture/other markers, regardless of which mode (overview/follow) is active.
-            MyGUI::ImageBox* markerWidget = this->minimapWidget->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(0, 0, 32, 32), MyGUI::Align::Default);
-            markerWidget->setImageTexture(image);
-            markerWidget->setNeedMouseFocus(false);
-            markerWidget->setDepth(3);
-            markerWidget->setVisible(false);
+			// Live distance readout (e.g. "342 m" / "1.2 km"), repositioned alongside the marker every tick in
+			// updateSingleCompassObject. Created as a sibling (not a child of markerWidget) so its own position can
+			// be offset independently (placed just below the marker icon).
+			MyGUI::TextBox* distanceWidget = this->minimapWidget->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(0, 0, 90, 16), MyGUI::Align::Default);
+			distanceWidget->setTextAlign(MyGUI::Align::Center);
+			distanceWidget->setFontHeight(12);
+			distanceWidget->setTextColour(MyGUI::Colour::White);
+			distanceWidget->setNeedMouseFocus(false);
+			distanceWidget->setDepth(4);
+			distanceWidget->setVisible(false);
+			this->compassObjectDistanceTexts.push_back(distanceWidget);
+		}
+	}
 
-            Ogre::String toolTip = (i < this->compassToolTipTexts.size() && nullptr != this->compassToolTipTexts[i]) ? this->compassToolTipTexts[i]->getString() : "";
-            if (false == toolTip.empty())
-            {
-                // Standard MyGUI tooltip hook: skins with an auto-tooltip popup configured read this UserString.
-                // If your project does not have that popup wired up yet, this is a harmless no-op for now -- the
-                // text is still available via getCompassToolTipText(index) for a custom tooltip implementation.
-                markerWidget->setNeedMouseFocus(true);
-                markerWidget->setUserString("ToolTip", toolTip);
-            }
+	void PlanetMinimapComponent::destroyCompassObjects(void)
+	{
+		for (size_t i = 0; i < this->compassObjectWidgets.size(); i++)
+		{
+			if (nullptr != this->compassObjectWidgets[i])
+			{
+				MyGUI::Gui::getInstancePtr()->destroyWidget(this->compassObjectWidgets[i]);
+			}
+		}
+		this->compassObjectWidgets.clear();
 
-            this->compassObjectWidgets.push_back(markerWidget);
-
-            // Live distance readout (e.g. "342 m" / "1.2 km"), repositioned alongside the marker every tick in
-            // updateSingleCompassObject. Created as a sibling (not a child of markerWidget) so its own position can
-            // be offset independently (placed just below the marker icon).
-            MyGUI::TextBox* distanceWidget = this->minimapWidget->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(0, 0, 90, 16), MyGUI::Align::Default);
-            distanceWidget->setTextAlign(MyGUI::Align::Center);
-            distanceWidget->setFontHeight(12);
-            distanceWidget->setTextColour(MyGUI::Colour::White);
-            distanceWidget->setNeedMouseFocus(false);
-            distanceWidget->setDepth(4);
-            distanceWidget->setVisible(false);
-            this->compassObjectDistanceTexts.push_back(distanceWidget);
-        }
-    }
-
-    void PlanetMinimapComponent::destroyCompassObjects(void)
-    {
-        for (size_t i = 0; i < this->compassObjectWidgets.size(); i++)
-        {
-            if (nullptr != this->compassObjectWidgets[i])
-            {
-                MyGUI::Gui::getInstancePtr()->destroyWidget(this->compassObjectWidgets[i]);
-            }
-        }
-        this->compassObjectWidgets.clear();
-
-        for (size_t i = 0; i < this->compassObjectDistanceTexts.size(); i++)
-        {
-            if (nullptr != this->compassObjectDistanceTexts[i])
-            {
-                MyGUI::Gui::getInstancePtr()->destroyWidget(this->compassObjectDistanceTexts[i]);
-            }
-        }
-        this->compassObjectDistanceTexts.clear();
-    }
+		for (size_t i = 0; i < this->compassObjectDistanceTexts.size(); i++)
+		{
+			if (nullptr != this->compassObjectDistanceTexts[i])
+			{
+				MyGUI::Gui::getInstancePtr()->destroyWidget(this->compassObjectDistanceTexts[i]);
+			}
+		}
+		this->compassObjectDistanceTexts.clear();
+	}
 
     Ogre::Quaternion PlanetMinimapComponent::buildSurfaceLookOrientation(const Ogre::Vector3& outwardNormal) const
     {
@@ -1856,20 +1895,194 @@ namespace NOWA
             distanceMeters = 0.0f;
         }
 
-        if (distanceMeters >= 1000.0f)
-        {
-            Ogre::Real km = distanceMeters / 1000.0f;
-            // One decimal place for km (e.g. "1.2 km"), rounded rather than truncated.
-            Ogre::Real kmRounded = std::round(km * 10.0f) / 10.0f;
-            return Ogre::StringConverter::toString(kmRounded, 1) + " km";
-        }
-
+        // Always show raw meters -- the player uses the decreasing number to confirm they're walking in the right
+        // direction toward an off-screen compass target. Converting to km at large distances hides this gradient:
+        // "1 km" barely changes as the player moves, making it useless as a heading indicator.
         int meters = static_cast<int>(distanceMeters + 0.5f);
         return Ogre::StringConverter::toString(meters) + " m";
     }
 
-    void PlanetMinimapComponent::updateFollowCamera(const Ogre::Vector3& targetWorldPosition, const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetDefaultDirection, Ogre::Vector3& outCameraPosition,
-        Ogre::Quaternion& outCameraOrientation, Ogre::Real& outCameraDistance)
+    void PlanetMinimapComponent::initToolTipData(void)
+    {
+        // Already initialised (e.g. after a switchPlanet call that rebuilds the workspace).
+        if (nullptr != this->toolTipPanel)
+        {
+            return;
+        }
+
+        // ToolTip2.layout is the same layout file MyGUIHelper in NOWA-Design uses. It defines "tooltipPanel"
+        // (a Widget with PanelSmall skin) containing "text_Desc" (an EditBox). The layout file must be registered
+        // in your resource group (MyGUI_Media or similar) for loadLayout to find it.
+        MyGUI::LayoutManager::getInstance().loadLayout("ToolTip2.layout");
+        this->toolTipPanel = MyGUI::Gui::getInstance().findWidget<MyGUI::Widget>("tooltipPanel");
+        this->toolTipText = MyGUI::Gui::getInstance().findWidget<MyGUI::EditBox>("text_Desc");
+
+        if (nullptr != this->toolTipPanel)
+        {
+            this->toolTipPanel->setVisible(false);
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName()
+                + "' initToolTipData: 'tooltipPanel' widget not found after loading ToolTip2.layout -- compass object tooltips will not work. "
+                "Make sure ToolTip2.layout is registered in the MyGUI resource group.");
+        }
+    }
+
+    void PlanetMinimapComponent::notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo& info)
+    {
+        // Called on the render thread by MyGUI's input system -- no enqueueAndWait needed here; all MyGUI calls are
+        // already safe to make directly in this context. Matches MyGUIHelper::notifyToolTip's structure exactly.
+        if (nullptr == this->toolTipPanel || nullptr == this->toolTipText)
+        {
+            if (true == this->bShowDebugData)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] notifyToolTip fired but toolTipPanel/toolTipText is null -- ToolTip2.layout not loaded or 'tooltipPanel'/'text_Desc' widget not found.");
+            }
+            return;
+        }
+
+        if (info.type == MyGUI::ToolTipInfo::Show)
+        {
+            if (true == this->bShowDebugData)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] notifyToolTip Show -- userString='ToolTip'='" + sender->getUserString("ToolTip") + "'");
+            }
+            const MyGUI::IntSize& viewSize = this->toolTipPanel->getParentSize();
+            // Size it generously first so the EditBox can compute the true text size.
+            this->toolTipPanel->setSize(viewSize.width / 2, viewSize.height / 2);
+
+            MyGUI::UString tipText = sender->getUserString("ToolTip");
+            if (true == tipText.empty())
+            {
+                return;
+            }
+
+            this->toolTipText->setCaption(tipText);
+
+            // Resize the panel to hug the text (constants are padding for PanelSmall skin -- same values as
+            // MyGUIHelper::notifyToolTip in NOWA-Design; adjust if you use a different skin).
+            const MyGUI::IntSize& textSize = this->toolTipText->getTextSize();
+            this->toolTipPanel->setSize(textSize.width + 6, textSize.height + 6);
+
+            this->toolTipPanel->setVisible(true);
+            this->boundedMove(this->toolTipPanel, info.point);
+        }
+        else if (info.type == MyGUI::ToolTipInfo::Hide)
+        {
+            this->toolTipPanel->setVisible(false);
+        }
+        else if (info.type == MyGUI::ToolTipInfo::Move)
+        {
+            this->boundedMove(this->toolTipPanel, info.point);
+        }
+    }
+
+    void PlanetMinimapComponent::boundedMove(MyGUI::Widget* moving, const MyGUI::IntPoint& point)
+    {
+        // Same logic as MyGUIHelper::boundedMove in NOWA-Design.
+        // NOTE: this is called both directly from notifyToolTip (render thread, no wrap needed) AND potentially
+        // from a Move event that is also on the render thread -- so no enqueueAndWait here.
+        if (nullptr == moving)
+        {
+            return;
+        }
+
+        const MyGUI::IntPoint offset(16, 16);
+        MyGUI::IntPoint boundedPoint = point + offset;
+        const MyGUI::IntSize& size = moving->getSize();
+        const MyGUI::IntSize& viewSize = moving->getParentSize();
+
+        if ((boundedPoint.left + size.width) > viewSize.width)
+        {
+            boundedPoint.left -= offset.left * 2 + size.width;
+        }
+        if ((boundedPoint.top + size.height) > viewSize.height)
+        {
+            boundedPoint.top -= offset.top * 2 + size.height;
+        }
+
+        moving->setPosition(boundedPoint);
+    }
+
+    void PlanetMinimapComponent::placeDistanceLabel(MyGUI::TextBox* distanceWidget, int markerCenterX, int markerCenterY, int markerHalfWidth, int markerHalfHeight, int widgetWidth, int widgetHeight) const
+    {
+        if (nullptr == distanceWidget)
+        {
+            return;
+        }
+
+        const int labelW = distanceWidget->getWidth();
+        const int labelH = distanceWidget->getHeight();
+        const int gap = 2;
+
+        // Decide the primary axis to place the label on: pick whichever axis has more room from the marker to the
+        // nearest widget edge, then check the perpendicular axis for out-of-bounds and clamp there separately.
+        // This keeps the label touching the marker rather than jumping arbitrarily far away.
+        const int spaceBelow = widgetHeight - (markerCenterY + markerHalfHeight + gap + labelH);
+        const int spaceAbove = markerCenterY - markerHalfHeight - gap - labelH;
+        const int spaceRight = widgetWidth - (markerCenterX + markerHalfWidth + gap + labelW);
+        const int spaceLeft = markerCenterX - markerHalfWidth - gap - labelW;
+
+        int posX, posY;
+
+        if (spaceBelow >= 0)
+        {
+            // Default: place below the marker.
+            posX = markerCenterX - labelW / 2;
+            posY = markerCenterY + markerHalfHeight + gap;
+        }
+        else if (spaceAbove >= 0)
+        {
+            // No room below -- place above.
+            posX = markerCenterX - labelW / 2;
+            posY = markerCenterY - markerHalfHeight - gap - labelH;
+        }
+        else if (spaceRight >= 0)
+        {
+            // No room above or below -- place to the right.
+            posX = markerCenterX + markerHalfWidth + gap;
+            posY = markerCenterY - labelH / 2;
+        }
+        else if (spaceLeft >= 0)
+        {
+            // No room on any other side -- place to the left.
+            posX = markerCenterX - markerHalfWidth - gap - labelW;
+            posY = markerCenterY - labelH / 2;
+        }
+        else
+        {
+            // Absolute last resort: marker is so close to a corner that nothing fits cleanly -- put above and let
+            // MyGUI clip rather than show it in a completely wrong place.
+            posX = markerCenterX - labelW / 2;
+            posY = markerCenterY - markerHalfHeight - gap - labelH;
+        }
+
+        // Horizontal clamp: keep the label inside the widget bounds regardless of which side it's on.
+        if (posX < 0)
+        {
+            posX = 0;
+        }
+        if (posX + labelW > widgetWidth)
+        {
+            posX = widgetWidth - labelW;
+        }
+
+        // Vertical clamp.
+        if (posY < 0)
+        {
+            posY = 0;
+        }
+        if (posY + labelH > widgetHeight)
+        {
+            posY = widgetHeight - labelH;
+        }
+
+        distanceWidget->setPosition(posX, posY);
+    }
+
+    void PlanetMinimapComponent::updateFollowCamera(const Ogre::Vector3& targetWorldPosition, const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetDefaultDirection,
+        Ogre::Vector3& outCameraPosition, Ogre::Quaternion& outCameraOrientation, Ogre::Real& outCameraDistance)
     {
         if (nullptr == this->planetGameObject || nullptr == this->cameraComponent)
         {
@@ -1932,26 +2145,29 @@ namespace NOWA
             this->cameraComponent->setOrthoWindowSize(Ogre::Vector2(viewWidth, viewHeight));
         }
 
-        // Same far clip safety net as adjustPlanetOverviewCamera -- cameraDistance here is just CameraHeight, so this
-        // is normally a non-issue in follow mode, but a tiny CameraHeight combined with a very large existing near
-        // clip (e.g. left over from WholeSceneVisible mode's far clip change without a matching near clip change)
-        // could still clip the ground plane right under the target.
-        Ogre::Real requiredNearClip = std::max(0.1f, cameraDistance * 0.001f);
-        if (this->cameraComponent->getCamera()->getNearClipDistance() > requiredNearClip)
-        {
-            this->cameraComponent->getCamera()->setNearClipDistance(requiredNearClip);
-        }
+		// Same far clip safety net as adjustPlanetOverviewCamera -- cameraDistance here is just CameraHeight, so this
+		// is normally a non-issue in follow mode, but a tiny CameraHeight combined with a very large existing near
+		// clip (e.g. left over from WholeSceneVisible mode's far clip change without a matching near clip change)
+		// could still clip the ground plane right under the target.
+		Ogre::Real requiredNearClip = std::max(0.1f, cameraDistance * 0.001f);
+		if (this->cameraComponent->getCamera()->getNearClipDistance() > requiredNearClip)
+		{
+			this->cameraComponent->getCamera()->setNearClipDistance(requiredNearClip);
+		}
 
-        if (false == this->followCameraLogged && true == this->bShowDebugData)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' follow camera (first tick only): targetWorldPosition=" + Ogre::StringConverter::toString(targetWorldPosition) +
-                    " planetCenter=" + Ogre::StringConverter::toString(planetCenter) + " outwardNormal=" + Ogre::StringConverter::toString(outwardNormal) + " cameraDistance=" + Ogre::StringConverter::toString(cameraDistance) +
-                    " resultingCameraPos=" + Ogre::StringConverter::toString(camPos) + " actualCameraPos(afterSet)=" + Ogre::StringConverter::toString(this->cameraComponent->getCamera()->getPosition()) + " actualCameraPos_derived(afterSet)=" +
-                    Ogre::StringConverter::toString(nullptr != this->cameraComponent->getCamera()->getParentSceneNode() ? this->cameraComponent->getCamera()->getParentSceneNode()->_getDerivedPosition() : Ogre::Vector3::ZERO) +
-                    " nearClip=" + Ogre::StringConverter::toString(this->cameraComponent->getCamera()->getNearClipDistance()) + " farClip=" + Ogre::StringConverter::toString(this->cameraComponent->getCamera()->getFarClipDistance()));
-            this->followCameraLogged = true;
-        }
+		if (false == this->followCameraLogged && true == this->bShowDebugData)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' follow camera (first tick only): targetWorldPosition="
+				+ Ogre::StringConverter::toString(targetWorldPosition) + " planetCenter=" + Ogre::StringConverter::toString(planetCenter)
+				+ " outwardNormal=" + Ogre::StringConverter::toString(outwardNormal) + " cameraDistance=" + Ogre::StringConverter::toString(cameraDistance)
+				+ " resultingCameraPos=" + Ogre::StringConverter::toString(camPos)
+				+ " actualCameraPos(afterSet)=" + Ogre::StringConverter::toString(this->cameraComponent->getCamera()->getPosition())
+				+ " actualCameraPos_derived(afterSet)=" + Ogre::StringConverter::toString(nullptr != this->cameraComponent->getCamera()->getParentSceneNode()
+					? this->cameraComponent->getCamera()->getParentSceneNode()->_getDerivedPosition() : Ogre::Vector3::ZERO)
+				+ " nearClip=" + Ogre::StringConverter::toString(this->cameraComponent->getCamera()->getNearClipDistance())
+				+ " farClip=" + Ogre::StringConverter::toString(this->cameraComponent->getCamera()->getFarClipDistance()));
+			this->followCameraLogged = true;
+		}
     }
 
     bool PlanetMinimapComponent::saveDiscoveryState(void)
@@ -2099,34 +2315,34 @@ namespace NOWA
         {
             this->setUseRoundMinimap(attribute->getBool());
         }
-        else if (PlanetMinimapComponent::AttrTargetMarkerImage() == attribute->getName())
-        {
-            this->setTargetMarkerImage(attribute->getString());
-        }
-        else if (PlanetMinimapComponent::AttrCompassObjectCount() == attribute->getName())
-        {
-            this->setCompassObjectCount(attribute->getUInt());
-        }
-        else if (PlanetMinimapComponent::AttrBaseTerrainColor() == attribute->getName())
-        {
-            this->setBaseTerrainColor(attribute->getVector3());
-        }
-        else if (PlanetMinimapComponent::AttrLayer0Color() == attribute->getName())
-        {
-            this->setLayer0Color(attribute->getVector3());
-        }
-        else if (PlanetMinimapComponent::AttrLayer1Color() == attribute->getName())
-        {
-            this->setLayer1Color(attribute->getVector3());
-        }
-        else if (PlanetMinimapComponent::AttrLayer2Color() == attribute->getName())
-        {
-            this->setLayer2Color(attribute->getVector3());
-        }
-        else if (PlanetMinimapComponent::AttrLayer3Color() == attribute->getName())
-        {
-            this->setLayer3Color(attribute->getVector3());
-        }
+		else if (PlanetMinimapComponent::AttrTargetMarkerImage() == attribute->getName())
+		{
+			this->setTargetMarkerImage(attribute->getString());
+		}
+		else if (PlanetMinimapComponent::AttrCompassObjectCount() == attribute->getName())
+		{
+			this->setCompassObjectCount(attribute->getUInt());
+		}
+		else if (PlanetMinimapComponent::AttrBaseTerrainColor() == attribute->getName())
+		{
+			this->setBaseTerrainColor(attribute->getVector3());
+		}
+		else if (PlanetMinimapComponent::AttrLayer0Color() == attribute->getName())
+		{
+			this->setLayer0Color(attribute->getVector3());
+		}
+		else if (PlanetMinimapComponent::AttrLayer1Color() == attribute->getName())
+		{
+			this->setLayer1Color(attribute->getVector3());
+		}
+		else if (PlanetMinimapComponent::AttrLayer2Color() == attribute->getName())
+		{
+			this->setLayer2Color(attribute->getVector3());
+		}
+		else if (PlanetMinimapComponent::AttrLayer3Color() == attribute->getName())
+		{
+			this->setLayer3Color(attribute->getVector3());
+		}
         else if (PlanetMinimapComponent::AttrRotateMinimap() == attribute->getName())
         {
             this->setRotateMinimap(attribute->getBool());
@@ -2260,69 +2476,69 @@ namespace NOWA
 
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "TargetMarkerImage"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetMarkerImage->getString())));
-        propertiesXML->append_node(propertyXML);
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TargetMarkerImage"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetMarkerImage->getString())));
+		propertiesXML->append_node(propertyXML);
 
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "CompassObjectCount"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassObjectCount->getUInt())));
-        propertiesXML->append_node(propertyXML);
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "CompassObjectCount"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassObjectCount->getUInt())));
+		propertiesXML->append_node(propertyXML);
 
-        for (size_t i = 0; i < this->compassGameObjectIds.size(); i++)
-        {
-            propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CompassGameObjectId" + Ogre::StringConverter::toString(i))));
-            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassGameObjectIds[i]->getULong())));
-            propertiesXML->append_node(propertyXML);
+		for (size_t i = 0; i < this->compassGameObjectIds.size(); i++)
+		{
+			propertyXML = doc.allocate_node(node_element, "property");
+			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CompassGameObjectId" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassGameObjectIds[i]->getULong())));
+			propertiesXML->append_node(propertyXML);
 
-            propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CompassImage" + Ogre::StringConverter::toString(i))));
-            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassImages[i]->getString())));
-            propertiesXML->append_node(propertyXML);
+			propertyXML = doc.allocate_node(node_element, "property");
+			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CompassImage" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassImages[i]->getString())));
+			propertiesXML->append_node(propertyXML);
 
-            propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CompassToolTipText" + Ogre::StringConverter::toString(i))));
-            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassToolTipTexts[i]->getString())));
-            propertiesXML->append_node(propertyXML);
-        }
+			propertyXML = doc.allocate_node(node_element, "property");
+			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CompassToolTipText" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->compassToolTipTexts[i]->getString())));
+			propertiesXML->append_node(propertyXML);
+		}
 
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "BaseTerrainColor"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->baseTerrainColor->getVector3())));
-        propertiesXML->append_node(propertyXML);
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "BaseTerrainColor"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->baseTerrainColor->getVector3())));
+		propertiesXML->append_node(propertyXML);
 
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Layer0Color"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->layer0Color->getVector3())));
-        propertiesXML->append_node(propertyXML);
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Layer0Color"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->layer0Color->getVector3())));
+		propertiesXML->append_node(propertyXML);
 
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Layer1Color"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->layer1Color->getVector3())));
-        propertiesXML->append_node(propertyXML);
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Layer1Color"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->layer1Color->getVector3())));
+		propertiesXML->append_node(propertyXML);
 
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Layer2Color"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->layer2Color->getVector3())));
-        propertiesXML->append_node(propertyXML);
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Layer2Color"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->layer2Color->getVector3())));
+		propertiesXML->append_node(propertyXML);
 
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Layer3Color"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->layer3Color->getVector3())));
-        propertiesXML->append_node(propertyXML);
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Layer3Color"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->layer3Color->getVector3())));
+		propertiesXML->append_node(propertyXML);
 
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "RotateMinimap"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rotateMinimap->getBool())));
         propertiesXML->append_node(propertyXML);
@@ -2343,11 +2559,11 @@ namespace NOWA
         this->activated->setValue(activated);
         if (true == activated)
         {
-            // Tear down any previously created workspace/textures/widgets first. Without this, calling
-            // setActivated(true) a second time (e.g. after changing PlanetId/TargetId from Lua) would stack a
-            // second compositor workspace onto the same RT and leak the previous minimapWidget/fogOfWarWidget,
-            // since setupPlanetMinimap() below unconditionally creates new ones.
-            this->removeWorkspace();
+			// Tear down any previously created workspace/textures/widgets first. Without this, calling
+			// setActivated(true) a second time (e.g. after changing PlanetId/TargetId from Lua) would stack a
+			// second compositor workspace onto the same RT and leak the previous minimapWidget/fogOfWarWidget,
+			// since setupPlanetMinimap() below unconditionally creates new ones.
+			this->removeWorkspace();
 
             const auto& planetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->planetId->getULong());
             if (nullptr != planetGameObjectPtr)
@@ -2364,35 +2580,35 @@ namespace NOWA
                     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
                         "[PlanetMinimapComponent] Error: Planet game object '" + this->planetGameObject->getName() + "' referenced by game object: " + this->gameObjectPtr->getName() + " does not have a PlanetTerraComponent!");
                     this->planetGameObject = nullptr;
-                    this->planetTerraComponent = nullptr;
+					this->planetTerraComponent = nullptr;
                 }
             }
-            else
-            {
-                this->planetGameObject = nullptr;
-                this->planetTerraComponent = nullptr;
-            }
+			else
+			{
+				this->planetGameObject = nullptr;
+				this->planetTerraComponent = nullptr;
+			}
 
             this->setupPlanetMinimap();
         }
         else
         {
-            // Persist discovery for the CURRENT planet before tearing anything down, otherwise progress made since
-            // the last 0.25s throttle tick (or since the last manual save) would be lost on deactivation.
-            if (true == this->persistDiscovery->getBool())
-            {
-                this->saveDiscoveryState();
-            }
+			// Persist discovery for the CURRENT planet before tearing anything down, otherwise progress made since
+			// the last 0.25s throttle tick (or since the last manual save) would be lost on deactivation.
+			if (true == this->persistDiscovery->getBool())
+			{
+				this->saveDiscoveryState();
+			}
 
-            this->removeWorkspace();
+			this->removeWorkspace();
 
             this->planetGameObject = nullptr;
             this->planetTerraComponent = nullptr;
             this->cameraComponent = nullptr;
-        }
-    }
+		}
+	}
 
-    void PlanetMinimapComponent::switchPlanet(unsigned long newPlanetId, unsigned long newTargetId)
+	void PlanetMinimapComponent::switchPlanet(unsigned long newPlanetId, unsigned long newTargetId)
     {
 
         //    before PlanetId is changed below, since saveDiscoveryState()/loadDiscoveryState() key the filename off it.
@@ -2612,227 +2828,228 @@ namespace NOWA
         return minimapMask->getString();
     }
 
-    void PlanetMinimapComponent::setTargetMarkerImage(const Ogre::String& targetMarkerImage)
-    {
-        this->targetMarkerImage->setValue(targetMarkerImage);
-    }
+	void PlanetMinimapComponent::setTargetMarkerImage(const Ogre::String& targetMarkerImage)
+	{
+		this->targetMarkerImage->setValue(targetMarkerImage);
+	}
 
-    Ogre::String PlanetMinimapComponent::getTargetMarkerImage(void) const
-    {
-        return this->targetMarkerImage->getString();
-    }
+	Ogre::String PlanetMinimapComponent::getTargetMarkerImage(void) const
+	{
+		return this->targetMarkerImage->getString();
+	}
 
-    void PlanetMinimapComponent::setCompassObjectCount(unsigned int compassObjectCount)
-    {
-        this->compassObjectCount->setValue(compassObjectCount);
+	void PlanetMinimapComponent::setCompassObjectCount(unsigned int compassObjectCount)
+	{
+		this->compassObjectCount->setValue(compassObjectCount);
 
-        unsigned int oldSize = static_cast<unsigned int>(this->compassGameObjectIds.size());
+		unsigned int oldSize = static_cast<unsigned int>(this->compassGameObjectIds.size());
 
-        bool changed = (compassObjectCount != oldSize);
+		bool changed = (compassObjectCount != oldSize);
 
-        if (compassObjectCount > oldSize)
-        {
-            this->compassGameObjectIds.resize(compassObjectCount);
-            this->compassImages.resize(compassObjectCount);
-            this->compassToolTipTexts.resize(compassObjectCount);
+		if (compassObjectCount > oldSize)
+		{
+			this->compassGameObjectIds.resize(compassObjectCount);
+			this->compassImages.resize(compassObjectCount);
+			this->compassToolTipTexts.resize(compassObjectCount);
 
-            for (unsigned int i = oldSize; i < compassObjectCount; i++)
-            {
-                this->compassGameObjectIds[i] = new Variant(PlanetMinimapComponent::AttrCompassGameObjectId() + Ogre::StringConverter::toString(i), static_cast<unsigned long>(0), this->attributes, true);
-                this->compassImages[i] = new Variant(PlanetMinimapComponent::AttrCompassImage() + Ogre::StringConverter::toString(i), "", this->attributes);
-                this->compassImages[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Minimap");
-                this->compassToolTipTexts[i] = new Variant(PlanetMinimapComponent::AttrCompassToolTipText() + Ogre::StringConverter::toString(i), "", this->attributes);
-            }
-        }
-        else if (compassObjectCount < oldSize)
-        {
-            this->eraseVariants(this->compassGameObjectIds, compassObjectCount);
-            this->eraseVariants(this->compassImages, compassObjectCount);
-            this->eraseVariants(this->compassToolTipTexts, compassObjectCount);
-        }
+			for (unsigned int i = oldSize; i < compassObjectCount; i++)
+			{
+				this->compassGameObjectIds[i] = new Variant(PlanetMinimapComponent::AttrCompassGameObjectId() + Ogre::StringConverter::toString(i), static_cast<unsigned long>(0), this->attributes, true);
+				this->compassImages[i] = new Variant(PlanetMinimapComponent::AttrCompassImage() + Ogre::StringConverter::toString(i), "", this->attributes);
+				this->compassImages[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Minimap");
+				this->compassToolTipTexts[i] = new Variant(PlanetMinimapComponent::AttrCompassToolTipText() + Ogre::StringConverter::toString(i), "", this->attributes);
+			}
+		}
+		else if (compassObjectCount < oldSize)
+		{
+			this->eraseVariants(this->compassGameObjectIds, compassObjectCount);
+			this->eraseVariants(this->compassImages, compassObjectCount);
+			this->eraseVariants(this->compassToolTipTexts, compassObjectCount);
+		}
 
-        if (true == changed && nullptr != this->minimapWidget)
-        {
-            // The widget COUNT itself changed, so a full regenerate is needed here (unlike a single id/image/tooltip
-            // edit on an existing slot, which the per-index setters below patch in place for efficiency).
-            NOWA::GraphicsModule::RenderCommand cmd = [this]
-            {
-                this->generateCompassObjects();
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::setCompassObjectCount regenerate");
-        }
-    }
+		if (true == changed && nullptr != this->minimapWidget)
+		{
+			// The widget COUNT itself changed, so a full regenerate is needed here (unlike a single id/image/tooltip
+			// edit on an existing slot, which the per-index setters below patch in place for efficiency).
+			NOWA::GraphicsModule::RenderCommand cmd = [this]
+			{
+				this->generateCompassObjects();
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::setCompassObjectCount regenerate");
+		}
+	}
 
-    unsigned int PlanetMinimapComponent::getCompassObjectCount(void) const
-    {
-        return this->compassObjectCount->getUInt();
-    }
+	unsigned int PlanetMinimapComponent::getCompassObjectCount(void) const
+	{
+		return this->compassObjectCount->getUInt();
+	}
 
-    void PlanetMinimapComponent::setCompassGameObjectId(unsigned int index, unsigned long compassGameObjectId)
-    {
-        if (index >= this->compassGameObjectIds.size())
-        {
-            return;
-        }
-        this->compassGameObjectIds[index]->setValue(compassGameObjectId);
+	void PlanetMinimapComponent::setCompassGameObjectId(unsigned int index, unsigned long compassGameObjectId)
+	{
+		if (index >= this->compassGameObjectIds.size())
+		{
+			return;
+		}
+		this->compassGameObjectIds[index]->setValue(compassGameObjectId);
 
-        if (0 == compassGameObjectId && index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
-        {
-            // Cheap immediate feedback so the marker disappears right away rather than waiting up to one tick for
-            // updateSingleCompassObject()'s own 0-check to catch up.
-            NOWA::GraphicsModule::RenderCommand cmd = [this, index]
-            {
-                if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
-                {
-                    this->compassObjectWidgets[index]->setVisible(false);
-                }
-                if (index < this->compassObjectDistanceTexts.size() && nullptr != this->compassObjectDistanceTexts[index])
-                {
-                    this->compassObjectDistanceTexts[index]->setVisible(false);
-                }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::setCompassGameObjectId hide");
-        }
-    }
+		if (0 == compassGameObjectId && index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+		{
+			// Cheap immediate feedback so the marker disappears right away rather than waiting up to one tick for
+			// updateSingleCompassObject()'s own 0-check to catch up.
+			NOWA::GraphicsModule::RenderCommand cmd = [this, index]
+			{
+				if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+				{
+					this->compassObjectWidgets[index]->setVisible(false);
+				}
+				if (index < this->compassObjectDistanceTexts.size() && nullptr != this->compassObjectDistanceTexts[index])
+				{
+					this->compassObjectDistanceTexts[index]->setVisible(false);
+				}
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::setCompassGameObjectId hide");
+		}
+	}
 
-    unsigned long PlanetMinimapComponent::getCompassGameObjectId(unsigned int index) const
-    {
-        if (index >= this->compassGameObjectIds.size())
-        {
-            return 0ul;
-        }
-        return this->compassGameObjectIds[index]->getULong();
-    }
+	unsigned long PlanetMinimapComponent::getCompassGameObjectId(unsigned int index) const
+	{
+		if (index >= this->compassGameObjectIds.size())
+		{
+			return 0ul;
+		}
+		return this->compassGameObjectIds[index]->getULong();
+	}
 
-    void PlanetMinimapComponent::setCompassImage(unsigned int index, const Ogre::String& compassImage)
-    {
-        if (index >= this->compassImages.size())
-        {
-            return;
-        }
-        this->compassImages[index]->setValue(compassImage);
+	void PlanetMinimapComponent::setCompassImage(unsigned int index, const Ogre::String& compassImage)
+	{
+		if (index >= this->compassImages.size())
+		{
+			return;
+		}
+		this->compassImages[index]->setValue(compassImage);
 
-        NOWA::GraphicsModule::RenderCommand cmd = [this, index, compassImage]
-        {
-            if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
-            {
-                if (false == compassImage.empty())
-                {
-                    // Widget already exists for this slot -- patch the texture in place, no need to regenerate
-                    // every compass object's widgets just for one image change.
-                    this->compassObjectWidgets[index]->setImageTexture(compassImage);
-                    this->compassObjectWidgets[index]->setImageRect(MyGUI::IntRect(0, 0, this->compassObjectWidgets[index]->getImageSize().width, this->compassObjectWidgets[index]->getImageSize().height));
-                }
-                else
-                {
-                    // Image cleared -- regenerate so this slot's now-superfluous widgets get torn down cleanly
-                    // (mirrors how generateCompassObjects() skips creating widgets for empty-image slots).
-                    this->generateCompassObjects();
-                }
-            }
-            else if (false == compassImage.empty())
-            {
-                // No widget existed yet for this slot (it was empty before) -- regenerate so it gets created now.
-                this->generateCompassObjects();
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::setCompassImage");
-    }
+		NOWA::GraphicsModule::RenderCommand cmd = [this, index, compassImage]
+		{
+			if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+			{
+				if (false == compassImage.empty())
+				{
+					// Widget already exists for this slot -- patch the texture in place, no need to regenerate
+					// every compass object's widgets just for one image change.
+					this->compassObjectWidgets[index]->setImageTexture(compassImage);
+					this->compassObjectWidgets[index]->setImageRect(MyGUI::IntRect(0, 0, this->compassObjectWidgets[index]->getImageSize().width, this->compassObjectWidgets[index]->getImageSize().height));
+				}
+				else
+				{
+					// Image cleared -- regenerate so this slot's now-superfluous widgets get torn down cleanly
+					// (mirrors how generateCompassObjects() skips creating widgets for empty-image slots).
+					this->generateCompassObjects();
+				}
+			}
+			else if (false == compassImage.empty())
+			{
+				// No widget existed yet for this slot (it was empty before) -- regenerate so it gets created now.
+				this->generateCompassObjects();
+			}
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::setCompassImage");
+	}
 
-    Ogre::String PlanetMinimapComponent::getCompassImage(unsigned int index) const
-    {
-        if (index >= this->compassImages.size())
-        {
-            return "";
-        }
-        return this->compassImages[index]->getString();
-    }
+	Ogre::String PlanetMinimapComponent::getCompassImage(unsigned int index) const
+	{
+		if (index >= this->compassImages.size())
+		{
+			return "";
+		}
+		return this->compassImages[index]->getString();
+	}
 
-    void PlanetMinimapComponent::setCompassToolTipText(unsigned int index, const Ogre::String& compassToolTipText)
-    {
-        if (index >= this->compassToolTipTexts.size())
-        {
-            return;
-        }
-        this->compassToolTipTexts[index]->setValue(compassToolTipText);
+	void PlanetMinimapComponent::setCompassToolTipText(unsigned int index, const Ogre::String& compassToolTipText)
+	{
+		if (index >= this->compassToolTipTexts.size())
+		{
+			return;
+		}
+		this->compassToolTipTexts[index]->setValue(compassToolTipText);
 
-        if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
-        {
-            NOWA::GraphicsModule::RenderCommand cmd = [this, index, compassToolTipText]
-            {
-                if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
-                {
-                    this->compassObjectWidgets[index]->setNeedMouseFocus(false == compassToolTipText.empty());
-                    this->compassObjectWidgets[index]->setUserString("ToolTip", compassToolTipText);
-                }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::setCompassToolTipText");
-        }
-    }
+		if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+		{
+			NOWA::GraphicsModule::RenderCommand cmd = [this, index, compassToolTipText]
+			{
+				if (index < this->compassObjectWidgets.size() && nullptr != this->compassObjectWidgets[index])
+				{
+					this->compassObjectWidgets[index]->setNeedMouseFocus(false == compassToolTipText.empty());
+					this->compassObjectWidgets[index]->setNeedToolTip(false == compassToolTipText.empty());
+					this->compassObjectWidgets[index]->setUserString("ToolTip", compassToolTipText);
+				}
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetMinimapComponent::setCompassToolTipText");
+		}
+	}
 
-    Ogre::String PlanetMinimapComponent::getCompassToolTipText(unsigned int index) const
-    {
-        if (index >= this->compassToolTipTexts.size())
-        {
-            return "";
-        }
-        return this->compassToolTipTexts[index]->getString();
-    }
+	Ogre::String PlanetMinimapComponent::getCompassToolTipText(unsigned int index) const
+	{
+		if (index >= this->compassToolTipTexts.size())
+		{
+			return "";
+		}
+		return this->compassToolTipTexts[index]->getString();
+	}
 
-    void PlanetMinimapComponent::setBaseTerrainColor(const Ogre::Vector3& baseTerrainColor)
-    {
-        this->baseTerrainColor->setValue(baseTerrainColor);
-        // Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
-    }
+	void PlanetMinimapComponent::setBaseTerrainColor(const Ogre::Vector3& baseTerrainColor)
+	{
+		this->baseTerrainColor->setValue(baseTerrainColor);
+		// Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
+	}
 
-    Ogre::Vector3 PlanetMinimapComponent::getBaseTerrainColor(void) const
-    {
-        return this->baseTerrainColor->getVector3();
-    }
+	Ogre::Vector3 PlanetMinimapComponent::getBaseTerrainColor(void) const
+	{
+		return this->baseTerrainColor->getVector3();
+	}
 
-    void PlanetMinimapComponent::setLayer0Color(const Ogre::Vector3& layer0Color)
-    {
-        this->layer0Color->setValue(layer0Color);
-        // Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
-    }
+	void PlanetMinimapComponent::setLayer0Color(const Ogre::Vector3& layer0Color)
+	{
+		this->layer0Color->setValue(layer0Color);
+		// Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
+	}
 
-    Ogre::Vector3 PlanetMinimapComponent::getLayer0Color(void) const
-    {
-        return this->layer0Color->getVector3();
-    }
+	Ogre::Vector3 PlanetMinimapComponent::getLayer0Color(void) const
+	{
+		return this->layer0Color->getVector3();
+	}
 
-    void PlanetMinimapComponent::setLayer1Color(const Ogre::Vector3& layer1Color)
-    {
-        this->layer1Color->setValue(layer1Color);
-        // Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
-    }
+	void PlanetMinimapComponent::setLayer1Color(const Ogre::Vector3& layer1Color)
+	{
+		this->layer1Color->setValue(layer1Color);
+		// Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
+	}
 
-    Ogre::Vector3 PlanetMinimapComponent::getLayer1Color(void) const
-    {
-        return this->layer1Color->getVector3();
-    }
+	Ogre::Vector3 PlanetMinimapComponent::getLayer1Color(void) const
+	{
+		return this->layer1Color->getVector3();
+	}
 
-    void PlanetMinimapComponent::setLayer2Color(const Ogre::Vector3& layer2Color)
-    {
-        this->layer2Color->setValue(layer2Color);
-        // Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
-    }
+	void PlanetMinimapComponent::setLayer2Color(const Ogre::Vector3& layer2Color)
+	{
+		this->layer2Color->setValue(layer2Color);
+		// Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
+	}
 
-    Ogre::Vector3 PlanetMinimapComponent::getLayer2Color(void) const
-    {
-        return this->layer2Color->getVector3();
-    }
+	Ogre::Vector3 PlanetMinimapComponent::getLayer2Color(void) const
+	{
+		return this->layer2Color->getVector3();
+	}
 
-    void PlanetMinimapComponent::setLayer3Color(const Ogre::Vector3& layer3Color)
-    {
-        this->layer3Color->setValue(layer3Color);
-        // Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
-    }
+	void PlanetMinimapComponent::setLayer3Color(const Ogre::Vector3& layer3Color)
+	{
+		this->layer3Color->setValue(layer3Color);
+		// Live-read every bake; no GPU resource recreation needed, just call rebakePlanetOverview() to see the change.
+	}
 
-    Ogre::Vector3 PlanetMinimapComponent::getLayer3Color(void) const
-    {
-        return this->layer3Color->getVector3();
-    }
+	Ogre::Vector3 PlanetMinimapComponent::getLayer3Color(void) const
+	{
+		return this->layer3Color->getVector3();
+	}
 
     void PlanetMinimapComponent::setUseRoundMinimap(bool useRoundMinimap)
     {
@@ -2917,42 +3134,45 @@ namespace NOWA
 
     void PlanetMinimapComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<PlanetMinimapComponent, GameObjectComponent>("PlanetMinimapComponent")
-                .def("setActivated", &PlanetMinimapComponent::setActivated)
-                .def("isActivated", &PlanetMinimapComponent::isActivated)
-                .def("setPlanetId", &setLuaPlanetId)
-                .def("getPlanetId", &getLuaPlanetId)
-                .def("setTargetId", &setLuaTargetId)
-                .def("getTargetId", &getLuaTargetId)
-                .def("setVisibilityRadius", &PlanetMinimapComponent::setVisibilityRadius)
-                .def("getVisibilityRadius", &PlanetMinimapComponent::getVisibilityRadius)
-                .def("clearDiscoveryState", &PlanetMinimapComponent::clearDiscoveryState)
-                .def("saveDiscoveryState", &PlanetMinimapComponent::saveDiscoveryState)
-                .def("loadDiscoveryState", &PlanetMinimapComponent::loadDiscoveryState)
-                .def("setCameraHeight", &PlanetMinimapComponent::setCameraHeight)
-                .def("getCameraHeight", &PlanetMinimapComponent::getCameraHeight)
-                .def("rebakePlanetOverview", &PlanetMinimapComponent::rebakePlanetOverview)
-                .def("setTargetMarkerImage", &PlanetMinimapComponent::setTargetMarkerImage)
-                .def("getTargetMarkerImage", &PlanetMinimapComponent::getTargetMarkerImage)
-                .def("setCompassObjectCount", &PlanetMinimapComponent::setCompassObjectCount)
-                .def("getCompassObjectCount", &PlanetMinimapComponent::getCompassObjectCount)
-                .def("setCompassGameObjectId", &setLuaCompassGameObjectId)
-                .def("getCompassGameObjectId", &getLuaCompassGameObjectId)
-                .def("setCompassImage", &PlanetMinimapComponent::setCompassImage)
-                .def("getCompassImage", &PlanetMinimapComponent::getCompassImage)
-                .def("setCompassToolTipText", &PlanetMinimapComponent::setCompassToolTipText)
-                .def("getCompassToolTipText", &PlanetMinimapComponent::getCompassToolTipText)
-                .def("setBaseTerrainColor", &PlanetMinimapComponent::setBaseTerrainColor)
-                .def("getBaseTerrainColor", &PlanetMinimapComponent::getBaseTerrainColor)
-                .def("setLayer0Color", &PlanetMinimapComponent::setLayer0Color)
-                .def("getLayer0Color", &PlanetMinimapComponent::getLayer0Color)
-                .def("setLayer1Color", &PlanetMinimapComponent::setLayer1Color)
-                .def("getLayer1Color", &PlanetMinimapComponent::getLayer1Color)
-                .def("setLayer2Color", &PlanetMinimapComponent::setLayer2Color)
-                .def("getLayer2Color", &PlanetMinimapComponent::getLayer2Color)
-                .def("setLayer3Color", &PlanetMinimapComponent::setLayer3Color)
-                .def("getLayer3Color", &PlanetMinimapComponent::getLayer3Color)
-                .def("switchPlanet", &PlanetMinimapComponent::switchPlanet)];
+        module(lua)
+        [
+            class_<PlanetMinimapComponent, GameObjectComponent>("PlanetMinimapComponent")
+            .def("setActivated", &PlanetMinimapComponent::setActivated)
+            .def("isActivated", &PlanetMinimapComponent::isActivated)
+            .def("setPlanetId", &setLuaPlanetId)
+            .def("getPlanetId", &getLuaPlanetId)
+            .def("setTargetId", &setLuaTargetId)
+            .def("getTargetId", &getLuaTargetId)
+            .def("setVisibilityRadius", &PlanetMinimapComponent::setVisibilityRadius)
+            .def("getVisibilityRadius", &PlanetMinimapComponent::getVisibilityRadius)
+            .def("clearDiscoveryState", &PlanetMinimapComponent::clearDiscoveryState)
+            .def("saveDiscoveryState", &PlanetMinimapComponent::saveDiscoveryState)
+            .def("loadDiscoveryState", &PlanetMinimapComponent::loadDiscoveryState)
+            .def("setCameraHeight", &PlanetMinimapComponent::setCameraHeight)
+            .def("getCameraHeight", &PlanetMinimapComponent::getCameraHeight)
+			.def("rebakePlanetOverview", &PlanetMinimapComponent::rebakePlanetOverview)
+			.def("setTargetMarkerImage", &PlanetMinimapComponent::setTargetMarkerImage)
+			.def("getTargetMarkerImage", &PlanetMinimapComponent::getTargetMarkerImage)
+            .def("setCompassObjectCount", &PlanetMinimapComponent::setCompassObjectCount)
+            .def("getCompassObjectCount", &PlanetMinimapComponent::getCompassObjectCount)
+            .def("setCompassGameObjectId", &setLuaCompassGameObjectId)
+            .def("getCompassGameObjectId", &getLuaCompassGameObjectId)
+			.def("setCompassImage", &PlanetMinimapComponent::setCompassImage)
+			.def("getCompassImage", &PlanetMinimapComponent::getCompassImage)
+			.def("setCompassToolTipText", &PlanetMinimapComponent::setCompassToolTipText)
+			.def("getCompassToolTipText", &PlanetMinimapComponent::getCompassToolTipText)
+			.def("setBaseTerrainColor", &PlanetMinimapComponent::setBaseTerrainColor)
+			.def("getBaseTerrainColor", &PlanetMinimapComponent::getBaseTerrainColor)
+			.def("setLayer0Color", &PlanetMinimapComponent::setLayer0Color)
+			.def("getLayer0Color", &PlanetMinimapComponent::getLayer0Color)
+			.def("setLayer1Color", &PlanetMinimapComponent::setLayer1Color)
+			.def("getLayer1Color", &PlanetMinimapComponent::getLayer1Color)
+			.def("setLayer2Color", &PlanetMinimapComponent::setLayer2Color)
+			.def("getLayer2Color", &PlanetMinimapComponent::getLayer2Color)
+			.def("setLayer3Color", &PlanetMinimapComponent::setLayer3Color)
+			.def("getLayer3Color", &PlanetMinimapComponent::getLayer3Color)
+			.def("switchPlanet", &PlanetMinimapComponent::switchPlanet)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "class inherits GameObjectComponent", PlanetMinimapComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
@@ -2966,45 +3186,30 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void clearDiscoveryState()", "Clears the area which has been already discovered and saves the state.");
         LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void saveDiscoveryState()", "Saves the area which has been already discovered.");
         LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void loadDiscoveryState()", "Loads the area which has been already discovered.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCameraHeight(number cameraHeight)",
-            "If whole scene visible is set to false, sets the camera height, which is added along the local outward direction at the top of the target game object's position.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "number getCameraHeight()",
-            "If whole scene visible is set to false, gets the camera height, which is added along the local outward direction at the top of the target game object's position.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void rebakePlanetOverview()",
-            "Re-bakes the equirectangular planet overview texture from the planet's current height data. Call after sculpting has changed the terrain, in WholeSceneVisible mode.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setTargetMarkerImage(String image)",
-            "If whole scene visible is true, sets the icon image shown at the tracked target's position on the overview map (same folder as MinimapMask). Left empty, no marker is shown.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "String getTargetMarkerImage()", "Gets the icon image shown at the tracked target's position on the overview map.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCompassObjectCount(number count)",
-            "Sets the count of generic compass objects to find/track (e.g. the player's ship, a quest objective, an NPC). Each gets its own CompassGameObjectId/CompassImage/CompassToolTipText.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "number getCompassObjectCount()", "Gets the count of generic compass objects.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCompassGameObjectId(number index, String id)",
-            "Sets the game object id to track for the compass object at the given index. Shown as a true-position marker on the baked overview in WholeSceneVisible mode, or as a marker wandering the rim of the local minimap in follow mode. 0 "
-            "disables that slot.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "String getCompassGameObjectId(number index)", "Gets the game object id tracked for the compass object at the given index.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCompassImage(number index, String image)",
-            "Sets the marker icon image for the compass object at the given index (same folder as MinimapMask). Left empty, no marker is shown for that slot even if CompassGameObjectId is set.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "String getCompassImage(number index)", "Gets the marker icon image for the compass object at the given index.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCompassToolTipText(number index, String text)",
-            "Sets the tooltip text shown when hovering the compass object's marker at the given index. Left empty, no tooltip is shown for that slot.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "String getCompassToolTipText(number index)", "Gets the tooltip text for the compass object at the given index.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setBaseTerrainColor(Vector3 color)",
-            "If whole scene visible is true, sets the colour shown where none of the 4 paint layers are active. Call rebakePlanetOverview() afterwards to see the change.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getBaseTerrainColor()", "Gets the colour shown where none of the 4 paint layers are active.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setLayer0Color(Vector3 color)",
-            "If whole scene visible is true, sets the colour for paint layer 0 (blend weight R channel). Call rebakePlanetOverview() afterwards to see the change.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getLayer0Color()", "Gets the colour for paint layer 0.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setLayer1Color(Vector3 color)",
-            "If whole scene visible is true, sets the colour for paint layer 1 (blend weight G channel). Call rebakePlanetOverview() afterwards to see the change.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getLayer1Color()", "Gets the colour for paint layer 1.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setLayer2Color(Vector3 color)",
-            "If whole scene visible is true, sets the colour for paint layer 2 (blend weight B channel). Call rebakePlanetOverview() afterwards to see the change.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getLayer2Color()", "Gets the colour for paint layer 2.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setLayer3Color(Vector3 color)",
-            "If whole scene visible is true, sets the colour for paint layer 3 (blend weight A channel). Call rebakePlanetOverview() afterwards to see the change.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getLayer3Color()", "Gets the colour for paint layer 3.");
-        LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void switchPlanet(number newPlanetId, number newTargetId)",
-            "Saves discovery for the current planet, tears down the workspace, switches to the given planet (and target, if non-zero) and sets the minimap back up, loading that planet's discovery state.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCameraHeight(number cameraHeight)", "If whole scene visible is set to false, sets the camera height, which is added along the local outward direction at the top of the target game object's position.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "number getCameraHeight()", "If whole scene visible is set to false, gets the camera height, which is added along the local outward direction at the top of the target game object's position.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void rebakePlanetOverview()", "Re-bakes the equirectangular planet overview texture from the planet's current height data. Call after sculpting has changed the terrain, in WholeSceneVisible mode.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setTargetMarkerImage(String image)", "If whole scene visible is true, sets the icon image shown at the tracked target's position on the overview map (same folder as MinimapMask). Left empty, no marker is shown.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "String getTargetMarkerImage()", "Gets the icon image shown at the tracked target's position on the overview map.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCompassObjectCount(number count)", "Sets the count of generic compass objects to find/track (e.g. the player's ship, a quest objective, an NPC). Each gets its own CompassGameObjectId/CompassImage/CompassToolTipText.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "number getCompassObjectCount()", "Gets the count of generic compass objects.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCompassGameObjectId(number index, String id)", "Sets the game object id to track for the compass object at the given index. Shown as a true-position marker on the baked overview in WholeSceneVisible mode, or as a marker wandering the rim of the local minimap in follow mode. 0 disables that slot.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "String getCompassGameObjectId(number index)", "Gets the game object id tracked for the compass object at the given index.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCompassImage(number index, String image)", "Sets the marker icon image for the compass object at the given index (same folder as MinimapMask). Left empty, no marker is shown for that slot even if CompassGameObjectId is set.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "String getCompassImage(number index)", "Gets the marker icon image for the compass object at the given index.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setCompassToolTipText(number index, String text)", "Sets the tooltip text shown when hovering the compass object's marker at the given index. Left empty, no tooltip is shown for that slot.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "String getCompassToolTipText(number index)", "Gets the tooltip text for the compass object at the given index.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setBaseTerrainColor(Vector3 color)", "If whole scene visible is true, sets the colour shown where none of the 4 paint layers are active. Call rebakePlanetOverview() afterwards to see the change.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getBaseTerrainColor()", "Gets the colour shown where none of the 4 paint layers are active.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setLayer0Color(Vector3 color)", "If whole scene visible is true, sets the colour for paint layer 0 (blend weight R channel). Call rebakePlanetOverview() afterwards to see the change.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getLayer0Color()", "Gets the colour for paint layer 0.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setLayer1Color(Vector3 color)", "If whole scene visible is true, sets the colour for paint layer 1 (blend weight G channel). Call rebakePlanetOverview() afterwards to see the change.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getLayer1Color()", "Gets the colour for paint layer 1.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setLayer2Color(Vector3 color)", "If whole scene visible is true, sets the colour for paint layer 2 (blend weight B channel). Call rebakePlanetOverview() afterwards to see the change.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getLayer2Color()", "Gets the colour for paint layer 2.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void setLayer3Color(Vector3 color)", "If whole scene visible is true, sets the colour for paint layer 3 (blend weight A channel). Call rebakePlanetOverview() afterwards to see the change.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "Vector3 getLayer3Color()", "Gets the colour for paint layer 3.");
+		LuaScriptApi::getInstance()->addClassToCollection("PlanetMinimapComponent", "void switchPlanet(number newPlanetId, number newTargetId)", "Saves discovery for the current planet, tears down the workspace, switches to the given planet (and target, if non-zero) and sets the minimap back up, loading that planet's discovery state.");
 
         gameObjectClass.def("getPlanetMinimapComponentFromName", &getPlanetMinimapComponentFromName);
         gameObjectClass.def("getPlanetMinimapComponent", (PlanetMinimapComponent * (*)(GameObject*)) & getPlanetMinimapComponent);

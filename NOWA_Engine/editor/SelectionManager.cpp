@@ -16,7 +16,9 @@ namespace NOWA
     class GameObjectsSelectUndoCommand : public ICommand
     {
     public:
-        GameObjectsSelectUndoCommand(SelectionManager* selectionManager, std::vector<unsigned long> oldSelectedGameObjectIds) : selectionManager(selectionManager), oldSelectedGameObjectIds(oldSelectedGameObjectIds)
+        GameObjectsSelectUndoCommand(SelectionManager* selectionManager, std::vector<unsigned long> oldSelectedGameObjectIds)
+            : selectionManager(selectionManager),
+            oldSelectedGameObjectIds(oldSelectedGameObjectIds)
         {
         }
 

@@ -3,6 +3,7 @@
 
 #include "NOWA.h"
 #include "OpenSaveFileDialogExtended.h"
+#include "main/Events.h"
 
 class NOWA::EditorManager;
 
@@ -60,6 +61,9 @@ private:
 	void destroyScene(void);
 	void internalApplySettings(void);
 	void createDummyCamera(void);
+
+	void handleUpdateBounds(NOWA::EventDataPtr eventData);
+
 private:
 	Ogre::SceneManager* sceneManager;
 	Ogre::Light* sunLight;

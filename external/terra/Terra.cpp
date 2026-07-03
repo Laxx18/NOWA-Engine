@@ -914,6 +914,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
+#if 0
     void Terra::update(const Vector3& lightDir, float lightEpsilon)
     {
         const float lightCosAngleChange =
@@ -1085,6 +1086,181 @@ namespace Ogre
 
                     if (isVisible(pos, cellSize))
                         addRenderable(pos, cellSize, appliedLodLevel);
+                }
+            }
+
+            optimizeCellsAndAdd();
+        }
+    }
+#endif
+
+    void Terra::update(const Vector3& lightDir, float lightEpsilon)
+    {
+        const float lightCosAngleChange =
+            Math::Clamp((float)m_prevLightDir.dotProduct(lightDir.normalisedCopy()), -1.0f, 1.0f);
+        if (lightCosAngleChange <= (1.0f - lightEpsilon))
+        {
+            m_shadowMapper->updateShadowMap(toYUp(lightDir), m_xzDimensions, m_height);
+            m_prevLightDir = lightDir.normalisedCopy();
+        }
+
+        mRenderables.clear();
+        m_currentCell = 0;
+
+        const Vector3 camPos = toYUp(m_camera->getDerivedPosition());
+
+        // -----------------------------------------------------------------
+        // LOD footprint decoupling fix:
+        //
+        // BasePixelDimension previously controlled BOTH vertex density (how
+        // many heightmap pixels each cell spans) AND the world-space size of
+        // the LOD 0 ring (since cellSize is expressed in pixels and pixels
+        // map directly to world units via m_xzRelativeSize). For small
+        // terrains with high pixel resolution, BasePixelDimension had to stay
+        // large just to keep the LOD 0 ring world-space footprint reasonable
+        // -- but that also meant fewer vertices per cell -> visibly blocky
+        // "huge pixels" once BasePixelDimension was lowered to fix LOD ring
+        // sizing.
+        //
+        // Fix: keep BasePixelDimension as the vertex-density control (tied to
+        // m_basePixelDimension, unchanged), but introduce an independent
+        // world-space "innermost LOD ring radius" (m_lodRing0WorldSize) that
+        // determines how large LOD 0 is in world units. We then compute how
+        // many BasePixelDimension-sized cells fit into that world-space target,
+        // and use THAT as the effective starting cellSize for the LOD loop --
+        // never going below 1 cell so degenerate configs don't divide by zero.
+        //
+        // This means: BasePixelDimension only affects vertex density per cell
+        // (visual smoothness), while m_lodRing0WorldSize controls how far you
+        // must travel before LOD increases, completely independent of terrain
+        // pixel resolution or world size.
+        // -----------------------------------------------------------------
+
+        const int32 basePixelDimension = static_cast<int32>(m_basePixelDimension);
+        const int32 vertPixelDimensionBase =
+            static_cast<int32>(float(m_basePixelDimension) * m_depthWidthRatio);
+
+        // Convert desired world-space LOD0 cell size into pixel units using the
+        // terrain's pixel-to-world ratio (m_xzRelativeSize = world units per pixel).
+        const float pixelsPerWorldUnitX = (m_xzRelativeSize.x > 1e-6f) ? (1.0f / m_xzRelativeSize.x) : 1.0f;
+        const float pixelsPerWorldUnitZ = (m_xzRelativeSize.y > 1e-6f) ? (1.0f / m_xzRelativeSize.y) : 1.0f;
+
+        int32 targetCellPixelsX = static_cast<int32>(m_lodRing0WorldSize * pixelsPerWorldUnitX);
+        int32 targetCellPixelsZ = static_cast<int32>(m_lodRing0WorldSize * m_depthWidthRatio * pixelsPerWorldUnitZ);
+
+        // Snap to a whole multiple of basePixelDimension so cell boundaries still
+        // align with vertex grid lines (avoids seams/cracks between cells).
+        int32 cellPixelsX = std::max(basePixelDimension,
+            (targetCellPixelsX / basePixelDimension) * basePixelDimension);
+        int32 cellPixelsZ = std::max(vertPixelDimensionBase,
+            (targetCellPixelsZ / vertPixelDimensionBase) * vertPixelDimensionBase);
+
+        GridPoint cellSize;
+        cellSize.x = cellPixelsX;
+        cellSize.z = cellPixelsZ;
+
+        // Quantize the camera position to cellSize steps (was basePixelDimension).
+        GridPoint camCenter = worldToGrid(camPos);
+        camCenter.x = (camCenter.x / cellSize.x) * cellSize.x;
+        camCenter.z = (camCenter.z / cellSize.z) * cellSize.z;
+
+        /*static int logCounter = 0;
+        if (++logCounter % 60 == 0)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[Terra::update] camPos=" + Ogre::StringConverter::toString(camPos) +
+                " m_lodRing0WorldSize=" + Ogre::StringConverter::toString(m_lodRing0WorldSize) +
+                " pixelsPerWorldUnitX=" + Ogre::StringConverter::toString(pixelsPerWorldUnitX) +
+                " targetCellPixelsX=" + Ogre::StringConverter::toString(targetCellPixelsX) +
+                " cellSize.x=" + Ogre::StringConverter::toString(cellSize.x) +
+                " cellSize.z=" + Ogre::StringConverter::toString(cellSize.z) +
+                " basePixelDimension=" + Ogre::StringConverter::toString(basePixelDimension) +
+                " camCenter.x=" + Ogre::StringConverter::toString(camCenter.x) +
+                " camCenter.z=" + Ogre::StringConverter::toString(camCenter.z));
+        }*/
+
+        uint32 currentLod = 0;
+
+        // LOD 0: Add full 4x4 grid
+        for (int32 z = -2; z < 2; ++z)
+        {
+            for (int32 x = -2; x < 2; ++x)
+            {
+                GridPoint pos = camCenter;
+                pos.x += x * cellSize.x;
+                pos.z += z * cellSize.z;
+
+                if (isVisible(pos, cellSize))
+                    addRenderable(pos, cellSize, currentLod);
+            }
+        }
+
+        optimizeCellsAndAdd();
+
+        m_currentCell = 16u;  // The first 16 cells don't use skirts.
+
+        const uint32 maxRes = std::max(m_width, m_depth);
+
+        size_t numObjectsAdded = std::numeric_limits<size_t>::max();
+        while (numObjectsAdded != m_currentCell ||
+            (mRenderables.empty() && (1u << currentLod) <= maxRes))
+        {
+            numObjectsAdded = m_currentCell;
+
+            cellSize.x <<= 1u;
+            cellSize.z <<= 1u;
+            ++currentLod;
+
+            // Row 0
+            {
+                const int32 z = 1;
+                for (int32 x = -2; x < 2; ++x)
+                {
+                    GridPoint pos = camCenter;
+                    pos.x += x * cellSize.x;
+                    pos.z += z * cellSize.z;
+
+                    if (isVisible(pos, cellSize))
+                        addRenderable(pos, cellSize, currentLod);
+                }
+            }
+            // Row 3
+            {
+                const int32 z = -2;
+                for (int32 x = -2; x < 2; ++x)
+                {
+                    GridPoint pos = camCenter;
+                    pos.x += x * cellSize.x;
+                    pos.z += z * cellSize.z;
+
+                    if (isVisible(pos, cellSize))
+                        addRenderable(pos, cellSize, currentLod);
+                }
+            }
+            // Cells [0, 1] & [0, 2];
+            {
+                const int32 x = -2;
+                for (int32 z = -1; z < 1; ++z)
+                {
+                    GridPoint pos = camCenter;
+                    pos.x += x * cellSize.x;
+                    pos.z += z * cellSize.z;
+
+                    if (isVisible(pos, cellSize))
+                        addRenderable(pos, cellSize, currentLod);
+                }
+            }
+            // Cells [3, 1] & [3, 2];
+            {
+                const int32 x = 1;
+                for (int32 z = -1; z < 1; ++z)
+                {
+                    GridPoint pos = camCenter;
+                    pos.x += x * cellSize.x;
+                    pos.z += z * cellSize.z;
+
+                    if (isVisible(pos, cellSize))
+                        addRenderable(pos, cellSize, currentLod);
                 }
             }
 

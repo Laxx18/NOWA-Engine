@@ -21,12 +21,12 @@ namespace NOWA
         name("ProceduralTerrainCreationComponent"),
         resolution(new Variant(ProceduralTerrainCreationComponent::AttrResolution(), static_cast<Ogre::uint32>(1024), this->attributes)),
         // Base height: 0.5 = middle of terrain (Y=25m with your setup)
-        baseHeight(new Variant(ProceduralTerrainCreationComponent::AttrBaseHeight(), 0.5f, this->attributes)),
+        baseHeight(new Variant(ProceduralTerrainCreationComponent::AttrBaseHeight(), 0.2f, this->attributes)),
         // Hill amplitude: 0.1 = only 10% variation = +-10m hills
-        hillAmplitude(new Variant(ProceduralTerrainCreationComponent::AttrHillAmplitude(), 0.1f, this->attributes)),
+        hillAmplitude(new Variant(ProceduralTerrainCreationComponent::AttrHillAmplitude(), 0.2f, this->attributes)),
         // Frequency: 3-4 features across terrain
-        hillFrequency(new Variant(ProceduralTerrainCreationComponent::AttrHillFrequency(), 3.0f, this->attributes)),
-        octaves(new Variant(ProceduralTerrainCreationComponent::AttrOctaves(), static_cast<Ogre::uint32>(4), this->attributes)),
+        hillFrequency(new Variant(ProceduralTerrainCreationComponent::AttrHillFrequency(), 2.0f, this->attributes)),
+        octaves(new Variant(ProceduralTerrainCreationComponent::AttrOctaves(), static_cast<Ogre::uint32>(3), this->attributes)),
         persistence(new Variant(ProceduralTerrainCreationComponent::AttrPersistence(), 0.5f, this->attributes)),
         lacunarity(new Variant(ProceduralTerrainCreationComponent::AttrLacunarity(), 2.0f, this->attributes)),
         seed(new Variant(ProceduralTerrainCreationComponent::AttrSeed(), static_cast<Ogre::uint32>(12345), this->attributes)),

@@ -146,6 +146,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetMinimapComponent", "P
 		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF} = {DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralCityComponent", "ProceduralCityComponent\ProceduralCityComponent.vcxproj", "{0626351C-7DEC-4F5F-A30B-C924D11CBB3E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6EB93ADC-1898-4BE7-9AEC-A04FB59C80F1} = {6EB93ADC-1898-4BE7-9AEC-A04FB59C80F1}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -404,6 +409,10 @@ Global
 		{23AA4736-4A62-47AE-93AB-B07328A6222A}.Debug|x64.Build.0 = Debug|x64
 		{23AA4736-4A62-47AE-93AB-B07328A6222A}.Release|x64.ActiveCfg = Release|x64
 		{23AA4736-4A62-47AE-93AB-B07328A6222A}.Release|x64.Build.0 = Release|x64
+		{0626351C-7DEC-4F5F-A30B-C924D11CBB3E}.Debug|x64.ActiveCfg = Debug|x64
+		{0626351C-7DEC-4F5F-A30B-C924D11CBB3E}.Debug|x64.Build.0 = Debug|x64
+		{0626351C-7DEC-4F5F-A30B-C924D11CBB3E}.Release|x64.ActiveCfg = Release|x64
+		{0626351C-7DEC-4F5F-A30B-C924D11CBB3E}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

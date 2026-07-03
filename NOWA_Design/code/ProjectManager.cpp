@@ -10,7 +10,14 @@
 
 #include "RecentFilesManager.h"
 
-ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager) : sceneManager(sceneManager), sunLight(nullptr), dotSceneImportModule(nullptr), dotSceneExportModule(nullptr), ogreNewt(nullptr), openSaveFileDialog(nullptr), editorManager(nullptr)
+ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager)
+    : sceneManager(sceneManager),
+    sunLight(nullptr),
+    dotSceneImportModule(nullptr),
+    dotSceneExportModule(nullptr),
+    ogreNewt(nullptr),
+    openSaveFileDialog(nullptr),
+    editorManager(nullptr)
 {
     ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager InitOpenSaveDialog", {
         new tools::DialogManager();
@@ -20,10 +27,14 @@ ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager) : sceneManager(
         this->openSaveFileDialog->setFileMask("*.scene");
         this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &ProjectManager::notifyEndDialog);
     });
+
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProjectManager::handleUpdateBounds), NOWA::EventDataBoundsUpdated::getStaticEventType());
 }
 
 ProjectManager::~ProjectManager()
 {
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProjectManager::handleUpdateBounds), NOWA::EventDataBoundsUpdated::getStaticEventType());
+
     // Threadsafe from the outside
     // Delete import/export modules safely (already safe as you said)
     if (this->dotSceneImportModule)
@@ -108,6 +119,19 @@ Ogre::Light* ProjectManager::createSunLight(void)
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::createSunLight");
 
     return sunLight;
+}
+
+void ProjectManager::handleUpdateBounds(NOWA::EventDataPtr eventData)
+{
+    // Place the soundlight out of the scene, because a raycast later could detect it.
+    boost::shared_ptr<NOWA::EventDataBoundsUpdated> castEventData = boost::static_pointer_cast<NOWA::EventDataBoundsUpdated>(eventData);
+
+    NOWA::GameObjectPtr mainLightGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_LIGHT_ID);
+
+    if (nullptr != mainLightGameObjectPtr)
+    {
+        mainLightGameObjectPtr->setAttributePosition(castEventData->getCalculatedBounds().second);
+    }
 }
 
 Ogre::Camera* ProjectManager::createMainCamera(void)
