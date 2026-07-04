@@ -141,7 +141,8 @@ namespace NOWA
         // Register default category for gizmo
         this->defaultCategory = AppStateManager::getSingletonPtr()->getGameObjectController()->registerCategory("Default");
 
-        ENQUEUE_RENDER_COMMAND_WAIT("Gizmo::init", {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             // Create the three arrows in x-y-z axes
             // This is the main node for selected objects, at which the gizmo will be placed
             this->selectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
@@ -180,7 +181,8 @@ namespace NOWA
             this->enabled = false;
 
             this->setEnabled(false);
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::init");
     }
 
     void Gizmo::update(void)
@@ -278,87 +280,89 @@ namespace NOWA
 
         auto thisPtr = this;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::changeToTranslateGizmo",
-            _14(sceneManager, defaultCategory, materialNameX, materialNameY, materialNameZ, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, constraintAxis, oldArrowItemX, oldArrowItemY, oldArrowItemZ, thisPtr), {
-                // Destroy old entities
-                if (oldArrowItemX && sceneManager->hasMovableObject(oldArrowItemX))
-                {
-                    sceneManager->destroyItem(oldArrowItemX);
-                }
-                if (oldArrowItemY && sceneManager->hasMovableObject(oldArrowItemY))
-                {
-                    sceneManager->destroyItem(oldArrowItemY);
-                }
-                if (oldArrowItemZ && sceneManager->hasMovableObject(oldArrowItemZ))
-                {
-                    sceneManager->destroyItem(oldArrowItemZ);
-                }
+        NOWA::GraphicsModule::RenderCommand renderCommand =
+            [sceneManager, defaultCategory, materialNameX, materialNameY, materialNameZ, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, constraintAxis, oldArrowItemX, oldArrowItemY, oldArrowItemZ, thisPtr]()
+        {
+            // Destroy old entities
+            if (oldArrowItemX && sceneManager->hasMovableObject(oldArrowItemX))
+            {
+                sceneManager->destroyItem(oldArrowItemX);
+            }
+            if (oldArrowItemY && sceneManager->hasMovableObject(oldArrowItemY))
+            {
+                sceneManager->destroyItem(oldArrowItemY);
+            }
+            if (oldArrowItemZ && sceneManager->hasMovableObject(oldArrowItemZ))
+            {
+                sceneManager->destroyItem(oldArrowItemZ);
+            }
 
-                // Create new X arrow entity
-                Ogre::Item* newArrowItemX = sceneManager->createItem("Arrow.mesh");
-                newArrowItemX->setName("XArrowGizmoItem");
-                newArrowItemX->setDatablock(materialNameX);
-                newArrowItemX->setQueryFlags(defaultCategory);
-                newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-                newArrowItemX->setCastShadows(false);
-                if (arrowNodeX)
-                {
-                    arrowNodeX->attachObject(newArrowItemX);
-                }
+            // Create new X arrow entity
+            Ogre::Item* newArrowItemX = sceneManager->createItem("Arrow.mesh");
+            newArrowItemX->setName("XArrowGizmoItem");
+            newArrowItemX->setDatablock(materialNameX);
+            newArrowItemX->setQueryFlags(defaultCategory);
+            newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+            newArrowItemX->setCastShadows(false);
+            if (arrowNodeX)
+            {
+                arrowNodeX->attachObject(newArrowItemX);
+            }
 
-                // Create new Y arrow entity
-                Ogre::Item* newArrowItemY = sceneManager->createItem("Arrow.mesh");
-                newArrowItemY->setName("YArrowGizmoItem");
-                newArrowItemY->setDatablock(materialNameY);
-                newArrowItemY->setQueryFlags(defaultCategory);
-                newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-                newArrowItemY->setCastShadows(false);
-                if (arrowNodeY)
-                {
-                    arrowNodeY->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::NEGATIVE_UNIT_X));
-                    arrowNodeY->attachObject(newArrowItemY);
-                }
+            // Create new Y arrow entity
+            Ogre::Item* newArrowItemY = sceneManager->createItem("Arrow.mesh");
+            newArrowItemY->setName("YArrowGizmoItem");
+            newArrowItemY->setDatablock(materialNameY);
+            newArrowItemY->setQueryFlags(defaultCategory);
+            newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+            newArrowItemY->setCastShadows(false);
+            if (arrowNodeY)
+            {
+                arrowNodeY->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::NEGATIVE_UNIT_X));
+                arrowNodeY->attachObject(newArrowItemY);
+            }
 
-                // Create new Z arrow entity
-                Ogre::Item* newArrowItemZ = sceneManager->createItem("Arrow.mesh");
-                newArrowItemZ->setName("ZArrowGizmoItem");
-                newArrowItemZ->setDatablock(materialNameZ);
-                newArrowItemZ->setQueryFlags(defaultCategory);
-                newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-                newArrowItemZ->setCastShadows(false);
-                if (arrowNodeZ)
-                {
-                    arrowNodeZ->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::UNIT_Z));
-                    arrowNodeZ->attachObject(newArrowItemZ);
-                }
+            // Create new Z arrow entity
+            Ogre::Item* newArrowItemZ = sceneManager->createItem("Arrow.mesh");
+            newArrowItemZ->setName("ZArrowGizmoItem");
+            newArrowItemZ->setDatablock(materialNameZ);
+            newArrowItemZ->setQueryFlags(defaultCategory);
+            newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+            newArrowItemZ->setCastShadows(false);
+            if (arrowNodeZ)
+            {
+                arrowNodeZ->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::UNIT_Z));
+                arrowNodeZ->attachObject(newArrowItemZ);
+            }
 
-                if (sphereNode)
-                {
-                    sphereNode->setVisible(true);
-                }
+            if (sphereNode)
+            {
+                sphereNode->setVisible(true);
+            }
 
-                // Update pointers safely on render thread
-                thisPtr->arrowItemX = newArrowItemX;
-                thisPtr->arrowItemY = newArrowItemY;
-                thisPtr->arrowItemZ = newArrowItemZ;
+            // Update pointers safely on render thread
+            thisPtr->arrowItemX = newArrowItemX;
+            thisPtr->arrowItemY = newArrowItemY;
+            thisPtr->arrowItemZ = newArrowItemZ;
 
-                thisPtr->setupFlag();
-                thisPtr->unHighlightGizmo();
+            thisPtr->setupFlag();
+            thisPtr->unHighlightGizmo();
 
-                // Handle constraintAxis visibility
-                if (arrowNodeX && constraintAxis.x != 0.0f)
-                {
-                    arrowNodeX->setVisible(false);
-                }
-                if (arrowNodeY && constraintAxis.y != 0.0f)
-                {
-                    arrowNodeY->setVisible(false);
-                }
-                if (arrowNodeZ && constraintAxis.z != 0.0f)
-                {
-                    arrowNodeZ->setVisible(false);
-                }
-            });
+            // Handle constraintAxis visibility
+            if (arrowNodeX && constraintAxis.x != 0.0f)
+            {
+                arrowNodeX->setVisible(false);
+            }
+            if (arrowNodeY && constraintAxis.y != 0.0f)
+            {
+                arrowNodeY->setVisible(false);
+            }
+            if (arrowNodeZ && constraintAxis.z != 0.0f)
+            {
+                arrowNodeZ->setVisible(false);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::changeToTranslateGizmo");
     }
 
     void Gizmo::changeToScaleGizmo()
@@ -379,73 +383,75 @@ namespace NOWA
 
         auto thisPtr = this;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::changeToScaleGizmo",
-            _13(sceneManager, defaultCategory, materialNameX, materialNameY, materialNameZ, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, oldArrowItemX, oldArrowItemY, oldArrowItemZ, thisPtr), {
-                if (oldArrowItemX && sceneManager->hasMovableObject(oldArrowItemX))
-                {
-                    sceneManager->destroyItem(oldArrowItemX);
-                }
-                if (oldArrowItemY && sceneManager->hasMovableObject(oldArrowItemY))
-                {
-                    sceneManager->destroyItem(oldArrowItemY);
-                }
-                if (oldArrowItemZ && sceneManager->hasMovableObject(oldArrowItemZ))
-                {
-                    sceneManager->destroyItem(oldArrowItemZ);
-                }
+        NOWA::GraphicsModule::RenderCommand renderCommand =
+            [sceneManager, defaultCategory, materialNameX, materialNameY, materialNameZ, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, oldArrowItemX, oldArrowItemY, oldArrowItemZ, thisPtr]()
+        {
+            if (oldArrowItemX && sceneManager->hasMovableObject(oldArrowItemX))
+            {
+                sceneManager->destroyItem(oldArrowItemX);
+            }
+            if (oldArrowItemY && sceneManager->hasMovableObject(oldArrowItemY))
+            {
+                sceneManager->destroyItem(oldArrowItemY);
+            }
+            if (oldArrowItemZ && sceneManager->hasMovableObject(oldArrowItemZ))
+            {
+                sceneManager->destroyItem(oldArrowItemZ);
+            }
 
-                // Create new X entity
-                Ogre::Item* newArrowItemX = sceneManager->createItem("Scale.mesh");
-                newArrowItemX->setName("XArrowGizmoItem");
-                newArrowItemX->setDatablock(materialNameX);
-                newArrowItemX->setQueryFlags(defaultCategory);
-                newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-                newArrowItemX->setCastShadows(false);
-                if (arrowNodeX)
-                {
-                    arrowNodeX->attachObject(newArrowItemX);
-                }
+            // Create new X entity
+            Ogre::Item* newArrowItemX = sceneManager->createItem("Scale.mesh");
+            newArrowItemX->setName("XArrowGizmoItem");
+            newArrowItemX->setDatablock(materialNameX);
+            newArrowItemX->setQueryFlags(defaultCategory);
+            newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+            newArrowItemX->setCastShadows(false);
+            if (arrowNodeX)
+            {
+                arrowNodeX->attachObject(newArrowItemX);
+            }
 
-                // Create new Y entity
-                Ogre::Item* newArrowItemY = sceneManager->createItem("Scale.mesh");
-                newArrowItemY->setName("YArrowGizmoItem");
-                newArrowItemY->setDatablock(materialNameY);
-                newArrowItemY->setQueryFlags(defaultCategory);
-                newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-                newArrowItemY->setCastShadows(false);
-                if (arrowNodeY)
-                {
-                    arrowNodeY->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::NEGATIVE_UNIT_X));
-                    arrowNodeY->attachObject(newArrowItemY);
-                }
+            // Create new Y entity
+            Ogre::Item* newArrowItemY = sceneManager->createItem("Scale.mesh");
+            newArrowItemY->setName("YArrowGizmoItem");
+            newArrowItemY->setDatablock(materialNameY);
+            newArrowItemY->setQueryFlags(defaultCategory);
+            newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+            newArrowItemY->setCastShadows(false);
+            if (arrowNodeY)
+            {
+                arrowNodeY->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::NEGATIVE_UNIT_X));
+                arrowNodeY->attachObject(newArrowItemY);
+            }
 
-                // Create new Z entity
-                Ogre::Item* newArrowItemZ = sceneManager->createItem("Scale.mesh");
-                newArrowItemZ->setName("ZArrowGizmoItem");
-                newArrowItemZ->setDatablock(materialNameZ);
-                newArrowItemZ->setQueryFlags(defaultCategory);
-                newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-                newArrowItemZ->setCastShadows(false);
-                if (arrowNodeZ)
-                {
-                    arrowNodeZ->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::UNIT_Z));
-                    arrowNodeZ->attachObject(newArrowItemZ);
-                }
+            // Create new Z entity
+            Ogre::Item* newArrowItemZ = sceneManager->createItem("Scale.mesh");
+            newArrowItemZ->setName("ZArrowGizmoItem");
+            newArrowItemZ->setDatablock(materialNameZ);
+            newArrowItemZ->setQueryFlags(defaultCategory);
+            newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+            newArrowItemZ->setCastShadows(false);
+            if (arrowNodeZ)
+            {
+                arrowNodeZ->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::UNIT_Z));
+                arrowNodeZ->attachObject(newArrowItemZ);
+            }
 
-                if (sphereNode)
-                {
-                    sphereNode->setVisible(true);
-                }
+            if (sphereNode)
+            {
+                sphereNode->setVisible(true);
+            }
 
-                // Update pointers safely in render thread
-                thisPtr->arrowItemX = newArrowItemX;
-                thisPtr->arrowItemY = newArrowItemY;
-                thisPtr->arrowItemZ = newArrowItemZ;
+            // Update pointers safely in render thread
+            thisPtr->arrowItemX = newArrowItemX;
+            thisPtr->arrowItemY = newArrowItemY;
+            thisPtr->arrowItemZ = newArrowItemZ;
 
-                // Call functions that touch render state inside render thread
-                thisPtr->setupFlag();
-                thisPtr->unHighlightGizmo();
-            });
+            // Call functions that touch render state inside render thread
+            thisPtr->setupFlag();
+            thisPtr->unHighlightGizmo();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::changeToScaleGizmo");
     }
 
     void Gizmo::changeToRotateGizmo()
@@ -469,76 +475,77 @@ namespace NOWA
         // Pointers to this to update members inside render thread
         auto thisPtr = this;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::changeToRotateGizmo",
-            _13(sceneManager, defaultCategory, materialNameX, materialNameY, materialNameZ, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, oldArrowItemX, oldArrowItemY, oldArrowItemZ, thisPtr), {
-                // Destroy old entities if valid
-                if (oldArrowItemX && sceneManager->hasMovableObject(oldArrowItemX))
-                {
-                    sceneManager->destroyItem(oldArrowItemX);
-                }
-                if (oldArrowItemY && sceneManager->hasMovableObject(oldArrowItemY))
-                {
-                    sceneManager->destroyItem(oldArrowItemY);
-                }
-                if (oldArrowItemZ && sceneManager->hasMovableObject(oldArrowItemZ))
-                {
-                    sceneManager->destroyItem(oldArrowItemZ);
-                }
+        NOWA::GraphicsModule::RenderCommand renderCommand = [sceneManager, defaultCategory, materialNameX, materialNameY, materialNameZ, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, oldArrowItemX, oldArrowItemY, oldArrowItemZ, thisPtr]()
+        {
+            // Destroy old entities if valid
+            if (oldArrowItemX && sceneManager->hasMovableObject(oldArrowItemX))
+            {
+                sceneManager->destroyItem(oldArrowItemX);
+            }
+            if (oldArrowItemY && sceneManager->hasMovableObject(oldArrowItemY))
+            {
+                sceneManager->destroyItem(oldArrowItemY);
+            }
+            if (oldArrowItemZ && sceneManager->hasMovableObject(oldArrowItemZ))
+            {
+                sceneManager->destroyItem(oldArrowItemZ);
+            }
 
-                // Create new X entity
-                Ogre::Item* newArrowItemX = sceneManager->createItem("Ring.mesh");
-                newArrowItemX->setName("XArrowGizmoItem");
-                newArrowItemX->setDatablock(materialNameX);
-                newArrowItemX->setQueryFlags(defaultCategory);
-                newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-                newArrowItemX->setCastShadows(false);
-                if (arrowNodeX)
-                {
-                    arrowNodeX->attachObject(newArrowItemX);
-                }
+            // Create new X entity
+            Ogre::Item* newArrowItemX = sceneManager->createItem("Ring.mesh");
+            newArrowItemX->setName("XArrowGizmoItem");
+            newArrowItemX->setDatablock(materialNameX);
+            newArrowItemX->setQueryFlags(defaultCategory);
+            newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+            newArrowItemX->setCastShadows(false);
+            if (arrowNodeX)
+            {
+                arrowNodeX->attachObject(newArrowItemX);
+            }
 
-                // Create new Y entity
-                Ogre::Item* newArrowItemY = sceneManager->createItem("Ring.mesh");
-                newArrowItemY->setName("YArrowGizmoItem");
-                newArrowItemY->setDatablock(materialNameY);
-                newArrowItemY->setQueryFlags(defaultCategory);
-                newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-                newArrowItemY->setCastShadows(false);
-                if (arrowNodeY)
-                {
-                    arrowNodeY->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::UNIT_X));
-                    arrowNodeY->attachObject(newArrowItemY);
-                }
+            // Create new Y entity
+            Ogre::Item* newArrowItemY = sceneManager->createItem("Ring.mesh");
+            newArrowItemY->setName("YArrowGizmoItem");
+            newArrowItemY->setDatablock(materialNameY);
+            newArrowItemY->setQueryFlags(defaultCategory);
+            newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+            newArrowItemY->setCastShadows(false);
+            if (arrowNodeY)
+            {
+                arrowNodeY->setOrientation(Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::UNIT_X));
+                arrowNodeY->attachObject(newArrowItemY);
+            }
 
-                // Create new Z entity
-                Ogre::Item* newArrowItemZ = sceneManager->createItem("Ring.mesh");
-                newArrowItemZ->setName("ZArrowGizmoItem");
-                newArrowItemZ->setDatablock(materialNameZ);
-                newArrowItemZ->setQueryFlags(defaultCategory);
-                newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-                newArrowItemZ->setCastShadows(false);
-                if (arrowNodeZ)
-                {
-                    // 270 degrees around Z axis for proper arc direction
-                    arrowNodeZ->setOrientation(Ogre::Quaternion(Ogre::Degree(270), Ogre::Vector3::UNIT_Z));
-                    arrowNodeZ->attachObject(newArrowItemZ);
-                }
+            // Create new Z entity
+            Ogre::Item* newArrowItemZ = sceneManager->createItem("Ring.mesh");
+            newArrowItemZ->setName("ZArrowGizmoItem");
+            newArrowItemZ->setDatablock(materialNameZ);
+            newArrowItemZ->setQueryFlags(defaultCategory);
+            newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+            newArrowItemZ->setCastShadows(false);
+            if (arrowNodeZ)
+            {
+                // 270 degrees around Z axis for proper arc direction
+                arrowNodeZ->setOrientation(Ogre::Quaternion(Ogre::Degree(270), Ogre::Vector3::UNIT_Z));
+                arrowNodeZ->attachObject(newArrowItemZ);
+            }
 
-                if (sphereNode)
-                {
-                    sphereNode->setVisible(false);
-                }
+            if (sphereNode)
+            {
+                sphereNode->setVisible(false);
+            }
 
-                // Update this->arrowItem* pointers on logic side is unsafe here,
-                // but we can store them here in thisPtr for thread safety.
-                thisPtr->arrowItemX = newArrowItemX;
-                thisPtr->arrowItemY = newArrowItemY;
-                thisPtr->arrowItemZ = newArrowItemZ;
+            // Update this->arrowItem* pointers on logic side is unsafe here,
+            // but we can store them here in thisPtr for thread safety.
+            thisPtr->arrowItemX = newArrowItemX;
+            thisPtr->arrowItemY = newArrowItemY;
+            thisPtr->arrowItemZ = newArrowItemZ;
 
-                // Call setupFlag() and unHighlightGizmo() inside render command to avoid threading issues
-                thisPtr->setupFlag();
-                thisPtr->unHighlightGizmo();
-            });
+            // Call setupFlag() and unHighlightGizmo() inside render command to avoid threading issues
+            thisPtr->setupFlag();
+            thisPtr->unHighlightGizmo();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::changeToRotateGizmo");
     }
 
     void Gizmo::setEnabled(bool enable)
@@ -558,101 +565,101 @@ namespace NOWA
         auto defaultCategory = this->defaultCategory;
         auto constraintAxis = this->constraintAxis;
 
-        // Enqueue render commands for all render state changes
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::setEnabled",
-            _11(arrowItemX, arrowItemY, arrowItemZ, sphereItem, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, defaultCategory, constraintAxis, enable), {
-                if (arrowItemZ && arrowItemZ->getParentSceneNode()) // safer check than hasMovableObject
+        NOWA::GraphicsModule::RenderCommand renderCommand = [arrowItemX, arrowItemY, arrowItemZ, sphereItem, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, defaultCategory, constraintAxis, enable]()
+        {
+            if (arrowItemZ && arrowItemZ->getParentSceneNode()) // safer check than hasMovableObject
+            {
+                if (enable)
                 {
-                    if (enable)
+                    if (arrowItemX)
                     {
-                        if (arrowItemX)
-                        {
-                            arrowItemX->setQueryFlags(defaultCategory);
-                        }
-                        if (arrowItemY)
-                        {
-                            arrowItemY->setQueryFlags(defaultCategory);
-                        }
-                        if (arrowItemZ)
-                        {
-                            arrowItemZ->setQueryFlags(defaultCategory);
-                        }
-                        if (sphereItem)
-                        {
-                            sphereItem->setQueryFlags(defaultCategory);
-                        }
-
-                        if (arrowNodeX)
-                        {
-                            arrowNodeX->setVisible(true);
-                        }
-                        if (arrowNodeY)
-                        {
-                            arrowNodeY->setVisible(true);
-                        }
-                        if (arrowNodeZ)
-                        {
-                            arrowNodeZ->setVisible(true);
-                        }
-                        if (sphereNode)
-                        {
-                            sphereNode->setVisible(true);
-                        }
+                        arrowItemX->setQueryFlags(defaultCategory);
                     }
-                    else
+                    if (arrowItemY)
                     {
-                        if (arrowItemX)
-                        {
-                            arrowItemX->setQueryFlags(0);
-                        }
-                        if (arrowItemY)
-                        {
-                            arrowItemY->setQueryFlags(0);
-                        }
-                        if (arrowItemZ)
-                        {
-                            arrowItemZ->setQueryFlags(0);
-                        }
-                        if (sphereItem)
-                        {
-                            sphereItem->setQueryFlags(0);
-                        }
+                        arrowItemY->setQueryFlags(defaultCategory);
+                    }
+                    if (arrowItemZ)
+                    {
+                        arrowItemZ->setQueryFlags(defaultCategory);
+                    }
+                    if (sphereItem)
+                    {
+                        sphereItem->setQueryFlags(defaultCategory);
+                    }
 
-                        if (arrowNodeX)
-                        {
-                            arrowNodeX->setVisible(false);
-                        }
-                        if (arrowNodeY)
-                        {
-                            arrowNodeY->setVisible(false);
-                        }
-                        if (arrowNodeZ)
-                        {
-                            arrowNodeZ->setVisible(false);
-                        }
-                        if (sphereNode)
-                        {
-                            sphereNode->setVisible(false);
-                        }
+                    if (arrowNodeX)
+                    {
+                        arrowNodeX->setVisible(true);
+                    }
+                    if (arrowNodeY)
+                    {
+                        arrowNodeY->setVisible(true);
+                    }
+                    if (arrowNodeZ)
+                    {
+                        arrowNodeZ->setVisible(true);
+                    }
+                    if (sphereNode)
+                    {
+                        sphereNode->setVisible(true);
                     }
                 }
-
-                // Hide arrows according to constraintAxis
-                if (constraintAxis.x != 0.0f && arrowNodeX)
+                else
                 {
-                    arrowNodeX->setVisible(false);
-                }
+                    if (arrowItemX)
+                    {
+                        arrowItemX->setQueryFlags(0);
+                    }
+                    if (arrowItemY)
+                    {
+                        arrowItemY->setQueryFlags(0);
+                    }
+                    if (arrowItemZ)
+                    {
+                        arrowItemZ->setQueryFlags(0);
+                    }
+                    if (sphereItem)
+                    {
+                        sphereItem->setQueryFlags(0);
+                    }
 
-                if (constraintAxis.y != 0.0f && arrowNodeY)
-                {
-                    arrowNodeY->setVisible(false);
+                    if (arrowNodeX)
+                    {
+                        arrowNodeX->setVisible(false);
+                    }
+                    if (arrowNodeY)
+                    {
+                        arrowNodeY->setVisible(false);
+                    }
+                    if (arrowNodeZ)
+                    {
+                        arrowNodeZ->setVisible(false);
+                    }
+                    if (sphereNode)
+                    {
+                        sphereNode->setVisible(false);
+                    }
                 }
+            }
 
-                if (constraintAxis.z != 0.0f && arrowNodeZ)
-                {
-                    arrowNodeZ->setVisible(false);
-                }
-            });
+            // Hide arrows according to constraintAxis
+            if (constraintAxis.x != 0.0f && arrowNodeX)
+            {
+                arrowNodeX->setVisible(false);
+            }
+
+            if (constraintAxis.y != 0.0f && arrowNodeY)
+            {
+                arrowNodeY->setVisible(false);
+            }
+
+            if (constraintAxis.z != 0.0f && arrowNodeZ)
+            {
+                arrowNodeZ->setVisible(false);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::setEnabled");
 
         // Since gizmoState is a logic variable, update it on logic thread directly (outside enqueue)
         if (false == enable)
@@ -669,12 +676,15 @@ namespace NOWA
     void Gizmo::setSphereEnabled(bool enable)
     {
         auto sphereNode = this->sphereNode;
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::setSphereEnabled", _2(sphereNode, enable), {
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [sphereNode, enable]()
+        {
             if (sphereNode)
             {
                 sphereNode->setVisible(enable);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::setSphereEnabled");
     }
 
     void Gizmo::highlightXArrow(void)
@@ -686,7 +696,8 @@ namespace NOWA
         auto materialNameY = this->materialNameY;
         auto materialNameZ = this->materialNameZ;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::highlightXArrow", _6(arrowItemX, arrowItemY, arrowItemZ, materialNameHighlight, materialNameY, materialNameZ), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [arrowItemX, arrowItemY, arrowItemZ, materialNameHighlight, materialNameY, materialNameZ]()
+        {
             if (arrowItemX)
             {
                 arrowItemX->setDatablock(materialNameHighlight);
@@ -699,7 +710,8 @@ namespace NOWA
             {
                 arrowItemZ->setDatablock(materialNameZ);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::highlightXArrow");
 
         // Update gizmoState safely on logic thread since it is not a render resource
         this->gizmoState = GIZMO_ARROW_X;
@@ -714,7 +726,8 @@ namespace NOWA
         auto materialNameHighlight = this->materialNameHighlight;
         auto materialNameZ = this->materialNameZ;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::highlightYArrow", _6(arrowItemX, arrowItemY, arrowItemZ, materialNameX, materialNameHighlight, materialNameZ), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [arrowItemX, arrowItemY, arrowItemZ, materialNameHighlight, materialNameX, materialNameZ]()
+        {
             if (arrowItemX)
             {
                 arrowItemX->setDatablock(materialNameX);
@@ -727,7 +740,8 @@ namespace NOWA
             {
                 arrowItemZ->setDatablock(materialNameZ);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::highlightYArrow");
 
         this->gizmoState = GIZMO_ARROW_Y;
     }
@@ -741,7 +755,8 @@ namespace NOWA
         auto materialNameY = this->materialNameY;
         auto materialNameHighlight = this->materialNameHighlight;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::highlightZArrow", _6(arrowItemX, arrowItemY, arrowItemZ, materialNameX, materialNameY, materialNameHighlight), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [arrowItemX, arrowItemY, arrowItemZ, materialNameX, materialNameY, materialNameHighlight]()
+        {
             if (arrowItemX)
             {
                 arrowItemX->setDatablock(materialNameX);
@@ -754,7 +769,8 @@ namespace NOWA
             {
                 arrowItemZ->setDatablock(materialNameHighlight);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::highlightZArrow");
 
         this->gizmoState = GIZMO_ARROW_Z;
     }
@@ -764,12 +780,14 @@ namespace NOWA
         auto sphereItem = this->sphereItem;
         auto materialNameHighlight = this->materialNameHighlight;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::highlightSphere", _2(sphereItem, materialNameHighlight), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [sphereItem, materialNameHighlight]()
+        {
             if (sphereItem)
             {
                 sphereItem->setDatablock(materialNameHighlight);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::highlightSphere");
 
         this->gizmoState = GIZMO_SPHERE;
     }
@@ -784,7 +802,8 @@ namespace NOWA
         auto materialNameY = this->materialNameY;
         auto materialNameZ = this->materialNameZ;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::unHighlightGizmo", _7(arrowItemX, arrowItemY, arrowItemZ, sphereItem, materialNameX, materialNameY, materialNameZ), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [arrowItemX, arrowItemY, arrowItemZ, sphereItem, materialNameX, materialNameY, materialNameZ]()
+        {
             if (arrowItemX)
             {
                 arrowItemX->setDatablock(materialNameX);
@@ -801,7 +820,8 @@ namespace NOWA
             {
                 sphereItem->setDatablock("WhiteNoLighting");
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::unHighlightGizmo");
 
         this->gizmoState = GIZMO_NONE;
     }
@@ -814,7 +834,8 @@ namespace NOWA
         auto arrowItemZ = this->arrowItemZ;
         auto sphereItem = this->sphereItem;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Gizmo::setupFlag", _4(arrowItemX, arrowItemY, arrowItemZ, sphereItem), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [arrowItemX, arrowItemY, arrowItemZ, sphereItem]()
+        {
             if (arrowItemX)
             {
                 arrowItemX->setVisibilityFlags(NOWA::GIZMO_VISIBLE_MASK_VISIBLE);
@@ -831,7 +852,8 @@ namespace NOWA
             {
                 sphereItem->setVisibilityFlags(NOWA::GIZMO_VISIBLE_MASK_VISIBLE);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::setupFlag");
     }
 
     Ogre::Real Gizmo::getGizmoBoundingRadius(void) const
@@ -927,7 +949,8 @@ namespace NOWA
 
     void Gizmo::createLine(void)
     {
-        ENQUEUE_RENDER_COMMAND_WAIT("Gizmo::createLine", {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             this->translationLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
             // this->translationLine = new Ogre::v1::ManualObject(0, &this->sceneManager->_getItemMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
             this->translationLine = this->sceneManager->createManualObject(Ogre::SCENE_DYNAMIC);
@@ -939,7 +962,8 @@ namespace NOWA
             // this->translationLine->setDebugDisplayEnabled(true);
 
             this->translationCaption = new ObjectTitle("TranslationCaption", this->translationLine, this->camera, "BlueHighway", Ogre::ColourValue::White);
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::createLine");
     }
 
     void Gizmo::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, Ogre::Real thickness, const Ogre::String& materialName)
@@ -967,10 +991,12 @@ namespace NOWA
 
     void Gizmo::hideLine(void)
     {
-        ENQUEUE_RENDER_COMMAND("Gizmo::hideLine", {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             this->translationLine->clear();
             this->translationCaption->setTitle("");
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "Gizmo::hideLine");
     }
 
     void Gizmo::destroyLine()
@@ -984,7 +1010,8 @@ namespace NOWA
         auto lineNode = this->translationLineNode;
         auto line = this->translationLine;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Destroy Gizmo Line", _3(sceneManager, lineNode, line), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, lineNode, line]()
+        {
             lineNode->detachAllObjects();
             if (line)
             {
@@ -994,7 +1021,8 @@ namespace NOWA
             {
                 lineNode->getParentSceneNode()->removeAndDestroyChild(lineNode);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::destroyLine");
 
         this->translationLine = nullptr;
         this->translationLineNode = nullptr;
@@ -1011,7 +1039,8 @@ namespace NOWA
             return;
         }
 
-        ENQUEUE_RENDER_COMMAND_MULTI("Gizmo::destroyCircle", _3(sceneManager, rotationCircle, rotationCircleNode), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, rotationCircle, rotationCircleNode]()
+        {
             rotationCircleNode->detachAllObjects();
 
             if (rotationCircle != nullptr)
@@ -1026,7 +1055,8 @@ namespace NOWA
             {
                 rotationCircleNode->getParentSceneNode()->removeAndDestroyChild(rotationCircleNode);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::destroyCircle");
 
         // After enqueueing the render command, clear your pointers on the main thread:
         this->rotationCircle = nullptr;
@@ -1035,7 +1065,8 @@ namespace NOWA
 
     void Gizmo::createCircle(void)
     {
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::createCircle", _1(this), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             this->rotationCircleNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
             this->rotationCircle = this->sceneManager->createManualObject();
             this->rotationCircle->setQueryFlags(0 << 0);
@@ -1047,7 +1078,8 @@ namespace NOWA
             // this->rotationCircle->setDynamic(true);
 
             this->rotationCaption = new ObjectTitle("RotationCaption", this->rotationCircle, this->camera, "BlueHighway", Ogre::ColourValue::White);
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::createCircle");
     }
 
     void Gizmo::drawCircle(const Ogre::Quaternion& orientation, Ogre::Real fromAngle, Ogre::Real toAngle, bool counterClockWise, Ogre::Real thickness, const Ogre::String& materialName)
@@ -1133,7 +1165,8 @@ namespace NOWA
         auto rotationCircle = this->rotationCircle;
         auto rotationCaption = this->rotationCaption;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::hideCircle", _2(rotationCircle, rotationCaption), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [rotationCircle, rotationCaption]()
+        {
             if (rotationCircle)
             {
                 rotationCircle->clear();
@@ -1143,33 +1176,38 @@ namespace NOWA
             {
                 rotationCaption->setTitle("");
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::hideCircle");
     }
 
     void Gizmo::setTranslationCaption(const Ogre::String& caption, const Ogre::ColourValue& color)
     {
         auto translationCaption = this->translationCaption;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::setTranslationCaption", _3(translationCaption, caption, color), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [translationCaption, caption, color]()
+        {
             if (translationCaption)
             {
                 translationCaption->setTitle(caption);
                 translationCaption->setColor(color);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::setTranslationCaption");
     }
 
     void Gizmo::setRotationCaption(const Ogre::String& caption, const Ogre::ColourValue& color)
     {
         auto rotationCaption = this->rotationCaption;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::setRotationCaption", _3(rotationCaption, caption, color), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [rotationCaption, caption, color]()
+        {
             if (rotationCaption)
             {
                 rotationCaption->setTitle(caption);
                 rotationCaption->setColor(color);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::setRotationCaption");
     }
 
     void Gizmo::setPosition(const Ogre::Vector3& position)
@@ -1257,7 +1295,8 @@ namespace NOWA
         auto arrowNodeZ = this->arrowNodeZ;
         auto constraintAxisCopy = constraintAxis; // capture by value
 
-        ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::setConstraintAxis", _4(arrowNodeX, arrowNodeY, arrowNodeZ, constraintAxisCopy), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [arrowNodeX, arrowNodeY, arrowNodeZ, constraintAxisCopy]()
+        {
             // Show all arrows first
             arrowNodeX->setVisible(true);
             arrowNodeY->setVisible(true);
@@ -1276,7 +1315,8 @@ namespace NOWA
             {
                 arrowNodeZ->setVisible(false);
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Gizmo::setConstraintAxis");
     }
 
     Ogre::Vector3 Gizmo::getCurrentDirection(void)

@@ -2165,103 +2165,73 @@ namespace NOWA
             int mX = evt.state.X.abs;
             int mY = evt.state.Y.abs;
 
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this, mX, mY, hitRay]()
+            const Ogre::Real pickPixelTolerance = 12.0f;
+            NOWA::Gizmo::eGizmoState pickedAxis = this->gizmo->pickAxisScreenSpace(mX, mY, pickPixelTolerance);
+
+            if (NOWA::Gizmo::GIZMO_NONE == pickedAxis)
             {
-                Ogre::Item* gizmoItem = nullptr;
-                Ogre::Vector3 result = Ogre::Vector3::ZERO;
-                Ogre::Real closestDistance = 0.0f;
-                Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+                this->gizmo->unHighlightGizmo();
+                return;
+            }
 
-                // Check if there is an hit with an polygon of an item
-                if (MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->gizmoQuery, result, (size_t&)gizmoItem, closestDistance, normal, nullptr, true))
+            Ogre::Vector3 gizmoPosition = this->gizmo->getSelectedNode()->_getDerivedPositionUpdated();
+            Ogre::Vector3 gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
+            Ogre::Vector3 gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
+            Ogre::Vector3 gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();
+
+            this->gizmo->redefineFirstPlane(gizmoDirectionX, gizmoPosition);
+            this->gizmo->redefineSecondPlane(gizmoDirectionY, gizmoPosition);
+            this->gizmo->redefineThirdPlane(gizmoDirectionZ, gizmoPosition);
+
+            switch (pickedAxis)
+            {
+            case NOWA::Gizmo::GIZMO_ARROW_X:
+                this->gizmo->highlightXArrow();
+                if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
                 {
-                    Ogre::Vector3 gizmoPosition = this->gizmo->getSelectedNode()->_getDerivedPositionUpdated();
-
-                    Ogre::Vector3 gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
-                    Ogre::Vector3 gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
-                    Ogre::Vector3 gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();
-
-                    this->gizmo->redefineFirstPlane(gizmoDirectionX, gizmoPosition);
-                    this->gizmo->redefineSecondPlane(gizmoDirectionY, gizmoPosition);
-                    this->gizmo->redefineThirdPlane(gizmoDirectionZ, gizmoPosition);
-
-                    Ogre::Real vX = this->gizmo->getFirstPlane().projectVector(hitRay.getDirection()).length();
-                    Ogre::Real vY = this->gizmo->getSecondPlane().projectVector(hitRay.getDirection()).length();
-                    Ogre::Real vZ = this->gizmo->getThirdPlane().projectVector(hitRay.getDirection()).length();
-
-                    if (this->gizmo->getArrowItemX() == gizmoItem)
-                    {
-                        // http://www.ogre3d.org/forums/viewtopic.php?f=2&t=41739
-
-                        // Change the color of the arrow, when the user hovers over it
-                        this->gizmo->highlightXArrow();
-                        vX = 10000.0f;
-
-                        if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
-                        {
-                            this->resultPlane.redefine(gizmoDirectionY, this->gizmo->getPosition());
-                        }
-                    }
-                    else if (this->gizmo->getArrowItemY() == gizmoItem)
-                    {
-                        this->gizmo->highlightYArrow();
-                        vY = 10000.0f;
-                        if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
-                        {
-                            this->resultPlane.redefine(gizmoDirectionZ, this->gizmo->getPosition());
-                        }
-                    }
-                    else if (this->gizmo->getArrowItemZ() == gizmoItem)
-                    {
-                        this->gizmo->highlightZArrow();
-                        vZ = 10000.0f;
-                        if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
-                        {
-                            this->resultPlane.redefine(gizmoDirectionX, this->gizmo->getPosition());
-                        }
-                    }
-                    else if (this->gizmo->getSphereItem() == gizmoItem && EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
-                    {
-                        this->gizmo->highlightSphere();
-
-                        this->resultPlane.redefine(this->camera->getDerivedDirection(), gizmoPosition);
-                        return;
-                    }
-                    else
-                    {
-                        this->gizmo->unHighlightGizmo();
-
-                        Ogre::Vector3 cameraBack = this->camera->getDerivedDirection();
-                        cameraBack = -cameraBack;
-                        this->resultPlane.redefine(cameraBack, gizmoPosition);
-                        return;
-                    }
-
-                    if (EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
-                    {
-                        if (vX < vY && vX < vZ)
-                        {
-                            this->resultPlane = this->gizmo->getFirstPlane();
-                        }
-                        else
-                        {
-                            if (vY < vX && vY < vZ)
-                            {
-                                this->resultPlane = this->gizmo->getSecondPlane();
-                            }
-                            else
-                            {
-                                this->resultPlane = this->gizmo->getThirdPlane();
-                            }
-                        }
-                    }
+                    this->resultPlane.redefine(gizmoDirectionY, this->gizmo->getPosition());
                 }
                 else
                 {
-                    this->gizmo->unHighlightGizmo();
+                    this->resultPlane = this->gizmo->getFirstPlane();
                 }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "EditorManager::selectGizmo");
+                break;
+
+            case NOWA::Gizmo::GIZMO_ARROW_Y:
+                this->gizmo->highlightYArrow();
+                if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
+                {
+                    this->resultPlane.redefine(gizmoDirectionZ, this->gizmo->getPosition());
+                }
+                else
+                {
+                    this->resultPlane = this->gizmo->getSecondPlane();
+                }
+                break;
+
+            case NOWA::Gizmo::GIZMO_ARROW_Z:
+                this->gizmo->highlightZArrow();
+                if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
+                {
+                    this->resultPlane.redefine(gizmoDirectionX, this->gizmo->getPosition());
+                }
+                else
+                {
+                    this->resultPlane = this->gizmo->getThirdPlane();
+                }
+                break;
+
+            case NOWA::Gizmo::GIZMO_SPHERE:
+                if (EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
+                {
+                    this->gizmo->highlightSphere();
+                    this->resultPlane.redefine(this->camera->getDerivedDirection(), gizmoPosition);
+                }
+                break;
+
+            default:
+                break;
+            }
         }
     }
 

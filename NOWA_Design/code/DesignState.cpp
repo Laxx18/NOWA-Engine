@@ -1924,14 +1924,14 @@ void DesignState::renderUpdate(Ogre::Real dt)
 
             if (nullptr != this->selectedGameObject)
             {
-                if (GetAsyncKeyState(VK_RMENU) & 0x8000)
+                if (GetAsyncKeyState(VK_LSHIFT))
                 {
                     // RIGHT ALT: the selected object's own orientation defines the frame.
                     // Its local up becomes camera up -> gravity is the inverse of that.
                     Ogre::Vector3 objectUp = this->selectedGameObject->getOrientation() * Ogre::Vector3::UNIT_Y;
                     gravityDir = -objectUp;
                 }
-                else if (GetAsyncKeyState(VK_LMENU) & 0x8000)
+                else if (GetAsyncKeyState(VK_LMENU))
                 {
                     // LEFT ALT: planet mode. Gravity points from the camera to the planet centre.
                     gravityDir = this->selectedGameObject->getPosition() - this->camera->getDerivedPosition();
@@ -1951,7 +1951,7 @@ void DesignState::renderUpdate(Ogre::Real dt)
 
 		if (GetAsyncKeyState(VK_LSHIFT))
 		{
-			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 100.0f;
+			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 200.0f;
 			if (this->cameraMoveSpeed < 2.0f)
 				this->cameraMoveSpeed = 2.0f;
 			if (this->cameraMoveSpeed > 5000.0f)

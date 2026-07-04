@@ -1617,7 +1617,52 @@ namespace NOWA
             junctions[ji].patchCornersInner.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -halfW, worldY, boundaryPosXZ.z + perp.z * -halfW));
         };
 
-        // ── Chain building ─────────────────────────────────────────────────────
+        // ── Chain building (undirected graph walk, handles 2-way snap joins) ────
+        // A road endpoint can be touched by 1 segment (dead end), 2 segments
+        // (a plain continuation / snap-closed connection - NOT a junction), or
+        // 3+ segments (a real branching junction, handled separately below via
+        // 'junctions'/'junctionByKey'). The old version of this loop only ever
+        // looked FORWARD from a segment's back point to another segment's FRONT
+        // point. Any segment reached by snapping onto an EXISTING segment's
+        // front point (the common case when closing a loop or joining two
+        // roads drawn from opposite directions) could never be merged into
+        // that other segment's chain, because by the time it was visited the
+        // other segment was already marked 'processed'. That produced two
+        // independent quad strips meeting at the same XZ point but with
+        // unrelated, independently-computed cross sections - hence the visible
+        // gap and flipped orientation at snap joints. Now we walk the shared-
+        // endpoint graph in both directions from every seed segment, reversing
+        // a neighbour's control point order when it is only compatible in that
+        // orientation, so all snap-joined segments become ONE continuous chain.
+        std::map<QKey, std::vector<std::pair<size_t, bool>>> pointSegs; // bool = touches via FRONT
+        for (size_t si = 0; si < this->roadSegments.size(); ++si)
+        {
+            const RoadSegment& seg = this->roadSegments[si];
+            if (seg.controlPoints.size() < 2)
+            {
+                continue;
+            }
+            QKey kf{quantise(seg.controlPoints.front().position.x), quantise(seg.controlPoints.front().position.z)};
+            QKey kb{quantise(seg.controlPoints.back().position.x), quantise(seg.controlPoints.back().position.z)};
+            pointSegs[kf].push_back({si, true});
+            pointSegs[kb].push_back({si, false});
+        }
+
+        auto distinctCountAt = [&](const QKey& k) -> size_t
+        {
+            auto it = pointSegs.find(k);
+            if (it == pointSegs.end())
+            {
+                return 0;
+            }
+            std::set<size_t> distinctSegs;
+            for (const auto& e : it->second)
+            {
+                distinctSegs.insert(e.first);
+            }
+            return distinctSegs.size();
+        };
+
         std::vector<bool> processed(this->roadSegments.size(), false);
 
         for (size_t i = 0; i < this->roadSegments.size(); ++i)
@@ -1627,57 +1672,174 @@ namespace NOWA
                 continue;
             }
 
-            std::vector<size_t> chainIndices;
-            chainIndices.push_back(i);
+            // chainIndices holds (segmentIndex, reversed) pairs in final walk order.
+            // 'reversed' means this segment's control points must be read back-to-front
+            // to continue smoothly in the chain's travel direction.
+            std::vector<std::pair<size_t, bool>> chainIndices;
+            chainIndices.push_back({i, false});
             processed[i] = true;
 
-            size_t current = i;
-            bool foundNext = true;
-            while (foundNext)
+            bool closedLoop = false;
+
+            // ── Extend forward from the chain's tail ───────────────────────────
             {
-                foundNext = false;
-                const Ogre::Vector3& lastEnd = this->roadSegments[current].controlPoints.back().position;
-                QKey endKey{quantise(lastEnd.x), quantise(lastEnd.z)};
-                if (junctionByKey.count(endKey))
+                bool extending = true;
+                while (extending)
+                {
+                    extending = false;
+
+                    const RoadSegment& tailSeg = this->roadSegments[chainIndices.back().first];
+                    const bool tailReversed = chainIndices.back().second;
+                    const Ogre::Vector3 tailPos = tailReversed ? tailSeg.controlPoints.front().position : tailSeg.controlPoints.back().position;
+                    QKey tailKey{quantise(tailPos.x), quantise(tailPos.z)};
+
+                    // A real junction (3+ distinct segments) stops chain growth here;
+                    // generateJunctionPatch bridges the gap between arms instead.
+                    if (distinctCountAt(tailKey) >= 3)
+                    {
+                        break;
+                    }
+
+                    const RoadSegment& headSeg0 = this->roadSegments[chainIndices.front().first];
+                    const bool headReversed0 = chainIndices.front().second;
+                    const Ogre::Vector3 headPos0 = headReversed0 ? headSeg0.controlPoints.back().position : headSeg0.controlPoints.front().position;
+                    if (chainIndices.size() >= 2 && tailPos.squaredDistance(headPos0) < 0.01f)
+            {
+                        closedLoop = true;
+                        break;
+                    }
+
+                    auto it = pointSegs.find(tailKey);
+                    if (it == pointSegs.end())
                 {
                     break;
                 }
 
-                for (size_t j = 0; j < this->roadSegments.size(); ++j)
+                    for (const auto& entry : it->second)
                 {
-                    if (processed[j])
+                        const size_t nextIdx = entry.first;
+                        const bool nextTouchesViaFront = entry.second;
+
+                        if (processed[nextIdx])
                     {
                         continue;
                     }
-                    const Ogre::Vector3& nextStart = this->roadSegments[j].controlPoints.front().position;
-                    if (lastEnd.squaredDistance(nextStart) < 0.01f)
-                    {
-                        chainIndices.push_back(j);
-                        processed[j] = true;
-                        current = j;
-                        foundNext = true;
+
+                        // If the neighbour touches this point via its FRONT, keep it
+                        // un-reversed (its back becomes the new tail). If it touches via
+                        // its BACK, traverse it reversed (its front becomes the new tail).
+                        const bool nextReversed = !nextTouchesViaFront;
+                        chainIndices.push_back({nextIdx, nextReversed});
+                        processed[nextIdx] = true;
+                        extending = true;
                         break;
                     }
                 }
             }
 
-            // ── Step 2: Collect waypoints ──────────────────────────────────────
-            std::vector<RoadControlPoint> chainWaypoints;
-            for (size_t ci = 0; ci < chainIndices.size(); ++ci)
+            // ── Extend backward from the chain's head ───────────────────────────
+            if (!closedLoop)
             {
-                const RoadSegment& seg = this->roadSegments[chainIndices[ci]];
-                for (size_t pi = 0; pi < seg.controlPoints.size(); ++pi)
+                bool extending = true;
+                while (extending)
                 {
-                    if (ci > 0 && pi == 0)
+                    extending = false;
+
+                    const RoadSegment& headSeg = this->roadSegments[chainIndices.front().first];
+                    const bool headReversed = chainIndices.front().second;
+                    const Ogre::Vector3 headPos = headReversed ? headSeg.controlPoints.back().position : headSeg.controlPoints.front().position;
+                    QKey headKey{quantise(headPos.x), quantise(headPos.z)};
+
+                    if (distinctCountAt(headKey) >= 3)
                     {
-                        continue;
+                        break;
                     }
-                    chainWaypoints.push_back(seg.controlPoints[pi]);
+
+                    const RoadSegment& tailSeg0 = this->roadSegments[chainIndices.back().first];
+                    const bool tailReversed0 = chainIndices.back().second;
+                    const Ogre::Vector3 tailPos0 = tailReversed0 ? tailSeg0.controlPoints.front().position : tailSeg0.controlPoints.back().position;
+                    if (chainIndices.size() >= 2 && headPos.squaredDistance(tailPos0) < 0.01f)
+                    {
+                        closedLoop = true;
+                        break;
+                    }
+
+                    auto it = pointSegs.find(headKey);
+                    if (it == pointSegs.end())
+                    {
+                        break;
+                    }
+
+                    for (const auto& entry : it->second)
+                    {
+                        const size_t nextIdx = entry.first;
+                        const bool nextTouchesViaFront = entry.second;
+
+                        if (processed[nextIdx])
+                    {
+                            continue;
+                        }
+
+                        // Prepending: if the neighbour touches via its BACK, keep it
+                        // un-reversed (its front becomes the new head). If it touches via
+                        // its FRONT, traverse it reversed (its back becomes the new head).
+                        const bool nextReversed = nextTouchesViaFront;
+                        chainIndices.insert(chainIndices.begin(), {nextIdx, nextReversed});
+                        processed[nextIdx] = true;
+                        extending = true;
+                        break;
+                    }
                 }
             }
 
-            // Detect closed loop
-            const bool isClosed = (chainWaypoints.size() >= 3) && (chainWaypoints.front().position.squaredDistance(chainWaypoints.back().position) < 0.01f);
+            // ── Step 2: Collect waypoints (respecting per-segment reversal) ─────
+            // NOTE: the duplicate connecting point between two consecutive chain
+            // elements can sit on either side of a segment depending on whether
+            // that segment was appended while growing the chain's TAIL (forward
+            // extension) or prepended while growing the chain's HEAD (backward
+            // extension, e.g. a multi-segment curved arm that had to be grown
+            // outward from a junction). Assuming "the duplicate is always at
+            // pi==0 / pi==size-1 based only on the reversed flag" is only true
+            // for forward-appended segments; for backward-prepended ones the
+            // duplicate is on the OPPOSITE side. Rather than tracking append vs.
+            // prepend origin, just compare actual positions: skip a point if it
+            // is essentially coincident with the point already pushed before it.
+            std::vector<RoadControlPoint> chainWaypoints;
+            for (size_t ci = 0; ci < chainIndices.size(); ++ci)
+            {
+                const RoadSegment& seg = this->roadSegments[chainIndices[ci].first];
+                const bool reversed = chainIndices[ci].second;
+
+                if (false == reversed)
+                {
+                for (size_t pi = 0; pi < seg.controlPoints.size(); ++pi)
+                {
+                        const RoadControlPoint& cp = seg.controlPoints[pi];
+                        if (false == chainWaypoints.empty() && chainWaypoints.back().position.squaredDistance(cp.position) < 0.0001f)
+                    {
+                        continue;
+                    }
+                        chainWaypoints.push_back(cp);
+                }
+            }
+                else
+                {
+                    for (size_t pi = seg.controlPoints.size(); pi-- > 0; )
+                    {
+                        const RoadControlPoint& cp = seg.controlPoints[pi];
+                        if (false == chainWaypoints.empty() && chainWaypoints.back().position.squaredDistance(cp.position) < 0.0001f)
+                        {
+                            continue;
+                        }
+                        chainWaypoints.push_back(cp);
+                    }
+                }
+            }
+
+            // Detect closed loop (graph walk already found this; the distance check
+            // below is kept as a safety net for chains built from a single self-closed
+            // segment or any edge case the walk did not explicitly flag).
+            const bool isClosed = closedLoop || ((chainWaypoints.size() >= 3) && (chainWaypoints.front().position.squaredDistance(chainWaypoints.back().position) < 0.01f));
 
             // ── Step 3: Build final path ───────────────────────────────────────
             std::vector<RoadControlPoint> finalPath;
@@ -1694,7 +1856,32 @@ namespace NOWA
                         RoadControlPoint cp;
                         cp.position = this->evaluateCatmullRom(chainWaypoints, globalT);
                         cp.position.y = 0.0f;
-                        cp.groundHeight = this->evaluateCatmullRomHeight(chainWaypoints, globalT);
+
+                        if (pi == 0 && j == 0)
+                        {
+                            // Preserve the exact original height at the true start of the
+                            // path - this point may be a junction/snap boundary that has to
+                            // match neighbouring arms exactly, so it must not be resampled.
+                            cp.groundHeight = chainWaypoints.front().smoothedHeight;
+                        }
+                        else
+                        {
+                            // Re-sample the ACTUAL terrain surface at this position instead
+                            // of mathematically interpolating between the sparse heights
+                            // recorded at the points the user actually clicked. The old code
+                            // used evaluateCatmullRomHeight() here, which fits a height spline
+                            // through only those few sampled points and never touches the
+                            // terrain again in between - so on any terrain with real
+                            // undulation between two clicks the road would clip into hills or
+                            // float over dips, and the spline's tangent-based extrapolation
+                            // could keep climbing well past the point where the terrain had
+                            // already flattened out (classic Catmull-Rom overshoot). Sampling
+                            // the real surface here and letting Step 4's Gaussian smoothing +
+                            // gradient clamp do the actual smoothing tracks the terrain
+                            // correctly while still producing a smooth road.
+                            cp.groundHeight = this->getGroundHeight(cp.position);
+                        }
+
                         cp.smoothedHeight = cp.groundHeight;
                         cp.bankingAngle = 0.0f;
                         cp.distFromStart = 0.0f;
@@ -1741,7 +1928,17 @@ namespace NOWA
             }
 
             // ── Step 7: Trim front at junction ────────────────────────────────
-            if (!isClosed)
+            // NOTE: previously gated on "!isClosed", which skipped this entirely for
+            // a loop that departs and returns to the SAME point when that point is
+            // ALSO a real 3+ way junction (a valid topology: a spur/loop branching
+            // off a through-road at one junction - see the forward/backward walk's
+            // junction check, which intentionally halts before it can ever set the
+            // closedLoop flag in that case). The junctionByKey lookups below are
+            // themselves the real gate: if the front/back point isn't a real
+            // junction they simply find nothing and do nothing, so running this
+            // unconditionally is safe for plain closed rings too.
+            bool trimmedFrontAtJunction = false;
+            bool trimmedBackAtJunction = false;
             {
                 {
                     QKey frontKey{quantise(chainWaypoints.front().position.x), quantise(chainWaypoints.front().position.z)};
@@ -1749,7 +1946,12 @@ namespace NOWA
                     if (it != junctionByKey.end())
                     {
                         const size_t ji = it->second;
-                        Ogre::Vector3 outDir = chainWaypoints.back().position - chainWaypoints.front().position;
+                        trimmedFrontAtJunction = true;
+                        // Use the LOCAL direction from the boundary into the chain's
+                        // interior, not the whole-chain front-to-back span: for a loop
+                        // that departs and returns to the same junction, front and back
+                        // are literally the same point, making a whole-span vector zero.
+                        Ogre::Vector3 outDir = (chainWaypoints.size() >= 2) ? (chainWaypoints[1].position - chainWaypoints.front().position) : (chainWaypoints.back().position - chainWaypoints.front().position);
                         outDir.y = 0.0f;
                         if (outDir.squaredLength() > 1e-6f)
                         {
@@ -1808,7 +2010,12 @@ namespace NOWA
                     if (it != junctionByKey.end())
                     {
                         const size_t ji = it->second;
-                        Ogre::Vector3 outDir = chainWaypoints.front().position - chainWaypoints.back().position;
+                        trimmedBackAtJunction = true;
+                        // Same fix as the front boundary: use the local direction from
+                        // the boundary into the chain's interior instead of the
+                        // whole-chain span (degenerates to zero for a loop-at-junction).
+                        const size_t cwSize = chainWaypoints.size();
+                        Ogre::Vector3 outDir = (cwSize >= 2) ? (chainWaypoints[cwSize - 2].position - chainWaypoints.back().position) : (chainWaypoints.front().position - chainWaypoints.back().position);
                         outDir.y = 0.0f;
                         if (outDir.squaredLength() > 1e-6f)
                         {
@@ -1876,8 +2083,16 @@ namespace NOWA
                 continue;
             }
 
+            // If either end got trimmed back from a real junction, the strip is no
+            // longer a seamless closed ring for RENDERING purposes even if it was a
+            // topological loop before trimming - it now has two distinct boundary
+            // points (possibly at the same junction, arriving from different arm
+            // directions) that generateStraightRoad must treat as open ends, not
+            // wrap into a closing quad.
+            const bool renderClosed = isClosed && !(trimmedFrontAtJunction || trimmedBackAtJunction);
+
             // ── Step 8: Closed loop — remove duplicate endpoint ───────────────
-            if (isClosed && finalPath.size() >= 3)
+            if (renderClosed && finalPath.size() >= 3)
             {
                 finalPath.pop_back();
             }
@@ -1898,7 +2113,7 @@ namespace NOWA
             }
 
             // ── Step 10: Generate road geometry ───────────────────────────────
-            this->generateStraightRoad(localPath, isClosed);
+            this->generateStraightRoad(localPath, renderClosed);
         }
 
         // ── Junction patches ──────────────────────────────────────────────────
@@ -3481,23 +3696,11 @@ namespace NOWA
         }
 
         // ── Edge / curb strips ─────────────────────────────────────────────────
-        const float maxGapAngle = Ogre::Math::PI * 0.778f; // ~140° — only skips the straight-through ~180° gap
-
         for (size_t k = 0; k < arms.size(); ++k)
         {
             const size_t next = (k + 1) % arms.size();
             const ArmData& aK = arms[k];
             const ArmData& aJ = arms[next];
-
-            float angR = std::atan2(aK.outerR.z - localCentre.z, aK.outerR.x - localCentre.x);
-            float angL = std::atan2(aJ.outerL.z - localCentre.z, aJ.outerL.x - localCentre.x);
-            float gap = angL - angR;
-            if (gap < 0.0f)
-            {
-                gap += Ogre::Math::TWO_PI;
-            }
-
-            const bool isLargeGap = (gap >= maxGapAngle);
 
             // Outward normal: perpendicular to boundary segment, pointing away from centre.
             // Use geometric cross product — NOT centre-to-midpoint (unreliable at acute angles).
@@ -3527,21 +3730,15 @@ namespace NOWA
                 const Ogre::Vector3 aK_oR_top = aK.outerR + Ogre::Vector3(0, curbH, 0);
                 const Ogre::Vector3 aJ_oL_top = aJ.outerL + Ogre::Vector3(0, curbH, 0);
 
-                if (!isLargeGap)
-                {
                     // Inner wall: road surface -> curb top
                     // u spans curbH (physical wall height) — matches generatePavedRoad convention
                     this->addRoadQuad(aK.innerR, aK_iR_top, aJ_iL_top, aJ.innerL, -outward, 0.0f, curbH, 0.0f, ev1, false);
-                }
 
                 // Curb top — drawn for both small and large gaps to close seam
                 this->addRoadQuad(aK_iR_top, aK_oR_top, aJ_oL_top, aJ_iL_top, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, 0.0f, ev1, false);
 
-                if (!isLargeGap)
-                {
                     // Outer wall: curb top -> ground
                     this->addRoadQuad(aK_oR_top, aK.outerR, aJ.outerL, aJ_oL_top, outward, 0.0f, curbH, 0.0f, ev1, false);
-                }
             }
             else
             {
@@ -6039,9 +6236,24 @@ namespace NOWA
                 cp.position = p0.position * (1.0f - t) + p1.position * t;
                 cp.position.y = 0.0f;
 
-                // **FIX: Linear interpolation of heights**
-                cp.groundHeight = p0.groundHeight * (1.0f - t) + p1.groundHeight * t;
-                cp.smoothedHeight = p0.smoothedHeight * (1.0f - t) + p1.smoothedHeight * t;
+                if (j == 0 && i == 0)
+                {
+                    // Preserve the exact original height at the true start of the path.
+                    cp.groundHeight = p0.smoothedHeight;
+                }
+                else if (j == numSamples - 1 && i == points.size() - 2)
+                {
+                    // Preserve the exact original height at the true end of the path.
+                    cp.groundHeight = p1.smoothedHeight;
+                }
+                else
+                {
+                    // Resample the real terrain instead of linearly interpolating
+                    // between the two endpoint heights - a straight ramp between two
+                    // distant clicks would otherwise ignore any bump or dip in between.
+                    cp.groundHeight = this->getGroundHeight(cp.position);
+                }
+                cp.smoothedHeight = cp.groundHeight;
 
                 cp.bankingAngle = 0.0f;
                 cp.distFromStart = 0.0f;

@@ -130,6 +130,8 @@ namespace NOWA
         unsigned int     roofType;      ///< 0 = flat, 1 = gabled, 2 = hip
         float            roofPitch;     ///< Normalized pitch [0..1] (0=gentle, 1=steep)
         float            groundHeight;  ///< World Y of the lot's ground surface
+        float            lotHalfRight;  ///< Half-width of the lot in the building's 'right' direction
+                                        ///  (used by garage generation to avoid extending into the road)
     };
 
     /**
@@ -267,18 +269,18 @@ namespace NOWA
         static Ogre::String AttrBlockSize(void)             { return "BlockSize"; }
         // Roads (internal geometry)
         static Ogre::String AttrRoadWidth(void)             { return "RoadWidth"; }
+        static Ogre::String AttrRoadVariance(void)           { return "RoadVariance"; }
         static Ogre::String AttrSidewalkWidth(void)         { return "SidewalkWidth"; }
         static Ogre::String AttrCurbHeight(void)            { return "CurbHeight"; }
         static Ogre::String AttrGenerateRoads(void)         { return "GenerateRoads"; }
         static Ogre::String AttrRoadDatablock(void)         { return "RoadDatablock"; }
         static Ogre::String AttrCurbDatablock(void)         { return "CurbDatablock"; }
         // Courtyard walls (internal geometry)
-        static Ogre::String AttrGenerateWalls(void)         { return "GenerateWalls"; }
-        static Ogre::String AttrWallHeight(void)            { return "WallHeight"; }
-        static Ogre::String AttrWallDatablock(void)         { return "WallDatablock"; }
+        // Wall feature removed — see changelog
         // Door (global, shared by all buildings)
         static Ogre::String AttrDoorDatablock(void)         { return "DoorDatablock"; }
         static Ogre::String AttrGarageDatablock(void)       { return "GarageDatablock"; }
+        static Ogre::String AttrGenerateGarage(void)        { return "GenerateGarage"; }
         // External road connection (optional)
         static Ogre::String AttrRoadComponentId(void)       { return "RoadComponentId"; }
         static Ogre::String AttrRoadConnectionAtStart(void) { return "RoadConnectionAtStart"; }
@@ -384,21 +386,15 @@ namespace NOWA
          *        Uses the same geometry as ProceduralWallComponent::generateSolidWall()
          *        but produced inline — no external wall component needed.
          */
-        void setGenerateWalls(bool generate);
-        bool getGenerateWalls(void) const;
 
         /**
          * @brief Height of the courtyard perimeter wall in meters.  Default 2m.
          */
-        void       setWallHeight(Ogre::Real height);
-        Ogre::Real getWallHeight(void) const;
 
         /**
          * @brief PBS datablock for the courtyard wall surface.
          *        Placeholder default: "city_courtyard_wall_01"
          */
-        void         setWallDatablock(const Ogre::String& name);
-        Ogre::String getWallDatablock(void) const;
 
         /**
          * @brief PBS datablock for house doors — one inset quad per building on
@@ -517,7 +513,6 @@ namespace NOWA
          *        Default 0.3.
          */
         void       setDistrictCourtyardProb(unsigned int index, Ogre::Real prob);
-        Ogre::Real getDistrictCourtyardProb(unsigned int index) const;
 
         /**
          * @brief Wall surface datablock for district i, variant v (0..3).
@@ -531,7 +526,6 @@ namespace NOWA
          *          v=3  "city_wall_04"
          */
         void         setDistrictWallDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
-        Ogre::String getDistrictWallDatablock(unsigned int districtIdx, unsigned int variantIdx) const;
 
         /**
          * @brief Roof datablock for district i, variant v (0..2).
@@ -884,17 +878,19 @@ namespace NOWA
         Variant* cityBoundsAttr;           // Vector4: minX, minZ, maxX, maxZ
         Variant* masterSeedAttr;           // uint
         Variant* blockSizeAttr;            // Real, meters
-        Variant* roadWidthAttr;            // Real, meters
+        Variant* roadWidthAttr;            // Real
+        Variant* roadVarianceAttr;         // Real [0..0.5] — organic road curve amount
+
+        std::vector<Ogre::Real> cityGridX;   ///< Perturbed X grid lines (road boundaries, world space)
+        std::vector<Ogre::Real> cityGridZ;   ///< Perturbed Z grid lines (road boundaries, world space), meters
         Variant* sidewalkWidthAttr;        // Real, meters
         Variant* curbHeightAttr;           // Real, meters
         Variant* generateRoadsAttr;        // bool
         Variant* roadDatablockAttr;        // String
         Variant* curbDatablockAttr;        // String
-        Variant* generateWallsAttr;        // bool
-        Variant* wallHeightAttr;           // Real, meters
-        Variant* wallDatablockAttr;        // String
         Variant* doorDatablockAttr;        // String — global door texture for all buildings
-        Variant* garageDatablockAttr;
+        Variant* garageDatablockAttr;      // String — garage door datablock (city_garage_01)
+        Variant* generateGarageAttr;       // bool — whether ~30% of residential buildings get a garage
         Variant* roadComponentIdAttr;      // String (large uint stored as string)
         Variant* roadConnectionAtStartAttr;// bool
         Variant* districtCountAttr;        // uint, triggers AttrActionNeedRefresh
