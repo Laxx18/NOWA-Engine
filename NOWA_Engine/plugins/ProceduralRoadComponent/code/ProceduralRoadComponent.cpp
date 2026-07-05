@@ -70,6 +70,8 @@ namespace NOWA
         terrainSampleInterval(new Variant(ProceduralRoadComponent::AttrTerrainSampleInterval(), 2.0f, this->attributes)),
         editMode(new Variant(ProceduralRoadComponent::AttrEditMode(), std::vector<Ogre::String>{"Object", "Segment"}, this->attributes)),
         convertToMesh(new Variant(ProceduralRoadComponent::AttrConvertToMesh(), Ogre::String("Convert to Mesh"), this->attributes)),
+        conformTerrainToRoad(new Variant(ProceduralRoadComponent::AttrConformTerrainToRoad(), Ogre::String("Conform Terrain To Road"), this->attributes)),
+        terrainBlendMargin(new Variant(ProceduralRoadComponent::AttrTerrainBlendMargin(), 3.0f, this->attributes)),
         sourceTerraLayer(new Variant(ProceduralRoadComponent::AttrSourceTerraLayer(), static_cast<Ogre::uint32>(2), this->attributes)),
         traceStepMeters(new Variant(ProceduralRoadComponent::AttrTraceStepMeters(), 3.0f, this->attributes)),
         traceThreshold(new Variant(ProceduralRoadComponent::AttrTraceThreshold(), static_cast<Ogre::uint32>(64), this->attributes)),
@@ -133,6 +135,23 @@ namespace NOWA
         this->convertToMesh->addUserData(GameObject::AttrActionExec());
         this->convertToMesh->addUserData(GameObject::AttrActionNeedRefresh());
         this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.ConvertToMesh");
+
+        this->terrainBlendMargin->setDescription("How far beyond the road's own width (including edges) the terrain "
+                                                  "conform operation blends back to the original terrain height (meters). "
+                                                  "Larger = gentler, wider slope into the surrounding ground; smaller = "
+                                                  "a sharper transition close to the road.");
+
+        this->conformTerrainToRoad->setDescription("Deforms the underlying Terra heightmap to match this road: flattens "
+                                                    "the terrain to the road's own (already terrain-following) height "
+                                                    "directly under the road, then blends smoothly back to the original "
+                                                    "terrain over 'Terrain Blend Margin' meters. Use this to close gaps "
+                                                    "where the road floats above a dip or gets buried in a hill/ridge "
+                                                    "that's narrower than the road. This modifies the Terra GameObject "
+                                                    "in the scene, not just this road - undo/redo applies to the "
+                                                    "terrain edit like any other terrain modification.");
+        this->conformTerrainToRoad->addUserData(GameObject::AttrActionExec());
+        this->conformTerrainToRoad->addUserData(GameObject::AttrActionNeedRefresh());
+        this->conformTerrainToRoad->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.ConformTerrainToRoad");
 
     
         this->sourceTerraLayer->setDescription("Terra blend layer to trace as road centerline (0=layer1 .. 3=layer4). "
@@ -568,6 +587,10 @@ namespace NOWA
         else if (ProceduralRoadComponent::AttrTraceThreshold() == attribute->getName())
         {
             this->setTraceThreshold(attribute->getUInt());
+        }
+        else if (ProceduralRoadComponent::AttrTerrainBlendMargin() == attribute->getName())
+        {
+            this->terrainBlendMargin->setValue(attribute->getReal());
         }
         else if (ProceduralRoadComponent::AttrGenerateFromLayer() == attribute->getName())
         {
@@ -1080,6 +1103,10 @@ namespace NOWA
         {
             return this->convertToMeshApply();
         }
+        else if ("ProceduralRoadComponent.ConformTerrainToRoad" == actionId)
+        {
+            return this->conformTerrainToRoadApply();
+        }
         else if ("ProceduralRoadComponent.GenerateFromLayer" == actionId)
         {
             this->generateRoadFromTerraLayer();
@@ -1424,6 +1451,7 @@ namespace NOWA
         this->destroyRoadMesh();
         this->hasRoadOrigin = false;
         this->hasLoadedRoadEndpoint = false;
+        this->bBatchMode = false;
 
         // ---- UNDO: Capture state AFTER (empty), fire event ----
         std::vector<unsigned char> newData; // Empty = cleared road
@@ -3539,6 +3567,200 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
             "[ProceduralRoadComponent] generateFromLayer: Road built, " + Ogre::StringConverter::toString(filteredCPs.size()) + " control points, length=" + Ogre::StringConverter::toString(totalDist) + "m.");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // conformTerrainToRoadApply - Deforms the Terra heightmap under and around
+    //      this road so the ground matches the road's own (already
+    //      terrain-following) height, closing gaps where the road floats
+    //      above a dip or gets buried in a ridge narrower than the road.
+    ///////////////////////////////////////////////////////////////////////////
+
+    bool ProceduralRoadComponent::conformTerrainToRoadApply(void)
+    {
+        if (this->roadSegments.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[ProceduralRoadComponent] conformTerrainToRoad: no road segments to conform to.");
+            return false;
+        }
+
+        // -----------------------------------------------------------------------
+        // 1. Find Terra (same lookup pattern as generateRoadFromTerraLayer)
+        // -----------------------------------------------------------------------
+        Ogre::Terra* terra = nullptr;
+        auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
+        if (terraList.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[ProceduralRoadComponent] conformTerrainToRoad: No TerraComponent found!");
+            return false;
+        }
+        auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
+        if (!terraCompPtr)
+        {
+            return false;
+        }
+        terra = terraCompPtr->getTerra();
+        if (!terra)
+        {
+            return false;
+        }
+
+        // -----------------------------------------------------------------------
+        // 2. Collect stamp points along every road segment. This intentionally
+        //    reuses the SPARSE, already-correct per-waypoint heights
+        //    (RoadControlPoint::smoothedHeight) via linear interpolation between
+        //    each pair of control points, stepping at terrainSampleInterval,
+        //    rather than re-running the full Catmull-Rom mesh pipeline. Conform-
+        //    to-terrain is a coarse, overlapping-stamp operation with its own
+        //    blend margin, so a linear approximation between waypoints is
+        //    sufficient and keeps this independent of mesh generation.
+        // -----------------------------------------------------------------------
+        struct StampPoint
+        {
+            Ogre::Vector3 worldPos;
+            Ogre::Real worldHeight;
+            Ogre::Real blendMargin;
+        };
+
+        std::vector<StampPoint> stamps;
+
+        // Radius = half the FULL road width including edges - computed here (not just
+        // later at stamping time) because the stamp SPACING needs to be derived from it.
+        const Ogre::Real radiusWorld = (this->roadWidth->getReal() * 0.5f) + this->edgeWidth->getReal();
+
+        // Floor for the blend margin - the user-configured value acts as a MINIMUM
+        // from here on; the actual margin used per stamp can grow larger
+        // automatically wherever the terrain needs more room to taper gently (see
+        // the adaptive computation below).
+        const Ogre::Real minBlendMarginWorld = std::max(0.0f, this->terrainBlendMargin->getReal());
+
+        // Reuse the road's own Max Gradient (degrees) as the steepest slope the
+        // carve's taper is allowed to have. A fixed blend margin can't adapt to
+        // how tall the surrounding terrain actually is at any given point - a
+        // small margin is fine next to a gentle slope but forces a near-vertical
+        // wall next to a real hillside. Instead, sample how much the natural
+        // terrain currently sits ABOVE the road's target height right here, and
+        // grow the margin just enough that height difference / margin does not
+        // exceed tan(maxGradient) - the same slope limit the road itself follows.
+        const Ogre::Real maxGradientTan = Ogre::Math::Tan(Ogre::Math::DegreesToRadians(this->maxGradient->getReal()));
+
+        // Step density: each stamp is a flat CIRCLE. On a straight stretch, circles
+        // spaced up to ~radius apart tile smoothly. On a CURVE they don't - a circle's
+        // coverage sweeps a chord, not the actual curving strip, so the outer curb edge
+        // can fall in a gap between two circles, or land right on the seam where one
+        // circle's flattened height meets its neighbour's slightly different height
+        // (the road's own height changes along a slope). Step at a fraction of the
+        // radius instead, so consecutive stamps overlap heavily regardless of curvature.
+        const Ogre::Real stepM = std::max(0.25f, radiusWorld * 0.35f);
+
+        for (const RoadSegment& seg : this->roadSegments)
+        {
+            if (seg.controlPoints.size() < 2)
+            {
+                continue;
+            }
+
+            for (size_t i = 0; i < seg.controlPoints.size() - 1; ++i)
+            {
+                const RoadControlPoint& p0 = seg.controlPoints[i];
+                const RoadControlPoint& p1 = seg.controlPoints[i + 1];
+
+                const Ogre::Real segLen = p0.position.distance(p1.position);
+                const int numSteps = std::max(1, static_cast<int>(segLen / stepM));
+
+                for (int s = 0; s <= numSteps; ++s)
+                {
+                    // Skip the duplicate shared point between consecutive pairs
+                    // within the same segment (but keep it at the very start of
+                    // each segment, so segments that don't share exact endpoints
+                    // with their neighbour - e.g. a lone spur - still get stamped
+                    // at their own front point).
+                    if (s == 0 && i > 0)
+                    {
+                        continue;
+                    }
+
+                    const Ogre::Real t = static_cast<Ogre::Real>(s) / static_cast<Ogre::Real>(numSteps);
+
+                    StampPoint sp;
+                    sp.worldPos = p0.position * (1.0f - t) + p1.position * t;
+                    sp.worldPos.y = 0.0f;
+                    // NOTE: smoothedHeight already has heightOffset baked in (see
+                    // getGroundHeight(): "return groundHeight + heightOffset"). Using it
+                    // directly as the terrain target would raise the terrain all the way
+                    // up to the road's own visible surface, overlapping/burying the road
+                    // instead of sitting just below it. Subtract heightOffset back out so
+                    // the terrain settles at the raw ground level the road was originally
+                    // placed above, leaving the road's own clearance visible again.
+                    sp.worldHeight = (p0.smoothedHeight - this->heightOffset->getReal()) * (1.0f - t) +
+                        (p1.smoothedHeight - this->heightOffset->getReal()) * t;
+
+                    // Sample the CURRENT natural terrain height at this exact spot (raw,
+                    // same reference as sp.worldHeight above) to see how tall the hill/
+                    // ridge actually is here, then grow the margin only as much as that
+                    // specific spot needs.
+                    Ogre::Vector3 probePos = sp.worldPos;
+                    probePos.y = sp.worldHeight;
+                    const Ogre::Real currentGroundRaw = this->getGroundHeight(probePos) - this->heightOffset->getReal();
+                    const Ogre::Real heightAboveTarget = currentGroundRaw - sp.worldHeight;
+
+                    Ogre::Real neededMargin = minBlendMarginWorld;
+                    if (heightAboveTarget > 0.0f && maxGradientTan > 0.001f)
+                    {
+                        neededMargin = std::max(minBlendMarginWorld, heightAboveTarget / maxGradientTan);
+                    }
+                    sp.blendMargin = neededMargin;
+
+                    stamps.push_back(sp);
+                }
+            }
+        }
+
+        if (stamps.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[ProceduralRoadComponent] conformTerrainToRoad: no stamp points generated.");
+            return false;
+        }
+
+        // -----------------------------------------------------------------------
+        // 3. Stamp the terrain toward the road's own height along every point.
+        //    Radius (computed above) = half the FULL road width including edges,
+        //    so the flattened footprint matches the visible road+curb, not just
+        //    the paved centre. Each stamp carries its OWN blend margin (computed
+        //    above from the actual local terrain height vs Max Gradient), not a
+        //    single fixed value for the whole road. All stamps run in a single
+        //    render-thread batch to avoid one enqueue-and-wait round trip per point.
+        // -----------------------------------------------------------------------
+        Ogre::Real maxMarginUsed = minBlendMarginWorld;
+        for (const StampPoint& sp : stamps)
+        {
+            maxMarginUsed = std::max(maxMarginUsed, sp.blendMargin);
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ProceduralRoadComponent] conformTerrainToRoad: stamping " + Ogre::StringConverter::toString(stamps.size()) +
+            " points, radius=" + Ogre::StringConverter::toString(radiusWorld) + "m minBlendMargin=" + Ogre::StringConverter::toString(minBlendMarginWorld) +
+            "m maxAdaptiveMarginUsed=" + Ogre::StringConverter::toString(maxMarginUsed) + "m");
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [terra, stamps, radiusWorld]()
+        {
+            for (const StampPoint& sp : stamps)
+            {
+                Ogre::Vector3 stampWorldPos = sp.worldPos;
+                stampWorldPos.y = sp.worldHeight;
+                terra->applyHeightBlend(stampWorldPos, sp.worldHeight, radiusWorld, sp.blendMargin);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::conformTerrainToRoad");
+
+        boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] conformTerrainToRoad: complete.");
+        return true;
     }
 
     int ProceduralRoadComponent::findNearestSegment(const Ogre::Vector3& worldPos) const
@@ -6175,6 +6397,61 @@ namespace NOWA
 
             data[i].miterPerp = perp;
             data[i].miterScale = miterScale;
+        }
+
+        // ── Second pass: fix genuine offset self-intersections, and ONLY those ──
+        // The first pass above only accounts for the JOIN ANGLE at each point. A
+        // smoothly curving spline made of many shallow-angle steps can still have
+        // a tight EFFECTIVE radius that makes the offset curve fold back on
+        // itself on the INSIDE of the turn, even though miterScale stays near
+        // 1.0 there (a shallow angle at every single step). A previous attempt to
+        // fix this used a blanket "is local point spacing smaller than half the
+        // road width" heuristic, which fired on nearly every point regardless of
+        // curvature (subdivision spacing is often smaller than the road's half
+        // width even on straight sections) and shrank the whole road. This pass
+        // instead detects an ACTUAL fold directly: does the offset curve's motion
+        // from the previous point to this one reverse direction relative to the
+        // centreline's own travel direction? That can only happen at a genuine
+        // self-intersection, never on an ordinary straight or gently curving
+        // stretch, so only the specific point(s) that actually fold get touched.
+        const Ogre::Real totalHalfWidth = (this->roadWidth->getReal() * 0.5f) + this->edgeWidth->getReal();
+        if (totalHalfWidth > 0.001f)
+        {
+            for (size_t i = 1; i < n; ++i)
+            {
+                const Ogre::Vector3 centreDir = points[i].position - points[i - 1].position;
+                if (centreDir.squaredLength() < 0.0001f)
+                {
+                    continue;
+                }
+
+                for (int side = -1; side <= 1; side += 2) // -1 = left, +1 = right
+                {
+                    const Ogre::Vector3 offsetPrev = points[i - 1].position +
+                        data[i - 1].miterPerp * (static_cast<Ogre::Real>(side) * totalHalfWidth * data[i - 1].miterScale);
+                    const Ogre::Vector3 offsetCur = points[i].position +
+                        data[i].miterPerp * (static_cast<Ogre::Real>(side) * totalHalfWidth * data[i].miterScale);
+
+                    if ((offsetCur - offsetPrev).dotProduct(centreDir) < 0.0f)
+                    {
+                        // Genuine fold: shrink ONLY this point's scale until the
+                        // offset motion stops reversing, rather than touching any
+                        // other point on the road.
+                        Ogre::Real scale = data[i].miterScale;
+                        for (int iter = 0; iter < 8 && scale > 0.1f; ++iter)
+                        {
+                            scale *= 0.7f;
+                            const Ogre::Vector3 testOffset = points[i].position +
+                                data[i].miterPerp * (static_cast<Ogre::Real>(side) * totalHalfWidth * scale);
+                            if ((testOffset - offsetPrev).dotProduct(centreDir) >= 0.0f)
+                            {
+                                break;
+                            }
+                        }
+                        data[i].miterScale = std::min(data[i].miterScale, scale);
+                    }
+                }
+            }
         }
 
         return data;

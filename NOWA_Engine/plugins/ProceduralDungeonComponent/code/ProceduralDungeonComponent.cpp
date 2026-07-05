@@ -45,6 +45,13 @@ namespace
         return (a < b) ? b : a;
     }
 
+    // Encodes a (row, col, direction) wall-face triple into a single sortable/hashable key.
+    // dir: 0 = North (+Z), 1 = South (-Z), 2 = East (+X), 3 = West (-X)
+    inline int64_t encodeFaceKey(int row, int col, int dir)
+    {
+        return (static_cast<int64_t>(row) << 32) | (static_cast<int64_t>(col) << 4) | static_cast<int64_t>(dir);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Quad emitters
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,6 +168,9 @@ namespace NOWA
         windowWidth(new Variant(ProceduralDungeonComponent::AttrWindowWidth(), 0.5f, this->attributes)),
         windowHeight(new Variant(ProceduralDungeonComponent::AttrWindowHeight(), 0.4f, this->attributes)),
         windowSill(new Variant(ProceduralDungeonComponent::AttrWindowSill(), 0.3f, this->attributes)),
+        doorCount(new Variant(ProceduralDungeonComponent::AttrDoorCount(), 1, this->attributes)),
+        doorWidth(new Variant(ProceduralDungeonComponent::AttrDoorWidth(), 1.0f, this->attributes)),
+        doorHeight(new Variant(ProceduralDungeonComponent::AttrDoorHeight(), 0.6f, this->attributes)),
         levelCount(new Variant(AttrLevelCount(), 1, this->attributes)),
         stairsProbability(new Variant(AttrStairsProbability(), 0.15f, this->attributes)),
         addStairs(new Variant(AttrAddStairs(), true, this->attributes)),
@@ -234,6 +244,17 @@ namespace NOWA
         this->windowSill->setDescription("Height of the window sill from the floor, expressed as a fraction (0-1) "
                                          "of the wall height. 0.3 places the bottom of the window at 30% of wall height. "
                                          "Ensure sill + Window Height <= 1 to avoid the window exceeding the wall top.");
+
+        this->doorCount->setDescription("Number of door holes to cut into eligible outer wall faces, per dungeon level. "
+                                        "Unlike windows, doors are never placed on bevelled ICE theme walls, and the same "
+                                        "deterministic seed always selects the same faces. 0 = no doors.");
+
+        this->doorWidth->setDescription("Width of the door hole as a fraction (0-1) of the cell width. "
+                                        "0.4 means the door opening is 40% of the wall face horizontally.");
+
+        this->doorHeight->setDescription("Height of the door hole as a fraction (0-1) of the wall height, measured "
+                                         "from the floor. Unlike windows, doors always start at the floor (no sill offset) "
+                                         "so the hole reaches all the way down to the bottom of the wall.");
 
         this->levelCount->setDescription("Number of dungeon levels stacked vertically. Each level is generated with the same width/depth/seed but offset vertically. Levels connect via staircases.");
         this->stairsProbability->setDescription("Probability (0-1) that a given ROOM cell gets an upward staircase. Only one staircase per level is placed � the first cell that passes the check.");
@@ -422,6 +443,21 @@ namespace NOWA
             this->windowSill->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrDoorCount())
+        {
+            this->doorCount->setValue(XMLConverter::getAttribInt(propertyElement, "data", 1));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrDoorWidth())
+        {
+            this->doorWidth->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.4f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrDoorHeight())
+        {
+            this->doorHeight->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.7f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrLevelCount())
         {
             this->levelCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
@@ -534,6 +570,9 @@ namespace NOWA
         clonedCompPtr->setWindowWidth(this->windowWidth->getReal());
         clonedCompPtr->setWindowHeight(this->windowHeight->getReal());
         clonedCompPtr->setWindowSill(this->windowSill->getReal());
+        clonedCompPtr->setDoorCount(this->doorCount->getInt());
+        clonedCompPtr->setDoorWidth(this->doorWidth->getReal());
+        clonedCompPtr->setDoorHeight(this->doorHeight->getReal());
         clonedCompPtr->setLevelCount(this->levelCount->getUInt());
         clonedCompPtr->setStairsProbability(this->stairsProbability->getReal());
         clonedCompPtr->setAddStairs(this->addStairs->getBool());
@@ -662,6 +701,18 @@ namespace NOWA
         else if (AttrWindowSill() == name)
         {
             this->setWindowSill(attribute->getReal());
+        }
+        else if (AttrDoorCount() == name)
+        {
+            this->setDoorCount(attribute->getInt());
+        }
+        else if (AttrDoorWidth() == name)
+        {
+            this->setDoorWidth(attribute->getReal());
+        }
+        else if (AttrDoorHeight() == name)
+        {
+            this->setDoorHeight(attribute->getReal());
         }
         else if (AttrLevelCount() == name)
         {
@@ -881,6 +932,27 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWindowSill())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->windowSill->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Door Count (int, type "2")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrDoorCount())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->doorCount->getInt())));
+        propertiesXML->append_node(propertyXML);
+
+        // Door Width (Real, type "6")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrDoorWidth())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->doorWidth->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Door Height (Real, type "6")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrDoorHeight())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->doorHeight->getReal())));
         propertiesXML->append_node(propertyXML);
 
         // Level Count (Real, type "2")
@@ -1669,14 +1741,27 @@ namespace NOWA
         const Ogre::Real uS = std::max(0.001f, uvTile.x);
         const Ogre::Real vS = std::max(0.001f, uvTile.y);
 
-        // Windows only on plain rectangular walls � not bevelled ICE, not CAVE
+        // Windows only on plain rectangular walls - not bevelled ICE, not CAVE
         const bool doWindows = this->addWindows->getBool() && !bev;
         const Ogre::Real winW = this->windowWidth->getReal();
         const Ogre::Real winH = this->windowHeight->getReal();
         const Ogre::Real winSill = this->windowSill->getReal();
         const Ogre::Real winProb = this->windowProb->getReal();
 
-        // Deterministic per-face hash � same seed always gives same window pattern
+        // Doors only on plain rectangular walls - not bevelled ICE, not CAVE. Unlike windows
+        // (probability-per-face), doors are picked as an exact COUNT of faces per level via
+        // selectDoorFaces(), so "Door Count" behaves predictably instead of statistically.
+        const bool doDoors = this->doorCount->getInt() > 0 && !bev;
+        const Ogre::Real doorW = this->doorWidth->getReal();
+        const Ogre::Real doorH = this->doorHeight->getReal();
+        const std::set<int64_t> doorFaces = doDoors ? this->selectDoorFaces(grid, gridCols, gridRows, static_cast<unsigned int>(this->doorCount->getInt())) : std::set<int64_t>();
+
+        auto isDoorFace = [&](int row, int col, int dir) -> bool
+        {
+            return doDoors && doorFaces.find(encodeFaceKey(row, col, dir)) != doorFaces.end();
+        };
+
+        // Deterministic per-face hash - same seed always gives same window pattern
         auto winRng = [&](int row, int col, int dir) -> Ogre::Real
         {
             uint32_t h = static_cast<uint32_t>(row * 73856093 ^ col * 19349663 ^ dir * 83492791 ^ this->seed->getInt());
@@ -1718,6 +1803,12 @@ namespace NOWA
                     {
                         this->addWallQuad({x0, y0, z1}, {x1, y0, z1}, {x1 - ba, y1, z1 - ba}, {x0 + ba, y1, z1 - ba}, {0, 0, 1}, 0, uW, 0, vT);
                     }
+                    else if (isDoorFace(row, col, 0))
+                    {
+                        this->addWallQuadWithDoor({x0, y0, z1}, {x1, y0, z1}, // bottom-left, bottom-right
+                            {x0, y1, z1}, {x1, y1, z1},                       // top-left,    top-right
+                            {0, 0, 1}, wallH, uW, vT, doorW, doorH);
+                    }
                     else if (doWindows && winRng(row, col, 0) < winProb)
                     {
                         this->addWallQuadWithWindow({x0, y0, z1}, {x1, y0, z1}, // bottom-left, bottom-right
@@ -1739,6 +1830,10 @@ namespace NOWA
                     {
                         this->addWallQuad({x1, y0, z0}, {x0, y0, z0}, {x0 - ba, y1, z0 + ba}, {x1 + ba, y1, z0 + ba}, {0, 0, -1}, 0, uW, 0, vT);
                     }
+                    else if (isDoorFace(row, col, 1))
+                    {
+                        this->addWallQuadWithDoor({x1, y0, z0}, {x0, y0, z0}, {x1, y1, z0}, {x0, y1, z0}, {0, 0, -1}, wallH, uW, vT, doorW, doorH);
+                    }
                     else if (doWindows && winRng(row, col, 1) < winProb)
                     {
                         this->addWallQuadWithWindow({x1, y0, z0}, {x0, y0, z0}, {x1, y1, z0}, {x0, y1, z0}, {0, 0, -1}, wallH, uW, vT, winW, winH, winSill);
@@ -1758,6 +1853,10 @@ namespace NOWA
                     {
                         this->addWallQuad({x1, y0, z1}, {x1, y0, z0}, {x1 - ba, y1, z0 + ba}, {x1 - ba, y1, z1 - ba}, {1, 0, 0}, 0, uW, 0, vT);
                     }
+                    else if (isDoorFace(row, col, 2))
+                    {
+                        this->addWallQuadWithDoor({x1, y0, z1}, {x1, y0, z0}, {x1, y1, z1}, {x1, y1, z0}, {1, 0, 0}, wallH, uW, vT, doorW, doorH);
+                    }
                     else if (doWindows && winRng(row, col, 2) < winProb)
                     {
                         this->addWallQuadWithWindow({x1, y0, z1}, {x1, y0, z0}, {x1, y1, z1}, {x1, y1, z0}, {1, 0, 0}, wallH, uW, vT, winW, winH, winSill);
@@ -1776,6 +1875,10 @@ namespace NOWA
                     if (bev)
                     {
                         this->addWallQuad({x0, y0, z0}, {x0, y0, z1}, {x0 + ba, y1, z1 - ba}, {x0 + ba, y1, z0 + ba}, {-1, 0, 0}, 0, uW, 0, vT);
+                    }
+                    else if (isDoorFace(row, col, 3))
+                    {
+                        this->addWallQuadWithDoor({x0, y0, z0}, {x0, y0, z1}, {x0, y1, z0}, {x0, y1, z1}, {-1, 0, 0}, wallH, uW, vT, doorW, doorH);
                     }
                     else if (doWindows && winRng(row, col, 3) < winProb)
                     {
@@ -2217,6 +2320,111 @@ namespace NOWA
         this->addWallQuad(lerp(bl, tl, wt), lerp(br, tr, wt), tr, tl, normal, 0, uW, vT * wt, vT);
         // Window sill (horizontal ledge at bottom of window, single-sided facing up)
         this->addWallTopCapQuad(wbl, wbr, wbr + normal * 0.05f, wbl + normal * 0.05f, uW * wl, uW * wr, 0, 0.05f);
+    }
+
+    // Cuts a door hole into a wall face. Unlike addWallQuadWithWindow, the hole always starts
+    // at the floor (bl/br) - there is no sill/bottom strip and no ledge cap, since a door has
+    // to reach all the way down to the ground.
+    void ProceduralDungeonComponent::addWallQuadWithDoor(const Ogre::Vector3& bl, const Ogre::Vector3& br, // bottom-left, bottom-right
+        const Ogre::Vector3& tl, const Ogre::Vector3& tr,                                                  // top-left, top-right
+        const Ogre::Vector3& normal, Ogre::Real wallH, Ogre::Real uW, Ogre::Real vT, Ogre::Real doorW, Ogre::Real doorH)
+    {
+        // doorW, doorH are fractions (0..1) of cell width / wall height. The door bottom is
+        // always at 0 (the floor) - that is the whole difference to the window variant.
+        const Ogre::Real wl = 0.5f - doorW * 0.5f; // left edge of door (fraction)
+        const Ogre::Real wr = 0.5f + doorW * 0.5f; // right edge
+        const Ogre::Real wt = doorH;               // top of door (fraction of height, bottom is 0)
+
+        // Helper: lerp between two vec3
+        auto lerp = [](const Ogre::Vector3& a, const Ogre::Vector3& b, Ogre::Real t)
+        {
+            return a + (b - a) * t;
+        };
+
+        // Mid-height points at the door's left/right edges (top of the door opening)
+        Ogre::Vector3 mll = lerp(bl, br, wl); // ground-left  (bottom of left jamb)
+        Ogre::Vector3 mlr = lerp(bl, br, wr); // ground-right (bottom of right jamb)
+        Ogre::Vector3 dtl = lerp(lerp(bl, br, wl), lerp(tl, tr, wl), wt); // door top-left
+        Ogre::Vector3 dtr = lerp(lerp(bl, br, wr), lerp(tl, tr, wr), wt); // door top-right
+
+        // Left jamb strip (floor to door top, left of the opening)
+        this->addWallQuad(bl, lerp(bl, tl, wt), dtl, mll, normal, 0, uW * wl, 0, vT * wt);
+        // Right jamb strip (floor to door top, right of the opening)
+        this->addWallQuad(mlr, dtr, lerp(br, tr, wt), br, normal, uW * wr, uW, 0, vT * wt);
+        // Lintel strip (full width, door top to wall top)
+        this->addWallQuad(lerp(bl, tl, wt), lerp(br, tr, wt), tr, tl, normal, 0, uW, vT * wt, vT);
+        // No bottom strip and no sill cap - the hole reaches the floor.
+    }
+
+    // Deterministically selects up to doorCount distinct exterior wall faces (row, col, dir) to
+    // receive a door hole. Uses a hashed sort key derived from the dungeon seed so the same seed
+    // always produces the same door placement, independent of iteration order. Faces are eligible
+    // the same way window faces are: any exterior wall face of an occupied cell (ROOM or CORRIDOR).
+    std::set<int64_t> ProceduralDungeonComponent::selectDoorFaces(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, unsigned int doorCount) const
+    {
+        std::set<int64_t> doorFaces;
+        if (0 == doorCount)
+        {
+            return doorFaces;
+        }
+
+        auto isF = [&](int r, int c)
+        {
+            return r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] != CellType::EMPTY;
+        };
+
+        // Deterministic per-face hash - different salt than the window hash, so door and window
+        // patterns do not correlate.
+        auto doorRng = [&](int row, int col, int dir) -> Ogre::Real
+        {
+            uint32_t h = static_cast<uint32_t>(row * 20326151 ^ col * 40503983 ^ dir * 60013 ^ (this->seed->getInt() + 777));
+            h ^= h >> 16;
+            h *= 0x45d9f3bu;
+            h ^= h >> 16;
+            return static_cast<float>(h & 0xFFFFu) / 65535.0f;
+        };
+
+        std::vector<std::pair<Ogre::Real, int64_t>> candidates;
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (!isF(row, col))
+                {
+                    continue;
+                }
+
+                if (!isF(row + 1, col)) // North
+                {
+                    candidates.emplace_back(doorRng(row, col, 0), encodeFaceKey(row, col, 0));
+                }
+                if (!isF(row - 1, col)) // South
+                {
+                    candidates.emplace_back(doorRng(row, col, 1), encodeFaceKey(row, col, 1));
+                }
+                if (!isF(row, col + 1)) // East
+                {
+                    candidates.emplace_back(doorRng(row, col, 2), encodeFaceKey(row, col, 2));
+                }
+                if (!isF(row, col - 1)) // West
+                {
+                    candidates.emplace_back(doorRng(row, col, 3), encodeFaceKey(row, col, 3));
+                }
+            }
+        }
+
+        std::sort(candidates.begin(), candidates.end(), [](const std::pair<Ogre::Real, int64_t>& a, const std::pair<Ogre::Real, int64_t>& b)
+        {
+            return a.first < b.first;
+        });
+
+        const size_t count = std::min(static_cast<size_t>(doorCount), candidates.size());
+        for (size_t i = 0; i < count; ++i)
+        {
+            doorFaces.insert(candidates[i].second);
+        }
+
+        return doorFaces;
     }
 
     // Returns the single staircase cell for a given level, or {-1,-1} if none
@@ -3855,6 +4063,57 @@ namespace NOWA
         }
 
         if (this->hasDungeonOrigin && this->addWindows->getBool())
+        {
+            this->rebuildMesh();
+        }
+    }
+
+    // --- doorCount (int) ----------------------------------------------------------
+
+    int ProceduralDungeonComponent::getDoorCount(void) const
+    {
+        return this->doorCount->getInt();
+    }
+
+    void ProceduralDungeonComponent::setDoorCount(int doorCount)
+    {
+        // Clamp to a sane, non-negative range
+        this->doorCount->setValue(Ogre::Math::Clamp(doorCount, 0, 999));
+        if (this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
+    }
+
+    // --- doorWidth (Real) ----------------------------------------------------------
+
+    Ogre::Real ProceduralDungeonComponent::getDoorWidth(void) const
+    {
+        return this->doorWidth->getReal();
+    }
+
+    void ProceduralDungeonComponent::setDoorWidth(Ogre::Real doorWidth)
+    {
+        // Clamp to (0, 1) - zero width makes no sense, 1.0 would erase the whole face
+        this->doorWidth->setValue(std::max(0.05f, std::min(0.95f, doorWidth)));
+        if (this->hasDungeonOrigin && this->doorCount->getInt() > 0)
+        {
+            this->rebuildMesh();
+        }
+    }
+
+    // --- doorHeight (Real) ----------------------------------------------------------
+
+    Ogre::Real ProceduralDungeonComponent::getDoorHeight(void) const
+    {
+        return this->doorHeight->getReal();
+    }
+
+    void ProceduralDungeonComponent::setDoorHeight(Ogre::Real doorHeight)
+    {
+        // Clamp to (0, 1) - the hole always starts at the floor, so this is the full opening height
+        this->doorHeight->setValue(std::max(0.05f, std::min(0.98f, doorHeight)));
+        if (this->hasDungeonOrigin && this->doorCount->getInt() > 0)
         {
             this->rebuildMesh();
         }

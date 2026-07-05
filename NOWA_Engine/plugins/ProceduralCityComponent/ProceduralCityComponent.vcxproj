@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="code\CityRoadGraph.cpp" />
     <ClCompile Include="code\ProceduralCityComponent.cpp" />
     <ClCompile Include="code\NOWAPrecompiled.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -19,6 +20,8 @@
     <ClCompile Include="code\startDll.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="code\CityRoadGraph.h" />
+    <ClInclude Include="code\CityTensorField.h" />
     <ClInclude Include="code\ProceduralCityComponent.h" />
     <ClInclude Include="code\NOWAPrecompiled.h" />
   </ItemGroup>

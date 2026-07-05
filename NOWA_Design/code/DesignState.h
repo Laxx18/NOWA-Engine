@@ -166,6 +166,9 @@ private:
 	const int TOP_THRESHOLD = 10; // pixels from top to trigger
 
 	NOWA::GameObject* selectedGameObject;
+
+	bool targetCoordinateSystemModeActive = false; // persists across frames, toggled by Alt
+    bool altKeyWasDown = false;                    // for rising-edge detection
 };
 
 #endif

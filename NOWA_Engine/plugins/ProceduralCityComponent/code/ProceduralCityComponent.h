@@ -10,6 +10,8 @@ GPL v3
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
 #include "utilities/XMLConverter.h"
+#include "CityTensorField.h"
+#include "CityRoadGraph.h"
 
 #include "OgreIdString.h"
 #include "OgreItem.h"
@@ -289,6 +291,8 @@ namespace NOWA
         // Action buttons
         static Ogre::String AttrGenerate(void)              { return "Generate"; }
         static Ogre::String AttrClear(void)                 { return "Clear"; }
+        /// Regenerate ONLY buildings — roads stay as the designer left them.
+        static Ogre::String AttrGenerateBuildings(void)     { return "GenerateBuildings"; }
 
         // Per-district names (index appended at runtime, e.g. "DistrictName0")
         static Ogre::String AttrDistrictName(void)            { return "DistrictName"; }
@@ -308,6 +312,7 @@ namespace NOWA
 
         static Ogre::String ActionGenerate(void) { return "ProceduralCityComponent.Generate"; }
         static Ogre::String ActionClear(void)    { return "ProceduralCityComponent.Clear"; }
+        static Ogre::String ActionGenerateBuildings(void) { return "ProceduralCityComponent.GenerateBuildings"; }
 
     public:
         // ---- Global parameters --------------------------------------------
@@ -570,6 +575,16 @@ namespace NOWA
         void generateCity(void);
 
         /**
+         * @brief Regenerate ONLY building geometry, leaving roads completely untouched.
+         *        Intended for the designer workflow:
+         *          1. Use ProceduralRoadComponent interactively to draw custom roads.
+         *          2. Press "Generate Buildings" to populate the city around those roads.
+         *        Captures cityOrigin from the road component's current SceneNode position
+         *        so buildings are placed in the same coordinate space as the roads.
+         */
+        void generateBuildingsOnly(void);
+
+        /**
          * @brief Destroy all Items + SceneNodes.
          *        deleteCacheFile=false in onRemoveComponent() (scene teardown),
          *        deleteCacheFile=true on "Clear" button and at start of generateCity().
@@ -641,7 +656,9 @@ namespace NOWA
          *        Geometry accumulation (rawVertices/rawIndices) happens inside
          *        this call via generateBuildingGeometry().
          */
-        std::vector<CityBatch> generateCityLayout(void);
+        /// @param skipRoads When true (used by generateBuildingsOnly), skips road generation
+        ///                  and uses the current SceneNode position as cityOrigin.
+        std::vector<CityBatch> generateCityLayout(bool skipRoads = false);
 
         /**
          * @brief Assign districts to blocks via Voronoi seeding.
@@ -699,6 +716,16 @@ namespace NOWA
          *        already handles terrain following, junction patches, miter joins, smoothing.
          */
         void buildCityRoadNetwork(const std::vector<CityBlock>& blocks);
+
+        /**
+         * @brief Phase 1 organic road generation using CityTensorField + CityRoadGraph.
+         *        Called by buildCityRoadNetwork when RoadVariance >= 0.3.
+         *        Major arteries grow in the tensor-field major direction; minor streets
+         *        branch perpendicular from them every ~minorSpacing metres.
+         *        @param roadComp  The ProceduralRoadComponent to feed segments to.
+         *        @param variance  The current RoadVariance attribute value [0.3..1.0].
+         */
+        void buildOrganicRoadNetwork(ProceduralRoadComponent* roadComp, Ogre::Real variance);
 
         /**
          * @brief Generate internal road-strip geometry into the road and curb
@@ -882,7 +909,13 @@ namespace NOWA
         Variant* roadVarianceAttr;         // Real [0..0.5] — organic road curve amount
 
         std::vector<Ogre::Real> cityGridX;   ///< Perturbed X grid lines (road boundaries, world space)
-        std::vector<Ogre::Real> cityGridZ;   ///< Perturbed Z grid lines (road boundaries, world space), meters
+        std::vector<Ogre::Real> cityGridZ;   ///< Perturbed Z grid lines (road boundaries, world space)
+
+        /// Flattened road segment list from the organic road graph.
+        /// Each pair (a,b) is one road edge in world XZ.
+        /// Used during building placement to skip lots that overlap roads.
+        struct RoadSegXZ { Ogre::Vector2 a, b; };
+        std::vector<RoadSegXZ> organicRoadSegs;
         Variant* sidewalkWidthAttr;        // Real, meters
         Variant* curbHeightAttr;           // Real, meters
         Variant* generateRoadsAttr;        // bool
@@ -896,6 +929,7 @@ namespace NOWA
         Variant* districtCountAttr;        // uint, triggers AttrActionNeedRefresh
         Variant* generateBtn;              // action button: Generate Now
         Variant* clearBtn;                 // action button: Clear
+        Variant* generateBuildingsBtn;     // action button: Generate Buildings (keeps roads)
 
         // Per-district Variant arrays (parallel to this->districts[])
         std::vector<Variant*> districtNameAttrs;

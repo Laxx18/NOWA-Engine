@@ -350,6 +350,8 @@ namespace Ogre
 
         void applyBlendDiff(const Ogre::Vector3& position, const std::vector<float>& brushData, int boxSize, float intensity, int blendLayer);
 
+        void applyHeightBlend(const Ogre::Vector3& position, float targetHeight, float radiusWorld, float blendMarginWorld);
+
         void saveTextures(const Ogre::String& path, const Ogre::String& prefix);
 
         /**

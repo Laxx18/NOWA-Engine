@@ -1,4 +1,4 @@
-/*
+﻿/*
 -----------------------------------------------------------------------------
 This source file is part of OGRE
     (Object-oriented Graphics Rendering Engine)
@@ -53,16 +53,16 @@ THE SOFTWARE.
 
 namespace Ogre
 {
-    inline Vector3 ZupToYup( Vector3 value )
+    inline Vector3 ZupToYup(Vector3 value)
     {
-        std::swap( value.y, value.z );
+        std::swap(value.y, value.z);
         value.z = -value.z;
         return value;
     }
 
-    inline Ogre::Vector3 YupToZup( Ogre::Vector3 value )
+    inline Ogre::Vector3 YupToZup(Ogre::Vector3 value)
     {
-        std::swap( value.y, value.z );
+        std::swap(value.y, value.z);
         value.y = -value.y;
         return value;
     }
@@ -168,7 +168,7 @@ namespace Ogre
         m_skirtSize(10.0f),
         m_invWidth(1.0f),
         m_invDepth(1.0f),
-        m_zUp( zUp ),
+        m_zUp(zUp),
         m_xzDimensions(Vector2::UNIT_SCALE),
         m_xzInvDimensions(Vector2::UNIT_SCALE),
         m_xzRelativeSize(Vector2::UNIT_SCALE),
@@ -178,17 +178,17 @@ namespace Ogre
         m_terrainOrigin(Vector3::ZERO),
         m_basePixelDimension(256u),
         m_invMaxValue(1.0f),
-        m_currentCell( 0u ),
-        m_heightMapTex( 0 ),
-        m_normalMapTex( 0 ),
-        m_blendWeightTex( 0 ),
+        m_currentCell(0u),
+        m_heightMapTex(0),
+        m_normalMapTex(0),
+        m_blendWeightTex(0),
         m_heightMapStagingTexture(nullptr),
         m_blendWeightStagingTexture(nullptr),
-        m_prevLightDir( Vector3::ZERO ),
-        m_shadowMapper( 0 ),
-        m_sharedResources( 0 ),
-        m_compositorManager( compositorManager ),
-        m_camera( camera ),
+        m_prevLightDir(Vector3::ZERO),
+        m_shadowMapper(0),
+        m_sharedResources(0),
+        m_compositorManager(compositorManager),
+        m_camera(camera),
         mNormalMapperWorkspace(0),
         mNormalMapCamera(0),
         m_brushSize(64),
@@ -200,22 +200,22 @@ namespace Ogre
     {
         if (nullptr == m_camera)
         {
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[Terra] Camera for terra is null!", "Terra");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[Terra] Camera for terra is null!", "Terra");
         }
     }
     //-----------------------------------------------------------------------------------
     Terra::~Terra()
     {
-		if( !m_terrainCells[0].empty() && m_terrainCells[0].back().getDatablock() )
+        if (!m_terrainCells[0].empty() && m_terrainCells[0].back().getDatablock())
         {
-            HlmsDatablock *datablock = m_terrainCells[0].back().getDatablock();
-			OGRE_ASSERT_HIGH(dynamic_cast<Ogre::HlmsTerra*>(datablock->getCreator()));
-			Ogre::HlmsTerra* hlms = static_cast<Ogre::HlmsTerra*>(datablock->getCreator());
-			hlms->_unlinkTerra(this);
-		}
-		if (nullptr != mNormalMapperWorkspace)
+            HlmsDatablock* datablock = m_terrainCells[0].back().getDatablock();
+            OGRE_ASSERT_HIGH(dynamic_cast<Ogre::HlmsTerra*>(datablock->getCreator()));
+            Ogre::HlmsTerra* hlms = static_cast<Ogre::HlmsTerra*>(datablock->getCreator());
+            hlms->_unlinkTerra(this);
+        }
+        if (nullptr != mNormalMapperWorkspace)
         {
-            m_compositorManager->removeWorkspace( mNormalMapperWorkspace );
+            m_compositorManager->removeWorkspace(mNormalMapperWorkspace);
             mNormalMapperWorkspace = nullptr;
         }
         if (nullptr != mNormalMapCamera)
@@ -224,7 +224,7 @@ namespace Ogre
             mNormalMapCamera = nullptr;
         }
 
-        if( m_shadowMapper )
+        if (m_shadowMapper)
         {
             m_shadowMapper->destroyShadowMap();
             delete m_shadowMapper;
@@ -237,41 +237,41 @@ namespace Ogre
         m_terrainCells[1].clear();
     }
     //-----------------------------------------------------------------------------------
-    Vector3 Terra::fromYUp( Vector3 value ) const
+    Vector3 Terra::fromYUp(Vector3 value) const
     {
-        if( m_zUp )
-            return YupToZup( value );
+        if (m_zUp)
+            return YupToZup(value);
         return value;
     }
     //-----------------------------------------------------------------------------------
-    Vector3 Terra::fromYUpSignPreserving( Vector3 value ) const
+    Vector3 Terra::fromYUpSignPreserving(Vector3 value) const
     {
-        if( m_zUp )
-            std::swap( value.y, value.z );
+        if (m_zUp)
+            std::swap(value.y, value.z);
         return value;
     }
     //-----------------------------------------------------------------------------------
-    Vector3 Terra::toYUp( Vector3 value ) const
+    Vector3 Terra::toYUp(Vector3 value) const
     {
-        if( m_zUp )
-            return ZupToYup( value );
+        if (m_zUp)
+            return ZupToYup(value);
         return value;
     }
     //-----------------------------------------------------------------------------------
-    Vector3 Terra::toYUpSignPreserving( Vector3 value ) const
+    Vector3 Terra::toYUpSignPreserving(Vector3 value) const
     {
-        if( m_zUp )
-            std::swap( value.y, value.z );
+        if (m_zUp)
+            std::swap(value.y, value.z);
         return value;
     }
     //-----------------------------------------------------------------------------------
     void Terra::destroyHeightmapTexture(void)
     {
-        if( m_heightMapTex )
+        if (m_heightMapTex)
         {
-            TextureGpuManager *textureManager =
-                    mManager->getDestinationRenderSystem()->getTextureGpuManager();
-            textureManager->destroyTexture( m_heightMapTex );
+            TextureGpuManager* textureManager =
+                mManager->getDestinationRenderSystem()->getTextureGpuManager();
+            textureManager->destroyTexture(m_heightMapTex);
             m_heightMapTex = 0;
 
             if (nullptr != m_heightMapStagingTexture)
@@ -300,31 +300,31 @@ namespace Ogre
     }
 
     //-----------------------------------------------------------------------------------
-    void Terra::createHeightmapTexture( const Ogre::Image2 &image )
+    void Terra::createHeightmapTexture(const Ogre::Image2& image)
     {
         destroyHeightmapTexture();
 
-        if( image.getPixelFormat() != PFG_R16_UNORM)
+        if (image.getPixelFormat() != PFG_R16_UNORM)
         {
-            OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
-                         "Heightmap texture must be greyscale 8 bpp, 16 bpp, or 32-bit Float",
-                         "Terra::createHeightmapTexture" );
+            OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS,
+                "Heightmap texture must be greyscale 8 bpp, 16 bpp, or 32-bit Float",
+                "Terra::createHeightmapTexture");
         }
 
         //const uint8 numMipmaps = image.getNumMipmaps();
 
-        TextureGpuManager *textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
-		m_heightUnormScaled = m_height;
-		Ogre::PixelFormatGpu pixelFormat = image.getPixelFormat();
+        TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
+        m_heightUnormScaled = m_height;
+        Ogre::PixelFormatGpu pixelFormat = image.getPixelFormat();
 #if OGRE_PLATFORM == OGRE_PLATFORM_ANDROID // Many Android GPUs don't support PFG_R16_UNORM so we scale it by hand
-	if(pixelFormat == PFG_R16_UNORM && !textureManager->checkSupport( PFG_R16_UNORM, TextureTypes::Type2D, 0 ) )
-	{
-		pixelFormat = PFG_R16_UINT;
-		m_heightUnormScaled /= 65535.0f;
-	}
+        if (pixelFormat == PFG_R16_UNORM && !textureManager->checkSupport(PFG_R16_UNORM, TextureTypes::Type2D, 0))
+        {
+            pixelFormat = PFG_R16_UINT;
+            m_heightUnormScaled /= 65535.0f;
+        }
 #endif
-        m_heightMapTex = textureManager->createTexture(m_prefix  + "heightMap.png",
-                             GpuPageOutStrategy::SaveToSystemRam, TextureFlags::RenderToTexture | TextureFlags::AllowAutomipmaps, TextureTypes::Type2D);
+        m_heightMapTex = textureManager->createTexture(m_prefix + "heightMap.png",
+            GpuPageOutStrategy::SaveToSystemRam, TextureFlags::RenderToTexture | TextureFlags::AllowAutomipmaps, TextureTypes::Type2D);
         m_heightMapTex->setResolution(image.getWidth(), image.getHeight());
         m_heightMapTex->setPixelFormat(pixelFormat);
         m_heightMapTex->scheduleTransitionTo(GpuResidency::Resident);
@@ -344,7 +344,7 @@ namespace Ogre
         m_currentHeightMapImageName = m_prefix + "_heightMap.png";
     }
     //-----------------------------------------------------------------------------------
-    void Terra::createHeightmap( Image2 &image, bool bMinimizeMemoryConsumption, bool bLowResShadow)
+    void Terra::createHeightmap(Image2& image, bool bMinimizeMemoryConsumption, bool bLowResShadow)
     {
         m_width = image.getWidth();
         m_depth = image.getHeight();
@@ -354,44 +354,44 @@ namespace Ogre
 
         //image.generateMipmaps( false, Image::FILTER_NEAREST );
 
-        createHeightmapTexture( image );
+        createHeightmapTexture(image);
 
-        m_heightMap.resize( m_width * m_depth );
+        m_heightMap.resize(m_width * m_depth);
         m_oldHeightData.resize(m_width * m_depth, 0);
         m_newHeightData.resize(m_width * m_depth, 0);
 
-        float fBpp = (float)(PixelFormatGpuUtils::getBytesPerPixel( image.getPixelFormat() ) << 3u);
-        const float maxValue = powf( 2.0f, fBpp ) - 1.0f;
+        float fBpp = (float)(PixelFormatGpuUtils::getBytesPerPixel(image.getPixelFormat()) << 3u);
+        const float maxValue = powf(2.0f, fBpp) - 1.0f;
         m_invMaxValue = 1.0f / maxValue;
 
-		if (image.getPixelFormat() == PFG_R16_UNORM)
-		{
-			TextureBox texBox = image.getData(0);
-			for (uint32 y = 0; y < m_depth; y++)
-			{
-				const uint16* RESTRICT_ALIAS data =
-					reinterpret_cast<uint16 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
+        if (image.getPixelFormat() == PFG_R16_UNORM)
+        {
+            TextureBox texBox = image.getData(0);
+            for (uint32 y = 0; y < m_depth; y++)
+            {
+                const uint16* RESTRICT_ALIAS data =
+                    reinterpret_cast<uint16 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
                 for (uint32 x = 0; x < m_width; x++)
                 {
                     auto height = (data[x] * m_invMaxValue) * m_height;
                     m_heightMap[y * m_width + x] = height;
                 }
-			}
-		}
+            }
+        }
 
-		m_xzRelativeSize = m_xzDimensions / Vector2(static_cast<Real>(m_width),
-			static_cast<Real>(m_depth));
+        m_xzRelativeSize = m_xzDimensions / Vector2(static_cast<Real>(m_width),
+            static_cast<Real>(m_depth));
 
-		createNormalTexture();
+        createNormalTexture();
 
-		m_prevLightDir = Vector3::ZERO;
+        m_prevLightDir = Vector3::ZERO;
 
-		delete m_shadowMapper;
-		m_shadowMapper = new ShadowMapper(mManager, m_compositorManager);
+        delete m_shadowMapper;
+        m_shadowMapper = new ShadowMapper(mManager, m_compositorManager);
         // TODO: false = make low shadows configureable?
-		m_shadowMapper->createShadowMap(getId(), m_heightMapTex, bLowResShadow);
+        m_shadowMapper->createShadowMap(getId(), m_heightMapTex, bLowResShadow);
 
-		calculateOptimumSkirtSize();
+        calculateOptimumSkirtSize();
     }
 
     void Terra::createHeightmap(float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption, bool bLowResShadow)
@@ -409,7 +409,7 @@ namespace Ogre
         // m_height = height;
         m_height = m_dimension.y;
         m_heightUnormScaled = m_height;
-        
+
         TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
 
         m_heightMapTex = textureManager->createTexture(m_prefix + "heightMap.png",
@@ -460,7 +460,7 @@ namespace Ogre
                     m_heightMap[y * m_width + x] = height;
                 }
             }
-		}
+        }
 
         //stopMapRegion indicates you're done calling mapRegion. Call this from the main thread.
         //It is your responsability to ensure you're done using all pointers returned from
@@ -483,8 +483,8 @@ namespace Ogre
 
         delete m_shadowMapper;
         m_shadowMapper = new ShadowMapper(mManager, m_compositorManager);
-        m_shadowMapper->_setSharedResources( m_sharedResources );
-        m_shadowMapper->setMinimizeMemoryConsumption( bMinimizeMemoryConsumption );
+        m_shadowMapper->_setSharedResources(m_sharedResources);
+        m_shadowMapper->setMinimizeMemoryConsumption(bMinimizeMemoryConsumption);
         // TODO: false -> make low shadow res shadows configurable?
         m_shadowMapper->createShadowMap(getId(), m_heightMapTex, bLowResShadow);
 
@@ -561,11 +561,11 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void Terra::destroyNormalTexture(void)
     {
-        if( m_normalMapTex )
+        if (m_normalMapTex)
         {
-            TextureGpuManager *textureManager =
-                    mManager->getDestinationRenderSystem()->getTextureGpuManager();
-            textureManager->destroyTexture( m_normalMapTex );
+            TextureGpuManager* textureManager =
+                mManager->getDestinationRenderSystem()->getTextureGpuManager();
+            textureManager->destroyTexture(m_normalMapTex);
             m_normalMapTex = 0;
         }
     }
@@ -699,46 +699,46 @@ namespace Ogre
         const uint32 basePixelDimension = m_basePixelDimension;
         const uint32 vertPixelDimension = static_cast<uint32>(m_basePixelDimension * m_depthWidthRatio);
 
-        for( size_t y=vertPixelDimension-1u; y<m_depth-1u; y += vertPixelDimension )
+        for (size_t y = vertPixelDimension - 1u; y < m_depth - 1u; y += vertPixelDimension)
         {
             const size_t ny = y + 1u;
 
             bool allEqualInLine = true;
             float minHeight = m_heightMap[y * m_width];
-            for( size_t x=0; x<m_width; x++ )
+            for (size_t x = 0; x < m_width; x++)
             {
-                const float minValue = std::min( m_heightMap[y * m_width + x],
-                                                  m_heightMap[ny * m_width + x] );
-                minHeight = std::min( minValue, minHeight );
+                const float minValue = std::min(m_heightMap[y * m_width + x],
+                    m_heightMap[ny * m_width + x]);
+                minHeight = std::min(minValue, minHeight);
                 allEqualInLine &= m_heightMap[y * m_width + x] == m_heightMap[ny * m_width + x];
             }
 
-            if( !allEqualInLine )
-                m_skirtSize = std::min( minHeight, m_skirtSize );
+            if (!allEqualInLine)
+                m_skirtSize = std::min(minHeight, m_skirtSize);
         }
 
-        for( size_t x=basePixelDimension-1u; x<m_width-1u; x += basePixelDimension )
+        for (size_t x = basePixelDimension - 1u; x < m_width - 1u; x += basePixelDimension)
         {
             const size_t nx = x + 1u;
 
             bool allEqualInLine = true;
             float minHeight = m_heightMap[x];
-            for( size_t y=0; y<m_depth; y++ )
+            for (size_t y = 0; y < m_depth; y++)
             {
-                const float minValue = std::min( m_heightMap[y * m_width + x],
-                                                  m_heightMap[y * m_width + nx] );
-                minHeight = std::min( minValue, minHeight );
+                const float minValue = std::min(m_heightMap[y * m_width + x],
+                    m_heightMap[y * m_width + nx]);
+                minHeight = std::min(minValue, minHeight);
                 allEqualInLine &= m_heightMap[y * m_width + x] == m_heightMap[y * m_width + nx];
             }
 
-            if( !allEqualInLine )
-                m_skirtSize = std::min( minHeight, m_skirtSize );
+            if (!allEqualInLine)
+                m_skirtSize = std::min(minHeight, m_skirtSize);
         }
 
         m_skirtSize /= m_height;
 
         // Many Android GPUs don't support PFG_R16_UNORM so we scale it by hand
-        if( m_heightMapTex->getPixelFormat() == PFG_R16_UINT )
+        if (m_heightMapTex->getPixelFormat() == PFG_R16_UINT)
             m_skirtSize *= 65535.0f;
     }
 
@@ -794,122 +794,122 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
 
     //-----------------------------------------------------------------------------------
-    inline GridPoint Terra::worldToGrid( const Vector3 &vPos ) const
+    inline GridPoint Terra::worldToGrid(const Vector3& vPos) const
     {
         GridPoint retVal;
-        const float fWidth = static_cast<float>( m_width );
-        const float fDepth = static_cast<float>( m_depth );
+        const float fWidth = static_cast<float>(m_width);
+        const float fDepth = static_cast<float>(m_depth);
 
-        const float fX = floorf( ((vPos.x - m_terrainOrigin.x) * m_xzInvDimensions.x) * fWidth );
-        const float fZ = floorf( ((vPos.z - m_terrainOrigin.z) * m_xzInvDimensions.y) * fDepth );
-        retVal.x = fX >= 0.0f ? static_cast<int32>( fX ) : -1;
-        retVal.z = fZ >= 0.0f ? static_cast<int32>( fZ ) : -1;
+        const float fX = floorf(((vPos.x - m_terrainOrigin.x) * m_xzInvDimensions.x) * fWidth);
+        const float fZ = floorf(((vPos.z - m_terrainOrigin.z) * m_xzInvDimensions.y) * fDepth);
+        retVal.x = fX >= 0.0f ? static_cast<int32>(fX) : -1;
+        retVal.z = fZ >= 0.0f ? static_cast<int32>(fZ) : -1;
 
         return retVal;
     }
     //-----------------------------------------------------------------------------------
-    inline Vector2 Terra::gridToWorld( const GridPoint &gPos ) const
+    inline Vector2 Terra::gridToWorld(const GridPoint& gPos) const
     {
         Vector2 retVal;
-        const float fWidth = static_cast<float>( m_width );
-        const float fDepth = static_cast<float>( m_depth );
+        const float fWidth = static_cast<float>(m_width);
+        const float fDepth = static_cast<float>(m_depth);
 
-        retVal.x = ( float( gPos.x ) / fWidth ) * m_xzDimensions.x + m_terrainOrigin.x;
-        retVal.y = ( float( gPos.z ) / fDepth ) * m_xzDimensions.y + m_terrainOrigin.z;
+        retVal.x = (float(gPos.x) / fWidth) * m_xzDimensions.x + m_terrainOrigin.x;
+        retVal.y = (float(gPos.z) / fDepth) * m_xzDimensions.y + m_terrainOrigin.z;
 
         return retVal;
     }
     //-----------------------------------------------------------------------------------
-    bool Terra::isVisible( const GridPoint &gPos, const GridPoint &gSize ) const
+    bool Terra::isVisible(const GridPoint& gPos, const GridPoint& gSize) const
     {
-        if( gPos.x >= static_cast<int32>( m_width ) || gPos.z >= static_cast<int32>( m_depth ) ||
-            gPos.x + gSize.x <= 0 || gPos.z + gSize.z <= 0 )
+        if (gPos.x >= static_cast<int32>(m_width) || gPos.z >= static_cast<int32>(m_depth) ||
+            gPos.x + gSize.x <= 0 || gPos.z + gSize.z <= 0)
         {
             //Outside terrain bounds.
             return false;
         }
 
-//        return true;
+        //        return true;
 
-        const Vector2 cellPos = gridToWorld( gPos );
-        const Vector2 cellSize( Real( gSize.x + 1 ) * m_xzRelativeSize.x,
-                                Real( gSize.z + 1 ) * m_xzRelativeSize.y );
+        const Vector2 cellPos = gridToWorld(gPos);
+        const Vector2 cellSize(Real(gSize.x + 1) * m_xzRelativeSize.x,
+            Real(gSize.z + 1) * m_xzRelativeSize.y);
 
-        const Vector3 vHalfSizeYUp = Vector3( cellSize.x, m_height, cellSize.y ) * 0.5f;
+        const Vector3 vHalfSizeYUp = Vector3(cellSize.x, m_height, cellSize.y) * 0.5f;
         const Vector3 vCenter =
-            fromYUp( Vector3( cellPos.x, m_terrainOrigin.y, cellPos.y ) + vHalfSizeYUp );
-        const Vector3 vHalfSize = fromYUpSignPreserving( vHalfSizeYUp );
+            fromYUp(Vector3(cellPos.x, m_terrainOrigin.y, cellPos.y) + vHalfSizeYUp);
+        const Vector3 vHalfSize = fromYUpSignPreserving(vHalfSizeYUp);
 #if 0
-        for( unsigned i = 0; i < 6u; ++i )
+        for (unsigned i = 0; i < 6u; ++i)
         {
             //Skip far plane if view frustum is infinite
-            if( i == FRUSTUM_PLANE_FAR && m_camera->getFarClipDistance() == 0 )
+            if (i == FRUSTUM_PLANE_FAR && m_camera->getFarClipDistance() == 0)
                 continue;
 
-            Plane::Side side = m_camera->getFrustumPlane( (uint16)i ).getSide( vCenter, vHalfSize );
+            Plane::Side side = m_camera->getFrustumPlane((uint16)i).getSide(vCenter, vHalfSize);
 
             //We only need one negative match to know the obj is outside the frustum
-            if( side == Plane::NEGATIVE_SIDE )
+            if (side == Plane::NEGATIVE_SIDE)
                 return false;
         }
 #endif
         return true;
     }
     //-----------------------------------------------------------------------------------
-    void Terra::addRenderable( const GridPoint &gridPos, const GridPoint &cellSize, uint32 lodLevel )
+    void Terra::addRenderable(const GridPoint& gridPos, const GridPoint& cellSize, uint32 lodLevel)
     {
-        TerrainCell *cell = &m_terrainCells[0][m_currentCell++];
-        cell->setOrigin( gridPos, cellSize.x, cellSize.z, lodLevel );
-        m_collectedCells[0].push_back( cell );
+        TerrainCell* cell = &m_terrainCells[0][m_currentCell++];
+        cell->setOrigin(gridPos, cellSize.x, cellSize.z, lodLevel);
+        m_collectedCells[0].push_back(cell);
     }
     //-----------------------------------------------------------------------------------
     void Terra::optimizeCellsAndAdd(void)
     {
         //Keep iterating until m_collectedCells[0] stops shrinking
         size_t numCollectedCells = std::numeric_limits<size_t>::max();
-        while( numCollectedCells != m_collectedCells[0].size() )
+        while (numCollectedCells != m_collectedCells[0].size())
         {
             numCollectedCells = m_collectedCells[0].size();
 
-            if( m_collectedCells[0].size() > 1 )
+            if (m_collectedCells[0].size() > 1)
             {
                 m_collectedCells[1].clear();
 
                 std::vector<TerrainCell*>::const_iterator itor = m_collectedCells[0].begin();
-                std::vector<TerrainCell*>::const_iterator end  = m_collectedCells[0].end();
+                std::vector<TerrainCell*>::const_iterator end = m_collectedCells[0].end();
 
-                while( end - itor >= 2u )
+                while (end - itor >= 2u)
                 {
-                    TerrainCell *currCell = *itor;
-                    TerrainCell *nextCell = *(itor+1);
+                    TerrainCell* currCell = *itor;
+                    TerrainCell* nextCell = *(itor + 1);
 
-                    m_collectedCells[1].push_back( currCell );
-                    if( currCell->merge( nextCell ) )
+                    m_collectedCells[1].push_back(currCell);
+                    if (currCell->merge(nextCell))
                         itor += 2;
                     else
                         ++itor;
                 }
 
-                while( itor != end )
-                    m_collectedCells[1].push_back( *itor++ );
+                while (itor != end)
+                    m_collectedCells[1].push_back(*itor++);
 
-                m_collectedCells[1].swap( m_collectedCells[0] );
+                m_collectedCells[1].swap(m_collectedCells[0]);
             }
         }
 
         std::vector<TerrainCell*>::const_iterator itor = m_collectedCells[0].begin();
-        std::vector<TerrainCell*>::const_iterator end  = m_collectedCells[0].end();
-        while( itor != end )
-            mRenderables.push_back( *itor++ );
+        std::vector<TerrainCell*>::const_iterator end = m_collectedCells[0].end();
+        while (itor != end)
+            mRenderables.push_back(*itor++);
 
         m_collectedCells[0].clear();
     }
     //-----------------------------------------------------------------------------------
-    void Terra::setSharedResources( TerraSharedResources *sharedResources )
+    void Terra::setSharedResources(TerraSharedResources* sharedResources)
     {
         m_sharedResources = sharedResources;
-        if( m_shadowMapper )
-            m_shadowMapper->_setSharedResources( sharedResources );
+        if (m_shadowMapper)
+            m_shadowMapper->_setSharedResources(sharedResources);
     }
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
@@ -1268,12 +1268,12 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    void Terra::load(const String& heightMapTextureName, const String& blendWeightTextureName, Vector3& center, Vector3 &dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow)
+    void Terra::load(const String& heightMapTextureName, const String& blendWeightTextureName, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow)
     {
         Ogre::Image2 heightMapImage;
         heightMapImage.load(heightMapTextureName, ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
 
-       
+
         Ogre::Image2 blendWeightImage;
         if (false == blendWeightTextureName.empty())
         {
@@ -1288,12 +1288,12 @@ namespace Ogre
         // Use sign-preserving because origin in XZ plane is always from
         // bottom-left to top-right.
         // If we use toYUp, we'll start from top-right and go up and right
-        m_terrainOrigin = toYUpSignPreserving( center - dimensions * 0.5f );
-        center = toYUp( center );
-        dimensions = toYUpSignPreserving( dimensions );
+        m_terrainOrigin = toYUpSignPreserving(center - dimensions * 0.5f);
+        center = toYUp(center);
+        dimensions = toYUpSignPreserving(dimensions);
         m_dimension = dimensions;
-       
-        m_xzDimensions = Vector2( dimensions.x, dimensions.z );
+
+        m_xzDimensions = Vector2(dimensions.x, dimensions.z);
         m_xzInvDimensions = 1.0f / m_xzDimensions;
         // m_height = center.y;
         m_height = dimensions.y;
@@ -1325,15 +1325,15 @@ namespace Ogre
             //Find out how many TerrainCells we need. I think this might be
             //solved analitically with a power series. But my math is rusty.
             const uint32 basePixelDimension = m_basePixelDimension;
-            const uint32 vertPixelDimension = static_cast<uint32>( m_basePixelDimension *
-                                                                   m_depthWidthRatio );
-            const uint32 maxPixelDimension = std::max( basePixelDimension, vertPixelDimension );
-            const uint32 maxRes = std::max( m_width, m_depth );
+            const uint32 vertPixelDimension = static_cast<uint32>(m_basePixelDimension *
+                m_depthWidthRatio);
+            const uint32 maxPixelDimension = std::max(basePixelDimension, vertPixelDimension);
+            const uint32 maxRes = std::max(m_width, m_depth);
 
             uint32 numCells = 16u; //4x4
             uint32 accumDim = 0u;
             uint32 iteration = 1u;
-            while( accumDim < maxRes )
+            while (accumDim < maxRes)
             {
                 numCells += 12u; //4x4 - 2x2
                 accumDim += maxPixelDimension * (1u << iteration);
@@ -1345,25 +1345,25 @@ namespace Ogre
             ++iteration;
 
 
-            for( size_t i = 0u; i < 2u; ++i )
+            for (size_t i = 0u; i < 2u; ++i)
             {
                 m_terrainCells[i].clear();
-                m_terrainCells[i].resize( numCells, TerrainCell( this ) );
+                m_terrainCells[i].resize(numCells, TerrainCell(this));
             }
         }
 
-        VaoManager *vaoManager = mManager->getDestinationRenderSystem()->getVaoManager();
+        VaoManager* vaoManager = mManager->getDestinationRenderSystem()->getVaoManager();
 
-        for( size_t i = 0u; i < 2u; ++i )
+        for (size_t i = 0u; i < 2u; ++i)
         {
             std::vector<TerrainCell>::iterator itor = m_terrainCells[i].begin();
             std::vector<TerrainCell>::iterator endt = m_terrainCells[i].end();
 
             const std::vector<TerrainCell>::iterator begin = itor;
 
-            while( itor != endt )
+            while (itor != endt)
             {
-                itor->initialize( vaoManager, ( itor - begin ) >= 16u );
+                itor->initialize(vaoManager, (itor - begin) >= 16u);
                 ++itor;
             }
         }
@@ -1481,36 +1481,36 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    bool Terra::getHeightAt( Vector3 &vPosArg ) const
+    bool Terra::getHeightAt(Vector3& vPosArg) const
     {
         bool retVal = false;
 
-        Vector3 vPos = toYUp( vPosArg );
+        Vector3 vPos = toYUp(vPosArg);
 
-        GridPoint pos2D = worldToGrid( vPos );
+        GridPoint pos2D = worldToGrid(vPos);
 
-        const int32 iWidth = static_cast<int32>( m_width );
-        const int32 iDepth = static_cast<int32>( m_depth );
+        const int32 iWidth = static_cast<int32>(m_width);
+        const int32 iDepth = static_cast<int32>(m_depth);
 
-        if( pos2D.x < iWidth - 1 && pos2D.z < iDepth - 1 )
+        if (pos2D.x < iWidth - 1 && pos2D.z < iDepth - 1)
         {
-            const Vector2 vPos2D = gridToWorld( pos2D );
+            const Vector2 vPos2D = gridToWorld(pos2D);
 
-            const float dx = ( vPos.x - vPos2D.x ) * float( m_width ) * m_xzInvDimensions.x;
-            const float dz = ( vPos.z - vPos2D.y ) * float( m_depth ) * m_xzInvDimensions.y;
+            const float dx = (vPos.x - vPos2D.x) * float(m_width) * m_xzInvDimensions.x;
+            const float dz = (vPos.z - vPos2D.y) * float(m_depth) * m_xzInvDimensions.y;
 
             float a, b, c;
-            const float h00 = m_heightMap[size_t( pos2D.z * iWidth + pos2D.x )];
-            const float h11 = m_heightMap[size_t( ( pos2D.z + 1 ) * iWidth + pos2D.x + 1 )];
+            const float h00 = m_heightMap[size_t(pos2D.z * iWidth + pos2D.x)];
+            const float h11 = m_heightMap[size_t((pos2D.z + 1) * iWidth + pos2D.x + 1)];
 
             c = h00;
-            if( dx < dz )
+            if (dx < dz)
             {
                 //Plane eq: y = ax + bz + c
                 //x=0 z=0 -> c		= h00
                 //x=0 z=1 -> b + c	= h01 -> b = h01 - c
                 //x=1 z=1 -> a + b + c  = h11 -> a = h11 - b - c
-                const float h01 = m_heightMap[size_t( ( pos2D.z + 1 ) * iWidth + pos2D.x )];
+                const float h01 = m_heightMap[size_t((pos2D.z + 1) * iWidth + pos2D.x)];
 
                 b = h01 - c;
                 a = h11 - b - c;
@@ -1521,7 +1521,7 @@ namespace Ogre
                 //x=0 z=0 -> c		= h00
                 //x=1 z=0 -> a + c	= h10 -> a = h10 - c
                 //x=1 z=1 -> a + b + c  = h11 -> b = h11 - a - c
-                const float h10 = m_heightMap[size_t( pos2D.z * iWidth + pos2D.x + 1 )];
+                const float h10 = m_heightMap[size_t(pos2D.z * iWidth + pos2D.x + 1)];
 
                 a = h10 - c;
                 b = h11 - a - c;
@@ -1531,7 +1531,7 @@ namespace Ogre
             retVal = true;
         }
 
-        vPosArg = fromYUp( vPos );
+        vPosArg = fromYUp(vPos);
 
         return retVal;
     }
@@ -1552,25 +1552,25 @@ namespace Ogre
         return layers;
     }
     //-----------------------------------------------------------------------------------
-    void Terra::setDatablock( HlmsDatablock *datablock)
+    void Terra::setDatablock(HlmsDatablock* datablock)
     {
-        if( !datablock && !m_terrainCells[0].empty() && m_terrainCells[0].back().getDatablock() )
+        if (!datablock && !m_terrainCells[0].empty() && m_terrainCells[0].back().getDatablock())
         {
             // Unsetting the datablock. We have no way of unlinking later on. Do it now
-            HlmsDatablock *oldDatablock = m_terrainCells[0].back().getDatablock();
-            OGRE_ASSERT_HIGH( dynamic_cast<HlmsTerra *>( oldDatablock->getCreator() ) );
-            HlmsTerra *hlms = static_cast<HlmsTerra *>( oldDatablock->getCreator() );
-            hlms->_unlinkTerra( this );
+            HlmsDatablock* oldDatablock = m_terrainCells[0].back().getDatablock();
+            OGRE_ASSERT_HIGH(dynamic_cast<HlmsTerra*>(oldDatablock->getCreator()));
+            HlmsTerra* hlms = static_cast<HlmsTerra*>(oldDatablock->getCreator());
+            hlms->_unlinkTerra(this);
         }
 
-        for( size_t i = 0u; i < 2u; ++i )
+        for (size_t i = 0u; i < 2u; ++i)
         {
             std::vector<TerrainCell>::iterator itor = m_terrainCells[i].begin();
-            std::vector<TerrainCell>::iterator end  = m_terrainCells[i].end();
+            std::vector<TerrainCell>::iterator end = m_terrainCells[i].end();
 
-            while( itor != end )
+            while (itor != end)
             {
-                itor->setDatablock( datablock );
+                itor->setDatablock(datablock);
                 ++itor;
             }
         }
@@ -1585,11 +1585,11 @@ namespace Ogre
         // terraDataBlock->setDetailTriplanarMetalnessEnabled(true);
         // terraDataBlock->setDetailTriplanarNormalEnabled(true);
 
-        if( mHlmsTerraIndex == std::numeric_limits<uint32>::max() )
+        if (mHlmsTerraIndex == std::numeric_limits<uint32>::max())
         {
-            OGRE_ASSERT_HIGH( dynamic_cast<HlmsTerra *>( datablock->getCreator() ) );
-            HlmsTerra *hlms = static_cast<HlmsTerra *>( datablock->getCreator() );
-            hlms->_linkTerra( this );
+            OGRE_ASSERT_HIGH(dynamic_cast<HlmsTerra*>(datablock->getCreator()));
+            HlmsTerra* hlms = static_cast<HlmsTerra*>(datablock->getCreator());
+            hlms->_linkTerra(this);
         }
     }
     //-----------------------------------------------------------------------------------
@@ -1600,18 +1600,18 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     Vector2 Terra::getTerrainXZCenter(void) const
     {
-        return Vector2( m_terrainOrigin.x + m_xzDimensions.x * 0.5f,
-                        m_terrainOrigin.z + m_xzDimensions.y * 0.5f );
+        return Vector2(m_terrainOrigin.x + m_xzDimensions.x * 0.5f,
+            m_terrainOrigin.z + m_xzDimensions.y * 0.5f);
     }
-    
+
     Vector3 Terra::getTerrainOriginRaw(void) const
-    { 
+    {
         return m_terrainOrigin;
     }
 
     Vector3 Terra::getTerrainOrigin(void) const
     {
-        return fromYUpSignPreserving( m_terrainOrigin );
+        return fromYUpSignPreserving(m_terrainOrigin);
     }
 
     //-----------------------------------------------------------------------------------
@@ -1621,12 +1621,12 @@ namespace Ogre
         return movType;
     }
 
-    void Terra::_swapSavedState( void )
+    void Terra::_swapSavedState(void)
     {
-        m_terrainCells[0].swap( m_terrainCells[1] );
-        m_savedState.m_renderables.swap( mRenderables );
-        std::swap( m_savedState.m_currentCell, m_currentCell );
-        std::swap( m_savedState.m_camera, m_camera );
+        m_terrainCells[0].swap(m_terrainCells[1]);
+        m_savedState.m_renderables.swap(mRenderables);
+        std::swap(m_savedState.m_currentCell, m_currentCell);
+        std::swap(m_savedState.m_camera, m_camera);
     }
 
     void Terra::levelTerrain(float height)
@@ -1720,10 +1720,10 @@ namespace Ogre
         }
     }
 
-     void Terra::setBrushSize(short brushSize)
-     {
-         m_brushSize = brushSize;
-     }
+    void Terra::setBrushSize(short brushSize)
+    {
+        m_brushSize = brushSize;
+    }
 
     void Terra::modifyTerrainStart(const Ogre::Vector3& position, float strength)
     {
@@ -1736,7 +1736,7 @@ namespace Ogre
         {
             m_heightMapStagingTexture = textureManager->getStagingTexture(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
         }
-        
+
         m_heightMapStagingTexture->startMapRegion();
 
         TextureBox texBox = m_heightMapStagingTexture->mapRegion(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
@@ -1744,11 +1744,11 @@ namespace Ogre
         memcpy(&m_oldHeightData[0], texBox.data, m_heightMapStagingTexture->_getSizeBytes());
 
         m_heightMapStagingTexture->stopMapRegion();
-        
+
         this->applyHeightDiff(position, m_brushData, m_brushSize, strength);
     }
 
-     void Terra::smoothTerrainStart(const Ogre::Vector3& position, float strength)
+    void Terra::smoothTerrainStart(const Ogre::Vector3& position, float strength)
     {
         m_oldHeightData.resize(m_width * m_depth, 0);
         m_newHeightData.resize(m_width * m_depth, 0);
@@ -1759,7 +1759,7 @@ namespace Ogre
         {
             m_heightMapStagingTexture = textureManager->getStagingTexture(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
         }
-        
+
         m_heightMapStagingTexture->startMapRegion();
 
         TextureBox texBox = m_heightMapStagingTexture->mapRegion(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
@@ -1767,7 +1767,7 @@ namespace Ogre
         memcpy(&m_oldHeightData[0], texBox.data, m_heightMapStagingTexture->_getSizeBytes());
 
         m_heightMapStagingTexture->stopMapRegion();
-        
+
         this->applySmoothDiff(position, m_brushData, m_brushSize, strength);
     }
 
@@ -1794,7 +1794,7 @@ namespace Ogre
 
         int x = point.x;
         int y = point.z;
-        
+
         TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
         // Important: Only create once, and after that work on that staging texture, else the heights get resetted every time
         if (nullptr == m_heightMapStagingTexture)
@@ -1821,7 +1821,7 @@ namespace Ogre
 
         if (m_heightMapTex->getPixelFormat() == PFG_R16_UNORM)
         {
-           
+
             for (int by = boxStartY; by < boxHeight; by++)
             {
                 unsigned int posY = y + by;
@@ -1832,21 +1832,21 @@ namespace Ogre
                     unsigned int posX = x + bx;
 
                     uint16 oldValue = pixBoxData[posX];
-  
+
                     float determinedValue = oldValue + data[by * boxSize + bx] * strength;
                     if (determinedValue < 0.0f)
                     {
                         determinedValue = 0.0f;
                     }
-                    
+
                     //If value is 0 (we're lowering the terrain), the value should never be greater than what it previously was (possible with integer wrap-arounds).
                     if (strength < 0 && determinedValue > oldValue)
-                    { 
+                    {
                         determinedValue = 0;
                     }
                     else if (strength > 0 && determinedValue < oldValue)
                     {
-                        determinedValue =  heightToVal<float>(m_height);
+                        determinedValue = heightToVal<float>(m_height);
                     }
 
                     pixBoxData[posX] = determinedValue;
@@ -1894,7 +1894,7 @@ namespace Ogre
         }
 
         strength = strength / 100.0f;
-        
+
         TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
         // Important: Only create once, and after that work on that staging texture, else the heights get resetted every time
         if (nullptr == m_heightMapStagingTexture)
@@ -1917,72 +1917,225 @@ namespace Ogre
         uint32 movAmount;
         uint32 shouldMoveAmount;
         int boxStartX, boxStartY, boxWidth, boxHeight;
-		_calculateBoxSpecification(x, y, boxSize, m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), &movAmount, &shouldMoveAmount, &boxStartX, &boxStartY, &boxWidth, &boxHeight);
+        _calculateBoxSpecification(x, y, boxSize, m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), &movAmount, &shouldMoveAmount, &boxStartX, &boxStartY, &boxWidth, &boxHeight);
 
-		if (m_heightMapTex->getPixelFormat() == PFG_R16_UNORM)
-		{
-			int xVal = targetStartX;
-			int yVal = targetStartY;
-			for (int by = boxStartY; by < boxHeight; by++)
-			{
-				unsigned int posY = y + by;
-				uint16* RESTRICT_ALIAS pixBoxData = reinterpret_cast<uint16 * RESTRICT_ALIAS>(texBox.at(0, posY, 0));
+        if (m_heightMapTex->getPixelFormat() == PFG_R16_UNORM)
+        {
+            int xVal = targetStartX;
+            int yVal = targetStartY;
+            for (int by = boxStartY; by < boxHeight; by++)
+            {
+                unsigned int posY = y + by;
+                uint16* RESTRICT_ALIAS pixBoxData = reinterpret_cast<uint16 * RESTRICT_ALIAS>(texBox.at(0, posY, 0));
 
-				for (int bx = boxStartX; bx < boxWidth; bx++)
-				{
-					unsigned int posX = x + bx;
+                for (int bx = boxStartX; bx < boxWidth; bx++)
+                {
+                    unsigned int posX = x + bx;
 
                     const float prevCurrentHeight = m_heightMap[xVal + yVal * texBox.height];
                     float currentHeight = prevCurrentHeight;
 
                     float determinedValue = 0.0f;
-					uint8 totalAmount = 0;
-					//Find the average around this point.
-					for (int ya = yVal - 1; ya <= yVal + 1; ya++)
-					{
+                    uint8 totalAmount = 0;
+                    //Find the average around this point.
+                    for (int ya = yVal - 1; ya <= yVal + 1; ya++)
+                    {
                         if (ya < 0 || ya >= texBox.height)
                         {
                             continue;
                         }
 
-						for (int xa = xVal - 1; xa <= xVal + 1; xa++)
-						{
+                        for (int xa = xVal - 1; xa <= xVal + 1; xa++)
+                        {
                             if (xa < 0 || xa >= texBox.height)
                             {
                                 continue;
                             }
-							determinedValue += m_heightMap[xa + ya * texBox.height];
-							totalAmount++;
-						}
-					}
-					if (totalAmount == 0)
-					{
-						currentHeight = prevCurrentHeight;
-					}
-					else
-					{
-						determinedValue /= totalAmount;
-						float diffVal = (determinedValue - currentHeight) * strength;
-						currentHeight += diffVal;
-					}
+                            determinedValue += m_heightMap[xa + ya * texBox.height];
+                            totalAmount++;
+                        }
+                    }
+                    if (totalAmount == 0)
+                    {
+                        currentHeight = prevCurrentHeight;
+                    }
+                    else
+                    {
+                        determinedValue /= totalAmount;
+                        float diffVal = (determinedValue - currentHeight) * strength;
+                        currentHeight += diffVal;
+                    }
 
                     pixBoxData[posX] = this->heightToVal<float>(currentHeight);
-					m_heightMap[movAmount] = currentHeight;
+                    m_heightMap[movAmount] = currentHeight;
 
-					movAmount++;
+                    movAmount++;
                     xVal++;
-				}
+                }
                 // Align to the start of the next line.
-				movAmount += shouldMoveAmount;
+                movAmount += shouldMoveAmount;
                 yVal++;
                 xVal = targetStartX;
-			}
-		}
+            }
+        }
 
-		m_heightMapStagingTexture->stopMapRegion();
-		m_heightMapStagingTexture->upload(texBox, m_heightMapTex, 0, 0, 0);
+        m_heightMapStagingTexture->stopMapRegion();
+        m_heightMapStagingTexture->upload(texBox, m_heightMapTex, 0, 0, 0);
 
         // is this necessary?
+        updateHeightTextures();
+
+        calculateOptimumSkirtSize();
+    }
+
+    //-----------------------------------------------------------------------------------
+    // applyHeightBlend - Conform-to-footprint primitive (roads, building pads, etc.)
+    //
+    // Unlike applyHeightDiff (which ADDS a delta from a brush image - interactive
+    // sculpting) this BLENDS terrain height toward an explicit absolute target height,
+    // with a circular flat "footprint" radius and a cosine-falloff blend margin around
+    // it - exactly the technique callers like ProceduralRoadComponent's terrain-conform
+    // step need: flatten the terrain to the road's own already-correct height under the
+    // road, then smoothly taper back to the untouched terrain over blendMarginWorld.
+    //
+    // - position: world-space stamp centre
+    // - targetHeight: world-space height to snap to inside 'radiusWorld'
+    // - radiusWorld: flat footprint radius in world units (e.g. half the road width
+    //   including edges)
+    // - blendMarginWorld: additional distance beyond radiusWorld over which the target
+    //   height fades back out to whatever the terrain already had (0 = hard edge)
+    //
+    // Call once per sample point along a path (road centreline, building edge, etc.);
+    // overlapping stamps blend naturally since each one only ever pulls height TOWARD
+    // its own target by its own influence, never overwrites unconditionally.
+    //
+    // Must be called from the render thread, same as applyHeightDiff/setHeightData.
+    //-----------------------------------------------------------------------------------
+    void Terra::applyHeightBlend(const Ogre::Vector3& position, float targetHeight, float radiusWorld, float blendMarginWorld)
+    {
+        if (radiusWorld <= 0.0f)
+        {
+            return;
+        }
+
+        // m_heightMap (and valToHeight/heightToVal) work in RELATIVE height space
+        // (0..m_height) - the absolute world Y is only ever formed by callers adding
+        // m_terrainOrigin.y on top (see getHeightAt: "... + m_terrainOrigin.y"). The
+        // caller of this function passes 'targetHeight' as an absolute world Y (the
+        // natural unit for a road/building height), so convert it to the same
+        // relative space m_heightMap already uses before blending.
+        const float targetHeightRelative = targetHeight - m_terrainOrigin.y;
+
+        const float pixelsPerMeterX = (m_xzRelativeSize.x > 1e-6f) ? (1.0f / m_xzRelativeSize.x) : 1.0f;
+        const float pixelsPerMeterZ = (m_xzRelativeSize.y > 1e-6f) ? (1.0f / m_xzRelativeSize.y) : 1.0f;
+        const float pixelsPerMeter = 0.5f * (pixelsPerMeterX + pixelsPerMeterZ);
+
+        const float radiusPixels = radiusWorld * pixelsPerMeter;
+        const float blendPixels = std::max(0.0f, blendMarginWorld) * pixelsPerMeter;
+        const float outerRadiusPixels = radiusPixels + blendPixels;
+
+        const int boxHalf = static_cast<int>(std::ceil(outerRadiusPixels)) + 1;
+        const int boxSize = boxHalf * 2 + 1;
+
+        Ogre::GridPoint point = this->worldToGrid(position);
+
+        // Offset the box so that the corner isn't the centre (same convention as applyHeightDiff).
+        point.x -= boxSize / 2;
+        point.z -= boxSize / 2;
+
+        int x = point.x;
+        int y = point.z;
+
+        TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
+        // Important: Only create once, and after that work on that staging texture, else the heights get resetted every time
+        if (nullptr == m_heightMapStagingTexture)
+        {
+            m_heightMapStagingTexture = textureManager->getStagingTexture(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
+        }
+        if (m_heightMapTex->getNextResidencyStatus() != Ogre::GpuResidency::Resident)
+        {
+            m_heightMapTex->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
+            m_heightMapTex->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
+        }
+        m_heightMapStagingTexture->startMapRegion();
+
+        TextureBox texBox = m_heightMapStagingTexture->mapRegion(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
+
+        uint32 movAmount;
+        uint32 shouldMoveAmount;
+        int boxStartX, boxStartY, boxWidth, boxHeight;
+        _calculateBoxSpecification(x, y, boxSize, m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), &movAmount, &shouldMoveAmount, &boxStartX, &boxStartY, &boxWidth, &boxHeight);
+
+        // Local box-space coordinates of the stamp centre, matching the point.x/point.z
+        // offset applied above (boxSize/2, same integer division truncation).
+        const int centreBx = boxSize / 2;
+        const int centreBy = boxSize / 2;
+
+        if (m_heightMapTex->getPixelFormat() == PFG_R16_UNORM)
+        {
+            for (int by = boxStartY; by < boxHeight; by++)
+            {
+                unsigned int posY = y + by;
+                uint16* RESTRICT_ALIAS pixBoxData = reinterpret_cast<uint16 * RESTRICT_ALIAS>(texBox.at(0, posY, 0));
+
+                for (int bx = boxStartX; bx < boxWidth; bx++)
+                {
+                    unsigned int posX = x + bx;
+
+                    const float dx = static_cast<float>(bx - centreBx);
+                    const float dy = static_cast<float>(by - centreBy);
+                    const float dist = std::sqrt(dx * dx + dy * dy);
+
+                    if (dist > outerRadiusPixels)
+                    {
+                        movAmount++;
+                        continue;
+                    }
+
+                    // Cosine falloff: 1.0 inside the flat footprint radius, tapering to
+                    // 0.0 at the outer edge of the blend margin - same shape as the
+                    // offline road-stamp technique in ProceduralTerrainCreationComponent,
+                    // just applied directly to the live Terra height data.
+                    float influence;
+                    if (dist <= radiusPixels)
+                    {
+                        influence = 1.0f;
+                    }
+                    else
+                    {
+                        const float t = (dist - radiusPixels) / std::max(0.001f, blendPixels);
+                        influence = 0.5f + 0.5f * std::cos(t * Ogre::Math::PI);
+                    }
+
+                    const uint16 oldValue = pixBoxData[posX];
+                    const float oldHeight = this->valToHeight<float>(static_cast<float>(oldValue));
+
+                    // One-way carve: never RAISE terrain to meet the road, only ever
+                    // LOWER it if it's currently higher than the road's target height
+                    // (i.e. a hill/ridge is in the way). If the terrain is already at
+                    // or below the target (a dip the road already floats above cleanly),
+                    // leave it untouched. This mirrors the existing brush's own
+                    // negative-strength-only convention for lowering ground, and
+                    // structurally cannot ever push terrain above the road, unlike a
+                    // symmetric blend toward an absolute target in both directions.
+                    const float ceilingHeight = std::min(oldHeight, targetHeightRelative);
+                    const float newHeight = oldHeight + (ceilingHeight - oldHeight) * influence;
+
+                    float newValue = this->heightToVal<float>(newHeight);
+                    newValue = Ogre::Math::Clamp(newValue, 0.0f, 65535.0f);
+
+                    pixBoxData[posX] = static_cast<uint16>(newValue);
+                    m_heightMap[movAmount] = newHeight;
+
+                    movAmount++;
+                }
+                movAmount += shouldMoveAmount; //Align to the start of the next line.
+            }
+        }
+
+        m_heightMapStagingTexture->stopMapRegion();
+        m_heightMapStagingTexture->upload(texBox, m_heightMapTex, 0, 0, 0);
+
         updateHeightTextures();
 
         calculateOptimumSkirtSize();
@@ -1996,11 +2149,11 @@ namespace Ogre
         {
             m_heightMapStagingTexture = textureManager->getStagingTexture(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
         }
-        
+
         m_heightMapStagingTexture->startMapRegion();
 
         TextureBox texBox = m_heightMapStagingTexture->mapRegion(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
-        
+
         memcpy(&m_newHeightData[0], texBox.data, m_heightMapStagingTexture->_getSizeBytes());
 
         m_heightMapStagingTexture->stopMapRegion();
@@ -2016,11 +2169,11 @@ namespace Ogre
         {
             m_heightMapStagingTexture = textureManager->getStagingTexture(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
         }
-        
+
         m_heightMapStagingTexture->startMapRegion();
 
         TextureBox texBox = m_heightMapStagingTexture->mapRegion(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
-        
+
         memcpy(&m_newHeightData[0], texBox.data, m_heightMapStagingTexture->_getSizeBytes());
 
         m_heightMapStagingTexture->stopMapRegion();
@@ -2054,7 +2207,7 @@ namespace Ogre
                 for (int x = 0; x < m_width; x++)
                 {
                     int value = heightData[y * m_width + x];
-                   
+
                     pixBoxData[x] = value;
                     const float targetVal = this->valToHeight<float>(value);
                     m_heightMap[y * m_width + x] = targetVal;
@@ -2083,7 +2236,7 @@ namespace Ogre
         {
             m_blendWeightStagingTexture = textureManager->getStagingTexture(m_blendWeightTex->getWidth(), m_blendWeightTex->getHeight(), 1u, 1u, m_blendWeightTex->getPixelFormat());
         }
-        
+
         m_blendWeightStagingTexture->startMapRegion();
 
         TextureBox detailMapTexBox = m_blendWeightStagingTexture->mapRegion(m_blendWeightTex->getWidth(), m_blendWeightTex->getHeight(), 1u, 1u, m_blendWeightTex->getPixelFormat());
@@ -2091,7 +2244,7 @@ namespace Ogre
         memcpy(&m_oldBlendWeightData[0], detailMapTexBox.data, m_blendWeightStagingTexture->_getSizeBytes());
 
         m_blendWeightStagingTexture->stopMapRegion();
-        
+
         this->applyBlendDiff(position, m_brushData, m_brushSize, intensity, blendLayer);
     }
 
@@ -2117,7 +2270,7 @@ namespace Ogre
         {
             m_blendWeightStagingTexture = textureManager->getStagingTexture(m_blendWeightTex->getWidth(), m_blendWeightTex->getHeight(), 1u, 1u, m_blendWeightTex->getPixelFormat());
         }
-// Attention: When blendWeightTex is created in DatablockTerraComponent, texture->scheduleTransitionTo(Ogre::GpuResidency::OnSystemRam); is set! This maps the actual texture!
+        // Attention: When blendWeightTex is created in DatablockTerraComponent, texture->scheduleTransitionTo(Ogre::GpuResidency::OnSystemRam); is set! This maps the actual texture!
         if (m_blendWeightTex->getResidencyStatus() != Ogre::GpuResidency::Resident)
         {
             m_blendWeightTex->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
@@ -2132,7 +2285,7 @@ namespace Ogre
         _calculateBoxSpecification(x, y, boxSize, m_blendWeightTex->getWidth(), m_blendWeightTex->getHeight(), &movAmount, &shouldMoveAmount, &boxStartX, &boxStartY, &boxWidth, &boxHeight);
 
         Ogre::Vector4 vals(-1.0f, -1.0f, -1.0f, -1.0f);
-        if (blendLayer == 0)   
+        if (blendLayer == 0)
             vals.x = -vals.x;
         else if (blendLayer == 1)
             vals.y = -vals.y;
@@ -2141,7 +2294,7 @@ namespace Ogre
         else if (blendLayer == 3)
             vals.w = -vals.w;
 
-		vals *= intensity;
+        vals *= intensity;
 
         const size_t bytesPerPixel = detailMapTexBox.bytesPerPixel;
 
@@ -2153,25 +2306,25 @@ namespace Ogre
             for (int bx = boxStartX; bx < boxWidth; bx++)
             {
                 // bytesPerPixel 4 for rgba array
-				unsigned int posX = (x + bx) * bytesPerPixel;
+                unsigned int posX = (x + bx) * bytesPerPixel;
 
-				float rgba[4] = { detailMapPixBoxData[posX + 0], detailMapPixBoxData[posX + 1], detailMapPixBoxData[posX + 2], detailMapPixBoxData[posX + 3] };
+                float rgba[4] = { detailMapPixBoxData[posX + 0], detailMapPixBoxData[posX + 1], detailMapPixBoxData[posX + 2], detailMapPixBoxData[posX + 3] };
 
-				float brushVal = brushData[bx + by * boxSize];
+                float brushVal = brushData[bx + by * boxSize];
 
                 // Note: / 255 must be done, because packColour expects values of min 0, max 1 and forms it from 0 to 255
-				rgba[0] = this->alterBlend(rgba[0], vals.x * brushVal) / 255.0f;
-				rgba[1] = this->alterBlend(rgba[1], vals.y * brushVal) / 255.0f;
-				rgba[2] = this->alterBlend(rgba[2], vals.z * brushVal) / 255.0f;
-				rgba[3] = this->alterBlend(rgba[3], vals.w * brushVal) / 255.0f;
+                rgba[0] = this->alterBlend(rgba[0], vals.x * brushVal) / 255.0f;
+                rgba[1] = this->alterBlend(rgba[1], vals.y * brushVal) / 255.0f;
+                rgba[2] = this->alterBlend(rgba[2], vals.z * brushVal) / 255.0f;
+                rgba[3] = this->alterBlend(rgba[3], vals.w * brushVal) / 255.0f;
 
-				PixelFormatGpuUtils::packColour(rgba, PFG_RGBA8_UNORM, &detailMapPixBoxData[posX]);
+                PixelFormatGpuUtils::packColour(rgba, PFG_RGBA8_UNORM, &detailMapPixBoxData[posX]);
 
-				movAmount += 4;
-			}
-			movAmount += shouldMoveAmount * 4; //Align to the start of the next line.
-			detailMapPixBoxData += shouldMoveAmount * 4;
-		}
+                movAmount += 4;
+            }
+            movAmount += shouldMoveAmount * 4; //Align to the start of the next line.
+            detailMapPixBoxData += shouldMoveAmount * 4;
+        }
 
         m_blendWeightStagingTexture->stopMapRegion();
         m_blendWeightStagingTexture->upload(detailMapTexBox, m_blendWeightTex, 0);
@@ -2516,12 +2669,12 @@ namespace Ogre
     {
         m_prefix = prefix;
     }
-    
+
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
     TerraSharedResources::TerraSharedResources()
     {
-        memset( textures, 0, sizeof( textures ) );
+        memset(textures, 0, sizeof(textures));
     }
     //-----------------------------------------------------------------------------------
     TerraSharedResources::~TerraSharedResources()
@@ -2533,12 +2686,12 @@ namespace Ogre
     {
         freeStaticMemory();
 
-        for( size_t i = NumStaticTmpTextures; i < NumTemporaryUsages; ++i )
+        for (size_t i = NumStaticTmpTextures; i < NumTemporaryUsages; ++i)
         {
-            if( textures[i] )
+            if (textures[i])
             {
-                TextureGpuManager *textureManager = textures[i]->getTextureManager();
-                textureManager->destroyTexture( textures[i] );
+                TextureGpuManager* textureManager = textures[i]->getTextureManager();
+                textureManager->destroyTexture(textures[i]);
                 textures[i] = 0;
             }
         }
@@ -2546,50 +2699,50 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void TerraSharedResources::freeStaticMemory()
     {
-        for( size_t i = 0u; i < NumStaticTmpTextures; ++i )
+        for (size_t i = 0u; i < NumStaticTmpTextures; ++i)
         {
-            if( textures[i] )
+            if (textures[i])
             {
-                TextureGpuManager *textureManager = textures[i]->getTextureManager();
-                textureManager->destroyTexture( textures[i] );
+                TextureGpuManager* textureManager = textures[i]->getTextureManager();
+                textureManager->destroyTexture(textures[i]);
                 textures[i] = 0;
             }
         }
     }
     //-----------------------------------------------------------------------------------
-    TextureGpu *TerraSharedResources::getTempTexture( const char *texName, IdType id,
-                                                      TerraSharedResources *sharedResources,
-                                                      TemporaryUsages temporaryUsage,
-                                                      TextureGpu *baseTemplate, uint32 flags )
+    TextureGpu* TerraSharedResources::getTempTexture(const char* texName, IdType id,
+        TerraSharedResources* sharedResources,
+        TemporaryUsages temporaryUsage,
+        TextureGpu* baseTemplate, uint32 flags)
     {
-        TextureGpu *tmpRtt = 0;
+        TextureGpu* tmpRtt = 0;
 
-        if( sharedResources && sharedResources->textures[temporaryUsage] )
+        if (sharedResources && sharedResources->textures[temporaryUsage])
             tmpRtt = sharedResources->textures[temporaryUsage];
         else
         {
-            TextureGpuManager *textureManager = baseTemplate->getTextureManager();
-            tmpRtt = textureManager->createTexture( texName + StringConverter::toString( id ),
-                                                    GpuPageOutStrategy::Discard, flags,
-                                                    TextureTypes::Type2D );
-            tmpRtt->copyParametersFrom( baseTemplate );
-            tmpRtt->scheduleTransitionTo( GpuResidency::Resident );
-            if( flags & TextureFlags::RenderToTexture )
-                tmpRtt->_setDepthBufferDefaults( DepthBuffer::POOL_NO_DEPTH, false, PFG_UNKNOWN );
+            TextureGpuManager* textureManager = baseTemplate->getTextureManager();
+            tmpRtt = textureManager->createTexture(texName + StringConverter::toString(id),
+                GpuPageOutStrategy::Discard, flags,
+                TextureTypes::Type2D);
+            tmpRtt->copyParametersFrom(baseTemplate);
+            tmpRtt->scheduleTransitionTo(GpuResidency::Resident);
+            if (flags & TextureFlags::RenderToTexture)
+                tmpRtt->_setDepthBufferDefaults(DepthBuffer::POOL_NO_DEPTH, false, PFG_UNKNOWN);
 
-            if( sharedResources )
+            if (sharedResources)
                 sharedResources->textures[temporaryUsage] = tmpRtt;
         }
         return tmpRtt;
     }
     //-----------------------------------------------------------------------------------
-    void TerraSharedResources::destroyTempTexture( TerraSharedResources *sharedResources,
-                                                   TextureGpu *tmpRtt )
+    void TerraSharedResources::destroyTempTexture(TerraSharedResources* sharedResources,
+        TextureGpu* tmpRtt)
     {
-        if( !sharedResources )
+        if (!sharedResources)
         {
-            TextureGpuManager *textureManager = tmpRtt->getTextureManager();
-            textureManager->destroyTexture( tmpRtt );
+            TextureGpuManager* textureManager = tmpRtt->getTextureManager();
+            textureManager->destroyTexture(tmpRtt);
         }
-	}
+    }
 }

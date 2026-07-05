@@ -62,7 +62,7 @@ namespace NOWA
 
         bool getCameraControlLocked(void) const;
 
-        void applyGravityDirection(const Ogre::Vector3& gravityDirection);
+        void setGravityDirection(const Ogre::Vector3& gravityDirection);
 
     protected:
         virtual void onSetData(void);

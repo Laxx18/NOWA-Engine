@@ -449,6 +449,15 @@ namespace NOWA
 
         Ogre::Real getStairHeight(void) const;
 
+        int getDoorCount(void) const;
+        void setDoorCount(int doorCount);
+
+        Ogre::Real getDoorWidth(void) const;
+        void setDoorWidth(Ogre::Real doorWidth);
+
+        Ogre::Real getDoorHeight(void) const;
+        void setDoorHeight(Ogre::Real doorHeight);
+
         // -------------------------------------------------------------------------
         // Undo / Redo binary serialisation (mirrors RoadComponentBase interface)
         // -------------------------------------------------------------------------
@@ -588,6 +597,21 @@ namespace NOWA
         static Ogre::String AttrStairHeight()
         {
             return "Stair Height";
+        }
+        static const Ogre::String& AttrDoorCount(void)
+        {
+            static const Ogre::String attribute = "Door Count";
+            return attribute;
+        }
+        static const Ogre::String& AttrDoorWidth(void)
+        {
+            static const Ogre::String attribute = "Door Width";
+            return attribute;
+        }
+        static const Ogre::String& AttrDoorHeight(void)
+        {
+            static const Ogre::String attribute = "Door Height";
+            return attribute;
         }
         static Ogre::String AttrGenerateNow(void)
         {
@@ -841,6 +865,10 @@ namespace NOWA
          */
         bool exportMesh(const Ogre::String& filename);
 
+        void addWallQuadWithDoor(const Ogre::Vector3& bl, const Ogre::Vector3& br, const Ogre::Vector3& tl, const Ogre::Vector3& tr, const Ogre::Vector3& normal, Ogre::Real wallH, Ogre::Real uW, Ogre::Real vT, Ogre::Real doorW, Ogre::Real doorH);
+
+        std::set<int64_t> selectDoorFaces(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, unsigned int doorCount) const;
+
     private:
         static const uint32_t DUNGEONDATA_MAGIC = 0x44554E47u; ///< "DUNG"
         static const uint32_t DUNGEONDATA_VERSION = 1u;
@@ -881,6 +909,9 @@ namespace NOWA
         Variant* stairsProbability;
         Variant* addStairs;
         Variant* stairHeight;
+        Variant* doorCount;
+        Variant* doorWidth;
+        Variant* doorHeight;
         Variant* generateNow;
         Variant* convertToMesh;
 

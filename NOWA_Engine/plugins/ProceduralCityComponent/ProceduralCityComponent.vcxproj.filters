@@ -12,7 +12,10 @@
     <ClCompile Include="code\NOWAPrecompiled.cpp">
       <Filter>code</Filter>
     </ClCompile>
-	<ClCompile Include="code\startDll.cpp">
+    <ClCompile Include="code\startDll.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\CityRoadGraph.cpp">
       <Filter>code</Filter>
     </ClCompile>
   </ItemGroup>
@@ -21,6 +24,12 @@
       <Filter>code</Filter>
     </ClInclude>
     <ClInclude Include="code\NOWAPrecompiled.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\CityRoadGraph.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\CityTensorField.h">
       <Filter>code</Filter>
     </ClInclude>
   </ItemGroup>

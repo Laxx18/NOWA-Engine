@@ -1779,6 +1779,13 @@ void DesignState::update(Ogre::Real dt)
             NOWA::AppStateManager::getSingletonPtr()->getParticleFxModule()->update(dt);
         }
 
+		bool altKeyIsDown = (0 != (GetAsyncKeyState(VK_LMENU) & 0x8000));
+        if (true == altKeyIsDown && false == this->altKeyWasDown)
+        {
+            this->targetCoordinateSystemModeActive = !this->targetCoordinateSystemModeActive;
+        }
+        this->altKeyWasDown = altKeyIsDown;
+
         // Update GameObjects (includes Lua scripts) FIRST.
         // Lua reads m_curRotation via physComp:getOrientation() here.
         // At this point m_curRotation reflects the result of the PREVIOUS
@@ -1920,27 +1927,20 @@ void DesignState::renderUpdate(Ogre::Real dt)
         {
             this->firstTimeValueSet = true;
 
-            Ogre::Vector3 gravityDir = Ogre::Vector3::NEGATIVE_UNIT_Y; // gravity points down by default
+            auto* cameraManager = NOWA::AppStateManager::getSingletonPtr()->getCameraManager();
+            auto* behavior = cameraManager->getActiveCameraBehavior(cameraManager->getActiveCamera());
 
-            if (nullptr != this->selectedGameObject)
+            if (true == this->targetCoordinateSystemModeActive && nullptr != this->selectedGameObject)
             {
-                if (GetAsyncKeyState(VK_LSHIFT))
-                {
-                    // RIGHT ALT: the selected object's own orientation defines the frame.
-                    // Its local up becomes camera up -> gravity is the inverse of that.
-                    Ogre::Vector3 objectUp = this->selectedGameObject->getOrientation() * Ogre::Vector3::UNIT_Y;
-                    gravityDir = -objectUp;
-                }
-                else if (GetAsyncKeyState(VK_LMENU))
-                {
-                    // LEFT ALT: planet mode. Gravity points from the camera to the planet centre.
-                    gravityDir = this->selectedGameObject->getPosition() - this->camera->getDerivedPosition();
-                }
+                Ogre::Vector3 gravityDir = -(this->selectedGameObject->getOrientation() * Ogre::Vector3::UNIT_Y);
                 gravityDir.normalise();
+                behavior->setGravityDirection(gravityDir);
+            }
+            else
+            {
+                behavior->setGravityDirection(Ogre::Vector3::NEGATIVE_UNIT_Y);
             }
 
-            auto* cameraManager = NOWA::AppStateManager::getSingletonPtr()->getCameraManager();
-            cameraManager->getActiveCameraBehavior(cameraManager->getActiveCamera())->applyGravityDirection(gravityDir);
             cameraManager->rotateCamera(dt, false);
         }
 		else if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(0))

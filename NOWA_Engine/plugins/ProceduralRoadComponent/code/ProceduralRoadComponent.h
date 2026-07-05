@@ -561,6 +561,14 @@ namespace NOWA
         {
             return "GenerateSplitWaypoints";
         }
+        static Ogre::String AttrConformTerrainToRoad(void)
+        {
+            return "Conform Terrain To Road";
+        }
+        static Ogre::String AttrTerrainBlendMargin(void)
+        {
+            return "Terrain Blend Margin";
+        }
     protected:
         // Mouse handling for interactive road building
         virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
@@ -689,6 +697,8 @@ namespace NOWA
         void scheduleSnapIndicatorUpdate(void);
 
         void createWaypointNodes(bool splitLanes);
+
+        bool conformTerrainToRoadApply(void);
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;
@@ -726,6 +736,9 @@ namespace NOWA
         Variant* traceThreshold;    // layer value threshold (0-255)
         Variant* generateFromLayer; // button
         Variant* invertWaypoints;
+
+        Variant* conformTerrainToRoad;
+        Variant* terrainBlendMargin;
 
         // Road segments
         std::vector<RoadSegment> roadSegments;

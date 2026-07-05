@@ -145,7 +145,7 @@ namespace NOWA
     {
         if (nullptr != this->physicsActiveComponent && false == notSimulating && nullptr != this->baseCamera)
         {
-            this->baseCamera->applyGravityDirection(this->physicsActiveComponent->getGravityDirection());
+            this->baseCamera->setGravityDirection(this->physicsActiveComponent->getGravityDirection());
         }
     }
 

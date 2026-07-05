@@ -72,75 +72,9 @@ namespace NOWA
         this->physicsBody = body;
     }
 
-    void BaseCamera::applyGravityDirection(const Ogre::Vector3& gravityDirection)
+    void BaseCamera::setGravityDirection(const Ogre::Vector3& gravityDirection)
     {
-        Ogre::Vector3 newGravityDirection = gravityDirection;
-        if (newGravityDirection.isZeroLength())
-        {
-            newGravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
-        }
-        newGravityDirection.normalise();
-
-        //// Nur neu ausrichten, wenn sich die Gravitationsrichtung tatsächlich
-        //// geändert hat -- verhindert unnötiges Re-Orthogonalisieren (und
-        //// damit potenzielles Nachzittern) bei jedem Frame, in dem sich
-        //// ohnehin nichts ändert.
-        //const Ogre::Real changeDot = this->gravityDirection.dotProduct(newGravityDirection);
-        //const bool gravityChanged = (changeDot < 0.9999f);
-
-        //this->gravityDirection = newGravityDirection;
-
-        //if (false == gravityChanged || nullptr == this->camera)
-        //{
-        //    return;
-        //}
-
-        //// ------------------------------------------------------------------
-        //// Re-orthogonalize the camera's CURRENT orientation onto the new up
-        //// vector immediately, instead of waiting for the next rotateCamera()
-        //// mouse-move call to correct it. Without this, moveCamera()'s WASD
-        //// translation (which multiplies moveValue by the camera's raw,
-        //// still-stale orientation) uses the OLD up/right/forward basis until
-        //// the user happens to move the mouse -- producing exactly the
-        //// "axes are wrong when entering planet mode" symptom.
-        ////
-        //// Strategy: keep the camera's current forward direction as close as
-        //// possible, but re-derive right/up from the NEW gravity so roll error
-        //// relative to the new frame is eliminated immediately.
-        //// ------------------------------------------------------------------
-        //Ogre::Vector3 newUp = -this->gravityDirection;
-
-        //Ogre::Quaternion currentOrientation = this->getOrientation();
-        //Ogre::Vector3 currentForward = currentOrientation * (-Ogre::Vector3::UNIT_Z);
-
-        //// Project forward onto the plane perpendicular to the new up -- removes
-        //// whatever pitch/roll component no longer makes sense in the new frame.
-        //Ogre::Vector3 newForward = currentForward - currentForward.dotProduct(newUp) * newUp;
-        //if (newForward.squaredLength() < 1e-6f)
-        //{
-        //    // Camera was looking almost exactly along the new up/down axis --
-        //    // fall back to a stable reference so we don't build a degenerate frame.
-        //    Ogre::Vector3 worldRef = (Ogre::Math::Abs(newUp.dotProduct(Ogre::Vector3::UNIT_Z)) < 0.9f) ? Ogre::Vector3::UNIT_Z : Ogre::Vector3::UNIT_X;
-        //    newForward = worldRef - worldRef.dotProduct(newUp) * newUp;
-        //}
-        //newForward.normalise();
-
-        //Ogre::Vector3 newRight = newForward.crossProduct(newUp);
-        //newRight.normalise();
-        //Ogre::Vector3 correctedUp = newRight.crossProduct(newForward);
-
-        //// Build the corrected orientation from this orthonormal basis.
-        //// Ogre convention: camera looks down -Z, so forward = -Z axis.
-        //Ogre::Quaternion correctedOrientation;
-        //correctedOrientation.FromAxes(newRight, correctedUp, -newForward);
-
-        //this->camera->setOrientation(correctedOrientation);
-        //NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, correctedOrientation);
-
-        // Reset the rotation low-pass filter state so rotateCamera() doesn't
-        // try to smoothly blend FROM the old (now corrected) orientation using
-        // stale lastValue -- avoids a visible snap-back on the next mouse move.
-        this->firstTimeValueSet = true;
+        this->gravityDirection = gravityDirection;
     }
 
     void BaseCamera::moveCamera(Ogre::Real dt)
