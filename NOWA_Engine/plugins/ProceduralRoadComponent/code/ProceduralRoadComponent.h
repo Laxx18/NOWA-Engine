@@ -433,6 +433,13 @@ namespace NOWA
 
         void addRoadSegmentBatch(const Ogre::Vector3& start, const Ogre::Vector3& end);
 
+         /**
+         * @brief Returns the XZ start/end positions of every current road segment.
+         *        Used by ProceduralCityComponent::generateBuildingsOnly() to build
+         *        fresh road-exclusion zones from the current (designer-edited) road state.
+         */
+        std::vector<std::pair<Ogre::Vector2, Ogre::Vector2>> getSegmentEndpoints(void) const;
+
         void finalizeBatch(void);
 
         void beginBatch(void);

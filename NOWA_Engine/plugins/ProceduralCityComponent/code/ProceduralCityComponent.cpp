@@ -901,6 +901,13 @@ namespace NOWA
         std::vector<CityBatch> batches;
         bool fromCache = this->loadCityDataFromFile(batches);
 
+        // ---- DIAGNOSTIC LOG — shows which path is taken ----------------------
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] loadOrGenerateCity: fromCache=" +
+            Ogre::StringConverter::toString(fromCache) +
+            " generateRoads=" + Ogre::StringConverter::toString(this->generateRoadsAttr->getBool()) +
+            " variance=" + Ogre::StringConverter::toString(this->roadVarianceAttr->getReal()));
+
         if (false == fromCache)
         {
             batches = this->generateCityLayout();
@@ -949,12 +956,29 @@ namespace NOWA
         // local coordinate space as the road mesh so they always align correctly.
         this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
 
-        // Keep organicRoadSegs from the previous organic generation.
-        // When the designer uses "Generate Buildings", roads stay as-is and we want
-        // building placement to respect those road positions.  If roads were built
-        // organically, the stored segments are still valid exclusion zones.
-        // Only clear them if no organic segments exist (grid-mode or first run).
-        // organicRoadSegs is NOT cleared here — we intentionally preserve it.
+        // Build fresh organicRoadSegs from the CURRENT PRC road state.
+        // This is the key fix: when the designer removes/adds roads then clicks
+        // "Generate Buildings", we read what roads CURRENTLY exist and exclude
+        // buildings from those positions.  Freed road space gets buildings ✓.
+        this->organicRoadSegs.clear();
+        {
+            auto roadCompPtr2 = NOWA::makeStrongPtr(
+                this->gameObjectPtr->getComponent<ProceduralRoadComponent>());
+            if (nullptr != roadCompPtr2)
+            {
+                const auto endpoints = roadCompPtr2->getSegmentEndpoints();
+                this->organicRoadSegs.reserve(endpoints.size());
+                for (const auto& ep : endpoints)
+                {
+                    RoadSegXZ seg; seg.a = ep.first; seg.b = ep.second;
+                    this->organicRoadSegs.push_back(seg);
+                }
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralCityComponent] generateBuildingsOnly: read " +
+                    Ogre::StringConverter::toString(static_cast<unsigned int>(this->organicRoadSegs.size())) +
+                    " road segments from PRC for building exclusion.");
+            }
+        }
 
         // Generate building layout (skip road build)
         std::vector<CityBatch> batches = this->generateCityLayout(true /*skipRoads*/);
@@ -1726,6 +1750,14 @@ namespace NOWA
         roadComp->clearAllSegments();
         this->organicRoadSegs.clear(); // reset road exclusion zones on each generation
 
+        // ---- DIAGNOSTIC LOG — shows exact state entering road generation -----
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] buildCityRoadNetwork ENTERED: "
+            "variance=" + Ogre::StringConverter::toString(this->roadVarianceAttr->getReal()) +
+            " generateRoads=" + Ogre::StringConverter::toString(this->generateRoadsAttr->getBool()) +
+            " roadComp.segCount=" + Ogre::StringConverter::toString(roadComp->getSegmentCount()) +
+            " cityGridX.size=" + Ogre::StringConverter::toString(static_cast<unsigned int>(this->cityGridX.size())));
+
         // Use the PERTURBED grid computed in generateCityLayout (stored in cityGridX/cityGridZ).
         // If not yet computed (e.g., first call before layout), fall back to base grid.
         if (this->cityGridX.size() < 2 || this->cityGridZ.size() < 2)
@@ -2009,6 +2041,10 @@ namespace NOWA
                 Ogre::Vector3(pA.x, 0.f, pA.y),
                 Ogre::Vector3(pB.x, 0.f, pB.y));
         }
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] buildOrganicRoadNetwork: calling endBatch() — "
+            "this triggers rebuildMesh() with all " +
+            Ogre::StringConverter::toString(static_cast<unsigned int>(gEdges.size())) + " segments.");
         roadComp->endBatch();
         // Buildings remain on cityGridX/Z in Phase 1.
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
