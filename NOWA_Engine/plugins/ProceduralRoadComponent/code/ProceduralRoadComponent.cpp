@@ -1353,8 +1353,8 @@ namespace NOWA
                 this->loadedRoadEndpointHeight = lastCP.smoothedHeight;
                 this->hasLoadedRoadEndpoint = true;
 
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "[ProceduralRoadComponent] Updated continuation point: " + Ogre::StringConverter::toString(this->loadedRoadEndpoint) + ", height: " + Ogre::StringConverter::toString(this->loadedRoadEndpointHeight));
+                /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[ProceduralRoadComponent] Updated continuation point: " + Ogre::StringConverter::toString(this->loadedRoadEndpoint) + ", height: " + Ogre::StringConverter::toString(this->loadedRoadEndpointHeight));*/
             }
         }
         else

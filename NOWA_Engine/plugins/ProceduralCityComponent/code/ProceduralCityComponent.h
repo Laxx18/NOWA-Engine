@@ -7,26 +7,31 @@ GPL v3
 #ifndef PROCEDURAL_CITY_COMPONENT_H
 #define PROCEDURAL_CITY_COMPONENT_H
 
+#include "CityFaceExtractor.h"
+#include "CityLotSubdivider.h"
+#include "CityRoadGraph.h"
+#include "CityTensorField.h"
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
 #include "utilities/XMLConverter.h"
-#include "CityTensorField.h"
-#include "CityRoadGraph.h"
+
+#include <OISKeyboard.h>
+#include <OISMouse.h>
 
 #include "OgreIdString.h"
 #include "OgreItem.h"
 #include "OgreMesh2.h"
+#include "OgreQuaternion.h"
 #include "OgreSceneNode.h"
 #include "OgreVector2.h"
 #include "OgreVector3.h"
 #include "OgreVector4.h"
-#include "OgreQuaternion.h"
 
 #include "OgreAbiUtils.h"
 
-#include <vector>
 #include <array>
 #include <cstdint>
+#include <vector>
 
 namespace NOWA
 {
@@ -124,16 +129,16 @@ namespace NOWA
      */
     struct BuildingInstance
     {
-        Ogre::Vector3    position;      ///< World-space lot centre (XYZ)
-        Ogre::Quaternion orientation;   ///< Yaw only (random per lot, seeded)
-        Ogre::Vector3    footprint;     ///< X=width (local), Y=wallHeight, Z=depth (local)
-        unsigned int     archetypeIdx;  ///< Which district produced this building
-        unsigned int     variantSeed;   ///< Per-building RNG seed for datablock selection
-        unsigned int     roofType;      ///< 0 = flat, 1 = gabled, 2 = hip
-        float            roofPitch;     ///< Normalized pitch [0..1] (0=gentle, 1=steep)
-        float            groundHeight;  ///< World Y of the lot's ground surface
-        float            lotHalfRight;  ///< Half-width of the lot in the building's 'right' direction
-                                        ///  (used by garage generation to avoid extending into the road)
+        Ogre::Vector3 position;       ///< World-space lot centre (XYZ)
+        Ogre::Quaternion orientation; ///< Yaw only (random per lot, seeded)
+        Ogre::Vector3 footprint;      ///< X=width (local), Y=wallHeight, Z=depth (local)
+        unsigned int archetypeIdx;    ///< Which district produced this building
+        unsigned int variantSeed;     ///< Per-building RNG seed for datablock selection
+        unsigned int roofType;        ///< 0 = flat, 1 = gabled, 2 = hip
+        float roofPitch;              ///< Normalized pitch [0..1] (0=gentle, 1=steep)
+        float groundHeight;           ///< World Y of the lot's ground surface
+        float lotHalfRight;           ///< Half-width of the lot in the building's 'right' direction
+                                      ///  (used by garage generation to avoid extending into the road)
     };
 
     /**
@@ -145,30 +150,31 @@ namespace NOWA
      */
     struct CityBatch
     {
-        unsigned int                 materialSlot;   ///< 0=wall 1=roof 2=window 3=trim
-        size_t                       districtIdx;
+        unsigned int materialSlot; ///< 0=wall 1=roof 2=window 3=trim
+        size_t districtIdx;
         std::vector<BuildingInstance> instances;
 
         // Accumulated on the logic thread (8 floats/vertex: pos.xyz+normal.xyz+uv.xy)
-        std::vector<float>           rawVertices;
-        std::vector<Ogre::uint32>    rawIndices;
-        size_t                       numVertices;
+        std::vector<float> rawVertices;
+        std::vector<Ogre::uint32> rawIndices;
+        size_t numVertices;
 
         // Render-thread results: one Item+Node per 10m cell
-        std::vector<Ogre::Item*>     items;
+        std::vector<Ogre::Item*> items;
         std::vector<Ogre::SceneNode*> nodes;
 
-        CityBatch() : materialSlot(0), districtIdx(0), numVertices(0) {}
+        CityBatch() : materialSlot(0), districtIdx(0), numVertices(0)
+        {
+        }
     };
 
     // =========================================================================
     // Component
     // =========================================================================
 
-    class EXPORTED ProceduralCityComponent : public GameObjectComponent, public Ogre::Plugin
+    class EXPORTED ProceduralCityComponent : public GameObjectComponent, public Ogre::Plugin, public OIS::KeyListener, public OIS::MouseListener
     {
     public:
-
         typedef boost::shared_ptr<ProceduralCityComponent> ProceduralCityComponentPtr;
 
         // ---- Plugin lifecycle -----------------------------------------------
@@ -265,54 +271,164 @@ namespace NOWA
 
         // ---- Attribute name accessors --------------------------------------
     public:
-        static Ogre::String AttrActivated(void)             { return "Activated"; }
-        static Ogre::String AttrCityBounds(void)            { return "CityBounds"; }
-        static Ogre::String AttrMasterSeed(void)            { return "MasterSeed"; }
-        static Ogre::String AttrBlockSize(void)             { return "BlockSize"; }
+        static Ogre::String AttrActivated(void)
+        {
+            return "Activated";
+        }
+        static Ogre::String AttrCityBounds(void)
+        {
+            return "CityBounds";
+        }
+        static Ogre::String AttrMasterSeed(void)
+        {
+            return "MasterSeed";
+        }
+        static Ogre::String AttrBlockSize(void)
+        {
+            return "BlockSize";
+        }
         // Roads (internal geometry)
-        static Ogre::String AttrRoadWidth(void)             { return "RoadWidth"; }
-        static Ogre::String AttrRoadVariance(void)           { return "RoadVariance"; }
-        static Ogre::String AttrSidewalkWidth(void)         { return "SidewalkWidth"; }
-        static Ogre::String AttrCurbHeight(void)            { return "CurbHeight"; }
-        static Ogre::String AttrGenerateRoads(void)         { return "GenerateRoads"; }
-        static Ogre::String AttrRoadDatablock(void)         { return "RoadDatablock"; }
-        static Ogre::String AttrCurbDatablock(void)         { return "CurbDatablock"; }
+        static Ogre::String AttrRoadWidth(void)
+        {
+            return "RoadWidth";
+        }
+        static Ogre::String AttrRoadVariance(void)
+        {
+            return "RoadVariance";
+        }
+        static Ogre::String AttrSidewalkWidth(void)
+        {
+            return "SidewalkWidth";
+        }
+        static Ogre::String AttrCurbHeight(void)
+        {
+            return "CurbHeight";
+        }
+        static Ogre::String AttrGenerateRoads(void)
+        {
+            return "GenerateRoads";
+        }
+        static Ogre::String AttrRoadDatablock(void)
+        {
+            return "RoadDatablock";
+        }
+        static Ogre::String AttrCurbDatablock(void)
+        {
+            return "CurbDatablock";
+        }
         // Courtyard walls (internal geometry)
         // Wall feature removed — see changelog
         // Door (global, shared by all buildings)
-        static Ogre::String AttrDoorDatablock(void)         { return "DoorDatablock"; }
-        static Ogre::String AttrGarageDatablock(void)       { return "GarageDatablock"; }
-        static Ogre::String AttrGenerateGarage(void)        { return "GenerateGarage"; }
+        static Ogre::String AttrDoorDatablock(void)
+        {
+            return "DoorDatablock";
+        }
+        static Ogre::String AttrGarageDatablock(void)
+        {
+            return "GarageDatablock";
+        }
+        static Ogre::String AttrGenerateGarage(void)
+        {
+            return "GenerateGarage";
+        }
         // External road connection (optional)
-        static Ogre::String AttrRoadComponentId(void)       { return "RoadComponentId"; }
-        static Ogre::String AttrRoadConnectionAtStart(void) { return "RoadConnectionAtStart"; }
+        static Ogre::String AttrRoadComponentId(void)
+        {
+            return "RoadComponentId";
+        }
+        static Ogre::String AttrRoadConnectionAtStart(void)
+        {
+            return "RoadConnectionAtStart";
+        }
         // Districts
-        static Ogre::String AttrDistrictCount(void)         { return "DistrictCount"; }
+        static Ogre::String AttrDistrictCount(void)
+        {
+            return "DistrictCount";
+        }
         // Action buttons
-        static Ogre::String AttrGenerate(void)              { return "Generate"; }
-        static Ogre::String AttrClear(void)                 { return "Clear"; }
+        static Ogre::String AttrGenerate(void)
+        {
+            return "Generate";
+        }
+        static Ogre::String AttrClear(void)
+        {
+            return "Clear";
+        }
         /// Regenerate ONLY buildings — roads stay as the designer left them.
-        static Ogre::String AttrGenerateBuildings(void)     { return "GenerateBuildings"; }
+        static Ogre::String AttrGenerateBuildings(void)
+        {
+            return "GenerateBuildings";
+        }
+        /// Edit mode: "Object" = normal, "Segment" = click-select buildings, X=delete.
+        static Ogre::String AttrEditMode(void)
+        {
+            return "EditMode";
+        }
 
         // Per-district names (index appended at runtime, e.g. "DistrictName0")
-        static Ogre::String AttrDistrictName(void)            { return "DistrictName"; }
-        static Ogre::String AttrDistrictType(void)            { return "DistrictType"; }
-        static Ogre::String AttrDistrictMinHeight(void)       { return "DistrictMinHeight"; }
-        static Ogre::String AttrDistrictMaxHeight(void)       { return "DistrictMaxHeight"; }
-        static Ogre::String AttrDistrictMinFootprint(void)    { return "DistrictMinFootprint"; }
-        static Ogre::String AttrDistrictMaxFootprint(void)    { return "DistrictMaxFootprint"; }
-        static Ogre::String AttrDistrictDensity(void)         { return "DistrictDensity"; }
-        static Ogre::String AttrDistrictCourtyardProb(void)   { return "DistrictCourtyardProb"; }
-        static Ogre::String AttrDistrictWallDatablock(void)   { return "DistrictWallDatablock"; }
-        static Ogre::String AttrDistrictRoofDatablock(void)   { return "DistrictRoofDatablock"; }
-        static Ogre::String AttrDistrictWindowDatablock(void) { return "DistrictWindowDatablock"; }
-        static Ogre::String AttrDistrictTrimDatablock(void)   { return "DistrictTrimDatablock"; }
+        static Ogre::String AttrDistrictName(void)
+        {
+            return "DistrictName";
+        }
+        static Ogre::String AttrDistrictType(void)
+        {
+            return "DistrictType";
+        }
+        static Ogre::String AttrDistrictMinHeight(void)
+        {
+            return "DistrictMinHeight";
+        }
+        static Ogre::String AttrDistrictMaxHeight(void)
+        {
+            return "DistrictMaxHeight";
+        }
+        static Ogre::String AttrDistrictMinFootprint(void)
+        {
+            return "DistrictMinFootprint";
+        }
+        static Ogre::String AttrDistrictMaxFootprint(void)
+        {
+            return "DistrictMaxFootprint";
+        }
+        static Ogre::String AttrDistrictDensity(void)
+        {
+            return "DistrictDensity";
+        }
+        static Ogre::String AttrDistrictCourtyardProb(void)
+        {
+            return "DistrictCourtyardProb";
+        }
+        static Ogre::String AttrDistrictWallDatablock(void)
+        {
+            return "DistrictWallDatablock";
+        }
+        static Ogre::String AttrDistrictRoofDatablock(void)
+        {
+            return "DistrictRoofDatablock";
+        }
+        static Ogre::String AttrDistrictWindowDatablock(void)
+        {
+            return "DistrictWindowDatablock";
+        }
+        static Ogre::String AttrDistrictTrimDatablock(void)
+        {
+            return "DistrictTrimDatablock";
+        }
 
         // ---- Action IDs ---------------------------------------------------
 
-        static Ogre::String ActionGenerate(void) { return "ProceduralCityComponent.Generate"; }
-        static Ogre::String ActionClear(void)    { return "ProceduralCityComponent.Clear"; }
-        static Ogre::String ActionGenerateBuildings(void) { return "ProceduralCityComponent.GenerateBuildings"; }
+        static Ogre::String ActionGenerate(void)
+        {
+            return "ProceduralCityComponent.Generate";
+        }
+        static Ogre::String ActionClear(void)
+        {
+            return "ProceduralCityComponent.Clear";
+        }
+        static Ogre::String ActionGenerateBuildings(void)
+        {
+            return "ProceduralCityComponent.GenerateBuildings";
+        }
 
     public:
         // ---- Global parameters --------------------------------------------
@@ -324,20 +440,20 @@ namespace NOWA
          *        ((minX+maxX)*0.5, 0, (minZ+maxZ)*0.5); the gameObject node
          *        is placed there by the designer.
          */
-        void          setCityBounds(const Ogre::Vector4& bounds);
+        void setCityBounds(const Ogre::Vector4& bounds);
         Ogre::Vector4 getCityBounds(void) const;
 
         /**
          * @brief Master RNG seed.  Same seed + same parameters = identical city.
          */
-        void         setMasterSeed(unsigned int seed);
+        void setMasterSeed(unsigned int seed);
         unsigned int getMasterSeed(void) const;
 
         /**
          * @brief Road-centre-to-road-centre distance (block pitch) in meters.
          *        Controls how many blocks fit inside cityBounds.  Typical: 30-80m.
          */
-        void       setBlockSize(Ogre::Real size);
+        void setBlockSize(Ogre::Real size);
         Ogre::Real getBlockSize(void) const;
 
         // ---- Internal road geometry ----------------------------------------
@@ -347,20 +463,20 @@ namespace NOWA
          *        Default 4m. Also propagated to the external road component's
          *        connecting segment (if roadComponentId is set) via setRoadWidth().
          */
-        void       setRoadWidth(Ogre::Real width);
+        void setRoadWidth(Ogre::Real width);
         Ogre::Real getRoadWidth(void) const;
 
         /**
          * @brief Setback between road edge and building face in meters.
          *        Buildings are inset by this amount from each block edge.
          */
-        void       setSidewalkWidth(Ogre::Real width);
+        void setSidewalkWidth(Ogre::Real width);
         Ogre::Real getSidewalkWidth(void) const;
 
         /**
          * @brief Height of the kerb strip in meters (0 = flat, no kerb).
          */
-        void       setCurbHeight(Ogre::Real height);
+        void setCurbHeight(Ogre::Real height);
         Ogre::Real getCurbHeight(void) const;
 
         /**
@@ -374,14 +490,14 @@ namespace NOWA
          * @brief PBS datablock for the road surface (asphalt / cobble / gravel).
          *        Placeholder default: "city_road_01"
          */
-        void         setRoadDatablock(const Ogre::String& name);
+        void setRoadDatablock(const Ogre::String& name);
         Ogre::String getRoadDatablock(void) const;
 
         /**
          * @brief PBS datablock for the kerb / curb strip.
          *        Placeholder default: "city_curb_01"
          */
-        void         setCurbDatablock(const Ogre::String& name);
+        void setCurbDatablock(const Ogre::String& name);
         Ogre::String getCurbDatablock(void) const;
 
         // ---- Internal courtyard wall geometry ------------------------------
@@ -407,14 +523,14 @@ namespace NOWA
          *        Shared by all buildings in the city (global, not per-district).
          *        Placeholder default: "city_door_01"
          */
-        void         setDoorDatablock(const Ogre::String& name);
+        void setDoorDatablock(const Ogre::String& name);
         Ogre::String getDoorDatablock(void) const;
 
         /**
          * @brief PBS datablock for garage doors. ~30 % of Residential buildings get
          *        an attached garage box on their right face.  Placeholder: "city_garage_01".
          */
-        void         setGarageDatablock(const Ogre::String& name);
+        void setGarageDatablock(const Ogre::String& name);
         Ogre::String getGarageDatablock(void) const;
 
         // ---- External road connection (optional) ---------------------------
@@ -443,7 +559,7 @@ namespace NOWA
          *            // true  -> first segment's forward direction, reversed
          *            // false -> last segment's forward direction (already points away)
          */
-        void          setRoadComponentId(unsigned long id);
+        void setRoadComponentId(unsigned long id);
         unsigned long getRoadComponentId(void) const;
 
         /**
@@ -466,11 +582,11 @@ namespace NOWA
          *        them and triggers an AttrActionNeedRefresh.  Districts are mapped
          *        onto city blocks via a Voronoi cell system seeded from masterSeed.
          */
-        void         setDistrictCount(unsigned int count);
+        void setDistrictCount(unsigned int count);
         unsigned int getDistrictCount(void) const;
 
-        void          setDistrictName(unsigned int index, const Ogre::String& name);
-        Ogre::String  getDistrictName(unsigned int index) const;
+        void setDistrictName(unsigned int index, const Ogre::String& name);
+        Ogre::String getDistrictName(unsigned int index) const;
 
         /**
          * @brief Building type for district i.
@@ -485,10 +601,10 @@ namespace NOWA
          *          Industrial       minH=5  maxH=12
          *          Mixed            minH=4  maxH=15
          */
-        void         setDistrictType(unsigned int index, const Ogre::String& type);
+        void setDistrictType(unsigned int index, const Ogre::String& type);
         Ogre::String getDistrictType(unsigned int index) const;
 
-        void       setDistrictMinHeight(unsigned int index, Ogre::Real height);
+        void setDistrictMinHeight(unsigned int index, Ogre::Real height);
         Ogre::Real getDistrictMinHeight(unsigned int index) const;
 
         /**
@@ -496,20 +612,20 @@ namespace NOWA
          *        AAA variance: every building picks a random height in
          *        [minHeight, maxHeight] from BuildingInstance::variantSeed.
          */
-        void       setDistrictMaxHeight(unsigned int index, Ogre::Real height);
+        void setDistrictMaxHeight(unsigned int index, Ogre::Real height);
         Ogre::Real getDistrictMaxHeight(unsigned int index) const;
 
-        void          setDistrictMinFootprint(unsigned int index, const Ogre::Vector2& fp);
+        void setDistrictMinFootprint(unsigned int index, const Ogre::Vector2& fp);
         Ogre::Vector2 getDistrictMinFootprint(unsigned int index) const;
 
-        void          setDistrictMaxFootprint(unsigned int index, const Ogre::Vector2& fp);
+        void setDistrictMaxFootprint(unsigned int index, const Ogre::Vector2& fp);
         Ogre::Vector2 getDistrictMaxFootprint(unsigned int index) const;
 
         /**
          * @brief Fraction [0..1] of lots in district i that contain a building.
          *        Default 0.85.
          */
-        void       setDistrictDensity(unsigned int index, Ogre::Real density);
+        void setDistrictDensity(unsigned int index, Ogre::Real density);
         Ogre::Real getDistrictDensity(unsigned int index) const;
 
         /**
@@ -517,7 +633,7 @@ namespace NOWA
          *        wall along its perimeter.  Ignored if generateWalls is false.
          *        Default 0.3.
          */
-        void       setDistrictCourtyardProb(unsigned int index, Ogre::Real prob);
+        void setDistrictCourtyardProb(unsigned int index, Ogre::Real prob);
 
         /**
          * @brief Wall surface datablock for district i, variant v (0..3).
@@ -530,7 +646,7 @@ namespace NOWA
          *          v=2  "city_wall_03"
          *          v=3  "city_wall_04"
          */
-        void         setDistrictWallDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
+        void setDistrictWallDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
 
         /**
          * @brief Roof datablock for district i, variant v (0..2).
@@ -539,7 +655,7 @@ namespace NOWA
          *          v=1  "city_roof_02"
          *          v=2  "city_roof_03"
          */
-        void         setDistrictRoofDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
+        void setDistrictRoofDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
         Ogre::String getDistrictRoofDatablock(unsigned int districtIdx, unsigned int variantIdx) const;
 
         /**
@@ -549,7 +665,7 @@ namespace NOWA
          *          v=1  "city_window_02"
          *          v=2  "city_window_03"
          */
-        void         setDistrictWindowDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
+        void setDistrictWindowDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
         Ogre::String getDistrictWindowDatablock(unsigned int districtIdx, unsigned int variantIdx) const;
 
         /**
@@ -559,7 +675,7 @@ namespace NOWA
          *          v=0  "city_trim_01"
          *          v=1  "city_trim_02"
          */
-        void         setDistrictTrimDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
+        void setDistrictTrimDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
         Ogre::String getDistrictTrimDatablock(unsigned int districtIdx, unsigned int variantIdx) const;
 
         // ---- Generation API -----------------------------------------------
@@ -584,6 +700,23 @@ namespace NOWA
          */
         void generateBuildingsOnly(void);
 
+        // ---- Edit Mode (Segment) ----------------------------------------
+        bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
+        bool mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
+        bool mouseMoved(const OIS::MouseEvent& evt) override;
+        bool keyPressed(const OIS::KeyEvent& evt) override;
+        bool keyReleased(const OIS::KeyEvent& evt) override;
+
+        void addInputListener(void);
+        void removeInputListener(void);
+        void updateModificationState(void);
+        void deleteSelectedBuilding(void);
+        void rebuildBatchesFromStoredBuildings(void);
+        int findBuildingAtScreenPos(int screenX, int screenY);
+        void createSelectionOverlay(void);
+        void destroySelectionOverlay(void);
+        void updateSelectionOverlay(void);
+
         /**
          * @brief Destroy all Items + SceneNodes.
          *        deleteCacheFile=false in onRemoveComponent() (scene teardown),
@@ -592,7 +725,6 @@ namespace NOWA
         void clearCity(bool deleteCacheFile = false);
 
     private:
-
         // ---- Internal structs ----------------------------------------------
 
         /**
@@ -603,21 +735,21 @@ namespace NOWA
          */
         struct CityDistrict
         {
-            Ogre::String  name            = "District";
-            Ogre::String  type            = "Residential_Low";
-            Ogre::Real    minHeight       = 4.0f;
-            Ogre::Real    maxHeight       = 9.0f;
-            Ogre::Vector2 minFootprint    = Ogre::Vector2(6.0f,  6.0f);
-            Ogre::Vector2 maxFootprint    = Ogre::Vector2(12.0f, 12.0f);
-            Ogre::Real    density         = 0.85f;
-            Ogre::Real    courtyardProb   = 0.3f;
+            Ogre::String name = "District";
+            Ogre::String type = "Residential_Low";
+            Ogre::Real minHeight = 4.0f;
+            Ogre::Real maxHeight = 9.0f;
+            Ogre::Vector2 minFootprint = Ogre::Vector2(6.0f, 6.0f);
+            Ogre::Vector2 maxFootprint = Ogre::Vector2(12.0f, 12.0f);
+            Ogre::Real density = 0.85f;
+            Ogre::Real courtyardProb = 0.3f;
 
             // AAA variance: multiple datablocks per material slot.
             // One is selected per building from BuildingInstance::variantSeed.
-            Ogre::String  wallDatablocks[4]   = { "city_wall_01",   "city_wall_02",   "city_wall_03",   "city_wall_04"   };
-            Ogre::String  roofDatablocks[3]   = { "city_roof_01",   "city_roof_02",   "city_roof_03"                     };
-            Ogre::String  windowDatablocks[3] = { "city_window_01", "city_window_02", "city_window_03"                   };
-            Ogre::String  trimDatablocks[2]   = { "city_trim_01",   "city_trim_02"                                       };
+            Ogre::String wallDatablocks[4] = {"city_wall_01", "city_wall_02", "city_wall_03", "city_wall_04"};
+            Ogre::String roofDatablocks[3] = {"city_roof_01", "city_roof_02", "city_roof_03"};
+            Ogre::String windowDatablocks[3] = {"city_window_01", "city_window_02", "city_window_03"};
+            Ogre::String trimDatablocks[2] = {"city_trim_01", "city_trim_02"};
         };
 
         /**
@@ -625,11 +757,11 @@ namespace NOWA
          */
         struct CityLot
         {
-            Ogre::Vector3 centre;       ///< World-space XYZ lot centre
-            Ogre::Vector2 size;         ///< XZ footprint in meters
-            Ogre::Real    groundHeight; ///< Terrain Y at lot centre
-            unsigned int  districtIdx;
-            bool          occupied;
+            Ogre::Vector3 centre;    ///< World-space XYZ lot centre
+            Ogre::Vector2 size;      ///< XZ footprint in meters
+            Ogre::Real groundHeight; ///< Terrain Y at lot centre
+            unsigned int districtIdx;
+            bool occupied;
         };
 
         /**
@@ -637,12 +769,12 @@ namespace NOWA
          */
         struct CityBlock
         {
-            Ogre::Vector3            centre;           ///< World-space block centre
-            Ogre::Vector2            size;             ///< XZ footprint (road-to-road)
-            Ogre::Real               groundHeight;
-            unsigned int             districtIdx;
-            bool                     hasCourtyardWall;
-            std::vector<CityLot>     lots;
+            Ogre::Vector3 centre; ///< World-space block centre
+            Ogre::Vector2 size;   ///< XZ footprint (road-to-road)
+            Ogre::Real groundHeight;
+            unsigned int districtIdx;
+            bool hasCourtyardWall;
+            std::vector<CityLot> lots;
         };
 
         // ---- Generation pipeline ------------------------------------------
@@ -699,15 +831,9 @@ namespace NOWA
          *        The cell-merge step in createCityOnRenderThread() handles spatial
          *        grouping; there is no per-building local origin.
          */
-        void generateBuildingGeometry(const BuildingInstance&  building,
-                                      const CityDistrict&      district,
-                                      const Ogre::Vector3&     localOrigin,
-                                      std::vector<float>&      wallV,    std::vector<Ogre::uint32>& wallI,    size_t& wallN,
-                                      std::vector<float>&      roofV,    std::vector<Ogre::uint32>& roofI,    size_t& roofN,
-                                      std::vector<float>&      windowV,  std::vector<Ogre::uint32>& windowI,  size_t& windowN,
-                                      std::vector<float>&      trimV,    std::vector<Ogre::uint32>& trimI,    size_t& trimN,
-                                      std::vector<float>&      doorV,    std::vector<Ogre::uint32>& doorI,    size_t& doorN,
-                                      std::vector<float>&      garageV,  std::vector<Ogre::uint32>& garageI,  size_t& garageN);
+        void generateBuildingGeometry(const BuildingInstance& building, const CityDistrict& district, const Ogre::Vector3& localOrigin, std::vector<float>& wallV, std::vector<Ogre::uint32>& wallI, size_t& wallN, std::vector<float>& roofV,
+            std::vector<Ogre::uint32>& roofI, size_t& roofN, std::vector<float>& windowV, std::vector<Ogre::uint32>& windowI, size_t& windowN, std::vector<float>& trimV, std::vector<Ogre::uint32>& trimI, size_t& trimN, std::vector<float>& doorV,
+            std::vector<Ogre::uint32>& doorI, size_t& doorN, std::vector<float>& garageV, std::vector<Ogre::uint32>& garageI, size_t& garageN);
 
         /**
          * @brief Drive the auto-created ProceduralRoadComponent to lay out the road grid
@@ -732,10 +858,8 @@ namespace NOWA
          *        accumulation buffers. KEPT FOR REFERENCE but no longer called —
          *        replaced by buildCityRoadNetwork().
          */
-        void generateRoadGeometry(const std::vector<CityBlock>& blocks,
-                                  const Ogre::Vector3&           localOrigin,
-                                  std::vector<float>&            roadV, std::vector<Ogre::uint32>& roadI, size_t& roadN,
-                                  std::vector<float>&            curbV, std::vector<Ogre::uint32>& curbI, size_t& curbN);
+        void generateRoadGeometry(const std::vector<CityBlock>& blocks, const Ogre::Vector3& localOrigin, std::vector<float>& roadV, std::vector<Ogre::uint32>& roadI, size_t& roadN, std::vector<float>& curbV, std::vector<Ogre::uint32>& curbI,
+            size_t& curbN);
 
         /**
          * @brief Generate solid courtyard-wall geometry (matching
@@ -743,9 +867,7 @@ namespace NOWA
          *        for all blocks where hasCourtyardWall is true.
          *        NOT called if generateWalls is false.
          */
-        void generateCourtyardWallGeometry(const std::vector<CityBlock>& blocks,
-                                           const Ogre::Vector3&           localOrigin,
-                                           std::vector<float>&            wallV, std::vector<Ogre::uint32>& wallI, size_t& wallN);
+        void generateCourtyardWallGeometry(const std::vector<CityBlock>& blocks, const Ogre::Vector3& localOrigin, std::vector<float>& wallV, std::vector<Ogre::uint32>& wallI, size_t& wallN);
 
         /**
          * @brief Connect city to external ProceduralRoadComponent (optional).
@@ -781,13 +903,8 @@ namespace NOWA
          *        On the render thread this is expanded to 12 floats (adding a
          *        normal-derived tangent), identical to ProceduralRoad/Wall.
          */
-        void pushQuad(std::vector<float>&       verts,
-                      std::vector<Ogre::uint32>& idx,
-                      size_t&                   vertCount,
-                      const Ogre::Vector3& v0, const Ogre::Vector3& v1,
-                      const Ogre::Vector3& v2, const Ogre::Vector3& v3,
-                      const Ogre::Vector3& normal,
-                      Ogre::Real uLen, Ogre::Real vLen);
+        void pushQuad(std::vector<float>& verts, std::vector<Ogre::uint32>& idx, size_t& vertCount, const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real uLen,
+            Ogre::Real vLen);
 
         // ---- Render-thread operations -------------------------------------
 
@@ -894,6 +1011,8 @@ namespace NOWA
          *        Does NOT fire on normal scene teardown — only on explicit deletion.
          */
         void handleComponentManuallyDeleted(NOWA::EventDataPtr eventData);
+        void handleGameObjectSelected(NOWA::EventDataPtr eventData);
+        void handleMeshModifyMode(NOWA::EventDataPtr eventData);
 
         // ---- Cache version ------------------------------------------------
 
@@ -902,34 +1021,51 @@ namespace NOWA
         // ---- Variant attributes -------------------------------------------
 
         Variant* activated;
-        Variant* cityBoundsAttr;           // Vector4: minX, minZ, maxX, maxZ
-        Variant* masterSeedAttr;           // uint
-        Variant* blockSizeAttr;            // Real, meters
-        Variant* roadWidthAttr;            // Real
-        Variant* roadVarianceAttr;         // Real [0..0.5] — organic road curve amount
+        Variant* cityBoundsAttr;   // Vector4: minX, minZ, maxX, maxZ
+        Variant* masterSeedAttr;   // uint
+        Variant* blockSizeAttr;    // Real, meters
+        Variant* roadWidthAttr;    // Real
+        Variant* roadVarianceAttr; // Real [0..0.5] — organic road curve amount
 
-        std::vector<Ogre::Real> cityGridX;   ///< Perturbed X grid lines (road boundaries, world space)
-        std::vector<Ogre::Real> cityGridZ;   ///< Perturbed Z grid lines (road boundaries, world space)
+        std::vector<Ogre::Real> cityGridX; ///< Perturbed X grid lines (road boundaries, world space)
+        std::vector<Ogre::Real> cityGridZ; ///< Perturbed Z grid lines (road boundaries, world space)
 
         /// Flattened road segment list from the organic road graph.
         /// Each pair (a,b) is one road edge in world XZ.
         /// Used during building placement to skip lots that overlap roads.
-        struct RoadSegXZ { Ogre::Vector2 a, b; };
+        struct RoadSegXZ
+        {
+            Ogre::Vector2 a, b;
+        };
         std::vector<RoadSegXZ> organicRoadSegs;
-        Variant* sidewalkWidthAttr;        // Real, meters
-        Variant* curbHeightAttr;           // Real, meters
-        Variant* generateRoadsAttr;        // bool
-        Variant* roadDatablockAttr;        // String
-        Variant* curbDatablockAttr;        // String
-        Variant* doorDatablockAttr;        // String — global door texture for all buildings
-        Variant* garageDatablockAttr;      // String — garage door datablock (city_garage_01)
-        Variant* generateGarageAttr;       // bool — whether ~30% of residential buildings get a garage
-        Variant* roadComponentIdAttr;      // String (large uint stored as string)
-        Variant* roadConnectionAtStartAttr;// bool
-        Variant* districtCountAttr;        // uint, triggers AttrActionNeedRefresh
-        Variant* generateBtn;              // action button: Generate Now
-        Variant* clearBtn;                 // action button: Clear
-        Variant* generateBuildingsBtn;     // action button: Generate Buildings (keeps roads)
+        Variant* sidewalkWidthAttr;         // Real, meters
+        Variant* curbHeightAttr;            // Real, meters
+        Variant* generateRoadsAttr;         // bool
+        Variant* roadDatablockAttr;         // String
+        Variant* curbDatablockAttr;         // String
+        Variant* doorDatablockAttr;         // String — global door texture for all buildings
+        Variant* garageDatablockAttr;       // String — garage door datablock (city_garage_01)
+        Variant* generateGarageAttr;        // bool — whether ~30% of residential buildings get a garage
+        Variant* roadComponentIdAttr;       // String (large uint stored as string)
+        Variant* roadConnectionAtStartAttr; // bool
+        Variant* districtCountAttr;         // uint, triggers AttrActionNeedRefresh
+        Variant* generateBtn;               // action button: Generate Now
+        Variant* clearBtn;                  // action button: Clear
+        Variant* generateBuildingsBtn;      // action button: Generate Buildings (keeps roads)
+        Variant* editModeAttr;              // "Object" | "Segment"
+
+        // ---- Edit-mode state -------------------------------------------
+        int selectedBuildingIdx;     ///< -1 = nothing selected in Segment mode
+        bool isSelected;             ///< this component/GO is selected in editor
+        bool isEditorMeshModifyMode; ///< editor is in mesh-modify mode
+
+        // Per-building record kept across Generate calls so Segment mode can
+        // click-select and delete individual buildings without regenerating.
+        std::vector<BuildingInstance> storedBuildings;
+
+        // Selection overlay (ManualObject wireframe box around selected building)
+        Ogre::ManualObject* selOverlayObject;
+        Ogre::SceneNode* selOverlayNode;
 
         // Per-district Variant arrays (parallel to this->districts[])
         std::vector<Variant*> districtNameAttrs;
@@ -948,22 +1084,22 @@ namespace NOWA
 
         // ---- Internal runtime state ---------------------------------------
 
-        Ogre::String                  name;
-        std::vector<CityDistrict>     districts;
-        std::vector<CityBatch>        cityBatches;
+        Ogre::String name;
+        std::vector<CityDistrict> districts;
+        std::vector<CityBatch> cityBatches;
 
-        PhysicsArtifactComponent*     physicsArtifactComponent;
+        PhysicsArtifactComponent* physicsArtifactComponent;
 
-        unsigned long                 roadComponentId;
-        bool                          roadConnectionAtStart;
+        unsigned long roadComponentId;
+        bool roadConnectionAtStart;
 
-        Ogre::RaySceneQuery*          groundQuery;
-        Ogre::Plane                   groundPlane;
+        Ogre::RaySceneQuery* groundQuery;
+        Ogre::Plane groundPlane;
 
-        Ogre::Vector3                 cityOrigin;       ///< World-space XYZ origin of the city grid; all geometry is stored relative to this. Set in generateCityLayout(), used in createCityOnRenderThread() to position the SCENE_STATIC nodes.
+        Ogre::Vector3 cityOrigin; ///< World-space XYZ origin of the city grid; all geometry is stored relative to this. Set in generateCityLayout(), used in createCityOnRenderThread() to position the SCENE_STATIC nodes.
 
-        bool                          isDirty;
-        bool                          cityLoadedFromScene;
+        bool isDirty;
+        bool cityLoadedFromScene;
     };
 
 } // namespace NOWA

@@ -11,6 +11,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="code\CityFaceExtractor.cpp" />
+    <ClCompile Include="code\CityLotSubdivider.cpp" />
     <ClCompile Include="code\CityRoadGraph.cpp" />
     <ClCompile Include="code\ProceduralCityComponent.cpp" />
     <ClCompile Include="code\NOWAPrecompiled.cpp">
@@ -20,6 +22,8 @@
     <ClCompile Include="code\startDll.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="code\CityFaceExtractor.h" />
+    <ClInclude Include="code\CityLotSubdivider.h" />
     <ClInclude Include="code\CityRoadGraph.h" />
     <ClInclude Include="code\CityTensorField.h" />
     <ClInclude Include="code\ProceduralCityComponent.h" />

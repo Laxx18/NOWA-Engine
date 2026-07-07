@@ -6,6 +6,8 @@ GPL v3
 #include "NOWAPrecompiled.h"
 #include "ProceduralCityComponent.h"
 #include "../../ProceduralRoadComponent/code/ProceduralRoadComponent.h"
+#include "CityTensorField.h"
+#include "CityRoadGraph.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/PhysicsArtifactComponent.h"
 #include "main/AppStateManager.h"
@@ -60,12 +62,11 @@ namespace
     // This gives genuine per-building visual variety without per-building draw calls —
     // every building in the same variant shares one merged BT_IMMUTABLE Item.
     static constexpr unsigned int NUM_BUILDING_VARIANTS = 4u;
-    static constexpr unsigned int SLOTS_PER_VARIANT = 5u;                                         // wall, roof, window, trim, door
-    static constexpr unsigned int INFRA_BATCH_OFFSET = NUM_BUILDING_VARIANTS * SLOTS_PER_VARIANT; // 20
-    static constexpr unsigned int ROAD_SLOT = INFRA_BATCH_OFFSET + 0u;                            // 20
-    static constexpr unsigned int CURB_SLOT = INFRA_BATCH_OFFSET + 1u;                            // 21
-    static constexpr unsigned int YWALL_SLOT = INFRA_BATCH_OFFSET + 2u;                           // 22
-    static constexpr unsigned int TOTAL_CITY_BATCHES = INFRA_BATCH_OFFSET + 3u;                   // 23
+    static constexpr unsigned int SLOTS_PER_VARIANT = 6u;                                         // wall, roof, window, trim, door, garage
+    static constexpr unsigned int INFRA_BATCH_OFFSET = NUM_BUILDING_VARIANTS * SLOTS_PER_VARIANT; // 24
+    static constexpr unsigned int ROAD_SLOT = INFRA_BATCH_OFFSET + 0u;                            // 24
+    static constexpr unsigned int CURB_SLOT = INFRA_BATCH_OFFSET + 1u;                            // 25
+    static constexpr unsigned int TOTAL_CITY_BATCHES = INFRA_BATCH_OFFSET + 2u;                   // 26 (road + curb only)
 }
 
 namespace NOWA
@@ -126,33 +127,39 @@ namespace NOWA
         cityLoadedFromScene(false),
         cityOrigin(Ogre::Vector3::ZERO),
         activated(new Variant(AttrActivated(), true, this->attributes)),
-        cityBoundsAttr(new Variant(AttrCityBounds(), Ogre::Vector4(-100.0f, -100.0f, 100.0f, 100.0f), this->attributes)),
+        cityBoundsAttr(new Variant(AttrCityBounds(), Ogre::Vector4(-100.f, -100.f, 100.f, 100.f), this->attributes)),
         masterSeedAttr(new Variant(AttrMasterSeed(), 42u, this->attributes)),
         blockSizeAttr(new Variant(AttrBlockSize(), 40.f, this->attributes)),
         roadWidthAttr(new Variant(AttrRoadWidth(), 6.f, this->attributes)),
+        roadVarianceAttr(new Variant(AttrRoadVariance(), 0.5f, this->attributes)),
         sidewalkWidthAttr(new Variant(AttrSidewalkWidth(), 2.f, this->attributes)),
         curbHeightAttr(new Variant(AttrCurbHeight(), 0.15f, this->attributes)),
         generateRoadsAttr(new Variant(AttrGenerateRoads(), true, this->attributes)),
         roadDatablockAttr(new Variant(AttrRoadDatablock(), Ogre::String("city_road_01"), this->attributes)),
         curbDatablockAttr(new Variant(AttrCurbDatablock(), Ogre::String("city_curb_01"), this->attributes)),
-        generateWallsAttr(new Variant(AttrGenerateWalls(), false, this->attributes)),
-        wallHeightAttr(new Variant(AttrWallHeight(), 2.f, this->attributes)),
-        wallDatablockAttr(new Variant(AttrWallDatablock(), Ogre::String("city_courtyard_wall_01"), this->attributes)),
         roadComponentIdAttr(new Variant(AttrRoadComponentId(), Ogre::String("0"), this->attributes)),
         roadConnectionAtStartAttr(new Variant(AttrRoadConnectionAtStart(), false, this->attributes)),
         districtCountAttr(new Variant(AttrDistrictCount(), 1u, this->attributes)),
         doorDatablockAttr(new Variant(AttrDoorDatablock(), Ogre::String("city_door_01"), this->attributes)),
+        garageDatablockAttr(new Variant(AttrGarageDatablock(), Ogre::String("city_garage_01"), this->attributes)),
+        generateGarageAttr(new Variant(AttrGenerateGarage(), true, this->attributes)),
         generateBtn(new Variant(AttrGenerate(), Ogre::String("Generate Now"), this->attributes)),
-        clearBtn(new Variant(AttrClear(), Ogre::String("Clear"), this->attributes))
+        clearBtn(new Variant(AttrClear(), Ogre::String("Clear"), this->attributes)),
+        generateBuildingsBtn(new Variant(AttrGenerateBuildings(), Ogre::String("Generate Buildings"), this->attributes))
     {
         this->generateBtn->addUserData(GameObject::AttrActionExec());
         this->generateBtn->addUserData(GameObject::AttrActionExecId(), ActionGenerate());
         this->clearBtn->addUserData(GameObject::AttrActionExec());
         this->clearBtn->addUserData(GameObject::AttrActionExecId(), ActionClear());
+        this->generateBuildingsBtn->addUserData(GameObject::AttrActionExec());
+        this->generateBuildingsBtn->addUserData(GameObject::AttrActionExecId(), ActionGenerateBuildings());
 
         this->cityBoundsAttr->setDescription("World-space XZ footprint (minX, minZ, maxX, maxZ). Centre the GameObject inside this area.");
         this->masterSeedAttr->setDescription("Master seed. Same seed + same parameters = identical city.");
         this->masterSeedAttr->setConstraints(0u, 999999u);
+
+        this->roadVarianceAttr->setDescription("Road variance [0..0.5]: 0 = straight grid. Higher values add organic curves by routing each segment through a slightly offset midpoint. Each inner road is split into two sub-segments through that midpoint.");
+        this->roadVarianceAttr->setConstraints(0.0f, 0.5f);
         this->blockSizeAttr->setDescription("Road-centre-to-road-centre block pitch in meters. Typical: 30-80m.");
         this->blockSizeAttr->setConstraints(10.f, 200.f);
         this->roadWidthAttr->setDescription("Drivable road half-width in meters. Default 6m.");
@@ -169,13 +176,6 @@ namespace NOWA
         this->curbDatablockAttr->setDescription("PBS datablock for the kerb/curb strip.");
         this->curbDatablockAttr->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
 
-        this->generateWallsAttr->setDescription("Generate solid courtyard perimeter walls around blocks.");
-        this->wallHeightAttr->setDescription("Courtyard wall height in meters.");
-        this->wallHeightAttr->setConstraints(0.5f, 10.f);
-
-        this->wallDatablockAttr->setDescription("PBS datablock for courtyard walls.");
-        this->wallDatablockAttr->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
-
         this->roadComponentIdAttr->setDescription("ID of an existing ProceduralRoadComponent to connect to the city. '0' = none.");
         this->roadConnectionAtStartAttr->setDescription("Connect at road START (true) or END (false). Use false when road was drawn toward the city.");
         this->districtCountAttr->setDescription("Number of city districts. Each controls height range, density, and material variety.");
@@ -184,8 +184,17 @@ namespace NOWA
         this->doorDatablockAttr->setDescription("PBS datablock for house doors. Shared by all buildings. Default placeholder: 'city_door_01'.");
         this->doorDatablockAttr->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
 
+        this->garageDatablockAttr->setDescription("PBS datablock for garage doors (placed on some residential buildings as an attached garage cube). Default: 'city_garage_01'.");
+        this->garageDatablockAttr->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
+
+        this->generateGarageAttr->setDescription("If true, ~30% of Residential and Mixed buildings get an attached garage on their right face.  Disable to build a city without garages.");
+
         this->generateBtn->setDescription("Generate or regenerate the entire city. Cache is invalidated and rewritten.");
         this->clearBtn->setDescription("Clear all city geometry and delete the cache file.");
+        this->generateBuildingsBtn->setDescription(
+            "Regenerate ONLY building geometry — roads and their mesh are left completely unchanged.\n"
+                                                   "Workflow: draw custom roads with ProceduralRoadComponent → press this button to fill the city.\n"
+                                                   "cityOrigin is captured from the road component's current SceneNode so buildings align exactly with roads.");
 
         this->setDistrictCount(1u);
     }
@@ -227,6 +236,11 @@ namespace NOWA
             this->roadWidthAttr->setValue(XMLConverter::getAttribReal(propertyElement, "data", 6.f));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRoadVariance())
+        {
+            this->roadVarianceAttr->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrSidewalkWidth())
         {
             this->sidewalkWidthAttr->setValue(XMLConverter::getAttribReal(propertyElement, "data", 2.f));
@@ -251,23 +265,7 @@ namespace NOWA
         {
             this->curbDatablockAttr->setValue(XMLConverter::getAttrib(propertyElement, "data", "city_curb_01"));
             propertyElement = propertyElement->next_sibling("property");
-        }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrGenerateWalls())
-        {
-            this->generateWallsAttr->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-            propertyElement = propertyElement->next_sibling("property");
-        }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrWallHeight())
-        {
-            this->wallHeightAttr->setValue(XMLConverter::getAttribReal(propertyElement, "data", 2.f));
-            propertyElement = propertyElement->next_sibling("property");
-        }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrWallDatablock())
-        {
-            this->wallDatablockAttr->setValue(XMLConverter::getAttrib(propertyElement, "data", "city_courtyard_wall_01"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRoadComponentId())
+        }        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRoadComponentId())
         {
             this->roadComponentIdAttr->setValue(XMLConverter::getAttrib(propertyElement, "data", "0"));
             this->roadComponentId = static_cast<unsigned long>(std::strtoul(this->roadComponentIdAttr->getString().c_str(), nullptr, 10));
@@ -276,6 +274,16 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrDoorDatablock())
         {
             this->doorDatablockAttr->setValue(XMLConverter::getAttrib(propertyElement, "data", "city_door_01"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrGarageDatablock())
+        {
+            this->garageDatablockAttr->setValue(XMLConverter::getAttrib(propertyElement, "data", "city_garage_01"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrGenerateGarage())
+        {
+            this->generateGarageAttr->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRoadConnectionAtStart())
@@ -332,20 +340,6 @@ namespace NOWA
             {
                 this->setDistrictDensity(i, XMLConverter::getAttribReal(propertyElement, "data", 0.85f));
                 propertyElement = propertyElement->next_sibling("property");
-            }
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrDistrictCourtyardProb() + idx)
-            {
-                this->setDistrictCourtyardProb(i, XMLConverter::getAttribReal(propertyElement, "data", 0.3f));
-                propertyElement = propertyElement->next_sibling("property");
-            }
-            for (unsigned int v = 0; v < 4u; ++v)
-            {
-                Ogre::String key = AttrDistrictWallDatablock() + idx + "_" + Ogre::StringConverter::toString(v);
-                if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == key)
-                {
-                    this->setDistrictWallDatablock(i, v, XMLConverter::getAttrib(propertyElement, "data"));
-                    propertyElement = propertyElement->next_sibling("property");
-                }
             }
             for (unsigned int v = 0; v < 3u; ++v)
             {
@@ -512,22 +506,9 @@ namespace NOWA
         {
             this->setCurbDatablock(attribute->getString());
         }
-        else if (AttrGenerateWalls() == attribute->getName())
-        {
-            this->setGenerateWalls(attribute->getBool());
-        }
-        else if (AttrWallHeight() == attribute->getName())
-        {
-            this->setWallHeight(attribute->getReal());
-        }
-        else if (AttrWallDatablock() == attribute->getName())
-        {
-            this->setWallDatablock(attribute->getString());
-        }
-        else if (AttrDoorDatablock() == attribute->getName())
-        {
-            this->setDoorDatablock(attribute->getString());
-        }
+        else if (AttrDoorDatablock() == attribute->getName()) { this->setDoorDatablock(attribute->getString()); }
+        else if (AttrGarageDatablock() == attribute->getName()) { this->setGarageDatablock(attribute->getString()); }
+        else if (AttrGenerateGarage() == attribute->getName()) { this->generateGarageAttr->setValue(attribute->getBool()); }
         else if (AttrRoadComponentId() == attribute->getName())
         {
             this->setRoadComponentId(static_cast<unsigned long>(std::strtoul(attribute->getString().c_str(), nullptr, 10)));
@@ -573,19 +554,8 @@ namespace NOWA
                 {
                     this->setDistrictDensity(i, attribute->getReal());
                 }
-                else if (AttrDistrictCourtyardProb() + idx == attribute->getName())
-                {
-                    this->setDistrictCourtyardProb(i, attribute->getReal());
-                }
                 else
                 {
-                    for (unsigned int v = 0; v < 4u; ++v)
-                    {
-                        if (AttrDistrictWallDatablock() + idx + "_" + Ogre::StringConverter::toString(v) == attribute->getName())
-                        {
-                            this->setDistrictWallDatablock(i, v, attribute->getString());
-                        }
-                    }
                     for (unsigned int v = 0; v < 3u; ++v)
                     {
                         if (AttrDistrictRoofDatablock() + idx + "_" + Ogre::StringConverter::toString(v) == attribute->getName())
@@ -649,6 +619,12 @@ namespace NOWA
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "RoadVariance"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadVarianceAttr->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "SidewalkWidth"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sidewalkWidthAttr->getReal())));
         propertiesXML->append_node(propertyXML);
@@ -679,26 +655,29 @@ namespace NOWA
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "GenerateWalls"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->generateWallsAttr->getBool())));
-        propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "WallHeight"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallHeightAttr->getReal())));
-        propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "WallDatablock"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallDatablockAttr->getString())));
-        propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "DoorDatablock"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->doorDatablockAttr->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "GarageDatablock"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->garageDatablockAttr->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "GenerateGarage"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->generateGarageAttr->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
@@ -767,18 +746,7 @@ namespace NOWA
 
             propertyXML = doc.allocate_node(rapidxml::node_element, "property");
             propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrDistrictCourtyardProb() + idx)));
-            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->getDistrictCourtyardProb(i))));
-            propertiesXML->append_node(propertyXML);
 
-            for (unsigned int v = 0; v < 4u; ++v)
-            {
-                propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-                propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-                propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrDistrictWallDatablock() + idx + "_" + Ogre::StringConverter::toString(v))));
-                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->getDistrictWallDatablock(i, v))));
-                propertiesXML->append_node(propertyXML);
-            }
             for (unsigned int v = 0; v < 3u; ++v)
             {
                 propertyXML = doc.allocate_node(rapidxml::node_element, "property");
@@ -816,6 +784,11 @@ namespace NOWA
         if (actionId == ActionClear())
         {
             this->clearCity(true);
+            return true;
+        }
+        if (actionId == ActionGenerateBuildings())
+        {
+            this->generateBuildingsOnly();
             return true;
         }
         return false;
@@ -889,6 +862,7 @@ namespace NOWA
             // clearAllSegments() early-returns if already empty — safe to call unconditionally.
             roadCompPtr->clearAllSegments();
         }
+
         GraphicsModule::getInstance()->enqueueAndWait(
             [this]()
             {
@@ -927,6 +901,13 @@ namespace NOWA
         std::vector<CityBatch> batches;
         bool fromCache = this->loadCityDataFromFile(batches);
 
+        // ---- DIAGNOSTIC LOG — shows which path is taken ----------------------
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] loadOrGenerateCity: fromCache=" +
+            Ogre::StringConverter::toString(fromCache) +
+            " generateRoads=" + Ogre::StringConverter::toString(this->generateRoadsAttr->getBool()) +
+            " variance=" + Ogre::StringConverter::toString(this->roadVarianceAttr->getReal()));
+
         if (false == fromCache)
         {
             batches = this->generateCityLayout();
@@ -951,10 +932,77 @@ namespace NOWA
     }
 
     // =========================================================================
+    // generateBuildingsOnly
+    // =========================================================================
+    void ProceduralCityComponent::generateBuildingsOnly(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] generateBuildingsOnly: rebuilding BUILDINGS only, "
+                                                                            "ProceduralRoadComponent mesh is untouched.");
+
+        // Destroy old building batches on the render thread.
+        // ProceduralRoadComponent owns its own Ogre::Item — destroyCityOnRenderThread()
+        // ONLY removes city batch items (buildings), NOT the road component's mesh. ✓
+        GraphicsModule::getInstance()->enqueueAndWait(
+            [this]()
+            {
+                this->destroyCityOnRenderThread();
+            },
+            "ProceduralCityComponent::GenerateBuildingsOnly");
+
+        // Capture cityOrigin from the road component's current SceneNode position.
+        // ProceduralRoadComponent::createRoadMeshInternal() called setPosition(roadOrigin)
+        // when roads were built.  Using that same position keeps buildings in the same
+        // local coordinate space as the road mesh so they always align correctly.
+        this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
+
+        // Build fresh organicRoadSegs from the CURRENT PRC road state.
+        // This is the key fix: when the designer removes/adds roads then clicks
+        // "Generate Buildings", we read what roads CURRENTLY exist and exclude
+        // buildings from those positions.  Freed road space gets buildings ✓.
+        this->organicRoadSegs.clear();
+        {
+            auto roadCompPtr2 = NOWA::makeStrongPtr(
+                this->gameObjectPtr->getComponent<ProceduralRoadComponent>());
+            if (nullptr != roadCompPtr2)
+            {
+                const auto endpoints = roadCompPtr2->getSegmentEndpoints();
+                this->organicRoadSegs.reserve(endpoints.size());
+                for (const auto& ep : endpoints)
+                {
+                    RoadSegXZ seg; seg.a = ep.first; seg.b = ep.second;
+                    this->organicRoadSegs.push_back(seg);
+                }
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralCityComponent] generateBuildingsOnly: read " +
+                    Ogre::StringConverter::toString(static_cast<unsigned int>(this->organicRoadSegs.size())) +
+                    " road segments from PRC for building exclusion.");
+            }
+        }
+
+        // Generate building layout (skip road build)
+        std::vector<CityBatch> batches = this->generateCityLayout(true /*skipRoads*/);
+
+        // Persist to cache and create GPU meshes
+        this->saveCityDataToFile(batches);
+        GraphicsModule::getInstance()->enqueueAndWait(
+            [this, batches]() mutable
+            {
+                this->createCityOnRenderThread(std::move(batches));
+            },
+            "ProceduralCityComponent::CreateBuildingsOnly");
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] generateBuildingsOnly: done.");
+    }
+
+    // =========================================================================
     // generateCityLayout — logic thread
+    // skipRoads: when true, skips buildCityRoadNetwork() and captures cityOrigin
+    //            from the current SceneNode (road component's existing position).
     // =========================================================================
 
-    std::vector<CityBatch> ProceduralCityComponent::generateCityLayout(void)
+    std::vector<CityBatch> ProceduralCityComponent::generateCityLayout(bool skipRoads)
     {
         const Ogre::Vector4 bounds = this->cityBoundsAttr->getVector4();
         const Ogre::Real minX = bounds.x;
@@ -963,19 +1011,81 @@ namespace NOWA
         const Ogre::Real maxZ = bounds.w;
         const Ogre::Real blockSz = this->blockSizeAttr->getReal();
         const unsigned int mSeed = this->masterSeedAttr->getUInt();
+        const Ogre::Real variance = this->roadVarianceAttr->getReal();
 
-        std::vector<CityBlock> blocks;
-        for (Ogre::Real x = minX + blockSz * 0.5f; x < maxX; x += blockSz)
+        // ---- Build the road grid (may be perturbed by variance) ----------------
+        // The same grid is used for road generation AND block center/size calculation
+        // so both always use a consistent coordinate system.
+        //
+        // Base grid: evenly spaced from minX to maxX in steps of blockSz.
+        // Perturbed grid: inner lines (not outer boundaries) are shifted ±(variance × blockSz × 0.3)
+        // using a deterministic per-line hash so each city always looks the same.
+        // The perturbation creates blocks of varying widths and depths — visually very
+        // different from a uniform grid even at variance=0.2.
         {
-            for (Ogre::Real z = minZ + blockSz * 0.5f; z < maxZ; z += blockSz)
+            this->cityGridX.clear();
+            this->cityGridZ.clear();
+
+            // X lines
+            for (Ogre::Real gx = minX; gx <= maxX + blockSz * 0.01f; gx += blockSz)
             {
+                this->cityGridX.push_back(gx);
+            }
+            // Z lines
+            for (Ogre::Real gz = minZ; gz <= maxZ + blockSz * 0.01f; gz += blockSz)
+            {
+                this->cityGridZ.push_back(gz);
+            }
+
+            if (variance > 0.01f)
+            {
+                const Ogre::Real maxShift = variance * blockSz * 0.3f;
+
+                // Perturb inner X lines (skip first and last — outer boundary stays fixed)
+                for (size_t i = 1; i + 1 < this->cityGridX.size(); ++i)
+                {
+                    uint32_t h = (static_cast<uint32_t>(i) * 2654435761u) ^ mSeed;
+                    h ^= h >> 16; h *= 0x45d9f3bu; h ^= h >> 16;
+                    const Ogre::Real shift = (static_cast<Ogre::Real>(h & 0xFFFFu) / 65535.f * 2.f - 1.f) * maxShift;
+                    this->cityGridX[i] = std::max(this->cityGridX[i-1] + blockSz * 0.35f,
+                                         std::min(this->cityGridX[i+1] - blockSz * 0.35f,
+                                                  this->cityGridX[i] + shift));
+                }
+
+                // Perturb inner Z lines
+                for (size_t i = 1; i + 1 < this->cityGridZ.size(); ++i)
+                {
+                    uint32_t h = (static_cast<uint32_t>(i + 100u) * 2654435761u) ^ mSeed;
+                    h ^= h >> 16; h *= 0x45d9f3bu; h ^= h >> 16;
+                    const Ogre::Real shift = (static_cast<Ogre::Real>(h & 0xFFFFu) / 65535.f * 2.f - 1.f) * maxShift;
+                    this->cityGridZ[i] = std::max(this->cityGridZ[i-1] + blockSz * 0.35f,
+                                         std::min(this->cityGridZ[i+1] - blockSz * 0.35f,
+                                                  this->cityGridZ[i] + shift));
+                }
+            }
+        }
+
+        // ---- Build blocks from the (possibly perturbed) grid -------------------
+        // Each grid cell becomes one CityBlock whose centre and size derive from
+        // the actual perturbed grid line positions — so road widths, building lots,
+        // and road topology are always consistent with each other.
+        std::vector<CityBlock> blocks;
+        for (size_t xi = 0; xi + 1 < this->cityGridX.size(); ++xi)
+        {
+            for (size_t zi = 0; zi + 1 < this->cityGridZ.size(); ++zi)
+            {
+                const Ogre::Real cellW = this->cityGridX[xi + 1] - this->cityGridX[xi];
+                const Ogre::Real cellD = this->cityGridZ[zi + 1] - this->cityGridZ[zi];
+
                 CityBlock blk;
-                blk.centre = Ogre::Vector3(x, 0.f, z);
-                blk.size = Ogre::Vector2(blockSz, blockSz);
+                blk.centre = Ogre::Vector3(
+                    (this->cityGridX[xi] + this->cityGridX[xi + 1]) * 0.5f, 0.f,
+                    (this->cityGridZ[zi] + this->cityGridZ[zi + 1]) * 0.5f);
+                blk.size = Ogre::Vector2(cellW, cellD);
                 blk.groundHeight = this->getGroundHeight(blk.centre);
                 blk.centre.y = blk.groundHeight;
                 blk.districtIdx = 0;
-                blk.hasCourtyardWall = false;
+
                 blocks.push_back(blk);
             }
         }
@@ -995,7 +1105,7 @@ namespace NOWA
             {
                 if (blk.districtIdx < this->districts.size())
                 {
-                    blk.hasCourtyardWall = (d01(rng) < this->districts[blk.districtIdx].courtyardProb);
+                    // hasCourtyardWall removed
                 }
             }
         }
@@ -1005,13 +1115,46 @@ namespace NOWA
             this->subdivideBlock(blocks[bi], bi);
         }
 
-        // City local origin: centre of the bounds horizontally, terrain Y at that point.
-        // All geometry (buildings, roads, walls) is generated RELATIVE to this origin,
-        // and the two SCENE_STATIC Items' SceneNodes are placed AT this origin.
-        // Same pattern as ProceduralRoadComponent (roadOrigin / local space subtraction).
-        const Ogre::Real cx = (minX + maxX) * 0.5f;
-        const Ogre::Real cz = (minZ + maxZ) * 0.5f;
-        this->cityOrigin = Ogre::Vector3(cx, this->getGroundHeight(Ogre::Vector3(cx, 0.f, cz)), cz);
+        // =====================================================================
+        // ROOT-CAUSE FIX for the road/building offset on clear+regenerate:
+        //
+        // ProceduralRoadComponent::createRoadMeshInternal() calls:
+        //   gameObjectPtr->getSceneNode()->setPosition(roadOrigin)
+        // which MOVES the shared city SceneNode to the first road grid endpoint.
+        //
+        // If cityOrigin is computed from the bounds centre (a different XYZ than
+        // roadOrigin), buildings and roads end up in different coordinate spaces
+        // and appear offset from each other every time the city is regenerated.
+        //
+        // THE FIX: build the road grid FIRST so the SceneNode is at roadOrigin,
+        // then set cityOrigin = SceneNode position (= roadOrigin).
+        // All subsequent building geometry is then generated in the same local
+        // space as the road, so both always line up — even across regenerations.
+        // =====================================================================
+        // =====================================================================
+        // Road build (skipped when called from generateBuildingsOnly)
+        // =====================================================================
+        if (false == skipRoads && this->generateRoadsAttr->getBool())
+        {
+            // Build road first (moves SceneNode to roadOrigin via ProceduralRoadComponent)
+            this->buildCityRoadNetwork(blocks);
+            // Now capture that exact position as cityOrigin
+            this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
+        }
+        else if (skipRoads)
+        {
+            // Roads are untouched.  cityOrigin was already captured in generateBuildingsOnly()
+            // from the road component's current SceneNode, so nothing to do here.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[ProceduralCityComponent] generateCityLayout: road build skipped (skipRoads=true).");
+        }
+        else
+        {
+            // Roads off: fall back to bounds centre as origin
+            const Ogre::Real cx2 = (minX + maxX) * 0.5f;
+            const Ogre::Real cz2 = (minZ + maxZ) * 0.5f;
+            this->cityOrigin = Ogre::Vector3(cx2, this->getGroundHeight(Ogre::Vector3(cx2, 0.f, cz2)), cz2);
+        }
         const Ogre::Vector3& localOrigin = this->cityOrigin;
 
         // 23 batches total:
@@ -1043,7 +1186,55 @@ namespace NOWA
 
                 BuildingInstance building;
                 building.position = Ogre::Vector3(lot.centre.x, 0.f, lot.centre.z);
+
+                // Skip lots whose centre falls on the road surface itself.
+                // Clearance = road half-width + small buffer so the lot centre
+                // is never inside the paved area.  Do NOT use a large multiplier
+                // here — that would exclude almost every lot in an organic city.
+                if (false == this->organicRoadSegs.empty())
+                {
+                    // Clearance = road half-width + sidewalk width so building lots whose
+                    // centres are inside the road-plus-sidewalk zone are skipped.
+                    // This prevents buildings from visually overlapping the road surface.
+                    const Ogre::Real clearance = this->roadWidthAttr->getReal() * 0.5f
+                                               + this->sidewalkWidthAttr->getReal();
+                    const Ogre::Vector2 lotXZ(lot.centre.x, lot.centre.z);
+                    bool onRoad = false;
+                    for (const auto& seg : this->organicRoadSegs)
+                    {
+                        // Minimum distance from lot centre to road segment
+                        const Ogre::Vector2 ab = seg.b - seg.a;
+                        const Ogre::Real ab2 = ab.dotProduct(ab);
+                        Ogre::Real d = 0.f;
+                        if (ab2 < 1e-6f)
+                        {
+                            d = (lotXZ - seg.a).length();
+                        }
+                        else
+                        {
+                            const Ogre::Real t = std::max(0.f, std::min(1.f,
+                                (lotXZ - seg.a).dotProduct(ab) / ab2));
+                            d = (lotXZ - (seg.a + t * ab)).length();
+                        }
+                        if (d < clearance) { onRoad = true; break; }
+                    }
+                    if (onRoad) { continue; }
+                }
+
                 building.groundHeight = lot.groundHeight;
+                // Lot half-width: actual distance from the BUILDING'S world position to the
+                // NEAREST block boundary in either X or Z, minus the road inset.
+                // Using the minimum of all 4 directions gives the most conservative bound
+                // so garages never extend past the lot edge regardless of building position
+                // or orientation within the block.
+                {
+                    const Ogre::Real blkInset = this->roadWidthAttr->getReal() * 0.5f + this->sidewalkWidthAttr->getReal();
+                    const Ogre::Real dxNeg = (lot.centre.x - blk.centre.x) + blk.size.x * 0.5f - blkInset;
+                    const Ogre::Real dxPos = (blk.centre.x + blk.size.x * 0.5f - blkInset) - lot.centre.x;
+                    const Ogre::Real dzNeg = (lot.centre.z - blk.centre.z) + blk.size.y * 0.5f - blkInset;
+                    const Ogre::Real dzPos = (blk.centre.z + blk.size.y * 0.5f - blkInset) - lot.centre.z;
+                    building.lotHalfRight = std::max(0.f, std::min({dxNeg, dxPos, dzNeg, dzPos}));
+                }
                 building.archetypeIdx = lot.districtIdx;
                 building.variantSeed = mSeed ^ (bi * 6271u) ^ (static_cast<unsigned int>(&lot - &blk.lots[0]) * 9337u);
 
@@ -1072,33 +1263,18 @@ namespace NOWA
                     batches[base + 1].rawVertices, batches[base + 1].rawIndices, batches[base + 1].numVertices,
                     batches[base + 2].rawVertices, batches[base + 2].rawIndices, batches[base + 2].numVertices,
                     batches[base + 3].rawVertices, batches[base + 3].rawIndices, batches[base + 3].numVertices,
-                    batches[base + 4].rawVertices, batches[base + 4].rawIndices, batches[base + 4].numVertices);
+                    batches[base + 4].rawVertices, batches[base + 4].rawIndices, batches[base + 4].numVertices,
+                    batches[base + 5].rawVertices, batches[base + 5].rawIndices, batches[base + 5].numVertices);
 
                 batches[base + 0].instances.push_back(building);
             }
         }
 
-        // Roads are now handled entirely by the auto-created ProceduralRoadComponent
-        // (see getStaticTypeDescriptor autoComponents).  buildCityRoadNetwork() feeds the
-        // grid segments to it via addRoadSegmentLua() which internally handles terrain
-        // following, junction patches, miter joins, smoothing — everything our custom road
-        // generation struggled with.
-        // Road/curb batch slots (ROAD_SLOT, CURB_SLOT) are left empty so their sub-meshes
-        // in the infra Item become dummy VAOs.  ProceduralRoadComponent owns the road mesh.
-        if (this->generateRoadsAttr->getBool())
-        {
-            this->buildCityRoadNetwork(blocks);
-        }
-        else
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[ProceduralCityComponent] WARNING: GenerateRoads is OFF — enable it to build the road grid.");
-        }
+        // Roads are built BEFORE buildings (see ROOT-CAUSE FIX above) so the
+        // ProceduralRoadComponent SceneNode position is already established as cityOrigin.
+        // Road/curb batch slots are left empty — ProceduralRoadComponent owns the road mesh.
 
-        if (this->generateWallsAttr->getBool())
-        {
-            this->generateCourtyardWallGeometry(blocks, localOrigin, batches[YWALL_SLOT].rawVertices, batches[YWALL_SLOT].rawIndices, batches[YWALL_SLOT].numVertices);
-        }
+        // Wall generation removed — designer places walls manually
 
         if (this->roadComponentId != 0)
         {
@@ -1263,7 +1439,8 @@ namespace NOWA
 
     void ProceduralCityComponent::generateBuildingGeometry(const BuildingInstance& building, const CityDistrict& district, const Ogre::Vector3& localOrigin, std::vector<float>& wallV, std::vector<Ogre::uint32>& wallI, size_t& wallN, std::vector<float>& roofV,
         std::vector<Ogre::uint32>& roofI, size_t& roofN, std::vector<float>& windowV, std::vector<Ogre::uint32>& windowI, size_t& windowN, std::vector<float>& trimV, std::vector<Ogre::uint32>& trimI, size_t& trimN,
-        std::vector<float>& doorV, std::vector<Ogre::uint32>& doorI, size_t& doorN)
+        std::vector<float>& doorV, std::vector<Ogre::uint32>& doorI, size_t& doorN,
+        std::vector<float>& garageV, std::vector<Ogre::uint32>& garageI, size_t& garageN)
     {
         const Ogre::Vector3 wallDir = building.orientation * Ogre::Vector3::UNIT_Z;
         // right = wallDir.crossProduct(UNIT_Y) — must NEVER be swapped
@@ -1453,6 +1630,90 @@ namespace NOWA
             const Ogre::Vector3 dv3 = dc - right * (doorW * 0.5f) + Ogre::Vector3(0.f, doorH * 0.5f, 0.f);
             this->pushQuad(doorV, doorI, doorN, dv0, dv1, dv2, dv3, -wallDir, 1.f, 1.f);
         }
+
+        // ---- Garage — slot 5 (city_garage_01 datablock) -----------------------
+        // Only on Residential buildings, 30% chance (seeded), not on very small lots.
+        // The garage is a low rectangular box attached to the RIGHT face of the house,
+        // extending outward by garageDept.  Walls use the wall slot (existing),
+        // the outward-facing garage door quad uses this dedicated garage slot.
+        // Winding/normal rules are identical to the house faces — explicit normals.
+        // ---- Garage — slot 5 (city_garage_01 datablock) ----------------------
+        // Garage is attached DIRECTLY to the RIGHT face of the house (no gap),
+        // at the FRONT of the house so the door faces the street.
+        //
+        // Space check: garage extends gd meters to the right of the house right wall.
+        // If gd > hw (building half-width) the garage would overflow the lot → skip.
+        //
+        // Orientation reference (for normal/winding derivation, all CCW from outside):
+        //   wallDir = +Z (depth axis, front face at -wallDir*hd)
+        //   right   = +X (width axis)
+        //   Y       = +Y (up)
+        //
+        // Derived normals:
+        //   Door (front, -wallDir):  e1=Y  e2=right → Y×right=Y×X=-Z = -wallDir ✓
+        //   Left wall (-right):      e1=Y  e2=wallDir → Y×Z = -X = -right ✓
+        //   Right wall (+right):     e1=Y  e2=wallDir → same as left but reverse order → +right ✓
+        //   Back wall (+wallDir):    e1=right e2=Y → X×Y = Z = +wallDir ✓
+        //   Roof (+Y):               e1=wallDir e2=right → Z×X = Y ✓
+        const bool isGarageType  = (district.type == "Residential_Low" ||
+                                     district.type == "Residential_Mid"  ||
+                                     district.type == "Mixed");
+        const bool generateGarage = this->generateGarageAttr->getBool();
+
+        // Space check: garage extends gd meters to the right of the house right wall.
+        // building.lotHalfRight is the lot's half-width in the right direction (from the
+        // building's world position ≈ lot center to the road boundary).
+        // Available space = lotHalfRight - hw (building already occupies hw from center).
+        // Use 1m safety margin so the garage never touches the sidewalk edge.
+        const Ogre::Real spaceRight = std::max(0.f, building.lotHalfRight - hw - 1.0f);
+        const Ogre::Real gd = std::min({4.0f, spaceRight, fW * 0.4f});
+
+        const bool hasGarage = generateGarage && isGarageType &&
+                               ((building.variantSeed % 10u) < 3u) &&
+                               (gd >= 2.0f) && (fD > 5.f);
+        if (hasGarage)
+        {
+            const Ogre::Real gw = std::min(4.5f, fD * 0.45f); // garage width (wallDir, from front)
+            const Ogre::Real gh = std::min(2.8f, wh * 0.4f);  // garage height (lower than house)
+
+            // Corner positions in local space.
+            // Garage is at the FRONT of the house (at -wallDir*hd), extending +wallDir*gw inward.
+            // FL/FR = front (near street), BL/BR = back (away from street).
+            // NL/NR subscript: N=Near house wall (right*hw), F=Far (right*(hw+gd)).
+            const Ogre::Vector3 FL = base + right * hw + (-wallDir) * hd;
+            const Ogre::Vector3 FR = base + right * (hw + gd) + (-wallDir) * hd;
+            const Ogre::Vector3 BL = base + right * hw + (-wallDir) * (hd - gw);
+            const Ogre::Vector3 BR = base + right * (hw + gd) + (-wallDir) * (hd - gw);
+            const Ogre::Vector3 TFL = FL + Ogre::Vector3(0.f, gh, 0.f);
+            const Ogre::Vector3 TFR = FR + Ogre::Vector3(0.f, gh, 0.f);
+            const Ogre::Vector3 TBL = BL + Ogre::Vector3(0.f, gh, 0.f);
+            const Ogre::Vector3 TBR = BR + Ogre::Vector3(0.f, gh, 0.f);
+
+            // 1. Garage DOOR (visible from street = -wallDir side)
+            // Cross(FR-FL, TFR-FL) = Cross(right*gd, right*gd+Y*gh) = gd*gh*(right×Y) = +wallDir = -(-wallDir) ✓
+            this->pushQuad(garageV, garageI, garageN,
+                FL, FR, TFR, TFL, -wallDir, gd / wallTile, gh / wallTile);
+
+            // 2. Left wall (visible from -right side = house side)
+            // Cross(FL-BL, TFL-BL) = Cross(-wallDir*gw, -wallDir*gw+Y*gh) = gw*gh*(−wallDir×Y)=gw*gh*right = -(-right) ✓
+            this->pushQuad(wallV, wallI, wallN,
+                BL, FL, TFL, TBL, -right, gw / wallTile, gh / wallTile);
+
+            // 3. Right wall (visible from +right side = outer side)
+            // Cross(BR-FR, TBR-FR) = Cross(+wallDir*gw, wallDir*gw+Y*gh) = gw*gh*(wallDir×Y) = -right = -(+right) ✓
+            this->pushQuad(wallV, wallI, wallN,
+                FR, BR, TBR, TFR, right, gw / wallTile, gh / wallTile);
+
+            // 4. Back wall (visible from +wallDir side = away from street)
+            // Cross(BL-BR, TBL-BR) = Cross(-right*gd, -right*gd+Y*gh) = gd*gh*(-right×Y) = -wallDir = -(+wallDir) ✓
+            this->pushQuad(wallV, wallI, wallN,
+                BR, BL, TBL, TBR, wallDir, gd / wallTile, gh / wallTile);
+
+            // 5. Roof (visible from +Y side)
+            // Cross(TFR-TFL, TBR-TFL) = Cross(right*gd, right*gd+wallDir*gw) = gd*gw*(right×wallDir) = -Y ✓
+            this->pushQuad(wallV, wallI, wallN,
+                TFL, TFR, TBR, TBL, Ogre::Vector3::UNIT_Y, gd / wallTile, gw / wallTile);
+        }
     }
 
     // =========================================================================
@@ -1467,7 +1728,7 @@ namespace NOWA
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
                 "[ProceduralCityComponent] buildCityRoadNetwork: ProceduralRoadComponent not found "
-                "on this GameObject. Check autoComponents in getStaticTypeDescriptor().");
+                                                                                "on this GameObject. Check autoComponents in getStaticTypeDescriptor().");
             return;
         }
         ProceduralRoadComponent* roadComp = roadCompPtr.get();
@@ -1476,43 +1737,43 @@ namespace NOWA
         roadComp->setCenterDatablock(this->roadDatablockAttr->getString());
         roadComp->setEdgeDatablock(this->curbDatablockAttr->getString());
 
-        // FIX 1: Set heightOffset to 0 before adding segments.
-        // ProceduralRoadComponent::getGroundHeight() returns hitPoint.y + heightOffset.
-        // Default heightOffset = 0.1f causes a staircase: each terrain subdivision
-        // intermediate point is 0.1m above actual terrain, so the road surface is raised.
-        //
-        // CRITICAL: do NOT use setHeightOffset() here — it calls rebuildMesh() internally
-        // (line 6560 of ProceduralRoadComponent.cpp), which would rebuild the COMPLETED
-        // road with the restored non-zero offset AFTER endBatch(), re-introducing the bug.
-        //
-        // Instead, write the Variant value directly to bypass the rebuild trigger,
-        // and leave heightOffset at 0 permanently for city roads (it is the correct value:
-        // city roads should hug the terrain, not float 0.1m above it).
-        const Ogre::Real savedHeightOffset = roadComp->getHeightOffset();
-        if (savedHeightOffset != 0.0f)
-        {
-            // Write directly to the underlying Variant to avoid triggering rebuildMesh()
-            // which setHeightOffset() would cause.  The value is restored the same way.
-            roadComp->getAttribute(ProceduralRoadComponent::AttrHeightOffset())->setValue(0.0f);
-        }
+        // heightOffset is intentionally NOT reset to 0 here.
+        // ProceduralRoadComponent::getGroundHeight() excludes its own roadItem,
+        // so each addRoadSegmentLua correctly samples terrain + heightOffset (0.1 by default)
+        // without hitting the previously-built road mesh.  Resetting to 0 would move the
+        // road flush to the terrain surface, causing z-fighting against the Terra mesh.
 
         // FIX 2: Always clear before re-generating.
         // clearAllSegments() early-outs if roadSegments is empty, so it is safe to call
         // unconditionally.  It also resets hasRoadOrigin so the next first segment
         // correctly establishes a new road origin.
         roadComp->clearAllSegments();
+        this->organicRoadSegs.clear(); // reset road exclusion zones on each generation
 
-        const Ogre::Vector4 cityBnds = this->cityBoundsAttr->getVector4();
-        const Ogre::Real blockSz     = this->blockSizeAttr->getReal();
-        std::vector<Ogre::Real> gridX, gridZ;
-        for (Ogre::Real gx = cityBnds.x; gx <= cityBnds.z + blockSz * 0.01f; gx += blockSz)
+        // ---- DIAGNOSTIC LOG — shows exact state entering road generation -----
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] buildCityRoadNetwork ENTERED: "
+            "variance=" + Ogre::StringConverter::toString(this->roadVarianceAttr->getReal()) +
+            " generateRoads=" + Ogre::StringConverter::toString(this->generateRoadsAttr->getBool()) +
+            " roadComp.segCount=" + Ogre::StringConverter::toString(roadComp->getSegmentCount()) +
+            " cityGridX.size=" + Ogre::StringConverter::toString(static_cast<unsigned int>(this->cityGridX.size())));
+
+        // Use the PERTURBED grid computed in generateCityLayout (stored in cityGridX/cityGridZ).
+        // If not yet computed (e.g., first call before layout), fall back to base grid.
+        if (this->cityGridX.size() < 2 || this->cityGridZ.size() < 2)
         {
-            gridX.push_back(gx);
-        }
-        for (Ogre::Real gz = cityBnds.y; gz <= cityBnds.w + blockSz * 0.01f; gz += blockSz)
-        {
-            gridZ.push_back(gz);
-        }
+            const Ogre::Vector4 cityBnds2 = this->cityBoundsAttr->getVector4();
+            const Ogre::Real blockSz2 = this->blockSizeAttr->getReal();
+            this->cityGridX.clear();
+            this->cityGridZ.clear();
+            for (Ogre::Real gx = cityBnds2.x; gx <= cityBnds2.z + blockSz2 * 0.01f; gx += blockSz2)
+                this->cityGridX.push_back(gx);
+            for (Ogre::Real gz = cityBnds2.y; gz <= cityBnds2.w + blockSz2 * 0.01f; gz += blockSz2)
+                this->cityGridZ.push_back(gz);
+            }
+        const std::vector<Ogre::Real>& gridX = this->cityGridX;
+        const std::vector<Ogre::Real>& gridZ = this->cityGridZ;
+        const Ogre::Real blockSz = this->blockSizeAttr->getReal();
 
         // Batch mode: defers rebuildMesh() until endBatch() so junction detection runs
         // ONCE with all segments present, AND no road mesh exists during getGroundHeight
@@ -1529,38 +1790,132 @@ namespace NOWA
         // With outer vertical strips present, every grid crossing has 3+ segments
         // meeting: only the 4 outermost corners have 2 endpoints → end-caps there,
         // which is acceptable (road ends at city boundary).
-        roadComp->beginBatch();
-
-        for (size_t zi = 0; zi < gridZ.size(); ++zi)
+        // ---- Terrain sample interval -----------------------------------------
+        // Shorter interval = more terrain subdivision points per segment = better
+        // gradient tracking on hills (default ~5m; 2m follows every bump cleanly).
+        auto* terrainIntervalAttr = roadComp->getAttribute(ProceduralRoadComponent::AttrTerrainSampleInterval());
+        Ogre::Real savedTerrainInterval = 5.0f;
+        if (nullptr != terrainIntervalAttr)
         {
-            const Ogre::Real zVal = gridZ[zi];
-            for (size_t xi = 0; xi + 1 < gridX.size(); ++xi)
+            savedTerrainInterval = terrainIntervalAttr->getReal();
+            terrainIntervalAttr->setValue(2.0f);
+        }
+
+        const Ogre::Real variance = this->roadVarianceAttr->getReal();
+
+        // ---- Mode selection: organic (variance > 0.1) vs. perturbed grid ------
+        // Organic: CityRoadGraph grows roads via tensor-field agent steps.
+        // Grid:    perturbed grid with optional diagonal shortcuts.
+        //
+        // NOTE: variance must be in computeChecksum() so the binary city cache is
+        // invalidated when the user changes this value.  Without that, Generate Now
+        // after changing variance hits the cache and NEVER reaches this code.
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] buildCityRoadNetwork: variance=" +
+            Ogre::StringConverter::toString(variance) +
+            (variance > 0.1f ? "  → ORGANIC road graph mode" : "  → GRID road mode"));
+
+        if (variance > 0.1f)
+        {
+            this->buildOrganicRoadNetwork(roadComp, variance);
+        }
+        else
+        {
+            // Diagonals connect EXISTING grid junction points so the junction detection
+            // (which requires 3+ segment endpoints at the same position) correctly creates
+            // patches at every crossing.  Number of diagonals scales with variance:
+            //   0.0 → none, 0.25 → 1, 0.5 → 2, 0.75 → 3, 1.0 → 4
+            // The Catmull-Rom smooth-curve feature still applies if an inner grid segment
+            // has its midpoint slightly offset (the midpoint approach from previous code).
+            roadComp->beginBatch();
+
+            // Skip the outermost boundary grid lines.
+            const size_t zFirst = (gridZ.size() > 2) ? 1u : 0u;
+            const size_t zLast = (gridZ.size() > 2) ? gridZ.size() - 1u : gridZ.size();
+            for (size_t zi = zFirst; zi < zLast; ++zi)
             {
+                const Ogre::Real zVal = gridZ[zi];
+                for (size_t xi = 0; xi + 1 < gridX.size(); ++xi)
+                {
                 roadComp->addRoadSegmentLua(
                     Ogre::Vector3(gridX[xi],     0.f, zVal),
                     Ogre::Vector3(gridX[xi + 1], 0.f, zVal));
+                }
             }
-        }
 
-        for (size_t xi = 0; xi < gridX.size(); ++xi)
-        {
-            const Ogre::Real xVal = gridX[xi];
-            for (size_t zi = 0; zi + 1 < gridZ.size(); ++zi)
+            const size_t xFirst = (gridX.size() > 2) ? 1u : 0u;
+            const size_t xLast = (gridX.size() > 2) ? gridX.size() - 1u : gridX.size();
+            for (size_t xi = xFirst; xi < xLast; ++xi)
             {
+                const Ogre::Real xVal = gridX[xi];
+                for (size_t zi = 0; zi + 1 < gridZ.size(); ++zi)
+                {
                 roadComp->addRoadSegmentLua(
                     Ogre::Vector3(xVal, 0.f, gridZ[zi]),
                     Ogre::Vector3(xVal, 0.f, gridZ[zi + 1]));
+                }
             }
-        }
 
-        roadComp->endBatch();
+            // ---- Diagonal roads ---------------------------------------------------
+            // Each diagonal connects two non-adjacent inner grid junction points so
+            // junction detection sees 5+ arms at both endpoints → proper patches.
+            // Key constraint: both dx AND dz must be non-zero (true diagonal).
+            // If dx==0 the road is vertical — identical to an existing grid road.
+            // If dz==0 the road is horizontal — identical to an existing grid road.
+            if (variance > 0.01f && gridX.size() >= 4 && gridZ.size() >= 4)
+            {
+                const size_t numDiags = static_cast<size_t>(variance * 3.f) + 1u;
+                uint32_t seed = this->masterSeedAttr->getUInt() ^ 0xC17Bu;
 
-        // Restore the height offset via direct Variant write (same reason as above:
-        // setHeightOffset() would trigger rebuildMesh() on the finished road, rebuilding
-        // all terrain heights with the non-zero offset and re-introducing the staircase).
-        if (savedHeightOffset != 0.0f)
+                // Build list of inner junction points
+                std::vector<std::pair<size_t, size_t>> jpts;
+                for (size_t zi = zFirst; zi < zLast; ++zi)
+                {
+                    for (size_t xi = xFirst; xi < xLast; ++xi)
+                    {
+                        jpts.push_back(std::make_pair(xi, zi));
+                    }
+                }
+
+                for (size_t di = 0; di < numDiags && jpts.size() >= 4; ++di)
+                {
+                    // Find pair (ia, ib) that is a TRUE DIAGONAL (dx≠0 AND dz≠0) and long enough
+                    seed = seed * 1664525u + 1013904223u;
+                    const size_t ia = seed % jpts.size();
+                    seed = seed * 1664525u + 1013904223u;
+                    size_t ib = seed % jpts.size();
+
+                    unsigned int attempts = 0;
+                    while (attempts < 64)
+                    {
+                        const int dx = static_cast<int>(jpts[ib].first) - static_cast<int>(jpts[ia].first);
+                        const int dz = static_cast<int>(jpts[ib].second) - static_cast<int>(jpts[ia].second);
+                        // Must be diagonal (both non-zero) and span at least 2 grid cells in each direction
+                    if (dx != 0 && dz != 0 && std::abs(dx) >= 2 && std::abs(dz) >= 2) { break; }
+                        seed = seed * 1664525u + 1013904223u;
+                        ib = seed % jpts.size();
+                        ++attempts;
+                    }
+
+                    const Ogre::Real sx = gridX[jpts[ia].first];
+                    const Ogre::Real sz = gridZ[jpts[ia].second];
+                    const Ogre::Real ex = gridX[jpts[ib].first];
+                    const Ogre::Real ez = gridZ[jpts[ib].second];
+                    if (std::abs(ex - sx) > 0.1f && std::abs(ez - sz) > 0.1f)
+                    {
+                        roadComp->addRoadSegmentLua(Ogre::Vector3(sx, 0.f, sz), Ogre::Vector3(ex, 0.f, ez));
+                    }
+                }
+            }
+
+            roadComp->endBatch();
+
+        } // end else (grid mode)
+
+        // Restore terrain interval
+        if (nullptr != terrainIntervalAttr)
         {
-            roadComp->getAttribute(ProceduralRoadComponent::AttrHeightOffset())->setValue(savedHeightOffset);
+            terrainIntervalAttr->setValue(savedTerrainInterval);
         }
 
         const unsigned int numSegs = static_cast<unsigned int>(
@@ -1568,9 +1923,134 @@ namespace NOWA
             gridX.size() * (gridZ.size() > 0 ? gridZ.size() - 1 : 0));
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
             "[ProceduralCityComponent] Road grid: " + Ogre::StringConverter::toString(numSegs) +
-            " segments. heightOffset=0 during generation (restored to " +
-            Ogre::StringConverter::toString(savedHeightOffset) + "). "
-            "All grid lines included: every mid-grid point has 3+ segments → junction patches, no gaps.");
+            " segments. heightOffset unchanged (PRC excludes own mesh in getGroundHeight, "
+            "so terrain+heightOffset is sampled correctly without z-fighting).");
+    }
+
+    // =========================================================================
+    // buildOrganicRoadNetwork
+    // Called by buildCityRoadNetwork when variance >= 0.3.
+    // Uses CityTensorField + CityRoadGraph to grow an organic road network.
+    // =========================================================================
+    void ProceduralCityComponent::buildOrganicRoadNetwork(ProceduralRoadComponent* roadComp,
+                                                           Ogre::Real variance)
+    {
+        const Ogre::Vector4 bnds = this->cityBoundsAttr->getVector4();
+        const Ogre::Real blockSz = this->blockSizeAttr->getReal();
+        const unsigned int mSeed = this->masterSeedAttr->getUInt();
+
+        // ---- Tensor field ---------------------------------------------------
+        CityTensorField::Params tfParams;
+        tfParams.cityCenter     = Ogre::Vector2((bnds.x + bnds.z) * 0.5f,
+                                                (bnds.y + bnds.w) * 0.5f);
+        tfParams.radialRadius = (bnds.z - bnds.x) * 0.35f;
+        // 0 at var=0.3, up to 0.8 at var=1.0
+        tfParams.radialStrength = std::min(1.f, (variance - 0.3f) / 0.7f * 0.8f);
+        tfParams.gridAngleDeg = static_cast<Ogre::Real>(5u + (mSeed % 23u));
+        const CityTensorField tf(tfParams);
+
+        // ---- Road graph params ----------------------------------------------
+        CityRoadGraph::Params rgParams;
+        rgParams.bounds = bnds;
+        rgParams.masterSeed = mSeed;
+        rgParams.numMajorRoads = 2 + static_cast<int>(variance * 3.f); // 2-5
+        rgParams.stepLen = blockSz * 0.25f;
+        rgParams.minorSpacing = blockSz * 0.75f;
+        rgParams.minorMaxLen = blockSz * 1.5f;
+        rgParams.snapRadius = this->roadWidthAttr->getReal() * 1.5f;
+        rgParams.maxSlopeDeg = 30.f;
+        rgParams.majorWidth = this->roadWidthAttr->getReal() * 1.3f;
+        rgParams.minorWidth = this->roadWidthAttr->getReal();
+
+        // ---- Ground height callback -----------------------------------------
+        CityRoadGraph::GroundHeightFn heightFn =
+            [this](Ogre::Real x, Ogre::Real z) -> Ogre::Real
+        {
+            return this->getGroundHeight(Ogre::Vector3(x, 0.f, z));
+        };
+
+        // ---- Generate road graph --------------------------------------------
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] buildOrganicRoadNetwork START: variance=" +
+            Ogre::StringConverter::toString(variance) +
+            " bounds=(" + Ogre::StringConverter::toString(bnds.x) +
+            "," + Ogre::StringConverter::toString(bnds.y) +
+            "," + Ogre::StringConverter::toString(bnds.z) +
+            "," + Ogre::StringConverter::toString(bnds.w) +
+            ") numMajorRoads=" + Ogre::StringConverter::toString(rgParams.numMajorRoads) +
+            " stepLen=" + Ogre::StringConverter::toString(rgParams.stepLen) +
+                                                                                " seed=" + Ogre::StringConverter::toString(rgParams.masterSeed));
+
+        CityRoadGraph graph(rgParams, tf, heightFn);
+        graph.generate();
+
+        const auto& gNodes = graph.getNodes();
+        const auto& gEdges = graph.getEdges();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] Organic road graph generated: " +
+            Ogre::StringConverter::toString(static_cast<unsigned int>(gNodes.size())) + " nodes, " +
+            Ogre::StringConverter::toString(static_cast<unsigned int>(gEdges.size())) + " edges" +
+            (gEdges.empty() ? " — WARNING: EMPTY GRAPH" : " — OK"));
+
+        if (gEdges.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[ProceduralCityComponent] ERROR: organic graph produced no edges. "
+                                                                                "Check: bounds are non-zero? getGroundHeight returning valid Y? "
+                                                                                "maxSlopeDeg not too restrictive for this terrain?");
+            return;
+        }
+
+        // Log first 5 edges for debugging
+        const size_t logCount = std::min(static_cast<size_t>(5u), gEdges.size());
+        for (size_t li = 0; li < logCount; ++li)
+        {
+            const auto& e = gEdges[li];
+            if (e.nodeA >= 0 && e.nodeB >= 0 &&
+                e.nodeA < static_cast<int>(gNodes.size()) &&
+                e.nodeB < static_cast<int>(gNodes.size()))
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[ProceduralCityComponent]   edge " + Ogre::StringConverter::toString(static_cast<unsigned int>(li)) +
+                    ": (" + Ogre::StringConverter::toString(gNodes[static_cast<size_t>(e.nodeA)].pos.x) +
+                    "," + Ogre::StringConverter::toString(gNodes[static_cast<size_t>(e.nodeA)].pos.y) +
+                    ") -> (" + Ogre::StringConverter::toString(gNodes[static_cast<size_t>(e.nodeB)].pos.x) +
+                    "," + Ogre::StringConverter::toString(gNodes[static_cast<size_t>(e.nodeB)].pos.y) + ")");
+            }
+        }
+
+        // ---- Feed to ProceduralRoadComponent --------------------------------
+        this->organicRoadSegs.clear();
+        this->organicRoadSegs.reserve(gEdges.size());
+
+        roadComp->beginBatch();
+        for (const auto& e : gEdges)
+        {
+            if (e.nodeA < 0 || e.nodeB < 0) { continue; }
+            if (e.nodeA >= static_cast<int>(gNodes.size())) { continue; }
+            if (e.nodeB >= static_cast<int>(gNodes.size())) { continue; }
+            const Ogre::Vector2& pA = gNodes[static_cast<size_t>(e.nodeA)].pos;
+            const Ogre::Vector2& pB = gNodes[static_cast<size_t>(e.nodeB)].pos;
+
+            // Store for building exclusion
+            RoadSegXZ seg; seg.a = pA; seg.b = pB;
+            this->organicRoadSegs.push_back(seg);
+
+            roadComp->addRoadSegmentLua(
+                Ogre::Vector3(pA.x, 0.f, pA.y),
+                Ogre::Vector3(pB.x, 0.f, pB.y));
+        }
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] buildOrganicRoadNetwork: calling endBatch() — "
+            "this triggers rebuildMesh() with all " +
+            Ogre::StringConverter::toString(static_cast<unsigned int>(gEdges.size())) + " segments.");
+        roadComp->endBatch();
+        // Buildings remain on cityGridX/Z in Phase 1.
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] buildOrganicRoadNetwork DONE: " +
+            Ogre::StringConverter::toString(static_cast<unsigned int>(gEdges.size())) +
+            " edges fed to ProceduralRoadComponent via beginBatch/endBatch.");
     }
 
     // =========================================================================
@@ -1598,21 +2078,11 @@ namespace NOWA
         // disagree with the actual road geometry.
         const Ogre::Real halfRw = rw * 0.5f;
 
-        // Road grid lines must be at BLOCK BOUNDARIES, not block centres.
-        // Block centres are where buildings sit — putting road lines there puts roads
-        // through the middle of every building row.
-        // Boundary grid: minX, minX+blockSz, minX+2*blockSz … maxX  (and same for Z).
-        const Ogre::Vector4 cityBnds = this->cityBoundsAttr->getVector4();
+        // Use the shared perturbed grid (same grid used by buildCityRoadNetwork and block generation)
+        const std::vector<Ogre::Real>& gridX = this->cityGridX;
+        const std::vector<Ogre::Real>& gridZ = this->cityGridZ;
         const Ogre::Real blockSz = this->blockSizeAttr->getReal();
-        std::vector<Ogre::Real> gridX, gridZ;
-        for (Ogre::Real gx = cityBnds.x; gx <= cityBnds.z + blockSz * 0.01f; gx += blockSz)
-        {
-            gridX.push_back(gx);
-        }
-        for (Ogre::Real gz = cityBnds.y; gz <= cityBnds.w + blockSz * 0.01f; gz += blockSz)
-        {
-            gridZ.push_back(gz);
-        }
+        if (gridX.size() < 2 || gridZ.size() < 2) { return; }
 
         const Ogre::Real ox = localOrigin.x;
         const Ogre::Real oy = localOrigin.y;
@@ -1623,8 +2093,8 @@ namespace NOWA
         // Road lift: clearly above terrain so the designer can sculpt Terra up to meet
         // the road surface using the heightmap brush. 0.5m is large enough to prevent
         // z-fighting at any camera distance while remaining visually manageable.
-        static constexpr Ogre::Real ROAD_LIFT      = 0.5f;
-        static constexpr Ogre::Real INTERSECT_EXTRA = 0.03f;  // intersection sits slightly higher to cover strip overlap
+        static constexpr Ogre::Real ROAD_LIFT = 0.5f;
+        static constexpr Ogre::Real INTERSECT_EXTRA = 0.03f; // intersection sits slightly higher to cover strip overlap
         // Both h0, h1 are already in LOCAL space (world - oy + LIFT).
         // Winding: BL→TL→TR→BR is CCW from +Y, giving a +Y-ish normal for flat and a slightly
         // tilted normal for sloped sub-quads.  Normal is computed from actual geometry, not
@@ -1669,7 +2139,7 @@ namespace NOWA
         auto emitCurb = [&](const Ogre::Vector3& cBL, const Ogre::Vector3& cBR,
                              const Ogre::Vector3& cTR, const Ogre::Vector3& cTL,
                              const Ogre::Vector3& cN, Ogre::Real uLen)
-            {
+        {
             if (curbH <= 0.001f) { return; }
             this->pushQuad(curbV, curbI, curbN, cBL, cTL, cTR, cBR, cN, uLen / tile, 1.f);
         };
@@ -1712,7 +2182,7 @@ namespace NOWA
 
                 for (int si = 0; si + 1 < numPts; ++si)
                 {
-                    const Ogre::Real subX0 = x0 + static_cast<Ogre::Real>(si)     / static_cast<Ogre::Real>(numPts - 1) * segLen;
+                    const Ogre::Real subX0 = x0 + static_cast<Ogre::Real>(si) / static_cast<Ogre::Real>(numPts - 1) * segLen;
                     const Ogre::Real subX1 = x0 + static_cast<Ogre::Real>(si + 1) / static_cast<Ogre::Real>(numPts - 1) * segLen;
                     const Ogre::Real h0 = heights[static_cast<size_t>(si)];
                     const Ogre::Real h1 = heights[static_cast<size_t>(si + 1)];
@@ -1772,7 +2242,7 @@ namespace NOWA
 
                 for (int si = 0; si + 1 < numPts; ++si)
                 {
-                    const Ogre::Real subZ0 = z0 + static_cast<Ogre::Real>(si)     / static_cast<Ogre::Real>(numPts - 1) * segLen;
+                    const Ogre::Real subZ0 = z0 + static_cast<Ogre::Real>(si) / static_cast<Ogre::Real>(numPts - 1) * segLen;
                     const Ogre::Real subZ1 = z0 + static_cast<Ogre::Real>(si + 1) / static_cast<Ogre::Real>(numPts - 1) * segLen;
                     const Ogre::Real h0 = heights[static_cast<size_t>(si)];
                     const Ogre::Real h1 = heights[static_cast<size_t>(si + 1)];
@@ -1830,104 +2300,9 @@ namespace NOWA
 
     void ProceduralCityComponent::generateCourtyardWallGeometry(const std::vector<CityBlock>& blocks, const Ogre::Vector3& localOrigin, std::vector<float>& wallV, std::vector<Ogre::uint32>& wallI, size_t& wallN)
     {
-        const Ogre::Real rw = this->roadWidthAttr->getReal();
-        const Ogre::Real sw = this->sidewalkWidthAttr->getReal();
-        const Ogre::Real inset = rw * 0.5f + sw;
-        const Ogre::Real wallH = this->wallHeightAttr->getReal();
-        const Ogre::Real thk   = 0.3f;    // wall thickness — thick enough to be visible from inside
-        const Ogre::Real tile = 2.f;
-
-        const Ogre::Real ox = localOrigin.x;
-        const Ogre::Real oy = localOrigin.y;
-        const Ogre::Real oz = localOrigin.z;
-
-        for (const auto& blk : blocks)
-        {
-            if (false == blk.hasCourtyardWall)
-            {
-                continue;
-            }
-            const Ogre::Real hw = blk.size.x * 0.5f - inset;
-            const Ogre::Real hd = blk.size.y * 0.5f - inset;
-
-            // Block centre in local space
-            const Ogre::Vector3 c(blk.centre.x - ox, 0.f, blk.centre.z - oz);
-
-            // 4 perimeter segments: (s, e, n_outer).
-            // Heights are sampled at each endpoint in world space.
-            struct Seg
-            {
-                Ogre::Vector3 s;    // start XZ in local space, Y = terrain height at s
-                Ogre::Vector3 e;    // end   XZ in local space, Y = terrain height at e
-                Ogre::Vector3 nOut; // outward unit normal (horizontal)
-            };
-
-            // World-space XZ for height sampling
-            auto h = [&](Ogre::Real wx, Ogre::Real wz) -> Ogre::Real
-            {
-                return this->getGroundHeight(Ogre::Vector3(wx, 0.f, wz)) - oy;
-            };
-
-            const Ogre::Real wSL = blk.centre.x - hw; // world X of left edge
-            const Ogre::Real wSR = blk.centre.x + hw; // world X of right edge
-            const Ogre::Real wSN = blk.centre.z - hd; // world Z of near edge
-            const Ogre::Real wSF = blk.centre.z + hd; // world Z of far edge
-
-            Seg segs[4];
-            // Front (near, -Z outer)
-            segs[0].s = Ogre::Vector3(wSL - ox, h(wSL, wSN), wSN - oz);
-            segs[0].e = Ogre::Vector3(wSR - ox, h(wSR, wSN), wSN - oz);
-            segs[0].nOut = Ogre::Vector3(0.f, 0.f, -1.f);
-            // Back (far, +Z outer)
-            segs[1].s = Ogre::Vector3(wSR - ox, h(wSR, wSF), wSF - oz);
-            segs[1].e = Ogre::Vector3(wSL - ox, h(wSL, wSF), wSF - oz);
-            segs[1].nOut = Ogre::Vector3(0.f, 0.f, 1.f);
-            // Left (-X outer)
-            segs[2].s = Ogre::Vector3(wSL - ox, h(wSL, wSF), wSF - oz);
-            segs[2].e = Ogre::Vector3(wSL - ox, h(wSL, wSN), wSN - oz);
-            segs[2].nOut = Ogre::Vector3(-1.f, 0.f, 0.f);
-            // Right (+X outer)
-            segs[3].s = Ogre::Vector3(wSR - ox, h(wSR, wSN), wSN - oz);
-            segs[3].e = Ogre::Vector3(wSR - ox, h(wSR, wSF), wSF - oz);
-            segs[3].nOut = Ogre::Vector3(1.f, 0.f, 0.f);
-
-            for (const auto& seg : segs)
-            {
-                const Ogre::Real segLen = (seg.e - seg.s).length();
-                if (segLen < 0.01f) { continue; }
-
-                // Inner corners (shift inward by -nOut * thk)
-                const Ogre::Vector3 inner = -seg.nOut * thk;
-                const Ogre::Vector3 sb = seg.s + inner; // start inner bottom
-                const Ogre::Vector3 eb = seg.e + inner; // end   inner bottom
-
-                // Use per-endpoint heights for start and end of wall (terrain following)
-                const Ogre::Real hs = seg.s.y;
-                const Ogre::Real he = seg.e.y;
-
-                // Wall top positions (add wallH to Y, keep interpolated slope)
-                const Ogre::Vector3 sT = Ogre::Vector3(seg.s.x, hs + wallH, seg.s.z);
-                const Ogre::Vector3 eT = Ogre::Vector3(seg.e.x, he + wallH, seg.e.z);
-                const Ogre::Vector3 sbT = Ogre::Vector3(sb.x, hs + wallH, sb.z);
-                const Ogre::Vector3 ebT = Ogre::Vector3(eb.x, he + wallH, eb.z);
-
-                // 1. Front face (outer): s, sT, eT, e  → n_outer
-                this->pushQuad(wallV, wallI, wallN, seg.s, sT, eT, seg.e, seg.nOut, segLen / tile, wallH / tile);
-
-                // 2. Back face (inner): eb, ebT, sbT, sb  → -n_outer
-                this->pushQuad(wallV, wallI, wallN, eb, ebT, sbT, sb, -seg.nOut, segLen / tile, wallH / tile);
-
-                // 3. Top cap: eT, ebT, sbT, sT  → UNIT_Y
-                this->pushQuad(wallV, wallI, wallN, eT, ebT, sbT, sT, Ogre::Vector3::UNIT_Y, segLen / tile, thk / tile);
-
-                // 4. Start cap: sbT, sT, s, sb  → -dir
-                const Ogre::Vector3 dir = (seg.e - seg.s).normalisedCopy();
-                this->pushQuad(wallV, wallI, wallN, sbT, sT, seg.s, sb, -dir, thk / tile, wallH / tile);
-
-                // 5. End cap: eT, ebT, eb, e  → +dir
-                this->pushQuad(wallV, wallI, wallN, eT, ebT, eb, seg.e, dir, thk / tile, wallH / tile);
-            }
-        }
+        // Wall feature removed by designer request — function is a no-op stub.
+        // The designer adds walls manually after city generation.
+        (void)blocks; (void)localOrigin; (void)wallV; (void)wallI; (void)wallN;
     }
 
     // =========================================================================
@@ -2152,6 +2527,7 @@ namespace NOWA
                 // Trim:   trimDatablocks[vi % 2]
                 // Door:   alternates city_door_01 / WoodenDoor
                 const Ogre::String doorDb = (vi % 2u == 0) ? this->doorDatablockAttr->getString() : Ogre::String("WoodenDoor");
+                const Ogre::String garageDb = this->garageDatablockAttr->getString();
 
                 auto applyBuildingDb = [&](unsigned int subIdx, const Ogre::String& dbName)
                 {
@@ -2178,6 +2554,7 @@ namespace NOWA
                     applyBuildingDb(3, this->districts[d0].trimDatablocks[vi % 2]);
                 }
                 applyBuildingDb(4, doorDb);
+                applyBuildingDb(5, garageDb);
 
                 Ogre::SceneNode* bNode = sm->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
                 bNode->setPosition(this->cityOrigin);
@@ -2190,10 +2567,10 @@ namespace NOWA
                 batches[batchBase].nodes.push_back(bNode);
             }
 
-            // ---- Infrastructure Item: slots 5-7 (road, curb, courtyardWall) ---
+            // ---- Infrastructure Item: slots 24-25 (road, curb) ---
             Ogre::MeshPtr infraMesh;
             Ogre::Vector3 iMinB, iMaxB;
-            Ogre::Item* infraItem = makeItem(infraMesh, "CityInfra_" + id, iMinB, iMaxB, INFRA_BATCH_OFFSET, 3u);
+            Ogre::Item* infraItem = makeItem(infraMesh, "CityInfra_" + id, iMinB, iMaxB, INFRA_BATCH_OFFSET, 2u);
 
             auto applyInfraDb = [&](unsigned int subIdx, const Ogre::String& dbName)
             {
@@ -2205,7 +2582,7 @@ namespace NOWA
                 }
                 else
                 {
-                    static const char* names[] = {"road", "curb", "courtyard_wall"};
+                    static const char* names[] = {"road", "curb"};
                     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
                         "[ProceduralCityComponent] infra " + Ogre::String(names[subIdx]) + ": '" + dbName + "' not found.");
                 }
@@ -2213,7 +2590,7 @@ namespace NOWA
 
             applyInfraDb(0, this->roadDatablockAttr->getString());
             applyInfraDb(1, this->curbDatablockAttr->getString());
-            applyInfraDb(2, this->wallDatablockAttr->getString());
+            // slot 2 (courtyard wall) removed — walls feature removed
 
             Ogre::SceneNode* infraNode = sm->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
             infraNode->setPosition(this->cityOrigin);
@@ -2304,9 +2681,12 @@ namespace NOWA
         cityHashCombine(cs, cityHashReal(this->roadWidthAttr->getReal()));
         cityHashCombine(cs, cityHashReal(this->sidewalkWidthAttr->getReal()));
         cityHashCombine(cs, cityHashReal(this->curbHeightAttr->getReal()));
-        cityHashCombine(cs, cityHashReal(this->wallHeightAttr->getReal()));
         cityHashCombine(cs, static_cast<uint64_t>(this->generateRoadsAttr->getBool() ? 1u : 0u));
-        cityHashCombine(cs, static_cast<uint64_t>(this->generateWallsAttr->getBool() ? 1u : 0u));
+        // CRITICAL: road variance must be in checksum so the cache is invalidated when the
+        // designer changes it.  Without this, changing variance from 0→0.5 hits the cache
+        // and never reaches buildCityRoadNetwork/buildOrganicRoadNetwork.
+        cityHashCombine(cs, cityHashReal(this->roadVarianceAttr->getReal()));
+        cityHashCombine(cs, static_cast<uint64_t>(this->generateGarageAttr->getBool() ? 1u : 0u));
         cityHashCombine(cs, cityHashString(this->doorDatablockAttr->getString()));
         const Ogre::Vector4 b = this->cityBoundsAttr->getVector4();
         cityHashCombine(cs, cityHashReal(b.x));
@@ -2324,11 +2704,6 @@ namespace NOWA
             cityHashCombine(cs, cityHashReal(d.maxFootprint.x));
             cityHashCombine(cs, cityHashReal(d.maxFootprint.y));
             cityHashCombine(cs, cityHashReal(d.density));
-            cityHashCombine(cs, cityHashReal(d.courtyardProb));
-            for (int v = 0; v < 4; ++v)
-            {
-                cityHashCombine(cs, cityHashString(d.wallDatablocks[v]));
-            }
             for (int v = 0; v < 3; ++v)
             {
                 cityHashCombine(cs, cityHashString(d.roofDatablocks[v]));
@@ -2495,7 +2870,8 @@ namespace NOWA
                 std::vector<float> wV, rV, winV, tV, dV;
                 std::vector<Ogre::uint32> wI, rI, winI, tI, dI;
                 size_t wN = 0, rN = 0, winN = 0, tN = 0, dN = 0;
-                this->generateBuildingGeometry(inst, d, this->cityOrigin, wV, wI, wN, rV, rI, rN, winV, winI, winN, tV, tI, tN, dV, dI, dN);
+                std::vector<float> gV; std::vector<Ogre::uint32> gI; size_t gN = 0;
+                this->generateBuildingGeometry(inst, d, this->cityOrigin, wV, wI, wN, rV, rI, rN, winV, winI, winN, tV, tI, tN, dV, dI, dN, gV, gI, gN);
 
                 // Route to the correct variant batch group
                 const unsigned int vi = inst.variantSeed % NUM_BUILDING_VARIANTS;
@@ -2521,6 +2897,7 @@ namespace NOWA
                     else if (sibling.materialSlot == batchBase + 2) { ap(sibling.rawVertices, sibling.rawIndices, sibling.numVertices, winV, winI, winN); }
                     else if (sibling.materialSlot == batchBase + 3) { ap(sibling.rawVertices, sibling.rawIndices, sibling.numVertices, tV, tI, tN); }
                     else if (sibling.materialSlot == batchBase + 4) { ap(sibling.rawVertices, sibling.rawIndices, sibling.numVertices, dV, dI, dN); }
+                    else if (sibling.materialSlot == batchBase + 5) { ap(sibling.rawVertices, sibling.rawIndices, sibling.numVertices, gV, gI, gN); }
                 }
             }
         }
@@ -2605,8 +2982,8 @@ namespace NOWA
                 }
                 else
                 {
-            return hp.y;
-        }
+                    return hp.y;
+                }
             }
             // else fall through to ground plane fallback below
         }
@@ -2764,19 +3141,7 @@ namespace NOWA
             mkV2(this->districtMinFootprintAttrs[i], AttrDistrictMinFootprint() + idx, Ogre::Vector2(t.minFP, t.minFP));
             mkV2(this->districtMaxFootprintAttrs[i], AttrDistrictMaxFootprint() + idx, Ogre::Vector2(t.maxFP, t.maxFP));
             mkR(this->districtDensityAttrs[i], AttrDistrictDensity() + idx, 0.85f, 0.f, 1.f, "Lot occupancy [0..1].");
-            mkR(this->districtCourtyardProbAttrs[i], AttrDistrictCourtyardProb() + idx, 0.3f, 0.f, 1.f, "Courtyard wall probability.");
 
-            for (unsigned int v = 0; v < 4u; ++v)
-            {
-                if (nullptr == this->districtWallDbAttrs[i][v])
-                {
-                    Ogre::String key = AttrDistrictWallDatablock() + idx + "_" + Ogre::StringConverter::toString(v);
-                    this->districtWallDbAttrs[i][v] = new Variant(key, Ogre::String(wallDef[v]), this->attributes);
-                    this->districtWallDbAttrs[i][v]->setDescription("Wall datablock variant " + Ogre::StringConverter::toString(v) + ".");
-                    this->districtWallDbAttrs[i][v]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
-                    this->districts[i].wallDatablocks[v] = wallDef[v];
-                }
-            }
             for (unsigned int v = 0; v < 3u; ++v)
             {
                 if (nullptr == this->districtRoofDbAttrs[i][v])
@@ -2883,30 +3248,6 @@ namespace NOWA
     {
         return this->curbDatablockAttr->getString();
     }
-    void ProceduralCityComponent::setGenerateWalls(bool v)
-    {
-        this->generateWallsAttr->setValue(v);
-    }
-    bool ProceduralCityComponent::getGenerateWalls(void) const
-    {
-        return this->generateWallsAttr->getBool();
-    }
-    void ProceduralCityComponent::setWallHeight(Ogre::Real v)
-    {
-        this->wallHeightAttr->setValue(Ogre::Math::Clamp(v, 0.5f, 10.f));
-    }
-    Ogre::Real ProceduralCityComponent::getWallHeight(void) const
-    {
-        return this->wallHeightAttr->getReal();
-    }
-    void ProceduralCityComponent::setWallDatablock(const Ogre::String& v)
-    {
-        this->wallDatablockAttr->setValue(v);
-    }
-    Ogre::String ProceduralCityComponent::getWallDatablock(void) const
-    {
-        return this->wallDatablockAttr->getString();
-    }
 
     void ProceduralCityComponent::setDoorDatablock(const Ogre::String& v)
     {
@@ -2915,6 +3256,15 @@ namespace NOWA
     Ogre::String ProceduralCityComponent::getDoorDatablock(void) const
     {
         return this->doorDatablockAttr->getString();
+    }
+
+    void ProceduralCityComponent::setGarageDatablock(const Ogre::String& v)
+    {
+        this->garageDatablockAttr->setValue(v);
+    }
+    Ogre::String ProceduralCityComponent::getGarageDatablock(void) const
+    {
+        return this->garageDatablockAttr->getString();
     }
 
     void ProceduralCityComponent::setRoadComponentId(unsigned long id)
@@ -3052,38 +3402,6 @@ namespace NOWA
     Ogre::Real ProceduralCityComponent::getDistrictDensity(unsigned int i) const
     {
         return (i < this->districts.size()) ? this->districts[i].density : 0.85f;
-    }
-
-    void ProceduralCityComponent::setDistrictCourtyardProb(unsigned int i, Ogre::Real v)
-    {
-        if (i < this->districts.size())
-        {
-            this->districts[i].courtyardProb = Ogre::Math::Clamp(v, 0.f, 1.f);
-            if (this->districtCourtyardProbAttrs[i])
-            {
-                this->districtCourtyardProbAttrs[i]->setValue(this->districts[i].courtyardProb);
-            }
-        }
-    }
-    Ogre::Real ProceduralCityComponent::getDistrictCourtyardProb(unsigned int i) const
-    {
-        return (i < this->districts.size()) ? this->districts[i].courtyardProb : 0.3f;
-    }
-
-    void ProceduralCityComponent::setDistrictWallDatablock(unsigned int di, unsigned int v, const Ogre::String& name)
-    {
-        if (di < this->districts.size() && v < 4u)
-        {
-            this->districts[di].wallDatablocks[v] = name;
-            if (this->districtWallDbAttrs[di][v])
-            {
-                this->districtWallDbAttrs[di][v]->setValue(name);
-            }
-        }
-    }
-    Ogre::String ProceduralCityComponent::getDistrictWallDatablock(unsigned int di, unsigned int v) const
-    {
-        return (di < this->districts.size() && v < 4u) ? this->districts[di].wallDatablocks[v] : "";
     }
 
     void ProceduralCityComponent::setDistrictRoofDatablock(unsigned int di, unsigned int v, const Ogre::String& name)

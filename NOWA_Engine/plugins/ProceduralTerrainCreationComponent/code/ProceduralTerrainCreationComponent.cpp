@@ -21,7 +21,7 @@ namespace NOWA
         name("ProceduralTerrainCreationComponent"),
         resolution(new Variant(ProceduralTerrainCreationComponent::AttrResolution(), static_cast<Ogre::uint32>(1024), this->attributes)),
         // Base height: 0.5 = middle of terrain (Y=25m with your setup)
-        baseHeight(new Variant(ProceduralTerrainCreationComponent::AttrBaseHeight(), 0.2f, this->attributes)),
+        baseHeight(new Variant(ProceduralTerrainCreationComponent::AttrBaseHeight(), 0.0f, this->attributes)),
         // Hill amplitude: 0.1 = only 10% variation = +-10m hills
         hillAmplitude(new Variant(ProceduralTerrainCreationComponent::AttrHillAmplitude(), 0.2f, this->attributes)),
         // Frequency: 3-4 features across terrain
@@ -91,7 +91,7 @@ namespace NOWA
         this->roadCurviness->setDescription("Road curvature amount (0 = straight, 1 = very curvy).");
 
         this->resolution->setConstraints(128u, 4096u);
-        this->baseHeight->setConstraints(0.2f, 0.8f);     // Keep away from extremes
+        this->baseHeight->setConstraints(0.0f, 0.8f);     // Keep away from extremes
         this->hillAmplitude->setConstraints(0.02f, 0.5f); // 2% to 40% variation
         this->hillFrequency->setConstraints(1.0f, 16.0f); // 1-16 features per terrain
         this->octaves->setConstraints(1u, 8u);

@@ -18,6 +18,12 @@
     <ClCompile Include="code\CityRoadGraph.cpp">
       <Filter>code</Filter>
     </ClCompile>
+    <ClCompile Include="code\CityFaceExtractor.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\CityLotSubdivider.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="code\ProceduralCityComponent.h">
@@ -30,6 +36,12 @@
       <Filter>code</Filter>
     </ClInclude>
     <ClInclude Include="code\CityTensorField.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\CityFaceExtractor.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\CityLotSubdivider.h">
       <Filter>code</Filter>
     </ClInclude>
   </ItemGroup>
