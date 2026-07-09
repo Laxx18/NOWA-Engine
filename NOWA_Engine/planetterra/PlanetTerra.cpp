@@ -12,12 +12,12 @@
 #include "OgreTextureGpuManager.h"
 #include "Vao/OgreVertexArrayObject.h"
 
-#include "OgreMeshManager2.h"
 #include "OgreConfigFile.h"
 #include "OgreLodConfig.h"
 #include "OgreLodStrategyManager.h"
-#include "OgreMeshLodGenerator.h"
 #include "OgreMesh2Serializer.h"
+#include "OgreMeshLodGenerator.h"
+#include "OgreMeshManager2.h"
 #include "OgrePixelCountLodStrategy.h"
 #include "OgreSubMesh2.h"
 
@@ -92,7 +92,7 @@ namespace NOWA
         {
             this->planetItem->setStatic(attachedNode->isStatic());
         }
-        attachedNode->attachObject(this->planetItem); 
+        attachedNode->attachObject(this->planetItem);
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerra] Created planet '" + objectName + "' radius=" + Ogre::StringConverter::toString(radius) + " segH=" + Ogre::StringConverter::toString(segmentsH) +
                                                                                " segV=" + Ogre::StringConverter::toString(segmentsV) + " verts=" + Ogre::StringConverter::toString(static_cast<unsigned int>(vertexCount)));
@@ -249,7 +249,7 @@ namespace NOWA
                                                                                 Ogre::StringConverter::toString(static_cast<unsigned int>(subMesh->mVao[Ogre::VpNormal].size())) + " VpShadow.size=" +
                                                                                 Ogre::StringConverter::toString(static_cast<unsigned int>(subMesh->mVao[Ogre::VpShadow].size())) + " lodDistance=" + Ogre::StringConverter::toString(lodDistance));
 
-       // LOD distances must be large multiples of the radius to avoid
+        // LOD distances must be large multiples of the radius to avoid
         // visible polygon degradation when the camera is still close.
         // Use lodDistance as the LAST (lowest quality) transition,
         // but enforce a minimum of 3x the radius.
@@ -372,7 +372,8 @@ namespace NOWA
             const float dist = effectiveLodDist * (static_cast<float>(lod + 1) / static_cast<float>(numLods));
             lodValues->push_back(strategy->transformUserValue(dist));
 
-            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerra] LOD " + Ogre::StringConverter::toString(lod) + " segH=" + Ogre::StringConverter::toString(lodSegH) + " segV=" + Ogre::StringConverter::toString(lodSegV) +
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerra] LOD " + Ogre::StringConverter::toString(lod) + " segH=" + Ogre::StringConverter::toString(lodSegH) + " segV=" + Ogre::StringConverter::toString(lodSegV)
+            // +
             //                                                                        " verts=" + Ogre::StringConverter::toString(static_cast<unsigned int>(lodVertCount)) + " dist=" + Ogre::StringConverter::toString(dist));
         }
     }
@@ -477,6 +478,70 @@ namespace NOWA
             planetMesh->_setBounds(aabb, false);
             planetMesh->_setBoundingSphereRadius(maxR);
         }
+    }
+
+    // =========================================================================
+    //  MAIN THREAD  —  raycast against the CURRENT CPU geometry
+    // =========================================================================
+    //
+    // This deliberately does NOT go through Ogre::Item + getMeshInformation().
+    // vertices/indices here are the exact same CPU arrays uploadVertexData() just
+    // pushed to the GPU (via dynamicVB->upload()), so this is guaranteed to match
+    // whatever height deformation is currently visible - unlike a generic mesh
+    // vertex-buffer read, which uploadVertexData() never keeps in sync since it
+    // writes straight to the GPU buffer instead of through a CPU-shadowed one.
+    // position/orientation/scale are the Item's parent node's derived world
+    // transform, passed in by the caller exactly like getMeshInformation expects,
+    // so this stays decoupled from any particular SceneNode API.
+    std::tuple<bool, Ogre::Vector3, Ogre::Vector3, Ogre::Real> PlanetTerra::checkRayIntersect(const Ogre::Ray& ray, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale) const
+    {
+        // Transform the world-space ray into the mesh's local space (vertices[] are
+        // stored local, the same space uploaded to the GPU vertex buffer).
+        const Ogre::Quaternion invOrientation = orientation.Inverse();
+        const Ogre::Vector3 invScale((std::fabs(scale.x) > 1e-8f) ? (1.0f / scale.x) : 1.0f, (std::fabs(scale.y) > 1e-8f) ? (1.0f / scale.y) : 1.0f, (std::fabs(scale.z) > 1e-8f) ? (1.0f / scale.z) : 1.0f);
+
+        const Ogre::Vector3 localOrigin = invOrientation * (ray.getOrigin() - position) * invScale;
+        Ogre::Vector3 localDir = invOrientation * ray.getDirection() * invScale;
+        localDir.normalise();
+        const Ogre::Ray localRay(localOrigin, localDir);
+
+        bool hitFound = false;
+        Ogre::Real closestDist = -1.0f;
+        Ogre::Vector3 closestLocalPoint = Ogre::Vector3::ZERO;
+        Ogre::Vector3 closestLocalNormal = Ogre::Vector3::UNIT_Y;
+
+        for (size_t i = 0u; i + 2u < indexCount; i += 3u)
+        {
+            const size_t i0 = indices[i];
+            const size_t i1 = indices[i + 1u];
+            const size_t i2 = indices[i + 2u];
+
+            const std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(localRay, vertices[i0], vertices[i1], vertices[i2], true, false);
+            if (hit.first && (closestDist < 0.0f || hit.second < closestDist))
+            {
+                closestDist = hit.second;
+                hitFound = true;
+                closestLocalPoint = localRay.getPoint(hit.second);
+
+                const Ogre::Vector3 v1 = vertices[i0] - vertices[i1];
+                const Ogre::Vector3 v2 = vertices[i2] - vertices[i1];
+                closestLocalNormal = v1.crossProduct(v2);
+                closestLocalNormal.normalise();
+            }
+        }
+
+        if (false == hitFound)
+        {
+            return std::make_tuple(false, Ogre::Vector3::ZERO, Ogre::Vector3::UNIT_Y, static_cast<Ogre::Real>(-1.0f));
+        }
+
+        // Transform hit point and normal back to world space.
+        const Ogre::Vector3 worldPoint = (orientation * (closestLocalPoint * scale)) + position;
+        Ogre::Vector3 worldNormal = orientation * closestLocalNormal;
+        worldNormal.normalise();
+        const Ogre::Real worldDist = (worldPoint - ray.getOrigin()).length();
+
+        return std::make_tuple(true, worldPoint, worldNormal, worldDist);
     }
 
     // =========================================================================

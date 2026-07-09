@@ -5,9 +5,44 @@
 #include "OgreBitwise.h"
 #include "Vao/OgreAsyncTicket.h"
 #include "Terra.h"
+#include "planetTerra/PlanetTerra.h"
+#include "gameobject/PlanetTerraComponentBase.h"
 #include "OgreMeshManager2.h"
 #include "OgreMesh2.h"
 #include "modules/GraphicsModule.h"
+
+namespace
+{
+    boost::shared_ptr<NOWA::PlanetTerraComponentBase> getPlanetTerraComponentFromMovable(Ogre::MovableObject* movable)
+    {
+        if (nullptr == movable)
+        {
+            return nullptr;
+        }
+
+        if (true == movable->getUserObjectBindings().getUserAny().isEmpty())
+        {
+            return nullptr;
+        }
+
+        NOWA::GameObject* gameObject = nullptr;
+        try
+        {
+            gameObject = Ogre::any_cast<NOWA::GameObject*>(movable->getUserObjectBindings().getUserAny());
+        }
+        catch (const Ogre::Exception&)
+        {
+            return nullptr;
+        }
+
+        if (nullptr == gameObject)
+        {
+            return nullptr;
+        }
+
+        return NOWA::GameObjectComponent::makeStrongPtr(gameObject->getComponent<NOWA::PlanetTerraComponentBase>());
+    }
+}
 
 namespace NOWA
 {
@@ -2029,533 +2064,634 @@ namespace NOWA
     }
 
 	bool MathHelper::getRaycastHeight(Ogre::Real x, Ogre::Real z, Ogre::RaySceneQuery* raySceneQuery, Ogre::Real& height, std::vector<Ogre::MovableObject*>* excludeMovableObjects)
-	{
-		Ogre::Vector3 result = Ogre::Vector3::ZERO;
-		Ogre::Ray verticalRay = Ogre::Ray(Ogre::Vector3(x, 5000.0f, z), Ogre::Vector3::NEGATIVE_UNIT_Y);
-		raySceneQuery->setRay(verticalRay);
+    {
+        Ogre::Vector3 result = Ogre::Vector3::ZERO;
+        Ogre::Ray verticalRay = Ogre::Ray(Ogre::Vector3(x, 5000.0f, z), Ogre::Vector3::NEGATIVE_UNIT_Y);
+        raySceneQuery->setRay(verticalRay);
 
-		// execute the query, returns a vector of hits
-		if (raySceneQuery->execute().size() <= 0)
-		{
-			// raycast did not hit an objects bounding box
-			return false;
-		}
+        // execute the query, returns a vector of hits
+        if (raySceneQuery->execute().size() <= 0)
+        {
+            // raycast did not hit an objects bounding box
+            return false;
+        }
 
-		// at this point we have raycast to a series of different objects bounding boxes.
-		// we need to test these different objects to see which is the first polygon hit.
-		// there are some minor optimizations (distance based) that mean we wont have to
-		// check all of the objects most of the time, but the worst case scenario is that
-		// we need to test every triangle of every object.
-		Ogre::Real closestDistance = -1.0f;
-		Ogre::Vector3 closestResult;
-		Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
-		for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
-		{
-			Ogre::String type = queryResult[qrIdx].movable->getMovableType();
-			if ("Camera" == type)
-				continue;
-			// stop checking if we have found a raycast hit that is closer
-			// than all remaining entities
-			if (closestDistance >= 0.0f && closestDistance < queryResult[qrIdx].distance)
-			{
-				break;
-			}
+        Ogre::Real closestDistance = -1.0f;
+        Ogre::Vector3 closestResult;
+        Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
+        for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
+        {
+            Ogre::String type = queryResult[qrIdx].movable->getMovableType();
+            if ("Camera" == type)
+            {
+                continue;
+            }
+            // stop checking if we have found a raycast hit that is closer
+            // than all remaining entities
+            if (closestDistance >= 0.0f && closestDistance < queryResult[qrIdx].distance)
+            {
+                break;
+            }
 
-			// only check this result if its a hit against an entity
-			if (type.compare("Entity") == 0)
-			{
-				// get the entity to check
-				Ogre::Item* item = static_cast<Ogre::Item*>(queryResult[qrIdx].movable);
+            // NOTE: was "Entity" here before - that's the legacy Ogre v1 movable type
+            // name and never matches an Ogre-Next V2 Item's actual type ("Item"), so
+            // this branch could never have fired for a real Item. Fixed to "Item" to
+            // match every other function in this file.
+            if (type.compare("Item") == 0)
+            {
+                // get the entity to check
+                Ogre::Item* item = static_cast<Ogre::Item*>(queryResult[qrIdx].movable);
                 Ogre::String itemName = item->getName();
 
-				bool foundExcludedOne = false;
-				// If its the exclude entity, continue the loop with a different ones
-				if (nullptr != excludeMovableObjects)
-				{
-					for (size_t i = 0; i < excludeMovableObjects->size(); i++)
-					{
+                bool foundExcludedOne = false;
+                // If its the exclude entity, continue the loop with a different ones
+                if (nullptr != excludeMovableObjects)
+                {
+                    for (size_t i = 0; i < excludeMovableObjects->size(); i++)
+                    {
                         if (item == excludeMovableObjects->at(i))
-						{
-							foundExcludedOne = true;
-							continue;
-						}
-					}
+                        {
+                            foundExcludedOne = true;
+                            continue;
+                        }
+                    }
 
-					if (true == foundExcludedOne)
-					{
-						continue;
-					}
-				}
+                    if (true == foundExcludedOne)
+                    {
+                        continue;
+                    }
+                }
 
-				// Exclude gizmo
+                // Exclude gizmo
                 if ("XArrowGizmoItem" == itemName || "YArrowGizmoItem" == itemName || "ZArrowGizmoItem" == itemName || "SphereGizmoItem" == itemName)
-					continue;
+                {
+                    continue;
+                }
 
-				// mesh data to retrieve         
-				size_t vertexCount;
-				size_t indexCount;
-				Ogre::Vector3* vertices;
-				unsigned long* indices;
+                bool newClosestFound = false;
 
-				// get the mesh information
-                this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(), item->getParentNode()->_getDerivedScale());
+                // PlanetTerra-owned Item -> use its own always-current CPU geometry
+                // instead of a generic mesh-buffer read.
+                auto planetTerraComp = getPlanetTerraComponentFromMovable(item);
+                if (nullptr != planetTerraComp)
+                {
+                    auto resultData = planetTerraComp->checkRayIntersect(verticalRay, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
 
-				// test for hitting individual triangles on the mesh
-				bool newClosestFound = false;
-				for (int i = 0; i < static_cast<int>(indexCount); i += 3)
-				{
-					// check for a hit against this triangle
-					std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(verticalRay, vertices[indices[i]],
-						vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
+                    if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
+                    {
+                        closestDistance = std::get<3>(resultData);
+                        newClosestFound = true;
+                    }
+                }
+                else
+                {
+                    // mesh data to retrieve
+                    size_t vertexCount;
+                    size_t indexCount;
+                    Ogre::Vector3* vertices;
+                    unsigned long* indices;
 
-					// if it was a hit check if its the closest
-					if (hit.first)
-					{
-						if ((closestDistance < 0.0f) ||
-							(hit.second < closestDistance))
-						{
-							// this is the closest so far, save it off
-							closestDistance = hit.second;
-							newClosestFound = true;
-						}
-					}
-				}
+                    // get the mesh information
+                    this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(), item->getParentNode()->_getDerivedScale());
 
-				// free the verticies and indicies memory
-				OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
-				OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
+                    // test for hitting individual triangles on the mesh
+                    for (int i = 0; i < static_cast<int>(indexCount); i += 3)
+                    {
+                        // check for a hit against this triangle
+                        std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(verticalRay, vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
 
-				// if we found a new closest raycast for this object, update the
-				// closestResult before moving on to the next object.
-				if (newClosestFound)
-				{
-					// Note: getPoint gives the absolute position!
-					closestResult = verticalRay.getPoint(closestDistance);
-				}
-			}
-		}
+                        // if it was a hit check if its the closest
+                        if (hit.first)
+                        {
+                            if ((closestDistance < 0.0f) || (hit.second < closestDistance))
+                            {
+                                // this is the closest so far, save it off
+                                closestDistance = hit.second;
+                                newClosestFound = true;
+                            }
+                        }
+                    }
 
-		// return the result
-		if (closestDistance >= 0.0f)
-		{
-			// raycast success
-			result = closestResult;
-			height = result.y;
-			return true;
-		}
-		else
-		{
-			// raycast failed
-			return false;
-		}
-	}
+                    // free the verticies and indicies memory
+                    OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
+                    OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
+                }
 
-	bool MathHelper::getRaycastResult(const Ogre::Vector3& origin, const Ogre::Vector3& direction, Ogre::RaySceneQuery* raySceneQuery, Ogre::Vector3& result,
-		size_t& targetMovableObject, std::vector<Ogre::MovableObject*>* excludeMovableObjects)
-	{
-		result = Ogre::Vector3::ZERO;
-		targetMovableObject = 0;
+                // if we found a new closest raycast for this object, update the
+                // closestResult before moving on to the next object.
+                if (newClosestFound)
+                {
+                    // Note: getPoint gives the absolute position!
+                    closestResult = verticalRay.getPoint(closestDistance);
+                }
+            }
+            else if (queryResult[qrIdx].movable->getMovableType().compare("Terra") == 0)
+            {
+                Ogre::Terra* terra = dynamic_cast<Ogre::Terra*>(queryResult[qrIdx].movable);
+                if (nullptr != terra)
+                {
+                    auto resultData = terra->checkRayIntersect(verticalRay);
+                    if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
+                    {
+                        closestResult = std::get<1>(resultData);
+                        closestDistance = std::get<3>(resultData);
+                    }
+                }
+            }
+        }
 
-		Ogre::Ray ray = Ogre::Ray(origin, direction);
-		raySceneQuery->setRay(ray);
+        // return the result
+        if (closestDistance >= 0.0f)
+        {
+            // raycast success
+            result = closestResult;
+            height = result.y;
+            return true;
+        }
+        else
+        {
+            // raycast failed
+            return false;
+        }
+    }
 
-		// execute the query, returns a vector of hits
-		if (raySceneQuery->execute().size() <= 0)
-		{
-			// raycast did not hit an objects bounding box
-			return false;
-		}
+    bool MathHelper::getRaycastResult(const Ogre::Vector3& origin, const Ogre::Vector3& direction, Ogre::RaySceneQuery* raySceneQuery, Ogre::Vector3& result, size_t& targetMovableObject, std::vector<Ogre::MovableObject*>* excludeMovableObjects)
+    {
+        result = Ogre::Vector3::ZERO;
+        targetMovableObject = 0;
 
-		// at this point we have raycast to a series of different objects bounding boxes.
-		// we need to test these different objects to see which is the first polygon hit.
-		// there are some minor optimizations (distance based) that mean we wont have to
-		// check all of the objects most of the time, but the worst case scenario is that
-		// we need to test every triangle of every object.
-		Ogre::Real closestDistance = -1.0f;
-		Ogre::Vector3 closestResult;
-		Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
-		for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
-		{
-			Ogre::String type = queryResult[qrIdx].movable->getMovableType();
-			if ("Camera" == type)
-				continue;
-			// stop checking if we have found a raycast hit that is closer
-			// than all remaining entities
-			if (closestDistance >= 0.0f && closestDistance < queryResult[qrIdx].distance)
-			{
-				break;
-			}
+        Ogre::Ray ray = Ogre::Ray(origin, direction);
+        raySceneQuery->setRay(ray);
 
-			if (type.compare("Item") == 0)
-			{
-				Ogre::Item* item = dynamic_cast<Ogre::Item*>(queryResult[qrIdx].movable);
-				if (nullptr != item)
-				{
-					// If its the exclude entity, continue the loop with a different ones
-					bool foundExcludedOne = false;
-					Ogre::String itemName = item->getName();
+        // execute the query, returns a vector of hits
+        if (raySceneQuery->execute().size() <= 0)
+        {
+            // raycast did not hit an objects bounding box
+            return false;
+        }
 
-					// Exclude gizmo
-					if ("XArrowGizmoItem" == itemName || "YArrowGizmoItem" == itemName || "ZArrowGizmoItem" == itemName || "SphereGizmoItem" == itemName)
-						continue;
+        Ogre::Real closestDistance = -1.0f;
+        Ogre::Vector3 closestResult;
+        Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
+        for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
+        {
+            Ogre::String type = queryResult[qrIdx].movable->getMovableType();
+            if ("Camera" == type)
+            {
+                continue;
+            }
+            // stop checking if we have found a raycast hit that is closer
+            // than all remaining entities
+            if (closestDistance >= 0.0f && closestDistance < queryResult[qrIdx].distance)
+            {
+                break;
+            }
 
-					if (nullptr != excludeMovableObjects)
-					{
-						for (size_t i = 0; i < excludeMovableObjects->size(); i++)
-						{
-							if (item == excludeMovableObjects->at(i))
-							{
-								foundExcludedOne = true;
-								continue;
-							}
-						}
+            if (type.compare("Item") == 0)
+            {
+                Ogre::Item* item = dynamic_cast<Ogre::Item*>(queryResult[qrIdx].movable);
+                if (nullptr != item)
+                {
+                    // If its the exclude entity, continue the loop with a different ones
+                    bool foundExcludedOne = false;
+                    Ogre::String itemName = item->getName();
 
-						if (true == foundExcludedOne)
-						{
-							continue;
-						}
-					}
+                    // Exclude gizmo
+                    if ("XArrowGizmoItem" == itemName || "YArrowGizmoItem" == itemName || "ZArrowGizmoItem" == itemName || "SphereGizmoItem" == itemName)
+                    {
+                        continue;
+                    }
 
-					// mesh data to retrieve
-					size_t vertexCount;
-					size_t indexCount;
-					Ogre::Vector3* vertices = nullptr;
-					unsigned long* indices = nullptr;
+                    if (nullptr != excludeMovableObjects)
+                    {
+                        for (size_t i = 0; i < excludeMovableObjects->size(); i++)
+                        {
+                            if (item == excludeMovableObjects->at(i))
+                            {
+                                foundExcludedOne = true;
+                                continue;
+                            }
+                        }
 
-					// get the mesh information
-					this->getMeshInformation(item->getMesh(), vertexCount, vertices,
-						indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(),
-						item->getParentNode()->_getDerivedOrientationUpdated(),
-						item->getParentNode()->getScale());
+                        if (true == foundExcludedOne)
+                        {
+                            continue;
+                        }
+                    }
 
-					// test for hitting individual triangles on the mesh
-					bool newClosestFound = false;
-					for (int i = 0; i < static_cast<int> (indexCount); i += 3)
-					{
-						// check for a hit against this triangle
-						std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(raySceneQuery->getRay(),
-							vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
+                    bool newClosestFound = false;
 
-						// if it was a hit check if its the closest
-						if (hit.first)
-						{
-							if ((closestDistance < 0.0f) || (hit.second < closestDistance))
-							{
-								// this is the closest so far, save it off
-								closestDistance = hit.second;
-								newClosestFound = true;
-							}
-						}
-					}
+                    // PlanetTerra-owned Item -> its own always-current CPU geometry.
+                    auto planetTerraComp = getPlanetTerraComponentFromMovable(item);
+                    if (nullptr != planetTerraComp)
+                    {
+                        auto resultData = planetTerraComp->checkRayIntersect(raySceneQuery->getRay(), item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
 
-					// free the verticies and indicies memory
-					OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
-					OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
+                        if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
+                        {
+                            closestResult = std::get<1>(resultData);
+                            closestDistance = std::get<3>(resultData);
+                            newClosestFound = true;
+                        }
+                    }
+                    else
+                    {
+                        // mesh data to retrieve
+                        size_t vertexCount;
+                        size_t indexCount;
+                        Ogre::Vector3* vertices = nullptr;
+                        unsigned long* indices = nullptr;
 
-					// if we found a new closest raycast for this object, update the
-					// closestResult before moving on to the next object.
-					if (newClosestFound)
-					{
-						targetMovableObject = (size_t)item;
-						closestResult = raySceneQuery->getRay().getPoint(closestDistance);
-					}
-				}
-			}
-			else if ((queryResult[qrIdx].movable != nullptr) &&
-				(queryResult[qrIdx].movable->getMovableType().compare("Terra") == 0))
-			{
-				// Terra
-				Ogre::Terra* terra = dynamic_cast<Ogre::Terra*>(queryResult[qrIdx].movable);
-				if (nullptr != terra)
-				{
-					auto resultData = terra->checkRayIntersect(raySceneQuery->getRay());
-					if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
-					{
-						closestResult = std::get<1>(resultData);
-						// Terra may have its origin in negative, hence subtract to become positive
-						closestDistance = std::get<3>(resultData);
-						targetMovableObject = (size_t)terra;
-					}
-				}
-			}
-		}
+                        // get the mesh information
+                        this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(),
+                            item->getParentNode()->getScale());
 
-		// return the result
-		if (closestDistance >= 0.0f)
-		{
-			// raycast success
-			result = closestResult;
-			return true;
-		}
-		else
-		{
-			// raycast failed
-			return false;
-		}
-	}
+                        // test for hitting individual triangles on the mesh
+                        for (int i = 0; i < static_cast<int>(indexCount); i += 3)
+                        {
+                            // check for a hit against this triangle
+                            std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(raySceneQuery->getRay(), vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
 
-	bool MathHelper::getRaycastDetailsResult(const Ogre::Ray& ray, Ogre::RaySceneQuery* raySceneQuery, Ogre::Vector3& result, size_t& targetMovableObject,
-		Ogre::Vector3*& outVertices, size_t& outVertexCount, unsigned long*& outIndices, size_t& outIndexCount)
-	{
-		result = Ogre::Vector3::ZERO;
-		targetMovableObject = 0;
-		outVertices = nullptr;
-		outIndices = nullptr;
-		outVertexCount = 0;
-		outIndexCount = 0;
-		raySceneQuery->setRay(ray);
+                            // if it was a hit check if its the closest
+                            if (hit.first)
+                            {
+                                if ((closestDistance < 0.0f) || (hit.second < closestDistance))
+                                {
+                                    // this is the closest so far, save it off
+                                    closestDistance = hit.second;
+                                    newClosestFound = true;
+                                }
+                            }
+                        }
 
-		// execute the query, returns a vector of hits
-		if (raySceneQuery->execute().size() <= 0)
-		{
-			// raycast did not hit an objects bounding box
-			return false;
-		}
+                        // free the verticies and indicies memory
+                        OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
+                        OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
 
-		// at this point we have raycast to a series of different objects bounding boxes.
-		// we need to test these different objects to see which is the first polygon hit.
-		// there are some minor optimizations (distance based) that mean we wont have to
-		// check all of the objects most of the time, but the worst case scenario is that
-		// we need to test every triangle of every object.
-		Ogre::Real closestDistance = -1.0f;
-		Ogre::Vector3 closestResult;
-		Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
-		for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
-		{
-			Ogre::String type = queryResult[qrIdx].movable->getMovableType();
-			if ("Camera" == type)
-				continue;
-			// stop checking if we have found a raycast hit that is closer
-			// than all remaining entities
-			if (closestDistance >= 0.0f && closestDistance < queryResult[qrIdx].distance)
-			{
-				break;
-			}
+                        if (newClosestFound)
+                        {
+                            closestResult = raySceneQuery->getRay().getPoint(closestDistance);
+                        }
+                    }
 
-			if (type.compare("Item") == 0)
-			{
-				Ogre::Item* item = dynamic_cast<Ogre::Item*>(queryResult[qrIdx].movable);
-				if (nullptr != item)
-				{
-					// If its the exclude entity, continue the loop with a different ones
-					bool foundExcludedOne = false;
-					Ogre::String itemName = item->getName();
+                    // if we found a new closest raycast for this object, update the
+                    // closestResult before moving on to the next object.
+                    if (newClosestFound)
+                    {
+                        targetMovableObject = (size_t)item;
+                    }
+                }
+            }
+            else if ((queryResult[qrIdx].movable != nullptr) && (queryResult[qrIdx].movable->getMovableType().compare("Terra") == 0))
+            {
+                // Terra
+                Ogre::Terra* terra = dynamic_cast<Ogre::Terra*>(queryResult[qrIdx].movable);
+                if (nullptr != terra)
+                {
+                    auto resultData = terra->checkRayIntersect(raySceneQuery->getRay());
+                    if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
+                    {
+                        closestResult = std::get<1>(resultData);
+                        // Terra may have its origin in negative, hence subtract to become positive
+                        closestDistance = std::get<3>(resultData);
+                        targetMovableObject = (size_t)terra;
+                    }
+                }
+            }
+        }
 
-					// Exclude gizmo
-					if ("XArrowGizmoItem" == itemName || "YArrowGizmoItem" == itemName || "ZArrowGizmoItem" == itemName || "SphereGizmoItem" == itemName)
-					{
-						continue;
-					}
+        // return the result
+        if (closestDistance >= 0.0f)
+        {
+            // raycast success
+            result = closestResult;
+            return true;
+        }
+        else
+        {
+            // raycast failed
+            return false;
+        }
+    }
 
-					// mesh data to retrieve
-					size_t vertexCount;
-					size_t indexCount;
-					Ogre::Vector3* vertices = nullptr;
-					unsigned long* indices = nullptr;
+    bool MathHelper::getRaycastDetailsResult(const Ogre::Ray& ray, Ogre::RaySceneQuery* raySceneQuery, Ogre::Vector3& result, size_t& targetMovableObject, Ogre::Vector3*& outVertices, size_t& outVertexCount, unsigned long*& outIndices,
+        size_t& outIndexCount)
+    {
+        result = Ogre::Vector3::ZERO;
+        targetMovableObject = 0;
+        outVertices = nullptr;
+        outIndices = nullptr;
+        outVertexCount = 0;
+        outIndexCount = 0;
+        raySceneQuery->setRay(ray);
 
-					// get the mesh information
-					this->getMeshInformation(item->getMesh(), vertexCount, vertices,
-						indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(),
-						item->getParentNode()->_getDerivedOrientationUpdated(),
-						item->getParentNode()->getScale());
+        // execute the query, returns a vector of hits
+        if (raySceneQuery->execute().size() <= 0)
+        {
+            // raycast did not hit an objects bounding box
+            return false;
+        }
 
-					// test for hitting individual triangles on the mesh
-					bool newClosestFound = false;
-					for (int i = 0; i < static_cast<int> (indexCount); i += 3)
-					{
-						// check for a hit against this triangle
-						std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(raySceneQuery->getRay(),
-							vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
+        Ogre::Real closestDistance = -1.0f;
+        Ogre::Vector3 closestResult;
+        Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
+        for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
+        {
+            Ogre::String type = queryResult[qrIdx].movable->getMovableType();
+            if ("Camera" == type)
+            {
+                continue;
+            }
+            // stop checking if we have found a raycast hit that is closer
+            // than all remaining entities
+            if (closestDistance >= 0.0f && closestDistance < queryResult[qrIdx].distance)
+            {
+                break;
+            }
 
-						// if it was a hit check if its the closest
-						if (hit.first)
-						{
-							if ((closestDistance < 0.0f) || (hit.second < closestDistance))
-							{
-								// this is the closest so far, save it off
-								closestDistance = hit.second;
-								newClosestFound = true;
-							}
-						}
-					}
+            if (type.compare("Item") == 0)
+            {
+                Ogre::Item* item = dynamic_cast<Ogre::Item*>(queryResult[qrIdx].movable);
+                if (nullptr != item)
+                {
+                    // If its the exclude entity, continue the loop with a different ones
+                    Ogre::String itemName = item->getName();
 
-					// if we found a new closest raycast for this object, update the
-					// closestResult before moving on to the next object.
-					if (true == newClosestFound)
-					{
-						targetMovableObject = (size_t)item;
-						outVertexCount = vertexCount;
-						outIndexCount = indexCount;
-						outVertices = vertices;
-						outIndices = indices;
+                    // Exclude gizmo
+                    if ("XArrowGizmoItem" == itemName || "YArrowGizmoItem" == itemName || "ZArrowGizmoItem" == itemName || "SphereGizmoItem" == itemName)
+                    {
+                        continue;
+                    }
 
-						closestResult = raySceneQuery->getRay().getPoint(closestDistance);
-					}
-					else
-					{
-						// free the verticies and indicies memory
-						OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
-						OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
-					}
-				}
-			}
-		}
+                    // NOTE: Terra/PlanetTerra don't expose a raw vertex/index buffer in the
+                    // caller-owned-pointer form this function hands back (outVertices/
+                    // outIndices are meant to be OGRE_FREE'd by the caller later; Terra and
+                    // PlanetTerra's CPU arrays are internal, persistent, and not owned per-call).
+                    // So a Terra/PlanetTerra hit here still reports a correct position and
+                    // target, but leaves outVertices/outIndices at nullptr/0 - callers that
+                    // need triangle data specifically should not expect it for terrain hits.
+                    auto planetTerraComp = getPlanetTerraComponentFromMovable(item);
+                    if (nullptr != planetTerraComp)
+                    {
+                        auto resultData = planetTerraComp->checkRayIntersect(raySceneQuery->getRay(), item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
 
-		// return the result
-		if (closestDistance >= 0.0f)
-		{
-			// raycast success
-			result = closestResult;
-			return true;
-		}
-		else
-		{
-			// raycast failed
-			return false;
-		}
-	}
+                        if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
+                        {
+                            closestDistance = std::get<3>(resultData);
+                            targetMovableObject = (size_t)item;
+                            closestResult = std::get<1>(resultData);
+                            outVertexCount = 0;
+                            outIndexCount = 0;
+                            outVertices = nullptr;
+                            outIndices = nullptr;
+                        }
+                        continue;
+                    }
 
-	bool MathHelper::getRaycastHeightAndNormal(Ogre::Real x, Ogre::Real z, Ogre::RaySceneQuery* raySceneQuery, Ogre::Real& height, Ogre::Vector3& normalOnModel)
-	{
-		Ogre::Vector3 result = Ogre::Vector3::ZERO;
-		Ogre::Ray verticalRay = Ogre::Ray(Ogre::Vector3(x, 5000, z), Ogre::Vector3::NEGATIVE_UNIT_Y);
-		raySceneQuery->setRay(verticalRay);
+                    // mesh data to retrieve
+                    size_t vertexCount;
+                    size_t indexCount;
+                    Ogre::Vector3* vertices = nullptr;
+                    unsigned long* indices = nullptr;
 
-		// check we are initialised
-		if (raySceneQuery != nullptr)
-		{
-			// execute the query, returns a vector of hits
-			if (raySceneQuery->execute().size() <= 0)
-			{
-				// raycast did not hit an objects bounding box
-				return false;
-			}
-		}
-		else
-		{
-			// LOG_ERROR << "Cannot raycast without RaySceneQuery instance" << ENDLOG;
-			return false;
-		}
-		// at this point we have raycast to a series of different objects bounding boxes.
-		// we need to test these different objects to see which is the first polygon hit.
-		// there are some minor optimizations (distance based) that mean we wont have to
-		// check all of the objects most of the time, but the worst case scenario is that
-		// we need to test every triangle of every object.
+                    // get the mesh information
+                    this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
 
-		bool newClosestFound = false;
-		// Ogre::v1::Polygon polygon;
+                    // test for hitting individual triangles on the mesh
+                    bool newClosestFound = false;
+                    for (int i = 0; i < static_cast<int>(indexCount); i += 3)
+                    {
+                        // check for a hit against this triangle
+                        std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(raySceneQuery->getRay(), vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
 
-		Ogre::Real closestDistance = -1.0f;
-		Ogre::Vector3 closestResult;
-		Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
-		for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
-		{
-			Ogre::String type = queryResult[qrIdx].movable->getMovableType();
-			if ("Camera" == type)
-				continue;
-			// stop checking if we have found a raycast hit that is closer
-			// than all remaining entities
-			if (closestDistance >= 0.0f && closestDistance < queryResult[qrIdx].distance)
-			{
-				break;
-			}
+                        // if it was a hit check if its the closest
+                        if (hit.first)
+                        {
+                            if ((closestDistance < 0.0f) || (hit.second < closestDistance))
+                            {
+                                // this is the closest so far, save it off
+                                closestDistance = hit.second;
+                                newClosestFound = true;
+                            }
+                        }
+                    }
 
-			// only check this result if its a hit against an item
-			if (type.compare("Item") == 0)
-			{
-				// get the entity to check
-				Ogre::Item* item = static_cast<Ogre::Item*>(queryResult[qrIdx].movable);
+                    // if we found a new closest raycast for this object, update the
+                    // closestResult before moving on to the next object.
+                    if (true == newClosestFound)
+                    {
+                        targetMovableObject = (size_t)item;
+                        outVertexCount = vertexCount;
+                        outIndexCount = indexCount;
+                        outVertices = vertices;
+                        outIndices = indices;
 
-				// mesh data to retrieve
-				size_t vertexCount;
-				size_t indexCount;
-				Ogre::Vector3* vertices;
-				unsigned long* indices;
+                        closestResult = raySceneQuery->getRay().getPoint(closestDistance);
+                    }
+                    else
+                    {
+                        // free the verticies and indicies memory
+                        OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
+                        OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
+                    }
+                }
+            }
+            else if (queryResult[qrIdx].movable->getMovableType().compare("Terra") == 0)
+            {
+                Ogre::Terra* terra = dynamic_cast<Ogre::Terra*>(queryResult[qrIdx].movable);
+                if (nullptr != terra)
+                {
+                    // See note above: Terra likewise has no caller-owned vertex/index
+                    // buffer to hand back through this contract.
+                    auto resultData = terra->checkRayIntersect(raySceneQuery->getRay());
+                    if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
+                    {
+                        closestResult = std::get<1>(resultData);
+                        closestDistance = std::get<3>(resultData);
+                        targetMovableObject = (size_t)terra;
+                        outVertexCount = 0;
+                        outIndexCount = 0;
+                        outVertices = nullptr;
+                        outIndices = nullptr;
+                    }
+                }
+            }
+        }
 
-				// get the mesh information
+        // return the result
+        if (closestDistance >= 0.0f)
+        {
+            // raycast success
+            result = closestResult;
+            return true;
+        }
+        else
+        {
+            // raycast failed
+            return false;
+        }
+    }
+
+    bool MathHelper::getRaycastHeightAndNormal(Ogre::Real x, Ogre::Real z, Ogre::RaySceneQuery* raySceneQuery, Ogre::Real& height, Ogre::Vector3& normalOnModel)
+    {
+        Ogre::Vector3 result = Ogre::Vector3::ZERO;
+        Ogre::Ray verticalRay = Ogre::Ray(Ogre::Vector3(x, 5000, z), Ogre::Vector3::NEGATIVE_UNIT_Y);
+        raySceneQuery->setRay(verticalRay);
+
+        // check we are initialised
+        if (raySceneQuery != nullptr)
+        {
+            // execute the query, returns a vector of hits
+            if (raySceneQuery->execute().size() <= 0)
+            {
+                // raycast did not hit an objects bounding box
+                return false;
+            }
+        }
+        else
+        {
+            // LOG_ERROR << "Cannot raycast without RaySceneQuery instance" << ENDLOG;
+            return false;
+        }
+
+        bool newClosestFound = false;
+
+        Ogre::Real closestDistance = -1.0f;
+        Ogre::Vector3 closestResult;
+        Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
+        for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
+        {
+            Ogre::String type = queryResult[qrIdx].movable->getMovableType();
+            if ("Camera" == type)
+            {
+                continue;
+            }
+            // stop checking if we have found a raycast hit that is closer
+            // than all remaining entities
+            if (closestDistance >= 0.0f && closestDistance < queryResult[qrIdx].distance)
+            {
+                break;
+            }
+
+            // only check this result if its a hit against an item
+            if (type.compare("Item") == 0)
+            {
+                // get the entity to check
+                Ogre::Item* item = static_cast<Ogre::Item*>(queryResult[qrIdx].movable);
+
+                // PlanetTerra-owned Item -> its own always-current CPU geometry.
+                auto planetTerraComp = getPlanetTerraComponentFromMovable(item);
+                if (nullptr != planetTerraComp)
+                {
+                    auto resultData = planetTerraComp->checkRayIntersect(raySceneQuery->getRay(), item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
+
+                    if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
+                    {
+                        closestDistance = std::get<3>(resultData);
+                        newClosestFound = true;
+                        normalOnModel = std::get<2>(resultData);
+                        closestResult = std::get<1>(resultData);
+                    }
+                    continue;
+                }
+
+                // mesh data to retrieve
+                size_t vertexCount;
+                size_t indexCount;
+                Ogre::Vector3* vertices;
+                unsigned long* indices;
+
+                // get the mesh information
                 this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
 
-				// test for hitting individual triangles on the mesh
+                // test for hitting individual triangles on the mesh
+                for (int i = 0; i < static_cast<int>(indexCount); i += 3)
+                {
+                    // check for a hit against this triangle
+                    std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(raySceneQuery->getRay(), vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
 
-				for (int i = 0; i < static_cast<int> (indexCount); i += 3)
-				{
-					// check for a hit against this triangle
-					std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(raySceneQuery->getRay(),
-						vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
+                    // if it was a hit check if its the closest
+                    if (hit.first)
+                    {
+                        if ((closestDistance < 0.0f) || (hit.second < closestDistance))
+                        {
+                            // this is the closest so far, save it off
+                            closestDistance = hit.second;
+                            newClosestFound = true;
 
-					// if it was a hit check if its the closest
-					if (hit.first)
-					{
-						if ((closestDistance < 0.0f) || (hit.second < closestDistance))
-						{
-							// this is the closest so far, save it off
-							closestDistance = hit.second;
-							newClosestFound = true;
-							//get the normal from the vertices
-							/*polygon.insertVertex(vertices[indices[i]]);
-							polygon.insertVertex(vertices[indices[i + 1]]);
-							polygon.insertVertex(vertices[indices[i + 2]]);
-							normalOnModel = polygon.getNormal();*/
+                            // Get the normal from the vertices
+                            Ogre::Vector3 v1 = vertices[indices[i]] - vertices[indices[i + 1]];
+                            Ogre::Vector3 v2 = vertices[indices[i + 2]] - vertices[indices[i + 1]];
+                            normalOnModel = v1.crossProduct(v2);
+                        }
+                    }
+                }
 
-							// Get the normal from the vertices
-// Attention: Ogre::Polygon is no more availabke, so is this correct?
-							Ogre::Vector3 v1 = vertices[indices[i]] - vertices[indices[i + 1]];
-							Ogre::Vector3 v2 = vertices[indices[i + 2]] - vertices[indices[i + 1]];
-							normalOnModel = v1.crossProduct(v2);
-						}
-					}
-				}
+                // free the verticies and indicies memory
+                OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
+                OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
 
-				// free the verticies and indicies memory
-				OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
-				OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
+                // if we found a new closest raycast for this object, update the
+                // closestResult before moving on to the next object.
+                if (newClosestFound)
+                {
+                    closestResult = raySceneQuery->getRay().getPoint(closestDistance);
+                }
+            }
+            else if (queryResult[qrIdx].movable->getMovableType().compare("Terra") == 0)
+            {
+                Ogre::Terra* terra = dynamic_cast<Ogre::Terra*>(queryResult[qrIdx].movable);
+                if (nullptr != terra)
+                {
+                    auto resultData = terra->checkRayIntersect(raySceneQuery->getRay());
+                    if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
+                    {
+                        closestResult = std::get<1>(resultData);
+                        normalOnModel = std::get<2>(resultData);
+                        closestDistance = std::get<3>(resultData);
+                        newClosestFound = true;
+                    }
+                }
+            }
+        }
 
-				// if we found a new closest raycast for this object, update the
-				// closestResult before moving on to the next object.
-				if (newClosestFound)
-				{
-					closestResult = raySceneQuery->getRay().getPoint(closestDistance);
-				}
-			}
-		}
-		return newClosestFound;
-	}
+        if (true == newClosestFound)
+        {
+            normalOnModel.normalise();
+            height = closestResult.y;
+        }
 
-	bool MathHelper::getRaycastFromPoint(Ogre::RaySceneQuery* raySceneQuery, Ogre::Camera* camera, Ogre::Vector3& resultPositionOnModel, size_t& targetMovableObject, float& closestDistance,
-		Ogre::Vector3& normalOnModel, std::vector<Ogre::MovableObject*>* excludeMovableObjects, bool forGizmo)
-	{
-		bool foundGizmo = false;
-		targetMovableObject = 0;
-		// check we are initialised
-		if (raySceneQuery != nullptr)
-		{
-			if (true == forGizmo)
-			{
-				raySceneQuery->setSortByDistance(false);
-			}
-			// execute the query, returns a vector of hits
-			if (raySceneQuery->execute().size() <= 0)
-			{
-				// raycast did not hit an objects bounding box
-				return false;
-			}
-		}
-		else
-		{
-			// LOG_ERROR << "Cannot raycast without RaySceneQuery instance" << ENDLOG;
-			return false;
-		}
-		// at this point we have raycast to a series of different objects bounding boxes.
-		// we need to test these different objects to see which is the first polygon hit.
-		// there are some minor optimizations (distance based) that mean we wont have to
-		// check all of the objects most of the time, but the worst case scenario is that
-		// we need to test every triangle of every object.
+        return newClosestFound;
+    }
 
-		// Ogre::Polygon polygon;
+    bool MathHelper::getRaycastFromPoint(Ogre::RaySceneQuery* raySceneQuery, Ogre::Camera* camera, Ogre::Vector3& resultPositionOnModel, size_t& targetMovableObject, float& closestDistance, Ogre::Vector3& normalOnModel,
+        std::vector<Ogre::MovableObject*>* excludeMovableObjects, bool forGizmo)
+    {
+        bool foundGizmo = false;
+        targetMovableObject = 0;
+        // check we are initialised
+        if (raySceneQuery != nullptr)
+        {
+            if (true == forGizmo)
+            {
+                raySceneQuery->setSortByDistance(false);
+            }
+            // execute the query, returns a vector of hits
+            if (raySceneQuery->execute().size() <= 0)
+            {
+                // raycast did not hit an objects bounding box
+                return false;
+            }
+        }
+        else
+        {
+            // LOG_ERROR << "Cannot raycast without RaySceneQuery instance" << ENDLOG;
+            return false;
+        }
 
-		closestDistance = -1.0f;
-		Ogre::Vector3 closestResult;
-		Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
+        closestDistance = -1.0f;
+        Ogre::Vector3 closestResult;
+        Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
         for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
         {
             // Only check this result if its a hit against an entity
@@ -2571,8 +2707,6 @@ namespace NOWA
             {
                 break;
             }
-
-            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MathHelper]: Found type : " + type + " name: " +  queryResult[qrIdx].movable->getName());
 
             bool foundType = false;
 
@@ -2617,55 +2751,89 @@ namespace NOWA
                     }
                 }
 
-                // mesh data to retrieve
-                size_t vertexCount;
-                size_t indexCount;
-                Ogre::Vector3* vertices = nullptr;
-                unsigned long* indices = nullptr;
-
-                // get the mesh information
-                this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
-
-                // test for hitting individual triangles on the mesh
-                for (int i = 0; i < static_cast<int>(indexCount); i += 3)
+                // PlanetTerra-owned Item -> use its own always-current CPU geometry
+                // (see PlanetTerraComponentBase::checkRayIntersect /
+                // getPlanetTerraComponentFromMovable) instead
+                // of the generic getMeshInformation() path, which can read stale data
+                // relative to what uploadVertexData() last pushed to the GPU.
+                bool handledByPlanetTerra = false;
+                if (false == forGizmo)
                 {
-                    // check for a hit against this triangle
-                    std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(raySceneQuery->getRay(), vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
-
-                    // if it was a hit check if its the closest
-                    if (hit.first)
+                    auto planetTerraComp = getPlanetTerraComponentFromMovable(item);
+                    if (nullptr != planetTerraComp)
                     {
-                        if ((closestDistance < 0.0f) || (hit.second < closestDistance) || forGizmo)
+                        handledByPlanetTerra = true;
+
+                        auto resultData = planetTerraComp->checkRayIntersect(raySceneQuery->getRay(), item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
+
+                        if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
                         {
-                            // this is the closest so far, save it off
-                            closestDistance = hit.second;
-                            newClosestFound = true;
-
-                            // Gizmo found, do not check further
-                            if (true == foundGizmo)
-                            {
-                                break;
-                            }
-
-                            // Get the normal from the vertices
-                            Ogre::Vector3 v1 = vertices[indices[i]] - vertices[indices[i + 1]];
-                            Ogre::Vector3 v2 = vertices[indices[i + 2]] - vertices[indices[i + 1]];
-                            normalOnModel = v1.crossProduct(v2);
+                            closestResult = std::get<1>(resultData);
+                            normalOnModel = std::get<2>(resultData);
                             normalOnModel.normalise();
+                            closestDistance = std::get<3>(resultData);
+                            newClosestFound = true;
                         }
                     }
                 }
 
-                // free the verticies and indicies memory
-                OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
-                OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
+                if (false == handledByPlanetTerra)
+                {
+                    // mesh data to retrieve
+                    size_t vertexCount;
+                    size_t indexCount;
+                    Ogre::Vector3* vertices = nullptr;
+                    unsigned long* indices = nullptr;
+
+                    // get the mesh information
+                    this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
+
+                    // test for hitting individual triangles on the mesh
+                    for (int i = 0; i < static_cast<int>(indexCount); i += 3)
+                    {
+                        // check for a hit against this triangle
+                        std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(raySceneQuery->getRay(), vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
+
+                        // if it was a hit check if its the closest
+                        if (hit.first)
+                        {
+                            if ((closestDistance < 0.0f) || (hit.second < closestDistance) || forGizmo)
+                            {
+                                // this is the closest so far, save it off
+                                closestDistance = hit.second;
+                                newClosestFound = true;
+
+                                // Gizmo found, do not check further
+                                if (true == foundGizmo)
+                                {
+                                    break;
+                                }
+
+                                // Get the normal from the vertices
+                                Ogre::Vector3 v1 = vertices[indices[i]] - vertices[indices[i + 1]];
+                                Ogre::Vector3 v2 = vertices[indices[i + 2]] - vertices[indices[i + 1]];
+                                normalOnModel = v1.crossProduct(v2);
+                                normalOnModel.normalise();
+                            }
+                        }
+                    }
+
+                    // free the verticies and indicies memory
+                    OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
+                    OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
+                }
 
                 // if we found a new closest raycast for this object, update the
                 // closestResult before moving on to the next object.
                 if (newClosestFound)
                 {
                     targetMovableObject = (size_t)item;
-                    closestResult = raySceneQuery->getRay().getPoint(closestDistance);
+
+                    if (false == handledByPlanetTerra)
+                    {
+                        closestResult = raySceneQuery->getRay().getPoint(closestDistance);
+                    }
+
                     // Gizmo found, do not check further
                     if (true == foundGizmo)
                     {
@@ -2680,7 +2848,6 @@ namespace NOWA
                 if (nullptr != terra)
                 {
                     foundType = true;
-                    // - 0 later position of terra?
 
                     auto resultData = terra->checkRayIntersect(raySceneQuery->getRay());
                     if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
@@ -2752,19 +2919,19 @@ namespace NOWA
             }
         }
 
-		// return the result
-		if (closestDistance >= 0.0f)
-		{
-			// raycast success
-			resultPositionOnModel = closestResult;
-			return true;
-		}
-		else
-		{
-			// raycast failed
-			return false;
-		}
-	}
+        // return the result
+        if (closestDistance >= 0.0f)
+        {
+            // raycast success
+            resultPositionOnModel = closestResult;
+            return true;
+        }
+        else
+        {
+            // raycast failed
+            return false;
+        }
+    }
 
 	bool MathHelper::getRaycastFromPoint(int mouseX, int mouseY, Ogre::Camera* camera, Ogre::Window* renderWindow, Ogre::RaySceneQuery* raySceneQuery,
 		Ogre::Vector3& resultPositionOnModel, size_t& targetMovableObject, float& closestDistance, Ogre::Vector3& normalOnModel, std::vector<Ogre::MovableObject*>* excludeMovableObjects, bool forGizmo)

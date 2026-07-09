@@ -1411,6 +1411,16 @@ namespace NOWA
         return empty;
     }
 
+    std::tuple<bool, Ogre::Vector3, Ogre::Vector3, Ogre::Real> PlanetTerraComponent::checkRayIntersect(const Ogre::Ray& ray, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale) const
+    {
+        if (nullptr == this->planet)
+        {
+            return std::make_tuple(false, Ogre::Vector3::ZERO, Ogre::Vector3::UNIT_Y, static_cast<Ogre::Real>(-1.0f));
+        }
+
+        return this->planet->checkRayIntersect(ray, position, orientation, scale);
+    }
+
     void PlanetTerraComponent::setSegmentsH(unsigned int s)
     {
         this->segmentsH->setValue(s);

@@ -832,7 +832,6 @@ namespace NOWA
         return col;
     }
 
-    // maybe move this to physicsArtifactComp
     OgreNewt::CollisionPtr PhysicsComponent::serializeTreeCollision(const Ogre::String& scenePath, unsigned int categoryId, bool overwrite)
     {
         if (true == scenePath.empty())
@@ -867,13 +866,20 @@ namespace NOWA
         {
             OgreNewt::CollisionSerializer saveWorldCollision;
             Ogre::Item* item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
-            
+
+            auto start = std::chrono::high_resolution_clock::now();
+
             this->collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, categoryId));
+
+            auto finish = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> elapsed = finish - start;
 
             if (nullptr == this->collisionPtr)
             {
                 return OgreNewt::CollisionPtr();
             }
+
+            Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Created tree collision in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
 
             Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Writing collision for tree in file:" + serializeCollisionPath);
             // Export collision file for faster loading
@@ -891,7 +897,17 @@ namespace NOWA
                 Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Could not open the object tree collision file!");
 
                 Ogre::Item* item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
-                return OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, categoryId));
+
+                auto start = std::chrono::high_resolution_clock::now();
+
+                OgreNewt::CollisionPtr fallbackCollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, categoryId));
+
+                auto finish = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+                Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Created tree collision (fallback, no file) in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
+
+                return fallbackCollisionPtr;
             }
             else
             {
@@ -901,12 +917,20 @@ namespace NOWA
                     // File is thrash, must be recreated
                     OgreNewt::CollisionSerializer saveWorldCollision;
                     Ogre::Item* item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
+
+                    auto start = std::chrono::high_resolution_clock::now();
+
                     this->collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, categoryId));
+
+                    auto finish = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double, std::milli> elapsed = finish - start;
 
                     if (nullptr == this->collisionPtr)
                     {
                         return OgreNewt::CollisionPtr();
                     }
+
+                    Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Recreated tree collision (corrupted file) in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
 
                     Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Writing collision for tree in file:" + serializeCollisionPath);
                     // Export collision file for faster loading
@@ -918,8 +942,16 @@ namespace NOWA
                 else
                 {
                     OgreNewt::CollisionSerializer loadWorldCollision;
+
+                    auto start = std::chrono::high_resolution_clock::now();
+
                     // Import collision from file for faster loading
                     this->collisionPtr = loadWorldCollision.importCollision(streamFile, ogreNewt);
+
+                    auto finish = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+                    Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Imported tree collision from file in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
                 }
 
                 streamFile.close();
@@ -971,7 +1003,7 @@ namespace NOWA
             std::chrono::duration<double, std::milli> elapsed = finish - start;
 
             Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Created compound with " + Ogre::StringConverter::toString(childCollisions.size()) + " children in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s",
-                Ogre::LML_CRITICAL);
+                Ogre::LML_TRIVIAL);
 
             // Serialize to .ply file
             OgreNewt::CollisionSerializer saveCompoundCollision;
@@ -990,8 +1022,17 @@ namespace NOWA
             {
                 Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Could not open compound collision file: " + serializeCollisionPath, Ogre::LML_CRITICAL);
 
+                auto start = std::chrono::high_resolution_clock::now();
+
                 // Fallback: create compound directly
-                return OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, childCollisions, categoryId));
+                OgreNewt::CollisionPtr fallbackCollisionPtr(new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, childCollisions, categoryId));
+
+                auto finish = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+                Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Created compound collision (fallback, no file) in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
+
+                return fallbackCollisionPtr;
             }
             else
             {
@@ -1014,7 +1055,7 @@ namespace NOWA
                     auto finish = std::chrono::high_resolution_clock::now();
                     std::chrono::duration<double, std::milli> elapsed = finish - start;
 
-                    Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Recreated compound (corrupted file) in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s");
+                    Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Recreated compound (corrupted file) in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
 
                     OgreNewt::CollisionSerializer saveCompoundCollision;
                     saveCompoundCollision.exportCollision(this->collisionPtr, serializeCollisionPath);
@@ -1028,7 +1069,15 @@ namespace NOWA
                     Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Loading compound collision from: " + serializeCollisionPath);
 
                     OgreNewt::CollisionSerializer loadCompoundCollision;
+
+                    auto start = std::chrono::high_resolution_clock::now();
+
                     this->collisionPtr = loadCompoundCollision.importCollision(streamFile, this->ogreNewt);
+
+                    auto finish = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+                    Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Imported compound collision from file in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
                 }
 
                 streamFile.close();
@@ -1058,12 +1107,19 @@ namespace NOWA
 
         if (nullptr == file || true == overwrite)
         {
+            auto start = std::chrono::high_resolution_clock::now();
+
             this->collisionPtr = this->createHeightFieldCollision(terra);
+
+            auto finish = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> elapsed = finish - start;
 
             if (nullptr == this->collisionPtr)
             {
                 return OgreNewt::CollisionPtr();
             }
+
+            Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Created height field collision in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
 
             Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Writing collision for tree in file:" + serializeCollisionPath);
             // Export collision file for faster loading
@@ -1082,7 +1138,14 @@ namespace NOWA
             file = fopen(serializeCollisionPath.c_str(), "rb");
             if (nullptr == file)
             {
+                auto start = std::chrono::high_resolution_clock::now();
+
                 this->collisionPtr = this->createHeightFieldCollision(terra);
+
+                auto finish = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+                Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Created height field collision (fallback, no file) in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
             }
             else
             {
@@ -1090,12 +1153,19 @@ namespace NOWA
                 // File to small (thrash)
                 if (streamFile.size() <= 0)
                 {
+                    auto start = std::chrono::high_resolution_clock::now();
+
                     this->collisionPtr = this->createHeightFieldCollision(terra);
+
+                    auto finish = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double, std::milli> elapsed = finish - start;
 
                     if (nullptr == this->collisionPtr)
                     {
                         return OgreNewt::CollisionPtr();
                     }
+
+                    Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Recreated height field collision (corrupted file) in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
 
                     Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Writing collision for tree in file:" + serializeCollisionPath);
                     // Export collision file for faster loading
@@ -1109,8 +1179,16 @@ namespace NOWA
                 else
                 {
                     OgreNewt::CollisionSerializer loadWorldCollision;
+
+                    auto start = std::chrono::high_resolution_clock::now();
+
                     // Import collision from file for faster loading
                     this->collisionPtr = loadWorldCollision.importCollision(streamFile, ogreNewt);
+
+                    auto finish = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+                    Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Imported height field collision from file in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
                 }
 
                 streamFile.close();
@@ -1120,7 +1198,7 @@ namespace NOWA
 
         return this->collisionPtr;
     }
-
+#if 0
     OgreNewt::CollisionPtr PhysicsComponent::createHeightFieldCollision(Ogre::Terra* terra)
     {
         int sizeX = (int)terra->getXZDimensions().x;
@@ -1141,6 +1219,59 @@ namespace NOWA
                 bool ok = terra->getHeightAt(p); // p.y gets filled with WORLD height
 
                 // FIX: Subtract origin.y to get height relative to terrain's local origin
+                // because getHeightAt returns world height (includes m_terrainOrigin.y)
+                const Ogre::Real h = ok ? (p.y - origin.y) : 0.0f;
+                elevation[z * sizeX + x] = h;
+            }
+        }
+
+        Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
+        // Position should be the terrain origin (including Y)
+        Ogre::Vector3 position = origin;
+
+        auto col = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::HeightField(this->ogreNewt, sizeX, sizeZ, elevation,
+            /*verticalScale*/ 1.0f,
+            /*horizontalScaleX*/ cellSizeX,
+            /*horizontalScaleZ*/ cellSizeZ, position, orientation, this->gameObjectPtr->getCategoryId()));
+
+        delete[] elevation;
+        return col;
+    }
+#endif
+
+    OgreNewt::CollisionPtr PhysicsComponent::createHeightFieldCollision(Ogre::Terra* terra)
+    {
+        // Physics collision doesn't need render-mesh resolution. Sampling every
+        // world unit produces millions of heightfield points for a large terrain,
+        // which dominates both the .ply file size and the BVH build cost. A coarser
+        // sample spacing is visually indistinguishable for gameplay physics and
+        // cuts point count (and therefore file size / parse time / build time) by
+        // the square of this factor. Tune per-terrain if you have very jagged
+        // small-scale features that need to be walkable precisely.
+        const int downsampleFactor = 4; // 1 sample every 4 world units -> 16x fewer points
+
+        const int fullSizeX = (int)terra->getXZDimensions().x;
+        const int fullSizeZ = (int)terra->getXZDimensions().y;
+
+        int sizeX = (fullSizeX / downsampleFactor) + 1;
+        int sizeZ = (fullSizeZ / downsampleFactor) + 1;
+
+        auto* elevation = new Ogre::Real[sizeX * sizeZ];
+        std::fill(elevation, elevation + sizeX * sizeZ, 0.0f);
+
+        const Ogre::Vector3 origin = terra->getTerrainOrigin();
+
+        const Ogre::Real cellSizeX = (Ogre::Real)downsampleFactor;
+        const Ogre::Real cellSizeZ = (Ogre::Real)downsampleFactor;
+
+        for (int z = 0; z < sizeZ; ++z)
+        {
+            for (int x = 0; x < sizeX; ++x)
+            {
+                Ogre::Vector3 p(origin.x + x * cellSizeX, 0.0f, origin.z + z * cellSizeZ);
+                bool ok = terra->getHeightAt(p); // p.y gets filled with WORLD height
+
+                // Subtract origin.y to get height relative to terrain's local origin
                 // because getHeightAt returns world height (includes m_terrainOrigin.y)
                 const Ogre::Real h = ok ? (p.y - origin.y) : 0.0f;
                 elevation[z * sizeX + x] = h;

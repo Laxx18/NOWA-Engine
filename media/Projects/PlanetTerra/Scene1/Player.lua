@@ -15,7 +15,7 @@ Player = {}
 Player["connect"] = function(gameObject)
     playerGo = AppStateManager:getGameObjectController():castGameObject(gameObject);
     
-    local universumGameObject = AppStateManager:getGameObjectController():getGameObjectFromId("1826795857");
+    local universumGameObject = AppStateManager:getGameObjectController():getGameObjectFromId("1061997306");
     local universumComponent = universumGameObject:getUniversumComponent();
     
     local fadeWindowComponent = universumGameObject:getMyGUIFadeAlphaControllerComponent();

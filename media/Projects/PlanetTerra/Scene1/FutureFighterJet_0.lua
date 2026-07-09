@@ -8,7 +8,7 @@ require("init");
 -- =========================================================================
 
 local go            = nil
-local inputDev      = nil
+local inputDeviceComp = nil;
 local physComp      = nil
 local particleComp  = nil
 local soundComp     = nil
@@ -59,7 +59,7 @@ FutureFighterJet_0["connect"] = function(gameObject)
     go = AppStateManager:getGameObjectController():castGameObject(gameObject)
     AppStateManager:getGameObjectController():activatePlayerController(true, go:getId(), true)
 
-    inputDev     = go:getInputDeviceComponent():getInputDeviceModule()
+    inputDeviceComp     = go:getInputDeviceComponent();
     physComp     = go:getPhysicsActiveComponent()
     particleComp = go:getParticleFxComponentFromIndex(0)
     soundComp    = go:getSimpleSoundComponent()
@@ -127,7 +127,7 @@ end
 
 FutureFighterJet_0["update"] = function(dt)
 
-    if (go:getInputDeviceComponent():isDeviceLocked()) then
+    if (inputDeviceComp:isDeviceLocked()) then
        return;
     end
 
@@ -136,25 +136,25 @@ FutureFighterJet_0["update"] = function(dt)
     -- ----------------------------------------------------------------
 
     local pitchRaw = 0.0
-    if inputDev:isActionDown(NOWA_A_UP)   then pitchRaw = -1.0 end
-    if inputDev:isActionDown(NOWA_A_DOWN) then pitchRaw =  1.0 end
+    if inputDeviceComp:isActionDown(NOWA_A_UP)   then pitchRaw = -1.0 end
+    if inputDeviceComp:isActionDown(NOWA_A_DOWN) then pitchRaw =  1.0 end
 
     local yawRaw = 0.0
-    if inputDev:isActionDown(NOWA_A_LEFT)  then yawRaw =  1.0 end
-    if inputDev:isActionDown(NOWA_A_RIGHT) then yawRaw = -1.0 end
+    if inputDeviceComp:isActionDown(NOWA_A_LEFT)  then yawRaw =  1.0 end
+    if inputDeviceComp:isActionDown(NOWA_A_RIGHT) then yawRaw = -1.0 end
 
-    local steer = inputDev:getSteerAxis()
+    local steer = inputDeviceComp:getSteerAxis()
     if math.abs(steer) > 0.10 then
         yawRaw = -steer
     end
 
     local rollRaw = 0.0
-    if inputDev:isActionDown(NOWA_A_ATTACK_1) then rollRaw = -1.0 end
-    if inputDev:isActionDown(NOWA_A_ATTACK_2) then rollRaw =  1.0 end
+    if inputDeviceComp:isActionDown(NOWA_A_ATTACK_1) then rollRaw = -1.0 end
+    if inputDeviceComp:isActionDown(NOWA_A_ATTACK_2) then rollRaw =  1.0 end
 
-    local actionHeld = inputDev:isActionDown(NOWA_A_ACTION)
-    local runHeld    = inputDev:isActionDown(NOWA_A_RUN)
-    local jumpHeld   = inputDev:isActionDown(NOWA_A_JUMP)
+    local actionHeld = inputDeviceComp:isActionDown(NOWA_A_ACTION)
+    local runHeld    = inputDeviceComp:isActionDown(NOWA_A_RUN)
+    local jumpHeld   = inputDeviceComp:isActionDown(NOWA_A_JUMP)
 
     local anyRotInput = (pitchRaw ~= 0.0) or (yawRaw ~= 0.0) or (rollRaw ~= 0.0)
 

@@ -12,7 +12,7 @@ physicsActiveVehicleComponent = nil;
 rollSound = nil;
 skidSound = nil;
 player = nil;
-inputDeviceModule = nil;
+inputDeviceComp = nil;
 
 Scene1_QuatBike_0["connect"] = function(gameObject)
     player = AppStateManager:getGameObjectController():castGameObject(gameObject);
@@ -23,7 +23,7 @@ Scene1_QuatBike_0["connect"] = function(gameObject)
     
     skidSound = player:getSimpleSoundComponentFromIndex(1);
     
-     inputDeviceModule = player:getInputDeviceComponent():getInputDeviceModule();
+     
 end
 
 Scene1_QuatBike_0["disconnect"] = function()
@@ -47,12 +47,12 @@ end
 
 
 Scene1_QuatBike_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulation, dt)
-    if inputDeviceModule:isActionDown(NOWA_A_LEFT) then
+    if inputDeviceComp:isActionDown(NOWA_A_LEFT) then
         if (steerAmount <= 45) then
             steerAmount = steerAmount + dt * 30;
         end
         vehicleDrivingManipulation:setSteerAngle(steerAmount);
-    elseif inputDeviceModule:isActionDown(NOWA_A_RIGHT) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_RIGHT) then
         if (steerAmount >= -45) then
             steerAmount = steerAmount - dt * 30;
         end
@@ -73,18 +73,18 @@ Scene1_QuatBike_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulatio
 end
 
 Scene1_QuatBike_0["onMotorForceChanged"] = function(vehicleDrivingManipulation, dt)
-    if inputDeviceModule:isActionDown(NOWA_A_UP) then
+    if inputDeviceComp:isActionDown(NOWA_A_UP) then
         vehicleDrivingManipulation:setMotorForce(5000 * 120 * dt);
-    elseif inputDeviceModule:isActionDown(NOWA_A_ACTION) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_ACTION) then
         vehicleDrivingManipulation:setMotorForce(10000 * 120 * dt);
-    elseif inputDeviceModule:isActionDown(NOWA_A_DOWN) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_DOWN) then
         vehicleDrivingManipulation:setMotorForce(-4500 * 120 * dt);
     end
 end
 
 Scene1_QuatBike_0["onHandBrakeChanged"] = function(vehicleDrivingManipulation, dt)
     -- Jump: Space
-    if inputDeviceModule:isActionDown(NOWA_A_JUMP) then
+    if inputDeviceComp:isActionDown(NOWA_A_JUMP) then
         vehicleDrivingManipulation:setHandBrake(5.5);
         if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
             skidSound:setActivated(true);
@@ -94,7 +94,7 @@ end
 
 Scene1_QuatBike_0["onBrakeChanged"] = function(vehicleDrivingManipulation, dt)
     -- Cover: x
-    if inputDeviceModule:isActionDown(NOWA_A_COWER) then
+    if inputDeviceComp:isActionDown(NOWA_A_COWER) then
         vehicleDrivingManipulation:setBrake(7.5);
         if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
             skidSound:setActivated(true);

@@ -195,7 +195,7 @@ main["update"] = function(dt)
 	
 	if (timeSinceLastToggle > 0) then
 		timeSinceLastToggle = timeSinceLastToggle - dt;
-	elseif InputDeviceModule:isActionDown(NOWA_A_MAP) then
+	elseif inputDeviceComp:isActionDown(NOWA_A_MAP) then
 			toggleMap = not toggleMap;
 			miniMapComponent:showMiniMap(toggleMap);
 			timeSinceLastToggle = 1;

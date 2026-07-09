@@ -133,9 +133,23 @@ namespace NOWA
 
         void setRadius(Ogre::Real radius);
 
+        /**
+         * @brief Returns a compact binary snapshot of the current height + blend data.
+         *        Used internally for undo stroke capture.
+         */
+        virtual std::vector<unsigned char> getPlanetData(void) const;
+
+        /**
+         * @brief Restores height + blend data from a binary snapshot and uploads to GPU.
+         *        Called by the EditorManager on undo/redo.
+         */
+        virtual void setPlanetData(const std::vector<unsigned char>& data);
+
         virtual Ogre::Real getRadius(void) const override;
 
         virtual const std::vector<Ogre::Vector2>& getUvCoords(void) const override;
+
+        virtual std::tuple<bool, Ogre::Vector3, Ogre::Vector3, Ogre::Real> checkRayIntersect(const Ogre::Ray& ray, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale) const override;
 
         void setSegmentsH(unsigned int segs);
         unsigned int getSegmentsH(void) const;
@@ -198,18 +212,6 @@ namespace NOWA
         {
             return this->planet;
         }
-
-        /**
-         * @brief Returns a compact binary snapshot of the current height + blend data.
-         *        Used internally for undo stroke capture.
-         */
-        std::vector<unsigned char> getPlanetData(void) const;
-
-        /**
-         * @brief Restores height + blend data from a binary snapshot and uploads to GPU.
-         *        Called by the EditorManager on undo/redo.
-         */
-        void setPlanetData(const std::vector<unsigned char>& data);
 
         void setDynamic(bool dynamic);
 

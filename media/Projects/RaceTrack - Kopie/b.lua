@@ -125,18 +125,18 @@ b["onMotorForceChanged"] = function(vehicleDrivingManipulation, dt)
     --log("motorForce: " .. motorForce);
     
     vehicleDrivingManipulation:setMotorForce(motorForce);
---    if InputDeviceModule:isActionDown(NOWA_A_UP) then
+--    if inputDeviceComp:isActionDown(NOWA_A_UP) then
 --        vehicleDrivingManipulation:setMotorForce(5000 * 120 * dt);
---    elseif InputDeviceModule:isActionDown(NOWA_A_ACTION) then
+--    elseif inputDeviceComp:isActionDown(NOWA_A_ACTION) then
 --        vehicleDrivingManipulation:setMotorForce(10000 * 120 * dt);
---    elseif InputDeviceModule:isActionDown(NOWA_A_DOWN) then
+--    elseif inputDeviceComp:isActionDown(NOWA_A_DOWN) then
 --        vehicleDrivingManipulation:setMotorForce(-4500 * 120 * dt);
 --    end
 end
 
 b["onHandBrakeChanged"] = function(vehicleDrivingManipulation, dt)
     -- Jump: Space
---    if InputDeviceModule:isActionDown(NOWA_A_JUMP) then
+--    if inputDeviceComp:isActionDown(NOWA_A_JUMP) then
 --        vehicleDrivingManipulation:setHandBrake(5.5);
 --        if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
 --            skidSound:setActivated(true);
@@ -146,7 +146,7 @@ end
 
 b["onBrakeChanged"] = function(vehicleDrivingManipulation, dt)
     -- Cover: x
---    if InputDeviceModule:isActionDown(NOWA_A_COWER) then
+--    if inputDeviceComp:isActionDown(NOWA_A_COWER) then
 --        vehicleDrivingManipulation:setBrake(7.5);
 --        if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
 --            skidSound:setActivated(true);

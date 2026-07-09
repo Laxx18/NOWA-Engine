@@ -9,7 +9,7 @@ canSwitch = false;
 oldGameObject = nil;
 nextGameObject = nil;
 mainGameObject = nil;
-inputDeviceModule = nil;
+inputDeviceComp = nil;
 
 require("init");
 
@@ -18,7 +18,7 @@ inventory1_MainGameObject = nil
 Inventory1_MainGameObject["connect"] = function(gameObject)
     gameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
     mainGameObject = gameObject;
-    inputDeviceModule = mainGameObject:getInputDeviceComponent():getInputDeviceModule();
+    inputDeviceComp = mainGameObject:getInputDeviceComponent();
 end
 
 Inventory1_MainGameObject["disconnect"] = function()
@@ -31,11 +31,11 @@ Inventory1_MainGameObject["update"] = function(dt)
     end
 
     if timeSinceLastSwitch <= 0 then
-        if inputDeviceModule:isActionDown(NOWA_A_SELECT) == false then
+        if inputDeviceComp:isActionDown(NOWA_A_SELECT) == false then
             canSwitch = true;
         end
         
-        if inputDeviceModule:isActionDown(NOWA_A_SELECT) and canSwitch == true then
+        if inputDeviceComp:isActionDown(NOWA_A_SELECT) and canSwitch == true then
             oldGameObject = nextGameObject;
             nextGameObject = AppStateManager:getGameObjectController():getNextGameObject("Player");
             

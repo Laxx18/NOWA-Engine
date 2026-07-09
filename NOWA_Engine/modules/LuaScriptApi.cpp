@@ -3176,6 +3176,50 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getReferenceId());
 	}
 
+	void setGameObjectActivatedSpecific(GameObject* instance, bool activated, luabind::object idsTable)
+    {
+        std::vector<unsigned int> ids;
+
+        if (luabind::type(idsTable) == LUA_TTABLE)
+        {
+            for (luabind::iterator it(idsTable), end; it != end; ++it)
+            {
+                try
+                {
+                    ids.push_back(luabind::object_cast<unsigned int>(*it));
+                }
+                catch (...)
+                {
+                    // Skip non-numeric entries rather than failing the whole call
+                }
+            }
+        }
+
+        instance->setActivatedSpecific(activated, ids);
+    }
+
+    void setGameObjectActivatedSpecific2(GameObject* instance, bool activated, luabind::object componentNamesTable)
+    {
+        std::vector<Ogre::String> componentNames;
+
+        if (luabind::type(componentNamesTable) == LUA_TTABLE)
+        {
+            for (luabind::iterator it(componentNamesTable), end; it != end; ++it)
+            {
+                try
+                {
+                    componentNames.push_back(luabind::object_cast<Ogre::String>(*it));
+                }
+                catch (...)
+                {
+                    // Skip non-string entries rather than failing the whole call
+                }
+            }
+        }
+
+        instance->setActivatedSpecific2(activated, componentNames);
+    }
+
 	void bindGameObject(lua_State* lua, class_<GameObject>& gameObjectClass)
 	{
 		gameObjectClass.def("getId", &getId);
@@ -3191,6 +3235,8 @@ namespace NOWA
 		gameObjectClass.def("getRenderCategoryId", &getRenderCategoryId);
 		gameObjectClass.def("getTagName", &GameObject::getTagName);
 		gameObjectClass.def("setActivated", &GameObject::setActivated);
+        gameObjectClass.def("setActivatedSpecific", &setGameObjectActivatedSpecific);
+        gameObjectClass.def("setActivatedSpecific2", &setGameObjectActivatedSpecific2);
 		gameObjectClass.def("changeCategory", (void (GameObject::*)(const Ogre::String&, const Ogre::String&)) & GameObject::changeCategory);
 		gameObjectClass.def("changeCategory2", (void (GameObject::*)(const Ogre::String&)) & GameObject::changeCategory);
 
@@ -3493,6 +3539,8 @@ namespace NOWA
 		AddClassToCollection("GameObject", "string getTagName()", "Gets the tag name of game object. Note: Tags are like sub-categories. E.g. several game objects may belong to the category 'Enemy', but one group may have a tag name 'Stone', the other 'Ship1', 'Ship2' etc. "
 			"This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories, to further distinquish, which tag has been hit in order to remove different energy amount.");
 		AddClassToCollection("GameObject", "setActivated(bool activated)", "If set to true, the game object will be activated. This can be used e.g. for all components that do something when activated.");
+        AddClassToCollection("GameObject", "setActivatedSpecific(bool activated, table ids)", "Like setActivated, but only affects components whose class id (or a parent class id) is contained in the given table of component class ids (numbers). Only affects components that have not yet been connected (e.g. freshly cloned at runtime).");
+        AddClassToCollection("GameObject", "setActivatedSpecific2(bool activated, table componentNames)", "Like setActivated, but only affects components whose (custom or class) name is contained in the given table of strings. Only affects components that have not yet been connected (e.g. freshly cloned at runtime).");
 		AddClassToCollection("GameObject", "string getCategoryId()", "Gets the category id to which this game object does belong. Note: This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.");
 		AddClassToCollection("GameObject", "string getRenderCategory()", "Gets the render category to which this game object does belong. Note: This is useful to specify which game objects shall be excluded from a camera's view rendering.");
 		AddClassToCollection("GameObject", "string getRenderCategoryId()", "Gets the render category id to which this game object does belong. Note: This is useful to specify which game objects shall be excluded from a camera's view rendering.");

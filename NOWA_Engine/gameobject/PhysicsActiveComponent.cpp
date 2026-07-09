@@ -352,6 +352,7 @@ namespace NOWA
         this->physicsAttractors.clear();
         this->springs.clear();
         this->detachAndDestroyAllForceObserver();
+        this->gravitySourceGameObjects.clear();
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveComponent] Destructor physics active component for game object: " + this->gameObjectPtr->getName());
 
@@ -1575,6 +1576,8 @@ namespace NOWA
     void PhysicsActiveComponent::setGravitySourceCategory(const Ogre::String& gravitySourceCategory)
     {
         this->gravitySourceCategory->setValue(gravitySourceCategory);
+
+        this->gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(gravitySourceCategory);
     }
 
     Ogre::String PhysicsActiveComponent::getGravitySourceCategory(void) const
@@ -2963,23 +2966,21 @@ namespace NOWA
 
         // bigger planet take the game objects instead the moon, need to debug what the radius is
 #if 0
-        if (false == this->gravitySourceCategory->getString().empty())
+        if (false == this->gravitySourceGameObjects.empty())
         {
-            auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->gravitySourceCategory->getString());
-
             // Sphere of influence: the body "owns" anything within SOI_FACTOR * radius
             static constexpr float SOI_FACTOR = 1.5f; // tune this — 1.5 = 50% above surface
 
             GameObjectPtr nearestGravitySourceObject;
             Ogre::Real smallestSurfaceDist = std::numeric_limits<Ogre::Real>::max();
 
-            for (size_t i = 0; i < gravitySourceGameObjects.size(); i++)
+            for (size_t i = 0; i < this->gravitySourceGameObjects.size(); i++)
             {
-                Ogre::Vector3 toBody = this->getPosition() - gravitySourceGameObjects[i]->getPosition();
+                Ogre::Vector3 toBody = this->getPosition() - this->gravitySourceGameObjects[i]->getPosition();
                 Ogre::Real distToCenter = toBody.length();
 
                 // Get body radius from size
-                Ogre::Vector3 bodySize = gravitySourceGameObjects[i]->getSize();
+                Ogre::Vector3 bodySize = this->gravitySourceGameObjects[i]->getSize();
                 Ogre::Real bodyRadius = (bodySize.x + bodySize.y + bodySize.z) / 3.0f * 0.5f;
 
                 Ogre::Real distToSurface = distToCenter - bodyRadius;
@@ -2988,7 +2989,7 @@ namespace NOWA
                 // This prevents a larger distant body from stealing gravity while on the surface
                 if (distToCenter < bodyRadius * SOI_FACTOR)
                 {
-                    nearestGravitySourceObject = gravitySourceGameObjects[i];
+                    nearestGravitySourceObject = this->gravitySourceGameObjects[i];
                     break; // closest surface wins, no need to check further
                 }
 
@@ -2996,7 +2997,7 @@ namespace NOWA
                 if (distToSurface < smallestSurfaceDist)
                 {
                     smallestSurfaceDist = distToSurface;
-                    nearestGravitySourceObject = gravitySourceGameObjects[i];
+                    nearestGravitySourceObject = this->gravitySourceGameObjects[i];
                 }
             }
 
@@ -3030,17 +3031,16 @@ namespace NOWA
             this->gravityUpdated.clear();
         }
 #else
-        if (false == this->gravitySourceCategory->getString().empty())
+        if (false == this->gravitySourceGameObjects.empty())
         {
-            auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->gravitySourceCategory->getString());
-            for (size_t i = 0; i < gravitySourceGameObjects.size(); i++)
+            for (size_t i = 0; i < this->gravitySourceGameObjects.size(); i++)
             {
-                wholeForce = this->getPosition() - gravitySourceGameObjects[i]->getPosition();
+                wholeForce = this->getPosition() - this->gravitySourceGameObjects[i]->getPosition();
                 Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();
                 if (squaredDistanceToGravitySource < nearestPlanetDistance)
                 {
                     nearestPlanetDistance = squaredDistanceToGravitySource;
-                    nearestGravitySourceObject = gravitySourceGameObjects[i];
+                    nearestGravitySourceObject = this->gravitySourceGameObjects[i];
                 }
             }
 

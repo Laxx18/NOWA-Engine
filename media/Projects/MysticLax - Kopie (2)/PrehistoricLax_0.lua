@@ -477,8 +477,8 @@ WalkState["execute"] = function(gameObject, dt)
 	 
 	-----------------------------------------Handle idle--------------------------------------------------
 	-- If no key is pressed or player is not able to move (moveWeight = 0), go to idle state
-	if ((playerController:getMoveWeight() == 0) or (InputDeviceModule:isActionDown(NOWA_A_DOWN) == false
-			and InputDeviceModule:isActionDown(NOWA_A_LEFT) == false and InputDeviceModule:isActionDown(NOWA_A_RIGHT) == false
+	if ((playerController:getMoveWeight() == 0) or (inputDeviceComp:isActionDown(NOWA_A_DOWN) == false
+			and inputDeviceComp:isActionDown(NOWA_A_LEFT) == false and inputDeviceComp:isActionDown(NOWA_A_RIGHT) == false
 			and jumpKeyPressed == false)) then
 	
 		walkCount = 0;
@@ -533,12 +533,12 @@ WalkState["execute"] = function(gameObject, dt)
 		--end
 	end
 	
-	--if (playerController:getMoveWeight() ~= 0 and InputDeviceModule:isActionDown(NOWA_A_ATTACK_1) == true) then
+	--if (playerController:getMoveWeight() ~= 0 and inputDeviceComp:isActionDown(NOWA_A_ATTACK_1) == true) then
 	--	playerController:getPhysicsRagDollComponent():setBoneRotation("RightUpperArm", Vector3.UNIT_Z, 2000);
 	--end
 	
 	-------------------------------------------Handle movement--------------------------------
-	if (InputDeviceModule:isActionDown(NOWA_A_LEFT) or InputDeviceModule:isActionDown(NOWA_A_RIGHT) and atObstacle == false) then
+	if (inputDeviceComp:isActionDown(NOWA_A_LEFT) or inputDeviceComp:isActionDown(NOWA_A_RIGHT) and atObstacle == false) then
 			
 		boringTimer = 0;
 
@@ -563,7 +563,7 @@ WalkState["execute"] = function(gameObject, dt)
 		local animId = AnimationBlender.ANIM_NONE;
 
 		-- JumpNRun 2D treatement: Rotate til 90 degree at once
-		if (InputDeviceModule:isActionDown(NOWA_A_LEFT)) then
+		if (inputDeviceComp:isActionDown(NOWA_A_LEFT)) then
 			if (runAfterWalkTime > 0 and inAir == false) then
 				walkCount = walkCount + dt;
 			end
@@ -578,7 +578,7 @@ WalkState["execute"] = function(gameObject, dt)
 			end
 			direction = LEFT;
 			keyDirection = Vector3(-1, 0, 0);
-		elseif (InputDeviceModule:isActionDown(NOWA_A_RIGHT)) then
+		elseif (inputDeviceComp:isActionDown(NOWA_A_RIGHT)) then
 			if (runAfterWalkTime > 0 and inAir == false) then
 				walkCount = walkCount + dt;
 			end
@@ -613,7 +613,7 @@ WalkState["execute"] = function(gameObject, dt)
 ---------------------------------------------------------------------------------------------------
 		end
 			
-	elseif (InputDeviceModule:isActionDown(NOWA_A_DUCK)) then
+	elseif (inputDeviceComp:isActionDown(NOWA_A_DUCK)) then
 		boringTimer = 0;
 		if (duckedOnce == false) then
 			duckedOnce = true;
@@ -623,7 +623,7 @@ WalkState["execute"] = function(gameObject, dt)
 		if (animationBlender:getTimePosition() >= animationBlender:getLength() - 0.3) then
 			animationBlender:setTimePosition(0.7);
 		end
-	elseif (InputDeviceModule:isActionDown(NOWA_A_DUCK) == false and duckedOnce == true) then
+	elseif (inputDeviceComp:isActionDown(NOWA_A_DUCK) == false and duckedOnce == true) then
 		boringTimer = 0;
 		-- playerController:getPhysicsComponent()->getBody()->scaleCollision(Ogre::Vector3(1.0f, 1.0f, 1.0f));
 		duckedOnce = false;
@@ -697,13 +697,13 @@ WalkState["execute"] = function(gameObject, dt)
 
 	-- Test
 	if timeSinceLastPush <= 0 then
-		if (InputDeviceModule:isKeyDown(KeyEvent.KC_T) and canPush == true) then
+		if (inputDeviceComp:isKeyDown(KeyEvent.KC_T) and canPush == true) then
 			timeSinceLastPush = 1;
 			-- Change to rag doll state, so that no rays etc. are calculated and player cannot move for 5 seconds
 			playerController:getStateMachine():changeState(RagDollState);
 			
 			canPush = false;
-		elseif (InputDeviceModule:isKeyDown(KeyEvent.KC_O) and canPush == true) then
+		elseif (inputDeviceComp:isKeyDown(KeyEvent.KC_O) and canPush == true) then
 			timeSinceLastPush = 1;
 			
 			playerController:getPhysicsRagDollComponent():setBoneConfigFile("PrehistoricLaxPartial.rag");
@@ -711,7 +711,7 @@ WalkState["execute"] = function(gameObject, dt)
 			
 			
 			canPush = false;
-		elseif (InputDeviceModule:isKeyDown(KeyEvent.KC_N) and canPush == true) then
+		elseif (inputDeviceComp:isKeyDown(KeyEvent.KC_N) and canPush == true) then
 			timeSinceLastPush = 1;
 			
 			playerController:getPhysicsRagDollComponent():setBoneConfigFile("PrehistoricLax2.rag");
@@ -726,7 +726,7 @@ WalkState["execute"] = function(gameObject, dt)
 	
 	-----------------------------------------------Handle Jump---------------------------------------------------
 	jumpKeyPressed = false;
-	if (InputDeviceModule:isActionDown(NOWA_A_JUMP)) then
+	if (inputDeviceComp:isActionDown(NOWA_A_JUMP)) then
 		boringTimer = 0;
 		if (canDoubleJump == true) then
 			
@@ -839,11 +839,11 @@ WalkState["execute"] = function(gameObject, dt)
 		timeSinceLastAttack = timeSinceLastAttack - dt;
 	end
     
-    if InputDeviceModule:isActionDown(NOWA_A_ATTACK_1) == false then
+    if inputDeviceComp:isActionDown(NOWA_A_ATTACK_1) == false then
             canAttack = true;
     end
         
-    if InputDeviceModule:isActionDown(NOWA_A_ATTACK_1) and canAttack == true then
+    if inputDeviceComp:isActionDown(NOWA_A_ATTACK_1) and canAttack == true then
         playerController:getStateMachine():changeState(AttackState);
         
         canAttack = false;

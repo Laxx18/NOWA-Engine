@@ -12,14 +12,14 @@ canShoot = false;
 laserSpawnComponent = nil;
 originLaser = nil;
 thisGameObject = nil;
-inputDeviceModule = nil;
+inputDeviceComp = nil;
 
 FutureFighterJet_0 = {};
 
 FutureFighterJet_0["connect"] = function(gameObject)
     thisGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
 
-    inputDeviceModule = thisGameObject:getInputDeviceComponent():getInputDeviceModule();
+    inputDeviceComp = thisGameObject:getInputDeviceComponent();
     physicsActiveComponent = thisGameObject:getPhysicsActiveComponent();
     attributesComponent = thisGameObject:getAttributesComponent();
     laserSpawnComponent = thisGameObject:getSpawnComponent();
@@ -72,18 +72,18 @@ FutureFighterJet_0["update"] = function(dt)
     local moveVertical = 0;
     local speed = 20;
 
-    if inputDeviceModule:isActionDown(NOWA_A_UP) then
+    if inputDeviceComp:isActionDown(NOWA_A_UP) then
         moveVertical = -1;
-    elseif inputDeviceModule:isActionDown(NOWA_A_DOWN) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_DOWN) then
         moveVertical = 1;
     end
-    if inputDeviceModule:isActionDown(NOWA_A_LEFT) then
+    if inputDeviceComp:isActionDown(NOWA_A_LEFT) then
         moveHorizontal = -1;
-    elseif inputDeviceModule:isActionDown(NOWA_A_RIGHT) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_RIGHT) then
         moveHorizontal = 1;
     end
 
-    if inputDeviceModule:isActionDown(NOWA_A_START) then
+    if inputDeviceComp:isActionDown(NOWA_A_START) then
         AppStateManager:pushAppState("MenuState");
     end
 
@@ -118,11 +118,11 @@ function shoot(dt)
     end
 
     if timeSinceLastLaserShoot <= 0 then
-        if inputDeviceModule:isActionDown(NOWA_A_ATTACK_1) == false then
+        if inputDeviceComp:isActionDown(NOWA_A_ATTACK_1) == false then
             canShoot = true;
         end
         
-        if inputDeviceModule:isActionDown(NOWA_A_ATTACK_1) and canShoot == true then
+        if inputDeviceComp:isActionDown(NOWA_A_ATTACK_1) and canShoot == true then
             laserSpawnComponent:setActivated(true);
             
             canShoot = false;

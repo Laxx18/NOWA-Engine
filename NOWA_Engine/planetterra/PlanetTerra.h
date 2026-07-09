@@ -242,6 +242,9 @@ namespace NOWA
         // findFlatLandingVertex/collectSurfaceSamples.
         bool sampleHeightAndNormalAtDirection(const Ogre::Vector3& dirWorld, Ogre::Vector3& outLocalPos, Ogre::Vector3& outLocalNormal) const;
 
+        
+        std::tuple<bool, Ogre::Vector3, Ogre::Vector3, Ogre::Real> checkRayIntersect(const Ogre::Ray& ray, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale) const;
+
     private:
         // Internal CPU helpers (MAIN THREAD)
         void generateBaseSphere();

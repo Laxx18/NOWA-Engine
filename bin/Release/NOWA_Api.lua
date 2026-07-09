@@ -13759,6 +13759,206 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			isKeyboardDevice =
+			{
+				type = "function",
+				description = "Gets whether the assigned device is a keyboard device. If false, its a joystick device.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getMappedKey =
+			{
+				type = "function",
+				description = "Gets the OIS key that is mapped as action.",
+				args = "(Action action)",
+				returns = "(KeyCode)",
+				valuetype = "KeyCode"
+			},
+			getStringFromMappedKey =
+			{
+				type = "function",
+				description = "Gets the given OIS key as string.",
+				args = "(KeyCode keyCode)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getMappedKeyFromString =
+			{
+				type = "function",
+				description = "Gets the OIS key from string key.",
+				args = "(string key)",
+				returns = "(KeyCode)",
+				valuetype = "KeyCode"
+			},
+			getMappedButton =
+			{
+				type = "function",
+				description = "Gets the OIS joystick button that is mapped as action.",
+				args = "(Action action)",
+				returns = "(JoyStickButton)",
+				valuetype = "JoyStickButton"
+			},
+			getStringFromMappedButton =
+			{
+				type = "function",
+				description = "Gets the given OIS joystick button as string.",
+				args = "(JoyStickButton button)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setJoyStickDeadZone =
+			{
+				type = "method",
+				description = "Sets the joystick dead zone.",
+				args = "(number deadZone)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			hasActiveJoyStick =
+			{
+				type = "function",
+				description = "Gets whether a joystick is plugged in and active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getLeftStickHorizontalMovingStrength =
+			{
+				type = "function",
+				description = "Gets the strength of the left stick horizontal moving. If 0 horizontal stick is not moved. When moved right values are in range (0, 1]. When moved left values are in range (0, -1].",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getLeftStickVerticalMovingStrength =
+			{
+				type = "function",
+				description = "Gets the strength of the left stick vertical moving. If 0 vertical stick is not moved. When moved up values are in range (0, 1]. When moved down values are in range (0, -1].",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getRightStickHorizontalMovingStrength =
+			{
+				type = "function",
+				description = "Gets the strength of the right stick horizontal moving. If 0 horizontal stick is not moved. When moved right values are in range (0, 1]. When moved left values are in range (0, -1].",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getRightStickVerticalMovingStrength =
+			{
+				type = "function",
+				description = "Gets the strength of the right stick vertical moving. If 0 vertical stick is not moved. When moved up values are in range (0, 1]. When moved down values are in range (0, -1].",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			isKeyDown =
+			{
+				type = "function",
+				description = "Gets whether a specific key is down.",
+				args = "(KeyCode key)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			isButtonDown =
+			{
+				type = "function",
+				description = "Gets whether a specific joystick button is down.",
+				args = "(JoyStickButton button)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			isActionDown =
+			{
+				type = "function",
+				description = "Gets whether a specific mapped action is down.",
+				args = "(Action action)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			isActionDownAmount =
+			{
+				type = "function",
+				description = "Gets whether a specific mapped action is down, but only max for the specific action duration. Default value is 0.2 seconds.",
+				args = "(Action action, number dt, number actionDuration)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			isActionDownPressed =
+			{
+				type = "function",
+				description = "Gets whether a specific mapped action is pressed.",
+				args = "(Action action, number dt, number durationBetweenTheAction)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			areButtonsDown2 =
+			{
+				type = "function",
+				description = "Gets whether two specific joystick buttons are down at the same time.",
+				args = "(JoyStickButton button1, JoyStickButton button2)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			areButtonsDown3 =
+			{
+				type = "function",
+				description = "Gets whether three specific joystick buttons are down at the same time.",
+				args = "(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			areButtonsDown4 =
+			{
+				type = "function",
+				description = "Gets whether four specific joystick buttons are down at the same time.",
+				args = "(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3, JoyStickButton button4)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getPressedButton =
+			{
+				type = "function",
+				description = "Gets the currently pressed joystick button.",
+				args = "()",
+				returns = "(JoyStickButton)",
+				valuetype = "JoyStickButton"
+			},
+			getPressedButtons =
+			{
+				type = "function",
+				description = "Gets the currently simultaneously pressed joystick buttons.",
+				args = "()",
+				returns = "(Table[number][JoyStickButton])",
+				valuetype = "Table[number][JoyStickButton]"
+			},
+			setAnalogActionThreshold =
+			{
+				type = "method",
+				description = "Sets the threshold for treating stick as digital actions (LEFT/RIGHT/UP/DOWN).",
+				args = "(number t)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAnalogActionThreshold =
+			{
+				type = "function",
+				description = "Gets the threshold for treating stick as digital actions (LEFT/RIGHT/UP/DOWN).",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getSteerAxis =
+			{
+				type = "function",
+				description = "Returns steering axis in [-1..1] from keyboard or left stick.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},

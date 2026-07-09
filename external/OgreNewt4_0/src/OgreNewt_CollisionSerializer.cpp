@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -44,6 +46,29 @@ namespace
             return false;
         }
         return (data[0] == 'p' && data[1] == 'l' && data[2] == 'y' && (data[3] == '\n' || data[3] == '\r'));
+    }
+
+    // ── Fast, allocation-free ASCII number scanning ────────────────────────────
+    // Replaces getline()+istringstream per line, which is the dominant cost for
+    // large ASCII PLY files (each line otherwise pays for a heap-allocating
+    // getline copy, a locale-aware istringstream construction, and formatted
+    // operator>> extraction). strtof/strtol skip leading whitespace (including
+    // newlines) themselves, so this naturally walks across "x y z" / "n i0 i1..."
+    // lines without needing explicit line boundaries.
+    inline float fastNextFloat(const char*& p)
+    {
+        char* endPtr = nullptr;
+        float v = std::strtof(p, &endPtr);
+        p = endPtr;
+        return v;
+    }
+
+    inline long fastNextInt(const char*& p)
+    {
+        char* endPtr = nullptr;
+        long v = std::strtol(p, &endPtr, 10);
+        p = endPtr;
+        return v;
     }
 
     template <class T> void writeVal(std::ostream& os, const T& v)
@@ -344,16 +369,20 @@ namespace OgreNewt
             return dest;
         }
 
+        auto parseStart = std::chrono::high_resolution_clock::now();
+
+        // Everything after the header is pure "x y z" / "n i0 i1 i2 ..." tokens.
+        // Slurp it once into a contiguous, null-terminated buffer and scan it
+        // directly with strtof/strtol instead of getline()+istringstream per line.
+        std::string body((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
+        const char* p = body.data();
+
         std::vector<Ogre::Vector3> verts(vertexCount);
         for (size_t i = 0; i < vertexCount; ++i)
         {
-            if (!std::getline(is, line))
-            {
-                logCritical("importPLY", "Unexpected EOF reading vertices.");
-                return dest;
-            }
-            std::istringstream ss(line);
-            ss >> verts[i].x >> verts[i].y >> verts[i].z;
+            verts[i].x = fastNextFloat(p);
+            verts[i].y = fastNextFloat(p);
+            verts[i].z = fastNextFloat(p);
         }
 
         // Collect triangulated indices (fan triangulation for polygons)
@@ -361,14 +390,7 @@ namespace OgreNewt
         indices.reserve(faceCount * 3);
         for (size_t i = 0; i < faceCount; ++i)
         {
-            if (!std::getline(is, line))
-            {
-                logCritical("importPLY", "Unexpected EOF reading faces.");
-                return dest;
-            }
-            std::istringstream ss(line);
-            int n;
-            ss >> n;
+            int n = static_cast<int>(fastNextInt(p));
             if (n < 3)
             {
                 continue;
@@ -377,7 +399,7 @@ namespace OgreNewt
             std::vector<int> poly(n);
             for (int k = 0; k < n; ++k)
             {
-                ss >> poly[k];
+                poly[k] = static_cast<int>(fastNextInt(p));
             }
 
             for (int k = 1; k < n - 1; ++k)
@@ -388,11 +410,22 @@ namespace OgreNewt
             }
         }
 
+        auto parseFinish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> parseElapsed = parseFinish - parseStart;
+        if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+        {
+            lm->logMessage("[CollisionSerializer][importPLY] Parsed " + Ogre::StringConverter::toString((unsigned int)vertexCount) + " vertices and " + Ogre::StringConverter::toString((unsigned int)faceCount) + " faces in " +
+                               Ogre::StringConverter::toString(parseElapsed.count() * 0.001) + "s",
+                Ogre::LML_TRIVIAL);
+        }
+
         if (verts.empty() || indices.empty())
         {
             logCritical("importPLY", "PLY has no triangles.");
             return dest;
         }
+
+        auto soupStart = std::chrono::high_resolution_clock::now();
 
         ndPolygonSoupBuilder soup;
         soup.Begin();
@@ -432,6 +465,14 @@ namespace OgreNewt
 
         ndShape* shape = new ndShapeStatic_bvh(soup);
         dest = CollisionPtr(new Collision(world, ndSharedPtr<ndShapeInstance>(new ndShapeInstance(shape))));
+
+        auto soupFinish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> soupElapsed = soupFinish - soupStart;
+        if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+        {
+            lm->logMessage("[CollisionSerializer][importPLY] Built BVH from " + Ogre::StringConverter::toString((unsigned int)totalFacesAdded) + " faces in " + Ogre::StringConverter::toString(soupElapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
+        }
+
         return dest;
     }
 

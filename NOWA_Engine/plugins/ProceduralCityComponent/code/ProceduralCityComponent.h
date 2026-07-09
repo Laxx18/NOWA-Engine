@@ -331,6 +331,14 @@ namespace NOWA
         {
             return "GenerateGarage";
         }
+        /// When enabled, each building is tilted so its local Y aligns with
+        /// the planet surface normal — makes buildings "stand up" on a sphere.
+        static Ogre::String AttrGradientAlignment(void)
+        {
+            return "GradientAlignment";
+        }
+        /// World-space XYZ of the planet centre.  Used for gradient alignment.
+        /// Default (0,0,0) = flat world (no tilt).  Set to planet centre if on a planet.
         // External road connection (optional)
         static Ogre::String AttrRoadComponentId(void)
         {
@@ -1012,7 +1020,6 @@ namespace NOWA
          */
         void handleComponentManuallyDeleted(NOWA::EventDataPtr eventData);
         void handleGameObjectSelected(NOWA::EventDataPtr eventData);
-        void handleMeshModifyMode(NOWA::EventDataPtr eventData);
 
         // ---- Cache version ------------------------------------------------
 
@@ -1038,14 +1045,15 @@ namespace NOWA
             Ogre::Vector2 a, b;
         };
         std::vector<RoadSegXZ> organicRoadSegs;
-        Variant* sidewalkWidthAttr;         // Real, meters
-        Variant* curbHeightAttr;            // Real, meters
-        Variant* generateRoadsAttr;         // bool
-        Variant* roadDatablockAttr;         // String
-        Variant* curbDatablockAttr;         // String
-        Variant* doorDatablockAttr;         // String — global door texture for all buildings
-        Variant* garageDatablockAttr;       // String — garage door datablock (city_garage_01)
-        Variant* generateGarageAttr;        // bool — whether ~30% of residential buildings get a garage
+        Variant* sidewalkWidthAttr;   // Real, meters
+        Variant* curbHeightAttr;      // Real, meters
+        Variant* generateRoadsAttr;   // bool
+        Variant* roadDatablockAttr;   // String
+        Variant* curbDatablockAttr;   // String
+        Variant* doorDatablockAttr;   // String — global door texture for all buildings
+        Variant* garageDatablockAttr; // String — garage door datablock (city_garage_01)
+        Variant* generateGarageAttr;
+        Variant* gradientAlignmentAttr;     ///< bool: tilt buildings to planet surface
         Variant* roadComponentIdAttr;       // String (large uint stored as string)
         Variant* roadConnectionAtStartAttr; // bool
         Variant* districtCountAttr;         // uint, triggers AttrActionNeedRefresh
@@ -1055,9 +1063,9 @@ namespace NOWA
         Variant* editModeAttr;              // "Object" | "Segment"
 
         // ---- Edit-mode state -------------------------------------------
-        int selectedBuildingIdx;     ///< -1 = nothing selected in Segment mode
-        bool isSelected;             ///< this component/GO is selected in editor
-        bool isEditorMeshModifyMode; ///< editor is in mesh-modify mode
+        int selectedBuildingIdx;      ///< -1 = nothing selected in Segment mode
+        bool isSelected;              ///< this component/GO is selected in editor
+        bool inputListenerRegistered; ///< dirty flag — prevents repeated OIS add/remove per frame
 
         // Per-building record kept across Generate calls so Segment mode can
         // click-select and delete individual buildings without regenerating.

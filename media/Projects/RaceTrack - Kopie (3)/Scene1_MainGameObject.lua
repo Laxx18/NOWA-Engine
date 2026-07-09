@@ -28,11 +28,11 @@ Scene1_MainGameObject["update"] = function(dt)
 	end
 
     if timeSinceLastSwitch <= 0 then
-        if InputDeviceModule:isActionDown(NOWA_A_SELECT) == false then
+        if inputDeviceComp:isActionDown(NOWA_A_SELECT) == false then
             canSwitch = true;
         end
         
-        if InputDeviceModule:isActionDown(NOWA_A_SELECT) and canSwitch == true then
+        if inputDeviceComp:isActionDown(NOWA_A_SELECT) and canSwitch == true then
             oldGameObject = nextGameObject;
             nextGameObject = AppStateManager:getGameObjectController():getNextGameObject("Quat");
         

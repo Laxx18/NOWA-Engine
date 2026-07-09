@@ -34,6 +34,7 @@ GPL v3
 #include <fstream>
 #include <future>
 #include <random>
+#include <thread>
 
 namespace
 {
@@ -130,7 +131,7 @@ namespace NOWA
         cityLoadedFromScene(false),
         cityOrigin(Ogre::Vector3::ZERO),
         activated(new Variant(AttrActivated(), true, this->attributes)),
-        cityBoundsAttr(new Variant(AttrCityBounds(), Ogre::Vector4(-100.f, -100.f, 100.f, 100.f), this->attributes)),
+        cityBoundsAttr(new Variant(AttrCityBounds(), Ogre::Vector4(-300.f, -300.f, 300.f, 300.f), this->attributes)),
         masterSeedAttr(new Variant(AttrMasterSeed(), 42u, this->attributes)),
         blockSizeAttr(new Variant(AttrBlockSize(), 40.f, this->attributes)),
         roadWidthAttr(new Variant(AttrRoadWidth(), 6.f, this->attributes)),
@@ -146,13 +147,14 @@ namespace NOWA
         doorDatablockAttr(new Variant(AttrDoorDatablock(), Ogre::String("city_door_01"), this->attributes)),
         garageDatablockAttr(new Variant(AttrGarageDatablock(), Ogre::String("city_garage_01"), this->attributes)),
         generateGarageAttr(new Variant(AttrGenerateGarage(), true, this->attributes)),
+        gradientAlignmentAttr(new Variant(AttrGradientAlignment(), false, this->attributes)),
         generateBtn(new Variant(AttrGenerate(), Ogre::String("Generate Now"), this->attributes)),
         clearBtn(new Variant(AttrClear(), Ogre::String("Clear"), this->attributes)),
         generateBuildingsBtn(new Variant(AttrGenerateBuildings(), Ogre::String("Generate Buildings"), this->attributes)),
         editModeAttr(new Variant(AttrEditMode(), std::vector<Ogre::String>{"Object", "Segment"}, this->attributes)),
         selectedBuildingIdx(-1),
         isSelected(false),
-        isEditorMeshModifyMode(false),
+        inputListenerRegistered(false),
         selOverlayObject(nullptr),
         selOverlayNode(nullptr)
     {
@@ -197,6 +199,10 @@ namespace NOWA
         this->garageDatablockAttr->setDescription("PBS datablock for garage doors (placed on some residential buildings as an attached garage cube). Default: 'city_garage_01'.");
         this->garageDatablockAttr->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
 
+        this->gradientAlignmentAttr->setDescription("Tilt buildings so their local Y axis aligns with the planet surface normal.\n"
+                                                    "Required when placing a city on a spherical planet to prevent buildings\n"
+                                                    "leaning outward at city edges.  Has no effect on flat terrain (planet\n"
+                                                    "centre = 0,0,0).  Performance: adds one quaternion multiply per building.");
         this->generateGarageAttr->setDescription("If true, ~30% of Residential and Mixed buildings get an attached garage on their right face.  Disable to build a city without garages.");
 
         this->generateBtn->setDescription("Generate or regenerate the entire city. Cache is invalidated and rewritten.");
@@ -300,6 +306,11 @@ namespace NOWA
             this->generateGarageAttr->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrGradientAlignment())
+        {
+            this->gradientAlignmentAttr->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRoadConnectionAtStart())
         {
             this->roadConnectionAtStartAttr->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
@@ -393,7 +404,9 @@ namespace NOWA
 
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
-        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
+        // NOTE: EventDataEditorMode is NOT listened to here — it fires every frame in the editor
+        // which would flood updateModificationState() → addInputListener()/removeInputListener()
+        // every frame → ~280fps drop + camera event dispatch corruption.
 
         this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
         this->groundQuery->setSortByDistance(true);
@@ -444,7 +457,6 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
         this->removeInputListener();
         this->destroySelectionOverlay();
 
@@ -539,6 +551,10 @@ namespace NOWA
         else if (AttrGenerateGarage() == attribute->getName())
         {
             this->generateGarageAttr->setValue(attribute->getBool());
+        }
+        else if (AttrGradientAlignment() == attribute->getName())
+        {
+            this->gradientAlignmentAttr->setValue(attribute->getBool());
         }
         else if (AttrEditMode() == attribute->getName())
         {
@@ -715,6 +731,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "GenerateGarage"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->generateGarageAttr->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "GradientAlignment"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->gradientAlignmentAttr->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
@@ -920,6 +942,11 @@ namespace NOWA
             return;
         }
 
+        // DIAGNOSTIC: log which thread this runs on and whether cache is hit or missed.
+        // Cache MISS forces generateCityLayout() on the logic thread = camera freeze!
+        const Ogre::String threadId = Ogre::StringConverter::toString(static_cast<unsigned long long>(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] loadOrGenerateCity START threadId=" + threadId);
+
         const auto& compPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
         if (compPtr)
         {
@@ -928,15 +955,24 @@ namespace NOWA
             this->physicsArtifactComponent->getAttribute(PhysicsArtifactComponent::AttrSerialize())->setVisible(false);
         }
 
+        auto tClear = std::chrono::high_resolution_clock::now();
         this->clearCity(false);
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] clearCity (enqueueAndWait) " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tClear).count()) + "ms");
 
         auto t0 = std::chrono::high_resolution_clock::now();
         std::vector<CityBatch> batches;
         bool fromCache = this->loadCityDataFromFile(batches);
 
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Cache " + Ogre::String(fromCache ? "HIT" : "MISS") + " — " +
+                                                                                (fromCache ? "loading from disk (fast)" : "generateCityLayout() will run on threadId=" + threadId + " — if this is the logic thread, camera freezes until done!"));
+
         if (false == fromCache)
         {
+            auto tGen = std::chrono::high_resolution_clock::now();
             batches = this->generateCityLayout();
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[ProceduralCityComponent] generateCityLayout DONE " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tGen).count()) + "ms");
             if (batches.empty())
             {
                 return;
@@ -944,7 +980,10 @@ namespace NOWA
             this->saveCityDataToFile(batches);
         }
 
+        auto tGpu = std::chrono::high_resolution_clock::now();
         this->createCityOnRenderThread(std::move(batches));
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] createCityOnRenderThread (enqueueAndWait) " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tGpu).count()) + "ms");
 
         double ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - t0).count();
         size_t total = 0;
@@ -1252,6 +1291,40 @@ namespace NOWA
                 Ogre::Real jitter = (static_cast<float>(building.variantSeed % 1000u) / 1000.f * 0.35f) - 0.175f;
                 building.orientation.FromAngleAxis(Ogre::Radian(baseAngle + jitter), Ogre::Vector3::UNIT_Y);
 
+                // ---- Gradient alignment (planet surface tilt) --------------------
+                // Compute gradientQ but do NOT bake it into building.orientation yet.
+                // generateBuildingGeometry uses UNIT_Y for heights → correct face winding.
+                // After generation we rotate all new vertices + normals + tangents
+                // by gradientQ as a post-process.  This way:
+                //   • winding is always correct (generated with standard UNIT_Y up)
+                //   • roof, walls, stairs ALL tilt together with the building
+                //   • road-facing direction (building.orientation) stays unaffected
+                Ogre::Quaternion gradientQ = Ogre::Quaternion::IDENTITY;
+                if (this->gradientAlignmentAttr->getBool())
+                {
+                    const Ogre::Vector3 worldPos(building.position.x, building.groundHeight, building.position.z);
+                    const Ogre::Vector3 toSurface = worldPos;
+                    // Guard: if groundHeight is much lower than localOrigin.y the terrain raycast
+                    // missed (building outside Terra mesh bounds). Surface normal would be
+                    // horizontal → 90° rotation → buildings become flat planes in space.
+                    const bool terrainValid = (building.groundHeight > localOrigin.y * 0.3f) && (toSurface.squaredLength() > 1.f);
+                    if (terrainValid)
+                    {
+                        const Ogre::Vector3 surfNorm = toSurface.normalisedCopy();
+                        const Ogre::Vector3 axis = Ogre::Vector3::UNIT_Y.crossProduct(surfNorm);
+                        const Ogre::Real dot = Ogre::Vector3::UNIT_Y.dotProduct(surfNorm);
+                        if (axis.squaredLength() < 1e-6f)
+                        {
+                            gradientQ = (dot >= 0.f) ? Ogre::Quaternion::IDENTITY : Ogre::Quaternion(0.f, 1.f, 0.f, 0.f);
+                        }
+                        else
+                        {
+                            gradientQ.FromAngleAxis(Ogre::Math::ACos(Ogre::Math::Clamp(dot, -1.f, 1.f)), axis.normalisedCopy());
+                        }
+                        building.orientation = gradientQ * building.orientation;
+                    }
+                }
+
                 Ogre::Real fw = Ogre::Math::lerp(district.minFootprint.x, district.maxFootprint.x, d01(rng));
                 Ogre::Real fd = Ogre::Math::lerp(district.minFootprint.y, district.maxFootprint.y, d01(rng));
                 fw = std::min(fw, lot.size.x * 0.85f);
@@ -1263,7 +1336,6 @@ namespace NOWA
                 building.roofType = isHighRise ? 0u : (building.variantSeed % 3u);
                 building.roofPitch = isHighRise ? 0.f : (0.2f + d01(rng) * 0.55f);
 
-                // Route building to variant batch group by variantSeed
                 const unsigned int vi = building.variantSeed % NUM_BUILDING_VARIANTS;
                 const unsigned int base = vi * SLOTS_PER_VARIANT;
 
@@ -1449,8 +1521,13 @@ namespace NOWA
         std::vector<float>& doorV, std::vector<Ogre::uint32>& doorI, size_t& doorN, std::vector<float>& garageV, std::vector<Ogre::uint32>& garageI, size_t& garageN)
     {
         const Ogre::Vector3 wallDir = building.orientation * Ogre::Vector3::UNIT_Z;
-        // right = wallDir.crossProduct(UNIT_Y) — must NEVER be swapped
-        const Ogre::Vector3 right = wallDir.crossProduct(Ogre::Vector3::UNIT_Y);
+        // up = orientation * UNIT_Y.
+        // On flat terrain (orientation = yaw-only): up = UNIT_Y — no change.
+        // With gradient alignment on a planet: up = planet surface normal at this building.
+        // Using 'up' instead of hardcoded UNIT_Y makes all wall heights, roof, trim, stairs
+        // and garage tilt correctly with the building relative to the planet surface.
+        const Ogre::Vector3 up = building.orientation * Ogre::Vector3::UNIT_Y;
+        const Ogre::Vector3 right = wallDir.crossProduct(up).normalisedCopy();
 
         const Ogre::Real hw = building.footprint.x * 0.5f; // half-width
         const Ogre::Real hd = building.footprint.z * 0.5f; // half-depth
@@ -1467,10 +1544,10 @@ namespace NOWA
         const Ogre::Vector3 frb = base + right * hw - wallDir * hd;
         const Ogre::Vector3 brb = base + right * hw + wallDir * hd;
         const Ogre::Vector3 blb = base - right * hw + wallDir * hd;
-        const Ogre::Vector3 flt = flb + Ogre::Vector3(0.f, wh, 0.f);
-        const Ogre::Vector3 frt = frb + Ogre::Vector3(0.f, wh, 0.f);
-        const Ogre::Vector3 brt = brb + Ogre::Vector3(0.f, wh, 0.f);
-        const Ogre::Vector3 blt = blb + Ogre::Vector3(0.f, wh, 0.f);
+        const Ogre::Vector3 flt = flb + (up * wh);
+        const Ogre::Vector3 frt = frb + (up * wh);
+        const Ogre::Vector3 brt = brb + (up * wh);
+        const Ogre::Vector3 blt = blb + (up * wh);
 
         const Ogre::Real wallTile = 3.f;
         const Ogre::Real fW = building.footprint.x; // face widths
@@ -1480,27 +1557,27 @@ namespace NOWA
 
         // ---- Wall faces (above trim) — slot 0 --------------------------------
         // Front face: v0=flb+trim v1=frb+trim v2=frt v3=flt, normal = -wallDir
-        this->pushQuad(wallV, wallI, wallN, flb + Ogre::Vector3(0.f, trimH, 0.f), frb + Ogre::Vector3(0.f, trimH, 0.f), frt, flt, -wallDir, fW / wallTile, (wh - trimH) / wallTile);
+        this->pushQuad(wallV, wallI, wallN, flb + (up * trimH), frb + (up * trimH), frt, flt, -wallDir, fW / wallTile, (wh - trimH) / wallTile);
 
         // Back face: v0=brb+trim v1=blb+trim v2=blt v3=brt, normal = +wallDir
-        this->pushQuad(wallV, wallI, wallN, brb + Ogre::Vector3(0.f, trimH, 0.f), blb + Ogre::Vector3(0.f, trimH, 0.f), blt, brt, wallDir, fW / wallTile, (wh - trimH) / wallTile);
+        this->pushQuad(wallV, wallI, wallN, brb + (up * trimH), blb + (up * trimH), blt, brt, wallDir, fW / wallTile, (wh - trimH) / wallTile);
 
         // Left face: v0=blb+trim v1=flb+trim v2=flt v3=blt, normal = -right
         // Direction v0->v1 = flb - blb = -wallDir (correct faceRight for windows)
-        this->pushQuad(wallV, wallI, wallN, blb + Ogre::Vector3(0.f, trimH, 0.f), flb + Ogre::Vector3(0.f, trimH, 0.f), flt, blt, -right, fD / wallTile, (wh - trimH) / wallTile);
+        this->pushQuad(wallV, wallI, wallN, blb + (up * trimH), flb + (up * trimH), flt, blt, -right, fD / wallTile, (wh - trimH) / wallTile);
 
         // Right face: v0=frb+trim v1=brb+trim v2=brt v3=frt, normal = +right
         // Direction v0->v1 = brb - frb = +wallDir (correct faceRight for windows)
-        this->pushQuad(wallV, wallI, wallN, frb + Ogre::Vector3(0.f, trimH, 0.f), brb + Ogre::Vector3(0.f, trimH, 0.f), brt, frt, right, fD / wallTile, (wh - trimH) / wallTile);
+        this->pushQuad(wallV, wallI, wallN, frb + (up * trimH), brb + (up * trimH), brt, frt, right, fD / wallTile, (wh - trimH) / wallTile);
 
         // Parapet cap — normal = +UNIT_Y
-        this->pushQuad(wallV, wallI, wallN, flt, frt, brt, blt, Ogre::Vector3::UNIT_Y, fW / wallTile, fD / wallTile);
+        this->pushQuad(wallV, wallI, wallN, flt, frt, brt, blt, up, fW / wallTile, fD / wallTile);
 
         // ---- Trim strip — slot 3 (ground-level band) -------------------------
-        this->pushQuad(trimV, trimI, trimN, flb, frb, frb + Ogre::Vector3(0.f, trimH, 0.f), flb + Ogre::Vector3(0.f, trimH, 0.f), -wallDir, fW / 1.5f, 1.f);
-        this->pushQuad(trimV, trimI, trimN, brb, blb, blb + Ogre::Vector3(0.f, trimH, 0.f), brb + Ogre::Vector3(0.f, trimH, 0.f), wallDir, fW / 1.5f, 1.f);
-        this->pushQuad(trimV, trimI, trimN, blb, flb, flb + Ogre::Vector3(0.f, trimH, 0.f), blb + Ogre::Vector3(0.f, trimH, 0.f), -right, fD / 1.5f, 1.f);
-        this->pushQuad(trimV, trimI, trimN, frb, brb, brb + Ogre::Vector3(0.f, trimH, 0.f), frb + Ogre::Vector3(0.f, trimH, 0.f), right, fD / 1.5f, 1.f);
+        this->pushQuad(trimV, trimI, trimN, flb, frb, frb + (up * trimH), flb + (up * trimH), -wallDir, fW / 1.5f, 1.f);
+        this->pushQuad(trimV, trimI, trimN, brb, blb, blb + (up * trimH), brb + (up * trimH), wallDir, fW / 1.5f, 1.f);
+        this->pushQuad(trimV, trimI, trimN, blb, flb, flb + (up * trimH), blb + (up * trimH), -right, fD / 1.5f, 1.f);
+        this->pushQuad(trimV, trimI, trimN, frb, brb, brb + (up * trimH), frb + (up * trimH), right, fD / 1.5f, 1.f);
 
         // ---- Roof — slot 1 ---------------------------------------------------
         const Ogre::Real roofH = hw * 0.5f + building.roofPitch * hw;
@@ -1512,13 +1589,15 @@ namespace NOWA
         else if (building.roofType == 1)
         {
             // Gabled: ridge along wallDir
-            const Ogre::Vector3 ridge = Ogre::Vector3(base.x, base.y + wh + roofH, base.z);
+            // Ridge peak rises in building's 'up' direction (= surface normal on planet).
+            // On flat terrain up=UNIT_Y so this is identical to the old formula.
+            const Ogre::Vector3 ridge = base + up * (wh + roofH);
             const Ogre::Real ridgeHL = hd * 0.6f;
             const Ogre::Vector3 ridgeF = ridge - wallDir * ridgeHL;
             const Ogre::Vector3 ridgeB = ridge + wallDir * ridgeHL;
 
-            Ogre::Vector3 sNL = (-right + Ogre::Vector3(0.f, 1.f, 0.f)).normalisedCopy();
-            Ogre::Vector3 sNR = (right + Ogre::Vector3(0.f, 1.f, 0.f)).normalisedCopy();
+            Ogre::Vector3 sNL = (-right + (up * 1.f)).normalisedCopy();
+            Ogre::Vector3 sNR = (right + (up * 1.f)).normalisedCopy();
             this->pushQuad(roofV, roofI, roofN, flt, ridgeF, ridgeB, blt, sNL, fD / wallTile, 1.f);
             this->pushQuad(roofV, roofI, roofN, ridgeF, frt, brt, ridgeB, sNR, fD / wallTile, 1.f);
             // Gable ends (triangle as degenerate quad — collapse v2==v3)
@@ -1528,11 +1607,12 @@ namespace NOWA
         else
         {
             // Hip: four slopes converging to a single apex
-            const Ogre::Vector3 apex(base.x, base.y + wh + roofH, base.z);
-            Ogre::Vector3 sNF = (-wallDir + Ogre::Vector3(0.f, 1.f, 0.f)).normalisedCopy();
-            Ogre::Vector3 sNB = (wallDir + Ogre::Vector3(0.f, 1.f, 0.f)).normalisedCopy();
-            Ogre::Vector3 sNL = (-right + Ogre::Vector3(0.f, 1.f, 0.f)).normalisedCopy();
-            Ogre::Vector3 sNR = (right + Ogre::Vector3(0.f, 1.f, 0.f)).normalisedCopy();
+            // Apex rises in building's 'up' direction (= surface normal on planet).
+            const Ogre::Vector3 apex = base + up * (wh + roofH);
+            Ogre::Vector3 sNF = (-wallDir + (up * 1.f)).normalisedCopy();
+            Ogre::Vector3 sNB = (wallDir + (up * 1.f)).normalisedCopy();
+            Ogre::Vector3 sNL = (-right + (up * 1.f)).normalisedCopy();
+            Ogre::Vector3 sNR = (right + (up * 1.f)).normalisedCopy();
             this->pushQuad(roofV, roofI, roofN, flt, frt, apex, apex, sNF, fW / wallTile, 1.f);
             this->pushQuad(roofV, roofI, roofN, brt, blt, apex, apex, sNB, fW / wallTile, 1.f);
             this->pushQuad(roofV, roofI, roofN, blt, flt, apex, apex, sNL, fD / wallTile, 1.f);
@@ -1580,11 +1660,11 @@ namespace NOWA
                     {
                         const Ogre::Real cx = (c + 0.5f) * stepX;
                         const Ogre::Real cy = winStartY + (r + 0.5f) * stepY;
-                        const Ogre::Vector3 wc = originBL + faceRight * cx + Ogre::Vector3(0.f, cy, 0.f) + pushOut;
-                        const Ogre::Vector3 wv0 = wc - faceRight * (winW * 0.5f) - Ogre::Vector3(0.f, winH * 0.5f, 0.f);
-                        const Ogre::Vector3 wv1 = wc + faceRight * (winW * 0.5f) - Ogre::Vector3(0.f, winH * 0.5f, 0.f);
-                        const Ogre::Vector3 wv2 = wc + faceRight * (winW * 0.5f) + Ogre::Vector3(0.f, winH * 0.5f, 0.f);
-                        const Ogre::Vector3 wv3 = wc - faceRight * (winW * 0.5f) + Ogre::Vector3(0.f, winH * 0.5f, 0.f);
+                        const Ogre::Vector3 wc = originBL + faceRight * cx + (up * cy) + pushOut;
+                        const Ogre::Vector3 wv0 = wc - faceRight * (winW * 0.5f) - (up * winH * 0.5f);
+                        const Ogre::Vector3 wv1 = wc + faceRight * (winW * 0.5f) - (up * winH * 0.5f);
+                        const Ogre::Vector3 wv2 = wc + faceRight * (winW * 0.5f) + (up * winH * 0.5f);
+                        const Ogre::Vector3 wv3 = wc - faceRight * (winW * 0.5f) + (up * winH * 0.5f);
                         this->pushQuad(windowV, windowI, windowN, wv0, wv1, wv2, wv3, faceNormal, 1.f, 1.f);
                     }
                 }
@@ -1616,15 +1696,99 @@ namespace NOWA
 
             const Ogre::Vector3 frontBaseCentre = Ogre::Vector3(base.x + (-wallDir.x) * hd, doorBaseLocal, base.z + (-wallDir.z) * hd);
 
-            const Ogre::Vector3 dc = frontBaseCentre + right * 0.f           // centred
-                                     + Ogre::Vector3(0.f, doorH * 0.5f, 0.f) // mid-height
+            const Ogre::Vector3 dc = frontBaseCentre + right * 0.f // centred
+                                     + (up * doorH * 0.5f)         // mid-height
                                      + pushOut;
 
-            const Ogre::Vector3 dv0 = dc - right * (doorW * 0.5f) - Ogre::Vector3(0.f, doorH * 0.5f, 0.f);
-            const Ogre::Vector3 dv1 = dc + right * (doorW * 0.5f) - Ogre::Vector3(0.f, doorH * 0.5f, 0.f);
-            const Ogre::Vector3 dv2 = dc + right * (doorW * 0.5f) + Ogre::Vector3(0.f, doorH * 0.5f, 0.f);
-            const Ogre::Vector3 dv3 = dc - right * (doorW * 0.5f) + Ogre::Vector3(0.f, doorH * 0.5f, 0.f);
+            const Ogre::Vector3 dv0 = dc - right * (doorW * 0.5f) - (up * doorH * 0.5f);
+            const Ogre::Vector3 dv1 = dc + right * (doorW * 0.5f) - (up * doorH * 0.5f);
+            const Ogre::Vector3 dv2 = dc + right * (doorW * 0.5f) + (up * doorH * 0.5f);
+            const Ogre::Vector3 dv3 = dc - right * (doorW * 0.5f) + (up * doorH * 0.5f);
             this->pushQuad(doorV, doorI, doorN, dv0, dv1, dv2, dv3, -wallDir, 1.f, 1.f);
+        }
+
+        // ---- Stairs — 3 steps in front of the door (wall geometry slot) ------
+        // Steps run outward from the building front face in the -wallDir direction.
+        // Step 0 = lowest/outermost, step 2 = highest/closest to door.
+        // Each step has a TOP face (normal +Y) and a FRONT face (normal -wallDir).
+        // Width = doorW + 0.6m, height per step = 0.15m, depth per step = 0.28m.
+        // Winding convention: Cross(e1,e2) = -intended_normal (same as all other faces).
+        //
+        // Winding proof (reusing house-wall convention):
+        //   TOP face  (+Y): FrontLeft,FrontRight,BackRight,BackLeft  → Cross = right×wallDir = -Y ✓
+        //   FRONT face(-wallDir): BotLeft,BotRight,TopRight,TopLeft  → Cross = right×Y = +wallDir ✓
+        {
+            const Ogre::Real doorH = std::min(2.2f, wh * 0.45f);
+            const Ogre::Real doorW = std::min(1.2f, fW * 0.25f);
+            const Ogre::Real stairH = 0.15f; // height per step
+            const Ogre::Real stairD = 0.28f; // depth per step (outward)
+            const int nSteps = 3;
+            const Ogre::Real stairHW = doorW * 0.5f + 0.3f; // half-width of stairs
+
+            // Door base in local space (same formula as door block)
+            const Ogre::Real frontWorldX2 = building.position.x + (-wallDir.x) * hd;
+            const Ogre::Real frontWorldZ2 = building.position.z + (-wallDir.z) * hd;
+            const Ogre::Real frontTerrainY2 = this->getGroundHeight(Ogre::Vector3(frontWorldX2, 0.f, frontWorldZ2));
+            const Ogre::Real doorBaseLocal2 = std::max(base.y, frontTerrainY2 - CITY_SINK_DEPTH - localOrigin.y);
+
+            // frontBase: position of the building's front face centre at door base height
+            const Ogre::Vector3 frontBase(base.x + (-wallDir.x) * hd, doorBaseLocal2, base.z + (-wallDir.z) * hd);
+
+            for (int s = 0; s < nSteps; ++s)
+            {
+                // Step s: s=0 bottom/outermost, s=nSteps-1 top/closest to door
+                const Ogre::Real botY = doorBaseLocal2 + static_cast<Ogre::Real>(s) * stairH;
+                const Ogre::Real topY = doorBaseLocal2 + static_cast<Ogre::Real>(s + 1) * stairH;
+                // Outer edge is more negative in -wallDir direction
+                const Ogre::Real outDist = hd + static_cast<Ogre::Real>(nSteps - s) * stairD;
+                const Ogre::Real inDist = hd + static_cast<Ogre::Real>(nSteps - s - 1) * stairD;
+
+                // Convenience shorthand
+                const Ogre::Vector3 cOut = (-wallDir) * outDist; // outward displacement
+                const Ogre::Vector3 cIn = (-wallDir) * inDist;
+                const Ogre::Vector3 rL = right * (-stairHW); // left offset
+                const Ogre::Vector3 rR = right * (stairHW);  // right offset
+                const Ogre::Vector3 baseXZ(base.x, 0.f, base.z);
+
+                // ---- TOP face (normal +Y): FrontLeft, FrontRight, BackRight, BackLeft
+                const Ogre::Vector3 topFL = baseXZ + rL + cOut + (up * topY);
+                const Ogre::Vector3 topFR = baseXZ + rR + cOut + (up * topY);
+                const Ogre::Vector3 topBR = baseXZ + rR + cIn + (up * topY);
+                const Ogre::Vector3 topBL = baseXZ + rL + cIn + (up * topY);
+                this->pushQuad(wallV, wallI, wallN, topFL, topFR, topBR, topBL, up, stairHW * 2.f / 0.5f, stairD / 0.5f);
+
+                // ---- FRONT face (normal -wallDir): BotLeft, BotRight, TopRight, TopLeft
+                const Ogre::Vector3 frBL = baseXZ + rL + cOut + (up * botY);
+                const Ogre::Vector3 frBR = baseXZ + rR + cOut + (up * botY);
+                const Ogre::Vector3 frTR = baseXZ + rR + cOut + (up * topY);
+                const Ogre::Vector3 frTL = baseXZ + rL + cOut + (up * topY);
+                this->pushQuad(wallV, wallI, wallN, frBL, frBR, frTR, frTL, -wallDir, stairHW * 2.f / 0.5f, stairH / 0.25f);
+
+                // ---- SIDE faces — LEFT (-right) and RIGHT (+right) ----------------
+                // The side profile must fill from GROUND to the TOP of this column.
+                // Step s column spans Z=[outDist..inDist] and its full visible height
+                // is from base (ground) to (s+1)*STAIR_H — i.e. cumulative height.
+                // This closes the staircase profile when viewed from either side.
+                //
+                // LEFT  (-right): winding BotIn, BotOut, TopOut, TopIn → Cross = +right ✓
+                // RIGHT (+right): winding BotOut, BotIn, TopIn, TopOut → Cross = -right ✓
+                const Ogre::Real sideBotY = doorBaseLocal2; // always ground
+                const Ogre::Real sideTopY = doorBaseLocal2 + static_cast<Ogre::Real>(s + 1) * stairH;
+
+                // Left side (normal = -right)
+                const Ogre::Vector3 lBI = baseXZ + rL + cIn + (up * sideBotY);
+                const Ogre::Vector3 lBO = baseXZ + rL + cOut + (up * sideBotY);
+                const Ogre::Vector3 lTO = baseXZ + rL + cOut + (up * sideTopY);
+                const Ogre::Vector3 lTI = baseXZ + rL + cIn + (up * sideTopY);
+                this->pushQuad(wallV, wallI, wallN, lBI, lBO, lTO, lTI, -right, stairD / 0.5f, sideTopY / 0.5f);
+
+                // Right side (normal = +right)
+                const Ogre::Vector3 rBI = baseXZ + rR + cIn + (up * sideBotY);
+                const Ogre::Vector3 rBO = baseXZ + rR + cOut + (up * sideBotY);
+                const Ogre::Vector3 rTO = baseXZ + rR + cOut + (up * sideTopY);
+                const Ogre::Vector3 rTI = baseXZ + rR + cIn + (up * sideTopY);
+                this->pushQuad(wallV, wallI, wallN, rBO, rBI, rTI, rTO, right, stairD / 0.5f, sideTopY / 0.5f);
+            }
         }
 
         // ---- Garage — slot 5 (city_garage_01 datablock) -----------------------
@@ -1676,10 +1840,10 @@ namespace NOWA
             const Ogre::Vector3 FR = base + right * (hw + gd) + (-wallDir) * hd;
             const Ogre::Vector3 BL = base + right * hw + (-wallDir) * (hd - gw);
             const Ogre::Vector3 BR = base + right * (hw + gd) + (-wallDir) * (hd - gw);
-            const Ogre::Vector3 TFL = FL + Ogre::Vector3(0.f, gh, 0.f);
-            const Ogre::Vector3 TFR = FR + Ogre::Vector3(0.f, gh, 0.f);
-            const Ogre::Vector3 TBL = BL + Ogre::Vector3(0.f, gh, 0.f);
-            const Ogre::Vector3 TBR = BR + Ogre::Vector3(0.f, gh, 0.f);
+            const Ogre::Vector3 TFL = FL + (up * gh);
+            const Ogre::Vector3 TFR = FR + (up * gh);
+            const Ogre::Vector3 TBL = BL + (up * gh);
+            const Ogre::Vector3 TBR = BR + (up * gh);
 
             // 1. Garage DOOR (visible from street = -wallDir side)
             // Cross(FR-FL, TFR-FL) = Cross(right*gd, right*gd+Y*gh) = gd*gh*(right×Y) = +wallDir = -(-wallDir) ✓
@@ -1699,7 +1863,7 @@ namespace NOWA
 
             // 5. Roof (visible from +Y side)
             // Cross(TFR-TFL, TBR-TFL) = Cross(right*gd, right*gd+wallDir*gw) = gd*gw*(right×wallDir) = -Y ✓
-            this->pushQuad(wallV, wallI, wallN, TFL, TFR, TBR, TBL, Ogre::Vector3::UNIT_Y, gd / wallTile, gw / wallTile);
+            this->pushQuad(wallV, wallI, wallN, TFL, TFR, TBR, TBL, up, gd / wallTile, gw / wallTile);
         }
     }
 
@@ -2919,6 +3083,7 @@ namespace NOWA
         }
         Ogre::Ray ray(Ogre::Vector3(position.x, position.y + 1000.f, position.z), Ogre::Vector3::NEGATIVE_UNIT_Y);
         this->groundQuery->setRay(ray);
+        const Ogre::Real rayStartY = position.y + 1000.f; // hit must be below this
 
         std::vector<Ogre::MovableObject*> exclude;
         for (const auto& b : this->cityBatches)
@@ -2961,12 +3126,16 @@ namespace NOWA
 
             if (false == isEditorHelper)
             {
-                // Sanity clamp: if the hit Y is more than 300m above or 100m below the city
-                // origin, something is wrong (terrain spike, very hilly edge, or a missed
-                // editor-helper exclusion).  Fall through to the ground-plane fallback.
-                if (hp.y < this->cityOrigin.y - 100.f || hp.y > this->cityOrigin.y + 300.f)
+                // Accept the hit if it is BELOW the ray start and within 2000m.
+                // Old check: hp.y < cityOrigin.y - 100 || hp.y > cityOrigin.y + 300
+                //   → fails for planet cities where cityOrigin.y=0 but surface is at Y=479.
+                // New check: purely distance-based from the ray origin so it works for
+                // flat worlds (Y≈0), elevated terrain, AND spherical planets at any radius.
+                const Ogre::Real hitDist = rayStartY - hp.y; // positive = below ray start
+                if (hitDist < 0.f || hitDist > 2000.f)
                 {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] getGroundHeight: hit Y=" + Ogre::StringConverter::toString(hp.y) + " is implausible — rejected.");
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                        "[ProceduralCityComponent] getGroundHeight: hit Y=" + Ogre::StringConverter::toString(hp.y) + " dist=" + Ogre::StringConverter::toString(hitDist) + " rejected (above ray start or >2000m away).");
                 }
                 else
                 {
@@ -3037,29 +3206,27 @@ namespace NOWA
         this->updateModificationState();
     }
 
-    void ProceduralCityComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
-    {
-        auto data = boost::static_pointer_cast<EventDataEditorMode>(eventData);
-        this->isEditorMeshModifyMode = (data->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
-        this->updateModificationState();
-    }
-
     void ProceduralCityComponent::updateModificationState(void)
     {
+        // Segment mode is active when: EditMode=Segment AND this object is selected.
+        // We do NOT require EditorMeshModifyMode — that event fires every frame and
+        // caused severe FPS drops + camera input corruption when used as a trigger.
         const bool segMode = (this->editModeAttr->getListSelectedValue() == "Segment");
-        const bool active = (this->activated->getBool() && this->isSelected && this->isEditorMeshModifyMode);
+        const bool shouldListen = segMode && this->isSelected && this->activated->getBool();
 
-        if (segMode && active)
+        // Only call addInputListener / removeInputListener when the state CHANGES.
+        // Calling them every frame causes O(n) map operations in InputDeviceCore.
+        if (shouldListen && false == this->inputListenerRegistered)
         {
             this->addInputListener();
+            this->inputListenerRegistered = true;
         }
-        else
+        else if (false == shouldListen && this->inputListenerRegistered)
         {
             this->removeInputListener();
-            if (false == segMode)
-            {
-                this->selectedBuildingIdx = -1;
-            }
+            this->inputListenerRegistered = false;
+            this->selectedBuildingIdx = -1;
+            this->updateSelectionOverlay();
         }
     }
 
@@ -3258,19 +3425,27 @@ namespace NOWA
         }
 
         // Destroy old batches, recreate with new geometry
+        // DIAGNOSTIC: two sequential enqueueAndWait here block logic thread.
+        // ~N*0.1ms per building. For 200 buildings expect 200-600ms freeze on X press.
+        auto tD = std::chrono::high_resolution_clock::now();
         GraphicsModule::getInstance()->enqueueAndWait(
             [this]()
             {
                 this->destroyCityOnRenderThread();
             },
             "ProceduralCityComponent::RebuildFromStoredBuildings_Destroy");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] rebuildBatches Destroy " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tD).count()) + "ms");
 
+        auto tC = std::chrono::high_resolution_clock::now();
         GraphicsModule::getInstance()->enqueueAndWait(
             [this, batches]() mutable
             {
                 this->createCityOnRenderThread(std::move(batches));
             },
             "ProceduralCityComponent::RebuildFromStoredBuildings_Create");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] rebuildBatches Create " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tC).count()) + "ms");
     }
 
     // =========================================================================

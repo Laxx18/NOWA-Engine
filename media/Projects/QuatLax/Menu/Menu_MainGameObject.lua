@@ -86,14 +86,14 @@ Menu_MainGameObject["connect"] = function(gameObject)
             -- If for two player check if player two has also a valid device
             if (AppStateManager:getGameProgressModule():getGlobalValue("TwoPlayer")) then
                  startButton:setEnabled(player2Input:hasValidDevice());
-                 if (player1Input:getInputDeviceModule():isKeyboardDevice()) then
+                 if (player1Input:getInputDeviceComponent():isKeyboardDevice()) then
                      onePlayerPush:setCaption("Press return key");
                  else
                      onePlayerPush:setCaption("Press A button");
                  end
                  onePlayerPush:setActivated(player1Input:hasValidDevice());
             else
-                 if (player1Input:getInputDeviceModule():isKeyboardDevice()) then
+                 if (player1Input:getInputDeviceComponent():isKeyboardDevice()) then
                      onePlayerPush:setCaption("Press return key");
                  else
                      onePlayerPush:setCaption("Press A button");
@@ -121,7 +121,7 @@ Menu_MainGameObject["connect"] = function(gameObject)
             end
             AppStateManager:getGameProgressModule():setGlobalStringValue("PlayerTwoDeviceName", selectedDevice);
             startButton:setEnabled(player2Input:hasValidDevice());
-             if (player2Input:getInputDeviceModule():isKeyboardDevice()) then
+             if (player2Input:getInputDeviceComponent():isKeyboardDevice()) then
                      twoPlayerPush:setCaption("Press return key");
                  else
                      twoPlayerPush:setCaption("Press A button");
@@ -201,14 +201,14 @@ end
 
 Menu_MainGameObject["update"] = function(dt)
     if (player1Input:hasValidDevice()) then
-        if (player1Input:getInputDeviceModule():isActionDown(NOWA_A_ATTACK_1) == true) then
+        if (player1Input:getInputDeviceComponent():isActionDown(NOWA_A_ATTACK_1) == true) then
             player1Transform:setActivated(false);
             player1:getAnimationComponent():setAnimationName("jump_up");
         end
     end
     
     if (player2Input:hasValidDevice()) then
-        if (player2Input:getInputDeviceModule():isActionDown(NOWA_A_ATTACK_1) == true) then
+        if (player2Input:getInputDeviceComponent():isActionDown(NOWA_A_ATTACK_1) == true) then
             player2Transform:setActivated(false);
             player2:getAnimationComponent():setAnimationName("jump_up");
         end

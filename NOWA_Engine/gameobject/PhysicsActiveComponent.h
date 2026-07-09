@@ -617,6 +617,7 @@ namespace NOWA
 		Ogre::Vector3 gravityDirection;
 		Ogre::Real currentGravityStrength;
 		std::atomic_flag gravityUpdated = ATOMIC_FLAG_INIT;
+        std::vector<GameObjectPtr> gravitySourceGameObjects;
 
 		std::function<void(GameObjectPtr /*otherGo*/, const OgreNewt::ContactSnapshot& /*contact*/)> cppContactCallback;
 

@@ -109,18 +109,18 @@ Scene1_QuatBike_0_0["update"] = function(dt)
     end
     
     -- F for wheelie
-    if InputDeviceModule:isActionDown(NOWA_A_FLASH_LIGHT) then
+    if inputDeviceComp:isActionDown(NOWA_A_FLASH_LIGHT) then
         physicsActiveVehicleComponent:applyWheelie(2);
     end
     
     -- Drift jump (Space)
-    --if InputDeviceModule:isActionPressed(NOWA_A_JUMP, dt, 0.2) then
-    if InputDeviceModule:isActionDownAmount(NOWA_A_JUMP, dt, 0.2) then
+    --if inputDeviceComp:isActionPressed(NOWA_A_JUMP, dt, 0.2) then
+    if inputDeviceComp:isActionDownAmount(NOWA_A_JUMP, dt, 0.2) then
 
-        if InputDeviceModule:isActionDown(NOWA_A_LEFT) then
+        if inputDeviceComp:isActionDown(NOWA_A_LEFT) then
             physicsActiveVehicleComponent:applyDrift(true, 40000, 2);
             
-        elseif InputDeviceModule:isActionDown(NOWA_A_RIGHT) then
+        elseif inputDeviceComp:isActionDown(NOWA_A_RIGHT) then
             physicsActiveVehicleComponent:applyDrift(false, 40000, 2);
         end
         
@@ -141,7 +141,7 @@ end
 
 Scene1_QuatBike_0_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulation, dt)
     
-    if InputDeviceModule:isActionDown(NOWA_A_LEFT) then
+    if inputDeviceComp:isActionDown(NOWA_A_LEFT) then
         if (steerAmount <= 35) then
             steerAmount = steerAmount + dt * 20;
             
@@ -152,7 +152,7 @@ Scene1_QuatBike_0_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulat
         end
         
         --vehicleDrivingManipulation:setSteerAngle(steerAmount);
-    elseif InputDeviceModule:isActionDown(NOWA_A_RIGHT) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_RIGHT) then
         if (steerAmount >= -35) then
             steerAmount = steerAmount - dt * 20;
             
@@ -178,18 +178,18 @@ end
 
 Scene1_QuatBike_0_0["onMotorForceChanged"] = function(vehicleDrivingManipulation, dt)
     
-    if InputDeviceModule:isActionDown(NOWA_A_UP) then
+    if inputDeviceComp:isActionDown(NOWA_A_UP) then
         vehicleDrivingManipulation:setMotorForce(5000 * 120 * dt);
         if (animationBlender:isAnimationActive(AnimationBlender.ANIM_WALK_NORTH) == false) then
 			animationBlender:blend5(AnimationBlender.ANIM_WALK_NORTH, AnimationBlender.BLEND_WHILE_ANIMATING, 0.5, false);
 		end
         -- Key E
-    elseif InputDeviceModule:isActionDown(NOWA_A_ACTION) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_ACTION) then
         vehicleDrivingManipulation:setMotorForce(10000 * 120 * dt);
         if (animationBlender:isAnimationActive(AnimationBlender.ANIM_RUN) == false) then
 			animationBlender:blend5(AnimationBlender.ANIM_RUN, AnimationBlender.BLEND_WHILE_ANIMATING, 0.5, false);
 		end
-    elseif InputDeviceModule:isActionDown(NOWA_A_DOWN) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_DOWN) then
         vehicleDrivingManipulation:setMotorForce(-4500 * 120 * dt);
     end
 end
@@ -197,7 +197,7 @@ end
 Scene1_QuatBike_0_0["onHandBrakeChanged"] = function(vehicleDrivingManipulation, dt)
     
     -- Jump: Space
-    --if InputDeviceModule:isActionDown(NOWA_A_JUMP) then
+    --if inputDeviceComp:isActionDown(NOWA_A_JUMP) then
     --    vehicleDrivingManipulation:setHandBrake(5.5);
     --    if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
     --        skidSound:setActivated(true);
@@ -208,7 +208,7 @@ end
 Scene1_QuatBike_0_0["onBrakeChanged"] = function(vehicleDrivingManipulation, dt)
     
     -- Cover: x
-    if InputDeviceModule:isActionDown(NOWA_A_COWER) then
+    if inputDeviceComp:isActionDown(NOWA_A_COWER) then
         vehicleDrivingManipulation:setBrake(7.5);
         if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
             skidSound:setActivated(true);

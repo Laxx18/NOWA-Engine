@@ -1801,48 +1801,6 @@ void DesignState::update(Ogre::Real dt)
             this->ogreNewt->update(dt);
             // this->ogreNewt->updateFixed(dt);
 
-			// Direkt nach: this->ogreNewt->update(dt);
-            // und VOR: cameraManager->moveCamera(dt);
-            {
-                static Ogre::Vector3 s_lastShipPos = Ogre::Vector3::ZERO;
-                static Ogre::Vector3 s_lastShipVelocity = Ogre::Vector3::ZERO;
-                static bool s_hasLastShipPos = false;
-
-
-				NOWA::GameObjectPtr mainLightGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(2599276278);
-
-				OgreNewt::Body* shipBody = nullptr;
-
-                if (nullptr != mainLightGameObjectPtr)
-                {
-
-                    auto lightComponentPtr = NOWA::makeStrongPtr(mainLightGameObjectPtr->getComponent<NOWA::PhysicsActiveComponent>());
-                    if (nullptr != lightComponentPtr)
-                    {
-                        shipBody = lightComponentPtr->getBody();
-                    }
-                }
-
-                if (nullptr != shipBody)
-                {
-                    Ogre::Vector3 pos = shipBody->getPosition();
-                    Ogre::Vector3 vel = shipBody->getVelocity(); // Methodenname ggf. anpassen
-
-                    if (true == s_hasLastShipPos)
-                    {
-                        const Ogre::Vector3 posDelta = pos - s_lastShipPos;
-                        const Ogre::Vector3 velDelta = vel - s_lastShipVelocity;
-
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SHIP-DIAG] pos=" + Ogre::StringConverter::toString(pos) + " posDeltaLen=" + Ogre::StringConverter::toString(posDelta.length()) +
-                                                                                                " vel=" + Ogre::StringConverter::toString(vel) + " velLen=" + Ogre::StringConverter::toString(vel.length()) +
-                                                                                                " velDeltaLen=" + Ogre::StringConverter::toString(velDelta.length()));
-                    }
-                    s_lastShipPos = pos;
-                    s_lastShipVelocity = vel;
-                    s_hasLastShipPos = true;
-                }
-            }
-
 			// Newton has stepped, interalPostUpdate has set m_nodePosit.
             // Camera reads the correct interpolated position and writes
             // into the transform buffer. Render thread lerps it at 400fps.

@@ -498,6 +498,24 @@ namespace NOWA
 		void setActivated(bool activated);
 
 		/**
+         * @brief		Gets like @setActivated, but only activates/deactivates components whose class id (or a parent
+         *				class id) matches one of the given ids. Like @setActivated, this only affects components that have
+         *				not yet been connected (e.g. freshly cloned at runtime).
+         * @param[in]	activated	Whether to activate (true) or deactivate (false) the matching components.
+         * @param[in]	ids			The component class ids (@getStaticClassId()) to match against.
+         */
+        void setActivatedSpecific(bool activated, const std::vector<unsigned int>& ids);
+
+        /**
+         * @brief		Gets like @setActivated, but only activates/deactivates components whose (custom or class) name
+         *				matches one of the given names. Like @setActivated, this only affects components that have not yet
+         *				been connected (e.g. freshly cloned at runtime).
+         * @param[in]	activated			Whether to activate (true) or deactivate (false) the matching components.
+         * @param[in]	componentNames		The component names (custom designer name or class name) to match against.
+         */
+        void setActivatedSpecific2(bool activated, const std::vector<Ogre::String>& componentNames);
+
+		/**
 		 * @brief		Sets this game object should be reflected.
 		 * @param[in]	useReflection		If set to true, the game object will be reflected in scene.
 		 * @note		This can only be used, if the 'ReflectionWorkspace' is set.

@@ -18,9 +18,9 @@ Scene1_MainGameObject["disconnect"] = function()
 end
 
 Scene1_MainGameObject["update"] = function(dt)
-	if InputDeviceModule:isActionDown(NOWA_A_ACTION) then
+	if inputDeviceComp:isActionDown(NOWA_A_ACTION) then
         randomImageShufflerComponent:start();
-    elseif InputDeviceModule:isActionDown(NOWA_A_JUMP) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_JUMP) then
         randomImageShufflerComponent:stop();
     end
 end

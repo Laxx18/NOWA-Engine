@@ -188,7 +188,6 @@ end
 
 Universum_0["disconnect"] = function()
     AppStateManager:getGameObjectController():undoAll();
-    landStartButton:setActivated(true);
 end
 
 Universum_0["update"] = function(dt)

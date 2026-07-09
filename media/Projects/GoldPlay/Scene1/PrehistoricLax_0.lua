@@ -5,7 +5,7 @@ require("init");
 
 prehistoricLax_0 = nil
 pathFollowComponent = nil;
-inputDeviceModule = nil;
+inputDeviceComp = nil;
 playerControllerComponent = nil;
 goldText = nil;
 goldAttribute = nil;
@@ -44,7 +44,7 @@ PrehistoricLax_0["connect"] = function(gameObject)
     physicsActiveComponent = prehistoricLax_0:getPhysicsPlayerControllerComponent();
     pathFollowComponent = prehistoricLax_0:getAiPathFollowComponent();
     local inputDeviceComponent = prehistoricLax_0:getInputDeviceComponent();
-    inputDeviceModule = inputDeviceComponent:getInputDeviceModule();
+    
     playerControllerComponent = prehistoricLax_0:getPlayerControllerComponent();
     playerControllerComponent:setActivated(true);
     animationBlender = playerControllerComponent:getAnimationBlender();
@@ -112,7 +112,7 @@ end
 
 PrehistoricLax_0["update"] = function(dt)
 
-    if (inputDeviceModule:isActionDown(NOWA_A_LEFT)) then
+    if (inputDeviceComp:isActionDown(NOWA_A_LEFT)) then
         pullAction = false;
         if (pathFollowComponent:getWaypointId(0) ~= "1378398386") then
             pathFollowComponent:setWaypointId(0, "1378398386");
@@ -125,7 +125,7 @@ PrehistoricLax_0["update"] = function(dt)
             laughSound:setActivated(false);
             sighSound:setActivated(false);
         end
-    elseif (inputDeviceModule:isActionDown(NOWA_A_RIGHT)) then
+    elseif (inputDeviceComp:isActionDown(NOWA_A_RIGHT)) then
         pullAction = false;
         if (pathFollowComponent:getWaypointId(0) ~= "1091560280") then
             pathFollowComponent:setWaypointId(0, "1091560280");
@@ -138,7 +138,7 @@ PrehistoricLax_0["update"] = function(dt)
             laughSound:setActivated(false);
             sighSound:setActivated(false);
         end
-     elseif (inputDeviceModule:isActionDown(NOWA_A_ACTION)) then
+     elseif (inputDeviceComp:isActionDown(NOWA_A_ACTION)) then
         if (waypointReached and canPull) then
             canPull = false;
             pullAction = true;

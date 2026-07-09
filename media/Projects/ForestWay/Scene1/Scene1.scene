@@ -33,7 +33,7 @@
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-100 -75 -100" mostRightFarPosition="100.391 75.4883 100.927"/>
+		<bounds mostLeftNearPosition="-100 -75 -100" mostRightFarPosition="100.782 75.9766 101.415"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -100,7 +100,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="100" y="75" z="100.439"/>
+			<position x="100.391" y="75.4883" z="100.927"/>
 			<rotation qw="0.906898" qx="-0.37565" qy="-0.0730346" qz="-0.176321"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -572,8 +572,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="5.11876 -8.5319 -95.5433"/>
-					<property type="9" name="CameraOrientation" data="-27.1628 -171.979 -0.29642"/>
+					<property type="9" name="CameraPosition" data="2.70903 -8.5783 -95.6375"/>
+					<property type="9" name="CameraOrientation" data="11.5528 -159.173 -0.277369"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="200"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -681,7 +681,7 @@
 			</ocean>
 		</node>
 		<node name="Road_0" id="2482867476">
-			<position x="2.78366" y="-9.96602" z="-98.947"/>
+			<position x="2.78366" y="-10.2918" z="-98.947"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -692,7 +692,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
@@ -855,7 +855,7 @@
 			</item>
 		</node>
 		<node name="Viper_0" id="3810697672">
-			<position x="5.12866" y="-10.7977" z="-90.4681"/>
+			<position x="5.12866" y="-10.8472" z="-90.4733"/>
 			<rotation qw="0.99863" qx="0.052336" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Viper_0" meshFile="Viper.mesh" castShadows="true" visible="true">
@@ -999,7 +999,7 @@
 			</item>
 		</node>
 		<node name="ViperTire_0" id="2549723094">
-			<position x="5.69076" y="-10.3997" z="-91.5514"/>
+			<position x="5.69076" y="-10.4492" z="-91.5566"/>
 			<rotation qw="4.36515e-08" qx="-2.28768e-09" qy="0.99863" qz="0.052336"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="ViperTire_0" meshFile="ViperTire.mesh" castShadows="true" visible="true">
@@ -1030,7 +1030,7 @@
 			</item>
 		</node>
 		<node name="ViperTire_1" id="2549723529">
-			<position x="4.54076" y="-10.3991" z="-91.5513"/>
+			<position x="4.54076" y="-10.4486" z="-91.5565"/>
 			<rotation qw="0.99863" qx="0.052336" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="ViperTire_1" meshFile="ViperTire.mesh" castShadows="true" visible="true">
@@ -1061,7 +1061,7 @@
 			</item>
 		</node>
 		<node name="ViperTire_2" id="2549722224">
-			<position x="4.54076" y="-10.6072" z="-89.1758"/>
+			<position x="4.54076" y="-10.6567" z="-89.181"/>
 			<rotation qw="0.99863" qx="0.052336" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="ViperTire_2" meshFile="ViperTire.mesh" castShadows="true" visible="true">
@@ -1092,7 +1092,7 @@
 			</item>
 		</node>
 		<node name="ViperTire_3" id="2549722659">
-			<position x="5.69076" y="-10.6078" z="-89.1758"/>
+			<position x="5.69076" y="-10.6573" z="-89.181"/>
 			<rotation qw="4.36515e-08" qx="-2.28768e-09" qy="0.99863" qz="0.052336"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="ViperTire_3" meshFile="ViperTire.mesh" castShadows="true" visible="true">
@@ -1343,7 +1343,7 @@
 			</item>
 		</node>
 		<node name="Lexy_0" id="3365199874">
-			<position x="5.93191" y="-10.5822" z="-93.8262"/>
+			<position x="5.93191" y="-10.5363" z="-93.8262"/>
 			<rotation qw="0.996195" qx="0" qy="0.0871557" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Lexy_0" meshFile="Lexy.mesh" castShadows="true" visible="true">

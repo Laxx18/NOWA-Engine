@@ -14,8 +14,7 @@ physicsActiveVehicleComponent = nil;
 rollSound = nil;
 skidSound = nil;
 player = nil;
-inputDeviceComponent = nil;
-inputDeviceModule = nil;
+inputDeviceComp = nil;
 
 Viper_0["connect"] = function(gameObject)
     player = AppStateManager:getGameObjectController():castGameObject(gameObject);
@@ -25,8 +24,7 @@ Viper_0["connect"] = function(gameObject)
     rollSound:setVolume(200);
     
     skidSound = player:getSimpleSoundComponentFromIndex(1);
-    inputDeviceComponent = player:getInputDeviceComponent();
-    inputDeviceModule = inputDeviceComponent:getInputDeviceModule();
+    inputDeviceComp = player:getInputDeviceComponent();
    
 end
 
@@ -35,7 +33,7 @@ Viper_0["disconnect"] = function()
 end
 
 Viper_0["update"] = function(dt)
-    if (inputDeviceComponent:isDeviceLocked()) then
+    if (inputDeviceComp:isDeviceLocked()) then
        return;
     end
 
@@ -56,16 +54,14 @@ end
 
 
 Viper_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulation, dt)
-    if (inputDeviceComponent:isDeviceLocked()) then
+    if (inputDeviceComp:isDeviceLocked()) then
        return;
     end
-    
-    inputDeviceModule = inputDeviceComponent:getInputDeviceModule();
     
     local maxAngle = 45.0 -- degrees
 
     -- unified analog axis from keyboard OR left stick: [-1..1]
-    local axis = inputDeviceModule:getSteerAxis()
+    local axis = inputDeviceComp:getSteerAxis()
 
     -- Optional: clamp (just in case)
     if axis > 1.0 then axis = 1.0 end
@@ -87,28 +83,28 @@ Viper_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulation, dt)
 end
 
 Viper_0["onMotorForceChanged"] = function(vehicleDrivingManipulation, dt)
-    if (inputDeviceComponent:isDeviceLocked()) then
+    if (inputDeviceComp:isDeviceLocked()) then
        return;
     end
     
-    if inputDeviceModule:isActionDown(NOWA_A_UP) then
+    if inputDeviceComp:isActionDown(NOWA_A_UP) then
         vehicleDrivingManipulation:setMotorForce(500 * 120 * dt);
-    elseif inputDeviceModule:isActionDown(NOWA_A_DOWN) then
+    elseif inputDeviceComp:isActionDown(NOWA_A_DOWN) then
         vehicleDrivingManipulation:setMotorForce(-250 * 120 * dt);
     end
     
-     if inputDeviceModule:isActionDown(NOWA_A_ACTION) then
+     if inputDeviceComp:isActionDown(NOWA_A_ACTION) then
          physicsActiveVehicleComponent:applyPitch(-100, dt);
      end
 end
 
 Viper_0["onHandBrakeChanged"] = function(vehicleDrivingManipulation, dt)
-     if (inputDeviceComponent:isDeviceLocked()) then
+     if (inputDeviceComp:isDeviceLocked()) then
        return;
     end
     
     -- Jump: Space
-    if inputDeviceModule:isActionDown(NOWA_A_JUMP) then
+    if inputDeviceComp:isActionDown(NOWA_A_JUMP) then
         vehicleDrivingManipulation:setHandBrake(5.5);
         if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
             skidSound:setActivated(true);
@@ -117,12 +113,12 @@ Viper_0["onHandBrakeChanged"] = function(vehicleDrivingManipulation, dt)
 end
 
 Viper_0["onBrakeChanged"] = function(vehicleDrivingManipulation, dt)
-    if (inputDeviceComponent:isDeviceLocked()) then
+    if (inputDeviceComp:isDeviceLocked()) then
        return;
     end
     
     -- Cover: x
-    if inputDeviceModule:isActionDown(NOWA_A_COWER) then
+    if inputDeviceComp:isActionDown(NOWA_A_COWER) then
         vehicleDrivingManipulation:setBrake(7.5);
         if (physicsActiveVehicleComponent:getVelocity():squaredLength() > 100) then
             skidSound:setActivated(true);

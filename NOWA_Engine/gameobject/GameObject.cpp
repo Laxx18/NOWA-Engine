@@ -2171,6 +2171,87 @@ namespace NOWA
         }
     }
 
+    void GameObject::setActivatedSpecific(bool activated, const std::vector<unsigned int>& ids)
+    {
+        if (true == ids.empty())
+        {
+            return;
+        }
+
+        for (const auto& component : this->gameObjectComponents)
+        {
+            const unsigned int classId = std::get<CLASS_ID>(component);
+            const unsigned int parentClassId = std::get<PARENT_CLASS_ID>(component);
+            const unsigned int parentParentClassId = std::get<PARENT_PARENT_CLASS_ID>(component);
+
+            bool matches = false;
+            for (unsigned int id : ids)
+            {
+                if (id == classId || id == parentClassId || id == parentParentClassId)
+                {
+                    matches = true;
+                    break;
+                }
+            }
+
+            if (false == matches)
+            {
+                continue;
+            }
+
+            // ATTENTION: if component has been cloned at runtime, it has never been connected so far, so it must be done!
+            if (false == std::get<COMPONENT>(component)->bConnected)
+            {
+                std::get<COMPONENT>(component)->bConnected = true;
+                std::get<COMPONENT>(component)->setActivated(activated);
+                if (true == activated)
+                {
+                    std::get<COMPONENT>(component)->connect();
+                }
+            }
+        }
+    }
+
+    void GameObject::setActivatedSpecific2(bool activated, const std::vector<Ogre::String>& componentNames)
+    {
+        if (true == componentNames.empty())
+        {
+            return;
+        }
+
+        for (const auto& component : this->gameObjectComponents)
+        {
+            const Ogre::String& name = std::get<COMPONENT>(component)->getName();
+            const Ogre::String& className = std::get<COMPONENT>(component)->getClassName();
+
+            bool matches = false;
+            for (const Ogre::String& componentName : componentNames)
+            {
+                if (componentName == name || componentName == className)
+                {
+                    matches = true;
+                    break;
+                }
+            }
+
+            if (false == matches)
+            {
+                continue;
+            }
+
+            // ATTENTION: if component has been cloned at runtime, it has never been connected so far, so it must be done!
+            if (false == std::get<COMPONENT>(component)->bConnected)
+            {
+                std::get<COMPONENT>(component)->bConnected = true;
+                std::get<COMPONENT>(component)->setActivated(activated);
+                if (true == activated)
+                {
+                    std::get<COMPONENT>(component)->connect();
+                }
+            }
+        }
+    }
+
     void GameObject::setUseReflection(bool useReflection)
     {
         if (useReflection == this->useReflection->getBool() && false == this->bIsLoadingFromFile)
