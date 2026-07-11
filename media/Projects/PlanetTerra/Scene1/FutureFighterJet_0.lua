@@ -270,6 +270,8 @@ FutureFighterJet_0["update"] = function(dt)
     local bx = localZ.x * bankOmega
     local by = localZ.y * bankOmega
     local bz = localZ.z * bankOmega
+    
+    log("->anyrotinput: " .. toString(anyRotInput));
 
     if anyRotInput or math.abs(bankOmega) > 0.001 then
         physComp:applyOmegaForce(Vector3(

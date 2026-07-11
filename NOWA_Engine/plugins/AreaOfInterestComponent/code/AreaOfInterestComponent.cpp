@@ -347,8 +347,12 @@ namespace NOWA
                 combinedMask |= this->categoriesId[i];
             }
 
-            // Configure the scene query bounds using the largest possible outer boundary
-            Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), maxRadius);
+            // Configure the scene query bounds using the largest possible outer boundary.
+            // Add 10% hysteresis so objects near the edge do not oscillate in/out of the
+            // query result due to render-thread position interpolation jitter.
+            // The exact per-layer radius check (distance <= getRadius(i)) still enforces
+            // the configured trigger boundary precisely.
+            Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), maxRadius * 1.1f);
             this->sphereSceneQuery->setSphere(updateSphere);
             if (combinedMask > 0)
             {
@@ -442,11 +446,13 @@ namespace NOWA
             // Step 4: Handle independent Leave Events per layer
             for (auto it = this->triggeredGameObjects.begin(); it != this->triggeredGameObjects.end();)
             {
-                unsigned long compoundKey = it->first;
+                uint64_t compoundKey = it->first;
                 GameObject* gameObject = it->second.first;
 
-                // Extract the layer index from the compound key
-                unsigned int layerIdx = (unsigned int)(compoundKey & 0xFF);
+                // Extract the layer index from the compound key.
+                // Must use uint64_t -- unsigned long is 32-bit on Windows and truncates
+                // the key, causing searchPair never to match and leave firing every frame.
+                unsigned int layerIdx = static_cast<unsigned int>(compoundKey & 0xFFu);
 
                 auto searchPair = std::make_pair(gameObject->getId(), layerIdx);
 

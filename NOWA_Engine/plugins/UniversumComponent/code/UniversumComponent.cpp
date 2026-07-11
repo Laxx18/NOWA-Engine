@@ -889,6 +889,22 @@ namespace NOWA
         this->currentLandingPlanetGradient = 90.0f;
         this->surfaceBlend = 0.0f;
 
+        GameObjectPtr shipGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->playerGameObjectId->getULong());
+        if (nullptr != shipGo)
+        {
+            auto kinComp = NOWA::makeStrongPtr(shipGo->getComponent<PhysicsActiveKinematicComponent>());
+            if (nullptr != kinComp)
+            {
+                kinComp->setActivated(true);
+            }
+            // Dynamic bodies use force-based setters.
+            auto actComp = NOWA::makeStrongPtr(shipGo->getComponent<PhysicsActiveComponent>());
+            if (nullptr != actComp)
+            {
+                actComp->setActivated(true);
+            }
+        }
+
         // When simulation stops, the undo system resets all planet/moon SceneNodes back
         // to their spawn positions (t=0 state). We must reset the per-body timers to match,
         // otherwise on the next play the first update() computes a huge position delta
@@ -1049,7 +1065,8 @@ namespace NOWA
             // Ship half-height projected onto the surface normal.
             const Ogre::Vector3 shipSize = shipGo->getSize();
             const Ogre::Vector3 halfExtents = shipSize * 0.5f;
-            const float shipHalfHeight = std::abs(halfExtents.x * surfaceNormal.x) + std::abs(halfExtents.y * surfaceNormal.y) + std::abs(halfExtents.z * surfaceNormal.z);
+            // const float shipHalfHeight = std::abs(halfExtents.x * surfaceNormal.x) + std::abs(halfExtents.y * surfaceNormal.y) + std::abs(halfExtents.z * surfaceNormal.z);
+            const float shipHalfHeight = halfExtents.y;
             const float settleHeight = shipHalfHeight + 0.5f;
 
             // Per-frame raycast from ship straight toward planet centre.
