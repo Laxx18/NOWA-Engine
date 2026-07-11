@@ -525,15 +525,15 @@ namespace NOWA
                     readReal(pp + "Phase", planet.phaseOffset);
                     readReal(pp + "AxS", planet.axialSpeed);
                     readReal(pp + "Grav", planet.gravityStrength);
-
-                    // Recompute spawn position from phase offset (t=0 state).
-                    GameObjectPtr sunGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(system.sunId);
-                    if (nullptr != sunGo)
+                    // OrbEl/Paused absent in old saves -- defaults are safe (backward compatible).
+                    readReal(pp + "OrbEl", planet.orbitalElapsed);
+                    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == pp + "Paused")
                     {
-                        Ogre::Vector3 sunPos = sunGo->getPosition();
-                        const float angle = planet.phaseOffset;
-                        planet.currentPosition = Ogre::Vector3(sunPos.x + std::cos(angle) * planet.orbitalRadius, sunPos.y + std::sin(angle * planet.orbitalTilt) * planet.orbitalRadius * 0.1f, sunPos.z + std::sin(angle) * planet.orbitalRadius);
+                        planet.orbitalPaused = XMLConverter::getAttribBool(propertyElement, "data", false);
+                        propertyElement = propertyElement->next_sibling("property");
                     }
+                    // currentPosition is set in connect() once all GameObjects are available.
+                    // The sun GO does not exist yet at init() time so we cannot compute it here.
 
                     // Restore this body to the ownedGameObjectIds list.
                     this->ownedGameObjectIds.push_back(planet.gameObjectId);
@@ -562,19 +562,34 @@ namespace NOWA
                     readReal(mp + "Phase", moon.phaseOffset);
                     readReal(mp + "AxS", moon.axialSpeed);
                     readReal(mp + "Grav", moon.gravityStrength);
-
-                    if (parentIdx < system.planets.size())
+                    readReal(mp + "OrbEl", moon.orbitalElapsed);
+                    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == mp + "Paused")
                     {
-                        const Ogre::Vector3& parentPos = system.planets[parentIdx].currentPosition;
-                        const float angle = moon.phaseOffset;
-                        moon.currentPosition = Ogre::Vector3(parentPos.x + std::cos(angle) * moon.orbitalRadius, parentPos.y + std::sin(angle * moon.orbitalTilt) * moon.orbitalRadius * 0.1f, parentPos.z + std::sin(angle) * moon.orbitalRadius);
+                        moon.orbitalPaused = XMLConverter::getAttribBool(propertyElement, "data", false);
+                        propertyElement = propertyElement->next_sibling("property");
                     }
+                    // currentPosition is set in connect() once all GameObjects are available.
 
                     this->ownedGameObjectIds.push_back(moon.gameObjectId);
                     system.moons.push_back(std::make_pair(static_cast<size_t>(parentIdx), moon));
                 }
 
                 this->solarSystems.push_back(system);
+            }
+
+            // Restore landing state so connect() can re-pause the correct planet
+            // orbit if the player was already landed when the scene was saved.
+            // Absent in old saves -- defaults (NONE / 0) are safe.
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LandingState")
+            {
+                unsigned int savedState = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 0);
+                this->landingState = static_cast<LandingState>(savedState);
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LandedBodyId")
+            {
+                this->landedOnBodyId = XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0ul);
+                propertyElement = propertyElement->next_sibling("property");
             }
 
             // Skip "Owned GO Ids" (already rebuilt above).
@@ -614,6 +629,7 @@ namespace NOWA
     bool UniversumComponent::connect(void)
     {
         GameObjectComponent::connect();
+
         this->elapsedTime = 0.0f;
 
         // Cache the scene directional light raw pointer.
@@ -670,7 +686,6 @@ namespace NOWA
         // They were set to SCENE_DYNAMIC in connect() for orbital motion.
         for (SolarSystem& system : this->solarSystems)
         {
-            // No cast shadows for sun, else its projected on nearby moons, planets and looks ugly
             this->setBodyCastShadows(system.sunId, false, "UniversumComponent::connect::sunNoCastShadows");
 
             for (OrbitalBody& planet : system.planets)
@@ -678,6 +693,12 @@ namespace NOWA
                 GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planet.gameObjectId);
                 if (nullptr != planetGo)
                 {
+                    // Sync currentPosition from the actual saved scene node position
+                    // so update() does not snap the planet to its phase-offset spawn
+                    // position on the first frame.
+                    planet.currentPosition = planetGo->getPosition();
+                    planet.orbitalElapsed = 0.0f;
+
                     if (false == planet.orbitalPaused)
                     {
                         this->setPlanetDynamic(planetGo, true);
@@ -698,6 +719,9 @@ namespace NOWA
                 GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moon.gameObjectId);
                 if (nullptr != moonGo)
                 {
+                    // Initialize currentPosition from the actual saved scene node position.
+                    moon.currentPosition = moonGo->getPosition();
+
                     if (false == moonPair.second.orbitalPaused)
                     {
                         this->setPlanetDynamic(moonGo, true);
@@ -711,6 +735,22 @@ namespace NOWA
                         aoiComp->attachTriggerObserver(obs);
                     }
                 }
+            }
+        }
+
+        // If the player was already landed on a planet when the scene was saved,
+        // restore the paused orbit immediately. The spaceship starts inside the AOI
+        // sphere on load so onEnter never fires -- trigger pausePlanetOrbit manually.
+        if (this->landingState == LandingState::LANDED || this->landingState == LandingState::LANDING)
+        {
+            if (this->landedOnBodyId != 0ul)
+            {
+                unsigned long playerGoId = this->playerGameObjectId->getULong();
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[UniversumComponent] Restoring landing state: planet id=" +
+                    Ogre::StringConverter::toString(this->landedOnBodyId) +
+                    " playerGoId=" + Ogre::StringConverter::toString(playerGoId));
+                this->pausePlanetOrbit(this->landedOnBodyId, playerGoId);
             }
         }
 
@@ -865,7 +905,7 @@ namespace NOWA
                 // This must match what generateSolarSystem computed at spawn.
                 const float angle = planet.phaseOffset;
                 planet.currentPosition =
-                    Ogre::Vector3(system.position.x + std::cos(angle) * planet.orbitalRadius, system.position.y + std::sin(angle * planet.orbitalTilt) * planet.orbitalRadius * 0.1f, system.position.z + std::sin(angle) * planet.orbitalRadius);
+                    Ogre::Vector3(system.position.x + std::cos(angle) * planet.orbitalRadius, system.position.y, system.position.z + std::sin(angle) * planet.orbitalRadius);
             }
 
             for (auto& moonPair : system.moons)
@@ -882,7 +922,7 @@ namespace NOWA
                     const Ogre::Vector3& parentSpawnPos = system.planets[parentIdx].currentPosition;
                     const float angle = moon.phaseOffset;
                     moon.currentPosition =
-                        Ogre::Vector3(parentSpawnPos.x + std::cos(angle) * moon.orbitalRadius, parentSpawnPos.y + std::sin(angle * moon.orbitalTilt) * moon.orbitalRadius * 0.1f, parentSpawnPos.z + std::sin(angle) * moon.orbitalRadius);
+                        Ogre::Vector3(parentSpawnPos.x + std::cos(angle) * moon.orbitalRadius, parentSpawnPos.y, parentSpawnPos.z + std::sin(angle) * moon.orbitalRadius);
                 }
             }
         }
@@ -1458,7 +1498,7 @@ namespace NOWA
         }
 
         float angle = moon.orbitalElapsed * moon.orbitalSpeed + moon.phaseOffset;
-        moon.currentPosition = Ogre::Vector3(parentPlanet.currentPosition.x + std::cos(angle) * moon.orbitalRadius, parentPlanet.currentPosition.y + std::sin(angle * moon.orbitalTilt) * moon.orbitalRadius * 0.1f,
+        moon.currentPosition = Ogre::Vector3(parentPlanet.currentPosition.x + std::cos(angle) * moon.orbitalRadius, parentPlanet.currentPosition.y,
             parentPlanet.currentPosition.z + std::sin(angle) * moon.orbitalRadius);
     }
 
@@ -1475,7 +1515,7 @@ namespace NOWA
         }
         // Recompute currentPosition from the formula for floating-point consistency.
         float angle = planet.orbitalElapsed * planet.orbitalSpeed + planet.phaseOffset;
-        planet.currentPosition = Ogre::Vector3(sunPos.x + std::cos(angle) * planet.orbitalRadius, sunPos.y + std::sin(angle * planet.orbitalTilt) * planet.orbitalRadius * 0.1f, sunPos.z + std::sin(angle) * planet.orbitalRadius);
+        planet.currentPosition = Ogre::Vector3(sunPos.x + std::cos(angle) * planet.orbitalRadius, sunPos.y, sunPos.z + std::sin(angle) * planet.orbitalRadius);
     }
 
     // ============================================================
@@ -1836,9 +1876,8 @@ namespace NOWA
 
                 planet.orbitalPaused = true;
                 this->setupLandingState(planet, planetGameObjectId, planet.axialSpeed, playerGoId);
-                this->showSurfaceObjects(planet);
-                this->callPlanetEnteredFunction(planetGameObjectId, gameObjectId);
 
+                // FIRST: Freeze the planet physics completely so it cannot drift or update transforms
                 {
                     GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
                     if (nullptr != planetGo)
@@ -1846,6 +1885,10 @@ namespace NOWA
                         this->setPlanetDynamic(planetGo, false);
                     }
                 }
+
+                // SECOND: Now that the host origin is completely static, restore the surface objects
+                this->showSurfaceObjects(planet);
+                this->callPlanetEnteredFunction(planetGameObjectId, gameObjectId);
 
                 // Also pause all moons orbiting this planet so they cannot
                 // collide with the ship/player or exit their AOI unexpectedly
@@ -1929,9 +1972,8 @@ namespace NOWA
                 OrbitalBody& moon = moonPair.second;
                 moon.orbitalPaused = true;
                 this->setupLandingState(moon, planetGameObjectId, moon.axialSpeed, playerGoId);
-                this->showSurfaceObjects(moon);
-                this->callPlanetEnteredFunction(planetGameObjectId, gameObjectId);
 
+                // FIRST: Freeze the moon physics completely
                 {
                     GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planetGameObjectId);
                     if (nullptr != moonGo)
@@ -1939,6 +1981,10 @@ namespace NOWA
                         this->setPlanetDynamic(moonGo, false);
                     }
                 }
+
+                // SECOND: Now place the objects on the frozen moon coordinate baseline
+                this->showSurfaceObjects(moon);
+                this->callPlanetEnteredFunction(planetGameObjectId, gameObjectId);
 
                 // Also pause the parent planet (and all sibling moons of this moon) so
                 // they cannot collide with the frozen moon while the player is on its surface.
@@ -2245,7 +2291,11 @@ namespace NOWA
                     planet.orbitalElapsed += dt;
                     planet.axialElapsed += dt;
                     float angle = planet.orbitalElapsed * planet.orbitalSpeed + planet.phaseOffset;
-                    Ogre::Vector3 newPos(sunPos.x + std::cos(angle) * planet.orbitalRadius, sunPos.y + std::sin(angle * planet.orbitalTilt) * planet.orbitalRadius * 0.1f, sunPos.z + std::sin(angle) * planet.orbitalRadius);
+                    // Orbits are in the XZ plane only -- Y stays at sun level.
+            // The tilt term (sin * 0.1) was wrong: it caused a Y jump on the first
+            // update frame because the saved scene node Y=0 differed from the
+            // formula Y. Solar system ecliptic is XZ; inclination is not modelled.
+            Ogre::Vector3 newPos(sunPos.x + std::cos(angle) * planet.orbitalRadius, sunPos.y, sunPos.z + std::sin(angle) * planet.orbitalRadius);
                     planet.currentPosition = newPos;
                     Ogre::Radian axialAngle(planet.axialElapsed * planet.axialSpeed);
                     Ogre::Quaternion axialRot(axialAngle, Ogre::Vector3::UNIT_Y);
@@ -2266,7 +2316,8 @@ namespace NOWA
                     moon.axialElapsed += dt;
                     Ogre::Vector3 parentPos = system.planets[parentIdx].currentPosition;
                     float angle = moon.orbitalElapsed * moon.orbitalSpeed + moon.phaseOffset;
-                    Ogre::Vector3 newPos(parentPos.x + std::cos(angle) * moon.orbitalRadius, parentPos.y + std::sin(angle * moon.orbitalTilt) * moon.orbitalRadius * 0.1f, parentPos.z + std::sin(angle) * moon.orbitalRadius);
+                    // Orbits are in the XZ plane only -- Y stays at parent planet level.
+            Ogre::Vector3 newPos(parentPos.x + std::cos(angle) * moon.orbitalRadius, parentPos.y, parentPos.z + std::sin(angle) * moon.orbitalRadius);
                     moon.currentPosition = newPos;
 
                     GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moon.gameObjectId);
@@ -2286,17 +2337,6 @@ namespace NOWA
                 }
             }
         }
-
-       /* static float accumMs = 0.0f;
-        static int accumCount = 0;
-        accumMs += diagTimer.getMicroseconds() * 0.001f;
-        ++accumCount;
-        if (accumCount >= 60)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] Orbital update avg cost: " + Ogre::StringConverter::toString(accumMs / accumCount) + "ms");
-            accumMs = 0.0f;
-            accumCount = 0;
-        }*/
 
         this->updateLandingStateMachine(dt);
 
@@ -2523,60 +2563,6 @@ namespace NOWA
         finalLightPower = this->currentLightPower;
         ambientUpper = this->currentAmbientUpper;
         ambientLower = this->currentAmbientLower;
-    #if 0
-        Ogre::String debugMsg;
-
-        debugMsg += "---- LIGHT DEBUG FRAME ----\n";
-
-        debugMsg += "playerActuallyOnSurface: " + Ogre::StringConverter::toString(playerActuallyOnSurface) + "\n";
-
-        debugMsg += "dt: " + Ogre::StringConverter::toString(dt) + "\n";
-
-        debugMsg += "camPos: " + Ogre::StringConverter::toString(camPos) + "\n";
-
-        debugMsg += "sunPos: " + Ogre::StringConverter::toString(sunPos) + "\n";
-
-        debugMsg += "currentLightPower (before): " + Ogre::StringConverter::toString(this->currentLightPower) + "\n";
-
-        if (false == playerActuallyOnSurface)
-        {
-            debugMsg += "MODE: SPACE / APPROACH\n";
-
-            debugMsg += "firstLightFrame: " + Ogre::StringConverter::toString(this->firstLightFrame) + "\n";
-
-            debugMsg += "nearestSystem sunLightPower: " + Ogre::StringConverter::toString(nearestSystem->sunLightPower) + "\n";
-
-            debugMsg += "currentAmbientUpper (space): " + Ogre::StringConverter::toString(this->currentAmbientUpper) + "\n";
-
-            debugMsg += "currentAmbientLower (space): " + Ogre::StringConverter::toString(this->currentAmbientLower) + "\n";
-        }
-        else
-        {
-            debugMsg += "MODE: SURFACE\n";
-
-            debugMsg += "fakeLightElapsed: " + Ogre::StringConverter::toString(this->fakeLightElapsed) + "\n";
-
-            debugMsg += "fakeLightAxialSpeed: " + Ogre::StringConverter::toString(this->fakeLightAxialSpeed) + "\n";
-
-            debugMsg += "landingBodyCentre: " + Ogre::StringConverter::toString(this->landingBodyCentre) + "\n";
-
-            Ogre::Vector3 shipPos = (nullptr != shipGo) ? shipGo->getPosition() : this->landingBodyCentre;
-
-            debugMsg += "shipPos: " + Ogre::StringConverter::toString(shipPos) + "\n";
-
-            debugMsg += "currentAmbientUpper (surface): " + Ogre::StringConverter::toString(this->currentAmbientUpper) + "\n";
-
-            debugMsg += "currentAmbientLower (surface): " + Ogre::StringConverter::toString(this->currentAmbientLower) + "\n";
-        }
-
-        debugMsg += "finalLightPower: " + Ogre::StringConverter::toString(finalLightPower) + "\n";
-
-        debugMsg += "ambientUpper: " + Ogre::StringConverter::toString(ambientUpper) + "\n";
-
-        debugMsg += "ambientLower: " + Ogre::StringConverter::toString(ambientLower) + "\n";
-
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, debugMsg);
-    #endif
 
         if (dir.squaredLength() <= 0.0f)
         {
@@ -3042,6 +3028,18 @@ namespace NOWA
                 propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "Grav").c_str())));
                 propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.gravityStrength)));
                 propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "OrbEl").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.orbitalElapsed)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((pp + "Paused").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, p.orbitalPaused)));
+                propertiesXML->append_node(propertyXML);
             }
 
             propertyXML = doc.allocate_node(node_element, "property");
@@ -3103,6 +3101,18 @@ namespace NOWA
                 propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "Grav").c_str())));
                 propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.gravityStrength)));
                 propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "OrbEl").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.orbitalElapsed)));
+                propertiesXML->append_node(propertyXML);
+
+                propertyXML = doc.allocate_node(node_element, "property");
+                propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+                propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string((mp + "Paused").c_str())));
+                propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, m.orbitalPaused)));
+                propertiesXML->append_node(propertyXML);
             }
         }
 
@@ -3116,6 +3126,20 @@ namespace NOWA
             }
             ownedIds += Ogre::StringConverter::toString(this->ownedGameObjectIds[i]);
         }
+
+        // Save landing state so on scene reload the player resumes landed on the
+        // correct planet -- onEnter never fires when the ship starts already inside the AOI.
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "LandingState"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, static_cast<unsigned int>(this->landingState))));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "LandedBodyId"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->landedOnBodyId)));
+        propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -3306,20 +3330,52 @@ namespace NOWA
                 {
                     if (planet.gameObjectId == targetId)
                     {
-                        // Compute local offset from planet at its current (spawn) position.
                         GameObjectPtr planetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(targetId);
                         if (nullptr != planetGo)
                         {
                             SurfaceObject so;
                             so.gameObjectId = goPair.second->getId();
-                            so.savedWorldPosition = goPair.second->getPosition();
-                            so.savedWorldOrientation = goPair.second->getOrientation();
 
-                            Ogre::Quaternion planetRot = planetGo->getOrientation();
-                            Ogre::Vector3 planetPos = planetGo->getPosition();
+                            // Use the physical SceneNode positions
+                            Ogre::SceneNode* surfNode = goPair.second->getSceneNode();
+                            Ogre::SceneNode* planetNode = planetGo->getSceneNode();
+
+                            so.savedWorldPosition = surfNode->_getDerivedPositionUpdated();
+                            so.savedWorldOrientation = surfNode->_getDerivedOrientationUpdated();
+
+                            Ogre::Quaternion planetRot = planetNode->_getDerivedOrientationUpdated();
+                            Ogre::Vector3 planetPos = planetNode->_getDerivedPositionUpdated();
+
                             Ogre::Vector3 worldOffset = so.savedWorldPosition - planetPos;
                             so.localPosition = planetRot.Inverse() * worldOffset;
                             so.localOrientation = planetRot.Inverse() * so.savedWorldOrientation;
+                            if (true == this->bShowDebugData)
+                            {
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] registerAndHideSurfaceObjects\n"
+                                                                                                    "  gameObjectId: " +
+                                                                                                        Ogre::StringConverter::toString(so.gameObjectId) +
+                                                                                                        "\n"
+                                                                                                        "  savedWorldPosition: " +
+                                                                                                        Ogre::StringConverter::toString(so.savedWorldPosition) +
+                                                                                                        "\n"
+                                                                                                        "  savedWorldOrientation: " +
+                                                                                                        Ogre::StringConverter::toString(so.savedWorldOrientation) +
+                                                                                                        "\n"
+                                                                                                        "  planetRotation: " +
+                                                                                                        Ogre::StringConverter::toString(planetRot) +
+                                                                                                        "\n"
+                                                                                                        "  planetPosition: " +
+                                                                                                        Ogre::StringConverter::toString(planetPos) +
+                                                                                                        "\n"
+                                                                                                        "  worldOffset: " +
+                                                                                                        Ogre::StringConverter::toString(worldOffset) +
+                                                                                                        "\n"
+                                                                                                        "  localPosition: " +
+                                                                                                        Ogre::StringConverter::toString(so.localPosition) +
+                                                                                                        "\n"
+                                                                                                        "  localOrientation: " +
+                                                                                                        Ogre::StringConverter::toString(so.localOrientation));
+                            }
 
                             planet.surfaceObjects.push_back(so);
                             registered = true;
@@ -3382,6 +3438,101 @@ namespace NOWA
         }
     }
 
+    //void UniversumComponent::showSurfaceObjects(OrbitalBody& body)
+    //{
+    //    GameObjectPtr hostGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(body.gameObjectId);
+    //    if (nullptr == hostGo)
+    //    {
+    //        return;
+    //    }
+
+    //    Ogre::SceneNode* hostNode = hostGo->getSceneNode();
+    //    const Ogre::Vector3 hostPos = hostNode->_getDerivedPositionUpdated();
+    //    const Ogre::Quaternion hostRot = hostNode->_getDerivedOrientationUpdated();
+
+    //    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] showSurfaceObjects\n"
+    //                                                                        "  hostGameObjectId: " +
+    //                                                                            Ogre::StringConverter::toString(body.gameObjectId) +
+    //                                                                            "\n"
+    //                                                                            "  hostPosition: " +
+    //                                                                            Ogre::StringConverter::toString(hostPos) +
+    //                                                                            "\n"
+    //                                                                            "  hostRotation: " +
+    //                                                                            Ogre::StringConverter::toString(hostRot) +
+    //                                                                            "\n"
+    //                                                                            "  surfaceObjectCount: " +
+    //                                                                            Ogre::StringConverter::toString(static_cast<unsigned int>(body.surfaceObjects.size())));
+
+    //    for (const SurfaceObject& so : body.surfaceObjects)
+    //    {
+    //        GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(so.gameObjectId);
+    //        if (nullptr == go)
+    //        {
+    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] showSurfaceObjects: GameObject not found id=" + Ogre::StringConverter::toString(so.gameObjectId));
+
+    //            continue;
+    //        }
+
+    //        // Place at correct world position relative to frozen planet.
+    //        // Ogre::Vector3 worldPos = hostPos + hostRot * so.localPosition;
+    //        // Ogre::Quaternion worldRot = hostRot * so.localOrientation;
+
+    //        // 1. Position remains relative to the moving planetary center point
+    //        Ogre::Vector3 worldPos = hostPos + (hostRot * so.localPosition);
+
+    //        // 2. Isolate the base orientation so it doesn't multiply environmental tilt fields destructively
+    //        Ogre::Quaternion worldRot = hostRot * so.localOrientation;
+    //        if (true == this->bShowDebugData)
+    //        {
+    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] Restoring SurfaceObject\n"
+    //                                                                                "  gameObjectId: " +
+    //                                                                                    Ogre::StringConverter::toString(so.gameObjectId) +
+    //                                                                                    "\n"
+    //                                                                                    "  storedLocalPosition: " +
+    //                                                                                    Ogre::StringConverter::toString(so.localPosition) +
+    //                                                                                    "\n"
+    //                                                                                    "  storedLocalOrientation: " +
+    //                                                                                    Ogre::StringConverter::toString(so.localOrientation) +
+    //                                                                                    "\n"
+    //                                                                                    "  hostPosition: " +
+    //                                                                                    Ogre::StringConverter::toString(hostPos) +
+    //                                                                                    "\n"
+    //                                                                                    "  hostRotation: " +
+    //                                                                                    Ogre::StringConverter::toString(hostRot) +
+    //                                                                                    "\n"
+    //                                                                                    "  calculatedWorldPosition: " +
+    //                                                                                    Ogre::StringConverter::toString(worldPos) +
+    //                                                                                    "\n"
+    //                                                                                    "  calculatedWorldOrientation: " +
+    //                                                                                    Ogre::StringConverter::toString(worldRot));
+    //        }
+
+    //        go->setVisible(true);
+
+    //        // Use physics component setter if available, else move SceneNode directly.
+    //        auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
+    //        if (nullptr != physComp)
+    //        {
+    //            NOWA::GraphicsModule::getInstance()->setNodeTransform(go->getSceneNode(), worldPos, worldRot, Ogre::Vector3::UNIT_SCALE, true);
+
+    //            physComp->setPosition(worldPos);
+    //            physComp->setOrientation(worldRot);
+    //            if (nullptr != physComp->getBody())
+    //            {
+    //                physComp->setActivated(true);
+
+    //                physComp->setPosition(worldPos);
+    //                physComp->setOrientation(worldRot);
+    //            }
+    //        }
+    //        else
+    //        {
+    //            go->setAttributePosition(worldPos);
+    //            go->setAttributeOrientation(worldRot);
+    //        }
+    //    }
+    //}
+
     void UniversumComponent::showSurfaceObjects(OrbitalBody& body)
     {
         GameObjectPtr hostGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(body.gameObjectId);
@@ -3389,30 +3540,67 @@ namespace NOWA
         {
             return;
         }
-        const Ogre::Vector3 hostPos = hostGo->getPosition();
-        const Ogre::Quaternion hostRot = hostGo->getOrientation();
+
+        Ogre::SceneNode* hostNode = hostGo->getSceneNode();
+        const Ogre::Vector3 hostPos = hostNode->_getDerivedPositionUpdated();
+        const Ogre::Quaternion hostRot = hostNode->_getDerivedOrientationUpdated();
 
         for (const SurfaceObject& so : body.surfaceObjects)
         {
             GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(so.gameObjectId);
             if (nullptr == go)
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] showSurfaceObjects: GameObject not found id=" + Ogre::StringConverter::toString(so.gameObjectId));
                 continue;
             }
-            // Place at correct world position relative to frozen planet.
-            Ogre::Vector3 worldPos = hostPos + hostRot * so.localPosition;
+
+            // 1. Position remains perfectly relative to the planetary center point
+            Ogre::Vector3 worldPos = hostPos + (hostRot * so.localPosition);
+
+            // 2. Isolate the orientation so it rotates perfectly alongside the planet
             Ogre::Quaternion worldRot = hostRot * so.localOrientation;
+
+            if (true == this->bShowDebugData)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] Restoring SurfaceObject\n"
+                                                                                    "  gameObjectId: " +
+                                                                                        Ogre::StringConverter::toString(so.gameObjectId) +
+                                                                                        "\n"
+                                                                                        "  storedLocalPosition: " +
+                                                                                        Ogre::StringConverter::toString(so.localPosition) +
+                                                                                        "\n"
+                                                                                        "  storedLocalOrientation: " +
+                                                                                        Ogre::StringConverter::toString(so.localOrientation) +
+                                                                                        "\n"
+                                                                                        "  hostPosition: " +
+                                                                                        Ogre::StringConverter::toString(hostPos) +
+                                                                                        "\n"
+                                                                                        "  hostRotation: " +
+                                                                                        Ogre::StringConverter::toString(hostRot) +
+                                                                                        "\n"
+                                                                                        "  calculatedWorldPosition: " +
+                                                                                        Ogre::StringConverter::toString(worldPos) +
+                                                                                        "\n"
+                                                                                        "  calculatedWorldOrientation: " +
+                                                                                        Ogre::StringConverter::toString(worldRot));
+            }
+
             go->setVisible(true);
 
             // Use physics component setter if available, else move SceneNode directly.
             auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
             if (nullptr != physComp)
             {
+                NOWA::GraphicsModule::getInstance()->setNodeTransform(go->getSceneNode(), worldPos, worldRot, Ogre::Vector3::UNIT_SCALE, true);
+
                 physComp->setPosition(worldPos);
                 physComp->setOrientation(worldRot);
                 if (nullptr != physComp->getBody())
                 {
                     physComp->setActivated(true);
+
+                    physComp->setPosition(worldPos);
+                    physComp->setOrientation(worldRot);
                 }
             }
             else

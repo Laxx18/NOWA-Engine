@@ -420,7 +420,6 @@ namespace NOWA
         // Fired by GameObjectFactory after each component postInit completes.
         // Used to wire the blend texture after DatablockPbsComponent is fully ready.
         void handleNewComponent(NOWA::EventDataPtr eventData);
-
     private:
         Ogre::String name;
         PlanetTerra* planet = nullptr;

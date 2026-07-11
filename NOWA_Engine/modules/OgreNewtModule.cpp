@@ -312,4 +312,71 @@ namespace NOWA
                 }
             });
     }
+
+	//void OgreNewtModule::registerRenderCallbackForBody(OgreNewt::Body* body)
+ //   {
+ //       if (nullptr == body)
+ //       {
+ //           return;
+ //       }
+
+ //       body->setRenderUpdateCallback(
+ //           [](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic, bool isTeleport)
+ //           {
+ //               if (nullptr == node || !node->getParent())
+ //               {
+ //                   return;
+ //               }
+
+ //               if (true == updateStatic || true == isTeleport)
+ //               {
+ //                   Ogre::Node* parent = node->getParent();
+
+ //                   Ogre::Vector3 localPos;
+ //                   Ogre::Quaternion localRot;
+
+ //                   if (parent->getParent() == nullptr || parent->getName() == "Ogre::SceneRoot")
+ //                   {
+ //                       localPos = pos;
+ //                       localRot = rot;
+ //                   }
+ //                   else
+ //                   {
+ //                       // Calling these public 'Updated()' methods forces OGRE-Next
+ //                       // to cleanly recalculate the parent's dirty transforms on the game thread.
+ //                       Ogre::Vector3 parentDerivedPos = parent->_getDerivedPositionUpdated();
+ //                       Ogre::Quaternion parentDerivedRot = parent->_getDerivedOrientationUpdated();
+ //                       Ogre::Vector3 parentDerivedScale = parent->_getDerivedScaleUpdated();
+
+ //                       localPos = (parentDerivedRot.Inverse() * (pos - parentDerivedPos)) / parentDerivedScale;
+ //                       localRot = parentDerivedRot.Inverse() * rot;
+ //                   }
+
+ //                   NOWA::GraphicsModule::getInstance()->setNodePosition(node, localPos, false);
+ //                   if (updateRot)
+ //                   {
+ //                       NOWA::GraphicsModule::getInstance()->setNodeOrientation(node, localRot, false);
+ //                   }
+ //               }
+ //               else if (!node->isStatic())
+ //               {
+ //                   if (true == isTeleport)
+ //                   {
+ //                       NOWA::GraphicsModule::getInstance()->teleportNodePosition(node, pos, false);
+ //                       if (updateRot)
+ //                       {
+ //                           NOWA::GraphicsModule::getInstance()->teleportNodeOrientation(node, rot);
+ //                       }
+ //                   }
+ //                   else
+ //                   {
+ //                       NOWA::GraphicsModule::getInstance()->updateNodePosition(node, pos, true);
+ //                       if (updateRot)
+ //                       {
+ //                           NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, rot, true);
+ //                       }
+ //                   }
+ //               }
+ //           });
+ //   }
 } // namespace end

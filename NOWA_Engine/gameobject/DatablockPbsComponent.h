@@ -719,6 +719,14 @@ namespace NOWA
          * @param pbsTextureType		   Target slot, e.g. Ogre::PBSM_DETAIL_WEIGHT
          */
 		void clearTexture(Ogre::PbsTextureTypes pbsTextureType);
+
+		/**
+         * @brief Forces the next postInit to re-clone the datablock from the original template.
+         *        Call this when the Item is destroyed and recreated (e.g. PlanetTerraComponent
+         *        rebuilds its mesh), so preReadDatablock does not read the shared template
+         *        as if it were already a clone.
+         */
+        void forceReclone(void);
 	public:
 		static const Ogre::String AttrSubItemIndex(void) { return "Sub-Item Index"; }
 		static const Ogre::String AttrWorkflow(void) { return "Workflow"; }

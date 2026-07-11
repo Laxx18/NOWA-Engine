@@ -25,7 +25,7 @@ namespace
     // Code line (warm yellow) – one <p> per line keeps it readable
     static Ogre::String wC(const Ogre::String& t)
     {
-        return "<p><color value='#F5C842'>" + t + "</color></p>";
+        return "<p><color value='#F5C842'>" + t + "</color></p><br/>";
     }
     // Tip / note (light green)
     static Ogre::String wTip(const Ogre::String& t)
@@ -314,7 +314,7 @@ void LuaWikiPanel::onMaximizeButton(MyGUI::Widget* /*sender*/)
             // Take only the tag name (stop at space or /)
             Ogre::String tagName = tag.substr(0, tag.find_first_of(" /\t"));
 
-            if (tagName == "/p" || tagName == "br")
+            if (tagName == "p" || tagName == "/p" || tagName == "br")
             {
                 out += '\n';
             }
@@ -2340,5 +2340,40 @@ void LuaWikiPanel::buildEntries(void)
                   "Use getSenderReceiverIsSame() in reactOnDropItemRequest to allow "
                   "internal reordering without triggering purchase logic.");
         entries.push_back({"41 - Inventory Click, Drag-Drop & Placement", c});
+    }
+
+    // ── 42. Activate Specific Components ───────────────────────────────────
+    {
+        Ogre::String c;
+
+        c += wH("Activate Specific Components");
+        c += wP("Sometimes a GameObject should not activate or deactivate all components "
+                "at once. Use setActivatedSpecific() to filter by C++ class id, or "
+                "setActivatedSpecific2() to filter by class name or custom designer name.");
+        c += wBr();
+
+        c += wSub("Activate by C++ class id");
+        c += wC("-- Activate only these component types");
+        c += wC("local ids = {");
+        c += wC("    PhysicsActiveComponent.getStaticClassId(),");
+        c += wC("    AnimationComponent.getStaticClassId()");
+        c += wC("}");
+        c += wC("gameObject:setActivatedSpecific(true, ids)");
+        c += wBr();
+
+        c += wSub("Activate by component name");
+        c += wC("-- Names can be C++ class names or custom designer names");
+        c += wC("gameObject:setActivatedSpecific2(true, { \"Weapon\", \"Flashlight\" })");
+        c += wBr();
+
+        c += wSub("Deactivate later");
+        c += wC("gameObject:setActivatedSpecific2(false, { \"Weapon\", \"Flashlight\" })");
+        c += wBr();
+
+        c += wTip("Use this when a GameObject contains expensive components that "
+                  "should only run during certain states (for example weapons, lights, "
+                  "AI, or animations).");
+
+        entries.push_back({"XX - Specific Component Activation", c});
     }
 }

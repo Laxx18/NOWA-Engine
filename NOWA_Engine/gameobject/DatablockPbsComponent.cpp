@@ -928,6 +928,8 @@ namespace NOWA
 
     bool DatablockPbsComponent::readDatablockItem(Ogre::Item* item)
     {
+        if (nullptr == item)
+
         // Two data block components with the same item index can not exist
         for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
         {
@@ -1968,6 +1970,11 @@ namespace NOWA
         };
 
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::clearTexture");
+    }
+
+    void DatablockPbsComponent::forceReclone(void)
+    {
+        this->alreadyCloned = false;
     }
 
     void DatablockPbsComponent::setSubItemIndex(unsigned int subItemIndex)

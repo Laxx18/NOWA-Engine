@@ -2128,14 +2128,14 @@ return {
 	AreaOfInterestComponent =
 	{
 		type = "class",
-		description = "Usage: Triggers when GameObjects from the given category (Can also be combined categories, or all) come into the radius of this GameObject. Note: This component can also be used in conjunction with a LuaScriptComponent, in which the corresponding methods: onEnter(gameObject) and onLeave(gameObject) are triggered. Requirements: A kind of physics active component must exist and a LuaScriptComponent, which references the script file.",
+		description = "Usage: Triggers when GameObjects from specific categories come within their corresponding configured radii of this GameObject. Note: This component can also be used in conjunction with a LuaScriptComponent, in which the corresponding methods: onEnter(gameObject) and onLeave(gameObject) are triggered. Requirements: A kind of physics active component must exist and a LuaScriptComponent, which references the script file.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
 			setActivated =
 			{
 				type = "method",
-				description = "Sets whether this component should be activated or not (Start checking for objects within area radius).",
+				description = "Sets whether this component should be activated or not.",
 				args = "(boolean activated)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2148,26 +2148,74 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
+			setAreaCount =
+			{
+				type = "method",
+				description = "Sets the total amount of sub-areas.",
+				args = "(number count)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAreaCount =
+			{
+				type = "function",
+				description = "Gets the total amount of registered fields.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			setRadius =
 			{
 				type = "method",
-				description = "Sets the area check radius in meters.",
-				args = "(number radius)",
+				description = "Sets the area check radius by layout layer index.",
+				args = "(number index, number radius)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
 			getRadius =
 			{
 				type = "function",
-				description = "Gets the area check radius in meters.",
-				args = "()",
+				description = "Gets the target area check radius by layer index.",
+				args = "(number index)",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			setCategories =
+			{
+				type = "method",
+				description = "Sets filter classification keywords by layout layer index.",
+				args = "(number index, string categories)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCategories =
+			{
+				type = "function",
+				description = "Gets defined criteria string bounds by index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setTagName =
+			{
+				type = "method",
+				description = "Sets the specific string subcategory filter for an indexed check area.",
+				args = "(number index, string tagName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTagName =
+			{
+				type = "function",
+				description = "Gets the specific string subcategory filter assigned on an indexed check area.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
 			},
 			reactOnEnter =
 			{
 				type = "method",
-				description = "Sets whether to react at the moment when a game object enters the area.",
+				description = "Sets callback hooks when tracking requirements match.",
 				args = "(func closure, otherGameObject)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -2175,7 +2223,7 @@ return {
 			reactOnLeave =
 			{
 				type = "method",
-				description = "Sets whether to react at the moment when a game object leaves the area. Always check if the game object does exist. It may also be null.",
+				description = "Sets callback hooks when tracking states collapse via boundary exit checks.",
 				args = "(func closure, otherGameObject)",
 				returns = "(nil)",
 				valuetype = "nil"

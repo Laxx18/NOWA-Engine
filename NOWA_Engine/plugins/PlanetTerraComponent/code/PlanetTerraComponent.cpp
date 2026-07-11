@@ -285,6 +285,10 @@ namespace NOWA
 
     bool PlanetTerraComponent::connect(void)
     {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetTerraComponent::connect] GO=" + this->gameObjectPtr->getName() +
+                                                                                " nodePos=" + Ogre::StringConverter::toString(this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated()) +
+                                                                                " nodeRot=" + Ogre::StringConverter::toString(this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated()));
+
         this->wireBlendTextureToPbsDatablock();
 
         return true;
@@ -514,6 +518,8 @@ namespace NOWA
             const float renderDist = static_cast<float>(this->gameObjectPtr->getRenderDistance());
             const float effectiveLodDist = (lodDist > 0.0f) ? lodDist : (renderDist > 0.0f) ? renderDist : this->radius->getReal() * 4.0f;
 
+            // const float effectiveLodDist = 100000.0f;
+
             // useBlendWeight: true if 0u != this->blendTexSize->getUInt()
             if (!this->planet->create(r, segH, segV, bts, this->gameObjectPtr->getSceneNode(), PlanetTerraComponent::DefaultMaterialName(), effectiveLodDist, 0u != this->blendTexSize->getUInt()))
             {
@@ -556,6 +562,18 @@ namespace NOWA
             return;
         }
 
+        // Tell DatablockPbsComponent to re-clone on next postInit.
+        // destroyPlanet() creates a new Item in createPlanet(), which starts with
+        // the original template datablock. If alreadyCloned stays true,
+        // preReadDatablock() reads the template instead of the clone and
+        // wireBlendTextureToPbsDatablockInternal modifies the shared template,
+        // corrupting all planets that share it.
+        auto datablockComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
+        if (nullptr != datablockComp)
+        {
+            datablockComp->forceReclone();
+        }
+
         auto* p = this->planet;
         planet = nullptr;
 
@@ -563,7 +581,6 @@ namespace NOWA
         {
             p->destroy();
             delete p;
-
             this->gameObjectPtr->nullMovableObject();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetTerraComponent::destroyPlanet");
@@ -942,28 +959,42 @@ namespace NOWA
             return;
         }
 
-        if (0u != this->blendTexSize->getUInt())
-        {
-            // Wire the runtime blend texture into the cloned datablock
-            datablockComp->setTextureDirectly(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
-        }
-
-        // Get the cloned datablock from DatablockPbsComponent — NOT from
-        // planet->getItem(), which may still point to the original template
-        // assigned by setDatablockByName() inside create().
         Ogre::HlmsPbsDatablock* pbsDb = datablockComp->getDataBlock();
         if (!pbsDb)
         {
             return;
         }
 
-        // Ensure the planet item actually uses this cloned datablock
+        // Guard: never modify the shared template datablock.
+        // If alreadyCloned was not properly set after a destroyPlanet/createPlanet
+        // cycle, getDataBlock() returns the template PlanetTerraDefaultMaterial.
+        // Writing the blend texture into the template corrupts all planets that
+        // share it. Detect this by checking whether the datablock name contains
+        // the NOWA clone suffix "__". If it does not, it is still the template.
+        const Ogre::String* dbName = pbsDb->getNameStr();
+        if (nullptr == dbName || dbName->find("__") == Ogre::String::npos)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[PlanetTerraComponent] wireBlend: datablock '" + (dbName ? *dbName : "null") + "' for '" + this->gameObjectPtr->getName() + "' is not a clone -- skipping to avoid corrupting shared template.");
+            return;
+        }
+
+        if (0u != this->blendTexSize->getUInt())
+        {
+            datablockComp->setTextureDirectly(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
+        }
+
         this->planet->getItem()->getSubItem(0)->setDatablock(pbsDb);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[wireBlend] GO=" + this->gameObjectPtr->getName() + " blendTexSize=" + Ogre::StringConverter::toString(this->blendTexSize->getUInt()) + " baseUVScale=" + Ogre::StringConverter::toString(this->planet->getBaseUVScale()) +
+                " diffuseUVsrc_before=" + Ogre::StringConverter::toString(pbsDb->getTextureUvSource(Ogre::PBSM_DIFFUSE)) + " normalUVsrc_before=" + Ogre::StringConverter::toString(pbsDb->getTextureUvSource(Ogre::PBSM_NORMAL)) +
+                " nodePos=" + Ogre::StringConverter::toString(this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated()) + " nodeRot=" + Ogre::StringConverter::toString(this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated()));
 
         pbsDb->setTextureUvSource(Ogre::PBSM_DIFFUSE, 1u);
         pbsDb->setTextureUvSource(Ogre::PBSM_NORMAL, 1u);
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Blend texture wired + UV1 assigned for '" + this->gameObjectPtr->getName() + "'.");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Blend texture wired + UV1 assigned for '" + this->gameObjectPtr->getName() + "' datablock='" + *dbName + "'.");
     }
 
     void PlanetTerraComponent::wireBlendTextureToPbsDatablock(void)

@@ -4,9 +4,9 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.399999" g="0.399999" b="0.36"/>
-			<ambientLightLowerHemisphere r="0.15" g="0.15" b="0.135" a="1"/>
-			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
+			<ambientLightUpperHemisphere r="0.03" g="0.03" b="0.04"/>
+			<ambientLightLowerHemisphere r="0.03" g="0.03" b="0.04" a="1"/>
+			<hemisphereDir x="-0.0106776" y="0.00639422" z="-0.999923"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -33,7 +33,7 @@
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268230 5032.05 264676"/>
+		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268236 5035.4 264677"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="300.474" y="-178.225" z="27852.8"/>
-			<rotation qw="0.891359" qx="-0.268112" qy="-0.35003" qz="-0.105237"/>
+			<position x="297.492" y="-178.151" z="27859.1"/>
+			<rotation qw="0.906837" qx="-0.234524" qy="-0.339052" qz="-0.0876849"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -109,8 +109,8 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="268229" y="5031.57" z="264676"/>
-			<rotation qw="-0.237327" qx="0.400103" qy="0.226368" qz="0.855775"/>
+			<position x="268235" y="5034.92" z="264677"/>
+			<rotation qw="-0.236583" qx="0.400084" qy="0.224318" qz="0.856529"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -184,6 +184,7 @@
 					<property type="7" name="SoundName" data="Void Runner.ogg"/>
 					<property type="6" name="Volume" data="50"/>
 					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="0 0"/>
 					<property type="12" name="Stream" data="true"/>
 					<property type="12" name="RelativeToListener" data="false"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
@@ -306,10 +307,15 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="5"/>
 					<property type="6" name="UpdateThreshold" data="1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="false"/>
+					<property type="2" name="AreaCount" data="2"/>
+					<property type="6" name="Radius0" data="1"/>
+					<property type="7" name="Categories0" data="Item"/>
+					<property type="7" name="TagName0" data=""/>
+					<property type="6" name="Radius1" data="5"/>
+					<property type="7" name="Categories1" data="Spaceship"/>
+					<property type="7" name="TagName1" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -395,6 +401,7 @@
 					<property type="7" name="SoundName" data="turbine1_22khz_16bit_mono_golgotha.wav"/>
 					<property type="6" name="Volume" data="100"/>
 					<property type="12" name="Loop" data="true"/>
+					<property type="8" name="FadeInFadeOut" data="0 0"/>
 					<property type="12" name="Stream" data="false"/>
 					<property type="12" name="RelativeToListener" data="false"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
@@ -655,6 +662,8 @@
 					<property type="6" name="Sys0_P0_Phase" data="1.28529"/>
 					<property type="6" name="Sys0_P0_AxS" data="0.00201858"/>
 					<property type="6" name="Sys0_P0_Grav" data="150"/>
+					<property type="6" name="Sys0_P0_OrbEl" data="0"/>
+					<property type="12" name="Sys0_P0_Paused" data="false"/>
 					<property type="2" name="Sys0_P1_Id" data="231444901"/>
 					<property type="6" name="Sys0_P1_OrbR" data="117273"/>
 					<property type="6" name="Sys0_P1_OrbS" data="0.00267283"/>
@@ -662,6 +671,8 @@
 					<property type="6" name="Sys0_P1_Phase" data="1.05396"/>
 					<property type="6" name="Sys0_P1_AxS" data="0.00137594"/>
 					<property type="6" name="Sys0_P1_Grav" data="150"/>
+					<property type="6" name="Sys0_P1_OrbEl" data="0"/>
+					<property type="12" name="Sys0_P1_Paused" data="false"/>
 					<property type="2" name="Sys0_MoonCount" data="4"/>
 					<property type="2" name="Sys0_M0_Parent" data="0"/>
 					<property type="2" name="Sys0_M0_Id" data="3104165348"/>
@@ -671,6 +682,8 @@
 					<property type="6" name="Sys0_M0_Phase" data="4.45798"/>
 					<property type="6" name="Sys0_M0_AxS" data="0.0015629"/>
 					<property type="6" name="Sys0_M0_Grav" data="150"/>
+					<property type="6" name="Sys0_M0_OrbEl" data="0"/>
+					<property type="12" name="Sys0_M0_Paused" data="false"/>
 					<property type="2" name="Sys0_M1_Parent" data="1"/>
 					<property type="2" name="Sys0_M1_Id" data="4137029641"/>
 					<property type="6" name="Sys0_M1_OrbR" data="16117"/>
@@ -679,6 +692,8 @@
 					<property type="6" name="Sys0_M1_Phase" data="2.1115"/>
 					<property type="6" name="Sys0_M1_AxS" data="0.0022962"/>
 					<property type="6" name="Sys0_M1_Grav" data="150"/>
+					<property type="6" name="Sys0_M1_OrbEl" data="0"/>
+					<property type="12" name="Sys0_M1_Paused" data="false"/>
 					<property type="2" name="Sys0_M2_Parent" data="1"/>
 					<property type="2" name="Sys0_M2_Id" data="615049723"/>
 					<property type="6" name="Sys0_M2_OrbR" data="22145.2"/>
@@ -687,6 +702,8 @@
 					<property type="6" name="Sys0_M2_Phase" data="0.268388"/>
 					<property type="6" name="Sys0_M2_AxS" data="0.001089"/>
 					<property type="6" name="Sys0_M2_Grav" data="150"/>
+					<property type="6" name="Sys0_M2_OrbEl" data="0"/>
+					<property type="12" name="Sys0_M2_Paused" data="false"/>
 					<property type="2" name="Sys0_M3_Parent" data="1"/>
 					<property type="2" name="Sys0_M3_Id" data="2130037018"/>
 					<property type="6" name="Sys0_M3_OrbR" data="27014.5"/>
@@ -695,6 +712,8 @@
 					<property type="6" name="Sys0_M3_Phase" data="3.93956"/>
 					<property type="6" name="Sys0_M3_AxS" data="0.00078589"/>
 					<property type="6" name="Sys0_M3_Grav" data="150"/>
+					<property type="6" name="Sys0_M3_OrbEl" data="0"/>
+					<property type="12" name="Sys0_M3_Paused" data="false"/>
 					<property type="2" name="Sys1_SunId" data="1934544053"/>
 					<property type="9" name="Sys1_LightColor" data="1 0.75 0.5"/>
 					<property type="6" name="Sys1_LightPower" data="4.22335"/>
@@ -706,6 +725,8 @@
 					<property type="6" name="Sys1_P0_Phase" data="0.44219"/>
 					<property type="6" name="Sys1_P0_AxS" data="0.00188542"/>
 					<property type="6" name="Sys1_P0_Grav" data="150"/>
+					<property type="6" name="Sys1_P0_OrbEl" data="0"/>
+					<property type="12" name="Sys1_P0_Paused" data="false"/>
 					<property type="2" name="Sys1_P1_Id" data="2877967791"/>
 					<property type="6" name="Sys1_P1_OrbR" data="117241"/>
 					<property type="6" name="Sys1_P1_OrbS" data="0.00341236"/>
@@ -713,6 +734,8 @@
 					<property type="6" name="Sys1_P1_Phase" data="5.24834"/>
 					<property type="6" name="Sys1_P1_AxS" data="0.000581107"/>
 					<property type="6" name="Sys1_P1_Grav" data="150"/>
+					<property type="6" name="Sys1_P1_OrbEl" data="0"/>
+					<property type="12" name="Sys1_P1_Paused" data="false"/>
 					<property type="2" name="Sys1_MoonCount" data="3"/>
 					<property type="2" name="Sys1_M0_Parent" data="0"/>
 					<property type="2" name="Sys1_M0_Id" data="2073204556"/>
@@ -722,6 +745,8 @@
 					<property type="6" name="Sys1_M0_Phase" data="1.41567"/>
 					<property type="6" name="Sys1_M0_AxS" data="0.000831724"/>
 					<property type="6" name="Sys1_M0_Grav" data="150"/>
+					<property type="6" name="Sys1_M0_OrbEl" data="0"/>
+					<property type="12" name="Sys1_M0_Paused" data="false"/>
 					<property type="2" name="Sys1_M1_Parent" data="0"/>
 					<property type="2" name="Sys1_M1_Id" data="1237236097"/>
 					<property type="6" name="Sys1_M1_OrbR" data="22327.1"/>
@@ -730,6 +755,8 @@
 					<property type="6" name="Sys1_M1_Phase" data="1.32471"/>
 					<property type="6" name="Sys1_M1_AxS" data="0.0023309"/>
 					<property type="6" name="Sys1_M1_Grav" data="150"/>
+					<property type="6" name="Sys1_M1_OrbEl" data="0"/>
+					<property type="12" name="Sys1_M1_Paused" data="false"/>
 					<property type="2" name="Sys1_M2_Parent" data="0"/>
 					<property type="2" name="Sys1_M2_Id" data="3072332092"/>
 					<property type="6" name="Sys1_M2_OrbR" data="26722.4"/>
@@ -738,6 +765,8 @@
 					<property type="6" name="Sys1_M2_Phase" data="4.28257"/>
 					<property type="6" name="Sys1_M2_AxS" data="0.000944257"/>
 					<property type="6" name="Sys1_M2_Grav" data="150"/>
+					<property type="6" name="Sys1_M2_OrbEl" data="0"/>
+					<property type="12" name="Sys1_M2_Paused" data="false"/>
 					<property type="2" name="Sys2_SunId" data="4182463336"/>
 					<property type="9" name="Sys2_LightColor" data="1 0.75 0.5"/>
 					<property type="6" name="Sys2_LightPower" data="3.69655"/>
@@ -749,6 +778,8 @@
 					<property type="6" name="Sys2_P0_Phase" data="2.37787"/>
 					<property type="6" name="Sys2_P0_AxS" data="0.00210717"/>
 					<property type="6" name="Sys2_P0_Grav" data="150"/>
+					<property type="6" name="Sys2_P0_OrbEl" data="0"/>
+					<property type="12" name="Sys2_P0_Paused" data="false"/>
 					<property type="2" name="Sys2_P1_Id" data="4211186983"/>
 					<property type="6" name="Sys2_P1_OrbR" data="121591"/>
 					<property type="6" name="Sys2_P1_OrbS" data="0.00292457"/>
@@ -756,6 +787,8 @@
 					<property type="6" name="Sys2_P1_Phase" data="3.50576"/>
 					<property type="6" name="Sys2_P1_AxS" data="0.00209703"/>
 					<property type="6" name="Sys2_P1_Grav" data="150"/>
+					<property type="6" name="Sys2_P1_OrbEl" data="0"/>
+					<property type="12" name="Sys2_P1_Paused" data="false"/>
 					<property type="2" name="Sys2_P2_Id" data="4017219666"/>
 					<property type="6" name="Sys2_P2_OrbR" data="194272"/>
 					<property type="6" name="Sys2_P2_OrbS" data="0.00102486"/>
@@ -763,6 +796,8 @@
 					<property type="6" name="Sys2_P2_Phase" data="4.66066"/>
 					<property type="6" name="Sys2_P2_AxS" data="0.000581936"/>
 					<property type="6" name="Sys2_P2_Grav" data="150"/>
+					<property type="6" name="Sys2_P2_OrbEl" data="0"/>
+					<property type="12" name="Sys2_P2_Paused" data="false"/>
 					<property type="2" name="Sys2_P3_Id" data="2305918419"/>
 					<property type="6" name="Sys2_P3_OrbR" data="267395"/>
 					<property type="6" name="Sys2_P3_OrbS" data="0.00382326"/>
@@ -770,6 +805,8 @@
 					<property type="6" name="Sys2_P3_Phase" data="4.82915"/>
 					<property type="6" name="Sys2_P3_AxS" data="0.00147825"/>
 					<property type="6" name="Sys2_P3_Grav" data="150"/>
+					<property type="6" name="Sys2_P3_OrbEl" data="0"/>
+					<property type="12" name="Sys2_P3_Paused" data="false"/>
 					<property type="2" name="Sys2_P4_Id" data="247566423"/>
 					<property type="6" name="Sys2_P4_OrbR" data="340013"/>
 					<property type="6" name="Sys2_P4_OrbS" data="0.00289184"/>
@@ -777,6 +814,8 @@
 					<property type="6" name="Sys2_P4_Phase" data="5.49877"/>
 					<property type="6" name="Sys2_P4_AxS" data="0.00187336"/>
 					<property type="6" name="Sys2_P4_Grav" data="150"/>
+					<property type="6" name="Sys2_P4_OrbEl" data="0"/>
+					<property type="12" name="Sys2_P4_Paused" data="false"/>
 					<property type="2" name="Sys2_MoonCount" data="4"/>
 					<property type="2" name="Sys2_M0_Parent" data="0"/>
 					<property type="2" name="Sys2_M0_Id" data="2673943460"/>
@@ -786,6 +825,8 @@
 					<property type="6" name="Sys2_M0_Phase" data="1.85466"/>
 					<property type="6" name="Sys2_M0_AxS" data="0.00089455"/>
 					<property type="6" name="Sys2_M0_Grav" data="150"/>
+					<property type="6" name="Sys2_M0_OrbEl" data="0"/>
+					<property type="12" name="Sys2_M0_Paused" data="false"/>
 					<property type="2" name="Sys2_M1_Parent" data="2"/>
 					<property type="2" name="Sys2_M1_Id" data="2773328192"/>
 					<property type="6" name="Sys2_M1_OrbR" data="17116.7"/>
@@ -794,6 +835,8 @@
 					<property type="6" name="Sys2_M1_Phase" data="1.49828"/>
 					<property type="6" name="Sys2_M1_AxS" data="0.00179595"/>
 					<property type="6" name="Sys2_M1_Grav" data="150"/>
+					<property type="6" name="Sys2_M1_OrbEl" data="0"/>
+					<property type="12" name="Sys2_M1_Paused" data="false"/>
 					<property type="2" name="Sys2_M2_Parent" data="3"/>
 					<property type="2" name="Sys2_M2_Id" data="3568381581"/>
 					<property type="6" name="Sys2_M2_OrbR" data="17065.8"/>
@@ -802,6 +845,8 @@
 					<property type="6" name="Sys2_M2_Phase" data="5.06581"/>
 					<property type="6" name="Sys2_M2_AxS" data="0.00211495"/>
 					<property type="6" name="Sys2_M2_Grav" data="150"/>
+					<property type="6" name="Sys2_M2_OrbEl" data="0"/>
+					<property type="12" name="Sys2_M2_Paused" data="false"/>
 					<property type="2" name="Sys2_M3_Parent" data="3"/>
 					<property type="2" name="Sys2_M3_Id" data="1723480900"/>
 					<property type="6" name="Sys2_M3_OrbR" data="24566.2"/>
@@ -810,6 +855,10 @@
 					<property type="6" name="Sys2_M3_Phase" data="5.56243"/>
 					<property type="6" name="Sys2_M3_AxS" data="0.00209368"/>
 					<property type="6" name="Sys2_M3_Grav" data="150"/>
+					<property type="6" name="Sys2_M3_OrbEl" data="0"/>
+					<property type="12" name="Sys2_M3_Paused" data="false"/>
+					<property type="2" name="LandingState" data="0"/>
+					<property type="2" name="LandedBodyId" data="0"/>
 					<property type="7" name="Owned GO Ids" data="3277932005,2490287205,231444901,3104165348,4137029641,615049723,2130037018,1934544053,2684937537,2877967791,2073204556,1237236097,3072332092,4182463336,272925929,4211186983,4017219666,2305918419,247566423,2673943460,2773328192,3568381581,1723480900"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -918,7 +967,7 @@
 			<position x="267250" y="26.7088" z="-549984"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_22_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_22_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="247566423"/>
@@ -926,7 +975,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1082,10 +1131,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1434.57"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1434.57"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -1093,7 +1144,7 @@
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_0_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Sun_0_PlanetSun" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3277932005"/>
@@ -1141,7 +1192,7 @@
 			<position x="12235" y="0" z="41682.8"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Eri_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Eri_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2490287205"/>
@@ -1305,10 +1356,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="3927.24"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="3927.24"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -1316,7 +1369,7 @@
 			<position x="7759.21" y="0" z="24471.1"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_2_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_2_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3104165348"/>
@@ -1416,10 +1469,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -1427,7 +1482,7 @@
 			<position x="57948.9" y="0" z="101956"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_3_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_3_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="231444901"/>
@@ -1435,7 +1490,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1560,10 +1615,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="3963.35"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="3963.35"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -1571,7 +1628,7 @@
 			<position x="49652.9" y="0" z="115773"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_4_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_4_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4137029641"/>
@@ -1579,7 +1636,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1671,10 +1728,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -1682,7 +1741,7 @@
 			<position x="79301.4" y="0" z="107828"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_5_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_5_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="615049723"/>
@@ -1690,7 +1749,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1782,10 +1841,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -1793,7 +1854,7 @@
 			<position x="39088.4" y="0" z="82614.9"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_6_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_6_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2130037018"/>
@@ -1801,7 +1862,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1893,10 +1954,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -1904,7 +1967,7 @@
 			<position x="-131733" y="3.1653" z="120912"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_7_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Sun_7_PlanetSun" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1934544053"/>
@@ -1952,7 +2015,7 @@
 			<position x="-84275.1" y="3.1653" z="143382"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_8_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_8_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2684937537"/>
@@ -1960,7 +2023,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2085,10 +2148,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="3336.29"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="3336.29"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -2096,7 +2161,7 @@
 			<position x="-81757" y="3.1653" z="159484"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_9_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_9_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2073204556"/>
@@ -2104,7 +2169,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2196,10 +2261,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -2207,7 +2274,7 @@
 			<position x="-78836.1" y="3.1653" z="165036"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_10_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_10_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1237236097"/>
@@ -2215,7 +2282,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2307,10 +2374,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -2318,7 +2387,7 @@
 			<position x="-95410.6" y="3.1653" z="119090"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_11_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_11_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3072332092"/>
@@ -2326,7 +2395,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2418,10 +2487,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -2429,7 +2500,7 @@
 			<position x="-71862.6" y="3.1653" z="20110.5"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_12_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_12_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2877967791"/>
@@ -2437,7 +2508,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2593,10 +2664,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="2432.95"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="2432.95"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -2604,7 +2677,7 @@
 			<position x="26586.9" y="26.7088" z="-309796"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_13_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Sun_13_PlanetSun" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4182463336"/>
@@ -2652,7 +2725,7 @@
 			<position x="-6173.89" y="26.7088" z="-278425"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_14_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_14_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="272925929"/>
@@ -2660,7 +2733,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2785,10 +2858,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="2076.08"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="2076.08"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -2796,7 +2871,7 @@
 			<position x="-10948.1" y="26.7088" z="-262061"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_15_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_15_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2673943460"/>
@@ -2804,7 +2879,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2896,10 +2971,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -2907,7 +2984,7 @@
 			<position x="-87030.1" y="26.7088" z="-353103"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_16_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_16_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4211186983"/>
@@ -2915,7 +2992,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3071,10 +3148,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="2602.29"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="2602.29"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -3082,7 +3161,7 @@
 			<position x="16542.8" y="26.7088" z="-503808"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_17_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_17_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4017219666"/>
@@ -3090,7 +3169,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3215,10 +3294,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="3500.5"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="3500.5"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -3226,7 +3307,7 @@
 			<position x="17782.9" y="26.7088" z="-486736"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_18_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_18_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2773328192"/>
@@ -3234,7 +3315,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3326,10 +3407,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -3337,7 +3420,7 @@
 			<position x="57737" y="26.7088" z="-575370"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_19_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Planet_19_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2305918419"/>
@@ -3345,7 +3428,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3501,10 +3584,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="4472.5"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="4472.5"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -3512,7 +3597,7 @@
 			<position x="63643.7" y="26.7088" z="-591381"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_20_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_20_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3568381581"/>
@@ -3520,7 +3605,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3612,10 +3697,12 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -3623,7 +3710,7 @@
 			<position x="76193.8" y="26.7088" z="-591582"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_21_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Moon_21_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1723480900"/>
@@ -3631,7 +3718,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3723,15 +3810,17 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="Radius" data="1000"/>
 					<property type="6" name="UpdateThreshold" data="0.1"/>
-					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="TriggerPermanentely" data="true"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1000"/>
+					<property type="7" name="Categories0" data="All"/>
+					<property type="7" name="TagName0" data=""/>
 				</userData>
 			</item>
 		</node>
 		<node name="Dungeon_0" id="2358939090">
-			<position x="9658.45" y="524.431" z="41306.5"/>
+			<position x="9658.45" y="524.731" z="41306.5"/>
 			<rotation qw="0.736576" qx="-0.0294688" qy="-0.0321596" qz="0.674947"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -3742,7 +3831,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
@@ -3754,11 +3843,6 @@
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
-					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="Target Planet Id" data="2490287205"/>
 					<property type="7" name="ComponentProceduralDungeonComponent" data="ProceduralDungeonComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3791,6 +3875,9 @@
 					<property type="6" name="Window Width" data="0.95"/>
 					<property type="6" name="Window Height" data="0.6"/>
 					<property type="6" name="Window Sill Height" data="0.3"/>
+					<property type="2" name="Door Count" data="1"/>
+					<property type="6" name="Door Width" data="1"/>
+					<property type="6" name="Door Height" data="0.6"/>
 					<property type="6" name="Level Count" data="1"/>
 					<property type="6" name="Stairs Probability" data="0.15"/>
 					<property type="12" name="Add Stairs" data="true"/>
@@ -3802,6 +3889,11 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 					<property type="7" name="Collidable" data="true"/>
+					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Target Planet Id" data="2490287205"/>
 				</userData>
 			</item>
 		</node>
@@ -3848,14 +3940,14 @@
 		</node>
 		<node name="plate_0" id="1577872364">
 			<position x="9658.7" y="557.628" z="41322.4"/>
-			<rotation qw="0.0388043" qx="0.662882" qy="-0.741932" qz="0.0928308"/>
+			<rotation qw="0.0388043" qx="0.662882" qy="-0.741932" qz="0.0928309"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="plate_0" meshFile="plate.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Plate_Blank"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1501226314"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Item"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -3920,6 +4012,81 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Target Planet Id" data="2490287205"/>
+				</userData>
+			</item>
+		</node>
+		<node name="tower_0" id="1801147637">
+			<position x="10612.3" y="1911.82" z="40754.9"/>
+			<rotation qw="0.840182" qx="-0.0468287" qy="-0.0735064" qz="0.535255"/>
+			<scale x="5" y="5" z="5"/>
+			<item name="tower_0" meshFile="tower.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/tower1_Cube.tga"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2646679090"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="1000"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/tower1_Cube.tga"/>
+					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Target Planet Id" data="2490287205"/>
+				</userData>
+			</item>
+		</node>
+		<node name="tower_1" id="1801147202">
+			<position x="10647.8" y="1900.01" z="40696.9"/>
+			<rotation qw="-0.824198" qx="0.177261" qy="0.155797" qz="-0.514785"/>
+			<scale x="6" y="6" z="6"/>
+			<item name="tower_1" meshFile="tower.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/tower1_Cube.tga"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3929596633"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="1000"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/tower1_Cube.tga"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
