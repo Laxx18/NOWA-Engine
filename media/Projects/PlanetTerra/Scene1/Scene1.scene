@@ -183,8 +183,8 @@
 					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="SoundName" data="Void Runner.ogg"/>
 					<property type="6" name="Volume" data="50"/>
-					<property type="12" name="Loop" data="false"/>
-					<property type="8" name="FadeInFadeOut" data="0 0"/>
+					<property type="12" name="Loop" data="true"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
 					<property type="12" name="Stream" data="true"/>
 					<property type="12" name="RelativeToListener" data="false"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>

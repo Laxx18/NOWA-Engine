@@ -641,14 +641,15 @@ namespace NOWA
 
 				if (false == this->inputDeviceComponent->hasValidDevice())
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerJumpNRunComponent] Cannot use WalkingStateJumpNRun, because the InputDeviceComponent has not valid input device set.");
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Cannot use any state, because the InputDeviceComponent has not valid input device set.");
 				}
 			}
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[PlayerControllerComponent] Player controller will not work, because an input device component is missing for this game object: " + this->gameObjectPtr->getName());
+            }
 		}
-		/*else
-		{
-			this->inputDeviceComponent = nullptr;
-		}*/
 
 		// Sent event, that this player controller has been activated or deactivated
 		boost::shared_ptr<EventDataActivatePlayerController> eventDataActivePlayerController(new EventDataActivatePlayerController(this->activated->getBool()));

@@ -1633,14 +1633,24 @@ namespace NOWA
             }
             else
             {
-                // No sprite: fire Lua callbacks immediately (original behavior)
                 if (buttonId == OIS::MB_Left)
                 {
                     auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                        // Resolve the optional per-slot associated GameObject id
+                        Ogre::String slotGameObjectId = "0";
+                        if (_info.index < this->gameObjectIds.size() && nullptr != this->gameObjectIds[_info.index])
+                        {
+                            const Ogre::String& id = this->gameObjectIds[_info.index]->getString();
+                            if (false == id.empty())
+                            {
+                                slotGameObjectId = id;
+                            }
+                        }
+
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, resourceName, slotGameObjectId, buttonId]()
                         {
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
@@ -1653,7 +1663,7 @@ namespace NOWA
                                 }
                                 try
                                 {
-                                    luabind::call_function<void>(closure);
+                                    luabind::call_function<void>(closure, resourceName, slotGameObjectId, buttonId);
                                 }
                                 catch (luabind::error& error)
                                 {
@@ -1666,25 +1676,6 @@ namespace NOWA
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
                     }
-                }
-
-                if (this->mouseButtonPressedClosureFunction.is_valid())
-                {
-                    NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
-                    {
-                        try
-                        {
-                            luabind::call_function<void>(this->mouseButtonPressedClosureFunction, slotIndex, resourceName, buttonId);
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonPressed error: " + Ogre::String(error.what()) + " " + msg.str());
-                        }
-                    };
-                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
                 }
             }
         }
@@ -3203,9 +3194,9 @@ namespace NOWA
 
             if (false == closureListPtr->empty())
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                // Capture the pending values — they are resolved before the lambda runs
+                NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, resourceName, slotGameObjectId, buttonId]()
                 {
-                    // Copy happens HERE on the logic thread — safe for luabind::object
                     auto closures = *closureListPtr;
 
                     for (const auto& closure : closures)
@@ -3216,7 +3207,8 @@ namespace NOWA
                         }
                         try
                         {
-                            luabind::call_function<void>(closure);
+                            // Pass the same three parameters as the non-sprite path
+                            luabind::call_function<void>(closure, resourceName, slotGameObjectId, buttonId);
                         }
                         catch (luabind::error& error)
                         {

@@ -1473,7 +1473,16 @@ namespace NOWA
 
     void GameObject::setTagName(const Ogre::String& tagName)
     {
-        if (this->tagName->getString() != tagName && false == this->bIsLoadingFromFile)
+        if (true == this->bIsLoadingFromFile)
+        {
+            // During scene load: always store the value, never fire event.
+            // The event system is not ready yet and other GameObjects may not exist.
+            this->tagName->setValue(tagName);
+            return;
+        }
+
+        // Outside load: only act if value actually changed.
+        if (this->tagName->getString() != tagName)
         {
             Ogre::String oldTagName = this->tagName->getString();
             this->tagName->setValue(tagName);

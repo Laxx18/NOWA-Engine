@@ -23,7 +23,7 @@ namespace NOWA
         soundName(new Variant(SimpleSoundComponent::AttrSoundName(), "Health.wav", this->attributes)),
         volume(new Variant(SimpleSoundComponent::AttrVolume(), 100.0f, this->attributes)),
         loop(new Variant(SimpleSoundComponent::AttrLoop(), false, this->attributes)),
-        fadeInFadeOut(new Variant(SimpleSoundComponent::AttrFadeInFadeOut(), Ogre::Vector2(0.0f, 0.0f), this->attributes)),
+        fadeInFadeOut(new Variant(SimpleSoundComponent::AttrFadeInFadeOut(), Ogre::Vector2(2.0f, 2.0f), this->attributes)),
         stream(new Variant(SimpleSoundComponent::AttrStream(), false, this->attributes)),
         relativeToListener(new Variant(SimpleSoundComponent::AttrRelativeToListener(), false, this->attributes)),
         playWhenInMotion(new Variant(SimpleSoundComponent::AttrPlayWhenInMotion(), false, this->attributes)),
