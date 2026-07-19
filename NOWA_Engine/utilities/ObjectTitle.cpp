@@ -3,235 +3,169 @@
 #include "main/Core.h"
 #include "modules/GraphicsModule.h"
 
+// Adjust this include if your project uses individual MyGUI headers instead
+// of the umbrella header (e.g. MyGUI_Gui.h, MyGUI_TextBox.h).
+#include <MyGUI.h>
+
 namespace NOWA
 {
+    namespace
+    {
+        // ASSUMPTION — unverified, same as the Fade/Console layer guesses:
+        // pick a layer that renders where a label should sit relative to
+        // OTHER MyGUI widgets (menus etc.) — every MyGUI layer already
+        // renders above the whole 3D scene (including gizmos), so "never
+        // occluded" holds regardless of which one is picked here. Test and
+        // swap if it ends up under/over the wrong things.
+        const Ogre::String OBJECT_TITLE_LAYER_NAME = "Info";
+    }
 
-	ObjectTitle::ObjectTitle(const Ogre::String& strName, Ogre::MovableObject* pObject, Ogre::Camera* camera,
-		const Ogre::String& strFontName, const Ogre::ColourValue& color)
-		: pObject(pObject),
-		camera(camera)
-	{
-		this->uniqueId = NOWA::makeUniqueID();
+    ObjectTitle::ObjectTitle(const Ogre::String& strName, Ogre::MovableObject* pObject, Ogre::Camera* camera, const Ogre::String& strFontName, const Ogre::ColourValue& color) : pObject(pObject), camera(camera), pTextWidget(nullptr)
+    {
+        this->uniqueId = NOWA::makeUniqueID();
 
-		// Save strName etc. for later use inside lambda
-		auto fontName = strFontName;
-		auto overlayName = strName + "_TitleOverlay";
-		auto containerName = strName + "_TitleContainer";
-		auto textAreaName = strName + "_TitleTextArea";
+        auto widgetName = strName + "_TitleText";
+        auto fontName = strFontName;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle constructor render init", _6(this, fontName, overlayName, containerName, textAreaName, color),
-		{
-			Ogre::v1::OverlayManager& overlayMgr = Ogre::v1::OverlayManager::getSingleton();
-			Ogre::FontManager& fontMgr = Ogre::FontManager::getSingleton();
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, widgetName, fontName, color]()
+        {
+            // Size (0,0) initially — setTitle() below sizes it to fit once
+            // there is actual text to measure.
+            this->pTextWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::TextBox>("TextBox", 0.0f, 0.0f, 0.0f, 0.0f, MyGUI::Align::Default, OBJECT_TITLE_LAYER_NAME, widgetName);
 
-			this->pOverlay = overlayMgr.create(overlayName);
-			this->pContainer = static_cast<Ogre::v1::OverlayContainer*>(overlayMgr.createOverlayElement("Panel", containerName));
-			this->pOverlay->add2D(this->pContainer);
+            // No confirmed MyGUI font resource matching strFontName — falls
+            // back to the skin's default font if this name doesn't resolve.
+            this->pTextWidget->setFontName(fontName);
+            this->pTextWidget->setTextColour(MyGUI::Colour(color.r, color.g, color.b, color.a));
+            this->pTextWidget->setTextAlign(MyGUI::Align::Center);
+            this->pTextWidget->setNeedMouseFocus(false);
+            this->pTextWidget->setNeedKeyFocus(false);
+            this->pTextWidget->setVisible(false);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ObjectTitle constructor render init");
 
-			this->pTextarea = overlayMgr.createOverlayElement("TextArea", textAreaName);
-			this->pTextarea->setDimensions(0.8f, 0.8f);
-			this->pTextarea->setMetricsMode(Ogre::v1::GMM_PIXELS);
-			this->pTextarea->setPosition(0.1f, 0.1f);
+        this->update();
+    }
 
-			// Load font and set parameters
-			fontMgr.load(fontName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-			Ogre::Font * font = static_cast<Ogre::Font*>(fontMgr.getByName(fontName).getPointer());
-			this->pFont = font;
+    ObjectTitle::~ObjectTitle()
+    {
+        auto widget = this->pTextWidget;
 
-			this->pTextarea->setParameter("font_name", fontName);
-			this->pTextarea->setParameter("char_height", font->getParameter("size"));
-			this->pTextarea->setParameter("horz_align", "left");
-			this->pTextarea->setColour(color);
+        NOWA::GraphicsModule::RenderCommand renderCommand = [widget]()
+        {
+            if (nullptr != widget)
+            {
+                MyGUI::Gui::getInstancePtr()->destroyWidget(widget);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "Destroy ObjectTitle widget");
 
-			this->pContainer->addChild(this->pTextarea);
-			this->pContainer->show();
-		});
+        this->pTextWidget = nullptr;
+    }
 
-		this->update();
-	}
+    void ObjectTitle::setTitle(const Ogre::String& strTitle)
+    {
+        auto widget = this->pTextWidget;
 
-	ObjectTitle::~ObjectTitle()
-	{
-		Ogre::v1::OverlayManager* pOverlayManager = Ogre::v1::OverlayManager::getSingletonPtr();
+        NOWA::GraphicsModule::RenderCommand renderCommand = [widget, strTitle]()
+        {
+            if (nullptr == widget)
+            {
+                return;
+            }
 
-		// Capture everything needed for safe deletion on render thread
-		auto overlay = this->pOverlay;
-		auto container = this->pContainer;
-		auto textarea = this->pTextarea;
+            widget->setCaption(strTitle);
 
-		ENQUEUE_RENDER_COMMAND_MULTI("Destroy ObjectTitle overlay", _4(pOverlayManager, overlay, container, textarea),
-		{
-			if (textarea)
-			{
-				textarea->setCaption("");
-				textarea->hide();
-			}
+            // Size the widget to exactly wrap the measured text. update()
+            // re-reads this size fresh every frame to center it — no stale
+            // cross-thread "text width" copy needed, unlike the original.
+            MyGUI::IntSize textSize = widget->getTextSize();
+            widget->setSize(textSize);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ObjectTitle::setTitle");
+    }
 
-			if (container && textarea)
-				container->removeChild(textarea->getName());
+    void ObjectTitle::setColor(const Ogre::ColourValue& color)
+    {
+        auto widget = this->pTextWidget;
 
-			if (container)
-				container->hide();
+        NOWA::GraphicsModule::RenderCommand renderCommand = [widget, color]()
+        {
+            if (nullptr != widget)
+            {
+                widget->setTextColour(MyGUI::Colour(color.r, color.g, color.b, color.a));
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ObjectTitle::setColor");
+    }
 
-			if (overlay && container)
-				overlay->remove2D(container);
+    void ObjectTitle::update()
+    {
+        if (nullptr == this->camera)
+        {
+            return;
+        }
 
-			if (pOverlayManager)
-			{
-				if (textarea)
-					pOverlayManager->destroyOverlayElement(textarea);
-				if (container)
-					pOverlayManager->destroyOverlayElement(container);
-				if (overlay)
-				{
-					overlay->hide();
-					pOverlayManager->destroy(overlay);
-				}
-			}
-		});
+        if (!this->pObject->isVisible())
+        {
+            auto widget = this->pTextWidget;
+            NOWA::GraphicsModule::RenderCommand renderCommand = [widget]()
+            {
+                if (nullptr != widget)
+                {
+                    widget->setVisible(false);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ObjectTitle::update_hide");
+            return;
+        }
 
-		// Optional: clear local pointers
-		this->pTextarea = nullptr;
-		this->pContainer = nullptr;
-		this->pOverlay = nullptr;
-	}
+        if (nullptr != this->pObject)
+        {
+            // Same projection math as the original — unrelated to the
+            // Overlay->MyGUI change, only the destination widget differs.
+            const Ogre::Aabb& aaBB = this->pObject->getLocalAabb();
 
+            Ogre::Vector3 minimum = aaBB.getMinimum();
+            Ogre::Vector3 maximum = aaBB.getMaximum();
+            Ogre::Vector3 corners[8];
+            corners[0] = minimum;
+            corners[1] = Ogre::Vector3(minimum.x, maximum.y, minimum.z);
+            corners[2] = Ogre::Vector3(maximum.x, maximum.y, minimum.z);
+            corners[3] = Ogre::Vector3(maximum.x, minimum.y, minimum.z);
+            corners[4] = maximum;
+            corners[5] = Ogre::Vector3(minimum.x, maximum.y, maximum.z);
+            corners[6] = Ogre::Vector3(minimum.x, minimum.y, maximum.z);
+            corners[7] = Ogre::Vector3(maximum.x, minimum.y, maximum.z);
 
-	void ObjectTitle::setTitle(const Ogre::String& strTitle)
-	{
-		textDim = getTextDimensions(strTitle); // Do this on logic thread
+            Ogre::Vector3 point = (corners[0] + corners[2] + corners[4] + corners[6]) / 4.0f;
 
-		auto textarea = this->pTextarea;
-		auto container = this->pContainer;
-		auto dim = this->textDim; // Make a copy to capture by value
+            point = this->camera->getProjectionMatrix() * (this->camera->getViewMatrix() * point);
 
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::setTitle", _4(textarea, container, strTitle, dim),
-		{
-			if (textarea)
-			{
-				textarea->setCaption(strTitle);
-			}
-			if (container)
-			{
-				container->setDimensions(dim.x, dim.y);
-			}
-		});
-	}
+            Ogre::Real x = (point.x / 2.0f) + 0.5f;
+            Ogre::Real y = 1.0f - ((point.y / 2.0f) + 0.5f);
 
+            auto widget = this->pTextWidget;
 
-	void ObjectTitle::setColor(const Ogre::ColourValue& color)
-	{
-		auto textarea = this->pTextarea;
+            NOWA::GraphicsModule::RenderCommand renderCommand = [widget, x, y]()
+            {
+                if (nullptr == widget)
+                {
+                    return;
+                }
 
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::setColor", _2(textarea, color),
-		{
-			if (textarea)
-			{
-				textarea->setColour(color);
-			}
-		});
-	}
+                MyGUI::IntSize viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+                int pixelX = static_cast<int>(x * viewSize.width);
+                int pixelY = static_cast<int>(y * viewSize.height);
 
-	void ObjectTitle::update()
-	{
-		if (nullptr == this->camera)
-		{
-			return;
-		}
-
-		if (!this->pObject->isVisible())
-		{
-			// Hide overlay safely on render thread
-			auto overlay = this->pOverlay;
-			// auto closureFunction = [this, overlay](Ogre::Real renderDt)
-			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update", _1(overlay),
-			{
-				if (overlay)
-				{
-					overlay->hide();
-				}
-			});
-			// Ogre::String id = "ObjectTitle::update1" + Ogre::StringConverter::toString(this->uniqueId);
-			// NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
-			return;
-		}
-		if (this->pObject)
-		{
-			// Get center of bounding box
-			const Ogre::Aabb& aaBB = this->pObject->getLocalAabb();
-
-			Ogre::Vector3 minimum = aaBB.getMinimum();
-			Ogre::Vector3 maximum = aaBB.getMaximum();
-			Ogre::Vector3 corners[8];
-			//Ogre::Vector3 mMinimum(-1,-1,-1);
-			//Ogre::Vector3 mMaximum(1,1,1);
-			//mMinimum*=100.0f;
-			//mMaximum*=100.0f;
-			corners[0] = minimum;
-			corners[1] = Ogre::Vector3(minimum.x, maximum.y, minimum.z);
-			corners[2] = Ogre::Vector3(maximum.x, maximum.y, minimum.z);
-			corners[3] = Ogre::Vector3(maximum.x, minimum.y, minimum.z);
-			corners[4] = maximum;
-			corners[5] = Ogre::Vector3(minimum.x, maximum.y, maximum.z);
-			corners[6] = Ogre::Vector3(minimum.x, minimum.y, maximum.z);
-			corners[7] = Ogre::Vector3(maximum.x, minimum.y, maximum.z);
-
-			Ogre::Vector3 point = (corners[0] + corners[2] + corners[4] + corners[6]) / 4.0f;
-
-			// Den Text nur anzeigen, wenn die Kamera drauf schaut
-			Ogre::Plane cameraPlane = Ogre::Plane(Ogre::Vector3(this->camera->getDerivedOrientation().zAxis()), this->camera->getDerivedPosition());
-
-			//2D Bildschirmkoordinaten fuer den Punkt erhalten
-			point = this->camera->getProjectionMatrix() * (this->camera->getViewMatrix() * point);
-			// point.y = point.y + 0.25f;
-
-			//In Overlaykoordinatensystem kalibireren [-1, 1] bis [0, 1]
-			Ogre::Real x = (point.x / 2) + 0.5f;
-			Ogre::Real y = 1 - ((point.y / 2) + 0.5f);
-
-			// Defer final write to render thread
-			auto container = this->pContainer;
-			auto overlay = this->pOverlay;
-			auto textWidth = this->textDim.x;
-
-			// auto closureFunction = [this, overlay, container, x, y, textWidth](Ogre::Real renderDt)
-			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update2", _5(overlay, container, x, y, textWidth),
-			{
-				if (container)
-				{
-					container->setPosition(x - (textWidth / 2), y);
-				}
-				if (overlay)
-				{
-					overlay->show();
-				}
-			});
-			// Ogre::String id = "ObjectTitle::update2" + Ogre::StringConverter::toString(this->uniqueId);
-			// NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
-		}
-	}
-
-	Ogre::Vector2 ObjectTitle::getTextDimensions(Ogre::String strText)
-	{
-		//Schriftgroesse erhalten
-		Ogre::Real charHeight = Ogre::StringConverter::parseReal(this->pFont->getParameter("size"));
-
-		Ogre::Vector2 result(0, 0);
-
-		for (Ogre::String::iterator i = strText.begin(); i < strText.end(); ++i)
-		{
-			//Schriftgroessenverhaeltnis berechnen (Abstand der Buchstaben zueinander
-			if (*i == 0x0020)
-				result.x += this->pFont->getGlyphAspectRatio(0x0030);
-			else
-				result.x += this->pFont->getGlyphAspectRatio(*i);
-		}
-
-		//Schrift skalieren
-		result.x = (result.x * charHeight) / (float)Core::getSingletonPtr()->getOgreRenderWindow()->getWidth();
-		result.y = charHeight / (float)Core::getSingletonPtr()->getOgreRenderWindow()->getHeight();
-
-		return result;
-	}
+                // Center horizontally on the projected point, matching the
+                // original's container->setPosition(x - textWidth/2, y).
+                MyGUI::IntSize size = widget->getSize();
+                widget->setPosition(pixelX - size.width / 2, pixelY);
+                widget->setVisible(true);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ObjectTitle::update_position");
+        }
+    }
 
 } // namespace end

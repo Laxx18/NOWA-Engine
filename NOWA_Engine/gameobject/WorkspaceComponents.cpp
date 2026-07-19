@@ -1867,18 +1867,6 @@ namespace NOWA
                     Ogre::CompositorPassDef* passMyGUI = static_cast<Ogre::CompositorPassDef*>(targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI"));
                     passMyGUI->mProfilingId = "NOWA_Final_Render_MyGUI_Pass_Custom";
                 }
-
-                {
-                    Ogre::CompositorPassSceneDef* passScene = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
-
-                    passScene->mProfilingId = "NOWA_Final_Render_Overlay_Pass_Scene";
-                    passScene->mUpdateLodLists = false;
-                    passScene->mIncludeOverlays = true;
-                    passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-                    passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-                    passScene->mFirstRQ = 254;
-                    passScene->mLastRQ = 255;
-                }
             }
         }
     }

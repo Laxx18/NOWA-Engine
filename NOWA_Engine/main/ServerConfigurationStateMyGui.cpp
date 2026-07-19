@@ -34,7 +34,6 @@ namespace NOWA
 		{
 			this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "ServerConfigurationStateMyGui");
 			// this->sceneManager->setAmbientLight(Ogre::ColourValue(0.7f, 0.7f, 0.7f));
-			this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
 
 			this->camera = this->sceneManager->createCamera("ServerConfigurationStateMyGui");
 			this->camera->setPosition(Ogre::Vector3(0, 25, -50));

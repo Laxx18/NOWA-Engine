@@ -19,10 +19,6 @@
 
 #include "OIS.h"
 
-#include "OgreOverlay.h"
-#include "OgreOverlayElement.h"
-#include "OgreOverlayManager.h"
-#include "OgreOverlaySystem.h"
 #include "OgreTextureGpuManager.h"
 #include "OgreTextureGpuManagerListener.h"
 
@@ -138,7 +134,6 @@ namespace NOWA
 	* @brief Central singleton that manages engine core systems (Ogre, window, resources, input, plugins, etc.)
 	*
 	* Detailed responsibilities:
-	* - Manage and expose `Ogre::Root`, render window and overlay systems.
 	* - Provide input callbacks (keyboard, mouse, joystick) via OIS listeners.
 	* - Offer path and resource helper utilities (absolute/relative paths, resource resolution).
 	* - Load and save custom configuration and manage runtime options.
@@ -691,12 +686,6 @@ namespace NOWA
 		Ogre::Window* getOgreRenderWindow(void) const { return this->renderWindow; }
 
 		/**
-		 * @brief Return the overlay system used by the engine.
-		 * @return `Ogre::v1::OverlaySystem*`
-		 */
-		Ogre::v1::OverlaySystem* getOverlaySystem(void) const { return this->overlaySystem; }
-
-		/**
 		 * @brief Get the active engine resource listener, falling back to the default listener if none set.
 		 * @return Pointer to the active `EngineResourceListener`.
 		 */
@@ -1151,7 +1140,6 @@ namespace NOWA
 	private:
 		Ogre::Root* root;
 		Ogre::Window* renderWindow;
-		Ogre::v1::OverlaySystem* overlaySystem;
 		Ogre::CompositorWorkspace* myGuiWorkspace;
 		PluginFactory* pluginFactory;
 		Ogre::Timer* timer;

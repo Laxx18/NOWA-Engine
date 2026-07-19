@@ -33,8 +33,6 @@ namespace NOWA
 		{
 			this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "ClientConfigurationStateMyGui");
 			// this->sceneManager->setAmbientLight(Ogre::ColourValue(0.7f, 0.7f, 0.7f));
-			this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
-			this->sceneManager->getRenderQueue()->setSortRenderQueue(Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId, Ogre::RenderQueue::StableSort);
 
 			this->camera = this->sceneManager->createCamera("ClientConfigurationStateMyGui");
 			this->camera->setPosition(Ogre::Vector3(0, 25, -50));

@@ -292,7 +292,6 @@ namespace NOWA
     Core::Core() :
         root(nullptr),
         renderWindow(nullptr),
-        overlaySystem(nullptr),
         myGuiWorkspace(nullptr),
         writeAccessFolder("../../cache/."),
         isGame(true),
@@ -430,11 +429,6 @@ namespace NOWA
         delete this->myGuiOgrePlatform;
         this->myGuiOgrePlatform = nullptr;
 
-        if (nullptr != this->overlaySystem)
-        {
-            delete this->overlaySystem;
-            this->overlaySystem = nullptr;
-        }
         if (nullptr != this->pluginFactory)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting plugin factory");
@@ -883,10 +877,6 @@ namespace NOWA
         // this->resourceLoadingListener = new ResourceLoadingListenerImpl();
         // Ogre::ResourceGroupManager::getSingletonPtr()->setLoadingListener(this->resourceLoadingListener);
 
-        this->overlaySystem = OGRE_NEW Ogre::v1::OverlaySystem();
-        dummySceneManager->addRenderQueueListener(this->overlaySystem);
-        dummySceneManager->getRenderQueue()->setSortRenderQueue(Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId, Ogre::RenderQueue::StableSort);
-
         // Adds factories
         this->root->addMovableObjectFactory(OGRE_NEW MovableTextFactory());
         this->root->addMovableObjectFactory(OGRE_NEW Ogre::OceanFactory());
@@ -1029,7 +1019,6 @@ namespace NOWA
         compositorManager->removeWorkspace(this->myGuiWorkspace);
         this->myGuiWorkspace = nullptr;
 
-        dummySceneManager->removeRenderQueueListener(this->overlaySystem);
         NOWA::GraphicsModule::getInstance()->removeTrackedCamera(dummyCamera);
         dummySceneManager->destroyCamera(dummyCamera);
         dummyCamera = nullptr;

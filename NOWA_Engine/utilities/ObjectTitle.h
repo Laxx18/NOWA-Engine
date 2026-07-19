@@ -1,31 +1,23 @@
 #ifndef OBJECT_TITLE_H
 #define OBJECT_TITLE_H
 
-#include "OgreOverlay.h"
-#include "OgreOverlayContainer.h"
-#include "OgreOverlayManager.h"
-#include "OgreOverlayContainer.h"
-#include "OgreFont.h"
-#include "OgreFontManager.h"
-
 #include "defines.h"
+
+namespace MyGUI
+{
+	class TextBox;
+}
 
 namespace NOWA
 {
 
-	/*class Ogre::MovableObject;
-	class Ogre::Camera;
-	class Ogre::Overlay;
-	class Ogre::OverlayElement;
-	class Ogre::OverlayContainer;
-	class Ogre::Font;
-	class Ogre::FontManager;*/
-
-
-	//Zum Darstellen eines Objekttitles ueber den Kopfs eines Avatars
-	//Vorteil: Performant (leichtgewichtig)
-	//Nachteil: Da es sich um ein Overlay handelt, ist der Text immer sichbar fuer die Kamera, egal ob sich das Objekt hinter einem Hindernis befindet
-
+	// Zum Darstellen eines Objekttitles ueber dem Kopf eines Avatars.
+	// v2: MyGUI-based screen-space label (was Ogre::v1::Overlay).
+	// Deliberately screen-space, not a 3D billboard (e.g. NOWA::MovableText):
+	// stays a constant on-screen size regardless of distance, and is never
+	// occluded by scene geometry — both required for gizmo labels. MyGUI
+	// composites in its own pass after the whole scene, so "always
+	// readable" is automatic; no depth/macroblock handling needed.
 	class EXPORTED ObjectTitle
 	{
 	public:
@@ -40,15 +32,14 @@ namespace NOWA
 
 		void update();
 	private:
-		Ogre::Vector2 getTextDimensions(Ogre::String text);
-	private:
 		const Ogre::MovableObject*	pObject;
 		const Ogre::Camera*			camera;
-		Ogre::v1::Overlay*				pOverlay;
-		Ogre::v1::OverlayElement*		pTextarea;
-		Ogre::v1::OverlayContainer*		pContainer;
-		Ogre::Vector2				textDim;
-		Ogre::Font*					pFont;
+
+		// v2: single widget replaces the old Overlay + OverlayContainer +
+		// OverlayElement("TextArea") trio. Sized to exactly wrap the
+		// measured text (see setTitle()); update() re-centers it each frame
+		// using its current (render-thread-queried) size.
+		MyGUI::TextBox* pTextWidget;
 
 		unsigned int uniqueId;
 	};

@@ -21,8 +21,7 @@ namespace NOWA
         RENDER_QUEUE_PARTICLE_TRANSPARENT = 214,
 		RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND = 220, // E.g. Ogre::ManualObject, Item
 		RENDER_QUEUE_GIZMO = 252,
-        RENDER_QUEUE_MYGUI = 253,
-		RENDER_QUEUE_MAX = 254 // E.g. Ogre::v1::Overlay
+		RENDER_QUEUE_MAX = 254 // MyGUI
 	};
 
 	enum eVisibilityEnums
