@@ -1516,10 +1516,12 @@ namespace NOWA
         // ── Normal (own widget) path — unchanged original code ────────────────
         if (true == createWidgetInParent)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIWindowComponent::postInit", {
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
                     this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIWindowComponent::postInit");
         }
         else
         {
@@ -1535,11 +1537,13 @@ namespace NOWA
             this->setWindowCaption(this->windowCaption->getString());
         }
 
-        ENQUEUE_RENDER_COMMAND("MyGUIWindowComponent::postInit color", {
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             this->widget->setInheritsAlpha(true);
             Ogre::Vector4 tempColor = this->color->getVector4();
             this->widget->setColour(MyGUI::Colour(tempColor.x, tempColor.y, tempColor.z, tempColor.w));
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIWindowComponent::postInit color");
 
         return MyGUIComponent::postInit();
     }
@@ -1889,9 +1893,8 @@ namespace NOWA
             return MyGUIComponent::postInit();
         }
 
-        // ── Normal path ───────────────────────────────────────────────────────
-        ENQUEUE_RENDER_COMMAND("MyGUITextComponent::postInit",
-		{
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             if (true == this->createWidgetInParent)
             {
                 this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
@@ -1900,7 +1903,8 @@ namespace NOWA
 
             this->widget->castType<MyGUI::EditBox>(false)->eventEditTextChange += MyGUI::newDelegate(this, &MyGUITextComponent::onEditTextChanged);
             this->widget->castType<MyGUI::EditBox>(false)->eventEditSelectAccept += MyGUI::newDelegate(this, &MyGUITextComponent::onEditAccepted);
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUITextComponent::postInit");
 
         this->initTextAttributes();
         return MyGUIComponent::postInit();
@@ -2251,11 +2255,12 @@ namespace NOWA
 		this->caption->setValue(tempString);
 		if (nullptr != this->widget)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setCaption", _1(tempString),
-			{
-				widget->castType<MyGUI::EditBox>()->setCaptionWithReplacing(tempString);
-				this->caption->setValue(widget->castType<MyGUI::EditBox>()->getCaption());
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, tempString]()
+            {
+                widget->castType<MyGUI::EditBox>()->setCaptionWithReplacing(tempString);
+                this->caption->setValue(widget->castType<MyGUI::EditBox>()->getCaption());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUITextComponent::setCaption");
 		}
 	}
 		
@@ -2269,16 +2274,19 @@ namespace NOWA
 	}
 
 	void MyGUITextComponent::setFontHeight(unsigned int fontHeight)
-	{
-		this->fontHeight->setValue(fontHeight);
-		if (nullptr == this->widget)
-			return;
+    {
+        this->fontHeight->setValue(fontHeight);
+        if (nullptr == this->widget)
+        {
+            return;
+        }
 
-		ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setFontHeight", _1(fontHeight),
-		{
-			this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::EditBox>(false), fontHeight));
-		});
-	}
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, fontHeight]()
+        {
+            this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::EditBox>(false), fontHeight));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUITextComponent::setFontHeight");
+    }
 
 // widget->castType<MyGUI::EditBox>()->setEditMultiLine
 // widget->castType<MyGUI::EditBox>()-setCaptionWithReplacing(...) for button, checkbox too

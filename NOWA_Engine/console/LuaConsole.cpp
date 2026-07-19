@@ -4,8 +4,11 @@
 #include "main/AppStateManager.h"
 #include "main/InputDeviceCore.h"
 #include "modules/GraphicsModule.h"
+#include "utilities/MyGUIUtilities.h"
 
-#include <OgreOverlay.h>
+// Adjust this include if your project uses individual MyGUI headers instead
+// of the umbrella header (e.g. MyGUI_Gui.h, MyGUI_EditBox.h, MyGUI_Widget.h).
+#include <MyGUI.h>
 
 namespace NOWA
 {
@@ -16,7 +19,49 @@ namespace NOWA
 #define CONSOLE_MAX_HISTORY 64
 #define CONSOLE_TAB_STOP 8
 
-    LuaConsole::LuaConsole() : initialised(false), controlPressed(false), criticalLogCount(0)
+    // ASSUMPTION — verify against your layers.xml: the array of layer names
+    // seen in MyGUIComponent is a dropdown list, not a z-order. "Statistic"
+    // was picked because it reads as the layer reserved for always-on-top
+    // dev/debug overlays; swap this constant if your layer config disagrees.
+    static const Ogre::String CONSOLE_LAYER_NAME = "Statistic";
+
+    // Slightly transparent black background, per spec.
+    static const float CONSOLE_BACKGROUND_ALPHA = 0.75f;
+
+    // No MyGUI font resource matching the old "LuaConsole" Ogre font was
+    // confirmed to exist — falls back to whatever MyGUI's default font is,
+    // sized via MyGUIUtilities (same mechanism MyGUITextComponent::setFontHeight
+    // uses). Tune this constant to taste.
+    static const unsigned int CONSOLE_FONT_HEIGHT_PX = 16;
+
+    // Matches the original's implicit speed: height += dt * 10 reached 1.0 in
+    // exactly 0.1s regardless of frame rate.
+    static const float CONSOLE_ANIM_DURATION_SEC = 0.1f;
+
+    namespace
+    {
+        // t=0 -> fully closed, t=1 -> fully open. Same two independent
+        // formulas the original per-frame code used, now evaluated only at
+        // the two endpoints instead of every frame. Render-thread only.
+        MyGUI::IntCoord toPixelCoord(float x, float y, float w, float h)
+        {
+            MyGUI::FloatCoord floatCoord(x, y, w, h);
+            return MyGUI::CoordConverter::convertFromRelative(floatCoord, MyGUI::RenderManager::getInstance().getViewSize());
+        }
+
+        MyGUI::IntCoord panelCoordAt(float t)
+        {
+            return toPixelCoord(0.0f, 0.0f, 1.0f, t * 0.5f);
+        }
+
+        MyGUI::IntCoord textboxCoordAt(float t)
+        {
+            return toPixelCoord(0.0f, (t - 1.0f) * 0.5f, 1.0f, 1.0f);
+        }
+    }
+
+    LuaConsole::LuaConsole() : initialised(false), controlPressed(false), criticalLogCount(0), pPanel(nullptr), pTextbox(nullptr),
+        pendingCameraWeightChange(false), pendingCameraWeightValue(1.0f)
     {
     }
 
@@ -46,9 +91,6 @@ namespace NOWA
             shutdown();
         }
 
-        Ogre::v1::OverlayManager& overlayManager = Ogre::v1::OverlayManager::getSingleton();
-
-        this->height = 1;
         this->startLine = 0;
         this->cursorBlinkTime = 0;
         this->cursorBlink = false;
@@ -58,25 +100,39 @@ namespace NOWA
         this->print(this->pInterpreter->getOutput());
         this->pInterpreter->clearOutput();
 
-        this->pTextbox = overlayManager.createOverlayElement("TextArea", "ConsoleText");
-        this->pTextbox->setMetricsMode(Ogre::v1::GMM_RELATIVE);
-        this->pTextbox->setPosition(0, 0);
-        this->pTextbox->setParameter("font_name", "LuaConsole");
-        this->pTextbox->setParameter("colour_top", "1 1 1");
-        this->pTextbox->setParameter("colour_bottom", "1 1 1");
-        this->pTextbox->setParameter("char_height", "0.03");
+        // v2: two independent root-level MyGUI widgets (NOT parent/child)
+        // replacing the old Ogre::v1::Overlay + OverlayContainer("Panel") +
+        // OverlayElement("TextArea"). Created directly in the CLOSED state
+        // (t=0) — see panelCoordAt()/textboxCoordAt() — since setVisible()
+        // now drives the open/close animation via MyGUI::ControllerPosition
+        // instead of update() polling a manually-lerped "height" value.
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->pPanel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>(
+                "PanelSkin", 0.0f, 0.0f, 1.0f, 0.0f,
+                MyGUI::Align::Default, CONSOLE_LAYER_NAME, "LuaConsole_Panel");
+            this->pPanel->setColour(MyGUI::Colour(0.0f, 0.0f, 0.0f));
+            this->pPanel->setAlpha(CONSOLE_BACKGROUND_ALPHA);
+            this->pPanel->setNeedMouseFocus(false);
+            this->pPanel->setNeedKeyFocus(false);
+            this->pPanel->setVisible(false);
 
-        this->pPanel = static_cast<Ogre::v1::OverlayContainer*>(overlayManager.createOverlayElement("Panel", "ConsolePanel"));
-        this->pPanel->setMetricsMode(Ogre::v1::GMM_RELATIVE);
-        this->pPanel->setPosition(0, 0);
-        this->pPanel->setDimensions(1, 0);
-        this->pPanel->setMaterialName("Materials/OverlayMaterial");
+            this->pTextbox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(
+                "EditBoxEmpty", 0.0f, -0.5f, 1.0f, 1.0f,
+                MyGUI::Align::Default, CONSOLE_LAYER_NAME, "LuaConsole_Text");
+            // Display surface only — injectKeyPress()/EditString remain the
+            // sole input path, so MyGUI must never take keyboard focus here.
+            this->pTextbox->setEditReadOnly(true);
+            this->pTextbox->setEditMultiLine(true);
+            this->pTextbox->setEditWordWrap(false);
+            this->pTextbox->setTextColour(MyGUI::Colour::White);
+            this->pTextbox->setNeedMouseFocus(false);
+            this->pTextbox->setNeedKeyFocus(false);
+            this->pTextbox->setVisible(false);
 
-        this->pPanel->addChild(this->pTextbox);
-
-        this->pOverlay = overlayManager.create("Console");
-        this->pOverlay->add2D(this->pPanel);
-        this->pOverlay->show();
+            MyGUIUtilities::getInstance()->setFontSize(this->pTextbox, CONSOLE_FONT_HEIGHT_PX);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LuaConsole::init");
 
         Ogre::LogManager::getSingleton().getDefaultLog()->addListener(this);
 
@@ -89,13 +145,77 @@ namespace NOWA
         {
             delete this->pInterpreter;
             Ogre::LogManager::getSingleton().getDefaultLog()->removeListener(this);
+
+            // NOTE: the original never explicitly destroyed pOverlay/pPanel/
+            // pTextbox either — LuaConsole is a true app-lifetime singleton,
+            // torn down only right before Ogre/MyGUI's own shutdown, so this
+            // omission is preserved rather than "fixed".
         }
         this->initialised = false;
     }
 
     void LuaConsole::setVisible(bool visible)
     {
+        if (this->visible == visible)
+        {
+            return;
+        }
         this->visible = visible;
+
+        if (true == visible)
+        {
+            // Applied on the logic thread by update() (see below) — matches
+            // the original, which called these setters directly from
+            // update(), not from a render-thread callback.
+            this->pendingCameraWeightValue.store(0.0f);
+            this->pendingCameraWeightChange.store(true);
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]()
+        {
+            // Unconditional remove + recreate — same pattern as
+            // MyGUIPositionControllerComponent::onActivatedChanged.
+            MyGUI::ControllerManager::getInstance().removeItem(this->pPanel);
+            MyGUI::ControllerManager::getInstance().removeItem(this->pTextbox);
+
+            if (true == visible)
+            {
+                this->pPanel->setVisible(true);
+                this->pTextbox->setVisible(true);
+            }
+
+            float target = visible ? 1.0f : 0.0f;
+
+            MyGUI::ControllerItem* panelItem = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
+            MyGUI::ControllerPosition* panelController = panelItem->castType<MyGUI::ControllerPosition>();
+            panelController->setCoord(panelCoordAt(target));
+            panelController->setTime(CONSOLE_ANIM_DURATION_SEC);
+            // No setAction() — default linear interpolation, matching the
+            // original's constant-rate (dt * 10) motion.
+            MyGUI::ControllerManager::getInstance().addItem(this->pPanel, panelController);
+
+            MyGUI::ControllerItem* textboxItem = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
+            MyGUI::ControllerPosition* textboxController = textboxItem->castType<MyGUI::ControllerPosition>();
+            textboxController->setCoord(textboxCoordAt(target));
+            textboxController->setTime(CONSOLE_ANIM_DURATION_SEC);
+            // Both controllers share the same duration — one completion
+            // callback (on the textbox) is enough to know the slide is done.
+            textboxController->eventPostAction += MyGUI::newDelegate(this, &LuaConsole::onSlideFinished);
+            MyGUI::ControllerManager::getInstance().addItem(this->pTextbox, textboxController);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "LuaConsole::setVisible");
+    }
+
+    void LuaConsole::onSlideFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller)
+    {
+        if (false == this->visible)
+        {
+            this->pPanel->setVisible(false);
+            this->pTextbox->setVisible(false);
+
+            this->pendingCameraWeightValue.store(1.0f);
+            this->pendingCameraWeightChange.store(true);
+        }
     }
 
     bool LuaConsole::isVisible(void)
@@ -193,51 +313,14 @@ namespace NOWA
             this->editLine.updateKeyPress(InputDeviceCore::getSingletonPtr()->getKeyboard(), dt);
         }
 
-        if (this->visible && this->height < 1.0f)
+        // Applies whichever camera-weight change setVisible() (opening) or
+        // onSlideFinished() (closing, render thread) requested. Keeps
+        // CameraManager calls on the logic thread, matching the original.
+        if (true == this->pendingCameraWeightChange.exchange(false))
         {
-            this->height += dt * 10.0f;
-
-            auto pTextbox = this->pTextbox;
-            auto pPanel = this->pPanel;
-            ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("LuaConsole::update1", _2(pTextbox, pPanel), {
-                pPanel->show();
-                pTextbox->show();
-            });
-
-            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
-            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
-
-            if (this->height >= 1.0f)
-            {
-                this->height = 1.0f;
-            }
-        }
-        else if (!this->visible && this->height > 0.0f)
-        {
-            this->height -= dt * 10.0f;
-            if (this->height <= 0.0f)
-            {
-                this->height = 0.0f;
-                auto pTextbox = this->pTextbox;
-                auto pPanel = this->pPanel;
-                ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("LuaConsole::update2", _2(pTextbox, pPanel), {
-                    pPanel->hide();
-                    pTextbox->hide();
-                });
-                NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-                NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
-            }
-        }
-
-        if (visible)
-        {
-            auto pTextbox = this->pTextbox;
-            auto pPanel = this->pPanel;
-            Ogre::Real height = this->height;
-            ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("LuaConsole::update3", _3(pTextbox, pPanel, height), {
-                pTextbox->setPosition(0.0f, (height - 1.0f) * 0.5f);
-                pPanel->setDimensions(1.0f, height * 0.5f);
-            });
+            float weight = this->pendingCameraWeightValue.load();
+            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(weight);
+            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(weight);
         }
 
         if (visible && this->textChanged)
@@ -284,13 +367,18 @@ namespace NOWA
             }
             text += this->pInterpreter->getPrompt() + editLineText;
             auto pTextbox = this->pTextbox;
-            ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("LuaConsole::update4", _2(pTextbox, text), {
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, pTextbox, text]()
+            {
                 if (pTextbox)
                 {
-                    // Bad UTF-8 continuation byte may happen at any time, so catch it.
+                    // Real '\n' characters — EditBox is natively multi-line,
+                    // this is not the setCaptionWithReplacing("\\n") escape
+                    // trick used for XML/property-authored captions elsewhere.
                     pTextbox->setCaption(text);
                 }
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "LuaConsole::update4");
 
             this->textChanged = false;
         }

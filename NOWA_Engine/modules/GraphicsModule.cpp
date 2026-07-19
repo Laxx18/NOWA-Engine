@@ -294,8 +294,6 @@ namespace NOWA
         this->debugVisualization = false;
         this->currentDestroySlot = 0;
         this->isRunningWaitClosure = false;
-
-        Core::getSingletonPtr()->saveHlmsDiskCache();
     }
 
     void GraphicsModule::publishInterpolationAlpha(float alpha)

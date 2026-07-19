@@ -1,13 +1,17 @@
 #ifndef LUA_CONSOLE_H
 #define LUA_CONSOLE_H
 
-#include "OgreOverlayContainer.h"
-#include "OgreOverlayElement.h"
-#include "OgreOverlayManager.h"
-
 #include "EditString.h"
 #include "LuaConsoleInterpreter.h"
+#include <atomic>
 #include <list>
+
+namespace MyGUI
+{
+    class Widget;
+    class EditBox;
+    class ControllerItem;
+}
 
 namespace NOWA
 {
@@ -52,18 +56,35 @@ namespace NOWA
         // Must only be called after AppStateManager / EventManager are up.
         void fireOgreLogEvent(const Ogre::String& message);
 
+        // Render-thread callback (MyGUI::ControllerItem::eventPostAction) for
+        // the slide-closed animation. Only hides the widgets (render-thread
+        // safe); the camera-weight restore is handed off to update() via the
+        // atomics below, since the original called those setters from the
+        // logic thread (update()), not from a render-thread callback.
+        void onSlideFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller);
+
     protected:
         bool visible;
         bool textChanged;
-        float height;
         int startLine;
         bool cursorBlink;
         float cursorBlinkTime;
         bool initialised;
 
-        Ogre::v1::Overlay* pOverlay;
-        Ogre::v1::OverlayContainer* pPanel;
-        Ogre::v1::OverlayElement* pTextbox;
+        // Set (from any thread) when the camera weight needs to change;
+        // consumed once by update() on the logic thread, matching the
+        // original's threading (it called CameraManager setters directly
+        // from update(), never wrapped in a render command).
+        std::atomic<bool> pendingCameraWeightChange;
+        std::atomic<float> pendingCameraWeightValue;
+
+        // v2: replaces Ogre::v1::Overlay / OverlayContainer / OverlayElement.
+        // Both are independent root-level MyGUI widgets (NOT parent/child —
+        // see FaderProcess.cpp-style port notes), created once in init() and
+        // driven every frame in update() using the same two independent
+        // position/size formulas the original overlay code used.
+        MyGUI::Widget* pPanel;
+        MyGUI::EditBox* pTextbox;
 
         EditString editLine;
         LuaConsoleInterpreter* pInterpreter;

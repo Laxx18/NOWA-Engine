@@ -410,27 +410,25 @@ namespace NOWA
             compositorManager->removeWorkspace(this->myGuiWorkspace);
             this->myGuiWorkspace = nullptr;
         }
-        if (nullptr != this->myGui)
+        try
         {
-            if (nullptr != this->info)
-            {
-                delete this->info;
-                this->info = nullptr;
-            }
-
-            /*this->myGui->shutdown();
-            delete this->myGui;
-            this->myGui = nullptr;*/
-            try
-            {
-                this->myGuiOgrePlatform->shutdown();
-            }
-            catch (...)
-            {
-            }
-            delete this->myGuiOgrePlatform;
-            this->myGuiOgrePlatform = nullptr;
+            this->myGui->shutdown();
         }
+        catch (...)
+        {
+        }
+        delete this->myGui;
+        this->myGui = nullptr;
+
+        try
+        {
+            this->myGuiOgrePlatform->shutdown();
+        }
+        catch (...)
+        {
+        }
+        delete this->myGuiOgrePlatform;
+        this->myGuiOgrePlatform = nullptr;
 
         if (nullptr != this->overlaySystem)
         {
@@ -512,13 +510,12 @@ namespace NOWA
             OGRE_DELETE this->root;
             this->root = nullptr;
         }
-
-        // };
-        // NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::destructor");
     }
 
     void Core::destroyScene(Ogre::SceneManager*& sceneManager)
     {
+        this->saveHlmsDiskCache();
+
         if (nullptr != sceneManager)
         {
             auto myGuiOgrePlatform = this->myGuiOgrePlatform;

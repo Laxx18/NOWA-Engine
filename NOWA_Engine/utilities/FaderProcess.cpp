@@ -1,261 +1,262 @@
 #include "NOWAPrecompiled.h"
 #include "FaderProcess.h"
-#include "OgreOverlayManager.h"
-#include "OgreHlmsUnlit.h"
-#include "OgreHlmsManager.h"
 #include "modules/GraphicsModule.h"
 
-#include "RenderQueueEnums.h"
+// Adjust this include if your project uses individual MyGUI headers instead
+// of the umbrella header (e.g. MyGUI_Gui.h, MyGUI_ControllerManager.h,
+// MyGUI_ControllerItem.h, MyGUI_Widget.h).
+#include <MyGUI.h>
 
 namespace NOWA
 {
+	namespace
+	{
+		// Same layer FadeComponent's fade widget uses.
+		// ASSUMPTION corrected: "Fade" sits above everything including UI
+		// (menus got hidden by it). "FadeMiddle" is the layer meant to sit
+		// below persistent UI but above the 3D scene — verify against your
+		// layers.xml if menus are still affected.
+		const Ogre::String FADE_LAYER_NAME = "Back";
+
+		// v2 replacement for the old shared, named v1 overlay
+		// ("Overlays/FadeInOut") + "Materials/OverlayMaterial" datablock.
+		// Lazily created once, on the render thread, and never destroyed —
+		// same lifetime the old overlay had (looked up by name, never
+		// hidden-and-forgotten, never recreated per FaderProcess instance).
+		// Must only be called from the render thread.
+		MyGUI::Widget* getSharedFadeWidget()
+		{
+			static MyGUI::Widget* sharedFadeWidget = nullptr;
+			if (nullptr == sharedFadeWidget)
+			{
+				sharedFadeWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>(
+					"PanelSkin", 0.0f, 0.0f, 1.0f, 1.0f,
+					MyGUI::Align::Stretch, FADE_LAYER_NAME, "FaderProcess_SharedFadeWidget");
+				sharedFadeWidget->setColour(MyGUI::Colour(0.0f, 0.0f, 0.0f));
+				sharedFadeWidget->setNeedMouseFocus(false);
+				sharedFadeWidget->setVisible(false);
+			}
+			return sharedFadeWidget;
+		}
+
+		// Runs the actual fade animation on the render thread (MyGUI
+		// controllers are ticked there). Replicates FaderProcess::onUpdate's
+		// original math exactly, including its FADE_IN/FADE_OUT asymmetry
+		// (see the comment in addTime below) — this is a faithful port, not
+		// a behavior fix.
+		class FaderControllerItem : public MyGUI::ControllerItem
+		{
+		public:
+			FaderControllerItem(bool isFadeIn, Ogre::Real startDurationValue, Ogre::Real totalDuration, Ogre::Real speedMultiplier,
+				Interpolator::EaseFunctions easeFunction, std::atomic<bool>* finishedFlag,
+				std::atomic<Ogre::Real>* alphaOut, std::atomic<Ogre::Real>* durationOut)
+				: isFadeIn(isFadeIn),
+				currentDurationValue(startDurationValue),
+				totalDuration(totalDuration),
+				speedMultiplier(speedMultiplier),
+				stallDuration(1.0f), // same fixed 1s stall the original FaderProcess used
+				selectedEaseFunction(easeFunction),
+				finishedFlag(finishedFlag),
+				alphaOut(alphaOut),
+				durationOut(durationOut)
+			{
+			}
+
+		protected:
+			virtual void prepareItem(MyGUI::Widget* _widget) override
+			{
+				// Initial alpha was already set explicitly on the shared
+				// widget right before addItem() (see the constructor's render
+				// command below) — nothing further needed here.
+			}
+
+			virtual bool addTime(MyGUI::Widget* _widget, float _time) override
+			{
+				this->stallDuration -= _time * this->speedMultiplier;
+				if (this->stallDuration > 0.0f)
+				{
+					return true;
+				}
+
+				if (true == this->isFadeIn)
+				{
+					this->currentDurationValue -= _time * this->speedMultiplier;
+					Ogre::Real t = this->currentDurationValue / this->totalDuration;
+
+					if (t <= 0.0f)
+					{
+						_widget->setAlpha(0.0f);
+						_widget->setVisible(false);
+						this->publish(0.0f, 0.0f, true);
+						return false; // MyGUI fires eventPostAction (none attached here), then removes this item
+					}
+
+					Ogre::Real eased = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
+					_widget->setAlpha(eased);
+					this->publish(eased, this->currentDurationValue, false);
+					return true;
+				}
+				else // FADE_OUT
+				{
+					// NOTE: the original FaderProcess incremented currentDuration
+					// by `dt` only in this branch (NOT dt*speedMultiplier, unlike
+					// the stall timer and the FADE_IN branch above) — preserved
+					// as-is; this is an inherited quirk, not something new.
+					this->currentDurationValue += _time;
+					Ogre::Real t = this->currentDurationValue / this->totalDuration;
+
+					if (t >= 1.0f)
+					{
+						_widget->setAlpha(1.0f);
+						this->publish(1.0f, this->totalDuration, true);
+						return false;
+					}
+
+					Ogre::Real eased = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
+					_widget->setAlpha(eased);
+					this->publish(eased, this->currentDurationValue, false);
+					return true;
+				}
+			}
+
+		private:
+			void publish(Ogre::Real alpha, Ogre::Real durationValue, bool done)
+			{
+				if (nullptr != this->alphaOut)
+				{
+					this->alphaOut->store(alpha);
+				}
+				if (nullptr != this->durationOut)
+				{
+					this->durationOut->store(durationValue);
+				}
+				if (true == done && nullptr != this->finishedFlag)
+				{
+					this->finishedFlag->store(true);
+				}
+			}
+
+		private:
+			bool isFadeIn;
+			Ogre::Real currentDurationValue;
+			Ogre::Real totalDuration;
+			Ogre::Real speedMultiplier;
+			Ogre::Real stallDuration;
+			Interpolator::EaseFunctions selectedEaseFunction;
+			std::atomic<bool>* finishedFlag;
+			std::atomic<Ogre::Real>* alphaOut;
+			std::atomic<Ogre::Real>* durationOut;
+		};
+	}
+
 	FaderProcess::FaderProcess(FadeOperation fadeOperation, Ogre::Real duration, Interpolator::EaseFunctions selectedEaseFunction, Ogre::Real continueAlpha, Ogre::Real continueDuration, Ogre::Real speedMultiplier)
 		: eFadeOperation(fadeOperation),
-		currentAlpha(0.0f),
-		currentDuration(0.0f),
-		totalDuration(0.0f),
-		stallDuration(1.0f),
 		selectedEaseFunction(selectedEaseFunction),
-		continueAlpha(continueAlpha),
 		speedMultiplier(speedMultiplier),
-		datablock(nullptr),
-		overlay(nullptr),
-		calledFirstTime(true)
+		isFinished(false),
+		succeededAlready(false)
 	{
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, fadeOperation, &duration, selectedEaseFunction, continueAlpha, continueDuration, speedMultiplier]()
-        {
-            Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-            Ogre::HlmsUnlit* hlmsUnlit = dynamic_cast<Ogre::HlmsUnlit*>(hlmsManager->getHlms(Ogre::HLMS_UNLIT));
+		if (duration < 0.0f)
+		{
+			duration = -duration;
+		}
+		if (duration < 0.000001f)
+		{
+			duration = 1.0f;
+		}
+		this->totalDuration = duration;
 
-            // this->datablock = static_cast<Ogre::HlmsUnlitDatablock*>(hlmsUnlit->createDatablock("FadeEffect", "FadeEffect", Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
-            this->datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(hlmsManager->getDatablock("Materials/OverlayMaterial"));
-            if (nullptr == datablock)
-            {
-                OGRE_EXCEPT(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Material name 'Materials/OverlayMaterial' cannot be found for 'FaderProcess'.", "FaderProcess::FaderProcess");
-            }
+		bool isFadeIn = (this->eFadeOperation == FadeOperation::FADE_IN);
 
-            this->datablock->setUseColour(true);
+		Ogre::Real startAlpha;
+		Ogre::Real startDurationValue;
 
-            // http://www.ogre3d.org/forums/viewtopic.php?f=25&t=82797 blendblock, wie macht man unlit transparent
+		if (true == isFadeIn)
+		{
+			startAlpha = (0.0f == continueAlpha) ? 1.0f : continueAlpha;
+			startDurationValue = (0.0f == continueDuration) ? this->totalDuration : continueDuration;
+		}
+		else
+		{
+			startAlpha = (0.0f == continueAlpha) ? 0.0f : continueAlpha;
+			startDurationValue = continueDuration; // default 0.0f, same as original
+		}
 
-            // Get the _overlay
-            this->overlay = Ogre::v1::OverlayManager::getSingleton().getByName("Overlays/FadeInOut");
-            this->overlay->setRenderQueueGroup(RENDER_QUEUE_MAX);
+		this->atomicCurrentAlpha.store(startAlpha);
+		this->atomicCurrentDuration.store(startDurationValue);
 
-            if (this->eFadeOperation == FadeOperation::FADE_IN)
-            {
-                if (duration < 0.0f)
-                {
-                    duration = -duration;
-                }
-                if (duration < 0.000001f)
-                {
-                    duration = 1.0f;
-                }
+		Ogre::Real capturedTotalDuration = this->totalDuration;
+		Ogre::Real capturedSpeedMultiplier = this->speedMultiplier;
+		Interpolator::EaseFunctions capturedEase = this->selectedEaseFunction;
+		std::atomic<bool>* finishedFlagPtr = &this->isFinished;
+		std::atomic<Ogre::Real>* alphaPtr = &this->atomicCurrentAlpha;
+		std::atomic<Ogre::Real>* durationPtr = &this->atomicCurrentDuration;
 
-                if (0.0f == continueAlpha)
-                {
-                    this->currentAlpha = 1.0f;
-                }
-                else
-                {
-                    this->currentAlpha = continueAlpha;
-                }
+		NOWA::GraphicsModule::RenderCommand renderCommand =
+			[isFadeIn, startAlpha, startDurationValue, capturedTotalDuration, capturedSpeedMultiplier, capturedEase, finishedFlagPtr, alphaPtr, durationPtr]()
+		{
+			MyGUI::Widget* widget = getSharedFadeWidget();
 
-                if (0.0f == continueDuration)
-                {
-                    this->currentDuration = duration;
-                }
-                else
-                {
-                    this->currentDuration = continueDuration;
-                }
+			// Cancel any fade still running from a previous FaderProcess
+			// instance on the shared widget (same "only one fade active at
+			// a time" assumption the old shared-overlay design already made).
+			MyGUI::ControllerManager::getInstance().removeItem(widget);
 
-                this->totalDuration = duration;
-                this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, this->currentAlpha));
-                this->overlay->show();
-                // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade in Overlay show");
-            }
-            else if (this->eFadeOperation == FadeOperation::FADE_OUT)
-            {
-                if (duration < 0.0f)
-                {
-                    duration = -duration;
-                }
-                if (duration < 0.000001f)
-                {
-                    duration = 1.0f;
-                }
+			widget->setAlpha(startAlpha);
+			widget->setVisible(true);
 
-                if (0.0f == continueAlpha)
-                {
-                    this->currentAlpha = 0.0f;
-                }
-                else
-                {
-                    this->currentAlpha = continueAlpha;
-                }
+			FaderControllerItem* item = new FaderControllerItem(isFadeIn, startDurationValue, capturedTotalDuration,
+				capturedSpeedMultiplier, capturedEase, finishedFlagPtr, alphaPtr, durationPtr);
 
-                if (0.0f == continueDuration)
-                {
-                    this->currentDuration = 0.0f;
-                }
-                else
-                {
-                    this->currentDuration = continueDuration;
-                }
-
-                this->totalDuration = duration;
-                this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, this->currentAlpha));
-                this->overlay->show();
-                // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade out Overlay show");
-            }
-
-            if (0.0f == this->currentDuration)
-            {
-                this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, 0.0f));
-            }
-
-            Ogre::Root::getSingletonPtr()->renderOneFrame();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "FaderProcess::FaderProcess");
+			MyGUI::ControllerManager::getInstance().addItem(widget, item);
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "FaderProcess::FaderProcess");
 	}
 
 	FaderProcess::~FaderProcess()
 	{
-		
+	}
+
+	void FaderProcess::showBlackScreenImmediate(void)
+	{
+		NOWA::GraphicsModule::RenderCommand renderCommand = []()
+		{
+			MyGUI::Widget* widget = getSharedFadeWidget();
+			// Cancel any running fade animation so it doesn't fight this.
+			MyGUI::ControllerManager::getInstance().removeItem(widget);
+			widget->setAlpha(1.0f);
+			widget->setVisible(true);
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "FaderProcess::showBlackScreenImmediate");
+	}
+
+	void FaderProcess::hideBlackScreenImmediate(void)
+	{
+		NOWA::GraphicsModule::RenderCommand renderCommand = []()
+		{
+			MyGUI::Widget* widget = getSharedFadeWidget();
+			MyGUI::ControllerManager::getInstance().removeItem(widget);
+			widget->setVisible(false);
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "FaderProcess::hideBlackScreenImmediate");
 	}
 
 	void FaderProcess::onUpdate(Ogre::Real dt)
 	{
-		if (this->eFadeOperation != FadeOperation::FADE_NONE && nullptr != this->datablock)
+		if (true == this->isFinished.load() && false == this->succeededAlready)
 		{
-			// If fading in, decrease the _alpha until it reaches 0.0
-			if (this->eFadeOperation == FadeOperation::FADE_IN)
-			{
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade in: " + Ogre::StringConverter::toString(this->currentDuration) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
-				
-				this->stallDuration -= dt * this->speedMultiplier;
-				if (this->stallDuration <= 0.0f)
-				{
-					this->currentDuration -= dt * this->speedMultiplier;
-					this->currentAlpha = this->currentDuration / this->totalDuration;
-
-					// Call a bit, before process will be destroyed
-					if (this->currentAlpha < 0.0f)
-					{
-						this->currentAlpha = 0.0f;
-						auto overlay = this->overlay;
-
-						NOWA::GraphicsModule::RenderCommand renderCommand = [this, overlay]()
-                        {
-                            overlay->hide();
-                        };
-                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "FaderProcess::hideOverlay");
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade in Overlay hide");
-						this->eFadeOperation = FadeOperation::FADE_NONE;
-						// Finish the process
-						this->succeed();
-						return;
-					}
-
-					Ogre::Real t = this->currentDuration / this->totalDuration;
-					Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
-					// Copy relevant values for render thread (safe)
-
-					NOWA::GraphicsModule::getInstance()->updateTrackedDatablockValue(this->datablock, this->datablock->getColour(), Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue),
-						[db = datablock](const Ogre::ColourValue& c)
-						{
-							db->setColour(c);
-						},
-						[](const Ogre::ColourValue& a, const Ogre::ColourValue& b, Ogre::Real w)
-						{
-							return Ogre::ColourValue(
-								Ogre::Math::lerp(a.r, b.r, w),
-								Ogre::Math::lerp(a.g, b.g, w),
-								Ogre::Math::lerp(a.b, b.b, w),
-								Ogre::Math::lerp(a.a, b.a, w)
-							);
-						}
-					);
-				}
-			}
-			// If fading out, increase the _alpha until it reaches 1.0
-			else if (this->eFadeOperation == FadeOperation::FADE_OUT)
-			{
-				this->stallDuration -= dt * this->speedMultiplier;
-				if (this->stallDuration <= 0.0f)
-				{
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade out: " + Ogre::StringConverter::toString(this->currentDuration) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
-					this->currentDuration += dt;
-					this->currentAlpha = this->currentDuration / this->totalDuration;
-
-					if (this->currentAlpha > 1.0f)
-					{
-						this->currentAlpha = 1.0f;
-						this->eFadeOperation = FadeOperation::FADE_NONE;
-						this->succeed();
-						return;
-					}
-
-					Ogre::Real t = this->currentDuration / this->totalDuration;
-					Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade out: " + Ogre::StringConverter::toString(resultValue) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
-					// Copy relevant values for render thread (safe)
-					auto datablock = this->datablock;
-					FadeOperation fadeOp = this->eFadeOperation;
-
-					NOWA::GraphicsModule::getInstance()->updateTrackedDatablockValue(this->datablock, this->datablock->getColour(), Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue),
-						[db = datablock](const Ogre::ColourValue& c)
-						{
-							db->setColour(c);
-						},
-						[](const Ogre::ColourValue& a, const Ogre::ColourValue& b, Ogre::Real w)
-						{
-							return Ogre::ColourValue(
-								Ogre::Math::lerp(a.r, b.r, w),
-								Ogre::Math::lerp(a.g, b.g, w),
-								Ogre::Math::lerp(a.b, b.b, w),
-								Ogre::Math::lerp(a.a, b.a, w)
-							);
-						}
-					);
-				}
-			}
+			this->succeededAlready = true;
+			this->eFadeOperation = FadeOperation::FADE_NONE;
+			this->succeed();
 		}
 	}
 
 	void FaderProcess::finished(void)
 	{
-	//	ENQUEUE_DESTROY_COMMAND("DatablockUnlitComponent::onRemoveComponent", _5(entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy),
-	//		{
-	//			// Safely reset datablock for entity or item
-	//			if (entityCopy && originalDatablockCopy)
-	//			{
-	//				if (oldSubIndexCopy < entityCopy->getNumSubEntities())
-	//				{
-	//					entityCopy->getSubEntity(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
-	//				}
-	//			}
-	//			else if (itemCopy && originalDatablockCopy)
-	//			{
-	//				if (oldSubIndexCopy < itemCopy->getNumSubItems())
-	//				{
-	//					itemCopy->getSubItem(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
-	//				}
-	//			}
-
-	//	// Destroy datablock only if no linked renderables remain
-	//	if (datablockCopy)
-	//	{
-	//		const auto linkedRenderables = datablockCopy->getLinkedRenderables();
-	//		if (linkedRenderables.empty())
-	//		{
-	//			datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
-	//		}
-	//	}
-	//		});
-		NOWA::GraphicsModule::getInstance()->removeTrackedDatablock(this->datablock);
+		// Nothing to clean up here: the fade widget is shared/persistent
+		// (mirrors the old named overlay, which was never destroyed either)
+		// and the MyGUI ControllerItem already removed/deleted itself once
+		// addTime() returned false.
 	}
 
 	void FaderProcess::onSuccess(void)
@@ -265,12 +266,12 @@ namespace NOWA
 
 	Ogre::Real FaderProcess::getCurrentAlpha(void) const
 	{
-		return this->currentAlpha;
+		return this->atomicCurrentAlpha.load();
 	}
 
 	Ogre::Real FaderProcess::getCurrentDuration(void) const
 	{
-		return this->currentDuration > 1.0f ? this->currentDuration : 0.0f;
+		return this->atomicCurrentDuration.load();
 	}
 
 }; // namespace end

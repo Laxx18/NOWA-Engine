@@ -4,16 +4,18 @@
 #include "GameObjectComponent.h"
 #include "utilities/Interpolator.h"
 
+namespace MyGUI
+{
+	class Widget;
+	class ControllerItem;
+}
+
 namespace NOWA
 {
-	class FaderLuaProcess;
-
 	class EXPORTED FadeComponent : public GameObjectComponent
 	{
 	public:
-		friend class FaderLuaProcess;
-
-		typedef boost::shared_ptr<NOWA::FadeComponent> FadeCompPtr;
+        typedef boost::shared_ptr<NOWA::FadeComponent> FadeCompPtr;
 	public:
 	
 		FadeComponent();
@@ -124,6 +126,12 @@ namespace NOWA
 		static const Ogre::String AttrDuration(void) { return "Duration"; }
 		static const Ogre::String AttrEaseFunction(void) { return "Ease Function"; }
 	private:
+		// Called by the MyGUI controller item (via eventPostAction) once the
+		// fade animation finishes. Not exposed to Lua directly — Lua reacts
+		// via reactOnFadeCompleted() closures, invoked from here.
+		void controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller);
+
+	private:
 		Variant* activated;
 		Variant* fadeMode;
 		Variant* duration;
@@ -132,6 +140,12 @@ namespace NOWA
 		Interpolator::EaseFunctions selectedEaseFunction;
 
 		std::vector<luabind::object> fadeCompletedClosureFunctions;
+
+		// v2: full-screen MyGUI widget replacing the old v1 Ogre::Overlay.
+		// Created once in connect(), destroyed in disconnect(). All access
+		// happens on the render thread (GraphicsModule::RenderCommand).
+		MyGUI::Widget* fadeWidget;
+		MyGUI::ControllerItem* controllerItem;
 	};
 
 }; //namespace end

@@ -62,7 +62,12 @@ namespace NOWA
         {
             // If the controller succeeded, it will be deleted internally!
             this->controllerItem = nullptr;
-            ENQUEUE_RENDER_COMMAND("MyGUIControllerComponent::connect", { MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget); });
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIControllerComponent::connect");
         }
 
         // Always resolve sourceWidget regardless of activated state so that:
@@ -112,7 +117,12 @@ namespace NOWA
 
         if (nullptr != this->sourceWidget)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIControllerComponent::onRemoveComponent", { MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIControllerComponent::onRemoveComponent");
+
             this->sourceWidget = nullptr;
             this->sourceMyGUIComponent = nullptr;
         }
@@ -130,7 +140,12 @@ namespace NOWA
             {
                 if (this->sourceWidget == myGuiCompPtr->getWidget())
                 {
-                    ENQUEUE_RENDER_COMMAND("MyGUIControllerComponent::onOtherComponentRemoved", { MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget); });
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                    {
+                        MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIControllerComponent::onOtherComponentRemoved");
+
                     this->sourceWidget = nullptr;
                     this->sourceMyGUIComponent = nullptr;
                 }
@@ -255,7 +270,8 @@ namespace NOWA
 
                 if (this->sourceWidget->getCoord() != coord)
                 {
-                    ENQUEUE_RENDER_COMMAND("MyGUIControllerComponent::activateController", {
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                    {
                         // Set widget to old coordinate
                         this->sourceWidget->setCoord(static_cast<int>(this->oldCoordinate.x), static_cast<int>(this->oldCoordinate.y), static_cast<int>(this->oldCoordinate.z), static_cast<int>(this->oldCoordinate.w));
 
@@ -265,7 +281,8 @@ namespace NOWA
                         // Set widget to old coordinate
                         this->sourceWidget->setRealPosition(oldRelativeCoord.left, oldRelativeCoord.top);
                         this->sourceWidget->setRealSize(oldRelativeCoord.width, oldRelativeCoord.height);
-                    });
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIControllerComponent::activateController");
                 }
             }
         }
@@ -348,13 +365,15 @@ namespace NOWA
         // Ensure controllerItem exists regardless of activated state — onActivatedChanged will use it
         if (nullptr == this->controllerItem)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIPositionControllerComponent::connect", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
                 this->controllerItem = item->castType<MyGUI::ControllerPosition>();
 
                 this->controllerItem->eventUpdateAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::onFrameUpdate);
                 this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::controllerFinished);
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIPositionControllerComponent::connect");
         }
 
         // activated=true at connect time: start immediately via onActivatedChanged
@@ -449,10 +468,12 @@ namespace NOWA
 
         if (nullptr != this->controllerItem)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIPositionControllerComponent::disconnect", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
                 this->controllerItem = nullptr;
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIPositionControllerComponent::disconnect");
         }
         this->activateController(false);
 
@@ -990,7 +1011,8 @@ namespace NOWA
         this->justAdded = false;
         if (nullptr != this->sourceWidget)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::disconnect", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 this->sourceWidget->setVisible(true);
 
                 for (size_t i = 0; i < this->messages.size(); i++)
@@ -1002,7 +1024,8 @@ namespace NOWA
                         this->editBoxes[i] = nullptr;
                     }
                 }
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIScrollingMessageControllerComponent::disconnect");
         }
 
         return MyGUIControllerComponent::disconnect();
@@ -1072,7 +1095,8 @@ namespace NOWA
     {
         MyGUIControllerComponent::onRemoveComponent();
 
-        ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::onRemoveComponent", {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             for (size_t i = 0; i < this->messages.size(); i++)
             {
                 MyGUI::ControllerManager::getInstance().removeItem(this->editBoxes[i]);
@@ -1082,7 +1106,8 @@ namespace NOWA
                     this->editBoxes[i] = nullptr;
                 }
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIScrollingMessageControllerComponent::onRemoveComponent");
     }
 
     void MyGUIScrollingMessageControllerComponent::onOtherComponentRemoved(unsigned int index)
@@ -1097,14 +1122,16 @@ namespace NOWA
             {
                 if (this->sourceWidget == myGuiCompPtr->getWidget())
                 {
-                    ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::onRemoveComponent", {
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                    {
                         for (size_t i = 0; i < this->messages.size(); i++)
                         {
                             MyGUI::ControllerManager::getInstance().removeItem(this->editBoxes[i]);
                             MyGUI::Gui::getInstancePtr()->destroyWidget(this->editBoxes[i]);
                             this->editBoxes[i] = nullptr;
                         }
-                    });
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIScrollingMessageControllerComponent::onOtherComponentRemoved");
                 }
             }
         }
@@ -1191,7 +1218,8 @@ namespace NOWA
         {
             this->eraseVariants(this->messages, messageCount);
 
-            ENQUEUE_RENDER_COMMAND_MULTI("MyGUIScrollingMessageControllerComponent::setMessageCount", _1(messageCount), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, messageCount]()
+            {
                 for (auto it = this->editBoxes.begin() + messageCount; it != this->editBoxes.end();)
                 {
                     MyGUI::ControllerManager::getInstance().removeItem(*it);
@@ -1199,7 +1227,8 @@ namespace NOWA
                     it = this->editBoxes.erase(it);
                     *it = nullptr;
                 }
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIScrollingMessageControllerComponent::setMessageCount");
         }
     }
 
@@ -1293,12 +1322,14 @@ namespace NOWA
 
         if (nullptr == this->controllerItem)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIEdgeHideControllerComponent::connect", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerEdgeHide::getClassTypeName());
                 this->controllerItem = item->castType<MyGUI::ControllerEdgeHide>();
 
                 this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIEdgeHideControllerComponent::controllerFinished);
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIEdgeHideControllerComponent::connect");
         }
 
         // Start immediately if already activated; Lua triggers later via setActivated(true) otherwise
@@ -1321,7 +1352,11 @@ namespace NOWA
         }
         if (nullptr != this->sourceWidget)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIEdgeHideControllerComponent::disconnect", { MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIEdgeHideControllerComponent::disconnect");
         }
 
         return MyGUIControllerComponent::disconnect();
@@ -1505,12 +1540,14 @@ namespace NOWA
 
         if (nullptr == this->controllerItem)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIRepeatClickControllerComponent::connect", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerRepeatClick::getClassTypeName());
                 this->controllerItem = item->castType<MyGUI::ControllerRepeatClick>();
 
                 this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIRepeatClickControllerComponent::controllerFinished);
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIRepeatClickControllerComponent::connect");
         }
 
         // Start immediately if already activated; Lua triggers later via setActivated(true) otherwise
@@ -1533,7 +1570,11 @@ namespace NOWA
         }
         if (nullptr != this->sourceWidget)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIRepeatClickControllerComponent::connect2", { MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIRepeatClickControllerComponent::disconnect");
         }
 
         return MyGUIControllerComponent::disconnect();
@@ -1554,7 +1595,8 @@ namespace NOWA
 
         if (true == activated)
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIRepeatClickControllerComponent::onActivatedChanged_start", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 if (nullptr == this->controllerItem)
                 {
                     MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerRepeatClick::getClassTypeName());
@@ -1564,14 +1606,17 @@ namespace NOWA
 
                 MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
                 this->controllerItem->castType<MyGUI::ControllerRepeatClick>()->setRepeat(this->timeLeft->getReal(), this->step->getReal());
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIRepeatClickControllerComponent::onActivatedChanged_start");
         }
         else
         {
-            ENQUEUE_RENDER_COMMAND("MyGUIRepeatClickControllerComponent::onActivatedChanged_stop", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
                 this->controllerItem = nullptr;
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIRepeatClickControllerComponent::onActivatedChanged_stop");
         }
     }
 

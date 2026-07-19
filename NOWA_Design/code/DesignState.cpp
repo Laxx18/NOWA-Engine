@@ -277,20 +277,16 @@ void DesignState::createScene(void)
 
 	this->projectManager = new ProjectManager(this->sceneManager);
 
-	ENQUEUE_RENDER_COMMAND_WAIT("setupMyGUI",
-	{
-		// Setup all MyGUI widgets
-		this->setupMyGUIWidgets();
-		this->selectQuery = this->sceneManager->createRayQuery(Ogre::Ray(), NOWA::GameObjectController::ALL_CATEGORIES_ID);
-		this->selectQuery->setSortByDistance(true);
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand2 = [this]()
+    {
+        // Setup all MyGUI widgets
+        this->setupMyGUIWidgets();
+        this->selectQuery = this->sceneManager->createRayQuery(Ogre::Ray(), NOWA::GameObjectController::ALL_CATEGORIES_ID);
+        this->selectQuery->setSortByDistance(true);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand2), "DesignState::setupMyGUI");
 
-	// Attention: Dangerous test, as maybe textures are deleted, that are in use, check background scroll etc.!
-	// Causes crash, when exiting application
-	// NOWA::Core::getSingletonPtr()->minimizeMemory(this->sceneManager);
-	// NOWA::Core::getSingletonPtr()->setTightMemoryBudget();
-
-	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 5.0f, NOWA::Interpolator::Linear, 1.0f, 0.0f, 1.0f)));
+	NOWA::FaderProcess::showBlackScreenImmediate();
 }
 
 void DesignState::setupMyGUIWidgets(void)
@@ -762,6 +758,8 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 		this->camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
 		this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
 		this->validScene = true;
+
+		NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 5.0f, NOWA::Interpolator::Linear, 1.0f, 0.0f, 1.0f)));
 
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {

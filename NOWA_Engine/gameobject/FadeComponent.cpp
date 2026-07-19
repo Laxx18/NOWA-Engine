@@ -2,67 +2,95 @@
 #include "FadeComponent.h"
 #include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
-#include "utilities/FaderProcess.h"
 #include "modules/LuaScript.h"
+#include "modules/GraphicsModule.h"
 #include "main/AppStateManager.h"
+
+// Adjust this include if your project uses individual MyGUI headers instead
+// of the umbrella header (e.g. MyGUI_Gui.h, MyGUI_ControllerManager.h,
+// MyGUI_ControllerItem.h, MyGUI_Widget.h).
+#include <MyGUI.h>
 
 namespace NOWA
 {
 	using namespace rapidxml;
 	using namespace luabind;
 
-	class EXPORTED FaderLuaProcess : public FaderProcess
+	namespace
 	{
-	public:
-		explicit FaderLuaProcess(FaderProcess::FadeOperation fadeOperation, Ogre::Real duration, Interpolator::EaseFunctions selectedEaseFunction, class FadeComponent* fadeComponent)
-			: FaderProcess(fadeOperation, duration, selectedEaseFunction),
-			fadeComponent(fadeComponent)
-		{
-		
-		}
+		// MyGUI layer reserved for full-screen fade effects (see the layer
+		// list already used by MyGUIComponent::AttrLayer()).
+		const Ogre::String FADE_LAYER_NAME = "Back";
 
-	protected:
-		virtual void finished(void) override
+		// v2 replacement for the old FaderProcess. Not exported / not visible
+		// outside this translation unit — FadeComponent owns the fade logic
+		// directly, as requested, instead of a separate reusable process.
+		//
+		// Replicates FaderProcess::onUpdate exactly:
+		//  - a fixed 1 second "stall" before the fade actually starts
+		//    (matches FaderProcess::stallDuration, which was never exposed
+		//    as a configurable value either)
+		//  - alpha(t) = Interpolator::applyEaseFunction(0, 1, ease, t), with
+		//    t running 1 -> 0 for FadeIn (revealing the scene) and 0 -> 1 for
+		//    FadeOut (covering it) — identical formula/direction to the
+		//    original FADE_IN / FADE_OUT branches.
+		class FadeControllerItem : public MyGUI::ControllerItem
 		{
-			FaderProcess::finished();
-			if (nullptr != this->fadeComponent->getOwner()->getLuaScript())
+		public:
+			FadeControllerItem(bool isFadeIn, Ogre::Real duration, Interpolator::EaseFunctions easeFunction)
+				: isFadeIn(isFadeIn),
+				totalDuration(duration > 0.000001f ? duration : 1.0f),
+				stallDuration(1.0f),
+				elapsed(0.0f),
+				selectedEaseFunction(easeFunction)
 			{
-				auto* closureListPtr = &this->fadeComponent->fadeCompletedClosureFunctions;
-
-                if (false == closureListPtr->empty())
-                {
-                    NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
-                    {
-                        // Copy happens HERE on the logic thread — safe for luabind::object
-                        auto closures = *closureListPtr;
-
-                        for (const auto& closure : closures)
-                        {
-                            if (false == closure.is_valid())
-                            {
-                                continue;
-                            }
-                            try
-                            {
-                                luabind::call_function<void>(closure);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Caught error in 'reactOnFadeCompleted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        }
-                    };
-                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                }
 			}
-		}
-	private:
-		Interpolator::EaseFunctions selectedEaseFunction;
-		FadeComponent* fadeComponent;
-	};
+
+		protected:
+			virtual void prepareItem(MyGUI::Widget* _widget) override
+			{
+				// Start fully opaque for FadeIn (about to reveal), fully
+				// transparent for FadeOut (about to cover) — same starting
+				// point as FaderProcess's initial currentAlpha.
+				_widget->setAlpha(this->isFadeIn ? 1.0f : 0.0f);
+			}
+
+			virtual bool addTime(MyGUI::Widget* _widget, float _time) override
+			{
+				if (this->stallDuration > 0.0f)
+				{
+					this->stallDuration -= _time;
+					if (this->stallDuration > 0.0f)
+					{
+						return true;
+					}
+				}
+
+				this->elapsed += _time;
+
+				Ogre::Real t = this->elapsed / this->totalDuration;
+				if (t >= 1.0f)
+				{
+					_widget->setAlpha(this->isFadeIn ? 0.0f : 1.0f);
+					return false; // MyGUI fires eventPostAction, then removes this item
+				}
+
+				// FadeIn: eased input goes 1 -> 0 as time progresses.
+				// FadeOut: eased input goes 0 -> 1 as time progresses.
+				Ogre::Real easeInput = this->isFadeIn ? (1.0f - t) : t;
+				Ogre::Real alpha = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, easeInput);
+				_widget->setAlpha(alpha);
+				return true;
+			}
+
+		private:
+			bool isFadeIn;
+			Ogre::Real totalDuration;
+			Ogre::Real stallDuration;
+			Ogre::Real elapsed;
+			Interpolator::EaseFunctions selectedEaseFunction;
+		};
+	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -72,13 +100,15 @@ namespace NOWA
 		activated(new Variant(FadeComponent::AttrActivated(), true, this->attributes)),
 		fadeMode(new Variant(FadeComponent::AttrFadeMode(), { Ogre::String("FadeIn"), Ogre::String("FadeOut") }, this->attributes)),
 		duration(new Variant(FadeComponent::AttrDuration(), 5.0f, this->attributes)),
-		easeFunction(new Variant(FadeComponent::AttrEaseFunction(), Interpolator::getInstance()->getAllEaseFunctionNames(), this->attributes))
+		easeFunction(new Variant(FadeComponent::AttrEaseFunction(), Interpolator::getInstance()->getAllEaseFunctionNames(), this->attributes)),
+		fadeWidget(nullptr),
+		controllerItem(nullptr)
 	{
 	}
 
 	FadeComponent::~FadeComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[FadeComponent] Destructor fog component for game object: " + this->gameObjectPtr->getName());
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[FadeComponent] Destructor fade component for game object: " + this->gameObjectPtr->getName());
 	}
 
 	bool FadeComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -115,7 +145,7 @@ namespace NOWA
 
 	bool FadeComponent::postInit(void)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[FadeComponent] Init fog component for game object: " + this->gameObjectPtr->getName());
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[FadeComponent] Init fade component for game object: " + this->gameObjectPtr->getName());
 
 		
 		return true;
@@ -129,6 +159,25 @@ namespace NOWA
 	bool FadeComponent::connect(void)
 	{
 		GameObjectComponent::connect();
+
+		// Create the full-screen fade widget once, up front — mirrors the
+		// lazy-but-eager creation pattern used by
+		// MyGUIFadeAlphaControllerComponent::connect() for its controllerItem.
+		if (nullptr == this->fadeWidget)
+		{
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+			{
+				this->fadeWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>(
+					"PanelSkin", 0.0f, 0.0f, 1.0f, 1.0f,
+					MyGUI::Align::Stretch, FADE_LAYER_NAME,
+					"FadeComponent_" + this->gameObjectPtr->getName());
+				this->fadeWidget->setColour(MyGUI::Colour(0.0f, 0.0f, 0.0f));
+				this->fadeWidget->setNeedMouseFocus(false);
+				this->fadeWidget->setVisible(false);
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "FadeComponent::connect");
+		}
+
 		return true;
 	}
 
@@ -137,6 +186,22 @@ namespace NOWA
 		GameObjectComponent::disconnect();
 
 		this->fadeCompletedClosureFunctions.clear();
+
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+		{
+			if (nullptr != this->controllerItem && nullptr != this->fadeWidget)
+			{
+				MyGUI::ControllerManager::getInstance().removeItem(this->fadeWidget);
+			}
+			this->controllerItem = nullptr;
+
+			if (nullptr != this->fadeWidget)
+			{
+				MyGUI::Gui::getInstancePtr()->destroyWidget(this->fadeWidget);
+				this->fadeWidget = nullptr;
+			}
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "FadeComponent::disconnect");
 
 		return true;
 	}
@@ -207,18 +272,35 @@ namespace NOWA
 		{
 			if (true == activated)
 			{
-				FaderProcess::FadeOperation fadeMode = FaderProcess::FadeOperation::FADE_NONE;
+				bool isFadeIn = ("FadeIn" == this->fadeMode->getListSelectedValue());
+				Ogre::Real fadeDuration = this->duration->getReal();
+				Interpolator::EaseFunctions ease = this->selectedEaseFunction;
 
-				if ("FadeIn" == this->fadeMode->getListSelectedValue())
+				NOWA::GraphicsModule::RenderCommand renderCommand = [this, isFadeIn, fadeDuration, ease]()
 				{
-					fadeMode = FaderProcess::FadeOperation::FADE_IN;
-				}
-				else if ("FadeOut" == this->fadeMode->getListSelectedValue())
-				{
-					fadeMode = FaderProcess::FadeOperation::FADE_OUT;
-				}
-		
-				ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderLuaProcess(fadeMode, this->duration->getReal(), this->selectedEaseFunction, this)));
+					if (nullptr == this->fadeWidget)
+					{
+						// connect() has not run yet (or disconnect() already
+						// tore the widget down) — nothing to animate.
+						return;
+					}
+
+					// Cancel any fade currently running on this widget.
+					if (nullptr != this->controllerItem)
+					{
+						MyGUI::ControllerManager::getInstance().removeItem(this->fadeWidget);
+						this->controllerItem = nullptr;
+					}
+
+					this->fadeWidget->setVisible(true);
+
+					FadeControllerItem* item = new FadeControllerItem(isFadeIn, fadeDuration, ease);
+					item->eventPostAction += MyGUI::newDelegate(this, &FadeComponent::controllerFinished);
+					this->controllerItem = item;
+
+					MyGUI::ControllerManager::getInstance().addItem(this->fadeWidget, item);
+				};
+				NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "FadeComponent::setActivated");
 			}
 		}
 	}
@@ -226,6 +308,62 @@ namespace NOWA
 	bool FadeComponent::isActivated(void) const
 	{
 		return this->activated->getBool();
+	}
+
+	void FadeComponent::controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller)
+	{
+		// MyGUI deleted the item internally — null our pointer.
+		this->controllerItem = nullptr;
+
+		bool wasFadeIn = ("FadeIn" == this->fadeMode->getListSelectedValue());
+
+		// Reset so Lua can re-trigger via setActivated(true) again.
+		this->activated->setValue(false);
+
+		if (true == wasFadeIn)
+		{
+			// Scene is fully revealed — nothing left to cover it with.
+			if (nullptr != sender)
+			{
+				sender->setVisible(false);
+			}
+		}
+		// FadeOut: leave the widget visible and opaque — it is now covering
+		// the screen, same end state the old v1 Overlay was left in.
+
+		if (nullptr != this->getOwner()->getLuaScript())
+		{
+			auto* closureListPtr = &this->fadeCompletedClosureFunctions;
+
+			if (false == closureListPtr->empty())
+			{
+				NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+				{
+					// Copy happens HERE on the logic thread — safe for luabind::object
+					auto closures = *closureListPtr;
+
+					for (const auto& closure : closures)
+					{
+						if (false == closure.is_valid())
+						{
+							continue;
+						}
+						try
+						{
+							luabind::call_function<void>(closure);
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FadeComponent] Caught error in 'reactOnFadeCompleted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+						}
+					}
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+			}
+		}
 	}
 
 	void FadeComponent::setFadeMode(const Ogre::String& fadeMode)
