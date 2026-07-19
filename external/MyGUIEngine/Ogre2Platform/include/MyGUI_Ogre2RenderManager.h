@@ -2,6 +2,7 @@
 	@file
 	@author		Albert Semenov
 	@date		04/2008
+	@update		2026 v2 VAO rewrite for Ogre-Next by NOWA-Engine
 */
 
 #ifndef MYGUI_OGRE2_RENDER_MANAGER_H_
@@ -14,7 +15,6 @@
 #include "MyGUI_RenderManager.h"
 #include "MyGUI_Ogre2GuiRenderable.h"
 #include "MyGUI_Ogre2GuiMoveable.h"
-#include "MyGUI_Ogre2RenderManager.h"
 
 #include <Ogre.h>
 #include <OgreMovableObject.h>
@@ -27,6 +27,7 @@
 namespace MyGUI
 {
 	class Ogre2RenderManager;
+
 	class __declspec(dllexport) MyGUIPassDef : public Ogre::CompositorPassDef
 	{
 	public:
@@ -108,10 +109,9 @@ namespace MyGUI
 		/** @see RenderManager::destroyTexture */
 		virtual void destroyTexture(ITexture* _texture);
 
-		/* 29.07.2024: Start: Added by Lax, because Ogre holds the texturepointer and MyGui and if one destroys the texture, ugly crash occurs. Hence MyGUI shall just remove the texture from its list! */
+		/* 29.07.2024: Start: Added by Lax, because Ogre holds the texturepointer and MyGui and if one destroys the texture, ugly crash occurs. Hence MyGUI shall just remove the texture from its list!
+		   29.07.2024: End: Added by Lax */
 		void removeTexture(ITexture* _texture);
-
-		/* 29.07.2024: End: Added by Lax
 
 		/** @see RenderManager::getTexture */
 		virtual ITexture* getTexture(const std::string& _name);
@@ -145,6 +145,13 @@ namespace MyGUI
 		void setManualRender(bool _value);
 
 		void render();
+
+		// Renders everything currently in the overlay render queue into the
+		// currently bound render target, then clears the queue. Called at the
+		// end of render() and by Ogre2RTTexture::begin()/end() so that batches
+		// land in the correct target when RTT layers (Canvas/RenderBox) are
+		// interleaved with window batches.
+		void flush();
 
 		size_t getBatchCount() const;
 
@@ -192,13 +199,13 @@ namespace MyGUI
 		Ogre::ObjectMemoryManager mDummyObjMemMgr;
 		Ogre::NodeMemoryManager mDummyNodeMemMgr;
 
-
-		typedef std::map<unsigned int, Ogre2GuiRenderable*> MapRenderable;
-		MapRenderable mRenderables;
+		// v2: no renderable map anymore — each Ogre2VertexBuffer owns its
+		// Ogre2GuiRenderable (1 buffer = 1 VAO = 1 renderable). This also
+		// removes the old leak: map entries were never erased when MyGUI
+		// destroyed a vertex buffer.
 
 		static const Ogre::uint8 RENDER_QUEUE_OVERLAY;
 
-		Ogre2GuiRenderable* createOrRetrieveRenderable(IVertexBuffer* _buffer , ITexture* _texture , size_t _count);
 		// Is done in NOWA::Core
 		std::unique_ptr<OgreCompositorPassProvider> mPassProvider;
 	};

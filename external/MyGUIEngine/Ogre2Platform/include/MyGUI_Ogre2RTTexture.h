@@ -2,6 +2,15 @@
 	@file
 	@author		Albert Semenov
 	@date		10/2009
+	@update		2026 v2 fixes for Ogre-Next by NOWA-Engine
+
+	v2 design:
+	 - The RenderManager defers all draws into the shared RenderQueue and flushes
+	   it once per target. Therefore begin() first flushes any pending batches
+	   into the CURRENT target, then binds this RTT's pass descriptor; end()
+	   flushes the RTT batches into the RTT, then restores the previous
+	   descriptor. Without this bracketing, batches queued "for" the RTT would
+	   actually render into whatever target happens to be bound at flush time.
 */
 
 #ifndef MYGUI_OGRE2_RTTEXTURE_H_

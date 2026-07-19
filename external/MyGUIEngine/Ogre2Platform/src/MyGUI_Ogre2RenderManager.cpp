@@ -2,6 +2,7 @@
 	@file
 	@author		Albert Semenov
 	@date		04/2008
+	@update		2026 v2 VAO rewrite for Ogre-Next by NOWA-Engine
 */
 
 #include "MyGUI_Ogre2DataManager.h"
@@ -19,16 +20,24 @@
 
 namespace MyGUI
 {
-	const Ogre::uint8 Ogre2RenderManager::RENDER_QUEUE_OVERLAY = 254;
+	// v2 fix: was 254, which collides with NOWA::RENDER_QUEUE_MAX / the v1
+	// Ogre::Overlay queue (also default-registered at 254 by OverlayManager).
+	// That queue must stay V1_FAST for v1 Overlays; MyGUI's VAO renderables
+	// need FAST. Use a queue NOWA doesn't already claim — 253 sits between
+	// RENDER_QUEUE_GIZMO (252) and RENDER_QUEUE_MAX (254), so painter's order
+	// is: scene -> gizmos -> MyGUI -> v1 debug overlays.
+	// If your engine's eRenderQueues enum ever claims 253, change this and
+	// the corresponding gap in the enum together.
+	const Ogre::uint8 Ogre2RenderManager::RENDER_QUEUE_OVERLAY = 253;
 
-	MyGUIPass::MyGUIPass(const Ogre::CompositorPassDef *definition, const Ogre::RenderTargetViewDef *target,
-		Ogre::CompositorNode *parentNode)
+	MyGUIPass::MyGUIPass(const Ogre::CompositorPassDef* definition, const Ogre::RenderTargetViewDef* target,
+		Ogre::CompositorNode* parentNode)
 		: Ogre::CompositorPass(definition, parentNode)
 	{
 		this->initialize(target);
 	}
 
-	void MyGUIPass::execute(const Ogre::Camera *lodCameraconst)
+	void MyGUIPass::execute(const Ogre::Camera* lodCameraconst)
 	{
 		static_cast<MyGUI::Ogre2RenderManager*>(MyGUI::RenderManager::getInstancePtr())->render();
 	}
@@ -50,8 +59,7 @@ namespace MyGUI
 		mIsInitialise(false),
 		mManualRender(false),
 		mCountBatch(0)
-	{
-	}
+	{}
 
 	void Ogre2RenderManager::initialise(Ogre::Window* _window, Ogre::SceneManager* _scene)
 	{
@@ -61,7 +69,7 @@ namespace MyGUI
 		mPassProvider.reset(new OgreCompositorPassProvider());
 
 		Ogre::CompositorManager2* pCompositorManager = Ogre::Root::getSingleton().getCompositorManager2();
-		
+
 		// don't overwrite a custom pass provider that the user may have registered already
 		if (!pCompositorManager->getCompositorPassProvider())
 		{
@@ -69,8 +77,8 @@ namespace MyGUI
 		}
 		else
 		{
-			MYGUI_PLATFORM_LOG(Warning, "A custom pass provider is already installed." << 
-										"MyGui passes will not work unless the registered provider can create MyGui passes");
+			MYGUI_PLATFORM_LOG(Warning, "A custom pass provider is already installed." <<
+				"MyGui passes will not work unless the registered provider can create MyGui passes");
 		}
 
 		mSceneManager = nullptr;
@@ -137,12 +145,13 @@ namespace MyGUI
 		{
 			mRenderSystem->addListener(this);
 
-			// формат цвета в вершинах
-			Ogre::VertexElementType vertex_type = mRenderSystem->getColourVertexElementType();
-			if (vertex_type == Ogre::VET_COLOUR_ARGB)
-				mVertexFormat = VertexColourType::ColourARGB;
-			else if (vertex_type == Ogre::VET_COLOUR_ABGR)
-				mVertexFormat = VertexColourType::ColourABGR;
+			// v2: the vertex colour element is VET_UBYTE4_NORM, which the GPU
+			// reads in memory byte order R,G,B,A on every render system. On
+			// little-endian this equals a uint32 packed as A<<24|B<<16|G<<8|R,
+			// i.e. MyGUI's ColourABGR — no per-rendersystem query needed.
+			// (getColourVertexElementType() described the v1 VET_COLOUR
+			// behavior and no longer applies.)
+			mVertexFormat = VertexColourType::ColourABGR;
 
 			updateRenderInfo();
 		}
@@ -181,6 +190,14 @@ namespace MyGUI
 		mSceneManager = _scene;
 		if (mSceneManager != nullptr)
 		{
+			// v2: queues >= 100 default to V1_FAST. Our renderables are VAO
+			// based, so the overlay queue MUST run in FAST (v2) mode —
+			// otherwise Ogre calls getRenderOperation() and throws.
+			// NOTE: if anything else (e.g. Ogre v1 Overlays, which also
+			// default to queue 254) renders through this scene manager in
+			// the same queue, it must be moved to another queue first.
+			mSceneManager->getRenderQueue()->setRenderQueueMode(RENDER_QUEUE_OVERLAY, Ogre::RenderQueue::FAST);
+			// MyGUI relies on painter's order == submission order.
 			mSceneManager->getRenderQueue()->setSortRenderQueue(RENDER_QUEUE_OVERLAY, Ogre::RenderQueue::DisableSort);
 		}
 	}
@@ -190,7 +207,7 @@ namespace MyGUI
 		return mSceneManager;
 	}
 
-	bool Ogre2RenderManager::frameStarted(const Ogre::FrameEvent &evt)
+	bool Ogre2RenderManager::frameStarted(const Ogre::FrameEvent& evt)
 	{
 		// this used to be done in render(), but can't do this anymore:
 		// adding Workspaces (e.g. RenderBox::requestUpdateCanvas)
@@ -218,17 +235,27 @@ namespace MyGUI
 		setManualRender(true);
 
 		mSceneManager->getRenderQueue()->clear();
-		
-		//get mygui to itterate through renderables and call 'doRender'
-		//This will add renderbles to the Ogre render queue
+
+		// get mygui to iterate through renderables and call 'doRender'.
+		// This will add renderables (v2, VAO based) to the Ogre render queue.
+		// Note: RTT layers (Canvas/RenderBox) flush intermediately via
+		// Ogre2RTTexture::begin()/end() so their batches land in the RTT.
 		onRenderToTarget(this, mUpdate);
 
-// Attention: This is new: https://forums.ogre3d.org/viewtopic.php?f=25&t=95049
-		mSceneManager->getRenderQueue()->renderPassPrepare(false, false);
-		mSceneManager->getRenderQueue()->render(mSceneManager->getDestinationRenderSystem(), RENDER_QUEUE_OVERLAY, RENDER_QUEUE_OVERLAY+1, false, false);
+		// Draw the remaining (window) batches.
+		flush();
 
 		// сбрасываем флаг
 		mUpdate = false;
+	}
+
+	void Ogre2RenderManager::flush()
+	{
+		// Attention: This is new: https://forums.ogre3d.org/viewtopic.php?f=25&t=95049
+		mSceneManager->getRenderQueue()->renderPassPrepare(false, false);
+		mSceneManager->getRenderQueue()->render(mSceneManager->getDestinationRenderSystem(), RENDER_QUEUE_OVERLAY, RENDER_QUEUE_OVERLAY + 1, false, false);
+		// The queue is consumed per flush so the next target starts empty.
+		mSceneManager->getRenderQueue()->clear();
 	}
 
 	void Ogre2RenderManager::eventOccurred(const Ogre::String& eventName, const Ogre::NameValuePairList* parameters)
@@ -250,13 +277,13 @@ namespace MyGUI
 
 	void Ogre2RenderManager::destroyVertexBuffer(IVertexBuffer* _buffer)
 	{
+		// The buffer owns its VAO and its renderable — everything dies here.
 		delete _buffer;
 	}
 
 	// для оповещений об изменении окна рендера
 	void Ogre2RenderManager::windowResized(Ogre::Window* _window)
 	{
-
 		mViewSize.set(_window->getWidth(), _window->getHeight());
 		// обновить всех
 		mUpdate = true;
@@ -281,21 +308,34 @@ namespace MyGUI
 
 	void Ogre2RenderManager::doRender(IVertexBuffer* _buffer, ITexture* _texture, size_t _count)
 	{
+		Ogre2VertexBuffer* vertexBuffer = static_cast<Ogre2VertexBuffer*>(_buffer);
+		Ogre2Texture* texture = static_cast<Ogre2Texture*>(_texture);
 
-		Ogre2GuiRenderable* renderable = createOrRetrieveRenderable(_buffer, _texture, _count);
+		// v2: the renderable lives inside the vertex buffer; its mVaoPerLod is
+		// already populated (guaranteed before any setDatablock call below).
+		Ogre2GuiRenderable* renderable = vertexBuffer->getRenderable();
 
-		mSceneManager->getRenderQueue()->addRenderableV1(RENDER_QUEUE_OVERLAY, false, renderable , mQueueMoveable);
+		// Only the drawn range changes per batch — the VAO itself persists.
+		vertexBuffer->setOperationVertexCount(_count);
 
-		++ mCountBatch;
+		// Guarded to avoid a redundant flushRenderables()/hash recalculation
+		// every frame — MyGUI batches keep the same texture per buffer.
+		Ogre::HlmsDatablock* datablock = texture->getDataBlock();
+		if (renderable->getDatablock() != datablock)
+		{
+			renderable->setDatablock(datablock);
+		}
+
+		mSceneManager->getRenderQueue()->addRenderableV2(0, RENDER_QUEUE_OVERLAY, false, renderable, mQueueMoveable);
+
+		++mCountBatch;
 	}
 
 	void Ogre2RenderManager::begin()
-	{
-	}
+	{}
 
 	void Ogre2RenderManager::end()
-	{
-	}
+	{}
 
 	ITexture* Ogre2RenderManager::createTexture(const std::string& _name)
 	{
@@ -333,10 +373,11 @@ namespace MyGUI
 		MapTexture::const_iterator item = mTextures.find(_name);
 		if (item == mTextures.end())
 		{
-			Ogre::TextureGpuManager *textureMgr = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+			Ogre::TextureGpuManager* textureMgr = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 			const Ogre::String* name = textureMgr->findResourceNameStr(_name);
-			if (name) {
-				Ogre::TextureGpu *texture = textureMgr->createOrRetrieveTexture(
+			if (name)
+			{
+				Ogre::TextureGpu* texture = textureMgr->createOrRetrieveTexture(
 					_name,
 					Ogre::GpuPageOutStrategy::Discard,
 					Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB,
@@ -360,11 +401,8 @@ namespace MyGUI
 
 	void Ogre2RenderManager::destroyAllResources()
 	{
-		for (MapRenderable::const_iterator item = mRenderables.begin(); item != mRenderables.end(); ++item)
-		{
-			delete item->second;
-		}
-
+		// v2: renderables are owned by their vertex buffers — nothing to do
+		// here for them anymore.
 		for (MapTexture::const_iterator item = mTextures.begin(); item != mTextures.end(); ++item)
 		{
 			delete item->second;
@@ -417,32 +455,6 @@ namespace MyGUI
 	size_t Ogre2RenderManager::getBatchCount() const
 	{
 		return mCountBatch;
-	}
-
-	Ogre2GuiRenderable* Ogre2RenderManager::createOrRetrieveRenderable( IVertexBuffer* _buffer , ITexture* _texture , size_t _count )
-	{
-
-		Ogre2VertexBuffer* vertexBuffer = static_cast<Ogre2VertexBuffer*>(_buffer);
-		Ogre2Texture* texture = static_cast<Ogre2Texture*>(_texture);
-
-		const unsigned int ID = vertexBuffer->getUniqueID();
-
-		Ogre2GuiRenderable* renderable;
-
-		MapRenderable::const_iterator item = mRenderables.find(ID);
-		if (item == mRenderables.end())
-		{
-			mRenderables[ID] = new Ogre2GuiRenderable();
-		}
-
-		renderable = mRenderables[ID];
-
-		vertexBuffer->setOperationVertexCount(_count);
-
-		renderable->setRenderOperation(*vertexBuffer->getRenderOperation());
-		renderable->setDatablock(texture->getDataBlock());
-
-		return renderable;
 	}
 
 } // namespace MyGUI

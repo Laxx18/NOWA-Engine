@@ -7,6 +7,8 @@
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/WorkspaceComponents.h"
 
+#include "OgreTextureGpuManager.h"
+
 #include "OgreAbiUtils.h"
 
 namespace NOWA
@@ -163,77 +165,76 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("DistortionComponent::createDistortion",
-		{
-			if (nullptr == this->distortionDatablock)
-			{
-				// Store current datablock name
-				auto datablockNames = this->gameObjectPtr->getDatablockNames();
-				if (false == datablockNames.empty())
-				{
-					this->oldDatablockName = this->gameObjectPtr->getDatablockNames()[0];
-					this->oldRenderQueueIndex = this->gameObjectPtr->getRenderQueueIndex();
-				}
+		GraphicsModule::getInstance()->enqueueAndWait([this]()
+            {
+                if (nullptr == this->distortionDatablock)
+                {
+                    // Store current datablock name
+                    auto datablockNames = this->gameObjectPtr->getDatablockNames();
+                    if (false == datablockNames.empty())
+                    {
+                        this->oldDatablockName = this->gameObjectPtr->getDatablockNames()[0];
+                        this->oldRenderQueueIndex = this->gameObjectPtr->getRenderQueueIndex();
+                    }
 
-				Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-				assert(dynamic_cast<Ogre::HlmsUnlit*>(hlmsManager->getHlms(Ogre::HLMS_UNLIT)));
-				Ogre::HlmsUnlit* hlmsUnlit = static_cast<Ogre::HlmsUnlit*>(hlmsManager->getHlms(Ogre::HLMS_UNLIT));
+                    Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+                    assert(dynamic_cast<Ogre::HlmsUnlit*>(hlmsManager->getHlms(Ogre::HLMS_UNLIT)));
+                    Ogre::HlmsUnlit* hlmsUnlit = static_cast<Ogre::HlmsUnlit*>(hlmsManager->getHlms(Ogre::HLMS_UNLIT));
 
-				/*
-				  Setup materials and items:
-				  - Use unlit material with displacement texture.
-				  - Distortion objects will be rendered in their own render queue to a separate texture.
-				  - See distortion compositor and shaders for more information
-				*/
+                    /*
+                      Setup materials and items:
+                      - Use unlit material with displacement texture.
+                      - Distortion objects will be rendered in their own render queue to a separate texture.
+                      - See distortion compositor and shaders for more information
+                    */
 
-				// Create proper blend block for distortion objects
-				Ogre::HlmsBlendblock blendBlock = Ogre::HlmsBlendblock();
-				blendBlock.mIsTransparent = true;
-				blendBlock.mSourceBlendFactor = Ogre::SBF_SOURCE_ALPHA;
-				blendBlock.mDestBlendFactor = Ogre::SBF_ONE_MINUS_SOURCE_ALPHA;
+                    // Create proper blend block for distortion objects
+                    Ogre::HlmsBlendblock blendBlock = Ogre::HlmsBlendblock();
+                    blendBlock.mIsTransparent = true;
+                    blendBlock.mSourceBlendFactor = Ogre::SBF_SOURCE_ALPHA;
+                    blendBlock.mDestBlendFactor = Ogre::SBF_ONE_MINUS_SOURCE_ALPHA;
 
-				// Create macro block to disable depth write
-				Ogre::HlmsMacroblock macroBlock = Ogre::HlmsMacroblock();
-				macroBlock.mDepthWrite = false;
-				macroBlock.mDepthCheck = true;
+                    // Create macro block to disable depth write
+                    Ogre::HlmsMacroblock macroBlock = Ogre::HlmsMacroblock();
+                    macroBlock.mDepthWrite = false;
+                    macroBlock.mDepthCheck = true;
 
+                    Ogre::String datablockName = "DistortionMaterial_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+                    this->distortionDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(hlmsUnlit->createDatablock(datablockName, datablockName, macroBlock, blendBlock, Ogre::HlmsParamVec()));
 
-				Ogre::String datablockName = "DistortionMaterial_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-				this->distortionDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(hlmsUnlit->createDatablock(datablockName, datablockName, macroBlock, blendBlock, Ogre::HlmsParamVec()));
+                    Ogre::TextureGpuManager* textureMgr = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+                    // Use non-color data as texture type because distortion is stored as x,y vectors to texture.
+                    Ogre::TextureGpu* texture = textureMgr->createOrRetrieveTexture("distort_deriv.png", Ogre::GpuPageOutStrategy::Discard, 0, Ogre::TextureTypes::Type2D, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
 
-				Ogre::TextureGpuManager* textureMgr = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-				// Use non-color data as texture type because distortion is stored as x,y vectors to texture.
-				Ogre::TextureGpu* texture = textureMgr->createOrRetrieveTexture("distort_deriv.png", Ogre::GpuPageOutStrategy::Discard, 0, Ogre::TextureTypes::Type2D,
-																				Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+                    this->distortionDatablock->setTexture(0, texture);
 
-				this->distortionDatablock->setTexture(0, texture);
+                    // Set material to use vertex colors. Vertex colors are used to control distortion intensity (alpha value)
+                    this->distortionDatablock->setUseColour(true);
+                    // Random alpha value for objects. Alpha value is multiplier for distortion strenght
+                    this->distortionDatablock->setColour(Ogre::ColourValue(1.0f, 1.0f, 1.0f, Ogre::Math::RangeRandom(0.25f, 0.5f)));
+                }
 
-				// Set material to use vertex colors. Vertex colors are used to control distortion intensity (alpha value)
-				this->distortionDatablock->setUseColour(true);
-				// Random alpha value for objects. Alpha value is multiplier for distortion strenght
-				this->distortionDatablock->setColour(Ogre::ColourValue(1.0f, 1.0f, 1.0f, Ogre::Math::RangeRandom(0.25f, 0.5f)));
+                if (NOWA::ITEM == this->gameObjectPtr->getType())
+                {
+                    Ogre::Item* item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
+                    if (nullptr != item)
+                    {
+                        item->setDatablock(this->distortionDatablock);
+                        // Set item to be rendered in distortion queue pass (ID 16)
+                        this->gameObjectPtr->setRenderQueueIndex(16);
+                    }
+                }
 
-			}
+                // Receive distortion material and set strenght uniform
+                Ogre::MaterialPtr materialDistortion = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("Distortion/Quad", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
 
-			if (NOWA::ITEM == this->gameObjectPtr->getType())
-			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
-				if (nullptr != item)
-				{
-					item->setDatablock(this->distortionDatablock);
-					// Set item to be rendered in distortion queue pass (ID 16)
-					this->gameObjectPtr->setRenderQueueIndex(16);
-				}
-			}
+                Ogre::Pass* passDist = materialDistortion->getTechnique(0)->getPass(0);
+                this->distortionPass = passDist;
+                Ogre::GpuProgramParametersSharedPtr psParams = passDist->getFragmentProgramParameters();
+                psParams->setNamedConstant("u_DistortionStrenght", this->strength->getReal());
+            },
+            "DistortionComponent::createDistortion");
 
-			// Receive distortion material and set strenght uniform
-			Ogre::MaterialPtr materialDistortion = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("Distortion/Quad", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
-
-			Ogre::Pass* passDist = materialDistortion->getTechnique(0)->getPass(0);
-			this->distortionPass = passDist;
-			Ogre::GpuProgramParametersSharedPtr psParams = passDist->getFragmentProgramParameters();
-			psParams->setNamedConstant("u_DistortionStrenght", this->strength->getReal());
-		});
 	}
 
 	void DistortionComponent::destroyDistoration(void)

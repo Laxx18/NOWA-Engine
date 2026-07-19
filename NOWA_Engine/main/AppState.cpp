@@ -374,6 +374,15 @@ namespace NOWA
                 this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_MAX, Ogre::RenderQueue::V1_FAST);
                 this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_MAX, sortMode);
 
+				// MyGUI's Ogre2RenderManager already sets this queue to FAST + DisableSort
+                // internally (see setSceneManager(), called via setSceneManagerForMyGuiPlatform
+                // above). Repeated here explicitly so this file stays the single source of
+                // truth for every queue's mode and doesn't rely on init-order luck.
+                // IMPORTANT: DisableSort, not `sortMode` (StableSort) — MyGUI relies on strict
+                // painter's/submission order for correct widget layering.
+                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_MYGUI, Ogre::RenderQueue::Modes::FAST);
+                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_MYGUI, Ogre::RenderQueue::RqSortMode::DisableSort);
+
                 this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
                 this->sceneManager->getRenderQueue()->setSortRenderQueue(Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId, sortMode);
 

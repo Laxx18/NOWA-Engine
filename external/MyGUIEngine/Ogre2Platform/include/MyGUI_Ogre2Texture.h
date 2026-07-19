@@ -2,6 +2,7 @@
 	@file
 	@author		Albert Semenov
 	@date		04/2009
+	@update		2026 v2 fixes for Ogre-Next by NOWA-Engine
 */
 
 #ifndef MYGUI_OGRE2_TEXTURE_H_
@@ -34,7 +35,7 @@ namespace MyGUI
 	{
 
 	public:
-		OgreHlmsBlocks() 
+		OgreHlmsBlocks()
 		{
 			mMacroBlock.mCullMode = Ogre::CULL_NONE;
 			mMacroBlock.mPolygonMode = Ogre::PM_SOLID;
@@ -52,7 +53,7 @@ namespace MyGUI
 			mSamplerBlock.mW = Ogre::TAM_CLAMP;
 		}
 
-		Ogre::HlmsUnlitDatablock* createUnlitDataBlock( Ogre::String id ) const 
+		Ogre::HlmsUnlitDatablock* createUnlitDataBlock( Ogre::String id ) const
 		{
 			Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms( Ogre::HLMS_UNLIT );
 
@@ -68,6 +69,14 @@ namespace MyGUI
 				return static_cast<Ogre::HlmsUnlitDatablock*>(hlms->createDatablock(Ogre::IdString(id), id, mMacroBlock, mBlendBlock, mParamsVec));
 			}
 			/* 29.07.2024: End added by Lax. */
+		}
+
+		// v2 fix: the clamp samplerblock was built but never applied anywhere.
+		// Ogre2Texture::setDataBlockTexture now passes it to setTexture(), which
+		// fixes 1px edge bleeding (default sampler is wrap).
+		const Ogre::HlmsSamplerblock* getSamplerBlock() const
+		{
+			return &mSamplerBlock;
 		}
 
 	private:
@@ -128,7 +137,7 @@ namespace MyGUI
 		void setOgreTexture(Ogre::TextureGpu* _value)
 		{
 			mTexture = _value;
-			setFormatByOgreTexture(); 
+			setFormatByOgreTexture();
 			setDataBlockTexture(mTexture); //must be set as well. !!! or youll get a coloured blank myGUI texture.
 		}
 
@@ -159,6 +168,10 @@ namespace MyGUI
 		Ogre::TextureBox mTmpData;
 
 		Ogre::HlmsUnlitDatablock* mDataBlock;
+
+		// notifyDataIsReady() may only be called once per residency transition —
+		// Ogre asserts in debug builds otherwise. Guarded via this flag.
+		bool mDataReadyNotified;
 
 	private:
 		static const OgreHlmsBlocks HLMS_BLOCKS;
