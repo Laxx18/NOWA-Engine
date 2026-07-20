@@ -6,7 +6,7 @@
 <Log Level="3"/>
 <Server StartAsServer="false" AreaOfInterest="0" PacketSendRate="5"/>
 <Client PlayerColor="0" InterpolationRate="33" PacketsPerSecond="16"/>
-<LuaScript Usage="true" Console="false" GroupName="Lua"/>
+<LuaScript Usage="true" Console="true" GroupName="Lua"/>
 <KeyMapping0>
 <Key value="200" />
 <Key value="208" />

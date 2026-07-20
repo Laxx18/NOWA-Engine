@@ -5282,7 +5282,9 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    CompositorEffectNightVisionComponent::CompositorEffectNightVisionComponent() : CompositorEffectBaseComponent(), pass(nullptr)
+    CompositorEffectNightVisionComponent::CompositorEffectNightVisionComponent()
+        : CompositorEffectBaseComponent(),
+        pass(nullptr)
     {
         this->effectName = "Night Vision";
     }
@@ -5430,7 +5432,9 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    CompositorEffectPosterizeComponent::CompositorEffectPosterizeComponent() : CompositorEffectBaseComponent(), pass(nullptr)
+    CompositorEffectPosterizeComponent::CompositorEffectPosterizeComponent()
+        : CompositorEffectBaseComponent(),
+        pass(nullptr)
     {
         this->effectName = "Posterize";
     }
@@ -5500,6 +5504,568 @@ namespace NOWA
     Ogre::String CompositorEffectPosterizeComponent::getParentClassName(void) const
     {
         return "CompositorEffectBaseComponent";
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    CompositorEffectStargateTravelComponent::CompositorEffectStargateTravelComponent() :
+        CompositorEffectBaseComponent(),
+        travelPass(nullptr),
+        currentTime(0.0f),
+        bComplete(false),
+        duration(new Variant(CompositorEffectStargateTravelComponent::AttrDuration(), 3.5f, this->attributes)),
+        tunnelColor(new Variant(CompositorEffectStargateTravelComponent::AttrTunnelColor(), Ogre::Vector3(0.1f, 0.4f, 0.9f), this->attributes)),
+        ringFrequency(new Variant(CompositorEffectStargateTravelComponent::AttrRingFrequency(), 8.0f, this->attributes)),
+        ringSpeed(new Variant(CompositorEffectStargateTravelComponent::AttrRingSpeed(), 6.0f, this->attributes)),
+        distortionStrength(new Variant(CompositorEffectStargateTravelComponent::AttrDistortionStrength(), 1.0f, this->attributes)),
+        brightness(new Variant(CompositorEffectStargateTravelComponent::AttrBrightness(), 1.2f, this->attributes))
+    {
+        this->effectName = "Stargate Travel";
+
+        this->duration->setConstraints(0.5f, 30.0f);
+        this->ringFrequency->setConstraints(2.0f, 20.0f);
+        this->ringSpeed->setConstraints(1.0f, 20.0f);
+        this->distortionStrength->setConstraints(0.0f, 5.0f);
+        this->brightness->setConstraints(0.1f, 3.0f);
+    }
+
+    CompositorEffectStargateTravelComponent::~CompositorEffectStargateTravelComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectStargateTravelComponent] Destructor for game object: " + this->gameObjectPtr->getName());
+
+        this->travelPass = nullptr;
+    }
+
+    bool CompositorEffectStargateTravelComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrDuration())
+        {
+            this->setDuration(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrTunnelColor())
+        {
+            this->setTunnelColor(XMLConverter::getAttribVector3(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRingFrequency())
+        {
+            this->setRingFrequency(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRingSpeed())
+        {
+            this->setRingSpeed(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrDistortionStrength())
+        {
+            this->setDistortionStrength(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrBrightness())
+        {
+            this->setBrightness(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectStargateTravelComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectStargateTravelCompPtr clonedCompPtr(boost::make_shared<CompositorEffectStargateTravelComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setDuration(this->duration->getReal());
+        clonedCompPtr->setTunnelColor(this->tunnelColor->getVector3());
+        clonedCompPtr->setRingFrequency(this->ringFrequency->getReal());
+        clonedCompPtr->setRingSpeed(this->ringSpeed->getReal());
+        clonedCompPtr->setDistortionStrength(this->distortionStrength->getReal());
+        clonedCompPtr->setBrightness(this->brightness->getReal());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectStargateTravelComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectStargateTravelComponent] Init for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String matName = "Postprocess/StargateTravel";
+        this->travelMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(matName);
+
+        if (this->travelMaterial.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectStargateTravelComponent] Material not found: '" + matName + "'");
+            return false;
+        }
+
+        this->travelPass = this->travelMaterial->getTechnique(0)->getPass(0);
+
+        if (nullptr != this->workspaceBaseComponent)
+        {
+            const float aspect = this->camera->getAspectRatio();
+            const float dur = this->duration->getReal();
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, aspect, dur]()
+            {
+                auto* params = this->travelPass->getFragmentProgramParameters().get();
+                params->setNamedConstant("aspectRatio", aspect);
+                params->setNamedConstant("durationSeconds", dur);
+                // Sentinel: t = (elapsedTime - 1e10) / dur < 0 → effect invisible
+                params->setNamedConstant("startTimeSeconds", 1.0e10f);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectStargateTravelComponent::postInit");
+        }
+
+        // Push colour / visual params once
+        this->setTunnelColor(this->tunnelColor->getVector3());
+        this->setRingFrequency(this->ringFrequency->getReal());
+        this->setRingSpeed(this->ringSpeed->getReal());
+        this->setDistortionStrength(this->distortionStrength->getReal());
+        this->setBrightness(this->brightness->getReal());
+
+        return success;
+    }
+
+    void CompositorEffectStargateTravelComponent::onRemoveComponent(void)
+    {
+        CompositorEffectBaseComponent::onRemoveComponent();
+    }
+
+    void CompositorEffectStargateTravelComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+
+        const Ogre::String& name = attribute->getName();
+
+        if (name == AttrDuration())
+        {
+            this->setDuration(attribute->getReal());
+        }
+        else if (name == AttrTunnelColor())
+        {
+            this->setTunnelColor(attribute->getVector3());
+        }
+        else if (name == AttrRingFrequency())
+        {
+            this->setRingFrequency(attribute->getReal());
+        }
+        else if (name == AttrRingSpeed())
+        {
+            this->setRingSpeed(attribute->getReal());
+        }
+        else if (name == AttrDistortionStrength())
+        {
+            this->setDistortionStrength(attribute->getReal());
+        }
+        else if (name == AttrBrightness())
+        {
+            this->setBrightness(attribute->getReal());
+        }
+    }
+
+    void CompositorEffectStargateTravelComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+
+        auto writeReal = [&](const char* n, Ogre::Real v)
+        {
+            xml_node<>* p = doc.allocate_node(node_element, "property");
+            p->append_attribute(doc.allocate_attribute("type", "6"));
+            p->append_attribute(doc.allocate_attribute("name", n));
+            p->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, v)));
+            propertiesXML->append_node(p);
+        };
+        auto writeVec3 = [&](const char* n, const Ogre::Vector3& v)
+        {
+            xml_node<>* p = doc.allocate_node(node_element, "property");
+            p->append_attribute(doc.allocate_attribute("type", "9"));
+            p->append_attribute(doc.allocate_attribute("name", n));
+            p->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, v)));
+            propertiesXML->append_node(p);
+        };
+
+        writeReal("Duration", this->duration->getReal());
+        writeVec3("Tunnel Color", this->tunnelColor->getVector3());
+        writeReal("Ring Frequency", this->ringFrequency->getReal());
+        writeReal("Ring Speed", this->ringSpeed->getReal());
+        writeReal("Distortion Strength", this->distortionStrength->getReal());
+        writeReal("Brightness", this->brightness->getReal());
+    }
+
+    Ogre::String CompositorEffectStargateTravelComponent::getClassName(void) const
+    {
+        return "CompositorEffectStargateTravelComponent";
+    }
+
+    Ogre::String CompositorEffectStargateTravelComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    // -----------------------------------------------------------------------
+    // update() — ONLY game-thread bookkeeping. Zero GPU work.
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectStargateTravelComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        if (true == notSimulating)
+        {
+            return;
+        }
+
+        if (false == this->activated->getBool())
+        {
+            return;
+        }
+
+        if (true == this->bComplete)
+        {
+            return;
+        }
+
+        this->currentTime += dt;
+
+        if (this->currentTime < this->duration->getReal())
+        {
+            return;
+        }
+
+        // Travel complete
+        this->bComplete = true;
+        this->enableEffect(this->effectName, false);
+
+        if (true == this->closureFunctionReactOnComplete.empty())
+        {
+            return;
+        }
+
+        auto closureListCopy = this->closureFunctionReactOnComplete;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [closureListCopy]()
+        {
+            for (const auto& closure : closureListCopy)
+            {
+                if (false == closure.is_valid())
+                {
+                    continue;
+                }
+                try
+                {
+                    luabind::call_function<void>(closure);
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[CompositorEffectStargateTravelComponent] "
+                                                                                    "Caught error in 'reactOnComplete' "
+                                                                                    "Error: " +
+                                                                                        Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            }
+        };
+
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+    }
+
+    // -----------------------------------------------------------------------
+    // Playback
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectStargateTravelComponent::startTravel(void)
+    {
+        if (nullptr == this->travelPass)
+        {
+            return;
+        }
+
+        this->currentTime = 0.0f;
+        this->bComplete = false;
+
+        const float startT = static_cast<float>(Ogre::Root::getSingleton().getTimer()->getMilliseconds()) * 0.001f;
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, startT]()
+        {
+            this->travelPass->getFragmentProgramParameters()->setNamedConstant("startTimeSeconds", startT);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectStargateTravelComponent::startTravel");
+
+        this->enableEffect(this->effectName, true);
+    }
+
+    void CompositorEffectStargateTravelComponent::stopTravel(void)
+    {
+        if (nullptr == this->travelPass)
+        {
+            return;
+        }
+
+        this->currentTime = 0.0f;
+        this->bComplete = false;
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->travelPass->getFragmentProgramParameters()->setNamedConstant("startTimeSeconds", 1.0e10f);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectStargateTravelComponent::stopTravel");
+
+        this->enableEffect(this->effectName, false);
+    }
+
+    bool CompositorEffectStargateTravelComponent::isComplete(void) const
+    {
+        return this->bComplete;
+    }
+
+    // -----------------------------------------------------------------------
+    // Lua callback
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectStargateTravelComponent::reactOnComplete(luabind::object closureFunction)
+    {
+        if (closureFunction.is_valid() && luabind::type(closureFunction) == LUA_TFUNCTION)
+        {
+            this->closureFunctionReactOnComplete.emplace_back(closureFunction);
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectStargateTravelComponent] reactOnComplete: "
+                                                                                "invalid Lua function passed.");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Setters / getters
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectStargateTravelComponent::setDuration(Ogre::Real seconds)
+    {
+        seconds = Ogre::Math::Clamp(seconds, 0.5f, 30.0f);
+        this->duration->setValue(seconds);
+
+        if (nullptr != this->travelPass)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, seconds]()
+            {
+                this->travelPass->getFragmentProgramParameters()->setNamedConstant("durationSeconds", seconds);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectStargateTravelComponent::setDuration");
+        }
+    }
+
+    Ogre::Real CompositorEffectStargateTravelComponent::getDuration(void) const
+    {
+        return this->duration->getReal();
+    }
+
+    void CompositorEffectStargateTravelComponent::setTunnelColor(const Ogre::Vector3& color)
+    {
+        this->tunnelColor->setValue(color);
+
+        if (nullptr != this->travelPass)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, color]()
+            {
+                this->travelPass->getFragmentProgramParameters()->setNamedConstant("tunnelColor", color);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectStargateTravelComponent::setTunnelColor");
+        }
+    }
+
+    Ogre::Vector3 CompositorEffectStargateTravelComponent::getTunnelColor(void) const
+    {
+        return this->tunnelColor->getVector3();
+    }
+
+    void CompositorEffectStargateTravelComponent::setRingFrequency(Ogre::Real freq)
+    {
+        this->ringFrequency->setValue(freq);
+
+        if (nullptr != this->travelPass)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, freq]()
+            {
+                this->travelPass->getFragmentProgramParameters()->setNamedConstant("ringFrequency", freq);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectStargateTravelComponent::setRingFrequency");
+        }
+    }
+
+    Ogre::Real CompositorEffectStargateTravelComponent::getRingFrequency(void) const
+    {
+        return this->ringFrequency->getReal();
+    }
+
+    void CompositorEffectStargateTravelComponent::setRingSpeed(Ogre::Real speed)
+    {
+        this->ringSpeed->setValue(speed);
+
+        if (nullptr != this->travelPass)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, speed]()
+            {
+                this->travelPass->getFragmentProgramParameters()->setNamedConstant("ringSpeed", speed);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectStargateTravelComponent::setRingSpeed");
+        }
+    }
+
+    Ogre::Real CompositorEffectStargateTravelComponent::getRingSpeed(void) const
+    {
+        return this->ringSpeed->getReal();
+    }
+
+    void CompositorEffectStargateTravelComponent::setDistortionStrength(Ogre::Real strength)
+    {
+        this->distortionStrength->setValue(strength);
+
+        if (nullptr != this->travelPass)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, strength]()
+            {
+                this->travelPass->getFragmentProgramParameters()->setNamedConstant("distortionStrength", strength);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectStargateTravelComponent::setDistortionStrength");
+        }
+    }
+
+    Ogre::Real CompositorEffectStargateTravelComponent::getDistortionStrength(void) const
+    {
+        return this->distortionStrength->getReal();
+    }
+
+    void CompositorEffectStargateTravelComponent::setBrightness(Ogre::Real brightness)
+    {
+        this->brightness->setValue(brightness);
+
+        if (nullptr != this->travelPass)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, brightness]()
+            {
+                this->travelPass->getFragmentProgramParameters()->setNamedConstant("brightness", brightness);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectStargateTravelComponent::setBrightness");
+        }
+    }
+
+    Ogre::Real CompositorEffectStargateTravelComponent::getBrightness(void) const
+    {
+        return this->brightness->getReal();
+    }
+
+    // -----------------------------------------------------------------------
+    // Lua API registration + documentation
+    // -----------------------------------------------------------------------
+
+    CompositorEffectStargateTravelComponent* getCompositorEffectStargateTravelComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<CompositorEffectStargateTravelComponent>(gameObject->getComponent<CompositorEffectStargateTravelComponent>()).get();
+    }
+
+    CompositorEffectStargateTravelComponent* getCompositorEffectStargateTravelComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CompositorEffectStargateTravelComponent>(gameObject->getComponentFromName<CompositorEffectStargateTravelComponent>(name)).get();
+    }
+
+    void CompositorEffectStargateTravelComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)[luabind::class_<CompositorEffectStargateTravelComponent, GameObjectComponent>("CompositorEffectStargateTravelComponent")
+                .def("startTravel", &CompositorEffectStargateTravelComponent::startTravel)
+                .def("stopTravel", &CompositorEffectStargateTravelComponent::stopTravel)
+                .def("isComplete", &CompositorEffectStargateTravelComponent::isComplete)
+                .def("setDuration", &CompositorEffectStargateTravelComponent::setDuration)
+                .def("getDuration", &CompositorEffectStargateTravelComponent::getDuration)
+                .def("setTunnelColor", &CompositorEffectStargateTravelComponent::setTunnelColor)
+                .def("getTunnelColor", &CompositorEffectStargateTravelComponent::getTunnelColor)
+                .def("setRingFrequency", &CompositorEffectStargateTravelComponent::setRingFrequency)
+                .def("getRingFrequency", &CompositorEffectStargateTravelComponent::getRingFrequency)
+                .def("setRingSpeed", &CompositorEffectStargateTravelComponent::setRingSpeed)
+                .def("getRingSpeed", &CompositorEffectStargateTravelComponent::getRingSpeed)
+                .def("setDistortionStrength", &CompositorEffectStargateTravelComponent::setDistortionStrength)
+                .def("getDistortionStrength", &CompositorEffectStargateTravelComponent::getDistortionStrength)
+                .def("setBrightness", &CompositorEffectStargateTravelComponent::setBrightness)
+                .def("getBrightness", &CompositorEffectStargateTravelComponent::getBrightness)
+                .def("reactOnComplete", &CompositorEffectStargateTravelComponent::reactOnComplete)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "class inherits GameObjectComponent", getStaticInfoText());
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "void startTravel()",
+            "Starts the wormhole travel sequence from the beginning. "
+            "Resets the animation timer and enables the effect. "
+            "Call this from Lua when an agent enters the stargate.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "void stopTravel()",
+            "Immediately stops and hides the travel effect. "
+            "Does NOT fire the reactOnComplete callback.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "bool isComplete()",
+            "Returns true once the full travel sequence has played. "
+            "Resets to false when startTravel() is called again.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "void setDuration(float seconds)",
+            "Sets the total duration of the wormhole travel sequence in seconds. "
+            "Range [0.5..30]. Default 3.5.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "float getDuration()", "Gets the total travel duration in seconds.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "void setTunnelColor(Vector3 color)",
+            "Sets the base RGB colour of the wormhole tunnel. "
+            "Default blue-teal (0.1, 0.4, 0.9). "
+            "Try (0.9, 0.3, 0.1) for a fire-coloured portal.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "Vector3 getTunnelColor()", "Gets the base RGB colour of the wormhole tunnel.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "void setRingFrequency(float freq)",
+            "Sets the number of visible ring bands in the tunnel. "
+            "Range [2..20]. Default 8.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "float getRingFrequency()", "Gets the ring band frequency.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "void setRingSpeed(float speed)",
+            "Sets how fast the rings converge toward the tunnel centre. "
+            "Higher values feel faster. Range [1..20]. Default 6.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "float getRingSpeed()", "Gets the ring convergence speed.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "void setDistortionStrength(float strength)",
+            "Sets the chromatic aberration amount (colour fringing on ring edges). "
+            "Range [0..5]. Default 1. Set to 0 to disable.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "float getDistortionStrength()", "Gets the chromatic aberration strength.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "void setBrightness(float brightness)",
+            "Sets the overall brightness scale of the tunnel. "
+            "Range [0.1..3]. Default 1.2.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "float getBrightness()", "Gets the tunnel brightness scale.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectStargateTravelComponent", "void reactOnComplete(func closure)",
+            "Registers a Lua function called when the travel sequence finishes. "
+            "Signature: function onComplete(). Multiple callbacks can be registered. "
+            "Example: gateComp:reactOnComplete(function() player:teleport(dest) end)");
+
+        gameObjectClass.def("getCompositorEffectStargateTravelComponent", &getCompositorEffectStargateTravelComponent);
+        gameObjectClass.def("getCompositorEffectStargateTravelComponentFromName", &getCompositorEffectStargateTravelComponentFromName);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectStargateTravelComponent getCompositorEffectStargateTravelComponent()", "Gets the CompositorEffectStargateTravelComponent.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectStargateTravelComponent getCompositorEffectStargateTravelComponentFromName(string name)", "Gets the CompositorEffectStargateTravelComponent by name.");
+
+        gameObjectControllerClass.def("castCompositorEffectStargateTravelComponent", &GameObjectController::cast<CompositorEffectStargateTravelComponent>);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CompositorEffectStargateTravelComponent castCompositorEffectStargateTravelComponent(CompositorEffectStargateTravelComponent other)", "Casts for Lua auto completion.");
     }
 
 }; // namespace end

@@ -200,6 +200,8 @@ namespace NOWA
 				}
 			}
 
+			Core::getSingletonPtr()->initLuaConsole();
+
 			this->multiThreadedRendering();
 
 			// end all present states

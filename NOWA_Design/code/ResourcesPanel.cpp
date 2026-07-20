@@ -1439,15 +1439,19 @@ void ResourcesPanelProject::initialise(void)
 
 void ResourcesPanelProject::shutdown(void)
 {
-	this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
-	this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
-	this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
+    ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::shutdown", {
+        this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
+        this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
+        this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
+
+        BaseLayout::shutdown();
+    });
 }
 
 void ResourcesPanelProject::clear(void)
 {
 	// Wait will block for ever, have no idea why
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelProject::clear",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::clear",
 	{
 		this->selectedText.clear();
 		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
@@ -1459,7 +1463,7 @@ void ResourcesPanelProject::populateFilesTree(const Ogre::String& folderPath)
 {
 	this->clear();
 
-	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelProject::populateFilesTree", _1(folderPath),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelProject::populateFilesTree", _1(folderPath),
 	{
 		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
 
@@ -1689,7 +1693,9 @@ ResourcesPanelLuaScript::ResourcesPanelLuaScript()
 
 ResourcesPanelLuaScript::~ResourcesPanelLuaScript()
 {
-
+    ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::shutdown", {
+        BaseLayout::shutdown();
+    });
 }
 
 void ResourcesPanelLuaScript::setEditorManager(NOWA::EditorManager* editorManager)
@@ -1724,7 +1730,9 @@ void ResourcesPanelLuaScript::initialise(void)
 
 void ResourcesPanelLuaScript::shutdown(void)
 {
-
+    ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::shutdown", {
+        BaseLayout::shutdown();
+    });
 }
 
 void ResourcesPanelLuaScript::clear(void)
@@ -1861,7 +1869,10 @@ void ResourcesPanelPlugins::initialise(void)
 
 void ResourcesPanelPlugins::shutdown(void)
 {
-	this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
+    ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::shutdown", {
+        this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
+        BaseLayout::shutdown();
+    });
 }
 
 void ResourcesPanelPlugins::clear(void)

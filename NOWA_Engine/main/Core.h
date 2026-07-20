@@ -267,6 +267,11 @@ namespace NOWA
 		 */
 		void saveCustomConfiguration(void);
 
+        /**
+         * @brief Initialized the lua console and MyGUI stuff. Hence this function must be called after graphicsmodule is available.
+         */
+		void initLuaConsole(void);
+
 		/**
 		 * @brief Change the application window title during runtime.
 		 * @param title New window title.

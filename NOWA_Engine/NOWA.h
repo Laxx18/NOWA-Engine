@@ -273,6 +273,7 @@ namespace NOWA
     typedef boost::shared_ptr<CompositorEffectNightVisionComponent> CompositorEffectNightVisionCompPtr;
     typedef boost::shared_ptr<CompositorEffectDitherComponent> CompositorEffectDitherCompPtr;
     typedef boost::shared_ptr<CompositorEffectPosterizeComponent> CompositorEffectPosterizeCompPtr;
+    typedef boost::shared_ptr<CompositorEffectStargateTravelComponent> CompositorEffectStargateTravelCompPtr;
 
 	typedef boost::shared_ptr<DatablockPbsComponent> DatablockPbsCompPtr;
 	typedef boost::shared_ptr<DatablockUnlitComponent> DatablockUnlitCompPtr;

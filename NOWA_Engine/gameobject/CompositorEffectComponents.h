@@ -2809,6 +2809,173 @@ namespace NOWA
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * @brief   Stargate wormhole travel tunnel post-process effect.
+     *
+     * Fully procedural screen-space effect — no depth texture required.
+     * Plays a time-driven sequence:
+     *
+     *   [0.00..0.12]  Entry white flash
+     *   [0.08..0.85]  Blue wormhole tunnel with converging rings,
+     *                 speed lines, and chromatic aberration
+     *   [0.85..1.00]  Exit white flash
+     *
+     * Call startTravel() to begin the sequence.
+     * When time reaches 1.0 the effect auto-disables and fires the
+     * reactOnComplete Lua callback.
+     *
+     * Requirements: A camera component must exist.
+     */
+    class EXPORTED CompositorEffectStargateTravelComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectStargateTravelComponent> CompositorEffectStargateTravelCompPtr;
+
+    public:
+        CompositorEffectStargateTravelComponent();
+        virtual ~CompositorEffectStargateTravelComponent();
+
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+        virtual bool postInit(void) override;
+        virtual void onRemoveComponent(void) override;
+
+        virtual Ogre::String getClassName(void) const override;
+        virtual Ogre::String getParentClassName(void) const override;
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectStargateTravelComponent");
+        }
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectStargateTravelComponent";
+        }
+
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        virtual void actualizeValue(Variant* attribute) override;
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        virtual void update(Ogre::Real dt, bool notSimulating) override;
+
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Requirements: A camera component must exist. "
+                   "Stargate SG-1 style wormhole travel tunnel effect. "
+                   "Call startTravel() to begin. Register reactOnComplete() "
+                   "to receive a Lua callback when travel is finished.";
+        }
+
+        // -----------------------------------------------------------------------
+        // Playback control
+        // -----------------------------------------------------------------------
+
+        /**
+         * @brief   Starts the travel sequence from the beginning.
+         *          Resets currentTime to 0 and enables the effect.
+         *          Safe to call from Lua during gameplay.
+         */
+        void startTravel(void);
+
+        /**
+         * @brief   Immediately stops and hides the effect.
+         *          Does NOT fire the completion callback.
+         */
+        void stopTravel(void);
+
+        /**
+         * @brief   Returns true after the full sequence has played
+         *          (currentTime >= 1.0).  Resets to false on startTravel().
+         */
+        bool isComplete(void) const;
+
+        // -----------------------------------------------------------------------
+        // Parameters
+        // -----------------------------------------------------------------------
+
+        /** Total duration in seconds for the full 0→1 sequence. Default 3.5. */
+        void setDuration(Ogre::Real seconds);
+        Ogre::Real getDuration(void) const;
+
+        /** Base RGB colour of the wormhole. Default blue-teal (0.1, 0.4, 0.9). */
+        void setTunnelColor(const Ogre::Vector3& color);
+        Ogre::Vector3 getTunnelColor(void) const;
+
+        /** Number of visible ring bands. Default 8.0. Range [2..20]. */
+        void setRingFrequency(Ogre::Real freq);
+        Ogre::Real getRingFrequency(void) const;
+
+        /** Speed at which rings converge toward centre. Default 6.0. Range [1..20]. */
+        void setRingSpeed(Ogre::Real speed);
+        Ogre::Real getRingSpeed(void) const;
+
+        /** Chromatic aberration strength. Default 1.0. Range [0..5]. */
+        void setDistortionStrength(Ogre::Real strength);
+        Ogre::Real getDistortionStrength(void) const;
+
+        /** Overall brightness scale. Default 1.2. Range [0.1..3.0]. */
+        void setBrightness(Ogre::Real brightness);
+        Ogre::Real getBrightness(void) const;
+
+        // -----------------------------------------------------------------------
+        // Lua callback
+        // -----------------------------------------------------------------------
+
+        /**
+         * @brief   Registers a Lua function called when travel completes.
+         *          Signature: function onTravelComplete()
+         *          Multiple callbacks can be registered.
+         */
+        void reactOnComplete(luabind::object closureFunction);
+
+    public:
+        static const Ogre::String AttrDuration(void)
+        {
+            return "Duration";
+        }
+        static const Ogre::String AttrTunnelColor(void)
+        {
+            return "Tunnel Color";
+        }
+        static const Ogre::String AttrRingFrequency(void)
+        {
+            return "Ring Frequency";
+        }
+        static const Ogre::String AttrRingSpeed(void)
+        {
+            return "Ring Speed";
+        }
+        static const Ogre::String AttrDistortionStrength(void)
+        {
+            return "Distortion Strength";
+        }
+        static const Ogre::String AttrBrightness(void)
+        {
+            return "Brightness";
+        }
+
+    private:
+        void pushTimeToGpu(Ogre::Real timeValue);
+
+        Ogre::MaterialPtr travelMaterial;
+        Ogre::Pass* travelPass;
+
+        // Transient playback state — not serialised
+        Ogre::Real currentTime;
+        bool bComplete;
+
+        // Lua callbacks
+        std::vector<luabind::object> closureFunctionReactOnComplete;
+
+        // Variants
+        Variant* duration;
+        Variant* tunnelColor;
+        Variant* ringFrequency;
+        Variant* ringSpeed;
+        Variant* distortionStrength;
+        Variant* brightness;
+    };
+
 }; //namespace end
 
 #endif

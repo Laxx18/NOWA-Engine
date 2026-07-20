@@ -121,37 +121,37 @@ void DesignState::enter(void)
 
 void DesignState::exit(void)
 {
-	this->canUpdate = false;
-	this->hasStarted = false;
+    this->canUpdate = false;
+    this->hasStarted = false;
 
-	Ogre::String id = "DesignState::updateInfo";
-	NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+    Ogre::String id = "DesignState::updateInfo";
+    NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEditorMode), NOWA::EventDataEditorMode::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneValid), EventDataSceneValid::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleFeedback), NOWA::EventDataFeedback::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEditorMode), NOWA::EventDataEditorMode::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneValid), EventDataSceneValid::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleFeedback), NOWA::EventDataFeedback::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 
-	NOWA::Core::getSingletonPtr()->switchFullscreen(false, 0, 0, 0);
+    NOWA::Core::getSingletonPtr()->switchFullscreen(false, 0, 0, 0);
 
-	if (nullptr != this->editorManager && true == this->simulating)
-	{
-		// Stop simulation, since there can be tag-point components involved which changed the scene node owner ship, so a crash may occur if a movable object is detached from its
-		// origin node, but the object is attached to another one
-		this->editorManager->stopSimulation();
-	}
+    if (nullptr != this->editorManager && true == this->simulating)
+    {
+        // Stop simulation, since there can be tag-point components involved which changed the scene node owner ship, so a crash may occur if a movable object is detached from its
+        // origin node, but the object is attached to another one
+        this->editorManager->stopSimulation();
+    }
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         this->sceneManager->destroyQuery(this->selectQuery);
         this->selectQuery = nullptr;
@@ -166,8 +166,13 @@ void DesignState::exit(void)
         factory.unregisterFactory<MyGUI::StackPanel>(widgetCategory);
         factory.unregisterFactory<MyGUI::ScrollViewPanel>(widgetCategory);
 
-        MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsSimulation);
-        MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsManipulation);
+        // Panels first — each one's shutdown()/destroyContent() tears down its
+        // OWN nested widgets (BaseLayout::shutdown() -> unloadLayout of that
+        // panel's mListWindowRoot). This must happen BEFORE the two top-level
+        // unloadLayout() calls below, which would otherwise destroy the same
+        // nested widgets first and leave the panels' later shutdown() calls
+        // double-destroying already-freed widgets (MyGUI::WidgetManager's
+        // deferred-delete batch corrupts and crashes on this).
         ColourPanelManager::getInstance()->destroyContent();
 
         if (this->editorManager)
@@ -202,6 +207,11 @@ void DesignState::exit(void)
             delete this->mainMenuBar;
             this->mainMenuBar = nullptr;
         }
+
+        // Top-level unload LAST — only cleans up whatever the panels above
+        // didn't already destroy individually (root containers etc.).
+        MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsSimulation);
+        MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsManipulation);
 
         if (this->projectManager)
         {

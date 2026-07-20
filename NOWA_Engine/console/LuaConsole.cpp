@@ -1,38 +1,30 @@
 #include "NOWAPrecompiled.h"
 #include "LuaConsole.h"
-#include "main/Events.h"
 #include "main/AppStateManager.h"
+#include "main/Events.h"
 #include "main/InputDeviceCore.h"
 #include "modules/GraphicsModule.h"
 #include "utilities/MyGUIUtilities.h"
 
-// Adjust this include if your project uses individual MyGUI headers instead
-// of the umbrella header (e.g. MyGUI_Gui.h, MyGUI_EditBox.h, MyGUI_Widget.h).
-#include <MyGUI.h>
-
 namespace NOWA
 {
 
-#define CONSOLE_LINE_LENGTH 85
-#define CONSOLE_LINE_COUNT 15
-#define CONSOLE_MAX_LINES 32000
+#define CONSOLE_LINE_LENGTH 400
+#define CONSOLE_LINE_COUNT 30
+#define CONSOLE_MAX_LINES 500
 #define CONSOLE_MAX_HISTORY 64
 #define CONSOLE_TAB_STOP 8
 
-    // ASSUMPTION — verify against your layers.xml: the array of layer names
-    // seen in MyGUIComponent is a dropdown list, not a z-order. "Statistic"
-    // was picked because it reads as the layer reserved for always-on-top
-    // dev/debug overlays; swap this constant if your layer config disagrees.
     static const Ogre::String CONSOLE_LAYER_NAME = "Statistic";
 
     // Slightly transparent black background, per spec.
-    static const float CONSOLE_BACKGROUND_ALPHA = 0.75f;
+    static const float CONSOLE_BACKGROUND_ALPHA = 0.9f;
 
     // No MyGUI font resource matching the old "LuaConsole" Ogre font was
     // confirmed to exist — falls back to whatever MyGUI's default font is,
     // sized via MyGUIUtilities (same mechanism MyGUITextComponent::setFontHeight
     // uses). Tune this constant to taste.
-    static const unsigned int CONSOLE_FONT_HEIGHT_PX = 16;
+    static const unsigned int CONSOLE_FONT_HEIGHT_PX = 14;
 
     // Matches the original's implicit speed: height += dt * 10 reached 1.0 in
     // exactly 0.1s regardless of frame rate.
@@ -40,28 +32,48 @@ namespace NOWA
 
     namespace
     {
+        // Open (fully visible) height in pixels: enough for CONSOLE_LINE_COUNT
+        // lines plus the prompt line, at CONSOLE_FONT_HEIGHT_PX. The old
+        // version hardcoded the panel height to always be exactly half the
+        // viewport (t * 0.5f) — completely independent of CONSOLE_LINE_COUNT,
+        // which is why raising the line count just crammed more text into
+        // the same fixed box instead of growing it. 1.25x accounts for line
+        // leading/spacing beyond the raw glyph height — tune if lines look
+        // too cramped or too spaced.
+        int consoleOpenHeightPx()
+        {
+            return static_cast<int>((CONSOLE_LINE_COUNT + 1) * (CONSOLE_FONT_HEIGHT_PX * 1.25f)) + 25;
+        }
+
         // t=0 -> fully closed, t=1 -> fully open. Same two independent
         // formulas the original per-frame code used, now evaluated only at
         // the two endpoints instead of every frame. Render-thread only.
-        MyGUI::IntCoord toPixelCoord(float x, float y, float w, float h)
-        {
-            MyGUI::FloatCoord floatCoord(x, y, w, h);
-            return MyGUI::CoordConverter::convertFromRelative(floatCoord, MyGUI::RenderManager::getInstance().getViewSize());
-        }
-
         MyGUI::IntCoord panelCoordAt(float t)
         {
-            return toPixelCoord(0.0f, 0.0f, 1.0f, t * 0.5f);
+            MyGUI::IntSize viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+            int height = static_cast<int>(consoleOpenHeightPx() * t);
+            return MyGUI::IntCoord(0, 0, viewSize.width, height);
         }
 
         MyGUI::IntCoord textboxCoordAt(float t)
         {
-            return toPixelCoord(0.0f, (t - 1.0f) * 0.5f, 1.0f, 1.0f);
+            MyGUI::IntSize viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+            int openHeight = consoleOpenHeightPx();
+            // Slides from -openHeight (closed, off-screen above) to 0 (open).
+            int y = static_cast<int>((t - 1.0f) * openHeight);
+            return MyGUI::IntCoord(0, y, viewSize.width, openHeight);
+        }
+
+        void linearMoveFunction(const MyGUI::IntCoord& _start, const MyGUI::IntCoord& _dest, MyGUI::IntCoord& _result, float _time)
+        {
+            _result.left = _start.left + static_cast<int>((_dest.left - _start.left) * _time);
+            _result.top = _start.top + static_cast<int>((_dest.top - _start.top) * _time);
+            _result.width = _start.width + static_cast<int>((_dest.width - _start.width) * _time);
+            _result.height = _start.height + static_cast<int>((_dest.height - _start.height) * _time);
         }
     }
 
-    LuaConsole::LuaConsole() : initialised(false), controlPressed(false), criticalLogCount(0), pPanel(nullptr), pTextbox(nullptr),
-        pendingCameraWeightChange(false), pendingCameraWeightValue(1.0f)
+    LuaConsole::LuaConsole() : initialised(false), controlPressed(false), criticalLogCount(0), pPanel(nullptr), pTextbox(nullptr), pendingCameraWeightChange(false), pendingCameraWeightValue(1.0f)
     {
     }
 
@@ -108,18 +120,14 @@ namespace NOWA
         // instead of update() polling a manually-lerped "height" value.
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
-            this->pPanel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>(
-                "PanelSkin", 0.0f, 0.0f, 1.0f, 0.0f,
-                MyGUI::Align::Default, CONSOLE_LAYER_NAME, "LuaConsole_Panel");
+            this->pPanel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>("PanelSkin", 0.0f, 0.0f, 1.0f, 0.0f, MyGUI::Align::Default, CONSOLE_LAYER_NAME, "LuaConsole_Panel");
             this->pPanel->setColour(MyGUI::Colour(0.0f, 0.0f, 0.0f));
             this->pPanel->setAlpha(CONSOLE_BACKGROUND_ALPHA);
             this->pPanel->setNeedMouseFocus(false);
             this->pPanel->setNeedKeyFocus(false);
             this->pPanel->setVisible(false);
 
-            this->pTextbox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(
-                "EditBoxEmpty", 0.0f, -0.5f, 1.0f, 1.0f,
-                MyGUI::Align::Default, CONSOLE_LAYER_NAME, "LuaConsole_Text");
+            this->pTextbox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("EditBoxEmpty", 0.0f, -0.5f, 1.0f, 1.0f, MyGUI::Align::Default, CONSOLE_LAYER_NAME, "LuaConsole_Text");
             // Display surface only — injectKeyPress()/EditString remain the
             // sole input path, so MyGUI must never take keyboard focus here.
             this->pTextbox->setEditReadOnly(true);
@@ -146,6 +154,10 @@ namespace NOWA
             delete this->pInterpreter;
             Ogre::LogManager::getSingleton().getDefaultLog()->removeListener(this);
 
+            // Defensive: in case shutdown() runs while the console was still
+            // visible (closure still registered), don't leave it dangling.
+            NOWA::GraphicsModule::getInstance()->removeTrackedClosure("LuaConsole::updateCaption");
+
             // NOTE: the original never explicitly destroyed pOverlay/pPanel/
             // pTextbox either — LuaConsole is a true app-lifetime singleton,
             // torn down only right before Ogre/MyGUI's own shutdown, so this
@@ -170,6 +182,10 @@ namespace NOWA
             this->pendingCameraWeightValue.store(0.0f);
             this->pendingCameraWeightChange.store(true);
         }
+        else
+        {
+            NOWA::GraphicsModule::getInstance()->removeTrackedClosure("LuaConsole::updateCaption");
+        }
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]()
         {
@@ -186,18 +202,36 @@ namespace NOWA
 
             float target = visible ? 1.0f : 0.0f;
 
+            MyGUI::IntCoord panelStart = panelCoordAt(visible ? 0.0f : 1.0f);
+            MyGUI::IntCoord textboxStart = textboxCoordAt(visible ? 0.0f : 1.0f);
+            MyGUI::IntCoord panelDest = panelCoordAt(target);
+            MyGUI::IntCoord textboxDest = textboxCoordAt(target);
+
+            // Normalize to the correct opposite endpoint before animating —
+            // don't trust the widgets' own getCoord() as the animation
+            // start. If init() ran before MyGUI's RenderManager had a real
+            // view size (getViewSize() still 0,0 at creation time), these
+            // widgets could have been created with a stale/wrong pixel size
+            // that was never corrected afterward, corrupting whatever
+            // ControllerPosition::prepareItem() captures as mStartCoord.
+            this->pPanel->setCoord(panelStart);
+            this->pTextbox->setCoord(textboxStart);
+
             MyGUI::ControllerItem* panelItem = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
             MyGUI::ControllerPosition* panelController = panelItem->castType<MyGUI::ControllerPosition>();
-            panelController->setCoord(panelCoordAt(target));
+            panelController->setCoord(panelDest);
             panelController->setTime(CONSOLE_ANIM_DURATION_SEC);
-            // No setAction() — default linear interpolation, matching the
-            // original's constant-rate (dt * 10) motion.
+            // setAction() is mandatory — see linearMoveFunction's comment
+            // above. Without it, ControllerPosition applies an all-zero rect
+            // every frame instead of interpolating.
+            panelController->setAction(MyGUI::newDelegate(linearMoveFunction));
             MyGUI::ControllerManager::getInstance().addItem(this->pPanel, panelController);
 
             MyGUI::ControllerItem* textboxItem = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
             MyGUI::ControllerPosition* textboxController = textboxItem->castType<MyGUI::ControllerPosition>();
-            textboxController->setCoord(textboxCoordAt(target));
+            textboxController->setCoord(textboxDest);
             textboxController->setTime(CONSOLE_ANIM_DURATION_SEC);
+            textboxController->setAction(MyGUI::newDelegate(linearMoveFunction));
             // Both controllers share the same duration — one completion
             // callback (on the textbox) is enough to know the slide is done.
             textboxController->eventPostAction += MyGUI::newDelegate(this, &LuaConsole::onSlideFinished);
@@ -366,11 +400,16 @@ namespace NOWA
                 editLineText[this->editLine.getPosition()] = '_';
             }
             text += this->pInterpreter->getPrompt() + editLineText;
-            auto pTextbox = this->pTextbox;
 
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this, pTextbox, text]()
+            // Tracked closures are only ever registered from update() (called
+            // every logic frame) — updateTrackedClosure() overwrites the
+            // existing entry for this id, so no removeTrackedClosure() is
+            // needed here first. It only gets removed when the console
+            // becomes hidden (see setVisible(false)) or is shut down.
+            auto pTextbox = this->pTextbox;
+            auto closureFunction = [pTextbox, text](Ogre::Real renderDt)
             {
-                if (pTextbox)
+                if (nullptr != pTextbox)
                 {
                     // Real '\n' characters — EditBox is natively multi-line,
                     // this is not the setCaptionWithReplacing("\\n") escape
@@ -378,7 +417,7 @@ namespace NOWA
                     pTextbox->setCaption(text);
                 }
             };
-            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "LuaConsole::update4");
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure("LuaConsole::updateCaption", closureFunction, false);
 
             this->textChanged = false;
         }

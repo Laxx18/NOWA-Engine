@@ -1043,14 +1043,6 @@ namespace NOWA
 
             LuaScriptApi::getInstance()->generateLuaApi();
         }
-
-        if (this->optionUseLuaConsole && this->optionUseLuaScript)
-        {
-            // Create lua console
-            new LuaConsole();
-            LuaConsole::getSingletonPtr()->init(LuaScriptApi::getInstance()->getLua());
-        }
-
         // Set default mask for all ogre objects
         Ogre::MovableObject::setDefaultQueryFlags(0 << 0);
 
@@ -3928,6 +3920,16 @@ namespace NOWA
         outfile << "</Main-Configuration>\n";
 
         outfile.close();
+    }
+
+    void Core::initLuaConsole(void)
+    {
+        if (true == this->optionUseLuaConsole && true == this->optionUseLuaScript)
+        {
+            // Create lua console
+            new LuaConsole();
+            LuaConsole::getSingletonPtr()->init(LuaScriptApi::getInstance()->getLua());
+        }
     }
 
     Ogre::StringVector Core::getSectionPath(const Ogre::String& strSection)
