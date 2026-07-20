@@ -153,6 +153,7 @@ namespace NOWA
         this->componentFactory.registerClass<CompositorEffectNightVisionComponent>(CompositorEffectNightVisionComponent::getStaticClassId(), CompositorEffectNightVisionComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectDitherComponent>(CompositorEffectDitherComponent::getStaticClassId(), CompositorEffectDitherComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectPosterizeComponent>(CompositorEffectPosterizeComponent::getStaticClassId(), CompositorEffectPosterizeComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectFogComponent>(CompositorEffectFogComponent::getStaticClassId(), CompositorEffectFogComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectStargateTravelComponent>(CompositorEffectStargateTravelComponent::getStaticClassId(), CompositorEffectStargateTravelComponent::getStaticClassName());
 		
 		this->componentFactory.registerClass<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassId(), DatablockPbsComponent::getStaticClassName());

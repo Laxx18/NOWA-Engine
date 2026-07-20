@@ -1560,9 +1560,9 @@ namespace NOWA
             this->viewportGrid = nullptr;
         }
 
-        if (nullptr != this->viewportGrid)
+        if (nullptr != this->selectionManager)
         {
-            delete this->viewportGrid;
+            delete this->selectionManager;
             this->selectionManager = nullptr;
         }
 

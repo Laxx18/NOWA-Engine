@@ -4398,6 +4398,127 @@ return {
 			}
 		}
 	},
+	CompositorEffectFogComponent =
+	{
+		type = "class",
+		description = "Requirements: A camera component must exist. The workspace must provide a depthTexture output channel. Uses the scene depth buffer to compute per pixel fog.  Supports two independent fog layers:  Depth fog: Exponential fog based on camera distance. Useful for atmospheric haze and distant object fading.  Height fog: Exponential fog based on world space height. Useful for ground mist, valleys and low lying fog.  Both fog layers can be combined freely. Setting a fog density to 0 disables that layer.  Camera matrices and projection data are updated per frame through the tracked closure system without game thread stalls.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setDepthFogDensity =
+			{
+				type = "method",
+				description = "Sets the density/intensity of the distance based fog effect.",
+				args = "(number density)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDepthFogDensity =
+			{
+				type = "function",
+				description = "Gets the current distance fog density.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDepthFogStart =
+			{
+				type = "method",
+				description = "Sets the world distance at which depth fog begins.",
+				args = "(number start)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDepthFogStart =
+			{
+				type = "function",
+				description = "Gets the depth fog start distance.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHeightFogDensity =
+			{
+				type = "method",
+				description = "Sets the density/intensity of the height based fog effect.",
+				args = "(number density)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHeightFogDensity =
+			{
+				type = "function",
+				description = "Gets the current height fog density.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHeightFogStart =
+			{
+				type = "method",
+				description = "Sets the world height where height fog begins.",
+				args = "(number startHeight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHeightFogStart =
+			{
+				type = "function",
+				description = "Gets the height fog start height.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHeightFogEnd =
+			{
+				type = "method",
+				description = "Sets the world height where height fog fully fades out.",
+				args = "(number endHeight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHeightFogEnd =
+			{
+				type = "function",
+				description = "Gets the height fog end height.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFogColor =
+			{
+				type = "method",
+				description = "Sets the fog RGB color.",
+				args = "(Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFogColor =
+			{
+				type = "function",
+				description = "Gets the current fog RGB color.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setFogSkyBlend =
+			{
+				type = "method",
+				description = "Sets how much the fog blends with the sky color. 0 = only fog color, 1 = fully blended with sky.",
+				args = "(number blend)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFogSkyBlend =
+			{
+				type = "function",
+				description = "Gets the sky blend factor.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	CompositorEffectGlassComponent =
 	{
 		type = "class",
@@ -5027,6 +5148,143 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			}
+		}
+	},
+	CompositorEffectStargateTravelComponent =
+	{
+		type = "class",
+		description = "Requirements: A camera component must exist. Stargate SG-1 style wormhole travel tunnel effect. Call startTravel() to begin. Register reactOnComplete() to receive a Lua callback when travel is finished.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			startTravel =
+			{
+				type = "method",
+				description = "Starts the wormhole travel sequence from the beginning. Resets the animation timer and enables the effect. Call this from Lua when an agent enters the stargate.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			stopTravel =
+			{
+				type = "method",
+				description = "Immediately stops and hides the travel effect. Does NOT fire the reactOnComplete callback.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isComplete =
+			{
+				type = "function",
+				description = "Returns true once the full travel sequence has played. Resets to false when startTravel() is called again.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setDuration =
+			{
+				type = "method",
+				description = "Sets the total duration of the wormhole travel sequence in seconds. Range [0.5..30]. Default 3.5.",
+				args = "(number seconds)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDuration =
+			{
+				type = "function",
+				description = "Gets the total travel duration in seconds.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setTunnelColor =
+			{
+				type = "method",
+				description = "Sets the base RGB colour of the wormhole tunnel. Default blue-teal (0.1, 0.4, 0.9). Try (0.9, 0.3, 0.1) for a fire-coloured portal.",
+				args = "(Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTunnelColor =
+			{
+				type = "function",
+				description = "Gets the base RGB colour of the wormhole tunnel.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setRingFrequency =
+			{
+				type = "method",
+				description = "Sets the number of visible ring bands in the tunnel. Range [2..20]. Default 8.",
+				args = "(number freq)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRingFrequency =
+			{
+				type = "function",
+				description = "Gets the ring band frequency.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRingSpeed =
+			{
+				type = "method",
+				description = "Sets how fast the rings converge toward the tunnel centre. Higher values feel faster. Range [1..20]. Default 6.",
+				args = "(number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRingSpeed =
+			{
+				type = "function",
+				description = "Gets the ring convergence speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDistortionStrength =
+			{
+				type = "method",
+				description = "Sets the chromatic aberration amount (colour fringing on ring edges). Range [0..5]. Default 1. Set to 0 to disable.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDistortionStrength =
+			{
+				type = "function",
+				description = "Gets the chromatic aberration strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrightness =
+			{
+				type = "method",
+				description = "Sets the overall brightness scale of the tunnel. Range [0.1..3]. Default 1.2.",
+				args = "(number brightness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrightness =
+			{
+				type = "function",
+				description = "Gets the tunnel brightness scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			reactOnComplete =
+			{
+				type = "method",
+				description = "Registers a Lua function called when the travel sequence finishes. Signature: function onComplete(). Multiple callbacks can be registered. Example: gateComp:reactOnComplete(function() player:teleport(dest) end)",
+				args = "(func closure)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -9876,6 +10134,22 @@ return {
 				returns = "(CompositorEffectDepthOfFieldComponent)",
 				valuetype = "CompositorEffectDepthOfFieldComponent"
 			},
+			getCompositorEffectFogComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectFogComponent.",
+				args = "()",
+				returns = "(CompositorEffectFogComponent)",
+				valuetype = "CompositorEffectFogComponent"
+			},
+			getCompositorEffectFogComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectFogComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectFogComponent)",
+				valuetype = "CompositorEffectFogComponent"
+			},
 			getCompositorEffectLaplaceComponent =
 			{
 				type = "function",
@@ -9955,6 +10229,22 @@ return {
 				args = "(string name)",
 				returns = "(CompositorEffectRadialBlurComponent)",
 				valuetype = "CompositorEffectRadialBlurComponent"
+			},
+			getCompositorEffectStargateTravelComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectStargateTravelComponent.",
+				args = "()",
+				returns = "(CompositorEffectStargateTravelComponent)",
+				valuetype = "CompositorEffectStargateTravelComponent"
+			},
+			getCompositorEffectStargateTravelComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectStargateTravelComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectStargateTravelComponent)",
+				valuetype = "CompositorEffectStargateTravelComponent"
 			},
 			getCompositorEffectTilingComponent =
 			{
@@ -12532,6 +12822,14 @@ return {
 				returns = "(CompositorEffectDepthOfFieldComponent)",
 				valuetype = "CompositorEffectDepthOfFieldComponent"
 			},
+			castCompositorEffectFogComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectFogComponent other)",
+				returns = "(CompositorEffectFogComponent)",
+				valuetype = "CompositorEffectFogComponent"
+			},
 			castCompositorEffectLaplaceComponent =
 			{
 				type = "function",
@@ -12571,6 +12869,14 @@ return {
 				args = "(CompositorEffectRadialBlurComponent other)",
 				returns = "(CompositorEffectRadialBlurComponent)",
 				valuetype = "CompositorEffectRadialBlurComponent"
+			},
+			castCompositorEffectStargateTravelComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectStargateTravelComponent other)",
+				returns = "(CompositorEffectStargateTravelComponent)",
+				valuetype = "CompositorEffectStargateTravelComponent"
 			},
 			castCompositorEffectTilingComponent =
 			{

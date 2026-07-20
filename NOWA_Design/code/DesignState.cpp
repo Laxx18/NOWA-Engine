@@ -598,30 +598,31 @@ void DesignState::setupMyGUIWidgets(void)
 
 void DesignState::enableWidgets(bool enable)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::enableWidgets", _1(enable),
-	{
-		this->playButton->setStateSelected(enable);
-		this->undoButton->setEnabled(enable);
-		this->redoButton->setEnabled(enable);
-		this->cameraUndoButton->setEnabled(enable);
-		this->cameraRedoButton->setEnabled(enable);
-		this->selectUndoButton->setEnabled(enable);
-		this->selectRedoButton->setEnabled(enable);
-		this->gridButton->setEnabled(enable);
-		this->selectModeCheck->setEnabled(enable);
-		this->placeModeCheck->setEnabled(enable);
-		this->removeButton->setEnabled(enable);
-		this->copyButton->setEnabled(enable);
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, enable]()
+    {
+        this->playButton->setStateSelected(enable);
+        this->undoButton->setEnabled(enable);
+        this->redoButton->setEnabled(enable);
+        this->cameraUndoButton->setEnabled(enable);
+        this->cameraRedoButton->setEnabled(enable);
+        this->selectUndoButton->setEnabled(enable);
+        this->selectRedoButton->setEnabled(enable);
+        this->gridButton->setEnabled(enable);
+        this->selectModeCheck->setEnabled(enable);
+        this->placeModeCheck->setEnabled(enable);
+        this->removeButton->setEnabled(enable);
+        this->copyButton->setEnabled(enable);
 
-		if (nullptr != this->propertiesPanel)
-		{
-			this->propertiesPanel->setVisible(enable);
-		}
-		if (nullptr != this->resourcesPanel)
-		{
-			this->resourcesPanel->setVisible(enable);
-		}
-	});
+        if (nullptr != this->propertiesPanel)
+        {
+            this->propertiesPanel->setVisible(enable);
+        }
+        if (nullptr != this->resourcesPanel)
+        {
+            this->resourcesPanel->setVisible(enable);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::enableWidgets");
 }
 
 void DesignState::simulate(bool pause, bool withUndo)
@@ -725,25 +726,27 @@ void DesignState::handleExit(NOWA::EventDataPtr eventData)
 {
 	if (true == this->hasSceneChanges)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleExit1",
-		{
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
-				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            MyGUI::Message* messageBox =
+                MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"), MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
-			// Register delegate to handle button clicks, and enqueue to render thread.
+            // Register delegate to handle button clicks, and enqueue to render thread.
 
-			messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEnd);
-		});
+            messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEnd);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleExit1");
 	}
 	else
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleExit2",
-		{
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
-				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            MyGUI::Message* messageBox =
+                MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"), MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
-			messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEndExit);
-		});
+            messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEndExit);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleExit2");
 	}
 }
 
@@ -848,10 +851,11 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 	}
 	else if (ProjectManager::eProjectMode::SAVE == projectMode)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("simulationWindow setCaption",
-		{
-			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::simulationWindow_setCaption");
 
 		this->hasSceneChanges = false;
 	}
@@ -863,38 +867,39 @@ void DesignState::handleEditorMode(NOWA::EventDataPtr eventData)
 
 	if (NOWA::EditorManager::EDITOR_SELECT_MODE == castEventData->getManipulationMode())
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleEditorMode select",
-		{
-			this->selectModeCheck->setStateSelected(true);
-			this->placeModeCheck->setStateSelected(false);
-			this->translateModeCheck->setStateSelected(false);
-			this->pickModeCheck->setStateSelected(false);
-			this->scaleModeCheck->setStateSelected(false);
-			this->rotate1ModeCheck->setStateSelected(false);
-			this->rotate2ModeCheck->setStateSelected(false);
-			this->terrainSmoothModeCheck->setStateSelected(false);
-			this->terrainModifyModeCheck->setStateSelected(false);
-			this->terrainPaintModeCheck->setStateSelected(false);
-			this->meshModifyModeCheck->setStateSelected(false);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->selectModeCheck->setStateSelected(true);
+            this->placeModeCheck->setStateSelected(false);
+            this->translateModeCheck->setStateSelected(false);
+            this->pickModeCheck->setStateSelected(false);
+            this->scaleModeCheck->setStateSelected(false);
+            this->rotate1ModeCheck->setStateSelected(false);
+            this->rotate2ModeCheck->setStateSelected(false);
+            this->terrainSmoothModeCheck->setStateSelected(false);
+            this->terrainModifyModeCheck->setStateSelected(false);
+            this->terrainPaintModeCheck->setStateSelected(false);
+            this->meshModifyModeCheck->setStateSelected(false);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleEditorMode_select");
 	}
 	else if (NOWA::EditorManager::EDITOR_PLACE_MODE == castEventData->getManipulationMode())
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleEditorMode place",
-		{
-			this->selectModeCheck->setStateSelected(false);
-			this->placeModeCheck->setStateSelected(true);
-			this->translateModeCheck->setStateSelected(false);
-			this->pickModeCheck->setStateSelected(false);
-			this->scaleModeCheck->setStateSelected(false);
-			this->rotate1ModeCheck->setStateSelected(false);
-			this->rotate2ModeCheck->setStateSelected(false);
-			this->terrainSmoothModeCheck->setStateSelected(false);
-			this->terrainModifyModeCheck->setStateSelected(false);
-			this->terrainPaintModeCheck->setStateSelected(false);
-			this->meshModifyModeCheck->setStateSelected(false);
-			
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->selectModeCheck->setStateSelected(false);
+            this->placeModeCheck->setStateSelected(true);
+            this->translateModeCheck->setStateSelected(false);
+            this->pickModeCheck->setStateSelected(false);
+            this->scaleModeCheck->setStateSelected(false);
+            this->rotate1ModeCheck->setStateSelected(false);
+            this->rotate2ModeCheck->setStateSelected(false);
+            this->terrainSmoothModeCheck->setStateSelected(false);
+            this->terrainModifyModeCheck->setStateSelected(false);
+            this->terrainPaintModeCheck->setStateSelected(false);
+            this->meshModifyModeCheck->setStateSelected(false);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleEditorMode_place");
 	}
 }
 
@@ -1012,27 +1017,28 @@ void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
 	// Event not for this state
 	if (0 != castEventData->getGameObjectId())
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::handleMyGUIWidgetSelected", _1(castEventData),
-		{
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData]()
+        {
             MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
-			if (nullptr != widget && false == this->simulating)
-			{
-				// Prevents reseleciton of the same game object
-				const auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-				const auto found = selectedGameObjects.find(castEventData->getGameObjectId());
-				// Prevents reseleciton of the same game object
-				// Deactivated, because its not possible to select widgets within widgets, because they belong to the same game object
-				// if (true == selectedGameObjects.empty() || found == selectedGameObjects.cend())
-				{
-					this->editorManager->getSelectionManager()->clearSelection();
-					this->editorManager->getSelectionManager()->select(castEventData->getGameObjectId());
+            if (nullptr != widget && false == this->simulating)
+            {
+                // Prevents reseleciton of the same game object
+                const auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+                const auto found = selectedGameObjects.find(castEventData->getGameObjectId());
+                // Prevents reseleciton of the same game object
+                // Deactivated, because its not possible to select widgets within widgets, because they belong to the same game object
+                // if (true == selectedGameObjects.empty() || found == selectedGameObjects.cend())
+                {
+                    this->editorManager->getSelectionManager()->clearSelection();
+                    this->editorManager->getSelectionManager()->select(castEventData->getGameObjectId());
 
-					this->propertiesPanel->showProperties(castEventData->getGameObjectComponentIndex());
+                    this->propertiesPanel->showProperties(castEventData->getGameObjectComponentIndex());
 
-					MyGUIHelper::getInstance()->setCanMousePress(false);
-				}
-			}
-		});
+                    MyGUIHelper::getInstance()->setCanMousePress(false);
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleMyGUIWidgetSelected");
 	}
 }
 
@@ -1040,10 +1046,11 @@ void DesignState::handleSceneModified(NOWA::EventDataPtr eventData)
 {
 	this->hasSceneChanges = true;
 
-	ENQUEUE_RENDER_COMMAND("DesignState::handleSceneModified",
-	{
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleSceneModified");
 }
 
 void DesignState::handleGeometryChanged(NOWA::EventDataPtr eventData)
@@ -1052,10 +1059,12 @@ void DesignState::handleGeometryChanged(NOWA::EventDataPtr eventData)
 	if (false == this->undoPressed)
 	{
 		this->hasSceneChanges = true;
-		ENQUEUE_RENDER_COMMAND("DesignState::handleGeometryChanged",
-		{
-			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
-		});
+
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleGeometryChanged");
 	}
 	else
 	{
@@ -1072,10 +1081,12 @@ void DesignState::handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventDa
 	}
 
 	this->hasSceneChanges = false;
-	ENQUEUE_RENDER_COMMAND("DesignState::handleEventDataGameObjectMadeGlobal",
-	{
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
-	});
+
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleEventDataGameObjectMadeGlobal");
 }
 
 void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
@@ -1087,10 +1098,11 @@ void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
 			this->activeCategory = this->categoriesComboBox->getItemNameAt(index);
 
 			// Enqueue the filtering logic to the render thread to interact with the editorManager
-			ENQUEUE_RENDER_COMMAND_WAIT("DesignState::itemSelected1",
-			{
-				this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::itemSelected1");
 		}
 	}
 	else if (this->gridValueComboBox == sender)
@@ -1100,10 +1112,11 @@ void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
 			Ogre::String selectedGridValue = this->gridValueComboBox->getItemNameAt(index);
 
 			// Enqueue the logic to update the grid step in the render thread
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::itemSelected2", _1(selectedGridValue),
-			{
-				this->editorManager->setGridStep(Ogre::StringConverter::parseReal(selectedGridValue));
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, selectedGridValue]()
+            {
+                this->editorManager->setGridStep(Ogre::StringConverter::parseReal(selectedGridValue));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::itemSelected2");
 		}
 	}
 }
@@ -1114,10 +1127,11 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 	{
 		this->activeCategory = this->categoriesComboBox->getOnlyText();
 		// Wrap editorManager access in render command for thread safety
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::notifyEditSelectAccept_categories",
-		{
-			this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyEditSelectAccept_categories");
 	}
 	else if (sender == this->findObjectEdit)
 	{
@@ -1180,42 +1194,45 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 			unsigned long gameObjectId = gameObjectPtr->getId();
 			auto rawGameObject = gameObjectPtr.get();
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyEditSelectAccept_focus", _2(rawGameObject, gameObjectId),
-			{
-				this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
-				this->editorManager->focusCameraGameObject(rawGameObject);
-				this->editorManager->getSelectionManager()->clearSelection();
-				this->editorManager->getSelectionManager()->select(gameObjectId);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, rawGameObject, gameObjectId]()
+            {
+                this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
+                this->editorManager->focusCameraGameObject(rawGameObject);
+                this->editorManager->getSelectionManager()->clearSelection();
+                this->editorManager->getSelectionManager()->select(gameObjectId);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyEditSelectAccept_focus");
 		}
 	}
 	else if (sender == this->constraintAxisEdit)
 	{
 		Ogre::Vector3 constraintAxis = Ogre::StringConverter::parseVector3(sender->getOnlyText());
 		// Wrap editorManager access in render command for thread safety
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyEditSelectAccept_constraint", _1(constraintAxis),
-		{
-			this->editorManager->setConstraintAxis(constraintAxis);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, constraintAxis]()
+        {
+            this->editorManager->setConstraintAxis(constraintAxis);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyEditSelectAccept_constraint");
 	}
 }
 
 void DesignState::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit 1",
-	{
-		this->selectModeCheck->setStateSelected(false);
-		this->placeModeCheck->setStateSelected(false);
-		this->translateModeCheck->setStateSelected(false);
-		this->pickModeCheck->setStateSelected(false);
-		this->scaleModeCheck->setStateSelected(false);
-		this->rotate1ModeCheck->setStateSelected(false);
-		this->rotate2ModeCheck->setStateSelected(false);
-		this->terrainModifyModeCheck->setStateSelected(false);
-		this->terrainSmoothModeCheck->setStateSelected(false);
-		this->terrainPaintModeCheck->setStateSelected(false);
-		this->meshModifyModeCheck->setStateSelected(false);
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->selectModeCheck->setStateSelected(false);
+        this->placeModeCheck->setStateSelected(false);
+        this->translateModeCheck->setStateSelected(false);
+        this->pickModeCheck->setStateSelected(false);
+        this->scaleModeCheck->setStateSelected(false);
+        this->rotate1ModeCheck->setStateSelected(false);
+        this->rotate2ModeCheck->setStateSelected(false);
+        this->terrainModifyModeCheck->setStateSelected(false);
+        this->terrainSmoothModeCheck->setStateSelected(false);
+        this->terrainPaintModeCheck->setStateSelected(false);
+        this->meshModifyModeCheck->setStateSelected(false);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit1");
 
 	if (this->playButton == sender)
 	{
@@ -1225,182 +1242,200 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	if (this->gridButton == sender)
 	{
 		// Wrap editorManager access in render command for thread safety
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit_grid",
-		{
-			this->editorManager->setViewportGridEnabled(!this->editorManager->getViewportGridEnabled());
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->editorManager->setViewportGridEnabled(!this->editorManager->getViewportGridEnabled());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit_grid");
 	}
 
 	if (this->focusButton == sender)
 	{
 		// Wrap editorManager access in render command for thread safety
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit_focus",
-		{
-			if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-			{
-				// Focus the first selected object no matter how many objects are selected
-				this->editorManager->focusCameraGameObject(this->editorManager->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject);
-			}
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+            {
+                // Focus the first selected object no matter how many objects are selected
+                this->editorManager->focusCameraGameObject(this->editorManager->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit_focus");
 	}
 
 	if (this->selectModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit2",
-		{
-			this->selectModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->selectModeCheck->setStateSelected(true);
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit2");
 	}
 	else if (this->placeModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit3",
-		{
-			this->placeModeCheck->setStateSelected(true);
-			this->placeModePopupMenu->showMenu();
-			for (size_t i = 0; i < this->placeModePopupMenu->getChildCount(); i++)
-			{
-				MyGUI::MenuItem* placeModeItem = this->placeModePopupMenu->getChildAt(i)->castType<MyGUI::MenuItem>();
-				if (nullptr != placeModeItem)
-				{
-					placeModeItem->showItemChild();
-				}
-			}
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->placeModeCheck->setStateSelected(true);
+            this->placeModePopupMenu->showMenu();
+            for (size_t i = 0; i < this->placeModePopupMenu->getChildCount(); i++)
+            {
+                MyGUI::MenuItem* placeModeItem = this->placeModePopupMenu->getChildAt(i)->castType<MyGUI::MenuItem>();
+                if (nullptr != placeModeItem)
+                {
+                    placeModeItem->showItemChild();
+                }
+            }
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit3");
 	}
 	else if (this->translateModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit3",
-		{
-			this->translateModeCheck->setStateSelected(true);
-			this->translateModePopupMenu->showMenu();
-			for (size_t i = 0; i < this->translateModePopupMenu->getChildCount(); i++)
-			{
-				MyGUI::MenuItem* translateModeItem = this->translateModePopupMenu->getChildAt(i)->castType<MyGUI::MenuItem>();
-				if (nullptr != translateModeItem)
-				{
-					translateModeItem->showItemChild();
-				}
-			}
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->translateModeCheck->setStateSelected(true);
+            this->translateModePopupMenu->showMenu();
+            for (size_t i = 0; i < this->translateModePopupMenu->getChildCount(); i++)
+            {
+                MyGUI::MenuItem* translateModeItem = this->translateModePopupMenu->getChildAt(i)->castType<MyGUI::MenuItem>();
+                if (nullptr != translateModeItem)
+                {
+                    translateModeItem->showItemChild();
+                }
+            }
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit4");
 	}
 	else if (this->pickModeCheck == sender)
 	{
 		// If already in picker mode, to not re-start simulation again, since another undo command is pushed, so when stopped, the first undo is gone (2x undo would be required)
 		if (NOWA::EditorManager::EDITOR_PICKER_MODE != this->editorManager->getManipulationMode())
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit4",
-			{
-				this->pickModeCheck->setStateSelected(true);
-				this->propertiesPanel->clearProperties();
-				this->playButton->setStateSelected(false);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->pickModeCheck->setStateSelected(true);
+                this->propertiesPanel->clearProperties();
+                this->playButton->setStateSelected(false);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit5");
 
 			this->simulate(false, true);
-			ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit4_mode",
-			{
-				this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PICKER_MODE);
-				this->editorManager->getGizmo()->setEnabled(false);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand2 = [this]()
+            {
+                this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PICKER_MODE);
+                this->editorManager->getGizmo()->setEnabled(false);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand2), "DesignState::buttonHit5_mode");
 		}
 	}
 	else if (this->scaleModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit5",
-		{
-			this->scaleModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SCALE_MODE);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->scaleModeCheck->setStateSelected(true);
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SCALE_MODE);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit6");
 	}
 	else if (this->rotate1ModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit6",
-		{
-			this->rotate1ModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE1);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->rotate1ModeCheck->setStateSelected(true);
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE1);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit7");
 	}
 	else if (this->rotate2ModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit7",
-		{
-			this->rotate2ModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE2);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->rotate2ModeCheck->setStateSelected(true);
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE2);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit8");
 	}
 	else if (this->terrainModifyModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit8",
-		{
-			this->terrainSmoothModeCheck->setStateSelected(false);
-			this->terrainModifyModeCheck->setStateSelected(true);
-			this->terrainPaintModeCheck->setStateSelected(false);
-			this->meshModifyModeCheck->setStateSelected(false);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->terrainSmoothModeCheck->setStateSelected(false);
+            this->terrainModifyModeCheck->setStateSelected(true);
+            this->terrainPaintModeCheck->setStateSelected(false);
+            this->meshModifyModeCheck->setStateSelected(false);
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit9");
 	}
 	else if (this->terrainSmoothModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit9",
-		{
-			this->terrainSmoothModeCheck->setStateSelected(true);
-			this->terrainModifyModeCheck->setStateSelected(false);
-			this->terrainPaintModeCheck->setStateSelected(false);
-			this->meshModifyModeCheck->setStateSelected(false);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->terrainSmoothModeCheck->setStateSelected(true);
+            this->terrainModifyModeCheck->setStateSelected(false);
+            this->terrainPaintModeCheck->setStateSelected(false);
+            this->meshModifyModeCheck->setStateSelected(false);
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit10");
 	}
 	else if (this->terrainPaintModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit10",
-		{
-			this->terrainSmoothModeCheck->setStateSelected(false);
-			this->terrainModifyModeCheck->setStateSelected(false);
-			this->terrainPaintModeCheck->setStateSelected(true);
-			this->meshModifyModeCheck->setStateSelected(false);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->terrainSmoothModeCheck->setStateSelected(false);
+            this->terrainModifyModeCheck->setStateSelected(false);
+            this->terrainPaintModeCheck->setStateSelected(true);
+            this->meshModifyModeCheck->setStateSelected(false);
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit11");
 	}
 	else if (this->meshModifyModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit11",
-		{
-			this->terrainSmoothModeCheck->setStateSelected(false);
-			this->terrainModifyModeCheck->setStateSelected(false);
-			this->terrainPaintModeCheck->setStateSelected(false);
-			this->meshModifyModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->terrainSmoothModeCheck->setStateSelected(false);
+            this->terrainModifyModeCheck->setStateSelected(false);
+            this->terrainPaintModeCheck->setStateSelected(false);
+            this->meshModifyModeCheck->setStateSelected(true);
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit12");
 	}
 	else if (this->undoButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit11",
-		{
-			// Show properties
-			this->propertiesPanel->showProperties();
-			this->resourcesPanel->refresh();
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            // Show properties
+            this->propertiesPanel->showProperties();
+            this->resourcesPanel->refresh();
 
-			if (false == this->editorManager->canUndo())
-			{
-				this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
-				this->hasSceneChanges = false;
-				this->undoPressed = true;
-			}
-		});
+            if (false == this->editorManager->canUndo())
+            {
+                this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
+                this->hasSceneChanges = false;
+                this->undoPressed = true;
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit13");
+
 		this->editorManager->undo();
 	}
 	else if (this->redoButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit12",
-		{
-			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
-			this->hasSceneChanges = true;
-			// Show properties
-			this->propertiesPanel->showProperties();
-			this->resourcesPanel->refresh();
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
+            this->hasSceneChanges = true;
+            // Show properties
+            this->propertiesPanel->showProperties();
+            this->resourcesPanel->refresh();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit14");
+
 		this->editorManager->redo();
 	}
 	else if (this->cameraUndoButton == sender)
@@ -1413,30 +1448,35 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->selectUndoButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit13",
-		{
-			// Show properties
-			this->propertiesPanel->showProperties();
-			this->resourcesPanel->refresh();
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            // Show properties
+            this->propertiesPanel->showProperties();
+            this->resourcesPanel->refresh();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit15");
+
 		this->editorManager->getSelectionManager()->selectionUndo();
 	}
 	else if (this->selectRedoButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit14",
-		{
-			// Show properties
-			this->propertiesPanel->showProperties();
-			this->resourcesPanel->refresh();
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            // Show properties
+            this->propertiesPanel->showProperties();
+            this->resourcesPanel->refresh();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit16");
+
 		this->editorManager->getSelectionManager()->selectionRedo();
 	}
 	else if (this->cameraSpeedUpButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit15",
-		{
-			this->cameraSpeedDownButton->setEnabled(true);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->cameraSpeedDownButton->setEnabled(true);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit16");
 
 		this->cameraMoveSpeed += 5.0f;
 		if (this->cameraMoveSpeed > 52.0f)
@@ -1455,10 +1495,11 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->cameraSpeedDownButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit16",
-		{
-			this->cameraSpeedUpButton->setEnabled(true);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->cameraSpeedDownButton->setEnabled(true);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit17");
 
 		this->cameraMoveSpeed -= 5.0f;
 		if (this->cameraMoveSpeed < 2.0f)
@@ -1504,7 +1545,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		}
 	}
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
+	NOWA::GraphicsModule::RenderCommand renderCommand2 = [this, sender]()
     {
         // Check if some place mode has been pressed
         for (size_t i = 0; i < this->placeModePopupMenu->getChildCount(); i++)
@@ -1572,7 +1613,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             }
         }
     };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit17");
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand2), "DesignState::buttonHit17");
 }
 
 void DesignState::mouseClicked(MyGUI::Widget* sender)
@@ -1581,10 +1622,11 @@ void DesignState::mouseClicked(MyGUI::Widget* sender)
 	{
 		if (true == this->mainMenuBar->hasLuaErrors())
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("DesignState::mouseClicked",
-			{
-				this->mainMenuBar->showLuaAnalysisWindow();
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->mainMenuBar->showLuaAnalysisWindow();
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::mouseClicked");
 		}
 	}
 }
@@ -1596,35 +1638,37 @@ void DesignState::notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo&
 
 void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBoxStyle result)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyMessageBoxEnd", _1(result),
-	{
-		if (result == MyGUI::MessageBoxStyle::Yes)
-		{
-			if (nullptr != this->projectManager)
-			{
-				this->projectManager->saveProject();
-			}
-		}
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, result]()
+    {
+        if (result == MyGUI::MessageBoxStyle::Yes)
+        {
+            if (nullptr != this->projectManager)
+            {
+                this->projectManager->saveProject();
+            }
+        }
 
-		this->hasSceneChanges = false;
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
+        this->hasSceneChanges = false;
+        this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
 
-		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
-			MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+        MyGUI::Message* messageBox =
+            MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"), MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
-		messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEndExit);
-	});
+        messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEndExit);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyMessageBoxEnd");
 }
 
 void DesignState::notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyMessageBoxEndExit", _1(result),
-	{
-		if (result == MyGUI::MessageBoxStyle::Yes)
-		{
-			this->bQuit = true;
-		}
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, result]()
+    {
+        if (result == MyGUI::MessageBoxStyle::Yes)
+        {
+            this->bQuit = true;
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyMessageBoxEndExit");
 }
 
 void DesignState::setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
@@ -1992,19 +2036,20 @@ void DesignState::showContextMenu(int mouseX, int mouseY)
 		return;
 	}
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::showContextMenu", _2(mouseX, mouseY),
-	{
-		this->editPopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, mouseX, mouseY]()
+    {
+        this->editPopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
 
-		auto item1 = this->editPopupMenu->addItem("Select_Same_Mesh");
-		item1->setCaptionWithReplacing("#{Select_Same_Mesh}");
-		auto item2 = this->editPopupMenu->addItem("Select_Same_Datablock");
-		item2->setCaptionWithReplacing("#{Select_Same_Datablock}");
+        auto item1 = this->editPopupMenu->addItem("Select_Same_Mesh");
+        item1->setCaptionWithReplacing("#{Select_Same_Mesh}");
+        auto item2 = this->editPopupMenu->addItem("Select_Same_Datablock");
+        item2->setCaptionWithReplacing("#{Select_Same_Datablock}");
 
-		this->editPopupMenu->eventMenuCtrlAccept += MyGUI::newDelegate(this, &DesignState::onMenuItemSelected);
-		this->editPopupMenu->setPopupAccept(true);
-		this->editPopupMenu->setVisible(true);
-	});
+        this->editPopupMenu->eventMenuCtrlAccept += MyGUI::newDelegate(this, &DesignState::onMenuItemSelected);
+        this->editPopupMenu->setPopupAccept(true);
+        this->editPopupMenu->setVisible(true);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::showContextMenu");
 }
 
 void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* item)
@@ -2066,34 +2111,36 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 		Ogre::LogManager::getSingleton().logMessage("Option 3 selected");
 	}*/
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::onMenuItemSelected", _1(menu),
-	{
-		// Close (destroy) the menu after selection
-		MyGUI::Gui::getInstancePtr()->destroyWidget(menu);
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, menu]()
+    {
+        // Close (destroy) the menu after selection
+        MyGUI::Gui::getInstancePtr()->destroyWidget(menu);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::closeContextMenu");
 }
 
 void DesignState::toggleGuiVisibility(bool visible)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::toggleGuiVisibility", _1(visible),
-	{
-		if (nullptr != this->propertiesPanel)
-		{
-			this->propertiesPanel->setVisible(visible);
-		}
-		if (nullptr != this->resourcesPanel)
-		{
-			this->resourcesPanel->setVisible(visible);
-		}
-		if (nullptr != this->simulationWindow)
-		{
-			this->simulationWindow->setVisible(visible);
-		}
-		if (nullptr != this->manipulationWindow)
-		{
-			this->manipulationWindow->setVisible(visible);
-		}
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]()
+    {
+        if (nullptr != this->propertiesPanel)
+        {
+            this->propertiesPanel->setVisible(visible);
+        }
+        if (nullptr != this->resourcesPanel)
+        {
+            this->resourcesPanel->setVisible(visible);
+        }
+        if (nullptr != this->simulationWindow)
+        {
+            this->simulationWindow->setVisible(visible);
+        }
+        if (nullptr != this->manipulationWindow)
+        {
+            this->manipulationWindow->setVisible(visible);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::toggleGuiVisibility");
 }
 
 bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
@@ -2246,10 +2293,11 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 					{
 						if (false == this->editorManager->getSelectionManager()->getSelectedGameObjects().empty())
 						{
-							ENQUEUE_RENDER_COMMAND_WAIT("ShowComponents",
-							{
-								this->componentsPanel->showComponents(-1);
-							});
+							NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                            {
+                                this->componentsPanel->showComponents(-1);
+                            };
+                            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::ShowComponents");
 						}
 					}
 					return true;
@@ -2273,10 +2321,12 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 					{
 						this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
 					}
-					ENQUEUE_RENDER_COMMAND_WAIT("Click ShowProperties",
-					{
-						this->propertiesPanel->showProperties();
-					});
+					NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                    {
+                        this->propertiesPanel->showProperties();
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttClick_ShowPropertiesonHit17");
+
 					return true;
 				}
 				break;
@@ -2553,10 +2603,11 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 			{
 				int scrollAmount = scrollView->getViewOffset().top + evt.state.Z.rel;
 
-				ENQUEUE_RENDER_COMMAND_MULTI("scroll", _2(scrollAmount, scrollView),
-				{
-					scrollView->setViewOffset(MyGUI::IntPoint(scrollView->getViewOffset().left, scrollAmount));
-				});
+				NOWA::GraphicsModule::RenderCommand renderCommand = [this, scrollAmount, scrollView]()
+                {
+                    scrollView->setViewOffset(MyGUI::IntPoint(scrollView->getViewOffset().left, scrollAmount));
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::scroll");
 
 				unsigned long id = -1;
 				
@@ -2628,10 +2679,11 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 					this->editorManager->getSelectionManager()->select(std::get<1>(gameObjectData));
 
 					// Also scrolls down to component
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::mousePressed showProperties", _1(gameObjectData),
-					{
-						this->propertiesPanel->showProperties(std::get<2>(gameObjectData));
-					});
+					NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObjectData]()
+                    {
+                        this->propertiesPanel->showProperties(std::get<2>(gameObjectData));
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::mousePressed_showProperties");
 				}
 			}
 		}
@@ -2669,12 +2721,6 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 		{
 			this->selectedGameObject = nullptr;
 		}
-
-		//if (false == this->simulating && false == this->bQuit && true == validScene && this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-		//{
-		//	// Show properties
-		//	this->propertiesPanel->showProperties();
-		//}
 
 		if (false == this->simulating)
 		{
@@ -2735,10 +2781,11 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
 					if (this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE)
 					{
 						// Show properties (only when selection changed, because showProperties is an heavy operation!)
-						ENQUEUE_RENDER_COMMAND_WAIT("Mouse Release ShowProperties",
-						{
-							this->propertiesPanel->showProperties();
-						});
+						NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                        {
+                            this->propertiesPanel->showProperties();
+                        };
+                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::mouseRelease_showProperties");
 					}
 					// Attention: To early here, better, when everything is loaded
 					/*if (-1 != MyGUIHelper::getInstance()->getScrollPosition())

@@ -196,6 +196,13 @@ void PropertiesPanel::setEditorManager(NOWA::EditorManager* editorManager)
 
 void PropertiesPanel::destroyContent(void)
 {
+    // Cancel any in-flight incremental component build (see
+    // processPendingComponentBatch()) before tearing down the widgets it's
+    // still adding into — otherwise a batch mid-flight could addProperty()
+    // into a panel that's just been destroyed below.
+    NOWA::GraphicsModule::getInstance()->removeTrackedClosure("PropertiesPanel::buildComponents");
+    this->pendingComponentQueue.clear();
+
 	// Threadsafe from the outside
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PropertiesPanel::handleRefreshPropertiesPanel), NOWA::EventDataRefreshGui::getStaticEventType());
 
@@ -218,6 +225,13 @@ void PropertiesPanel::destroyContent(void)
 
 void PropertiesPanel::clearProperties(void)
 {
+    // Cancel any in-flight incremental component build (see
+    // processPendingComponentBatch()) before tearing down the widgets it's
+    // still adding into — otherwise a batch mid-flight could addProperty()
+    // into a panel that's just been destroyed below.
+    NOWA::GraphicsModule::getInstance()->removeTrackedClosure("PropertiesPanel::buildComponents");
+    this->pendingComponentQueue.clear();
+
     NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         // Schrott MyGUI, those events do not work at all
@@ -247,286 +261,335 @@ void PropertiesPanel::onMouseRelease(MyGUI::Widget* sender, int left, int top, M
 	}
 }
 
-void PropertiesPanel::showProperties(unsigned int componentIndex)
+void PropertiesPanel::processPendingComponentBatch(Ogre::Real renderDt)
 {
-	if (false == PropertiesPanel::bShowProperties)
-	{
-		PropertiesPanel::bShowProperties = true;
-		return;
-	}
+    // Tune this: higher = fewer frames but bigger per-frame cost; lower =
+    // smoother but takes longer overall to finish showing everything.
+    const size_t componentsPerFrame = 3;
 
-	// Schrott MyGUI, those events do not work at all
-	// this->propertiesPanelView1->getScrollView()->eventMouseWheel += MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
-	// this->propertiesPanelView1->getScrollView()->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanel::onMouseRelease);
-
-	// Get data from selected game objects for properties panel
-
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, componentIndex]()
+    size_t processedThisFrame = 0;
+    while (processedThisFrame < componentsPerFrame && this->pendingComponentCursor < this->pendingComponentQueue.size())
     {
-        // First clear the properties
-        this->clearProperties();
-        // Show all properties for selected game objects
-        unsigned int i = 0;
-        auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-        unsigned int count = static_cast<unsigned int>(selectedGameObjects.size());
-        std::vector<NOWA::GameObject*> gameObjects;
-        if (count > 0)
+        PendingComponentBuild& build = this->pendingComponentQueue[this->pendingComponentCursor];
+
+        // Create the panel for the component
+        PropertiesPanelComponent* componentPropertiesPanel =
+            new PropertiesPanelComponent(this->pendingGameObjects, build.gameObjectComponents, build.componentName + " (" + Ogre::StringConverter::toString(build.thisComponent->getOccurrenceIndex()) + ")");
+
+        componentPropertiesPanel->setEditorManager(this->editorManager);
+        componentPropertiesPanel->setPropertiesPanelInfo(this->propertiesPanelInfo);
+
+        // Add the component to view
+        this->propertiesPanelView1->addItem(componentPropertiesPanel);
+
+        // Adds this component pointer as user data, in order to set expand flag on the component
+        componentPropertiesPanel->getPanelCell()->getMainWidget()->setUserData(MyGUI::Any(build.thisComponent.get()));
+
+        bool minimize = false == build.thisComponent->getIsExpanded();
+        if (true == minimize)
         {
-            gameObjects.resize(count);
-            for (auto it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+            componentPropertiesPanel->getPanelCell()->setClientHeight(26, false);
+            componentPropertiesPanel->getPanelCell()->setMinimized(minimize);
+        }
+
+        // Add the properties
+        auto attributes = build.thisComponent->getAttributes();
+        for (auto it = attributes.begin(); it != attributes.end(); ++it)
+        {
+            const auto found = this->pendingSameValues.find(it->first);
+            // Nothing to validate, just one game object, so add default way
+            if (0 == this->pendingSameValues.size())
             {
-                gameObjects[i] = it->second.gameObject;
-                i++;
+                componentPropertiesPanel->addProperty(it->first, it->second, true);
             }
-            this->showProperties(gameObjects, componentIndex);
-
-            // Set remembered scroll position after everything has been reloaded (with delay), else the scrollviewer range is 0
-            int scrollPosition = MyGUIHelper::getInstance()->getScrollPosition(gameObjects[0]->getId());
-
-            if (-1 != scrollPosition)
+            else
             {
-                NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-                delayProcess->attachChild(NOWA::ProcessPtr(new SetScrollPositionProcess(this->propertiesPanelView1, scrollPosition)));
-                NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+                if (found != this->pendingSameValues.cend())
+                {
+                    // last param is whether the property has the same value for all selected game objects
+                    componentPropertiesPanel->addProperty(it->first, it->second, found->second);
+                }
+                else
+                {
+                    componentPropertiesPanel->addProperty(it->first, it->second, false);
+                }
             }
         }
-    };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanel::showProperties");
+
+        // In order to scroll: Position is negative
+        this->pendingOverallScrollPosition -= componentPropertiesPanel->heightCurrent;
+
+        // Scrolls to the selected component
+        if (this->pendingComponentIndexToScrollTo > 0 && this->pendingComponentCursor == this->pendingComponentIndexToScrollTo)
+        {
+            NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+            delayProcess->attachChild(NOWA::ProcessPtr(new SetScrollPositionProcess(this->propertiesPanelView1, this->pendingOverallScrollPosition)));
+            NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+        }
+
+        ++this->pendingComponentCursor;
+        ++processedThisFrame;
+    }
+
+    if (this->pendingComponentCursor >= this->pendingComponentQueue.size())
+    {
+        // At last add the static panel, for static info — same finishing
+        // block the original had, now run once the whole queue is drained.
+        this->propertiesPanelView2->addItem(this->propertiesPanelInfo);
+
+        this->propertiesPanelInfo->listData(this->pendingGameObjects[0]);
+
+        if (false == this->pendingComponentsAreSame)
+        {
+            this->propertiesPanelInfo->setInfo("Components do mismatch\n and hence are not visible\n for several GameObjects.");
+        }
+        else if (false == this->pendingJointsVisible)
+        {
+            this->propertiesPanelInfo->setInfo("Joints not visible\n for several GameObjects.");
+        }
+
+        this->pendingComponentQueue.clear();
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure("PropertiesPanel::buildComponents");
+    }
+}
+
+void PropertiesPanel::showProperties(unsigned int componentIndex)
+{
+    if (false == PropertiesPanel::bShowProperties)
+    {
+        PropertiesPanel::bShowProperties = true;
+        return;
+    }
+
+    // Schrott MyGUI, those events do not work at all
+    // this->propertiesPanelView1->getScrollView()->eventMouseWheel += MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
+    // this->propertiesPanelView1->getScrollView()->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanel::onMouseRelease);
+
+    // Get data from selected game objects for properties panel
+
+    // First clear the properties
+    this->clearProperties();
+    // Show all properties for selected game objects
+    unsigned int i = 0;
+    auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+    unsigned int count = static_cast<unsigned int>(selectedGameObjects.size());
+    std::vector<NOWA::GameObject*> gameObjects;
+    if (count > 0)
+    {
+        gameObjects.resize(count);
+        for (auto it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+        {
+            gameObjects[i] = it->second.gameObject;
+            i++;
+        }
+        this->showProperties(gameObjects, componentIndex);
+
+        // Set remembered scroll position after everything has been reloaded (with delay), else the scrollviewer range is 0
+        int scrollPosition = MyGUIHelper::getInstance()->getScrollPosition(gameObjects[0]->getId());
+
+        if (-1 != scrollPosition)
+        {
+            NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+            delayProcess->attachChild(NOWA::ProcessPtr(new SetScrollPositionProcess(this->propertiesPanelView1, scrollPosition)));
+            NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+        }
+    }
 }
 
 void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects, unsigned int componentIndex)
 {
-	// Create properties panel for info
-	this->propertiesPanelInfo = new PropertiesPanelInfo();
-	// Create properties panel
-	PropertiesPanelDynamic* gameObjectPropertiesPanel = new PropertiesPanelGameObject(gameObjects, "GameObject");
-	assert(this->editorManager != nullptr);
+    // Create properties panel for info
+    this->propertiesPanelInfo = new PropertiesPanelInfo();
+    // Create properties panel
+    PropertiesPanelDynamic* gameObjectPropertiesPanel = new PropertiesPanelGameObject(gameObjects, "GameObject");
+    assert(this->editorManager != nullptr);
 
-	gameObjectPropertiesPanel->setEditorManager(this->editorManager);
-	gameObjectPropertiesPanel->setPropertiesPanelInfo(this->propertiesPanelInfo);
-	// Add it to the view
-	this->propertiesPanelView1->addItem(gameObjectPropertiesPanel);
+    gameObjectPropertiesPanel->setEditorManager(this->editorManager);
+    gameObjectPropertiesPanel->setPropertiesPanelInfo(this->propertiesPanelInfo);
+    // Add it to the view
+    this->propertiesPanelView1->addItem(gameObjectPropertiesPanel);
 
-	// Add game object
-	{
-		auto attributes = gameObjects[0]->getAttributes();
-		// Just one object, simple case, add all attributes
-		if (1 == gameObjects.size())
-		{
-			for (auto it = attributes.begin(); it != attributes.end(); ++it)
-			{
-				gameObjectPropertiesPanel->addProperty(it->first, it->second, true);
-			}
-		}
-		else
-		{
-			// Complex case, add attributes for several game objects. That is: Match if there are game objects, that do have the same values
-			std::map<Ogre::String, bool> sameValues;
+    // Add game object
+    {
+        auto attributes = gameObjects[0]->getAttributes();
+        // Just one object, simple case, add all attributes
+        if (1 == gameObjects.size())
+        {
+            for (auto it = attributes.begin(); it != attributes.end(); ++it)
+            {
+                gameObjectPropertiesPanel->addProperty(it->first, it->second, true);
+            }
+        }
+        else
+        {
+            // Complex case, add attributes for several game objects. That is: Match if there are game objects, that do have the same values
+            std::map<Ogre::String, bool> sameValues;
 
-			for (size_t i = 0; i < gameObjects.size() - 1; i++)
-			{
-				NOWA::GameObject* thisGameObject = gameObjects[i];
-				NOWA::GameObject* nextGameObject = gameObjects[i + 1];
+            for (size_t i = 0; i < gameObjects.size() - 1; i++)
+            {
+                NOWA::GameObject* thisGameObject = gameObjects[i];
+                NOWA::GameObject* nextGameObject = gameObjects[i + 1];
 
-				auto thisAttributes = thisGameObject->getAttributes();
-				auto nextAttributes = nextGameObject->getAttributes();
+                auto thisAttributes = thisGameObject->getAttributes();
+                auto nextAttributes = nextGameObject->getAttributes();
 
-				for (auto it = thisAttributes.cbegin(); it != thisAttributes.cend(); ++it)
-				{
-					NOWA::Variant* thisAttribute = it->second;
-					NOWA::Variant* otherAttribute = nextGameObject->getAttribute(thisAttribute->getName());
-					if (nullptr != otherAttribute)
-					{
-						// Internally checks if the value is the same
-						bool samePropertyValue = thisAttribute->equals(otherAttribute);
-						sameValues.emplace(thisAttribute->getName(), samePropertyValue);
-					}
-				}
-			}
+                for (auto it = thisAttributes.cbegin(); it != thisAttributes.cend(); ++it)
+                {
+                    NOWA::Variant* thisAttribute = it->second;
+                    NOWA::Variant* otherAttribute = nextGameObject->getAttribute(thisAttribute->getName());
+                    if (nullptr != otherAttribute)
+                    {
+                        // Internally checks if the value is the same
+                        bool samePropertyValue = thisAttribute->equals(otherAttribute);
+                        sameValues.emplace(thisAttribute->getName(), samePropertyValue);
+                    }
+                }
+            }
 
-			for (auto it = attributes.begin(); it != attributes.end(); ++it)
-			{
-				const auto found = sameValues.find(it->first);
-				if (found != sameValues.cend())
-				{
-					// last param is whether the property has the same value for all selected game objects
-					gameObjectPropertiesPanel->addProperty(it->first, it->second, found->second);
-				}
-				else
-				{
-					gameObjectPropertiesPanel->addProperty(it->first, it->second, false);
-				}
-			}
-		}
-	}
+            for (auto it = attributes.begin(); it != attributes.end(); ++it)
+            {
+                const auto found = sameValues.find(it->first);
+                if (found != sameValues.cend())
+                {
+                    // last param is whether the property has the same value for all selected game objects
+                    gameObjectPropertiesPanel->addProperty(it->first, it->second, found->second);
+                }
+                else
+                {
+                    gameObjectPropertiesPanel->addProperty(it->first, it->second, false);
+                }
+            }
+        }
+    }
 
-	// Show for all game objects, if the components are in the same order and are the same
-	bool componentsAreSame = true;
-	bool jointsVisible = true;
+    // Show for all game objects, if the components are in the same order and are the same
+    bool componentsAreSame = true;
+    bool jointsVisible = true;
 
-	// Complex case, add attributes for several game objects. That is: Match if there are game objects, that do have the same values
-	std::map<Ogre::String, bool> sameValues;
+    // Complex case, add attributes for several game objects. That is: Match if there are game objects, that do have the same values
+    std::map<Ogre::String, bool> sameValues;
 
-	// Add components
-	for (size_t i = 0; i < gameObjects.size(); i++)
-	{
-		unsigned int thisComponentCount = static_cast<unsigned int>(gameObjects[i]->getComponents()->size());
-		if (0 == thisComponentCount || false == componentsAreSame)
-		{
-			break;
-		}
+    // Determine componentsAreSame and per-attribute sameValues (unchanged —
+    // this is pure comparison, not the bottleneck, per your earlier answer)
+    for (size_t i = 0; i < gameObjects.size(); i++)
+    {
+        unsigned int thisComponentCount = static_cast<unsigned int>(gameObjects[i]->getComponents()->size());
+        if (0 == thisComponentCount || false == componentsAreSame)
+        {
+            break;
+        }
 
-		NOWA::GameObject* thisGameObject = gameObjects[i];
+        NOWA::GameObject* thisGameObject = gameObjects[i];
 
-		NOWA::GameObject* nextGameObject = nullptr;
-		if (i < gameObjects.size() - 1)
-		{
-			nextGameObject = gameObjects[i + 1];
-			// Component count must be the same
-			unsigned int nextComponentCount = static_cast<unsigned int>(nextGameObject->getComponents()->size());
-			if (nextComponentCount != thisComponentCount)
-			{
-				componentsAreSame = false;
-				break;
-			}
-		}
+        NOWA::GameObject* nextGameObject = nullptr;
+        if (i < gameObjects.size() - 1)
+        {
+            nextGameObject = gameObjects[i + 1];
+            // Component count must be the same
+            unsigned int nextComponentCount = static_cast<unsigned int>(nextGameObject->getComponents()->size());
+            if (nextComponentCount != thisComponentCount)
+            {
+                componentsAreSame = false;
+                break;
+            }
+        }
 
-		for (unsigned int j = 0; j < thisComponentCount; j++)
-		{
-			NOWA::GameObjectCompPtr thisGameObjectComponent = std::get<NOWA::COMPONENT>(gameObjects[i]->getComponents()->at(j));
+        for (unsigned int j = 0; j < thisComponentCount; j++)
+        {
+            NOWA::GameObjectCompPtr thisGameObjectComponent = std::get<NOWA::COMPONENT>(gameObjects[i]->getComponents()->at(j));
 
-			// Only validate several if there is at least one other game object
-			if (nullptr != nextGameObject)
-			{
-				NOWA::GameObjectCompPtr nextGameObjectComponent = std::get<NOWA::COMPONENT>(gameObjects[i + 1]->getComponents()->at(j));
-				// If the component name of the text game object does not match this game object, skip everything
-				if (thisGameObjectComponent->getClassName() != nextGameObjectComponent->getClassName())
-				{
-					componentsAreSame = false;
-					break;
-				}
+            // Only validate several if there is at least one other game object
+            if (nullptr != nextGameObject)
+            {
+                NOWA::GameObjectCompPtr nextGameObjectComponent = std::get<NOWA::COMPONENT>(gameObjects[i + 1]->getComponents()->at(j));
+                // If the component name of the text game object does not match this game object, skip everything
+                if (thisGameObjectComponent->getClassName() != nextGameObjectComponent->getClassName())
+                {
+                    componentsAreSame = false;
+                    break;
+                }
 
-				auto thisAttributes = std::get<NOWA::COMPONENT>(thisGameObject->getComponents()->at(j))->getAttributes();
-				auto nextAttributes = std::get<NOWA::COMPONENT>(nextGameObject->getComponents()->at(j))->getAttributes();
+                auto thisAttributes = std::get<NOWA::COMPONENT>(thisGameObject->getComponents()->at(j))->getAttributes();
+                auto nextAttributes = std::get<NOWA::COMPONENT>(nextGameObject->getComponents()->at(j))->getAttributes();
 
-				unsigned int k = 0;
-				for (auto it = thisAttributes.cbegin(); it != thisAttributes.cend(); ++it)
-				{
-					NOWA::Variant* thisAttribute = it->second;
-					NOWA::Variant* otherAttribute = nextAttributes[k++].second;
-					if (nullptr != otherAttribute)
-					{
-						// Internally checks if the value is the same
-						bool samePropertyValue = thisAttribute->equals(otherAttribute);
-						sameValues.emplace(thisAttribute->getName(), samePropertyValue);
-					}
-				}
-			}
-		}
-	}
+                unsigned int k = 0;
+                for (auto it = thisAttributes.cbegin(); it != thisAttributes.cend(); ++it)
+                {
+                    NOWA::Variant* thisAttribute = it->second;
+                    NOWA::Variant* otherAttribute = nextAttributes[k++].second;
+                    if (nullptr != otherAttribute)
+                    {
+                        // Internally checks if the value is the same
+                        bool samePropertyValue = thisAttribute->equals(otherAttribute);
+                        sameValues.emplace(thisAttribute->getName(), samePropertyValue);
+                    }
+                }
+            }
+        }
+    }
 
-	PropertiesPanelDynamic* componentPropertiesPanel = nullptr;
-	NOWA::PhysicsCompPtr physicsComponentPtr = nullptr;
+    // --- Everything below replaces the old inline "for (unsigned int j = 0; j < count; j++)"
+    //     component-widget-building loop. Instead of building all N component
+    //     panels in this single render-thread call (the actual slow part),
+    //     queue them and drain a few per frame via a tracked closure. ---
 
-	int overallScrollPosition = 0;
+    // Cancel any previous in-flight batch before starting a new one (e.g.
+    // user clicked a different GameObject before the last build finished).
+    NOWA::GraphicsModule::getInstance()->removeTrackedClosure("PropertiesPanel::buildComponents");
+    this->pendingComponentQueue.clear();
+    this->pendingComponentCursor = 0;
 
-	unsigned int count = static_cast<unsigned int>(gameObjects[0]->getComponents()->size());
-	for (unsigned int j = 0; j < count; j++)
-	{
-		if (true == componentsAreSame)
-		{
-			Ogre::String componentName = std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j))->getClassName();
-			size_t found = componentName.find("Component");
-			if (Ogre::String::npos != found)
-			{
-				// Remove the component part, because the names will become to long
-				componentName = componentName.substr(0, found);
-			}
+    this->pendingGameObjects = gameObjects;
+    this->pendingSameValues = sameValues;
+    this->pendingComponentsAreSame = componentsAreSame;
+    this->pendingJointsVisible = jointsVisible;
+    this->pendingComponentIndexToScrollTo = componentIndex;
+    this->pendingOverallScrollPosition = 0;
 
-			// Build components vector, to be able to configure values for several components
-			std::vector<NOWA::GameObjectComponent*> gameObjectComponents(gameObjects.size());
-			for (size_t k = 0; k < gameObjects.size(); k++)
-			{
-				gameObjectComponents[k] = std::get<NOWA::COMPONENT>(gameObjects[k]->getComponents()->at(j)).get();
-			}
+    if (true == componentsAreSame)
+    {
+        unsigned int count = static_cast<unsigned int>(gameObjects[0]->getComponents()->size());
+        for (unsigned int j = 0; j < count; j++)
+        {
+            Ogre::String componentName = std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j))->getClassName();
+            size_t found = componentName.find("Component");
+            if (Ogre::String::npos != found)
+            {
+                // Remove the component part, because the names will become to long
+                componentName = componentName.substr(0, found);
+            }
 
-			// Create the panel for the component
-			componentPropertiesPanel = new PropertiesPanelComponent(gameObjects, gameObjectComponents, componentName
-				+ " (" + Ogre::StringConverter::toString(std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j))->getOccurrenceIndex()) + ")");
+            // Build components vector, to be able to configure values for several components
+            std::vector<NOWA::GameObjectComponent*> gameObjectComponents(gameObjects.size());
+            for (size_t k = 0; k < gameObjects.size(); k++)
+            {
+                gameObjectComponents[k] = std::get<NOWA::COMPONENT>(gameObjects[k]->getComponents()->at(j)).get();
+            }
 
-			componentPropertiesPanel->setEditorManager(this->editorManager);
-			componentPropertiesPanel->setPropertiesPanelInfo(this->propertiesPanelInfo);
+            PendingComponentBuild build;
+            build.componentName = componentName;
+            build.gameObjectComponents = gameObjectComponents;
+            build.thisComponent = std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j));
+            this->pendingComponentQueue.push_back(build);
+        }
+    }
 
-			// Add the component to view
-			this->propertiesPanelView1->addItem(componentPropertiesPanel);
-
-			// Adds this component pointer as user data, in order to set expand flag on the component
-			NOWA::GameObjectCompPtr thisComponent = std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j));
-			// componentPropertiesPanel->getPanelCell()->getMainWidget()->setUserString("Component", Ogre::StringConverter::toString(reinterpret_cast<size_t>(thisComponent.get())));
-			componentPropertiesPanel->getPanelCell()->getMainWidget()->setUserData(MyGUI::Any(thisComponent.get()));
-
-			bool minimize = false == thisComponent->getIsExpanded();
-			if (true == minimize)
-			{
-				componentPropertiesPanel->getPanelCell()->setClientHeight(26, false);
-				componentPropertiesPanel->getPanelCell()->setMinimized(minimize);
-			}
-
-			// Add the properties
-			auto attributes = thisComponent->getAttributes();
-			for (auto it = attributes.begin(); it != attributes.end(); ++it)
-			{
-				const auto found = sameValues.find(it->first);
-				// Nothing to validate, just one game object, so add default way
-				if (0 == sameValues.size())
-				{
-					componentPropertiesPanel->addProperty(it->first, it->second, true);
-				}
-				else
-				{
-					if (found != sameValues.cend())
-					{
-						// last param is whether the property has the same value for all selected game objects
-						componentPropertiesPanel->addProperty(it->first, it->second, found->second);
-					}
-					else
-					{
-						componentPropertiesPanel->addProperty(it->first, it->second, false);
-					}
-				}
-			}
-
-			// In order to scroll: Position is negative
-			overallScrollPosition -= componentPropertiesPanel->heightCurrent;
-
-			// Scrolls to the selected component
-			if (componentIndex > 0 && j == componentIndex)
-			{
-				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-				delayProcess->attachChild(NOWA::ProcessPtr(new SetScrollPositionProcess(this->propertiesPanelView1, overallScrollPosition)));
-				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-			}
-		}
-	}
-
-	// At last add the static panel, for static info
-	this->propertiesPanelView2->addItem(propertiesPanelInfo);
-
-	propertiesPanelInfo->listData(gameObjects[0]);
-
-	if (false == componentsAreSame)
-	{
-		propertiesPanelInfo->setInfo("Components do mismatch\n and hence are not visible\n for several GameObjects.");
-	}
-	else if (false == jointsVisible)
-	{
-		propertiesPanelInfo->setInfo("Joints not visible\n for several GameObjects.");
-	}
+    // Drains a few components per frame instead of all of them in one frame —
+    // see processPendingComponentBatch() for the batch size and finishing logic.
+    auto closureFunction = [this](Ogre::Real renderDt)
+    {
+        this->processPendingComponentBatch(renderDt);
+    };
+    NOWA::GraphicsModule::getInstance()->updateTrackedClosure("PropertiesPanel::buildComponents", closureFunction, false);
 }
 
 void PropertiesPanel::handleRefreshPropertiesPanel(NOWA::EventDataPtr eventData)
 {
-	this->showProperties();
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->showProperties();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "PropertiesPanel::handleRefreshPropertiesPanel");
 }
 
 PropertiesPanelDynamic* PropertiesPanel::getPropertiesPanelItem(size_t index)

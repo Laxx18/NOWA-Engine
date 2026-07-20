@@ -6,6 +6,8 @@ GPL v3
 #include "NOWAPrecompiled.h"
 #include "ProceduralCityComponent.h"
 #include "../../ProceduralRoadComponent/code/ProceduralRoadComponent.h"
+#include "CityFaceExtractor.h"
+#include "CityLotSubdivider.h"
 #include "CityRoadGraph.h"
 #include "CityTensorField.h"
 #include "RenderQueueEnums.h"
@@ -32,8 +34,11 @@ GPL v3
 #include <chrono>
 #include <cstdio>
 #include <fstream>
+#include <functional>
 #include <future>
+#include <numeric>
 #include <random>
+#include <set>
 #include <thread>
 
 namespace
@@ -1209,6 +1214,8 @@ namespace NOWA
             batches[s].materialSlot = s;
         }
 
+        // Buildings are placed on the perturbed grid.
+        // Phase 2a: each building is oriented to face its nearest organic road segment.
         for (unsigned int bi = 0; bi < static_cast<unsigned int>(blocks.size()); ++bi)
         {
             const CityBlock& blk = blocks[bi];
@@ -1222,6 +1229,7 @@ namespace NOWA
                 {
                     continue;
                 }
+
                 const CityDistrict& district = this->districts[lot.districtIdx];
 
                 std::mt19937 rng(mSeed ^ (bi * 6271u) ^ (static_cast<unsigned int>(&lot - &blk.lots[0]) * 9337u));
@@ -1230,43 +1238,74 @@ namespace NOWA
                 BuildingInstance building;
                 building.position = Ogre::Vector3(lot.centre.x, 0.f, lot.centre.z);
 
-                // Skip lots whose centre falls on the road surface itself.
-                // Clearance = road half-width + small buffer so the lot centre
-                // is never inside the paved area.  Do NOT use a large multiplier
-                // here — that would exclude almost every lot in an organic city.
-                if (false == this->organicRoadSegs.empty())
+                // ---- Road-proximity filter (Step 3) --------------------------------
+                // Only place a building if the lot centre is close to at least one road
+                // segment.  This creates the AAA-game pattern: buildings line streets
+                // and open space exists between road corridors.
+                // nearThreshold = how far from road centre a building can be (inward).
+                // onRoadThreshold = road surface + sidewalk — lots ON the road are skipped.
                 {
-                    // Clearance = road half-width + sidewalk width so building lots whose
-                    // centres are inside the road-plus-sidewalk zone are skipped.
-                    // This prevents buildings from visually overlapping the road surface.
-                    const Ogre::Real clearance = this->roadWidthAttr->getReal() * 0.5f + this->sidewalkWidthAttr->getReal();
+                    const Ogre::Real onRoadThresh = this->roadWidthAttr->getReal() * 0.5f + this->sidewalkWidthAttr->getReal();
+                    const Ogre::Real nearThresh = onRoadThresh + this->blockSizeAttr->getReal() * 0.55f;
                     const Ogre::Vector2 lotXZ(lot.centre.x, lot.centre.z);
-                    bool onRoad = false;
-                    for (const auto& seg : this->organicRoadSegs)
+
+                    auto distToSeg = [](const Ogre::Vector2& p, const Ogre::Vector2& a, const Ogre::Vector2& b) -> Ogre::Real
                     {
-                        // Minimum distance from lot centre to road segment
-                        const Ogre::Vector2 ab = seg.b - seg.a;
+                        const Ogre::Vector2 ab = b - a;
                         const Ogre::Real ab2 = ab.dotProduct(ab);
-                        Ogre::Real d = 0.f;
                         if (ab2 < 1e-6f)
                         {
-                            d = (lotXZ - seg.a).length();
+                            return (p - a).length();
                         }
-                        else
+                        const Ogre::Real t = std::max(0.f, std::min(1.f, (p - a).dotProduct(ab) / ab2));
+                        return (p - (a + t * ab)).length();
+                    };
+
+                    Ogre::Real minDist = std::numeric_limits<Ogre::Real>::max();
+
+                    // Check organic artery segments
+                    for (const auto& seg : this->organicRoadSegs)
+                    {
+                        const Ogre::Real d = distToSeg(lotXZ, seg.a, seg.b);
+                        if (d < minDist)
                         {
-                            const Ogre::Real t = std::max(0.f, std::min(1.f, (lotXZ - seg.a).dotProduct(ab) / ab2));
-                            d = (lotXZ - (seg.a + t * ab)).length();
+                            minDist = d;
                         }
-                        if (d < clearance)
+                        if (minDist < onRoadThresh)
                         {
-                            onRoad = true;
                             break;
+                        } // on road surface
+                    }
+
+                    // Check grid road lines (only when no organic roads were close enough)
+                    if (minDist >= onRoadThresh)
+                    {
+                        for (const auto& gx : this->cityGridX)
+                        {
+                            const Ogre::Real d = std::abs(lotXZ.x - gx);
+                            if (d < minDist)
+                            {
+                                minDist = d;
+                            }
+                        }
+                        for (const auto& gz : this->cityGridZ)
+                        {
+                            const Ogre::Real d = std::abs(lotXZ.y - gz);
+                            if (d < minDist)
+                            {
+                                minDist = d;
+                            }
                         }
                     }
-                    if (onRoad)
+
+                    if (minDist < onRoadThresh)
                     {
                         continue;
-                    }
+                    } // on road surface — skip
+                    if (minDist > nearThresh)
+                    {
+                        continue;
+                    } // too far from any road — skip
                 }
 
                 building.groundHeight = lot.groundHeight;
@@ -2074,119 +2113,196 @@ namespace NOWA
     // Called by buildCityRoadNetwork when variance >= 0.3.
     // Uses CityTensorField + CityRoadGraph to grow an organic road network.
     // =========================================================================
+    // =========================================================================
+    // buildOrganicRoadNetwork — Node + K-nearest-neighbor connected graph
+    //
+    // Replaces the tensor-field random-walk approach which produced disconnected
+    // arteries and junction explosions.  This algorithm:
+    //   1. Places strategic nodes (center, boundary midpoints, quarter-city, random)
+    //   2. Connects each node to its K=3 nearest neighbours
+    //   3. Enforces full connectivity with union-find (no isolated roads)
+    //   4. Feeds the resulting edges to PRC
+    //
+    // Result: a guaranteed-connected organic network.  No junction explosion
+    // because the total edge count is controlled by numNodes × K.
+    // =========================================================================
     void ProceduralCityComponent::buildOrganicRoadNetwork(ProceduralRoadComponent* roadComp, Ogre::Real variance)
     {
         const Ogre::Vector4 bnds = this->cityBoundsAttr->getVector4();
-        const Ogre::Real blockSz = this->blockSizeAttr->getReal();
+        const Ogre::Real cx = (bnds.x + bnds.z) * 0.5f;
+        const Ogre::Real cz = (bnds.y + bnds.w) * 0.5f;
+        const Ogre::Real w = bnds.z - bnds.x;
+        const Ogre::Real h = bnds.w - bnds.y;
         const unsigned int mSeed = this->masterSeedAttr->getUInt();
 
-        // ---- Tensor field ---------------------------------------------------
-        CityTensorField::Params tfParams;
-        tfParams.cityCenter = Ogre::Vector2((bnds.x + bnds.z) * 0.5f, (bnds.y + bnds.w) * 0.5f);
-        tfParams.radialRadius = (bnds.z - bnds.x) * 0.35f;
-        // 0 at var=0.3, up to 0.8 at var=1.0
-        tfParams.radialStrength = std::min(1.f, (variance - 0.3f) / 0.7f * 0.8f);
-        tfParams.gridAngleDeg = static_cast<Ogre::Real>(5u + (mSeed % 23u));
-        const CityTensorField tf(tfParams);
+        std::mt19937 rng(mSeed ^ 0xC17A9B3Fu);
+        // Random nodes stay well inside bounds (10% inset) so they don't
+        // collide with the boundary midpoints we add explicitly.
+        std::uniform_real_distribution<float> rdx(bnds.x + w * 0.12f, bnds.z - w * 0.12f);
+        std::uniform_real_distribution<float> rdz(bnds.y + h * 0.12f, bnds.w - h * 0.12f);
 
-        // ---- Road graph params ----------------------------------------------
-        CityRoadGraph::Params rgParams;
-        rgParams.bounds = bnds;
-        rgParams.masterSeed = mSeed;
-        rgParams.numMajorRoads = 2 + static_cast<int>(variance * 3.f); // 2-5
-        rgParams.stepLen = blockSz * 0.25f;
-        rgParams.minorSpacing = blockSz * 0.75f;
-        rgParams.minorMaxLen = blockSz * 1.5f;
-        rgParams.snapRadius = this->roadWidthAttr->getReal() * 1.5f;
-        rgParams.maxSlopeDeg = 30.f;
-        rgParams.majorWidth = this->roadWidthAttr->getReal() * 1.3f;
-        rgParams.minorWidth = this->roadWidthAttr->getReal();
+        // ---- 1. Place nodes -----------------------------------------------
+        std::vector<Ogre::Vector2> nodes;
 
-        // ---- Ground height callback -----------------------------------------
-        CityRoadGraph::GroundHeightFn heightFn = [this](Ogre::Real x, Ogre::Real z) -> Ogre::Real
+        // City centre
+        nodes.push_back(Ogre::Vector2(cx, cz));
+
+        // 4 boundary midpoints (slightly inset so they don't sit exactly on edge)
+        const Ogre::Real bi = 0.06f;                         // 6% inset
+        nodes.push_back(Ogre::Vector2(cx, bnds.y + h * bi)); // South
+        nodes.push_back(Ogre::Vector2(cx, bnds.w - h * bi)); // North
+        nodes.push_back(Ogre::Vector2(bnds.x + w * bi, cz)); // West
+        nodes.push_back(Ogre::Vector2(bnds.z - w * bi, cz)); // East
+
+        // 4 quarter-city nodes for inner structure
+        nodes.push_back(Ogre::Vector2(cx - w * 0.27f, cz - h * 0.27f));
+        nodes.push_back(Ogre::Vector2(cx + w * 0.27f, cz - h * 0.27f));
+        nodes.push_back(Ogre::Vector2(cx - w * 0.27f, cz + h * 0.27f));
+        nodes.push_back(Ogre::Vector2(cx + w * 0.27f, cz + h * 0.27f));
+
+        // Random interior nodes — count scales with city size and variance
+        const Ogre::Real diagLen = Ogre::Vector2(w, h).length();
+        const int numRandom = 6 + static_cast<int>(diagLen / 55.f * (0.4f + variance));
+        for (int i = 0; i < numRandom; ++i)
         {
-            return this->getGroundHeight(Ogre::Vector3(x, 0.f, z));
+            nodes.push_back(Ogre::Vector2(rdx(rng), rdz(rng)));
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] buildOrganicRoadNetwork: " + Ogre::StringConverter::toString(static_cast<unsigned int>(nodes.size())) +
+                                                                                " nodes placed (diagonal=" + Ogre::StringConverter::toString(diagLen) + " random=" + Ogre::StringConverter::toString(numRandom) + ").");
+
+        const int N = static_cast<int>(nodes.size());
+
+        // ---- 2. K-nearest-neighbour edges (K=4) ---------------------------
+        // K=4 gives mostly 4-way intersections (cleaner junction patches than K=3 T-junctions).
+        static constexpr int K = 4;
+
+        // edge set: store as sorted (a,b) pairs to avoid duplicates
+        std::set<std::pair<int, int>> edgeSet;
+        std::vector<std::pair<int, int>> edges;
+
+        auto addEdge = [&](int a, int b)
+        {
+            if (a == b)
+            {
+                return;
+            }
+            if (a > b)
+            {
+                std::swap(a, b);
+            }
+            if (edgeSet.insert({a, b}).second)
+            {
+                edges.push_back({a, b});
+            }
         };
 
-        // ---- Generate road graph --------------------------------------------
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] buildOrganicRoadNetwork START: variance=" + Ogre::StringConverter::toString(variance) + " bounds=(" + Ogre::StringConverter::toString(bnds.x) +
-                                                                                "," + Ogre::StringConverter::toString(bnds.y) + "," + Ogre::StringConverter::toString(bnds.z) + "," + Ogre::StringConverter::toString(bnds.w) +
-                                                                                ") numMajorRoads=" + Ogre::StringConverter::toString(rgParams.numMajorRoads) + " stepLen=" + Ogre::StringConverter::toString(rgParams.stepLen) +
-                                                                                " seed=" + Ogre::StringConverter::toString(rgParams.masterSeed));
-
-        CityRoadGraph graph(rgParams, tf, heightFn);
-        graph.generate();
-
-        const auto& gNodes = graph.getNodes();
-        const auto& gEdges = graph.getEdges();
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Organic road graph generated: " + Ogre::StringConverter::toString(static_cast<unsigned int>(gNodes.size())) + " nodes, " +
-                                                                                Ogre::StringConverter::toString(static_cast<unsigned int>(gEdges.size())) + " edges" + (gEdges.empty() ? " — WARNING: EMPTY GRAPH" : " — OK"));
-
-        if (gEdges.empty())
+        for (int i = 0; i < N; ++i)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] ERROR: organic graph produced no edges. "
-                                                                                "Check: bounds are non-zero? getGroundHeight returning valid Y? "
-                                                                                "maxSlopeDeg not too restrictive for this terrain?");
-            return;
-        }
-
-        // Log first 5 edges for debugging
-        const size_t logCount = std::min(static_cast<size_t>(5u), gEdges.size());
-        for (size_t li = 0; li < logCount; ++li)
-        {
-            const auto& e = gEdges[li];
-            if (e.nodeA >= 0 && e.nodeB >= 0 && e.nodeA < static_cast<int>(gNodes.size()) && e.nodeB < static_cast<int>(gNodes.size()))
+            // Gather distances to all other nodes
+            std::vector<std::pair<float, int>> dists;
+            dists.reserve(static_cast<size_t>(N - 1));
+            for (int j = 0; j < N; ++j)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralCityComponent]   edge " + Ogre::StringConverter::toString(static_cast<unsigned int>(li)) + ": (" +
-                                                                                       Ogre::StringConverter::toString(gNodes[static_cast<size_t>(e.nodeA)].pos.x) + "," + Ogre::StringConverter::toString(gNodes[static_cast<size_t>(e.nodeA)].pos.y) +
-                                                                                       ") -> (" + Ogre::StringConverter::toString(gNodes[static_cast<size_t>(e.nodeB)].pos.x) + "," +
-                                                                                       Ogre::StringConverter::toString(gNodes[static_cast<size_t>(e.nodeB)].pos.y) + ")");
+                if (j == i)
+                {
+                    continue;
+                }
+                const Ogre::Real dx2 = nodes[i].x - nodes[j].x;
+                const Ogre::Real dz2 = nodes[i].y - nodes[j].y;
+                dists.push_back({dx2 * dx2 + dz2 * dz2, j});
+            }
+            std::sort(dists.begin(), dists.end());
+            const int k = std::min(K, static_cast<int>(dists.size()));
+            for (int ki = 0; ki < k; ++ki)
+            {
+                addEdge(i, dists[static_cast<size_t>(ki)].second);
             }
         }
 
-        // ---- Feed to ProceduralRoadComponent --------------------------------
+        // ---- 3. Enforce full connectivity (union-find) --------------------
+        std::vector<int> parent(static_cast<size_t>(N));
+        std::iota(parent.begin(), parent.end(), 0);
+        std::function<int(int)> findp = [&](int x) -> int
+        {
+            return parent[x] == x ? x : parent[x] = findp(parent[x]);
+        };
+        auto unite = [&](int a, int b)
+        {
+            parent[findp(a)] = findp(b);
+        };
+
+        for (const auto& e : edges)
+        {
+            unite(e.first, e.second);
+        }
+
+        // Connect any isolated components to the main component (node 0)
+        for (int i = 1; i < N; ++i)
+        {
+            if (findp(i) != findp(0))
+            {
+                Ogre::Real minD = std::numeric_limits<Ogre::Real>::max();
+                int best = 0;
+                for (int j = 0; j < i; ++j)
+                {
+                    if (findp(j) == findp(0))
+                    {
+                        const Ogre::Real dx2 = nodes[i].x - nodes[j].x;
+                        const Ogre::Real dz2 = nodes[i].y - nodes[j].y;
+                        const Ogre::Real d = dx2 * dx2 + dz2 * dz2;
+                        if (d < minD)
+                        {
+                            minD = d;
+                            best = j;
+                        }
+                    }
+                }
+                addEdge(i, best);
+                unite(i, best);
+            }
+        }
+
+        // ---- 4. Feed edges to PRC (with subdivision of long edges) --------
+        // Long diagonal edges cause PRC to create large junction patches where
+        // they meet other roads.  Subdivide any edge longer than maxSegLen into
+        // shorter pieces.  PRC sees more, shorter segments → smaller patches.
+        // The intermediate subdivision nodes are NOT added to the organic node
+        // list (they don't create their own K-NN connections).
+        const Ogre::Real maxSegLen = this->blockSizeAttr->getReal() * 2.5f;
+
         this->organicRoadSegs.clear();
-        this->organicRoadSegs.reserve(gEdges.size());
+        this->organicRoadSegs.reserve(edges.size() * 3u);
 
         roadComp->beginBatch();
-        for (const auto& e : gEdges)
+        for (const auto& e : edges)
         {
-            if (e.nodeA < 0 || e.nodeB < 0)
-            {
-                continue;
-            }
-            if (e.nodeA >= static_cast<int>(gNodes.size()))
-            {
-                continue;
-            }
-            if (e.nodeB >= static_cast<int>(gNodes.size()))
-            {
-                continue;
-            }
-            const Ogre::Vector2& pA = gNodes[static_cast<size_t>(e.nodeA)].pos;
-            const Ogre::Vector2& pB = gNodes[static_cast<size_t>(e.nodeB)].pos;
+            const Ogre::Vector2& a = nodes[static_cast<size_t>(e.first)];
+            const Ogre::Vector2& b = nodes[static_cast<size_t>(e.second)];
 
-            // Store for building exclusion
-            RoadSegXZ seg;
-            seg.a = pA;
-            seg.b = pB;
-            this->organicRoadSegs.push_back(seg);
+            const Ogre::Real edgeLen = (b - a).length();
+            const int numSubs = std::max(1, static_cast<int>(std::ceil(edgeLen / maxSegLen)));
 
-            roadComp->addRoadSegmentLua(Ogre::Vector3(pA.x, 0.f, pA.y), Ogre::Vector3(pB.x, 0.f, pB.y));
+            for (int si = 0; si < numSubs; ++si)
+            {
+                const Ogre::Real t0 = static_cast<Ogre::Real>(si) / static_cast<Ogre::Real>(numSubs);
+                const Ogre::Real t1 = static_cast<Ogre::Real>(si + 1) / static_cast<Ogre::Real>(numSubs);
+                const Ogre::Vector2 pa = a + (b - a) * t0;
+                const Ogre::Vector2 pb = a + (b - a) * t1;
+
+                RoadSegXZ seg;
+                seg.a = pa;
+                seg.b = pb;
+                this->organicRoadSegs.push_back(seg);
+
+                roadComp->addRoadSegmentLua(Ogre::Vector3(pa.x, 0.f, pa.y), Ogre::Vector3(pb.x, 0.f, pb.y));
+            }
         }
         roadComp->endBatch();
-        // Buildings remain on cityGridX/Z in Phase 1.
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-            "[ProceduralCityComponent] buildOrganicRoadNetwork DONE: " + Ogre::StringConverter::toString(static_cast<unsigned int>(gEdges.size())) + " edges fed to ProceduralRoadComponent via beginBatch/endBatch.");
-    }
 
-    // =========================================================================
-    // generateRoadGeometry — KEPT FOR REFERENCE but no longer called.
-    // Replaced by buildCityRoadNetwork() above.
-    // FIX record: single midpoint raycast per 40m strip caused roads to clip through
-    // houses and terrain; tessellation + ProceduralRoadComponent approach is better.
-    // =========================================================================
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralCityComponent] buildOrganicRoadNetwork DONE: " + Ogre::StringConverter::toString(static_cast<unsigned int>(edges.size())) + " road segments fed to ProceduralRoadComponent.");
+    }
 
     void ProceduralCityComponent::generateRoadGeometry(const std::vector<CityBlock>& blocks, const Ogre::Vector3& localOrigin, std::vector<float>& roadV, std::vector<Ogre::uint32>& roadI, size_t& roadN, std::vector<float>& curbV,
         std::vector<Ogre::uint32>& curbI, size_t& curbN)
