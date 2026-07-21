@@ -637,26 +637,6 @@ namespace NOWA
         Ogre::Real getDistrictDensity(unsigned int index) const;
 
         /**
-         * @brief Probability [0..1] that a block in district i gets a courtyard
-         *        wall along its perimeter.  Ignored if generateWalls is false.
-         *        Default 0.3.
-         */
-        void setDistrictCourtyardProb(unsigned int index, Ogre::Real prob);
-
-        /**
-         * @brief Wall surface datablock for district i, variant v (0..3).
-         *        Each building randomly picks one of the non-empty variants so
-         *        adjacent buildings differ visually — the AAA variance approach.
-         *
-         *        Placeholder defaults (fill in your actual datablock names):
-         *          v=0  "city_wall_01"
-         *          v=1  "city_wall_02"
-         *          v=2  "city_wall_03"
-         *          v=3  "city_wall_04"
-         */
-        void setDistrictWallDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
-
-        /**
          * @brief Roof datablock for district i, variant v (0..2).
          *        Placeholder defaults:
          *          v=0  "city_roof_01"
@@ -737,7 +717,7 @@ namespace NOWA
 
         /**
          * @brief Per-district configuration.
-         *        Note: `wallDatablocks[0]` is always used.  Slots [1..3] expand
+         *        Note: `roofDatablocks[0]` is always used.  Slots [1..3] expand
          *        variance only when non-empty — the RNG picks from however many
          *        non-empty slots exist.
          */
@@ -754,7 +734,6 @@ namespace NOWA
 
             // AAA variance: multiple datablocks per material slot.
             // One is selected per building from BuildingInstance::variantSeed.
-            Ogre::String wallDatablocks[4] = {"city_wall_01", "city_wall_02", "city_wall_03", "city_wall_04"};
             Ogre::String roofDatablocks[3] = {"city_roof_01", "city_roof_02", "city_roof_03"};
             Ogre::String windowDatablocks[3] = {"city_window_01", "city_window_02", "city_window_03"};
             Ogre::String trimDatablocks[2] = {"city_trim_01", "city_trim_02"};
@@ -859,7 +838,7 @@ namespace NOWA
          *        @param roadComp  The ProceduralRoadComponent to feed segments to.
          *        @param variance  The current RoadVariance attribute value [0.3..1.0].
          */
-        void buildOrganicRoadNetwork(ProceduralRoadComponent* roadComp, Ogre::Real variance);
+        void buildOrganicRoadNetwork(std::vector<std::pair<Ogre::Vector2, Ogre::Vector2>>& allRoadSegs, Ogre::Real variance);
 
         /**
          * @brief Generate internal road-strip geometry into the road and curb
@@ -1021,6 +1000,8 @@ namespace NOWA
         void handleComponentManuallyDeleted(NOWA::EventDataPtr eventData);
         void handleGameObjectSelected(NOWA::EventDataPtr eventData);
 
+    private:
+
         // ---- Cache version ------------------------------------------------
 
         static constexpr uint32_t CITY_CACHE_VERSION = 1u;
@@ -1083,9 +1064,7 @@ namespace NOWA
         std::vector<Variant*> districtMinFootprintAttrs;
         std::vector<Variant*> districtMaxFootprintAttrs;
         std::vector<Variant*> districtDensityAttrs;
-        std::vector<Variant*> districtCourtyardProbAttrs;
         // [districtIdx][variantIdx]
-        std::vector<std::array<Variant*, 4>> districtWallDbAttrs;
         std::vector<std::array<Variant*, 3>> districtRoofDbAttrs;
         std::vector<std::array<Variant*, 3>> districtWindowDbAttrs;
         std::vector<std::array<Variant*, 2>> districtTrimDbAttrs;

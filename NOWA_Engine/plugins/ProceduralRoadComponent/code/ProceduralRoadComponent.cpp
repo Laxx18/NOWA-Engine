@@ -10,17 +10,17 @@ GPL v3
 #include "gameobject/GameObjectController.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/GameObjectTitleComponent.h"
-#include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/NodeComponent.h"
+#include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/TerraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/InputDeviceCore.h"
 #include "modules/GraphicsModule.h"
 #include "modules/LuaScriptApi.h"
+#include "utilities/Helper.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
-#include "utilities/Helper.h"
 
 #include "RenderQueueEnums.h"
 
@@ -118,7 +118,7 @@ namespace NOWA
         this->curveSubdivisions->setDescription("Number of segments for curved roads (higher = smoother)");
         this->curbHeight->setDescription("Height of the curb edges above the road surface (meters). Set 0 for flat edges.");
         this->terrainSampleInterval->setDescription("Distance between terrain height samples along the road (meters). Lower = better terrain following but more geometry.");
-        
+
         this->editMode->setDescription("Object: click-drag to build roads.\n"
                                        "Segment: LMB to select a segment, X to delete it.");
         this->editMode->addUserData(GameObject::AttrActionNoUndo());
@@ -137,23 +137,22 @@ namespace NOWA
         this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.ConvertToMesh");
 
         this->terrainBlendMargin->setDescription("How far beyond the road's own width (including edges) the terrain "
-                                                  "conform operation blends back to the original terrain height (meters). "
-                                                  "Larger = gentler, wider slope into the surrounding ground; smaller = "
-                                                  "a sharper transition close to the road.");
+                                                 "conform operation blends back to the original terrain height (meters). "
+                                                 "Larger = gentler, wider slope into the surrounding ground; smaller = "
+                                                 "a sharper transition close to the road.");
 
         this->conformTerrainToRoad->setDescription("Deforms the underlying Terra heightmap to match this road: flattens "
-                                                    "the terrain to the road's own (already terrain-following) height "
-                                                    "directly under the road, then blends smoothly back to the original "
-                                                    "terrain over 'Terrain Blend Margin' meters. Use this to close gaps "
-                                                    "where the road floats above a dip or gets buried in a hill/ridge "
-                                                    "that's narrower than the road. This modifies the Terra GameObject "
-                                                    "in the scene, not just this road - undo/redo applies to the "
-                                                    "terrain edit like any other terrain modification.");
+                                                   "the terrain to the road's own (already terrain-following) height "
+                                                   "directly under the road, then blends smoothly back to the original "
+                                                   "terrain over 'Terrain Blend Margin' meters. Use this to close gaps "
+                                                   "where the road floats above a dip or gets buried in a hill/ridge "
+                                                   "that's narrower than the road. This modifies the Terra GameObject "
+                                                   "in the scene, not just this road - undo/redo applies to the "
+                                                   "terrain edit like any other terrain modification.");
         this->conformTerrainToRoad->addUserData(GameObject::AttrActionExec());
         this->conformTerrainToRoad->addUserData(GameObject::AttrActionNeedRefresh());
         this->conformTerrainToRoad->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.ConformTerrainToRoad");
 
-    
         this->sourceTerraLayer->setDescription("Terra blend layer to trace as road centerline (0=layer1 .. 3=layer4). "
                                                "Paint the road path on terrain with the Terra brush first, then click Generate.");
         this->traceStepMeters->setDescription("Distance in meters between generated road waypoints. "
@@ -1732,26 +1731,26 @@ namespace NOWA
                     const bool headReversed0 = chainIndices.front().second;
                     const Ogre::Vector3 headPos0 = headReversed0 ? headSeg0.controlPoints.back().position : headSeg0.controlPoints.front().position;
                     if (chainIndices.size() >= 2 && tailPos.squaredDistance(headPos0) < 0.01f)
-            {
+                    {
                         closedLoop = true;
                         break;
                     }
 
                     auto it = pointSegs.find(tailKey);
                     if (it == pointSegs.end())
-                {
-                    break;
-                }
+                    {
+                        break;
+                    }
 
                     for (const auto& entry : it->second)
-                {
+                    {
                         const size_t nextIdx = entry.first;
                         const bool nextTouchesViaFront = entry.second;
 
                         if (processed[nextIdx])
-                    {
-                        continue;
-                    }
+                        {
+                            continue;
+                        }
 
                         // If the neighbour touches this point via its FRONT, keep it
                         // un-reversed (its back becomes the new tail). If it touches via
@@ -1804,7 +1803,7 @@ namespace NOWA
                         const bool nextTouchesViaFront = entry.second;
 
                         if (processed[nextIdx])
-                    {
+                        {
                             continue;
                         }
 
@@ -1840,19 +1839,19 @@ namespace NOWA
 
                 if (false == reversed)
                 {
-                for (size_t pi = 0; pi < seg.controlPoints.size(); ++pi)
-                {
+                    for (size_t pi = 0; pi < seg.controlPoints.size(); ++pi)
+                    {
                         const RoadControlPoint& cp = seg.controlPoints[pi];
                         if (false == chainWaypoints.empty() && chainWaypoints.back().position.squaredDistance(cp.position) < 0.0001f)
-                    {
-                        continue;
-                    }
+                        {
+                            continue;
+                        }
                         chainWaypoints.push_back(cp);
+                    }
                 }
-            }
                 else
                 {
-                    for (size_t pi = seg.controlPoints.size(); pi-- > 0; )
+                    for (size_t pi = seg.controlPoints.size(); pi-- > 0;)
                     {
                         const RoadControlPoint& cp = seg.controlPoints[pi];
                         if (false == chainWaypoints.empty() && chainWaypoints.back().position.squaredDistance(cp.position) < 0.0001f)
@@ -2156,6 +2155,48 @@ namespace NOWA
         }
     }
 
+    namespace
+    {
+        // Resolves the scene's Terra once and caches it. Sampling the heightmap
+        // directly (Terra::getHeightAt) is an O(1) bilinear lookup, whereas the
+        // previous RaySceneQuery tested every road mesh + junction patch in the
+        // scene on *every* sampled point. That made getGroundHeight cost roughly
+        // O(points * sceneTriangles), which is why deleting a segment on a large
+        // connected network could take minutes: the whole network is re-sampled
+        // on rebuild against the now-largest version of the scene.
+        Ogre::Terra* resolveSceneTerra(void)
+        {
+            static Ogre::Terra* cachedTerra = nullptr;
+            static void* cachedControllerOwner = nullptr;
+
+            // The GameObjectController is recreated on scene (re)load, so its
+            // address changing is our signal that the cached Terra pointer may be
+            // stale and must be re-resolved. This keeps the O(1) fast path while
+            // avoiding a dangling pointer after a scene switch.
+            auto* controller = AppStateManager::getSingletonPtr()->getGameObjectController();
+            if (nullptr != cachedTerra && controller == cachedControllerOwner)
+            {
+                return cachedTerra;
+            }
+
+            cachedTerra = nullptr;
+            cachedControllerOwner = controller;
+
+            auto terraList = controller->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
+            if (terraList.empty())
+            {
+                return nullptr;
+            }
+            auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
+            if (!terraCompPtr)
+            {
+                return nullptr;
+            }
+            cachedTerra = terraCompPtr->getTerra();
+            return cachedTerra;
+        }
+    }
+
     Ogre::Real ProceduralRoadComponent::getGroundHeight(const Ogre::Vector3& position)
     {
         if (false == this->adaptToGround->getBool())
@@ -2163,34 +2204,23 @@ namespace NOWA
             return position.y;
         }
 
+        // Fast path: sample the Terra heightmap directly instead of raycasting the
+        // whole scene. This removes the O(points * sceneTriangles) blow-up that made
+        // segment deletion on large networks take minutes.
+        Ogre::Terra* terra = resolveSceneTerra();
+        if (nullptr != terra)
+        {
+            Ogre::Vector3 sample = position;
+            if (terra->getHeightAt(sample))
+            {
+                return sample.y + this->heightOffset->getReal();
+            }
+        }
+
+        // Fallback: intersect against the flat ground plane (kept from the original
+        // path) when there is no Terra or the point is outside terrain bounds.
         Ogre::Vector3 rayOrigin = Ogre::Vector3(position.x, position.y + 1000.0f, position.z);
         Ogre::Ray downRay(rayOrigin, Ogre::Vector3::NEGATIVE_UNIT_Y);
-
-        this->groundQuery->setRay(downRay);
-        this->groundQuery->setSortByDistance(true);
-
-        Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-        Ogre::MovableObject* hitMovableObject = nullptr;
-        Ogre::Real closestDistance = 0.0f;
-        Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-
-        std::vector<Ogre::MovableObject*> excludeMovableObjects;
-        if (this->roadItem)
-        {
-            excludeMovableObjects.emplace_back(this->roadItem);
-        }
-        if (this->previewItem)
-        {
-            excludeMovableObjects.emplace_back(this->previewItem);
-        }
-
-        bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(this->groundQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal,
-            &excludeMovableObjects, false);
-
-        if (hitFound && hitMovableObject != nullptr)
-        {
-            return internalHitPoint.y + this->heightOffset->getReal();
-        }
 
         std::pair<bool, Ogre::Real> planeResult = downRay.intersects(this->groundPlane);
         if (planeResult.first && planeResult.second > 0.0f)
@@ -2684,7 +2714,7 @@ namespace NOWA
         // MaxGradient still controls gentle slopes; steep cliffs get a bridge.
         {
             const Ogre::Real startH = points.front().groundHeight;
-            const Ogre::Real endH   = points.back().groundHeight;
+            const Ogre::Real endH = points.back().groundHeight;
 
             // Accumulate horizontal distances so we can lerp by arc-length
             std::vector<Ogre::Real> cumDist(points.size(), 0.f);
@@ -2694,10 +2724,9 @@ namespace NOWA
                 cumDist[i] = cumDist[i - 1] + Ogre::Vector2(d.x, d.z).length();
             }
             const Ogre::Real totalHoriz = cumDist.back();
-            const Ogre::Real heightDiff  = std::abs(endH - startH);
+            const Ogre::Real heightDiff = std::abs(endH - startH);
 
-            if (totalHoriz > 0.001f && maxGrad > 0.001f &&
-                heightDiff / totalHoriz > maxGrad)
+            if (totalHoriz > 0.001f && maxGrad > 0.001f && heightDiff / totalHoriz > maxGrad)
             {
                 // Gradient exceeds limit → bridge mode: chord interpolation
                 for (size_t i = 1; i + 1 < points.size(); ++i)
@@ -2705,9 +2734,9 @@ namespace NOWA
                     const Ogre::Real t = cumDist[i] / totalHoriz;
                     points[i].smoothedHeight = Ogre::Math::lerp(startH, endH, t);
                     // Pin groundHeight too so smoothing passes keep it
-                    points[i].groundHeight   = points[i].smoothedHeight;
+                    points[i].groundHeight = points[i].smoothedHeight;
                 }
-                return;  // endpoints already pinned, no further smoothing needed
+                return; // endpoints already pinned, no further smoothing needed
             }
         }
 
@@ -2752,13 +2781,22 @@ namespace NOWA
         {
             Ogre::Vector3 dir = points[i].position - points[i - 1].position;
             Ogre::Real horizontalDist = Ogre::Vector2(dir.x, dir.z).length();
-            if (horizontalDist < 0.001f) { continue; }
+            if (horizontalDist < 0.001f)
+            {
+                continue;
+            }
 
-            Ogre::Real heightDiff    = points[i].smoothedHeight - points[i - 1].smoothedHeight;
+            Ogre::Real heightDiff = points[i].smoothedHeight - points[i - 1].smoothedHeight;
             Ogre::Real maxHeightDiff = horizontalDist * maxGrad;
 
-            if      (heightDiff >  maxHeightDiff) { points[i].smoothedHeight = points[i - 1].smoothedHeight + maxHeightDiff; }
-            else if (heightDiff < -maxHeightDiff) { points[i].smoothedHeight = points[i - 1].smoothedHeight - maxHeightDiff; }
+            if (heightDiff > maxHeightDiff)
+            {
+                points[i].smoothedHeight = points[i - 1].smoothedHeight + maxHeightDiff;
+            }
+            else if (heightDiff < -maxHeightDiff)
+            {
+                points[i].smoothedHeight = points[i - 1].smoothedHeight - maxHeightDiff;
+            }
         }
 
         // ---- Backward gradient clamping (prevents kinks) ----
@@ -2766,13 +2804,22 @@ namespace NOWA
         {
             Ogre::Vector3 dir = points[i + 1].position - points[i].position;
             Ogre::Real horizontalDist = Ogre::Vector2(dir.x, dir.z).length();
-            if (horizontalDist < 0.001f) { continue; }
+            if (horizontalDist < 0.001f)
+            {
+                continue;
+            }
 
-            Ogre::Real heightDiff    = points[i].smoothedHeight - points[i + 1].smoothedHeight;
+            Ogre::Real heightDiff = points[i].smoothedHeight - points[i + 1].smoothedHeight;
             Ogre::Real maxHeightDiff = horizontalDist * maxGrad;
 
-            if      (heightDiff >  maxHeightDiff) { points[i].smoothedHeight = points[i + 1].smoothedHeight + maxHeightDiff; }
-            else if (heightDiff < -maxHeightDiff) { points[i].smoothedHeight = points[i + 1].smoothedHeight - maxHeightDiff; }
+            if (heightDiff > maxHeightDiff)
+            {
+                points[i].smoothedHeight = points[i + 1].smoothedHeight + maxHeightDiff;
+            }
+            else if (heightDiff < -maxHeightDiff)
+            {
+                points[i].smoothedHeight = points[i + 1].smoothedHeight - maxHeightDiff;
+            }
         }
 
         // ---- Forward gradient clamping ----
@@ -3644,8 +3691,7 @@ namespace NOWA
     {
         if (this->roadSegments.empty())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[ProceduralRoadComponent] conformTerrainToRoad: no road segments to conform to.");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] conformTerrainToRoad: no road segments to conform to.");
             return false;
         }
 
@@ -3656,8 +3702,7 @@ namespace NOWA
         auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
         if (terraList.empty())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[ProceduralRoadComponent] conformTerrainToRoad: No TerraComponent found!");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] conformTerrainToRoad: No TerraComponent found!");
             return false;
         }
         auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
@@ -3758,8 +3803,7 @@ namespace NOWA
                     // instead of sitting just below it. Subtract heightOffset back out so
                     // the terrain settles at the raw ground level the road was originally
                     // placed above, leaving the road's own clearance visible again.
-                    sp.worldHeight = (p0.smoothedHeight - this->heightOffset->getReal()) * (1.0f - t) +
-                        (p1.smoothedHeight - this->heightOffset->getReal()) * t;
+                    sp.worldHeight = (p0.smoothedHeight - this->heightOffset->getReal()) * (1.0f - t) + (p1.smoothedHeight - this->heightOffset->getReal()) * t;
 
                     // Sample the CURRENT natural terrain height at this exact spot (raw,
                     // same reference as sp.worldHeight above) to see how tall the hill/
@@ -3784,8 +3828,7 @@ namespace NOWA
 
         if (stamps.empty())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[ProceduralRoadComponent] conformTerrainToRoad: no stamp points generated.");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] conformTerrainToRoad: no stamp points generated.");
             return false;
         }
 
@@ -3804,10 +3847,9 @@ namespace NOWA
             maxMarginUsed = std::max(maxMarginUsed, sp.blendMargin);
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-            "[ProceduralRoadComponent] conformTerrainToRoad: stamping " + Ogre::StringConverter::toString(stamps.size()) +
-            " points, radius=" + Ogre::StringConverter::toString(radiusWorld) + "m minBlendMargin=" + Ogre::StringConverter::toString(minBlendMarginWorld) +
-            "m maxAdaptiveMarginUsed=" + Ogre::StringConverter::toString(maxMarginUsed) + "m");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] conformTerrainToRoad: stamping " + Ogre::StringConverter::toString(stamps.size()) +
+                                                                               " points, radius=" + Ogre::StringConverter::toString(radiusWorld) + "m minBlendMargin=" + Ogre::StringConverter::toString(minBlendMarginWorld) +
+                                                                               "m maxAdaptiveMarginUsed=" + Ogre::StringConverter::toString(maxMarginUsed) + "m");
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [terra, stamps, radiusWorld]()
         {
@@ -3953,15 +3995,18 @@ namespace NOWA
             sumY += a.innerL.y + a.innerR.y;
         }
 
-        std::sort(innerRing.begin(), innerRing.end(), [](const InnerCorner& a, const InnerCorner& b)
+        std::sort(innerRing.begin(), innerRing.end(),
+            [](const InnerCorner& a, const InnerCorner& b)
             {
                 return a.angle < b.angle;
             });
 
-        innerRing.erase(std::unique(innerRing.begin(), innerRing.end(), [](const InnerCorner& a, const InnerCorner& b)
-            {
-                return std::abs(a.angle - b.angle) < 0.04f;
-            }), innerRing.end());
+        innerRing.erase(std::unique(innerRing.begin(), innerRing.end(),
+                            [](const InnerCorner& a, const InnerCorner& b)
+                            {
+                                return std::abs(a.angle - b.angle) < 0.04f;
+                            }),
+            innerRing.end());
 
         if (innerRing.size() >= 3)
         {
@@ -4016,15 +4061,15 @@ namespace NOWA
                 const Ogre::Vector3 aK_oR_top = aK.outerR + Ogre::Vector3(0, curbH, 0);
                 const Ogre::Vector3 aJ_oL_top = aJ.outerL + Ogre::Vector3(0, curbH, 0);
 
-                    // Inner wall: road surface -> curb top
-                    // u spans curbH (physical wall height) — matches generatePavedRoad convention
-                    this->addRoadQuad(aK.innerR, aK_iR_top, aJ_iL_top, aJ.innerL, -outward, 0.0f, curbH, 0.0f, ev1, false);
+                // Inner wall: road surface -> curb top
+                // u spans curbH (physical wall height) — matches generatePavedRoad convention
+                this->addRoadQuad(aK.innerR, aK_iR_top, aJ_iL_top, aJ.innerL, -outward, 0.0f, curbH, 0.0f, ev1, false);
 
                 // Curb top — drawn for both small and large gaps to close seam
                 this->addRoadQuad(aK_iR_top, aK_oR_top, aJ_oL_top, aJ_iL_top, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, 0.0f, ev1, false);
 
-                    // Outer wall: curb top -> ground
-                    this->addRoadQuad(aK_oR_top, aK.outerR, aJ.outerL, aJ_oL_top, outward, 0.0f, curbH, 0.0f, ev1, false);
+                // Outer wall: curb top -> ground
+                this->addRoadQuad(aK_oR_top, aK.outerR, aJ.outerL, aJ_oL_top, outward, 0.0f, curbH, 0.0f, ev1, false);
             }
             else
             {
@@ -4033,7 +4078,7 @@ namespace NOWA
             }
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Junction patch: " + Ogre::StringConverter::toString(numArms) + " arms");
+        // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Junction patch: " + Ogre::StringConverter::toString(numArms) + " arms");
     }
 
     void ProceduralRoadComponent::addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, bool isCenter)
@@ -4548,7 +4593,7 @@ namespace NOWA
             return;
         }
 
-         // Get PhysicsArtifactComponent if exists
+        // Get PhysicsArtifactComponent if exists
         const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
         if (physicsArtifactCompPtr)
         {
@@ -6099,11 +6144,11 @@ namespace NOWA
         const Ogre::String listenerName = ProceduralRoadComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
         /*NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
         {*/
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->addKeyListener(this, listenerName);
-                core->addMouseListener(this, listenerName);
-            }
+        if (auto* core = InputDeviceCore::getSingletonPtr())
+        {
+            core->addKeyListener(this, listenerName);
+            core->addMouseListener(this, listenerName);
+        }
         /*};
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::addInputListener");*/
     }
@@ -6113,13 +6158,13 @@ namespace NOWA
         const Ogre::String listenerName = ProceduralRoadComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
         // NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
         // {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->removeKeyListener(listenerName);
-                core->removeMouseListener(listenerName);
-            }
-       /* };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::removeInputListener");*/
+        if (auto* core = InputDeviceCore::getSingletonPtr())
+        {
+            core->removeKeyListener(listenerName);
+            core->removeMouseListener(listenerName);
+        }
+        /* };
+         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::removeInputListener");*/
     }
 
     void ProceduralRoadComponent::updateModificationState(void)
@@ -6491,10 +6536,8 @@ namespace NOWA
 
                 for (int side = -1; side <= 1; side += 2) // -1 = left, +1 = right
                 {
-                    const Ogre::Vector3 offsetPrev = points[i - 1].position +
-                        data[i - 1].miterPerp * (static_cast<Ogre::Real>(side) * totalHalfWidth * data[i - 1].miterScale);
-                    const Ogre::Vector3 offsetCur = points[i].position +
-                        data[i].miterPerp * (static_cast<Ogre::Real>(side) * totalHalfWidth * data[i].miterScale);
+                    const Ogre::Vector3 offsetPrev = points[i - 1].position + data[i - 1].miterPerp * (static_cast<Ogre::Real>(side) * totalHalfWidth * data[i - 1].miterScale);
+                    const Ogre::Vector3 offsetCur = points[i].position + data[i].miterPerp * (static_cast<Ogre::Real>(side) * totalHalfWidth * data[i].miterScale);
 
                     if ((offsetCur - offsetPrev).dotProduct(centreDir) < 0.0f)
                     {
@@ -6505,8 +6548,7 @@ namespace NOWA
                         for (int iter = 0; iter < 8 && scale > 0.1f; ++iter)
                         {
                             scale *= 0.7f;
-                            const Ogre::Vector3 testOffset = points[i].position +
-                                data[i].miterPerp * (static_cast<Ogre::Real>(side) * totalHalfWidth * scale);
+                            const Ogre::Vector3 testOffset = points[i].position + data[i].miterPerp * (static_cast<Ogre::Real>(side) * totalHalfWidth * scale);
                             if ((testOffset - offsetPrev).dotProduct(centreDir) >= 0.0f)
                             {
                                 break;
@@ -7841,9 +7883,7 @@ namespace NOWA
 
     void ProceduralRoadComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        luabind::module(lua)
-        [
-            luabind::class_<ProceduralRoadComponent, GameObjectComponent>("ProceduralRoadComponent")
+        luabind::module(lua)[luabind::class_<ProceduralRoadComponent, GameObjectComponent>("ProceduralRoadComponent")
 
                 // ── Activation ────────────────────────────────────────────────
                 .def("setActivated", &ProceduralRoadComponent::setActivated)
@@ -7899,8 +7939,7 @@ namespace NOWA
 
                 // ── Segment management ────────────────────────────────────────
                 .def("getSegmentCount", &ProceduralRoadComponent::getSegmentCount)
-                .def("addRoadSegment", &ProceduralRoadComponent::addRoadSegmentLua)
-        ];
+                .def("addRoadSegment", &ProceduralRoadComponent::addRoadSegmentLua)];
 
         // ── LuaScriptApi documentation ─────────────────────────────────────────
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "class inherits GameObjectComponent", ProceduralRoadComponent::getStaticInfoText());

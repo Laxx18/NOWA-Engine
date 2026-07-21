@@ -20,6 +20,7 @@ GPL v3
 #include "modules/GraphicsModule.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
+#include "utilities/Helper.h"
 
 #include "OgreAbiUtils.h"
 #include "OgreHlmsManager.h"
@@ -148,7 +149,7 @@ namespace NOWA
         curbDatablockAttr(new Variant(AttrCurbDatablock(), Ogre::String("city_curb_01"), this->attributes)),
         roadComponentIdAttr(new Variant(AttrRoadComponentId(), Ogre::String("0"), this->attributes)),
         roadConnectionAtStartAttr(new Variant(AttrRoadConnectionAtStart(), false, this->attributes)),
-        districtCountAttr(new Variant(AttrDistrictCount(), 1u, this->attributes)),
+        districtCountAttr(new Variant(AttrDistrictCount(), 9u, this->attributes)),
         doorDatablockAttr(new Variant(AttrDoorDatablock(), Ogre::String("city_door_01"), this->attributes)),
         garageDatablockAttr(new Variant(AttrGarageDatablock(), Ogre::String("city_garage_01"), this->attributes)),
         generateGarageAttr(new Variant(AttrGenerateGarage(), true, this->attributes)),
@@ -220,7 +221,7 @@ namespace NOWA
                                            "Ctrl+Z to undo a deletion. Use this to remove buildings placed on roads or in undesired spots.");
         this->editModeAttr->addUserData(GameObject::AttrActionNoUndo());
 
-        this->setDistrictCount(1u);
+        this->setDistrictCount(9u);
     }
 
     ProceduralCityComponent::~ProceduralCityComponent()
@@ -397,6 +398,10 @@ namespace NOWA
                     this->setDistrictTrimDatablock(i, v, XMLConverter::getAttrib(propertyElement, "data"));
                     propertyElement = propertyElement->next_sibling("property");
                 }
+                if (v == 1)
+                {
+                    this->districtTrimDbAttrs[i][v]->addUserData(GameObject::AttrActionSeparator());
+                }
             }
         }
 
@@ -409,9 +414,6 @@ namespace NOWA
 
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
-        // NOTE: EventDataEditorMode is NOT listened to here — it fires every frame in the editor
-        // which would flood updateModificationState() → addInputListener()/removeInputListener()
-        // every frame → ~280fps drop + camera event dispatch corruption.
 
         this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
         this->groundQuery->setSortByDistance(true);
@@ -423,6 +425,73 @@ namespace NOWA
         if (physicsArtifactCompPtr)
         {
             this->physicsArtifactComponent = physicsArtifactCompPtr.get();
+        }
+
+        // ---- Create or reconnect the CityRoads child GameObject ---------------
+        // Roads live on their own GO so each can carry an independent
+        // PhysicsArtifactComponent (a GO may have only one Ogre::Item).
+        // Pattern mirrors UniversumComponent::createPlanet().
+        //
+        // Reconnect path (scene loaded from disk):
+        //   roadComponentId > 0 → the CityRoads GO was saved with the scene.
+        //   findRoadComponent() will find it once the scene finishes parsing.
+        //   We don't re-create here to avoid duplicates on load.
+        //
+        // First-time / cleared path (roadComponentId == 0):
+        //   Create a new GO named "CityRoads_<ownerId>", add PRC to it,
+        //   call postInit, then store its ID in roadComponentId so it's
+        //   persisted on the next scene save.
+        if (0ul == this->roadComponentId)
+        {
+            Ogre::SceneManager* sm = this->gameObjectPtr->getSceneManager();
+
+            Ogre::String roadsName = "CityRoads_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+            AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(roadsName);
+
+            Ogre::SceneNode* roadsNode = sm->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+            roadsNode->setName(roadsName);
+            roadsNode->setPosition(this->gameObjectPtr->getSceneNode()->_getDerivedPosition());
+
+            GameObjectPtr roadsGo = GameObjectFactory::getInstance()->createGameObject(sm, roadsNode, nullptr, NOWA::ITEM, NOWA::makeUniqueID());
+
+            if (nullptr != roadsGo)
+            {
+                auto prcRaw = GameObjectFactory::getInstance()->createComponentDeferred(roadsGo, ProceduralRoadComponent::getStaticClassName());
+
+                if (nullptr != prcRaw)
+                {
+                    // Forward datablock settings from city attributes to the PRC
+                    prcRaw->getAttribute(ProceduralRoadComponent::AttrCenterDatablock())->setValue(this->roadDatablockAttr->getString());
+                    prcRaw->getAttribute(ProceduralRoadComponent::AttrEdgeDatablock())->setValue(this->curbDatablockAttr->getString());
+                    prcRaw->postInit();
+                }
+
+                this->roadComponentId = roadsGo->getId();
+                this->roadComponentIdAttr->setValue(Ogre::StringConverter::toString(this->roadComponentId));
+
+                // Remove the old ProceduralRoadComponent from the city GO if one was
+                // left there from before this refactor.  Roads now live exclusively on
+                // CityRoads_N — the city GO must be free so PhysicsArtifactComponent
+                // can apply to buildings only.
+                auto oldPrc = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<ProceduralRoadComponent>());
+                if (nullptr != oldPrc)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Removing legacy ProceduralRoadComponent "
+                                                                                        "from city GO — roads have been migrated to CityRoads GO.");
+                    this->gameObjectPtr->deleteComponent<ProceduralRoadComponent>(oldPrc->getIndex());
+                }
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralCityComponent] Created CityRoads GO '" + roadsName + "' (id=" + Ogre::StringConverter::toString(this->roadComponentId) + ") with ProceduralRoadComponent.");
+            }
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] WARNING: failed to create CityRoads GO.");
+            }
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] CityRoads GO id=" + Ogre::StringConverter::toString(this->roadComponentId) + " will be reconnected after scene is parsed.");
         }
 
         if (false == this->cityLoadedFromScene)
@@ -466,6 +535,16 @@ namespace NOWA
         this->destroySelectionOverlay();
 
         this->clearCity(false);
+
+        // Destroy the CityRoads child GO we created in postInit.
+        // Do this AFTER clearCity so the road component is still alive
+        // when clearAllSegments / destroyRoadMesh are called during clearCity.
+        if (this->roadComponentId != 0ul)
+        {
+            AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(this->roadComponentId);
+            this->roadComponentId = 0ul;
+            this->roadComponentIdAttr->setValue(Ogre::String("0"));
+        }
 
         if (this->groundQuery)
         {
@@ -871,11 +950,11 @@ namespace NOWA
         desc.meshToDisplay = "Node.mesh";
         desc.needsMeshItem = true;
         desc.forceZeroTransform = false;
-        // ProceduralRoadComponent is auto-created alongside ProceduralCityComponent so the
-        // city has a reliable, already-tested road generator built in — no custom road mesh
-        // generation needed.  ProceduralCityComponent.buildCityRoadNetwork() feeds the grid
-        // segments to it via addRoadSegmentLua().
-        desc.autoComponents = {ProceduralCityComponent::getStaticClassName(), ProceduralRoadComponent::getStaticClassName()};
+        // ProceduralRoadComponent is NO LONGER auto-created here.
+        // Roads live on a dedicated CityRoads_N child GameObject (created in postInit).
+        // This keeps the city GO free for PhysicsArtifactComponent to use the
+        // building geometry Item without road mesh interference.
+        desc.autoComponents = {ProceduralCityComponent::getStaticClassName()};
         return desc;
     }
 
@@ -914,13 +993,11 @@ namespace NOWA
 
     void ProceduralCityComponent::clearCity(bool deleteCacheFile)
     {
-        // Also clear the ProceduralRoadComponent's road network so "Clear" button
-        // removes roads too (previously only buildings/walls were cleared).
-        auto roadCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<ProceduralRoadComponent>());
-        if (nullptr != roadCompPtr)
+        // Clear the CityRoads GO road network (not the city GO's PRC).
+        ProceduralRoadComponent* roadCompForClear = this->findRoadComponent();
+        if (nullptr != roadCompForClear)
         {
-            // clearAllSegments() early-returns if already empty — safe to call unconditionally.
-            roadCompPtr->clearAllSegments();
+            roadCompForClear->clearAllSegments();
         }
 
         GraphicsModule::getInstance()->enqueueAndWait(
@@ -1019,10 +1096,21 @@ namespace NOWA
             },
             "ProceduralCityComponent::GenerateBuildingsOnly");
 
-        // Capture cityOrigin from the road component's current SceneNode position.
-        // ProceduralRoadComponent::createRoadMeshInternal() called setPosition(roadOrigin)
-        // when roads were built.  Using that same position keeps buildings in the same
-        // local coordinate space as the road mesh so they always align correctly.
+        // Capture cityOrigin from the CityRoads SceneNode position.
+        // PRC's createRoadMeshInternal() called setPosition(roadOrigin) on the CityRoads GO SceneNode.
+        // The city GO SceneNode is no longer updated by PRC (roads are on a separate GO now).
+        // Sync city GO SceneNode from CityRoads_N so building placement uses the correct origin.
+        {
+            auto roadsGoPtr = NOWA::makeStrongPtr(
+                AppStateManager::getSingletonPtr()->getGameObjectController()
+                    ->getGameObjectFromId(this->roadComponentId));
+            if (nullptr != roadsGoPtr)
+            {
+                const Ogre::Vector3 roadsOrigin =
+                    roadsGoPtr->getSceneNode()->_getDerivedPositionUpdated();
+                this->gameObjectPtr->getSceneNode()->setPosition(roadsOrigin);
+            }
+        }
         this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
 
         // Keep organicRoadSegs from the previous organic generation.
@@ -1185,9 +1273,18 @@ namespace NOWA
         // =====================================================================
         if (false == skipRoads && this->generateRoadsAttr->getBool())
         {
-            // Build road first (moves SceneNode to roadOrigin via ProceduralRoadComponent)
             this->buildCityRoadNetwork(blocks);
-            // Now capture that exact position as cityOrigin
+            // Sync city GO SceneNode from CityRoads_N (PRC updated CityRoads SceneNode, not city GO).
+            {
+                auto roadsGoPtr = NOWA::makeStrongPtr(
+                    AppStateManager::getSingletonPtr()->getGameObjectController()
+                        ->getGameObjectFromId(this->roadComponentId));
+                if (nullptr != roadsGoPtr)
+                {
+                    this->gameObjectPtr->getSceneNode()->setPosition(
+                        roadsGoPtr->getSceneNode()->_getDerivedPositionUpdated());
+                }
+            }
             this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
         }
         else if (skipRoads)
@@ -1912,14 +2009,15 @@ namespace NOWA
 
     void ProceduralCityComponent::buildCityRoadNetwork(const std::vector<CityBlock>& blocks)
     {
-        auto roadCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<ProceduralRoadComponent>());
-        if (nullptr == roadCompPtr)
+        // Roads live on CityRoads_N GO (created in postInit) — NOT on city GO.
+        // Always route through findRoadComponent() so we use the correct PRC.
+        ProceduralRoadComponent* roadComp = this->findRoadComponent();
+        if (nullptr == roadComp)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] buildCityRoadNetwork: ProceduralRoadComponent not found "
-                                                                                "on this GameObject. Check autoComponents in getStaticTypeDescriptor().");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[ProceduralCityComponent] buildCityRoadNetwork: CityRoads GO (id=" + Ogre::StringConverter::toString(this->roadComponentId) + ") not found or has no ProceduralRoadComponent.");
             return;
         }
-        ProceduralRoadComponent* roadComp = roadCompPtr.get();
 
         roadComp->setRoadWidth(this->roadWidthAttr->getReal());
         roadComp->setCenterDatablock(this->roadDatablockAttr->getString());
@@ -2000,101 +2098,128 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
             "[ProceduralCityComponent] buildCityRoadNetwork: variance=" + Ogre::StringConverter::toString(variance) + (variance > 0.1f ? "  → ORGANIC road graph mode" : "  → GRID road mode"));
 
-        if (variance > 0.1f)
-        {
-            this->buildOrganicRoadNetwork(roadComp, variance);
-        }
-        else
-        {
-            // Diagonals connect EXISTING grid junction points so the junction detection
-            // (which requires 3+ segment endpoints at the same position) correctly creates
-            // patches at every crossing.  Number of diagonals scales with variance:
-            //   0.0 → none, 0.25 → 1, 0.5 → 2, 0.75 → 3, 1.0 → 4
-            // The Catmull-Rom smooth-curve feature still applies if an inner grid segment
-            // has its midpoint slightly offset (the midpoint approach from previous code).
-            roadComp->beginBatch();
+        // Collect ALL road segments (grid + diagonals) into one list,
+        // then run CityFaceExtractor::buildPlanarGraph to split all segments
+        // at their mutual crossing points.  Every crossing becomes a shared
+        // endpoint → PRC creates proper junction patches everywhere.
+        std::vector<std::pair<Ogre::Vector2, Ogre::Vector2>> allRoadSegs;
 
-            // Skip the outermost boundary grid lines.
-            const size_t zFirst = (gridZ.size() > 2) ? 1u : 0u;
-            const size_t zLast = (gridZ.size() > 2) ? gridZ.size() - 1u : gridZ.size();
+        // Skip the outermost boundary grid lines.
+        const size_t zFirst = (gridZ.size() > 2) ? 1u : 0u;
+        const size_t zLast = (gridZ.size() > 2) ? gridZ.size() - 1u : gridZ.size();
+        for (size_t zi = zFirst; zi < zLast; ++zi)
+        {
+            const Ogre::Real zVal = gridZ[zi];
+            for (size_t xi = 0; xi + 1 < gridX.size(); ++xi)
+            {
+                allRoadSegs.push_back({Ogre::Vector2(gridX[xi], zVal), Ogre::Vector2(gridX[xi + 1], zVal)});
+            }
+        }
+
+        const size_t xFirst = (gridX.size() > 2) ? 1u : 0u;
+        const size_t xLast = (gridX.size() > 2) ? gridX.size() - 1u : gridX.size();
+        for (size_t xi = xFirst; xi < xLast; ++xi)
+        {
+            const Ogre::Real xVal = gridX[xi];
+            for (size_t zi = 0; zi + 1 < gridZ.size(); ++zi)
+            {
+                allRoadSegs.push_back({Ogre::Vector2(xVal, gridZ[zi]), Ogre::Vector2(xVal, gridZ[zi + 1])});
+            }
+        }
+
+        // ---- Diagonal roads ---------------------------------------------------
+        // Each diagonal connects two non-adjacent inner grid junction points so
+        // junction detection sees 5+ arms at both endpoints → proper patches.
+        // Key constraint: both dx AND dz must be non-zero (true diagonal).
+        // If dx==0 the road is vertical — identical to an existing grid road.
+        // If dz==0 the road is horizontal — identical to an existing grid road.
+        if (variance > 0.01f && gridX.size() >= 4 && gridZ.size() >= 4)
+        {
+            const size_t numDiags = static_cast<size_t>(variance * 3.f) + 1u;
+            uint32_t seed = this->masterSeedAttr->getUInt() ^ 0xC17Bu;
+
+            // Build list of inner junction points
+            std::vector<std::pair<size_t, size_t>> jpts;
             for (size_t zi = zFirst; zi < zLast; ++zi)
             {
-                const Ogre::Real zVal = gridZ[zi];
-                for (size_t xi = 0; xi + 1 < gridX.size(); ++xi)
+                for (size_t xi = xFirst; xi < xLast; ++xi)
                 {
-                    roadComp->addRoadSegmentLua(Ogre::Vector3(gridX[xi], 0.f, zVal), Ogre::Vector3(gridX[xi + 1], 0.f, zVal));
+                    jpts.push_back(std::make_pair(xi, zi));
                 }
             }
 
-            const size_t xFirst = (gridX.size() > 2) ? 1u : 0u;
-            const size_t xLast = (gridX.size() > 2) ? gridX.size() - 1u : gridX.size();
-            for (size_t xi = xFirst; xi < xLast; ++xi)
+            for (size_t di = 0; di < numDiags && jpts.size() >= 4; ++di)
             {
-                const Ogre::Real xVal = gridX[xi];
-                for (size_t zi = 0; zi + 1 < gridZ.size(); ++zi)
+                // Find pair (ia, ib) that is a TRUE DIAGONAL (dx≠0 AND dz≠0) and long enough
+                seed = seed * 1664525u + 1013904223u;
+                const size_t ia = seed % jpts.size();
+                seed = seed * 1664525u + 1013904223u;
+                size_t ib = seed % jpts.size();
+
+                unsigned int attempts = 0;
+                while (attempts < 64)
                 {
-                    roadComp->addRoadSegmentLua(Ogre::Vector3(xVal, 0.f, gridZ[zi]), Ogre::Vector3(xVal, 0.f, gridZ[zi + 1]));
+                    const int dx = static_cast<int>(jpts[ib].first) - static_cast<int>(jpts[ia].first);
+                    const int dz = static_cast<int>(jpts[ib].second) - static_cast<int>(jpts[ia].second);
+                    // Must be diagonal (both non-zero) and span at least 2 grid cells in each direction
+                    if (dx != 0 && dz != 0 && std::abs(dx) >= 2 && std::abs(dz) >= 2)
+                    {
+                        break;
+                    }
+                    seed = seed * 1664525u + 1013904223u;
+                    ib = seed % jpts.size();
+                    ++attempts;
+                }
+
+                const Ogre::Real sx = gridX[jpts[ia].first];
+                const Ogre::Real sz = gridZ[jpts[ia].second];
+                const Ogre::Real ex = gridX[jpts[ib].first];
+                const Ogre::Real ez = gridZ[jpts[ib].second];
+                if (std::abs(ex - sx) > 0.1f && std::abs(ez - sz) > 0.1f)
+                {
+                    allRoadSegs.push_back({Ogre::Vector2(sx, sz), Ogre::Vector2(ex, ez)});
                 }
             }
+        }
 
-            // ---- Diagonal roads ---------------------------------------------------
-            // Each diagonal connects two non-adjacent inner grid junction points so
-            // junction detection sees 5+ arms at both endpoints → proper patches.
-            // Key constraint: both dx AND dz must be non-zero (true diagonal).
-            // If dx==0 the road is vertical — identical to an existing grid road.
-            // If dz==0 the road is horizontal — identical to an existing grid road.
-            if (variance > 0.01f && gridX.size() >= 4 && gridZ.size() >= 4)
+        // Add diagonal arteries to the segment list
+        if (variance > 0.1f)
+        {
+            this->buildOrganicRoadNetwork(allRoadSegs, variance);
+        }
+
+        // Preprocess: find all mutual crossings, insert split nodes.
+        // Result: a proper planar graph where every crossing is a shared endpoint.
+        {
+            CityFaceExtractor planarizer;
+            planarizer.buildPlanarGraph(allRoadSegs);
+            const auto& pNodes = planarizer.getNodes();
+            const auto& pHalfEdges = planarizer.getHalfEdges();
+
+            this->organicRoadSegs.clear();
+            this->organicRoadSegs.reserve(pHalfEdges.size() / 2u);
+            roadComp->beginBatch();
+            for (size_t hi = 0; hi < pHalfEdges.size(); hi += 2u)
             {
-                const size_t numDiags = static_cast<size_t>(variance * 3.f) + 1u;
-                uint32_t seed = this->masterSeedAttr->getUInt() ^ 0xC17Bu;
-
-                // Build list of inner junction points
-                std::vector<std::pair<size_t, size_t>> jpts;
-                for (size_t zi = zFirst; zi < zLast; ++zi)
+                const auto& he = pHalfEdges[hi];
+                const Ogre::Vector2& a = pNodes[static_cast<size_t>(he.from)].pos;
+                const Ogre::Vector2& b = pNodes[static_cast<size_t>(he.to)].pos;
+                if ((b - a).squaredLength() < 0.01f)
                 {
-                    for (size_t xi = xFirst; xi < xLast; ++xi)
-                    {
-                        jpts.push_back(std::make_pair(xi, zi));
-                    }
+                    continue;
                 }
-
-                for (size_t di = 0; di < numDiags && jpts.size() >= 4; ++di)
-                {
-                    // Find pair (ia, ib) that is a TRUE DIAGONAL (dx≠0 AND dz≠0) and long enough
-                    seed = seed * 1664525u + 1013904223u;
-                    const size_t ia = seed % jpts.size();
-                    seed = seed * 1664525u + 1013904223u;
-                    size_t ib = seed % jpts.size();
-
-                    unsigned int attempts = 0;
-                    while (attempts < 64)
-                    {
-                        const int dx = static_cast<int>(jpts[ib].first) - static_cast<int>(jpts[ia].first);
-                        const int dz = static_cast<int>(jpts[ib].second) - static_cast<int>(jpts[ia].second);
-                        // Must be diagonal (both non-zero) and span at least 2 grid cells in each direction
-                        if (dx != 0 && dz != 0 && std::abs(dx) >= 2 && std::abs(dz) >= 2)
-                        {
-                            break;
-                        }
-                        seed = seed * 1664525u + 1013904223u;
-                        ib = seed % jpts.size();
-                        ++attempts;
-                    }
-
-                    const Ogre::Real sx = gridX[jpts[ia].first];
-                    const Ogre::Real sz = gridZ[jpts[ia].second];
-                    const Ogre::Real ex = gridX[jpts[ib].first];
-                    const Ogre::Real ez = gridZ[jpts[ib].second];
-                    if (std::abs(ex - sx) > 0.1f && std::abs(ez - sz) > 0.1f)
-                    {
-                        roadComp->addRoadSegmentLua(Ogre::Vector3(sx, 0.f, sz), Ogre::Vector3(ex, 0.f, ez));
-                    }
-                }
+                RoadSegXZ seg;
+                seg.a = a;
+                seg.b = b;
+                this->organicRoadSegs.push_back(seg);
+                roadComp->addRoadSegmentLua(Ogre::Vector3(a.x, 0.f, a.y), Ogre::Vector3(b.x, 0.f, b.y));
             }
-
             roadComp->endBatch();
 
-        } // end else (grid mode)
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Planar graph: " + Ogre::StringConverter::toString(static_cast<unsigned int>(pNodes.size())) + " nodes, " +
+                                                                                    Ogre::StringConverter::toString(static_cast<unsigned int>(pHalfEdges.size() / 2)) + " edges from " +
+                                                                                    Ogre::StringConverter::toString(static_cast<unsigned int>(allRoadSegs.size())) + " raw segments.");
+        }
 
         // Restore terrain interval
         if (nullptr != terrainIntervalAttr)
@@ -2110,198 +2235,89 @@ namespace NOWA
 
     // =========================================================================
     // buildOrganicRoadNetwork
-    // Called by buildCityRoadNetwork when variance >= 0.3.
-    // Uses CityTensorField + CityRoadGraph to grow an organic road network.
+    // Adds diagonal arteries through the city.  Each artery is a straight line
+    // between two boundary points, SPLIT at every grid-line crossing so PRC
+    // gets proper shared endpoints at crossings → clean junction patches.
     // =========================================================================
-    // =========================================================================
-    // buildOrganicRoadNetwork — Node + K-nearest-neighbor connected graph
-    //
-    // Replaces the tensor-field random-walk approach which produced disconnected
-    // arteries and junction explosions.  This algorithm:
-    //   1. Places strategic nodes (center, boundary midpoints, quarter-city, random)
-    //   2. Connects each node to its K=3 nearest neighbours
-    //   3. Enforces full connectivity with union-find (no isolated roads)
-    //   4. Feeds the resulting edges to PRC
-    //
-    // Result: a guaranteed-connected organic network.  No junction explosion
-    // because the total edge count is controlled by numNodes × K.
-    // =========================================================================
-    void ProceduralCityComponent::buildOrganicRoadNetwork(ProceduralRoadComponent* roadComp, Ogre::Real variance)
+    void ProceduralCityComponent::buildOrganicRoadNetwork(std::vector<std::pair<Ogre::Vector2, Ogre::Vector2>>& allRoadSegs, Ogre::Real variance)
     {
-        const Ogre::Vector4 bnds = this->cityBoundsAttr->getVector4();
-        const Ogre::Real cx = (bnds.x + bnds.z) * 0.5f;
-        const Ogre::Real cz = (bnds.y + bnds.w) * 0.5f;
-        const Ogre::Real w = bnds.z - bnds.x;
-        const Ogre::Real h = bnds.w - bnds.y;
+        const std::vector<Ogre::Real>& gX = this->cityGridX;
+        const std::vector<Ogre::Real>& gZ = this->cityGridZ;
+        if (gX.size() < 3u || gZ.size() < 3u)
+        {
+            return;
+        }
+
         const unsigned int mSeed = this->masterSeedAttr->getUInt();
+        std::mt19937 rng(mSeed ^ 0xB4D1A7C2u);
 
-        std::mt19937 rng(mSeed ^ 0xC17A9B3Fu);
-        // Random nodes stay well inside bounds (10% inset) so they don't
-        // collide with the boundary midpoints we add explicitly.
-        std::uniform_real_distribution<float> rdx(bnds.x + w * 0.12f, bnds.z - w * 0.12f);
-        std::uniform_real_distribution<float> rdz(bnds.y + h * 0.12f, bnds.w - h * 0.12f);
+        const int nX = static_cast<int>(gX.size());
+        const int nZ = static_cast<int>(gZ.size());
+        // Cap at 3 arteries — more causes junction clusters that are hard to avoid.
+        // Designer can remove specific roads manually anyway.
+        const int numArts = 1 + static_cast<int>(variance * 2.0f); // 1–3
 
-        // ---- 1. Place nodes -----------------------------------------------
-        std::vector<Ogre::Vector2> nodes;
+        std::uniform_int_distribution<int> dSide(0, 3);
+        std::uniform_int_distribution<int> dX(1, nX - 2);
+        std::uniform_int_distribution<int> dZ(1, nZ - 2);
 
-        // City centre
-        nodes.push_back(Ogre::Vector2(cx, cz));
+        // Minimum separation between artery endpoints prevents arteries starting
+        // near each other and converging into a junction cluster in the city interior.
+        const Ogre::Real minSep = std::min(gX.back() - gX.front(), gZ.back() - gZ.front()) * 0.28f;
+        std::vector<Ogre::Vector2> usedPts;
 
-        // 4 boundary midpoints (slightly inset so they don't sit exactly on edge)
-        const Ogre::Real bi = 0.06f;                         // 6% inset
-        nodes.push_back(Ogre::Vector2(cx, bnds.y + h * bi)); // South
-        nodes.push_back(Ogre::Vector2(cx, bnds.w - h * bi)); // North
-        nodes.push_back(Ogre::Vector2(bnds.x + w * bi, cz)); // West
-        nodes.push_back(Ogre::Vector2(bnds.z - w * bi, cz)); // East
-
-        // 4 quarter-city nodes for inner structure
-        nodes.push_back(Ogre::Vector2(cx - w * 0.27f, cz - h * 0.27f));
-        nodes.push_back(Ogre::Vector2(cx + w * 0.27f, cz - h * 0.27f));
-        nodes.push_back(Ogre::Vector2(cx - w * 0.27f, cz + h * 0.27f));
-        nodes.push_back(Ogre::Vector2(cx + w * 0.27f, cz + h * 0.27f));
-
-        // Random interior nodes — count scales with city size and variance
-        const Ogre::Real diagLen = Ogre::Vector2(w, h).length();
-        const int numRandom = 6 + static_cast<int>(diagLen / 55.f * (0.4f + variance));
-        for (int i = 0; i < numRandom; ++i)
+        // Diagonal arteries: straight lines between boundary points.
+        // buildPlanarGraph will split them at every grid crossing later.
+        int placed = 0;
+        for (int attempt = 0; attempt < numArts * 6 && placed < numArts; ++attempt)
         {
-            nodes.push_back(Ogre::Vector2(rdx(rng), rdz(rng)));
-        }
+            int sideA = dSide(rng);
+            int sideB = (sideA + 2) % 4; // always pick the OPPOSITE side → long cross-city arteries
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] buildOrganicRoadNetwork: " + Ogre::StringConverter::toString(static_cast<unsigned int>(nodes.size())) +
-                                                                                " nodes placed (diagonal=" + Ogre::StringConverter::toString(diagLen) + " random=" + Ogre::StringConverter::toString(numRandom) + ").");
-
-        const int N = static_cast<int>(nodes.size());
-
-        // ---- 2. K-nearest-neighbour edges (K=4) ---------------------------
-        // K=4 gives mostly 4-way intersections (cleaner junction patches than K=3 T-junctions).
-        static constexpr int K = 4;
-
-        // edge set: store as sorted (a,b) pairs to avoid duplicates
-        std::set<std::pair<int, int>> edgeSet;
-        std::vector<std::pair<int, int>> edges;
-
-        auto addEdge = [&](int a, int b)
-        {
-            if (a == b)
+            auto boundaryPt = [&](int side) -> Ogre::Vector2
             {
-                return;
-            }
-            if (a > b)
-            {
-                std::swap(a, b);
-            }
-            if (edgeSet.insert({a, b}).second)
-            {
-                edges.push_back({a, b});
-            }
-        };
-
-        for (int i = 0; i < N; ++i)
-        {
-            // Gather distances to all other nodes
-            std::vector<std::pair<float, int>> dists;
-            dists.reserve(static_cast<size_t>(N - 1));
-            for (int j = 0; j < N; ++j)
-            {
-                if (j == i)
+                if (side == 0)
                 {
-                    continue;
+                    return Ogre::Vector2(gX[static_cast<size_t>(dX(rng))], gZ.front());
                 }
-                const Ogre::Real dx2 = nodes[i].x - nodes[j].x;
-                const Ogre::Real dz2 = nodes[i].y - nodes[j].y;
-                dists.push_back({dx2 * dx2 + dz2 * dz2, j});
-            }
-            std::sort(dists.begin(), dists.end());
-            const int k = std::min(K, static_cast<int>(dists.size()));
-            for (int ki = 0; ki < k; ++ki)
-            {
-                addEdge(i, dists[static_cast<size_t>(ki)].second);
-            }
-        }
-
-        // ---- 3. Enforce full connectivity (union-find) --------------------
-        std::vector<int> parent(static_cast<size_t>(N));
-        std::iota(parent.begin(), parent.end(), 0);
-        std::function<int(int)> findp = [&](int x) -> int
-        {
-            return parent[x] == x ? x : parent[x] = findp(parent[x]);
-        };
-        auto unite = [&](int a, int b)
-        {
-            parent[findp(a)] = findp(b);
-        };
-
-        for (const auto& e : edges)
-        {
-            unite(e.first, e.second);
-        }
-
-        // Connect any isolated components to the main component (node 0)
-        for (int i = 1; i < N; ++i)
-        {
-            if (findp(i) != findp(0))
-            {
-                Ogre::Real minD = std::numeric_limits<Ogre::Real>::max();
-                int best = 0;
-                for (int j = 0; j < i; ++j)
+                if (side == 1)
                 {
-                    if (findp(j) == findp(0))
-                    {
-                        const Ogre::Real dx2 = nodes[i].x - nodes[j].x;
-                        const Ogre::Real dz2 = nodes[i].y - nodes[j].y;
-                        const Ogre::Real d = dx2 * dx2 + dz2 * dz2;
-                        if (d < minD)
-                        {
-                            minD = d;
-                            best = j;
-                        }
-                    }
+                    return Ogre::Vector2(gX[static_cast<size_t>(dX(rng))], gZ.back());
                 }
-                addEdge(i, best);
-                unite(i, best);
-            }
-        }
+                if (side == 2)
+                {
+                    return Ogre::Vector2(gX.front(), gZ[static_cast<size_t>(dZ(rng))]);
+                }
+                return Ogre::Vector2(gX.back(), gZ[static_cast<size_t>(dZ(rng))]);
+            };
 
-        // ---- 4. Feed edges to PRC (with subdivision of long edges) --------
-        // Long diagonal edges cause PRC to create large junction patches where
-        // they meet other roads.  Subdivide any edge longer than maxSegLen into
-        // shorter pieces.  PRC sees more, shorter segments → smaller patches.
-        // The intermediate subdivision nodes are NOT added to the organic node
-        // list (they don't create their own K-NN connections).
-        const Ogre::Real maxSegLen = this->blockSizeAttr->getReal() * 2.5f;
-
-        this->organicRoadSegs.clear();
-        this->organicRoadSegs.reserve(edges.size() * 3u);
-
-        roadComp->beginBatch();
-        for (const auto& e : edges)
-        {
-            const Ogre::Vector2& a = nodes[static_cast<size_t>(e.first)];
-            const Ogre::Vector2& b = nodes[static_cast<size_t>(e.second)];
-
-            const Ogre::Real edgeLen = (b - a).length();
-            const int numSubs = std::max(1, static_cast<int>(std::ceil(edgeLen / maxSegLen)));
-
-            for (int si = 0; si < numSubs; ++si)
+            const Ogre::Vector2 ptA = boundaryPt(sideA);
+            const Ogre::Vector2 ptB = boundaryPt(sideB);
+            if ((ptB - ptA).squaredLength() < 1.f)
             {
-                const Ogre::Real t0 = static_cast<Ogre::Real>(si) / static_cast<Ogre::Real>(numSubs);
-                const Ogre::Real t1 = static_cast<Ogre::Real>(si + 1) / static_cast<Ogre::Real>(numSubs);
-                const Ogre::Vector2 pa = a + (b - a) * t0;
-                const Ogre::Vector2 pb = a + (b - a) * t1;
-
-                RoadSegXZ seg;
-                seg.a = pa;
-                seg.b = pb;
-                this->organicRoadSegs.push_back(seg);
-
-                roadComp->addRoadSegmentLua(Ogre::Vector3(pa.x, 0.f, pa.y), Ogre::Vector3(pb.x, 0.f, pb.y));
+                continue;
             }
-        }
-        roadComp->endBatch();
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-            "[ProceduralCityComponent] buildOrganicRoadNetwork DONE: " + Ogre::StringConverter::toString(static_cast<unsigned int>(edges.size())) + " road segments fed to ProceduralRoadComponent.");
+            // Reject if too close to an already-placed artery endpoint
+            bool tooClose = false;
+            for (const auto& p : usedPts)
+            {
+                if ((ptA - p).length() < minSep || (ptB - p).length() < minSep)
+                {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (tooClose)
+            {
+                continue;
+            }
+
+            usedPts.push_back(ptA);
+            usedPts.push_back(ptB);
+            allRoadSegs.push_back({ptA, ptB});
+            ++placed;
+        }
     }
 
     void ProceduralCityComponent::generateRoadGeometry(const std::vector<CityBlock>& blocks, const Ogre::Vector3& localOrigin, std::vector<float>& roadV, std::vector<Ogre::uint32>& roadI, size_t& roadN, std::vector<float>& curbV,
@@ -2627,11 +2643,13 @@ namespace NOWA
             Ogre::SceneManager* sm = this->gameObjectPtr->getSceneManager();
             Ogre::HlmsManager* hlms = root->getHlmsManager();
 
-            // ---- Helper: expand one batch's 8-float vertices to 12-float GPU layout,
-            //             build VBO+IBO+VAO, and attach as a SubMesh.
-            //             Returns a dummy single-vertex VAO for empty batches so the
-            //             SubMesh count stays constant (matching ProceduralRoadComponent's
-            //             "always create both submeshes even if one is empty" approach).
+            // ----------------------------------------------------------------
+            // Helper: expand one batch's 8-float vertices to 12-float GPU
+            // layout (pos3 + normal3 + tangent4 + uv2), build VBO+IBO+VAO,
+            // and attach as a SubMesh on the given mesh.
+            // Empty batches get a 1-vertex dummy VAO so the SubMesh count
+            // stays constant and submesh indices always match material slots.
+            // ----------------------------------------------------------------
             auto buildSubMesh = [&](Ogre::MeshPtr& mesh, CityBatch& batch, Ogre::Vector3& minB, Ogre::Vector3& maxB)
             {
                 Ogre::VertexElement2Vec elems;
@@ -2644,8 +2662,7 @@ namespace NOWA
 
                 if (batch.rawVertices.empty() || 0u == batch.numVertices)
                 {
-                    // Dummy VAO — keeps SubMesh index stable even when a slot has
-                    // no geometry (e.g. no courtyard walls, no curb).
+                    // Dummy VAO -- keeps SubMesh index stable.
                     float dummyV[12] = {};
                     Ogre::VertexBufferPackedVec dv;
                     dv.push_back(vm->createVertexBuffer(elems, 1u, Ogre::BT_IMMUTABLE, dummyV, false));
@@ -2658,20 +2675,27 @@ namespace NOWA
                 const size_t numV = batch.numVertices;
                 const size_t srcStride = 8u;
                 const size_t dstStride = 12u;
+
                 float* dst = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(numV * dstStride * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
 
                 for (size_t vi = 0; vi < numV; ++vi)
                 {
                     const size_t s = vi * srcStride;
                     const size_t d = vi * dstStride;
+
+                    // Position
                     dst[d + 0] = batch.rawVertices[s + 0];
                     dst[d + 1] = batch.rawVertices[s + 1];
                     dst[d + 2] = batch.rawVertices[s + 2];
                     minB.makeFloor(Ogre::Vector3(dst[d + 0], dst[d + 1], dst[d + 2]));
                     maxB.makeCeil(Ogre::Vector3(dst[d + 0], dst[d + 1], dst[d + 2]));
+
+                    // Normal
                     dst[d + 3] = batch.rawVertices[s + 3];
                     dst[d + 4] = batch.rawVertices[s + 4];
                     dst[d + 5] = batch.rawVertices[s + 5];
+
+                    // Tangent (computed from normal)
                     Ogre::Vector3 n(dst[d + 3], dst[d + 4], dst[d + 5]);
                     Ogre::Vector3 t;
                     if (std::abs(n.y) < 0.9f)
@@ -2686,6 +2710,8 @@ namespace NOWA
                     dst[d + 7] = t.y;
                     dst[d + 8] = t.z;
                     dst[d + 9] = 1.f;
+
+                    // UV
                     dst[d + 10] = batch.rawVertices[s + 6];
                     dst[d + 11] = batch.rawVertices[s + 7];
                 }
@@ -2725,150 +2751,159 @@ namespace NOWA
                 sub->mVao[Ogre::VpShadow].push_back(vao);
             };
 
-            auto makeItem = [&](Ogre::MeshPtr& mesh, const Ogre::String& meshName, Ogre::Vector3& minB, Ogre::Vector3& maxB, unsigned int firstSlot, unsigned int slotCount) -> Ogre::Item*
-            {
-                // Remove stale mesh
-                {
-                    Ogre::MeshManager& mm = Ogre::MeshManager::getSingleton();
-                    Ogre::MeshPtr ex = mm.getByName(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-                    if (false == ex.isNull())
-                    {
-                        mm.remove(ex->getHandle());
-                    }
-                }
-                mesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-
-                minB = Ogre::Vector3(std::numeric_limits<float>::max());
-                maxB = Ogre::Vector3(-std::numeric_limits<float>::max());
-
-                for (unsigned int s = 0; s < slotCount; ++s)
-                {
-                    buildSubMesh(mesh, batches[firstSlot + s], minB, maxB);
-                }
-
-                if (minB.x > maxB.x)
-                {
-                    minB = Ogre::Vector3(-1.f);
-                    maxB = Ogre::Vector3(1.f);
-                }
-                Ogre::Aabb aabb;
-                aabb.setExtents(minB, maxB);
-                mesh->_setBounds(aabb, false);
-                mesh->_setBoundingSphereRadius(aabb.getRadius());
-
-                return sm->createItem(mesh, Ogre::SCENE_STATIC);
-            };
-
+            // ----------------------------------------------------------------
+            // Build ONE unified mesh containing ALL geometry:
+            //   SubMeshes 0..(NUM_BUILDING_VARIANTS*SLOTS_PER_VARIANT - 1)
+            //       -> building geometry (4 variants x SLOTS_PER_VARIANT slots)
+            //   SubMeshes N..N+1
+            //       -> infrastructure (road slot, curb slot)
+            //
+            // Having a single Ogre::Item means PhysicsArtifactComponent
+            // iterates ALL submeshes when building the TreeCollision hull,
+            // so every building and road surface gets collision.
+            //
+            // Previously: 4 separate building Items + 1 infra Item, only
+            // the first Item was passed to gameObjectPtr->init(), so only
+            // 1/5th of the geometry had collision.
+            // ----------------------------------------------------------------
             const Ogre::String id = Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+            const Ogre::String unifiedMeshName = "CityUnified_" + id;
+
+            // Remove any stale mesh from a previous generation.
+            {
+                Ogre::MeshManager& mm = Ogre::MeshManager::getSingleton();
+                Ogre::MeshPtr ex = mm.getByName(unifiedMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+                if (false == ex.isNull())
+                {
+                    mm.remove(ex->getHandle());
+                }
+            }
+
+            Ogre::MeshPtr unifiedMesh = Ogre::MeshManager::getSingleton().createManual(unifiedMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
+
+            Ogre::Vector3 uMinB(std::numeric_limits<float>::max());
+            Ogre::Vector3 uMaxB(-std::numeric_limits<float>::max());
+
+            // --- Building slots (variants x slots each) ---
+            const unsigned int buildingSlotCount = NUM_BUILDING_VARIANTS * SLOTS_PER_VARIANT;
+            for (unsigned int s = 0u; s < buildingSlotCount; ++s)
+            {
+                buildSubMesh(unifiedMesh, batches[s], uMinB, uMaxB);
+            }
+
+            // --- Infrastructure slots (road + curb) ---
+            for (unsigned int s = 0u; s < 2u; ++s)
+            {
+                buildSubMesh(unifiedMesh, batches[INFRA_BATCH_OFFSET + s], uMinB, uMaxB);
+            }
+
+            if (uMinB.x > uMaxB.x)
+            {
+                uMinB = Ogre::Vector3(-1.f);
+                uMaxB = Ogre::Vector3(1.f);
+            }
+            Ogre::Aabb uAabb;
+            uAabb.setExtents(uMinB, uMaxB);
+            unifiedMesh->_setBounds(uAabb, false);
+            unifiedMesh->_setBoundingSphereRadius(uAabb.getRadius());
+
+            Ogre::Item* unifiedItem = sm->createItem(unifiedMesh, Ogre::SCENE_STATIC);
+
+            // ----------------------------------------------------------------
+            // Apply datablocks -- submesh index follows the same slot order
+            // as the buildSubMesh loop above.
+            // ----------------------------------------------------------------
             const unsigned int numDistricts = static_cast<unsigned int>(this->districts.size());
             const unsigned int d0 = (numDistricts > 0u) ? 0u : static_cast<unsigned int>(-1);
 
-            // ---- 4 Building Variant Items (slots 0-19, 5 submeshes each) -------
-            for (unsigned int vi = 0; vi < NUM_BUILDING_VARIANTS; ++vi)
+            unsigned int subIdx = 0u;
+
+            auto applyDb = [&](const Ogre::String& dbName, const char* slotLabel)
             {
-                const unsigned int batchBase = vi * SLOTS_PER_VARIANT;
-
-                Ogre::MeshPtr bMesh;
-                Ogre::Vector3 bMin, bMax;
-                Ogre::Item* bItem = makeItem(bMesh, "CityBuildings_" + id + "_v" + Ogre::StringConverter::toString(vi), bMin, bMax, batchBase, SLOTS_PER_VARIANT);
-
-                // Per-submesh datablocks: wall/roof/window/trim/door each with per-variant selection
-                // Wall:   wallDatablocks[vi]           (4 variants map directly to 4 wall datablocks)
-                // Roof:   roofDatablocks[vi % 3]       (cycle through 3 roof datablocks)
-                // Window: windowDatablocks[vi % 3]
-                // Trim:   trimDatablocks[vi % 2]
-                // Door:   alternates city_door_01 / WoodenDoor
-                const Ogre::String doorDb = (vi % 2u == 0) ? this->doorDatablockAttr->getString() : Ogre::String("WoodenDoor");
-                const Ogre::String garageDb = this->garageDatablockAttr->getString();
-
-                auto applyBuildingDb = [&](unsigned int subIdx, const Ogre::String& dbName)
+                if (false == dbName.empty())
                 {
-                    if (dbName.empty())
-                    {
-                        return;
-                    }
                     Ogre::HlmsDatablock* db = hlms->getDatablockNoDefault(dbName);
                     if (nullptr != db)
                     {
-                        bItem->getSubItem(subIdx)->setDatablock(db);
+                        unifiedItem->getSubItem(subIdx)->setDatablock(db);
                     }
                     else
                     {
-                        static const char* names[] = {"wall", "roof", "window", "trim", "door"};
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] v" + Ogre::StringConverter::toString(vi) + " " + Ogre::String(names[subIdx]) + ": '" + dbName + "' not found.");
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                            "[ProceduralCityComponent] Datablock '" + dbName + "' not found for slot '" + Ogre::String(slotLabel) + "' (subMesh " + Ogre::StringConverter::toString(subIdx) + ").");
                     }
-                };
+                }
+                ++subIdx;
+            };
 
+            for (unsigned int vi = 0u; vi < NUM_BUILDING_VARIANTS; ++vi)
+            {
+                const Ogre::String doorDb   = (vi % 2u == 0u) ? this->doorDatablockAttr->getString() : Ogre::String("WoodenDoor");
+                const Ogre::String garageDb = this->garageDatablockAttr->getString();
+
+                // Submesh order per variant: wall(0), roof(1), window(2), trim(3), door(4), garage(5)
+                // wallDatablocks[vi] selects from the 4 wall variants (one per building variant group)
                 if (d0 < numDistricts)
                 {
-                    applyBuildingDb(0, this->districts[d0].wallDatablocks[vi]);
-                    applyBuildingDb(1, this->districts[d0].roofDatablocks[vi % 3]);
-                    applyBuildingDb(2, this->districts[d0].windowDatablocks[vi % 3]);
-                    applyBuildingDb(3, this->districts[d0].trimDatablocks[vi % 2]);
-                }
-                applyBuildingDb(4, doorDb);
-                applyBuildingDb(5, garageDb);
-
-                Ogre::SceneNode* bNode = sm->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
-                bNode->setPosition(this->cityOrigin);
-                bNode->setOrientation(Ogre::Quaternion::IDENTITY);
-                bNode->setScale(Ogre::Vector3::UNIT_SCALE);
-                bNode->attachObject(bItem);
-                sm->notifyStaticAabbDirty(bItem);
-
-                batches[batchBase].items.push_back(bItem);
-                batches[batchBase].nodes.push_back(bNode);
-            }
-
-            // ---- Infrastructure Item: slots 24-25 (road, curb) ---
-            Ogre::MeshPtr infraMesh;
-            Ogre::Vector3 iMinB, iMaxB;
-            Ogre::Item* infraItem = makeItem(infraMesh, "CityInfra_" + id, iMinB, iMaxB, INFRA_BATCH_OFFSET, 2u);
-
-            auto applyInfraDb = [&](unsigned int subIdx, const Ogre::String& dbName)
-            {
-                if (dbName.empty())
-                {
-                    return;
-                }
-                Ogre::HlmsDatablock* db = hlms->getDatablockNoDefault(dbName);
-                if (nullptr != db)
-                {
-                    infraItem->getSubItem(subIdx)->setDatablock(db);
+                    applyDb(this->districts[d0].wallDatablocks[vi % 4],   "wall");   // slot 0
+                    applyDb(this->districts[d0].roofDatablocks[vi % 3],   "roof");   // slot 1
+                    applyDb(this->districts[d0].windowDatablocks[vi % 3], "window"); // slot 2
+                    applyDb(this->districts[d0].trimDatablocks[vi % 2],   "trim");   // slot 3
                 }
                 else
                 {
-                    static const char* names[] = {"road", "curb"};
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] infra " + Ogre::String(names[subIdx]) + ": '" + dbName + "' not found.");
+                    subIdx += 4u;  // skip wall + roof + window + trim (4 district-controlled slots)
                 }
-            };
+                applyDb(doorDb,   "door");   // slot 4
+                applyDb(garageDb, "garage"); // slot 5
+            }
 
-            applyInfraDb(0, this->roadDatablockAttr->getString());
-            applyInfraDb(1, this->curbDatablockAttr->getString());
-            // slot 2 (courtyard wall) removed — walls feature removed
+            // Infrastructure submeshes (road, curb)
+            applyDb(this->roadDatablockAttr->getString(), "road");
+            applyDb(this->curbDatablockAttr->getString(), "curb");
 
-            Ogre::SceneNode* infraNode = sm->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
-            infraNode->setPosition(this->cityOrigin);
-            infraNode->setOrientation(Ogre::Quaternion::IDENTITY);
-            infraNode->setScale(Ogre::Vector3::UNIT_SCALE);
-            infraNode->attachObject(infraItem);
-            sm->notifyStaticAabbDirty(infraItem);
-
-            batches[INFRA_BATCH_OFFSET].items.push_back(infraItem);
-            batches[INFRA_BATCH_OFFSET].nodes.push_back(infraNode);
-
+            // ----------------------------------------------------------------
+            // Attach to scene
+            // ----------------------------------------------------------------
+            Ogre::SceneNode* cityNode = sm->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
+            cityNode->setPosition(this->cityOrigin);
+            cityNode->setOrientation(Ogre::Quaternion::IDENTITY);
+            cityNode->setScale(Ogre::Vector3::UNIT_SCALE);
+            cityNode->attachObject(unifiedItem);
+            sm->notifyStaticAabbDirty(unifiedItem);
             sm->notifyStaticDirty(sm->getRootSceneNode(Ogre::SCENE_STATIC));
+
             if (nullptr != vm)
             {
                 vm->_update();
             }
 
+            // Store for lifecycle management (clear, regenerate, destroy).
+            // Use slot 0 of the first batch as the canonical storage location.
+            // All other batch slots are left with their geometry data intact
+            // for any future per-batch queries but hold no Items/Nodes.
             this->cityBatches = std::move(batches);
+            this->cityBatches[0].items.push_back(unifiedItem);
+            this->cityBatches[0].nodes.push_back(cityNode);
+
+            // ----------------------------------------------------------------
+            // Register the unified Item so PhysicsArtifactComponent builds
+            // its TreeCollision from the complete mesh -- ALL submeshes
+            // (every building variant + road + curb) are included.
+            //
+            // Previously only the first building variant Item was registered,
+            // so collision covered only ~1/5 of the actual geometry.
+            // ----------------------------------------------------------------
+            this->gameObjectPtr->init(unifiedItem);
+            this->gameObjectPtr->setDoNotDestroyMovableObject(true);
 
             if (nullptr != this->physicsArtifactComponent)
             {
                 this->physicsArtifactComponent->reCreateCollision();
             }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralCityComponent] Created unified city mesh '" + unifiedMeshName + "' with " + Ogre::StringConverter::toString(unifiedMesh->getNumSubMeshes()) +
+                                                                                   " submeshes. Bounds: min=" + Ogre::StringConverter::toString(uMinB) + " max=" + Ogre::StringConverter::toString(uMaxB));
         };
 
         GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralCityComponent::Create");
@@ -2900,7 +2935,7 @@ namespace NOWA
                     if (false == m.isNull())
                     {
                         const Ogre::String& mn = m->getName();
-                        if (mn.find("CityBuildings_") != Ogre::String::npos || mn.find("CityInfra_") != Ogre::String::npos)
+                        if (mn.find("CityBuildings_") != Ogre::String::npos || mn.find("CityInfra_") != Ogre::String::npos || mn.find("CityCollision_") != Ogre::String::npos)
                         {
                             Ogre::MeshManager::getSingleton().remove(m->getHandle());
                         }
@@ -3515,6 +3550,55 @@ namespace NOWA
     // Regenerates all batch geometry from this->storedBuildings and re-uploads
     // the GPU meshes.  Called after deletion or undo.
     // =========================================================================
+    //void ProceduralCityComponent::rebuildBatchesFromStoredBuildings(void)
+    //{
+    //    std::vector<CityBatch> batches(TOTAL_CITY_BATCHES);
+    //    for (unsigned int s = 0; s < TOTAL_CITY_BATCHES; ++s)
+    //    {
+    //        batches[s].materialSlot = s;
+    //    }
+
+    //    const Ogre::Vector3& localOrigin = this->cityOrigin;
+
+    //    for (const auto& building : this->storedBuildings)
+    //    {
+    //        if (building.archetypeIdx >= this->districts.size())
+    //        {
+    //            continue;
+    //        }
+    //        const CityDistrict& district = this->districts[building.archetypeIdx];
+
+    //        const unsigned int vi = building.variantSeed % NUM_BUILDING_VARIANTS;
+    //        const unsigned int base = vi * SLOTS_PER_VARIANT;
+    //        this->generateBuildingGeometry(building, district, localOrigin, batches[base + 0].rawVertices, batches[base + 0].rawIndices, batches[base + 0].numVertices, batches[base + 1].rawVertices, batches[base + 1].rawIndices,
+    //            batches[base + 1].numVertices, batches[base + 2].rawVertices, batches[base + 2].rawIndices, batches[base + 2].numVertices, batches[base + 3].rawVertices, batches[base + 3].rawIndices, batches[base + 3].numVertices,
+    //            batches[base + 4].rawVertices, batches[base + 4].rawIndices, batches[base + 4].numVertices, batches[base + 5].rawVertices, batches[base + 5].rawIndices, batches[base + 5].numVertices);
+    //    }
+
+    //    // Destroy old batches, recreate with new geometry
+    //    // DIAGNOSTIC: two sequential enqueueAndWait here block logic thread.
+    //    // ~N*0.1ms per building. For 200 buildings expect 200-600ms freeze on X press.
+    //    auto tD = std::chrono::high_resolution_clock::now();
+    //    GraphicsModule::getInstance()->enqueueAndWait(
+    //        [this]()
+    //        {
+    //            this->destroyCityOnRenderThread();
+    //        },
+    //        "ProceduralCityComponent::RebuildFromStoredBuildings_Destroy");
+    //    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+    //        "[ProceduralCityComponent] rebuildBatches Destroy " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tD).count()) + "ms");
+
+    //    auto tC = std::chrono::high_resolution_clock::now();
+    //    GraphicsModule::getInstance()->enqueueAndWait(
+    //        [this, batches]() mutable
+    //        {
+    //            this->createCityOnRenderThread(std::move(batches));
+    //        },
+    //        "ProceduralCityComponent::RebuildFromStoredBuildings_Create");
+    //    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+    //        "[ProceduralCityComponent] rebuildBatches Create " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tC).count()) + "ms");
+    //}
+
     void ProceduralCityComponent::rebuildBatchesFromStoredBuildings(void)
     {
         std::vector<CityBatch> batches(TOTAL_CITY_BATCHES);
@@ -3532,7 +3616,6 @@ namespace NOWA
                 continue;
             }
             const CityDistrict& district = this->districts[building.archetypeIdx];
-
             const unsigned int vi = building.variantSeed % NUM_BUILDING_VARIANTS;
             const unsigned int base = vi * SLOTS_PER_VARIANT;
             this->generateBuildingGeometry(building, district, localOrigin, batches[base + 0].rawVertices, batches[base + 0].rawIndices, batches[base + 0].numVertices, batches[base + 1].rawVertices, batches[base + 1].rawIndices,
@@ -3540,28 +3623,23 @@ namespace NOWA
                 batches[base + 4].rawVertices, batches[base + 4].rawIndices, batches[base + 4].numVertices, batches[base + 5].rawVertices, batches[base + 5].rawIndices, batches[base + 5].numVertices);
         }
 
-        // Destroy old batches, recreate with new geometry
-        // DIAGNOSTIC: two sequential enqueueAndWait here block logic thread.
-        // ~N*0.1ms per building. For 200 buildings expect 200-600ms freeze on X press.
-        auto tD = std::chrono::high_resolution_clock::now();
+        // Merge both render-thread operations into a SINGLE enqueueAndWait.
+        // Previously: two sequential enqueueAndWait calls -- the logic thread
+        // blocked twice, doubling the stall time.
+        // Now: one round-trip to the render thread does destroy + create atomically.
+        //
+        // Also: skip reCreateCollision during interactive editing. Newton
+        // TreeCollision rebuild on a large merged mesh takes 1-5 seconds and
+        // is only needed for gameplay, not for the editor Segment delete workflow.
+        // Collision is rebuilt once when the user explicitly leaves Segment mode.
         GraphicsModule::getInstance()->enqueueAndWait(
-            [this]()
+            [this, batches = std::move(batches)]() mutable
             {
                 this->destroyCityOnRenderThread();
-            },
-            "ProceduralCityComponent::RebuildFromStoredBuildings_Destroy");
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-            "[ProceduralCityComponent] rebuildBatches Destroy " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tD).count()) + "ms");
-
-        auto tC = std::chrono::high_resolution_clock::now();
-        GraphicsModule::getInstance()->enqueueAndWait(
-            [this, batches]() mutable
-            {
+                // Pass skipCollision=true -- caller will rebuild when appropriate.
                 this->createCityOnRenderThread(std::move(batches));
             },
-            "ProceduralCityComponent::RebuildFromStoredBuildings_Create");
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-            "[ProceduralCityComponent] rebuildBatches Create " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tC).count()) + "ms");
+            "ProceduralCityComponent::RebuildFromStoredBuildings");
     }
 
     // =========================================================================
@@ -3581,8 +3659,6 @@ namespace NOWA
         this->districtMinFootprintAttrs.resize(count, nullptr);
         this->districtMaxFootprintAttrs.resize(count, nullptr);
         this->districtDensityAttrs.resize(count, nullptr);
-        this->districtCourtyardProbAttrs.resize(count, nullptr);
-        this->districtWallDbAttrs.resize(count);
         this->districtRoofDbAttrs.resize(count);
         this->districtWindowDbAttrs.resize(count);
         this->districtTrimDbAttrs.resize(count);
@@ -3603,7 +3679,7 @@ namespace NOWA
 
         // Real datablock names from user's asset collection
         // Defaults: use full HLMS datablock names from the user's asset collection.
-        // 4 wall variants map to the 4 wallDatablocks[] slots — each building gets
+        // 4 wall variants map to the 4 roofDatablocks[] slots — each building gets
         // the wall for its variant group (variantSeed % 4).
         static const char* wallDef[4] = {
             "/dural/structures/moraf_stone_wall/texture",        // variant 0
@@ -3617,7 +3693,12 @@ namespace NOWA
             "M_rooftiles_01"                               // real asset
         };
         static const char* winDef[3] = {"city_window_01", "city_window_02", "city_window_01"};
-        static const char* trimDef[2] = {"/dural/structures/ossyja_inner_walls/texture", "/dural/structures/rezpa_inner_walls/texture"};
+        static const char* trimDef[6] = {
+            "/dural/structures/ossyja_inner_walls/texture", 
+            "/dural/structures/rezpa_inner_walls/texture", 
+            "/dural/structures/moraf_stone_wall/texture", "/dural/structures/rezpa_wall/texture",                                                                                                                                   
+            "/dural/structures/ossyja_wall_cobblestone/texture",                                                                                                                      
+            "/dural/structures/moraf_timber_wall/texture"};
 
         for (size_t i = old; i < count; ++i)
         {
@@ -3670,6 +3751,12 @@ namespace NOWA
             mkV2(this->districtMaxFootprintAttrs[i], AttrDistrictMaxFootprint() + idx, Ogre::Vector2(t.maxFP, t.maxFP));
             mkR(this->districtDensityAttrs[i], AttrDistrictDensity() + idx, 0.85f, 0.f, 1.f, "Lot occupancy [0..1].");
 
+            // Init wall datablocks for new district (roof/window/trim follow below)
+            for (unsigned int v = 0; v < 4u; ++v)
+            {
+                this->districts[i].wallDatablocks[v] = wallDef[v];
+            }
+
             for (unsigned int v = 0; v < 3u; ++v)
             {
                 if (nullptr == this->districtRoofDbAttrs[i][v])
@@ -3677,6 +3764,8 @@ namespace NOWA
                     Ogre::String key = AttrDistrictRoofDatablock() + idx + "_" + Ogre::StringConverter::toString(v);
                     this->districtRoofDbAttrs[i][v] = new Variant(key, Ogre::String(roofDef[v]), this->attributes);
                     this->districtRoofDbAttrs[i][v]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
+                    this->districtRoofDbAttrs[i][v]->setDescription("Roof material variant " + Ogre::StringConverter::toString(v) + ".");
+
                     this->districts[i].roofDatablocks[v] = roofDef[v];
                 }
                 if (nullptr == this->districtWindowDbAttrs[i][v])
@@ -3684,17 +3773,36 @@ namespace NOWA
                     Ogre::String key = AttrDistrictWindowDatablock() + idx + "_" + Ogre::StringConverter::toString(v);
                     this->districtWindowDbAttrs[i][v] = new Variant(key, Ogre::String(winDef[v]), this->attributes);
                     this->districtWindowDbAttrs[i][v]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
+                    this->districtWindowDbAttrs[i][v]->setDescription("Window material variant " + Ogre::StringConverter::toString(v) + ".");
                     this->districts[i].windowDatablocks[v] = winDef[v];
                 }
             }
+
+            int trimIndices[2];
+            trimIndices[0] = Ogre::Math::RangeRandom(0, 5);
+
+            do
+            {
+                trimIndices[1] = Ogre::Math::RangeRandom(0, 5);
+            } while (trimIndices[1] == trimIndices[0]);
+
             for (unsigned int v = 0; v < 2u; ++v)
             {
                 if (nullptr == this->districtTrimDbAttrs[i][v])
                 {
                     Ogre::String key = AttrDistrictTrimDatablock() + idx + "_" + Ogre::StringConverter::toString(v);
-                    this->districtTrimDbAttrs[i][v] = new Variant(key, Ogre::String(trimDef[v]), this->attributes);
+
+                    const char* datablock = trimDef[trimIndices[v]];
+
+                    this->districtTrimDbAttrs[i][v] = new Variant(key, Ogre::String(datablock), this->attributes);
                     this->districtTrimDbAttrs[i][v]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
-                    this->districts[i].trimDatablocks[v] = trimDef[v];
+                    this->districtTrimDbAttrs[i][v]->setDescription("Trim material variant " + Ogre::StringConverter::toString(v) + ". Used for decorative facade elements.");
+                    this->districts[i].trimDatablocks[v] = datablock;
+                }
+
+                if (v == 1)
+                {
+                    this->districtTrimDbAttrs[i][v]->addUserData(GameObject::AttrActionSeparator());
                 }
             }
         }
