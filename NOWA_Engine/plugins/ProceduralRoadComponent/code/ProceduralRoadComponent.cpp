@@ -1452,11 +1452,14 @@ namespace NOWA
         this->hasLoadedRoadEndpoint = false;
         this->bBatchMode = false;
 
-        // ---- UNDO: Capture state AFTER (empty), fire event ----
-        std::vector<unsigned char> newData; // Empty = cleared road
+        if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+            // ---- UNDO: Capture state AFTER (empty), fire event ----
+            std::vector<unsigned char> newData; // Empty = cleared road
 
-        boost::shared_ptr<EventDataRoadModifyEnd> eventDataRoadModifyEnd(new EventDataRoadModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRoadModifyEnd);
+            boost::shared_ptr<EventDataRoadModifyEnd> eventDataRoadModifyEnd(new EventDataRoadModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRoadModifyEnd);
+        }
     }
 
     void ProceduralRoadComponent::rebuildMesh(void)
@@ -1626,7 +1629,26 @@ namespace NOWA
 
         auto storePatchCorners = [&](size_t ji, const Ogre::Vector3& boundaryPosXZ, const Ogre::Vector3& armDirAtBoundary, Ogre::Real boundaryHeight)
         {
-            Ogre::Vector3 perp = Ogre::Vector3::UNIT_Y.crossProduct(armDirAtBoundary);
+            // Use the same "up" direction as computeMiterData so junction corners
+            // land at the exact same world XYZ as the road strip edge vertices.
+            // On flat terrain: UNIT_Y (no change).
+            // On a planet: planet surface normal at this boundary point.
+            // boundaryPosXZ is in WORLD space (XZ, y stored separately as boundaryHeight).
+            Ogre::Vector3 up = Ogre::Vector3::UNIT_Y;
+            if (this->adaptToGround->getBool())
+            {
+                const Ogre::Vector3 worldPos(boundaryPosXZ.x, boundaryHeight, boundaryPosXZ.z);
+                if (worldPos.y > 50.0f && worldPos.squaredLength() > 2500.0f)
+                {
+                    Ogre::Vector3 pn = worldPos.normalisedCopy();
+                    if (pn.dotProduct(Ogre::Vector3::UNIT_Y) > 0.05f)
+                    {
+                        up = pn;
+                    }
+                }
+            }
+
+            Ogre::Vector3 perp = up.crossProduct(armDirAtBoundary);
             if (perp.squaredLength() < 1e-6f)
             {
                 perp = Ogre::Vector3::UNIT_X;
@@ -1636,12 +1658,26 @@ namespace NOWA
             // CRITICAL: use the REAL height of the road arm at this boundary, NOT the single
             // flat junction height. On sloped terrain each arm meets the junction at a
             // different height — storing the true per-arm height is what makes it snap.
+            // Also include perp.y * width so the corner Y matches the road strip edge Y
+            // exactly (with planet-normal perp, perp.y ≠ 0 so this matters).
             const Ogre::Real worldY = boundaryHeight;
 
-            junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * totalHalfW, worldY, boundaryPosXZ.z + perp.z * totalHalfW));
-            junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -totalHalfW, worldY, boundaryPosXZ.z + perp.z * -totalHalfW));
-            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * halfW, worldY, boundaryPosXZ.z + perp.z * halfW));
-            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -halfW, worldY, boundaryPosXZ.z + perp.z * -halfW));
+            junctions[ji].patchCorners.push_back(Ogre::Vector3(
+                boundaryPosXZ.x + perp.x *  totalHalfW,
+                worldY           + perp.y *  totalHalfW,
+                boundaryPosXZ.z + perp.z *  totalHalfW));
+            junctions[ji].patchCorners.push_back(Ogre::Vector3(
+                boundaryPosXZ.x + perp.x * -totalHalfW,
+                worldY           + perp.y * -totalHalfW,
+                boundaryPosXZ.z + perp.z * -totalHalfW));
+            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(
+                boundaryPosXZ.x + perp.x *  halfW,
+                worldY           + perp.y *  halfW,
+                boundaryPosXZ.z + perp.z *  halfW));
+            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(
+                boundaryPosXZ.x + perp.x * -halfW,
+                worldY           + perp.y * -halfW,
+                boundaryPosXZ.z + perp.z * -halfW));
         };
 
         // ── Chain building (undirected graph walk, handles 2-way snap joins) ────
@@ -3934,7 +3970,36 @@ namespace NOWA
         // used for the outward-direction sign test below.
         const Ogre::Real roadYApprox = jp.worldPos.y - origin.y;
 
-        const Ogre::Vector3 localCentre(jp.worldPos.x - origin.x, 0.0f, jp.worldPos.z - origin.z);
+        // Junction centre in local space.
+        // Y: sample actual terrain height at the junction XZ position so the centre
+        // sits exactly on the planet surface — not at the average of arm heights
+        // which can be noticeably wrong on curved terrain.
+        Ogre::Real centreLocalY = roadYApprox;
+        if (this->adaptToGround->getBool())
+        {
+            // jp.worldPos is world-space XZ; look up terrain there.
+            // getGroundHeightCached returns world Y; subtract origin.y for local Y.
+            const Ogre::Real terrainY = this->getGroundHeightCached(
+                Ogre::Vector3(jp.worldPos.x, 0.f, jp.worldPos.z));
+            centreLocalY = terrainY - origin.y + this->heightOffset->getReal();
+        }
+        const Ogre::Vector3 localCentre(jp.worldPos.x - origin.x, centreLocalY, jp.worldPos.z - origin.z);
+
+        // Surface normal at the junction (for planet gradient alignment of fill quads).
+        // Uses the same world-pos → normalize approach as roads and buildings.
+        Ogre::Vector3 junctionUp = Ogre::Vector3::UNIT_Y;
+        if (this->adaptToGround->getBool())
+        {
+            const Ogre::Vector3 worldCentre(jp.worldPos.x, jp.worldPos.y, jp.worldPos.z);
+            if (worldCentre.y > 50.0f && worldCentre.squaredLength() > 2500.0f)
+            {
+                Ogre::Vector3 pn = worldCentre.normalisedCopy();
+                if (pn.dotProduct(Ogre::Vector3::UNIT_Y) > 0.05f)
+                {
+                    junctionUp = pn;
+                }
+            }
+        }
 
         const Ogre::Vector2 cUV = this->centerUVTiling->getVector2();
         const Ogre::Vector2 eUV = this->edgeUVTiling->getVector2();
@@ -4016,12 +4081,9 @@ namespace NOWA
 
         if (innerRing.size() >= 3)
         {
-            // The boundary ring stays EXACTLY at road-surface height (no drop) so it
-            // is coplanar with the arms. Only the isolated centre point is nudged
-            // down 2 cm as a z-fight guard against terrain — there is no seam there,
-            // so it cannot be seen through.
-            const Ogre::Real centreY = (sumY / static_cast<Ogre::Real>(arms.size() * 2)) - 0.02f;
-            const Ogre::Vector3 centre3(localCentre.x, centreY, localCentre.z);
+            // Centre vertex: already correctly set from terrain sample above.
+            // Nudge down 2 cm as z-fight guard against terrain.
+            const Ogre::Vector3 centre3(localCentre.x, centreLocalY - 0.02f, localCentre.z);
 
             for (size_t k = 0; k < innerRing.size(); ++k)
             {
@@ -4072,15 +4134,15 @@ namespace NOWA
                 this->addRoadQuad(aK.innerR, aK_iR_top, aJ_iL_top, aJ.innerL, -outward, 0.0f, curbH, 0.0f, ev1, false);
 
                 // Curb top — drawn for both small and large gaps to close seam
-                this->addRoadQuad(aK_iR_top, aK_oR_top, aJ_oL_top, aJ_iL_top, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, 0.0f, ev1, false);
+                this->addRoadQuad(aK_iR_top, aK_oR_top, aJ_oL_top, aJ_iL_top, junctionUp, 0.0f, 1.0f, 0.0f, ev1, false);
 
                 // Outer wall: curb top -> ground
                 this->addRoadQuad(aK_oR_top, aK.outerR, aJ.outerL, aJ_oL_top, outward, 0.0f, curbH, 0.0f, ev1, false);
             }
             else
             {
-                // Flat edge strip
-                this->addRoadQuad(aK.innerR, aJ.innerL, aJ.outerL, aK.outerR, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, 0.0f, ev1, false);
+                // Flat edge strip — use junction surface normal for planet alignment
+                this->addRoadQuad(aK.innerR, aJ.innerL, aJ.outerL, aK.outerR, junctionUp, 0.0f, 1.0f, 0.0f, ev1, false);
             }
         }
 
@@ -5843,7 +5905,7 @@ namespace NOWA
         RoadControlPoint cpStart;
         cpStart.position = start;
         cpStart.position.y = 0.0f;
-        cpStart.groundHeight = this->adaptToGround->getBool() ? this->getGroundHeight(start) : start.y;
+        cpStart.groundHeight = this->adaptToGround->getBool() ? this->getGroundHeightCached(start) : start.y;
         cpStart.smoothedHeight = cpStart.groundHeight;
         cpStart.bankingAngle = 0.0f;
         cpStart.distFromStart = 0.0f;
@@ -6497,8 +6559,41 @@ namespace NOWA
             avgDir.normalise();
             data[i].direction = avgDir;
 
-            // Perpendicular in XZ plane
-            Ogre::Vector3 perp = Ogre::Vector3::UNIT_Y.crossProduct(avgDir);
+            // Determine the "up" direction for the road cross-section.
+            // On flat terrain UNIT_Y is correct. On a planet (sphere at origin),
+            // the road surface must tilt to match the local surface normal so that
+            // "horizontal" roads (constant Y) align with the planet curvature
+            // exactly like buildings do via gradientQ.
+            //
+            // points[i].position is in LOCAL space (world - roadOrigin).
+            // points[i].smoothedHeight is LOCAL Y (worldTerrainY - roadOrigin.y).
+            // Reconstruct world position: local + roadOrigin.
+            // Surface normal for sphere at origin: normalize(worldPos).
+            //
+            // Heuristic: only activate when world Y is large (planet surface,
+            // not flat terrain near Y=0). On flat elevated terrain the normal
+            // is very close to UNIT_Y (<6° off) so the effect is negligible.
+            Ogre::Vector3 up = Ogre::Vector3::UNIT_Y;
+            if (this->adaptToGround->getBool())
+            {
+                const Ogre::Vector3 worldPos(
+                    points[i].position.x + this->roadOrigin.x,
+                    points[i].smoothedHeight + this->roadOrigin.y,
+                    points[i].position.z + this->roadOrigin.z);
+                if (worldPos.y > 50.0f && worldPos.squaredLength() > 2500.0f)
+                {
+                    Ogre::Vector3 planetNorm = worldPos.normalisedCopy();
+                    // Only deviate from UNIT_Y when the surface is meaningfully tilted
+                    if (planetNorm.dotProduct(Ogre::Vector3::UNIT_Y) > 0.05f)
+                    {
+                        up = planetNorm;
+                    }
+                }
+            }
+            // Perpendicular — width direction of the road cross-section.
+            // Using the planet surface normal instead of UNIT_Y tilts horizontal
+            // roads to lie on the sphere surface just as buildings do.
+            Ogre::Vector3 perp = up.crossProduct(avgDir);
             if (perp.squaredLength() < 0.0001f)
             {
                 perp = Ogre::Vector3::UNIT_X;
@@ -6507,7 +6602,7 @@ namespace NOWA
 
             // Miter scale: 1/cos(halfAngle)
             Ogre::Vector3 refDir = (dirNext.squaredLength() > 0.0001f) ? dirNext : dirPrev;
-            Ogre::Vector3 refPerp = Ogre::Vector3::UNIT_Y.crossProduct(refDir);
+            Ogre::Vector3 refPerp = up.crossProduct(refDir);
             if (refPerp.squaredLength() > 0.0001f)
             {
                 refPerp.normalise();

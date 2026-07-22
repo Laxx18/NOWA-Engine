@@ -1177,8 +1177,11 @@ namespace NOWA
         // ---- UNDO: Capture state AFTER (empty), fire event ----
         std::vector<unsigned char> newData; // Empty = cleared wall
 
-        boost::shared_ptr<EventDataWallModifyEnd> eventDataWallModifyEnd(new EventDataWallModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWallModifyEnd);
+        if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+            boost::shared_ptr<EventDataWallModifyEnd> eventDataWallModifyEnd(new EventDataWallModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWallModifyEnd);
+        }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Cleared all wall segments");
     }

@@ -709,6 +709,7 @@ namespace NOWA
 		* @brief		Sets whether internally the movable object should be destroyed or not
 		* @param[in]	doNotDestroy	If set to true, the movable object will not be destroyed
 		* @note			This must be used when a movable object is created outside this game object and cannot be destroyed by the scene manager, like e.g. terra, or ocean etc.
+		*				if  this->gameObjectPtr->setDoNotDestroyMovableObject(true); is called, then movable object must be nulled via:  this->gameObjectPtr->nullMovableObject();!!!!
 		*/
 		void setDoNotDestroyMovableObject(bool doNotDestroy);
 		

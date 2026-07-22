@@ -571,13 +571,14 @@ namespace NOWA
 
                 this->processAll();
 
+				Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(fixedDt));
+                Core::getSingletonPtr()->update(static_cast<Ogre::Real>(fixedDt));
+
                 if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
                 {
                     this->activeStateStack.back()->update(static_cast<Ogre::Real>(fixedDt));
-                }
 
-                Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(fixedDt));
-                Core::getSingletonPtr()->update(static_cast<Ogre::Real>(fixedDt));
+                }
 
                 accumulator -= fixedDt;
                 ++steps;

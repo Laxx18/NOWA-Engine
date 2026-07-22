@@ -182,14 +182,14 @@ namespace NOWA
             lastFrameTime = currentTime;
             this->currentRenderDt = deltaTime;
 
-            WorkspaceModule::getInstance()->updateAdaptiveQuality(deltaTime);
-
             GameProgressModule* gameProgressModule = appStateManager->getActiveGameProgressModuleSafe();
             const bool isStalled = appStateManager->bStall.load();
             const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : false;
 
             if (false == isStalled && false == isSceneLoading)
             {
+                WorkspaceModule::getInstance()->updateAdaptiveQuality(deltaTime);
+
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
                 this->advanceFrameAndDestroyOld();
                 this->processAllCommands();

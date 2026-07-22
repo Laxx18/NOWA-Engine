@@ -3981,7 +3981,7 @@ namespace NOWA
             return true;
         }
 
-        if (this->optionUseLuaConsole && !NOWA::LuaConsole::getSingletonPtr()->isVisible())
+        if (this->optionUseLuaConsole && NOWA::LuaConsole::getSingletonPtr() && !NOWA::LuaConsole::getSingletonPtr()->isVisible())
         {
             // Show fps statistics
             if (keyEventRef.key == OIS::KC_F12)
@@ -3998,7 +3998,7 @@ namespace NOWA
             }
             return true;
         }
-        if (this->optionUseLuaConsole && NOWA::LuaConsole::getSingletonPtr()->isVisible())
+        if (this->optionUseLuaConsole && NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
         {
             if (NOWA::LuaConsole::getSingletonPtr())
             {

@@ -136,7 +136,7 @@ namespace NOWA
         isDirty(true),
         cityLoadedFromScene(false),
         cityOrigin(Ogre::Vector3::ZERO),
-        cityBoundsAttr(new Variant(AttrCityBounds(), Ogre::Vector4(-300.f, -300.f, 300.f, 300.f), this->attributes)),
+        cityBoundsAttr(new Variant(AttrCityBounds(), Ogre::Vector4(-299.f, -299.f, 299.f, 299.f), this->attributes)),
         masterSeedAttr(new Variant(AttrMasterSeed(), 42u, this->attributes)),
         blockSizeAttr(new Variant(AttrBlockSize(), 40.f, this->attributes)),
         roadWidthAttr(new Variant(AttrRoadWidth(), 6.f, this->attributes)),
@@ -285,12 +285,6 @@ namespace NOWA
             this->curbDatablockAttr->setValue(XMLConverter::getAttrib(propertyElement, "data", "city_curb_01"));
             propertyElement = propertyElement->next_sibling("property");
         }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRoadComponentId())
-        {
-            this->roadComponentIdAttr->setValue(XMLConverter::getAttrib(propertyElement, "data", "0"));
-            this->roadComponentId = static_cast<unsigned long>(std::strtoul(this->roadComponentIdAttr->getString().c_str(), nullptr, 10));
-            propertyElement = propertyElement->next_sibling("property");
-        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrDoorDatablock())
         {
             this->doorDatablockAttr->setValue(XMLConverter::getAttrib(propertyElement, "data", "city_door_01"));
@@ -309,6 +303,12 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrGradientAlignment())
         {
             this->gradientAlignmentAttr->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRoadComponentId())
+        {
+            this->roadComponentIdAttr->setValue(XMLConverter::getAttrib(propertyElement, "data", "0"));
+            this->roadComponentId = static_cast<unsigned long>(std::strtoul(this->roadComponentIdAttr->getString().c_str(), nullptr, 10));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrRoadConnectionAtStart())
@@ -731,119 +731,104 @@ namespace NOWA
         GameObjectComponent::writeXML(propertiesXML, doc);
 
         rapidxml::xml_node<>* propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-        propertiesXML->append_node(propertyXML);
-
-        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "CityBounds"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrCityBounds())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cityBoundsAttr->getVector4())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "MasterSeed"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrMasterSeed())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->masterSeedAttr->getUInt())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "BlockSize"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrBlockSize())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->blockSizeAttr->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "RoadWidth"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRoadWidth())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadWidthAttr->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "RoadVariance"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRoadVariance())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadVarianceAttr->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "SidewalkWidth"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrSidewalkWidth())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sidewalkWidthAttr->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "CurbHeight"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrCurbHeight())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->curbHeightAttr->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "GenerateRoads"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrGenerateRoads())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->generateRoadsAttr->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "RoadDatablock"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRoadDatablock())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadDatablockAttr->getString())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "CurbDatablock"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrCurbDatablock())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->curbDatablockAttr->getString())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-
-        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-
-        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-
-        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "DoorDatablock"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrDoorDatablock())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->doorDatablockAttr->getString())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "GarageDatablock"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrGarageDatablock())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->garageDatablockAttr->getString())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "GenerateGarage"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrGenerateGarage())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->generateGarageAttr->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "GradientAlignment"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrGradientAlignment())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->gradientAlignmentAttr->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "RoadComponentId"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRoadComponentId())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadComponentIdAttr->getString())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "RoadConnectionAtStart"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrRoadConnectionAtStart())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadConnectionAtStartAttr->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(rapidxml::node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "DistrictCount"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrDistrictCount())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, static_cast<unsigned int>(this->districts.size()))));
         propertiesXML->append_node(propertyXML);
 
@@ -892,9 +877,6 @@ namespace NOWA
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, AttrDistrictDensity() + idx)));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->getDistrictDensity(i))));
             propertiesXML->append_node(propertyXML);
-
-            propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 
             for (unsigned int v = 0; v < 6u; ++v)
             {
@@ -2729,6 +2711,8 @@ namespace NOWA
         }
         this->cityBatches.clear();
         sm->notifyStaticDirty(sm->getRootSceneNode(Ogre::SCENE_STATIC));
+        // Important: if  this->gameObjectPtr->setDoNotDestroyMovableObject(true); is called, then movable object must be nulled!
+        this->gameObjectPtr->nullMovableObject();
     }
 
     // =========================================================================

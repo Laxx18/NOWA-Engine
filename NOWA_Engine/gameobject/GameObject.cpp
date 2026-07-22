@@ -297,15 +297,22 @@ namespace NOWA
         // ALWAYS destroy scene node, even if movableObject was null
         if (nullptr != sceneNode)
         {
+            // Detach (not destroy) any child nodes - they belong to other GameObjects
+            // that will destroy their own nodes independently. We only own this node.
+            Ogre::SceneNode* rootNode = sceneManager->getRootSceneNode();
             auto nodeIt = sceneNode->getChildIterator();
+            std::vector<Ogre::Node*> childrenToReparent;
             while (nodeIt.hasMoreElements())
             {
-                Ogre::Node* subNode = nodeIt.getNext();
-                subNode->removeAllChildren();
+                childrenToReparent.push_back(nodeIt.getNext());
             }
-            sceneNode->detachAllObjects();
+            for (Ogre::Node* child : childrenToReparent)
+            {
+                sceneNode->removeChild(child); // detach, don't destroy
+                rootNode->addChild(child);     // re-parent to root so it stays valid
+            }
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying scene node: " + sceneNode->getName());
+            sceneNode->detachAllObjects();
             sceneManager->destroySceneNode(sceneNode);
         }
     }
@@ -2841,57 +2848,6 @@ namespace NOWA
     {
         return this->shadowRenderingDistance->getUInt();
     }
-
-#if 0
-	std::pair<bool, Ogre::Real> GameObject::performRaycastForYClamping(void)
-	{
-		bool success = false;
-
-		Ogre::Vector3 resultPoint = Ogre::Vector3::ZERO;
-
-		if (true == this->clampY->getBool())
-		{
-			// Render must be called, else, when game object is loaded somehow ogre is not ready, and just shadow camera are found for ray cast and no objects!
-			Ogre::Root::getSingletonPtr()->renderOneFrame();
-
-			// Generate query for clamp object query for all kinds of categories
-			if (nullptr == this->clampObjectQuery)
-			{
-				this->clampObjectQuery = this->sceneManager->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
-				this->clampObjectQuery->setSortByDistance(true);
-			}
-
-			Ogre::MovableObject* hitMovableObject = nullptr;
-
-			// Exclude this movable object
-			std::vector<Ogre::MovableObject*> excludeMovableObjects(1);
-			excludeMovableObjects[0] = this->getMovableObject();
-
-			// Goes up 10 times size and throws down the ray 5000 meters, excludes itself
-			Ogre::Vector3 position(this->sceneNode->getPosition().x, (this->sceneNode->getPosition().y + this->getSize().y * 10.0f), this->sceneNode->getPosition().z);
-			if (MathHelper::getInstance()->getRaycastResult(position, Ogre::Vector3::NEGATIVE_UNIT_Y * 5000.0f, this->clampObjectQuery, resultPoint, (size_t&)hitMovableObject, &excludeMovableObjects))
-			{
-				// Move the game object to the bottom center of the entity mesh
-				resultPoint.y += this->getBottomOffset().y;
-
-				bool nonDynamicGameObject = false;
-				if (false == this->isDynamic())
-				{
-					nonDynamicGameObject = true;
-					this->setDynamic(true);
-				}
-				this->sceneNode->setPosition(this->sceneNode->getPosition().x, resultPoint.y, this->sceneNode->getPosition().z);
-				if (true == nonDynamicGameObject)
-				{
-					this->setDynamic(false);
-				}
-				success = true;
-			}
-		}
-
-		return std::make_pair(success, resultPoint.y);
-	}
-#endif
 
     std::pair<bool, Ogre::Real> GameObject::performRaycastForYClamping(void)
     {
