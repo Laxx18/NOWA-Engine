@@ -271,87 +271,83 @@ namespace NOWA
 
         // ---- Attribute name accessors --------------------------------------
     public:
-        static Ogre::String AttrActivated(void)
-        {
-            return "Activated";
-        }
         static Ogre::String AttrCityBounds(void)
         {
-            return "CityBounds";
+            return "City Bounds";
         }
         static Ogre::String AttrMasterSeed(void)
         {
-            return "MasterSeed";
+            return "Master Seed";
         }
         static Ogre::String AttrBlockSize(void)
         {
-            return "BlockSize";
+            return "Block Size";
         }
         // Roads (internal geometry)
         static Ogre::String AttrRoadWidth(void)
         {
-            return "RoadWidth";
+            return "Road Width";
         }
         static Ogre::String AttrRoadVariance(void)
         {
-            return "RoadVariance";
+            return "Road Variance";
         }
         static Ogre::String AttrSidewalkWidth(void)
         {
-            return "SidewalkWidth";
+            return "Sidewalk Width";
         }
         static Ogre::String AttrCurbHeight(void)
         {
-            return "CurbHeight";
+            return "Curb Height";
         }
         static Ogre::String AttrGenerateRoads(void)
         {
-            return "GenerateRoads";
+            return "Generate Roads";
         }
         static Ogre::String AttrRoadDatablock(void)
         {
-            return "RoadDatablock";
+            return "Road Datablock";
         }
         static Ogre::String AttrCurbDatablock(void)
         {
-            return "CurbDatablock";
+            return "Curb Datablock";
         }
         // Courtyard walls (internal geometry)
         // Wall feature removed — see changelog
         // Door (global, shared by all buildings)
         static Ogre::String AttrDoorDatablock(void)
         {
-            return "DoorDatablock";
+            return "Door Datablock";
         }
         static Ogre::String AttrGarageDatablock(void)
         {
-            return "GarageDatablock";
+            return "Garage Datablock";
         }
         static Ogre::String AttrGenerateGarage(void)
         {
-            return "GenerateGarage";
+            return "Generate Garage";
         }
         /// When enabled, each building is tilted so its local Y aligns with
         /// the planet surface normal — makes buildings "stand up" on a sphere.
         static Ogre::String AttrGradientAlignment(void)
         {
-            return "GradientAlignment";
+            return "Gradient Alignment";
         }
         /// World-space XYZ of the planet centre.  Used for gradient alignment.
         /// Default (0,0,0) = flat world (no tilt).  Set to planet centre if on a planet.
         // External road connection (optional)
         static Ogre::String AttrRoadComponentId(void)
         {
-            return "RoadComponentId";
+            return "Road GameObject Id";
         }
         static Ogre::String AttrRoadConnectionAtStart(void)
         {
-            return "RoadConnectionAtStart";
+            return "Road Connection At Start";
         }
         // Districts
         static Ogre::String AttrDistrictCount(void)
         {
-            return "DistrictCount";
+            return "District Count";
         }
         // Action buttons
         static Ogre::String AttrGenerate(void)
@@ -365,22 +361,22 @@ namespace NOWA
         /// Regenerate ONLY buildings — roads stay as the designer left them.
         static Ogre::String AttrGenerateBuildings(void)
         {
-            return "GenerateBuildings";
+            return "Generate Buildings";
         }
         /// Edit mode: "Object" = normal, "Segment" = click-select buildings, X=delete.
         static Ogre::String AttrEditMode(void)
         {
-            return "EditMode";
+            return "Edit Mode";
         }
 
         // Per-district names (index appended at runtime, e.g. "DistrictName0")
         static Ogre::String AttrDistrictName(void)
         {
-            return "DistrictName";
+            return "District Name";
         }
         static Ogre::String AttrDistrictType(void)
         {
-            return "DistrictType";
+            return "District Type";
         }
         static Ogre::String AttrDistrictMinHeight(void)
         {
@@ -388,39 +384,39 @@ namespace NOWA
         }
         static Ogre::String AttrDistrictMaxHeight(void)
         {
-            return "DistrictMaxHeight";
+            return "District Max Height";
         }
         static Ogre::String AttrDistrictMinFootprint(void)
         {
-            return "DistrictMinFootprint";
+            return "District Min Footprint";
         }
         static Ogre::String AttrDistrictMaxFootprint(void)
         {
-            return "DistrictMaxFootprint";
+            return "District Max Footprint";
         }
         static Ogre::String AttrDistrictDensity(void)
         {
-            return "DistrictDensity";
+            return "District Density";
         }
         static Ogre::String AttrDistrictCourtyardProb(void)
         {
             return "DistrictCourtyardProb";
         }
-        static Ogre::String AttrDistrictWallDatablock(void)
+        static Ogre::String AttrDistrictFaceDatablock(void)
         {
-            return "DistrictWallDatablock";
+            return "District Face Datablock";
         }
         static Ogre::String AttrDistrictRoofDatablock(void)
         {
-            return "DistrictRoofDatablock";
+            return "District Roof Datablock";
         }
         static Ogre::String AttrDistrictWindowDatablock(void)
         {
-            return "DistrictWindowDatablock";
+            return "District Window Datablock";
         }
         static Ogre::String AttrDistrictTrimDatablock(void)
         {
-            return "DistrictTrimDatablock";
+            return "District Trim Datablock";
         }
 
         // ---- Action IDs ---------------------------------------------------
@@ -584,12 +580,6 @@ namespace NOWA
 
         // ---- District management ------------------------------------------
 
-        /**
-         * @brief Number of city districts.  Like ruleCount in foliage: increasing
-         *        this creates new Variant entries in the editor; decreasing removes
-         *        them and triggers an AttrActionNeedRefresh.  Districts are mapped
-         *        onto city blocks via a Voronoi cell system seeded from masterSeed.
-         */
         void setDistrictCount(unsigned int count);
         unsigned int getDistrictCount(void) const;
 
@@ -635,6 +625,9 @@ namespace NOWA
          */
         void setDistrictDensity(unsigned int index, Ogre::Real density);
         Ogre::Real getDistrictDensity(unsigned int index) const;
+
+        void setDistrictFaceDatablock(unsigned int districtIdx, unsigned int variantIdx, const Ogre::String& name);
+        Ogre::String getDistrictFaceDatablock(unsigned int districtIdx, unsigned int variantIdx) const;
 
         /**
          * @brief Roof datablock for district i, variant v (0..2).
@@ -732,11 +725,13 @@ namespace NOWA
             Ogre::Real density = 0.85f;
             Ogre::Real courtyardProb = 0.3f;
 
-            // AAA variance: multiple datablocks per material slot.
+            // Variance: multiple datablocks per material slot.
             // One is selected per building from BuildingInstance::variantSeed.
-            Ogre::String roofDatablocks[3] = {"city_roof_01", "city_roof_02", "city_roof_03"};
-            Ogre::String windowDatablocks[3] = {"city_window_01", "city_window_02", "city_window_03"};
-            Ogre::String trimDatablocks[2] = {"city_trim_01", "city_trim_02"};
+             
+            Ogre::String faceDatablocks[6];
+            Ogre::String roofDatablocks[3];
+            Ogre::String windowDatablocks[3];
+            Ogre::String trimDatablocks[2];
         };
 
         /**
@@ -839,22 +834,6 @@ namespace NOWA
          *        @param variance  The current RoadVariance attribute value [0.3..1.0].
          */
         void buildOrganicRoadNetwork(std::vector<std::pair<Ogre::Vector2, Ogre::Vector2>>& allRoadSegs, Ogre::Real variance);
-
-        /**
-         * @brief Generate internal road-strip geometry into the road and curb
-         *        accumulation buffers. KEPT FOR REFERENCE but no longer called —
-         *        replaced by buildCityRoadNetwork().
-         */
-        void generateRoadGeometry(const std::vector<CityBlock>& blocks, const Ogre::Vector3& localOrigin, std::vector<float>& roadV, std::vector<Ogre::uint32>& roadI, size_t& roadN, std::vector<float>& curbV, std::vector<Ogre::uint32>& curbI,
-            size_t& curbN);
-
-        /**
-         * @brief Generate solid courtyard-wall geometry (matching
-         *        ProceduralWallComponent::generateSolidWall() vertex layout)
-         *        for all blocks where hasCourtyardWall is true.
-         *        NOT called if generateWalls is false.
-         */
-        void generateCourtyardWallGeometry(const std::vector<CityBlock>& blocks, const Ogre::Vector3& localOrigin, std::vector<float>& wallV, std::vector<Ogre::uint32>& wallI, size_t& wallN);
 
         /**
          * @brief Connect city to external ProceduralRoadComponent (optional).
@@ -1065,6 +1044,7 @@ namespace NOWA
         std::vector<Variant*> districtMaxFootprintAttrs;
         std::vector<Variant*> districtDensityAttrs;
         // [districtIdx][variantIdx]
+        std::vector<std::array<Variant*, 6>> districtFaceDbAttrs;
         std::vector<std::array<Variant*, 3>> districtRoofDbAttrs;
         std::vector<std::array<Variant*, 3>> districtWindowDbAttrs;
         std::vector<std::array<Variant*, 2>> districtTrimDbAttrs;

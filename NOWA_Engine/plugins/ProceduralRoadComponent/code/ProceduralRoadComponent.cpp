@@ -1906,7 +1906,7 @@ namespace NOWA
                             // the real surface here and letting Step 4's Gaussian smoothing +
                             // gradient clamp do the actual smoothing tracks the terrain
                             // correctly while still producing a smooth road.
-                            cp.groundHeight = this->getGroundHeight(cp.position);
+                            cp.groundHeight = this->getGroundHeightCached(cp.position);
                         }
 
                         cp.smoothedHeight = cp.groundHeight;
@@ -2014,7 +2014,7 @@ namespace NOWA
                                 // Sample terrain at the ACTUAL boundary position, not at the
                                 // surviving point several meters away. On a gradient the old
                                 // code stamped a height from the wrong XZ, floating the seam.
-                                bp.groundHeight = this->getGroundHeight(bp.position);
+                                bp.groundHeight = this->getGroundHeightCached(bp.position);
                                 bp.smoothedHeight = bp.groundHeight;
                                 bp.bankingAngle = finalPath.front().bankingAngle;
                                 bp.distFromStart = 0.0f;
@@ -2076,7 +2076,7 @@ namespace NOWA
                                 bp.position = bnd;
                                 bp.position.y = 0.0f;
                                 // Same fix as the front boundary: sample at bp's true location.
-                                bp.groundHeight = this->getGroundHeight(bp.position);
+                                bp.groundHeight = this->getGroundHeightCached(bp.position);
                                 bp.smoothedHeight = bp.groundHeight;
                                 bp.bankingAngle = finalPath.back().bankingAngle;
                                 bp.distFromStart = finalPath.back().distFromStart + (d - myTrimDist);
@@ -2155,72 +2155,41 @@ namespace NOWA
         }
     }
 
-    namespace
-    {
-        // Resolves the scene's Terra once and caches it. Sampling the heightmap
-        // directly (Terra::getHeightAt) is an O(1) bilinear lookup, whereas the
-        // previous RaySceneQuery tested every road mesh + junction patch in the
-        // scene on *every* sampled point. That made getGroundHeight cost roughly
-        // O(points * sceneTriangles), which is why deleting a segment on a large
-        // connected network could take minutes: the whole network is re-sampled
-        // on rebuild against the now-largest version of the scene.
-        Ogre::Terra* resolveSceneTerra(void)
-        {
-            static Ogre::Terra* cachedTerra = nullptr;
-            static void* cachedControllerOwner = nullptr;
-
-            // The GameObjectController is recreated on scene (re)load, so its
-            // address changing is our signal that the cached Terra pointer may be
-            // stale and must be re-resolved. This keeps the O(1) fast path while
-            // avoiding a dangling pointer after a scene switch.
-            auto* controller = AppStateManager::getSingletonPtr()->getGameObjectController();
-            if (nullptr != cachedTerra && controller == cachedControllerOwner)
-            {
-                return cachedTerra;
-            }
-
-            cachedTerra = nullptr;
-            cachedControllerOwner = controller;
-
-            auto terraList = controller->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
-            if (terraList.empty())
-            {
-                return nullptr;
-            }
-            auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
-            if (!terraCompPtr)
-            {
-                return nullptr;
-            }
-            cachedTerra = terraCompPtr->getTerra();
-            return cachedTerra;
-        }
-    }
-
     Ogre::Real ProceduralRoadComponent::getGroundHeight(const Ogre::Vector3& position)
     {
         if (false == this->adaptToGround->getBool())
-        {
-            return position.y;
-        }
-
-        // Fast path: sample the Terra heightmap directly instead of raycasting the
-        // whole scene. This removes the O(points * sceneTriangles) blow-up that made
-        // segment deletion on large networks take minutes.
-        Ogre::Terra* terra = resolveSceneTerra();
-        if (nullptr != terra)
-        {
-            Ogre::Vector3 sample = position;
-            if (terra->getHeightAt(sample))
             {
-                return sample.y + this->heightOffset->getReal();
+            return position.y;
             }
-        }
 
-        // Fallback: intersect against the flat ground plane (kept from the original
-        // path) when there is no Terra or the point is outside terrain bounds.
         Ogre::Vector3 rayOrigin = Ogre::Vector3(position.x, position.y + 1000.0f, position.z);
         Ogre::Ray downRay(rayOrigin, Ogre::Vector3::NEGATIVE_UNIT_Y);
+
+        this->groundQuery->setRay(downRay);
+        this->groundQuery->setSortByDistance(true);
+
+        Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
+        Ogre::MovableObject* hitMovableObject = nullptr;
+        Ogre::Real closestDistance = 0.0f;
+        Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+        std::vector<Ogre::MovableObject*> excludeMovableObjects;
+        if (this->roadItem)
+            {
+            excludeMovableObjects.emplace_back(this->roadItem);
+            }
+        if (this->previewItem)
+            {
+            excludeMovableObjects.emplace_back(this->previewItem);
+    }
+
+        bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(this->groundQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal,
+            &excludeMovableObjects, false);
+
+        if (hitFound && hitMovableObject != nullptr)
+            {
+            return internalHitPoint.y + this->heightOffset->getReal();
+        }
 
         std::pair<bool, Ogre::Real> planeResult = downRay.intersects(this->groundPlane);
         if (planeResult.first && planeResult.second > 0.0f)
@@ -2334,7 +2303,7 @@ namespace NOWA
                 else
                 {
                     // Intermediate point - raycast for terrain following
-                    cp.groundHeight = this->getGroundHeight(cp.position);
+                    cp.groundHeight = this->getGroundHeightCached(cp.position);
                     cp.smoothedHeight = cp.groundHeight;
                 }
 
@@ -3862,11 +3831,48 @@ namespace NOWA
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::conformTerrainToRoad");
 
+        // Previously-cached heights under the stamped area are now stale.
+        this->invalidateGroundHeightCache();
+
         boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] conformTerrainToRoad: complete.");
         return true;
+    }
+
+    Ogre::Real ProceduralRoadComponent::getGroundHeightCached(const Ogre::Vector3& position)
+    {
+        // Ground height here is purely a function of (x, z) - a road never
+        // legitimately wants two different heights at the same planar spot.
+        // Once a point has been sampled, it can be reused verbatim on every
+        // later rebuildMesh() call no matter how the rest of the network's
+        // topology changes - deleting a segment introduces ZERO new (x,z)
+        // positions, so a delete now resolves 100% from cache with no
+        // raycasting at all; extending a segment only misses cache for the
+        // genuinely new points on the new segment. 1cm quantisation absorbs
+        // floating point noise between rebuilds without visibly stair-
+        // stepping the mesh.
+        const std::pair<int32_t, int32_t> key{static_cast<int32_t>(std::round(position.x * 100.0f)), static_cast<int32_t>(std::round(position.z * 100.0f))};
+
+        auto it = this->groundHeightCache.find(key);
+        if (it != this->groundHeightCache.end())
+        {
+            return it->second;
+        }
+
+        const Ogre::Real height = this->getGroundHeight(position);
+        this->groundHeightCache.emplace(key, height);
+        return height;
+    }
+
+    void ProceduralRoadComponent::invalidateGroundHeightCache(void)
+    {
+        // Call this whenever the ground itself can have moved under
+        // previously-cached points (e.g. after conformTerrainToRoadApply
+        // deforms the Terra, or any other terrain deformation affecting
+        // this road).
+        this->groundHeightCache.clear();
     }
 
     int ProceduralRoadComponent::findNearestSegment(const Ogre::Vector3& worldPos) const
@@ -5845,10 +5851,30 @@ namespace NOWA
         RoadControlPoint cpEnd;
         cpEnd.position = end;
         cpEnd.position.y = 0.0f;
-        cpEnd.groundHeight = this->adaptToGround->getBool() ? this->getGroundHeight(end) : end.y;
+        cpEnd.groundHeight = this->adaptToGround->getBool() ? this->getGroundHeightCached(end) : end.y;
         cpEnd.smoothedHeight = cpEnd.groundHeight;
         cpEnd.bankingAngle = 0.0f;
         cpEnd.distFromStart = start.distance(end);
+
+        // Pre-warm the height cache for all intermediate subdivision points.
+        // rebuildMesh() samples at terrainSampleInterval spacing — if those points are
+        // already cached, a later delete (or any full rebuild) fires ZERO new raycasts.
+        // Only genuinely new points on new segments miss cache.
+        if (this->adaptToGround->getBool())
+        {
+            const Ogre::Real interval = std::max(0.5f, this->terrainSampleInterval->getReal());
+            const Ogre::Real segLen   = start.distance(end);
+            const int        numSubs  = std::max(2, static_cast<int>(segLen / interval) + 1);
+            for (int si = 1; si < numSubs - 1; ++si)
+            {
+                const Ogre::Real t = static_cast<Ogre::Real>(si) / static_cast<Ogre::Real>(numSubs - 1);
+                const Ogre::Vector3 mid(
+                    start.x * (1.0f - t) + end.x * t,
+                    0.0f,
+                    start.z * (1.0f - t) + end.z * t);
+                this->getGroundHeightCached(mid); // populates cache — result discarded here
+            }
+        }
 
         if (false == this->hasRoadOrigin)
         {
@@ -6634,7 +6660,7 @@ namespace NOWA
                     // Resample the real terrain instead of linearly interpolating
                     // between the two endpoint heights - a straight ramp between two
                     // distant clicks would otherwise ignore any bump or dip in between.
-                    cp.groundHeight = this->getGroundHeight(cp.position);
+                    cp.groundHeight = this->getGroundHeightCached(cp.position);
                 }
                 cp.smoothedHeight = cp.groundHeight;
 

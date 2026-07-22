@@ -706,6 +706,10 @@ namespace NOWA
         void createWaypointNodes(bool splitLanes);
 
         bool conformTerrainToRoadApply(void);
+
+       Ogre::Real getGroundHeightCached(const Ogre::Vector3& position);
+
+       void invalidateGroundHeightCache(void);
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;
@@ -805,6 +809,7 @@ namespace NOWA
         Ogre::SceneNode* segOverlayNode;
         Ogre::ManualObject* segOverlayObject;
         bool isExtendingFromSegment;
+        std::map<std::pair<int32_t, int32_t>, Ogre::Real> groundHeightCache;
 
         bool isSnapToRoad;             // true when cursor is snapping to existing road
         Ogre::Vector3 snapToRoadPoint; // world-space snap point on road centerline
