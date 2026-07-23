@@ -105,7 +105,8 @@ namespace NOWA
         snapToRoadT(0.0f),
         snapRadius(0.0f),
         isExtendingFromSegment(false),
-        bBatchMode(false)
+        bBatchMode(false),
+        roadLoadedFromScene(false)
     {
         this->roadStyle->setDescription("Style of the road to generate");
         this->roadWidth->setDescription("Width of the main road surface (meters)");
@@ -213,6 +214,8 @@ namespace NOWA
     bool ProceduralRoadComponent::init(rapidxml::xml_node<>*& propertyElement)
     {
         GameObjectComponent::init(propertyElement);
+
+        this->roadLoadedFromScene = true;
 
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrActivated())
         {
@@ -376,7 +379,7 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
 
         // Create raycast query for ground detection
-        this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
+        this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId("All-City"));
         this->groundQuery->setSortByDistance(true);
 
         // Setup fallback ground plane at Y=0
@@ -387,24 +390,46 @@ namespace NOWA
 
         this->isShiftPressed = true;
 
+        if (true == this->roadLoadedFromScene)
+        {
+            // Loaded from a saved scene is NOT regenerated here.
+            // postInit() runs once per GameObject during scene load, but other
+            // GameObjects (e.g. obstacles like Wall_0, container_0) may not have
+            // completed their own postInit() yet, so their category bits are not
+            // guaranteed to be registered in the scene query structures. Querying
+            // isCategoryAllowed() here can silently find no obstacles -- foliage
+            // gets placed right through buildings.
+            //
+            // lateInit() (below) is called once, after EVERY GameObject in the
+            // scene has finished postInit() -- see DotSceneImportModule::
+            // postInitData(). That is the correct, safe point to regenerate
+
+            this->roadLoadedFromScene = false;
+
+            AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
+        }
+
+        this->createSegmentOverlay();
+        
+        // Adjust snapradius here
+        this->snapRadius = this->roadWidth->getReal() * 0.4f;
+
+        return true;
+    }
+
+    void ProceduralRoadComponent::handleSceneParsed(NOWA::EventDataPtr eventData)
+    {
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
+
         // Load wall data from file
         if (true == this->loadRoadDataFromFile())
         {
             // If we successfully loaded segments, rebuild the mesh
             if (false == this->roadSegments.empty())
             {
-                this->rebuildMesh();
-
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Successfully loaded and rebuilt road with " + Ogre::StringConverter::toString(this->roadSegments.size()) + " segments");
             }
         }
-
-        this->createSegmentOverlay();
-
-        // Adjust snapradius here
-        this->snapRadius = this->roadWidth->getReal() * 0.4f;
-
-        return true;
     }
 
     bool ProceduralRoadComponent::connect(void)
@@ -455,6 +480,8 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
+
 
         if (nullptr != this->groundQuery)
         {

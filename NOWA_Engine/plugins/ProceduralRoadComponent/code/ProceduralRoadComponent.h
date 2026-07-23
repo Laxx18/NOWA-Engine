@@ -669,6 +669,11 @@ namespace NOWA
 
         void handleComponentManuallyDeleted(NOWA::EventDataPtr eventData);
 
+        /**
+         * @brief Deferred load after all postInits have run.
+         */
+        void handleSceneParsed(NOWA::EventDataPtr eventData);
+
         void addInputListener(void);
 
         void removeInputListener(void);
@@ -817,6 +822,7 @@ namespace NOWA
         float snapToRoadT;             // parametric t [0,1] along that segment
         Ogre::Real snapRadius;         // = roadWidth * 1.5f, set in postInit
         bool bBatchMode;
+        bool roadLoadedFromScene;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

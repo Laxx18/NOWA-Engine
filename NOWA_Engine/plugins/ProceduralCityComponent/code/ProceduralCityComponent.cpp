@@ -235,6 +235,8 @@ namespace NOWA
     {
         GameObjectComponent::init(propertyElement);
 
+        this->cityLoadedFromScene = true;
+
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrCityBounds())
         {
             this->cityBoundsAttr->setValue(XMLConverter::getAttribVector4(propertyElement, "data"));
@@ -418,9 +420,13 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
 
-        this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
+        this->gameObjectPtr->changeCategory("City");
+
+        this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId("All-Road"));
         this->groundQuery->setSortByDistance(true);
         this->groundPlane = Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f);
+
+        this->gameObjectPtr->setAttributePosition(Ogre::Vector3::ZERO);
 
         this->createSelectionOverlay();
 
@@ -497,12 +503,29 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] CityRoads GO id=" + Ogre::StringConverter::toString(this->roadComponentId) + " will be reconnected after scene is parsed.");
         }
 
-        if (false == this->cityLoadedFromScene)
+        if (true == this->cityLoadedFromScene)
         {
+            // Loaded from a saved scene is NOT regenerated here.
+            // postInit() runs once per GameObject during scene load, but other
+            // GameObjects (e.g. obstacles like Wall_0, container_0) may not have
+            // completed their own postInit() yet, so their category bits are not
+            // guaranteed to be registered in the scene query structures. Querying
+            // isCategoryAllowed() here can silently find no obstacles -- foliage
+            // gets placed right through buildings.
+            //
+            // lateInit() (below) is called once, after EVERY GameObject in the
+            // scene has finished postInit() -- see DotSceneImportModule::
+            // postInitData(). That is the correct, safe point to regenerate
+            this->cityLoadedFromScene = false;
             AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
         }
 
         return true;
+    }
+
+    void ProceduralCityComponent::handleSceneParsed(NOWA::EventDataPtr eventData)
+    {
+        this->loadOrGenerateCity();
     }
 
     bool ProceduralCityComponent::connect(void)
@@ -510,19 +533,23 @@ namespace NOWA
         GameObjectComponent::connect();
         return true;
     }
+
     bool ProceduralCityComponent::disconnect(void)
     {
         GameObjectComponent::disconnect();
         return true;
     }
+
     GameObjectCompPtr ProceduralCityComponent::clone(GameObjectPtr clonedGameObjectPtr)
     {
         return GameObjectCompPtr();
     }
+
     bool ProceduralCityComponent::onCloned(void)
     {
         return true;
     }
+
     void ProceduralCityComponent::onAddComponent(void)
     {
     }
@@ -534,6 +561,7 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
+
         this->removeInputListener();
         this->destroySelectionOverlay();
 
@@ -575,6 +603,7 @@ namespace NOWA
     void ProceduralCityComponent::onOtherComponentAdded(unsigned int index)
     {
     }
+
     void ProceduralCityComponent::update(Ogre::Real dt, bool notSimulating)
     {
     }
@@ -1020,37 +1049,47 @@ namespace NOWA
             return;
         }
 
-        // DIAGNOSTIC: log which thread this runs on and whether cache is hit or missed.
-        // Cache MISS forces generateCityLayout() on the logic thread = camera freeze!
-        const Ogre::String threadId = Ogre::StringConverter::toString(static_cast<unsigned long long>(std::hash<std::thread::id>{}(std::this_thread::get_id())));
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] loadOrGenerateCity START threadId=" + threadId);
-
         const auto& compPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
         if (compPtr)
         {
             this->physicsArtifactComponent = compPtr.get();
-            this->physicsArtifactComponent->getAttribute(PhysicsArtifactComponent::AttrSerialize())->setValue(false);
-            this->physicsArtifactComponent->getAttribute(PhysicsArtifactComponent::AttrSerialize())->setVisible(false);
         }
 
-        auto tClear = std::chrono::high_resolution_clock::now();
-        this->clearCity(false);
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-            "[ProceduralCityComponent] clearCity (enqueueAndWait) " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tClear).count()) + "ms");
+        // Only destroy BUILDING batches here — NOT the road.
+        // The road is owned and reloaded independently by ProceduralRoadComponent's
+        // own handleSceneParsed. Touching it here races against that load.
+        GraphicsModule::getInstance()->enqueueAndWait(
+            [this]()
+            {
+                this->destroyCityOnRenderThread();
+            },
+            "ProceduralCityComponent::loadOrGenerateCity_DestroyBuildings");
 
-        auto t0 = std::chrono::high_resolution_clock::now();
         std::vector<CityBatch> batches;
         bool fromCache = this->loadCityDataFromFile(batches);
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Cache " + Ogre::String(fromCache ? "HIT" : "MISS") + " — " +
-                                                                                (fromCache ? "loading from disk (fast)" : "generateCityLayout() will run on threadId=" + threadId + " — if this is the logic thread, camera freezes until done!"));
-
-        if (false == fromCache)
+        if (true == fromCache)
         {
-            auto tGen = std::chrono::high_resolution_clock::now();
-            batches = this->generateCityLayout();
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[ProceduralCityComponent] generateCityLayout DONE " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tGen).count()) + "ms");
+            // cityOrigin is NOT persisted in the batch cache file and is otherwise only
+            // ever set inside generateCityLayout(). On a cache-hit load, generateCityLayout()
+            // never runs, so cityOrigin would silently stay at its default ZERO — placing
+            // the rebuilt city Item at world origin instead of the GameObject's actual
+            // (correctly loaded) scene position. Derive it from the SceneNode instead,
+            // same as generateBuildingsOnly() already does.
+            this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
+        }
+        else
+        {
+            // We're about to regenerate the road network ourselves (generateCityLayout
+            // calls buildCityRoadNetwork internally) — NOW it's safe/correct to clear
+            // whatever the road component currently has, since we're replacing it.
+            ProceduralRoadComponent* roadCompForClear = this->findRoadComponent();
+            if (nullptr != roadCompForClear)
+            {
+                roadCompForClear->clearAllSegments();
+            }
+
+            batches = this->generateCityLayout(); // also calls buildCityRoadNetwork + syncs
             if (batches.empty())
             {
                 return;
@@ -1058,19 +1097,7 @@ namespace NOWA
             this->saveCityDataToFile(batches);
         }
 
-        auto tGpu = std::chrono::high_resolution_clock::now();
         this->createCityOnRenderThread(std::move(batches));
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-            "[ProceduralCityComponent] createCityOnRenderThread (enqueueAndWait) " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tGpu).count()) + "ms");
-
-        double ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - t0).count();
-        size_t total = 0;
-        for (const auto& b : this->cityBatches)
-        {
-            total += b.instances.size();
-        }
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] " + Ogre::String(fromCache ? "Loaded " : "Generated ") + Ogre::StringConverter::toString(total) + " buildings in " +
-                                                                                Ogre::StringConverter::toString(ms * 0.001) + "s" + Ogre::String(fromCache ? " (cache)" : ""));
         this->isDirty = false;
     }
 
@@ -1830,76 +1857,70 @@ namespace NOWA
         //   TOP face  (+Y): FrontLeft,FrontRight,BackRight,BackLeft  → Cross = right×wallDir = -Y ✓
         //   FRONT face(-wallDir): BotLeft,BotRight,TopRight,TopLeft  → Cross = right×Y = +wallDir ✓
         {
-            const Ogre::Real doorH = std::min(2.2f, wh * 0.45f);
             const Ogre::Real doorW = std::min(1.2f, fW * 0.25f);
-            const Ogre::Real stairH = 0.15f; // height per step
-            const Ogre::Real stairD = 0.28f; // depth per step (outward)
+            const Ogre::Real stairH = 0.15f;
+            const Ogre::Real stairD = 0.28f;
             const int nSteps = 3;
-            const Ogre::Real stairHW = doorW * 0.5f + 0.3f; // half-width of stairs
+            const Ogre::Real stairHW = doorW * 0.5f + 0.3f;
 
-            // Door base in local space (same formula as door block)
+            // Front face centre at door-base height — same origin as the door block.
             const Ogre::Real frontWorldX2 = building.position.x + (-wallDir.x) * hd;
             const Ogre::Real frontWorldZ2 = building.position.z + (-wallDir.z) * hd;
             const Ogre::Real frontTerrainY2 = this->getGroundHeight(Ogre::Vector3(frontWorldX2, 0.f, frontWorldZ2));
             const Ogre::Real doorBaseLocal2 = std::max(base.y, frontTerrainY2 - CITY_SINK_DEPTH - localOrigin.y);
 
-            // frontBase: position of the building's front face centre at door base height
+            // Use frontBase (= front-face centre at door-base Y) as stair origin.
+            // FIX: was "baseXZ(base.x, 0, base.z)" which hardcoded Y=0 — wrong on planet.
             const Ogre::Vector3 frontBase(base.x + (-wallDir.x) * hd, doorBaseLocal2, base.z + (-wallDir.z) * hd);
+
+            const Ogre::Vector3 rL = right * (-stairHW);
+            const Ogre::Vector3 rR = right * stairHW;
 
             for (int s = 0; s < nSteps; ++s)
             {
-                // Step s: s=0 bottom/outermost, s=nSteps-1 top/closest to door
-                const Ogre::Real botY = doorBaseLocal2 + static_cast<Ogre::Real>(s) * stairH;
-                const Ogre::Real topY = doorBaseLocal2 + static_cast<Ogre::Real>(s + 1) * stairH;
-                // Outer edge is more negative in -wallDir direction
-                const Ogre::Real outDist = hd + static_cast<Ogre::Real>(nSteps - s) * stairD;
-                const Ogre::Real inDist = hd + static_cast<Ogre::Real>(nSteps - s - 1) * stairD;
+                // FIX: use RELATIVE heights above frontBase, not absolute local-Y values.
+                // Old code used absolute botY/topY (~= base.y + steps) multiplied by the
+                // tilted 'up' vector — this displaced stairs wildly on a planet.
+                const Ogre::Real botRelH = static_cast<Ogre::Real>(s) * stairH;
+                const Ogre::Real topRelH = static_cast<Ogre::Real>(s + 1) * stairH;
 
-                // Convenience shorthand
-                const Ogre::Vector3 cOut = (-wallDir) * outDist; // outward displacement
+                // Outward distance FROM frontBase (outer = further from building)
+                const Ogre::Real outDist = static_cast<Ogre::Real>(nSteps - s) * stairD;
+                const Ogre::Real inDist = static_cast<Ogre::Real>(nSteps - s - 1) * stairD;
+
+                const Ogre::Vector3 cOut = (-wallDir) * outDist;
                 const Ogre::Vector3 cIn = (-wallDir) * inDist;
-                const Ogre::Vector3 rL = right * (-stairHW); // left offset
-                const Ogre::Vector3 rR = right * (stairHW);  // right offset
-                const Ogre::Vector3 baseXZ(base.x, 0.f, base.z);
 
-                // ---- TOP face (normal +Y): FrontLeft, FrontRight, BackRight, BackLeft
-                const Ogre::Vector3 topFL = baseXZ + rL + cOut + (up * topY);
-                const Ogre::Vector3 topFR = baseXZ + rR + cOut + (up * topY);
-                const Ogre::Vector3 topBR = baseXZ + rR + cIn + (up * topY);
-                const Ogre::Vector3 topBL = baseXZ + rL + cIn + (up * topY);
+                // ---- TOP face (normal = up) ----------------------------------------
+                const Ogre::Vector3 topFL = frontBase + rL + cOut + up * topRelH;
+                const Ogre::Vector3 topFR = frontBase + rR + cOut + up * topRelH;
+                const Ogre::Vector3 topBR = frontBase + rR + cIn + up * topRelH;
+                const Ogre::Vector3 topBL = frontBase + rL + cIn + up * topRelH;
                 this->pushQuad(wallV, wallI, wallN, topFL, topFR, topBR, topBL, up, stairHW * 2.f / 0.5f, stairD / 0.5f);
 
-                // ---- FRONT face (normal -wallDir): BotLeft, BotRight, TopRight, TopLeft
-                const Ogre::Vector3 frBL = baseXZ + rL + cOut + (up * botY);
-                const Ogre::Vector3 frBR = baseXZ + rR + cOut + (up * botY);
-                const Ogre::Vector3 frTR = baseXZ + rR + cOut + (up * topY);
-                const Ogre::Vector3 frTL = baseXZ + rL + cOut + (up * topY);
+                // ---- FRONT face (normal = -wallDir) -----------------------------------
+                const Ogre::Vector3 frBL = frontBase + rL + cOut + up * botRelH;
+                const Ogre::Vector3 frBR = frontBase + rR + cOut + up * botRelH;
+                const Ogre::Vector3 frTR = frontBase + rR + cOut + up * topRelH;
+                const Ogre::Vector3 frTL = frontBase + rL + cOut + up * topRelH;
                 this->pushQuad(wallV, wallI, wallN, frBL, frBR, frTR, frTL, -wallDir, stairHW * 2.f / 0.5f, stairH / 0.25f);
 
-                // ---- SIDE faces — LEFT (-right) and RIGHT (+right) ----------------
-                // The side profile must fill from GROUND to the TOP of this column.
-                // Step s column spans Z=[outDist..inDist] and its full visible height
-                // is from base (ground) to (s+1)*STAIR_H — i.e. cumulative height.
-                // This closes the staircase profile when viewed from either side.
-                //
-                // LEFT  (-right): winding BotIn, BotOut, TopOut, TopIn → Cross = +right ✓
-                // RIGHT (+right): winding BotOut, BotIn, TopIn, TopOut → Cross = -right ✓
-                const Ogre::Real sideBotY = doorBaseLocal2; // always ground
-                const Ogre::Real sideTopY = doorBaseLocal2 + static_cast<Ogre::Real>(s + 1) * stairH;
+                // ---- SIDE faces -------------------------------------------------------
+                const Ogre::Real sideTopRelH = static_cast<Ogre::Real>(s + 1) * stairH;
 
                 // Left side (normal = -right)
-                const Ogre::Vector3 lBI = baseXZ + rL + cIn + (up * sideBotY);
-                const Ogre::Vector3 lBO = baseXZ + rL + cOut + (up * sideBotY);
-                const Ogre::Vector3 lTO = baseXZ + rL + cOut + (up * sideTopY);
-                const Ogre::Vector3 lTI = baseXZ + rL + cIn + (up * sideTopY);
-                this->pushQuad(wallV, wallI, wallN, lBI, lBO, lTO, lTI, -right, stairD / 0.5f, sideTopY / 0.5f);
+                const Ogre::Vector3 lBI = frontBase + rL + cIn + up * 0.f;
+                const Ogre::Vector3 lBO = frontBase + rL + cOut + up * 0.f;
+                const Ogre::Vector3 lTO = frontBase + rL + cOut + up * sideTopRelH;
+                const Ogre::Vector3 lTI = frontBase + rL + cIn + up * sideTopRelH;
+                this->pushQuad(wallV, wallI, wallN, lBI, lBO, lTO, lTI, -right, stairD / 0.5f, sideTopRelH / 0.5f);
 
                 // Right side (normal = +right)
-                const Ogre::Vector3 rBI = baseXZ + rR + cIn + (up * sideBotY);
-                const Ogre::Vector3 rBO = baseXZ + rR + cOut + (up * sideBotY);
-                const Ogre::Vector3 rTO = baseXZ + rR + cOut + (up * sideTopY);
-                const Ogre::Vector3 rTI = baseXZ + rR + cIn + (up * sideTopY);
-                this->pushQuad(wallV, wallI, wallN, rBO, rBI, rTI, rTO, right, stairD / 0.5f, sideTopY / 0.5f);
+                const Ogre::Vector3 rBI = frontBase + rR + cIn + up * 0.f;
+                const Ogre::Vector3 rBO = frontBase + rR + cOut + up * 0.f;
+                const Ogre::Vector3 rTO = frontBase + rR + cOut + up * sideTopRelH;
+                const Ogre::Vector3 rTI = frontBase + rR + cIn + up * sideTopRelH;
+                this->pushQuad(wallV, wallI, wallN, rBO, rBI, rTI, rTO, right, stairD / 0.5f, sideTopRelH / 0.5f);
             }
         }
 
@@ -3093,13 +3114,6 @@ namespace NOWA
         return comp ? comp.get() : nullptr;
     }
 
-    void ProceduralCityComponent::handleSceneParsed(NOWA::EventDataPtr eventData)
-    {
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
-
-        this->loadOrGenerateCity();
-    }
-
     void ProceduralCityComponent::handleComponentManuallyDeleted(NOWA::EventDataPtr eventData)
     {
         auto data = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
@@ -3825,7 +3839,7 @@ namespace NOWA
 
     Ogre::String ProceduralCityComponent::getDistrictFaceDatablock(unsigned int districtIdx, unsigned int variantIdx) const
     {
-        return (districtIdx < this->districts.size() && variantIdx < 6u) ? this->districts[districtIdx].roofDatablocks[variantIdx] : "";
+        return (districtIdx < this->districts.size() && variantIdx < 6u) ? this->districts[districtIdx].faceDatablocks[variantIdx] : "";
     }
 
     void ProceduralCityComponent::setDistrictRoofDatablock(unsigned int di, unsigned int v, const Ogre::String& name)

@@ -967,7 +967,6 @@ namespace NOWA
 
         /**
          * @brief Deferred load after all postInits have run.
-         *        Mirrors ProceduralFoliageVolumeComponent::handleSceneParsed().
          */
         void handleSceneParsed(NOWA::EventDataPtr eventData);
 
