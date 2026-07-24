@@ -19,14 +19,16 @@ ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager)
     openSaveFileDialog(nullptr),
     editorManager(nullptr)
 {
-    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager InitOpenSaveDialog", {
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
         new tools::DialogManager();
         tools::DialogManager::getInstance().initialise();
 
         this->openSaveFileDialog = new OpenSaveFileDialogExtended();
         this->openSaveFileDialog->setFileMask("*.scene");
         this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &ProjectManager::notifyEndDialog);
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::initOpenSaveDialog");
 
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProjectManager::handleUpdateBounds), NOWA::EventDataBoundsUpdated::getStaticEventType());
 }
@@ -182,7 +184,8 @@ Ogre::Camera* ProjectManager::createMainCamera(void)
 
 void ProjectManager::createMainGameObject(void)
 {
-    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::createMainGameObject", {
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
         Ogre::SceneNode* mainGameObjectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
         // Attention: Never set to huge coordinates like -1000 -1000 -1000, else shadows will be corrupted, because the game object would be to far away from all other game objects!
         mainGameObjectNode->setPosition(0, 0, 0);
@@ -208,15 +211,18 @@ void ProjectManager::createMainGameObject(void)
             // Register after the component has been created
             NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
         }
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::createMainGameObject");
 }
 
 void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParameter)
 {
-    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::destroyScene", {
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
         this->destroyScene();
         this->additionalMeshResources.clear();
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::destroyScene");
 
     // Create the physics and set data internally in internalApplySettings
     this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPhysics(NOWA::AppStateManager::getSingletonPtr()->getCurrentAppStateName() + "_world");
@@ -250,9 +256,12 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
     }
     catch (const std::runtime_error& e)
     {
-        ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::failedToCreateProject", {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}"), MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::failedToCreateProject");
+
         return;
     }
 
@@ -357,8 +366,14 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
     Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
     MyGUI::PointerManager::getInstancePtr()->setPointer("link");
 
+    NOWA::FaderProcess::showBlackScreenImmediate();
+
     // Separate the destruction and initialization into TWO sequential commands
-    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::loadProject::destroy", { this->destroyScene(); });
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->destroyScene();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::loadProject::destroy");
 
     this->additionalMeshResources.clear();
 
@@ -422,10 +437,12 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 
             this->createDummyCamera();
 
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::failedToCreateProject", _1(projectFilePathName), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, projectFilePathName]()
+            {
                 MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}: " + projectFilePathName),
                     MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::failedToCreateProject2");
 
             return;
         }
@@ -484,7 +501,8 @@ void ProjectManager::applySettings(const NOWA::ProjectParameter& projectParamete
 
 void ProjectManager::internalApplySettings(void)
 {
-    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::internalApplySettings", {
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
         if (nullptr != this->sunLight)
         {
             /*
@@ -605,7 +623,8 @@ void ProjectManager::internalApplySettings(void)
         {
             oceanComponents[i]->actualizeShading();
         }
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::internalApplySettings");
 
     // Sent event that scene has been modified
     boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
@@ -672,7 +691,8 @@ void ProjectManager::destroyScene(void)
 
 void ProjectManager::createDummyCamera(void)
 {
-    ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::failedToCreateProject", {
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
         Ogre::Camera* camera = this->sceneManager->createCamera("GamePlayCamera");
         NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(camera);
         camera->setFOVy(Ogre::Degree(90.0f));
@@ -688,7 +708,8 @@ void ProjectManager::createDummyCamera(void)
         NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(camera, baseCamera->getBehaviorType());
         // Create dummy workspace
         NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, camera, nullptr);
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::createDummyCamera");
 }
 
 void ProjectManager::saveGroup(const Ogre::String& filePathName)
@@ -863,7 +884,12 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 
             std::vector<unsigned long> gameObjectIds = this->dotSceneImportModule->parseGroup(tempFileName, "Projects");
 
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::attachGroupToPlaceNode", _1(gameObjectIds), { this->editorManager->attachGroupToPlaceNode(gameObjectIds); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObjectIds]()
+            {
+                this->editorManager->attachGroupToPlaceNode(gameObjectIds);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::attachGroupToPlaceNode");
+
             boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
         }
@@ -929,15 +955,19 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
         }
     }
 
-    ENQUEUE_RENDER_COMMAND("ProjectManager::openSaveFileDialog::endModal", { this->openSaveFileDialog->endModal(); });
-    // MyGUI::InputManager::getInstancePtr()->removeWidgetModal(sender);
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->openSaveFileDialog->endModal();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::openSaveFileDialog::endModal");
 }
 
 bool ProjectManager::checkProjectExists(const Ogre::String& fileName)
 {
     bool projectExists = false;
 
-    ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::checkProjectExists", _2(fileName, &projectExists), {
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, fileName, &projectExists]()
+    {
         Ogre::String filePathName;
         auto& resManager = Ogre::ResourceGroupManager::getSingleton();
         const auto& resLocationsList = resManager.getResourceLocationList("Projects");
@@ -959,7 +989,8 @@ bool ProjectManager::checkProjectExists(const Ogre::String& fileName)
                 break;
             }
         }
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::checkProjectExists");
 
     return projectExists;
 }
