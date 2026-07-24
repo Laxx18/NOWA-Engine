@@ -196,47 +196,30 @@ void PropertiesPanel::setEditorManager(NOWA::EditorManager* editorManager)
 
 void PropertiesPanel::destroyContent(void)
 {
-    // Cancel any in-flight incremental component build (see
-    // processPendingComponentBatch()) before tearing down the widgets it's
-    // still adding into — otherwise a batch mid-flight could addProperty()
-    // into a panel that's just been destroyed below.
-    NOWA::GraphicsModule::getInstance()->removeTrackedClosure("PropertiesPanel::buildComponents");
-    this->pendingComponentQueue.clear();
+    // Threadsafe from the outside
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PropertiesPanel::handleRefreshPropertiesPanel), NOWA::EventDataRefreshGui::getStaticEventType());
 
-	// Threadsafe from the outside
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PropertiesPanel::handleRefreshPropertiesPanel), NOWA::EventDataRefreshGui::getStaticEventType());
+    this->propertiesPanelView1->removeAllItems();
 
-	this->propertiesPanelView1->removeAllItems();
+    this->propertiesPanelView2->removeAllItems();
 
-	this->propertiesPanelView2->removeAllItems();
+    if (nullptr != this->propertiesPanelInfo)
+    {
+        delete this->propertiesPanelInfo;
+        this->propertiesPanelInfo = nullptr;
+    }
 
-	if (nullptr != this->propertiesPanelInfo)
-	{
-		delete this->propertiesPanelInfo;
-		this->propertiesPanelInfo = nullptr;
-	}
-
-	if (this->openSaveFileDialog)
-	{
-		delete this->openSaveFileDialog;
-		this->openSaveFileDialog = nullptr;
-	}
-}	
+    if (this->openSaveFileDialog)
+    {
+        delete this->openSaveFileDialog;
+        this->openSaveFileDialog = nullptr;
+    }
+}
 
 void PropertiesPanel::clearProperties(void)
 {
-    // Cancel any in-flight incremental component build (see
-    // processPendingComponentBatch()) before tearing down the widgets it's
-    // still adding into — otherwise a batch mid-flight could addProperty()
-    // into a panel that's just been destroyed below.
-    NOWA::GraphicsModule::getInstance()->removeTrackedClosure("PropertiesPanel::buildComponents");
-    this->pendingComponentQueue.clear();
-
     NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
-        // Schrott MyGUI, those events do not work at all
-        // this->propertiesPanelView1->getScrollView()->eventMouseWheel -= MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
-        // this->propertiesPanelView1->getScrollView()->eventMouseButtonReleased -= MyGUI::newDelegate(this, &PropertiesPanel::onMouseRelease);
         this->propertiesPanelView1->removeAllItems();
         this->propertiesPanelView2->removeAllItems();
     };
@@ -259,98 +242,6 @@ void PropertiesPanel::onMouseRelease(MyGUI::Widget* sender, int left, int top, M
 	{
 		// MyGUIHelper::getInstance()->setScrollPosition(this->propertiesPanelView1->getScrollView()->getViewOffset().top);
 	}
-}
-
-void PropertiesPanel::processPendingComponentBatch(Ogre::Real renderDt)
-{
-    // Tune this: higher = fewer frames but bigger per-frame cost; lower =
-    // smoother but takes longer overall to finish showing everything.
-    const size_t componentsPerFrame = 3;
-
-    size_t processedThisFrame = 0;
-    while (processedThisFrame < componentsPerFrame && this->pendingComponentCursor < this->pendingComponentQueue.size())
-    {
-        PendingComponentBuild& build = this->pendingComponentQueue[this->pendingComponentCursor];
-
-        // Create the panel for the component
-        PropertiesPanelComponent* componentPropertiesPanel =
-            new PropertiesPanelComponent(this->pendingGameObjects, build.gameObjectComponents, build.componentName + " (" + Ogre::StringConverter::toString(build.thisComponent->getOccurrenceIndex()) + ")");
-
-        componentPropertiesPanel->setEditorManager(this->editorManager);
-        componentPropertiesPanel->setPropertiesPanelInfo(this->propertiesPanelInfo);
-
-        // Add the component to view
-        this->propertiesPanelView1->addItem(componentPropertiesPanel);
-
-        // Adds this component pointer as user data, in order to set expand flag on the component
-        componentPropertiesPanel->getPanelCell()->getMainWidget()->setUserData(MyGUI::Any(build.thisComponent.get()));
-
-        bool minimize = false == build.thisComponent->getIsExpanded();
-        if (true == minimize)
-        {
-            componentPropertiesPanel->getPanelCell()->setClientHeight(26, false);
-            componentPropertiesPanel->getPanelCell()->setMinimized(minimize);
-        }
-
-        // Add the properties
-        auto attributes = build.thisComponent->getAttributes();
-        for (auto it = attributes.begin(); it != attributes.end(); ++it)
-        {
-            const auto found = this->pendingSameValues.find(it->first);
-            // Nothing to validate, just one game object, so add default way
-            if (0 == this->pendingSameValues.size())
-            {
-                componentPropertiesPanel->addProperty(it->first, it->second, true);
-            }
-            else
-            {
-                if (found != this->pendingSameValues.cend())
-                {
-                    // last param is whether the property has the same value for all selected game objects
-                    componentPropertiesPanel->addProperty(it->first, it->second, found->second);
-                }
-                else
-                {
-                    componentPropertiesPanel->addProperty(it->first, it->second, false);
-                }
-            }
-        }
-
-        // In order to scroll: Position is negative
-        this->pendingOverallScrollPosition -= componentPropertiesPanel->heightCurrent;
-
-        // Scrolls to the selected component
-        if (this->pendingComponentIndexToScrollTo > 0 && this->pendingComponentCursor == this->pendingComponentIndexToScrollTo)
-        {
-            NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-            delayProcess->attachChild(NOWA::ProcessPtr(new SetScrollPositionProcess(this->propertiesPanelView1, this->pendingOverallScrollPosition)));
-            NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-        }
-
-        ++this->pendingComponentCursor;
-        ++processedThisFrame;
-    }
-
-    if (this->pendingComponentCursor >= this->pendingComponentQueue.size())
-    {
-        // At last add the static panel, for static info — same finishing
-        // block the original had, now run once the whole queue is drained.
-        this->propertiesPanelView2->addItem(this->propertiesPanelInfo);
-
-        this->propertiesPanelInfo->listData(this->pendingGameObjects[0]);
-
-        if (false == this->pendingComponentsAreSame)
-        {
-            this->propertiesPanelInfo->setInfo("Components do mismatch\n and hence are not visible\n for several GameObjects.");
-        }
-        else if (false == this->pendingJointsVisible)
-        {
-            this->propertiesPanelInfo->setInfo("Joints not visible\n for several GameObjects.");
-        }
-
-        this->pendingComponentQueue.clear();
-        NOWA::GraphicsModule::getInstance()->removeTrackedClosure("PropertiesPanel::buildComponents");
-    }
 }
 
 void PropertiesPanel::showProperties(unsigned int componentIndex)
@@ -469,8 +360,6 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
     // Complex case, add attributes for several game objects. That is: Match if there are game objects, that do have the same values
     std::map<Ogre::String, bool> sameValues;
 
-    // Determine componentsAreSame and per-attribute sameValues (unchanged —
-    // this is pure comparison, not the bottleneck, per your earlier answer)
     for (size_t i = 0; i < gameObjects.size(); i++)
     {
         unsigned int thisComponentCount = static_cast<unsigned int>(gameObjects[i]->getComponents()->size());
@@ -528,30 +417,22 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
         }
     }
 
-    // --- Everything below replaces the old inline "for (unsigned int j = 0; j < count; j++)"
-    //     component-widget-building loop. Instead of building all N component
-    //     panels in this single render-thread call (the actual slow part),
-    //     queue them and drain a few per frame via a tracked closure. ---
-
-    // Cancel any previous in-flight batch before starting a new one (e.g.
-    // user clicked a different GameObject before the last build finished).
-    NOWA::GraphicsModule::getInstance()->removeTrackedClosure("PropertiesPanel::buildComponents");
-    this->pendingComponentQueue.clear();
-    this->pendingComponentCursor = 0;
-
-    this->pendingGameObjects = gameObjects;
-    this->pendingSameValues = sameValues;
-    this->pendingComponentsAreSame = componentsAreSame;
-    this->pendingJointsVisible = jointsVisible;
-    this->pendingComponentIndexToScrollTo = componentIndex;
-    this->pendingOverallScrollPosition = 0;
+    // ---- Build all component panels synchronously, right here, right now ----
+    // (Reverted incremental/multi-frame batching - it introduced a real
+    // use-after-free race between showProperties() re-entry and the tracked
+    // render-thread closure still touching a stale this->propertiesPanelInfo.
+    // A properties panel rebuild is not a per-frame hot path; doing it in one
+    // shot is simpler and correct.)
+    int overallScrollPosition = 0;
 
     if (true == componentsAreSame)
     {
         unsigned int count = static_cast<unsigned int>(gameObjects[0]->getComponents()->size());
         for (unsigned int j = 0; j < count; j++)
         {
-            Ogre::String componentName = std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j))->getClassName();
+            NOWA::GameObjectCompPtr thisComponent = std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j));
+
+            Ogre::String componentName = thisComponent->getClassName();
             size_t found = componentName.find("Component");
             if (Ogre::String::npos != found)
             {
@@ -566,21 +447,74 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
                 gameObjectComponents[k] = std::get<NOWA::COMPONENT>(gameObjects[k]->getComponents()->at(j)).get();
             }
 
-            PendingComponentBuild build;
-            build.componentName = componentName;
-            build.gameObjectComponents = gameObjectComponents;
-            build.thisComponent = std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j));
-            this->pendingComponentQueue.push_back(build);
+            PropertiesPanelComponent* componentPropertiesPanel = new PropertiesPanelComponent(gameObjects, gameObjectComponents, componentName + " (" + Ogre::StringConverter::toString(thisComponent->getOccurrenceIndex()) + ")");
+
+            componentPropertiesPanel->setEditorManager(this->editorManager);
+            componentPropertiesPanel->setPropertiesPanelInfo(this->propertiesPanelInfo);
+
+            // Add the component to view
+            this->propertiesPanelView1->addItem(componentPropertiesPanel);
+
+            // Adds this component pointer as user data, in order to set expand flag on the component
+            componentPropertiesPanel->getPanelCell()->getMainWidget()->setUserData(MyGUI::Any(thisComponent.get()));
+
+            bool minimize = false == thisComponent->getIsExpanded();
+            if (true == minimize)
+            {
+                componentPropertiesPanel->getPanelCell()->setClientHeight(26, false);
+                componentPropertiesPanel->getPanelCell()->setMinimized(minimize);
+            }
+
+            // Add the properties
+            auto compAttributes = thisComponent->getAttributes();
+            for (auto it = compAttributes.begin(); it != compAttributes.end(); ++it)
+            {
+                const auto found2 = sameValues.find(it->first);
+                // Nothing to validate, just one game object, so add default way
+                if (0 == sameValues.size())
+                {
+                    componentPropertiesPanel->addProperty(it->first, it->second, true);
+                }
+                else
+                {
+                    if (found2 != sameValues.cend())
+                    {
+                        // last param is whether the property has the same value for all selected game objects
+                        componentPropertiesPanel->addProperty(it->first, it->second, found2->second);
+                    }
+                    else
+                    {
+                        componentPropertiesPanel->addProperty(it->first, it->second, false);
+                    }
+                }
+            }
+
+            // In order to scroll: Position is negative
+            overallScrollPosition -= componentPropertiesPanel->heightCurrent;
+
+            // Scrolls to the selected component
+            if (componentIndex > 0 && j == componentIndex)
+            {
+                NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+                delayProcess->attachChild(NOWA::ProcessPtr(new SetScrollPositionProcess(this->propertiesPanelView1, overallScrollPosition)));
+                NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+            }
         }
     }
 
-    // Drains a few components per frame instead of all of them in one frame —
-    // see processPendingComponentBatch() for the batch size and finishing logic.
-    auto closureFunction = [this](Ogre::Real renderDt)
+    // At last add the static panel, for static info
+    this->propertiesPanelView2->addItem(this->propertiesPanelInfo);
+
+    this->propertiesPanelInfo->listData(gameObjects[0]);
+
+    if (false == componentsAreSame)
     {
-        this->processPendingComponentBatch(renderDt);
-    };
-    NOWA::GraphicsModule::getInstance()->updateTrackedClosure("PropertiesPanel::buildComponents", closureFunction, false);
+        this->propertiesPanelInfo->setInfo("Components do mismatch\n and hence are not visible\n for several GameObjects.");
+    }
+    else if (false == jointsVisible)
+    {
+        this->propertiesPanelInfo->setInfo("Joints not visible\n for several GameObjects.");
+    }
 }
 
 void PropertiesPanel::handleRefreshPropertiesPanel(NOWA::EventDataPtr eventData)

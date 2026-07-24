@@ -1038,7 +1038,7 @@ void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
                 }
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleMyGUIWidgetSelected");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleMyGUIWidgetSelected");
 	}
 }
 
@@ -1420,7 +1420,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
                 this->undoPressed = true;
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit13");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit13");
 
 		this->editorManager->undo();
 	}
@@ -1434,7 +1434,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->propertiesPanel->showProperties();
             this->resourcesPanel->refresh();
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit14");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit14");
 
 		this->editorManager->redo();
 	}
@@ -1454,7 +1454,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->propertiesPanel->showProperties();
             this->resourcesPanel->refresh();
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit15");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit15");
 
 		this->editorManager->getSelectionManager()->selectionUndo();
 	}
@@ -1466,7 +1466,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->propertiesPanel->showProperties();
             this->resourcesPanel->refresh();
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit16");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit16");
 
 		this->editorManager->getSelectionManager()->selectionRedo();
 	}
@@ -2297,7 +2297,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
                             {
                                 this->componentsPanel->showComponents(-1);
                             };
-                            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::ShowComponents");
+                            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::ShowComponents");
 						}
 					}
 					return true;
@@ -2325,7 +2325,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
                     {
                         this->propertiesPanel->showProperties();
                     };
-                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttClick_ShowPropertiesonHit17");
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttClick_ShowPropertiesonHit17");
 
 					return true;
 				}
@@ -2683,7 +2683,7 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
                     {
                         this->propertiesPanel->showProperties(std::get<2>(gameObjectData));
                     };
-                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::mousePressed_showProperties");
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::mousePressed_showProperties");
 				}
 			}
 		}
@@ -2785,7 +2785,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
                         {
                             this->propertiesPanel->showProperties();
                         };
-                        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::mouseRelease_showProperties");
+                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::mouseRelease_showProperties");
 					}
 					// Attention: To early here, better, when everything is loaded
 					/*if (-1 != MyGUIHelper::getInstance()->getScrollPosition())

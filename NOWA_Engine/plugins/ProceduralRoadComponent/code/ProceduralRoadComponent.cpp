@@ -424,6 +424,19 @@ namespace NOWA
         // Load wall data from file
         if (true == this->loadRoadDataFromFile())
         {
+            // Get PhysicsArtifactComponent if exists
+            const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+            if (physicsArtifactCompPtr)
+            {
+                this->physicsArtifactComponent = physicsArtifactCompPtr.get();
+                if (nullptr != this->physicsArtifactComponent)
+                {
+                    this->physicsArtifactComponent->reCreateCollision();
+                }
+            }
+
+
+
             // If we successfully loaded segments, rebuild the mesh
             if (false == this->roadSegments.empty())
             {

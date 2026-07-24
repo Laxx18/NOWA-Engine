@@ -478,7 +478,7 @@ namespace NOWA
                 }
             }
 
-            /*if (true == shouldRecast)
+            if (true == shouldRecast)
             {
                 targetDistance = this->performOcclusionProbe(castOrigin, idealPositionVector, desiredDistance);
 
@@ -486,7 +486,7 @@ namespace NOWA
                 this->lastProbedTarget = idealPositionVector;
                 this->lastProbeResultDistance = targetDistance;
                 this->hasProbedOnce = true;
-            }*/
+            }
 
             if (true == this->firstOcclusionSample)
             {

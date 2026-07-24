@@ -140,8 +140,6 @@ private:
 	void onMouseWheel(MyGUI::Widget* sender, int rel);
 	void onMouseRelease(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id);
 
-	void processPendingComponentBatch(Ogre::Real renderDt);
-
 private:
 	static bool bShowProperties;
 private:
@@ -151,22 +149,6 @@ private:
 	PropertiesPanelDirector* propertiesPanelDirector;
 	PropertiesPanelInfo* propertiesPanelInfo;
 	OpenSaveFileDialogExtended* openSaveFileDialog;
-
-	struct PendingComponentBuild
-    {
-        Ogre::String componentName;
-        std::vector<NOWA::GameObjectComponent*> gameObjectComponents;
-        NOWA::GameObjectCompPtr thisComponent;
-    };
-
-    std::vector<PendingComponentBuild> pendingComponentQueue;
-    size_t pendingComponentCursor;
-    std::vector<NOWA::GameObject*> pendingGameObjects;
-    std::map<Ogre::String, bool> pendingSameValues;
-    bool pendingComponentsAreSame;
-    bool pendingJointsVisible;
-    unsigned int pendingComponentIndexToScrollTo;
-    int pendingOverallScrollPosition;
 };
 
 ////////////////////////////////////////////////////////////////////////

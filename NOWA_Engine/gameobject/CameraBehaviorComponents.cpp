@@ -1170,7 +1170,14 @@ namespace NOWA
 
     bool CameraBehaviorThirdPersonOcclusionComponent::connect(void)
     {
-        return CameraBehaviorComponent::connect();
+        CameraBehaviorComponent::connect();
+
+        if (nullptr != this->baseCamera)
+        {
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setShowDebugData(this->bShowDebugData);
+        }
+
+        return true;
     }
 
     bool CameraBehaviorThirdPersonOcclusionComponent::disconnect(void)
