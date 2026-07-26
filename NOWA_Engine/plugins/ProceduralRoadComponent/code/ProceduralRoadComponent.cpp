@@ -53,6 +53,7 @@ namespace NOWA
         roadWidth(new Variant(ProceduralRoadComponent::AttrRoadWidth(), 4.0f, this->attributes)),
         edgeWidth(new Variant(ProceduralRoadComponent::AttrEdgeWidth(), 0.5f, this->attributes)),
         roadStyle(new Variant(ProceduralRoadComponent::AttrRoadStyle(), {"Paved", "Highway", "Trail", "Dirt", "Cobblestone"}, this->attributes)),
+        editMode(new Variant(ProceduralRoadComponent::AttrEditMode(), std::vector<Ogre::String>{"Object", "Segment"}, this->attributes)),
         snapToGrid(new Variant(ProceduralRoadComponent::AttrSnapToGrid(), false, this->attributes)),
         gridSize(new Variant(ProceduralRoadComponent::AttrGridSize(), 1.0f, this->attributes)),
         adaptToGround(new Variant(ProceduralRoadComponent::AttrAdaptToGround(), true, this->attributes)),
@@ -68,7 +69,6 @@ namespace NOWA
         edgeUVTiling(new Variant(ProceduralRoadComponent::AttrEdgeUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
         curbHeight(new Variant(ProceduralRoadComponent::AttrCurbHeight(), 0.15f, this->attributes)),
         terrainSampleInterval(new Variant(ProceduralRoadComponent::AttrTerrainSampleInterval(), 2.0f, this->attributes)),
-        editMode(new Variant(ProceduralRoadComponent::AttrEditMode(), std::vector<Ogre::String>{"Object", "Segment"}, this->attributes)),
         convertToMesh(new Variant(ProceduralRoadComponent::AttrConvertToMesh(), Ogre::String("Convert to Mesh"), this->attributes)),
         conformTerrainToRoad(new Variant(ProceduralRoadComponent::AttrConformTerrainToRoad(), Ogre::String("Conform Terrain To Road"), this->attributes)),
         terrainBlendMargin(new Variant(ProceduralRoadComponent::AttrTerrainBlendMargin(), 3.0f, this->attributes)),
@@ -106,7 +106,9 @@ namespace NOWA
         snapRadius(0.0f),
         isExtendingFromSegment(false),
         bBatchMode(false),
-        roadLoadedFromScene(false)
+        roadLoadedFromScene(false),
+        roadFrame(Ogre::Quaternion::IDENTITY),
+        roadFrameSet(false)
     {
         this->roadStyle->setDescription("Style of the road to generate");
         this->roadWidth->setDescription("Width of the main road surface (meters)");
@@ -378,6 +380,8 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
 
+        this->gameObjectPtr->changeCategory("Road");
+
         // Create raycast query for ground detection
         this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId("All-City"));
         this->groundQuery->setSortByDistance(true);
@@ -410,7 +414,7 @@ namespace NOWA
         }
 
         this->createSegmentOverlay();
-        
+
         // Adjust snapradius here
         this->snapRadius = this->roadWidth->getReal() * 0.4f;
 
@@ -420,6 +424,11 @@ namespace NOWA
     void ProceduralRoadComponent::handleSceneParsed(NOWA::EventDataPtr eventData)
     {
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
+
+        // Restore the road frame from the saved node
+        // orientation BEFORE any load / ground sampling happens.
+        this->roadFrame = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
+        this->roadFrameSet = true;
 
         // Load wall data from file
         if (true == this->loadRoadDataFromFile())
@@ -434,8 +443,6 @@ namespace NOWA
                     this->physicsArtifactComponent->reCreateCollision();
                 }
             }
-
-
 
             // If we successfully loaded segments, rebuild the mesh
             if (false == this->roadSegments.empty())
@@ -494,7 +501,6 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
-
 
         if (nullptr != this->groundQuery)
         {
@@ -815,6 +821,14 @@ namespace NOWA
     // Input Handling
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
+    // ------------------------------------------------------------------------
+    // A7 — mousePressed: convert the WORLD raycast hits to ROAD-LOCAL right
+    // after the raycasts.  Everything downstream (snapToGridFunc — pure XZ
+    // rounding, detectSnapToRoad, findNearestSegmentWithinRadius,
+    // startRoadPlacement, updateRoadPreview, confirmRoad, loadedRoadEndpoint)
+    // then runs uniformly in LOCAL space and needs ZERO further changes.
+    // With roadFrame == IDENTITY the conversions are no-ops.
+    // ------------------------------------------------------------------------
     bool ProceduralRoadComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] mousePressed fired! editMode=" + this->editMode->getListSelectedValue() +
@@ -879,6 +893,10 @@ namespace NOWA
 
             if (hit)
             {
+                // Raycast hit is WORLD — stored control
+                // points are LOCAL, so convert before the nearest-segment query.
+                hitPos = this->roadFrame.Inverse() * hitPos;
+
                 const Ogre::Real radius = this->roadWidth->getReal() + this->edgeWidth->getReal() * 2.0f;
                 this->selectedSegmentIndex = this->findNearestSegmentWithinRadius(hitPos, radius);
 
@@ -916,6 +934,24 @@ namespace NOWA
         Ogre::Vector3 hitPosition;
         if (this->raycastGround(screenX, screenY, hitPosition))
         {
+            // On the very FIRST point of a brand new road
+            // (no segments yet, no origin established, nobody — e.g. a city —
+            // has pushed a frame via setRoadFrame), derive the frame from this
+            // WORLD hit position before anything is converted to local space.
+            // This is the manual-drawing equivalent of ProceduralCityComponent
+            // capturing/deriving cityFrame at generation time.
+            if (false == this->roadFrameSet && false == this->hasRoadOrigin && true == this->roadSegments.empty())
+            {
+                this->roadFrame = this->deriveRoadFrame(hitPosition, this->roadFrame);
+                this->roadFrameSet = true;
+            }
+
+            // raycastGround returns a WORLD hit — the
+            // whole placement pipeline below (grid snap, control points,
+            // roadOrigin, loadedRoadEndpoint) works in ROAD-LOCAL space, so
+            // convert exactly once, right here at the boundary.
+            hitPosition = this->roadFrame.Inverse() * hitPosition;
+
             if (this->snapToGrid->getBool())
             {
                 hitPosition = this->snapToGridFunc(hitPosition);
@@ -960,6 +996,12 @@ namespace NOWA
         return false;
     }
 
+    // ------------------------------------------------------------------------
+    // A8 — mouseMoved: same single world -> local conversion after
+    // raycastGround.  detectSnapToRoad then compares local vs local, and
+    // snapToRoadPoint stays local — which is exactly what confirmRoad and
+    // updateRoadPreview expect.
+    // ------------------------------------------------------------------------
     bool ProceduralRoadComponent::mouseMoved(const OIS::MouseEvent& evt)
     {
         if (false == this->activated->getBool())
@@ -983,6 +1025,9 @@ namespace NOWA
         Ogre::Vector3 hitPosition;
         if (this->raycastGround(screenX, screenY, hitPosition))
         {
+            // world -> road-local, once, at the boundary.
+            hitPosition = this->roadFrame.Inverse() * hitPosition;
+
             if (true == this->snapToGrid->getBool())
             {
                 hitPosition = this->snapToGridFunc(hitPosition);
@@ -1491,6 +1536,10 @@ namespace NOWA
         this->hasRoadOrigin = false;
         this->hasLoadedRoadEndpoint = false;
         this->bBatchMode = false;
+        // The next first build must re-place the node
+        // with the (possibly new) frame — see comment above.
+        this->originPositionSet = false;
+        this->roadFrameSet = false;
 
         if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
         {
@@ -1702,22 +1751,10 @@ namespace NOWA
             // exactly (with planet-normal perp, perp.y ≠ 0 so this matters).
             const Ogre::Real worldY = boundaryHeight;
 
-            junctions[ji].patchCorners.push_back(Ogre::Vector3(
-                boundaryPosXZ.x + perp.x *  totalHalfW,
-                worldY           + perp.y *  totalHalfW,
-                boundaryPosXZ.z + perp.z *  totalHalfW));
-            junctions[ji].patchCorners.push_back(Ogre::Vector3(
-                boundaryPosXZ.x + perp.x * -totalHalfW,
-                worldY           + perp.y * -totalHalfW,
-                boundaryPosXZ.z + perp.z * -totalHalfW));
-            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(
-                boundaryPosXZ.x + perp.x *  halfW,
-                worldY           + perp.y *  halfW,
-                boundaryPosXZ.z + perp.z *  halfW));
-            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(
-                boundaryPosXZ.x + perp.x * -halfW,
-                worldY           + perp.y * -halfW,
-                boundaryPosXZ.z + perp.z * -halfW));
+            junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * totalHalfW, worldY + perp.y * totalHalfW, boundaryPosXZ.z + perp.z * totalHalfW));
+            junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -totalHalfW, worldY + perp.y * -totalHalfW, boundaryPosXZ.z + perp.z * -totalHalfW));
+            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * halfW, worldY + perp.y * halfW, boundaryPosXZ.z + perp.z * halfW));
+            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -halfW, worldY + perp.y * -halfW, boundaryPosXZ.z + perp.z * -halfW));
         };
 
         // ── Chain building (undirected graph walk, handles 2-way snap joins) ────
@@ -2234,12 +2271,18 @@ namespace NOWA
     Ogre::Real ProceduralRoadComponent::getGroundHeight(const Ogre::Vector3& position)
     {
         if (false == this->adaptToGround->getBool())
-            {
+        {
             return position.y;
-            }
+        }
 
-        Ogre::Vector3 rayOrigin = Ogre::Vector3(position.x, position.y + 1000.0f, position.z);
-        Ogre::Ray downRay(rayOrigin, Ogre::Vector3::NEGATIVE_UNIT_Y);
+        // Cast along the frame's DOWN direction instead of
+        // world -Y.  For a road on the planet underside up = (0,-1,0)-ish, so the
+        // ray starts BELOW the planet and fires upward into the underside surface
+        // — the old NEGATIVE_UNIT_Y ray always hit the TOP hemisphere.
+        const Ogre::Vector3 up = this->roadFrame * Ogre::Vector3::UNIT_Y;
+        const Ogre::Vector3 worldXZ = this->roadFrame * Ogre::Vector3(position.x, 0.0f, position.z);
+        const Ogre::Vector3 rayOrigin = worldXZ + up * 1000.0f;
+        Ogre::Ray downRay(rayOrigin, -up);
 
         this->groundQuery->setRay(downRay);
         this->groundQuery->setSortByDistance(true);
@@ -2251,27 +2294,33 @@ namespace NOWA
 
         std::vector<Ogre::MovableObject*> excludeMovableObjects;
         if (this->roadItem)
-            {
+        {
             excludeMovableObjects.emplace_back(this->roadItem);
-            }
+        }
         if (this->previewItem)
-            {
+        {
             excludeMovableObjects.emplace_back(this->previewItem);
-    }
+        }
 
         bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(this->groundQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal,
             &excludeMovableObjects, false);
 
         if (hitFound && hitMovableObject != nullptr)
-            {
-            return internalHitPoint.y + this->heightOffset->getReal();
+        {
+            // LOCAL height = signed distance of the hit point
+            // along the frame's up axis (pure rotation -> no origin term needed).
+            // With identity frame: up.dot(hp) == hp.y — identical to the old code.
+            return up.dotProduct(internalHitPoint) + this->heightOffset->getReal();
         }
 
-        std::pair<bool, Ogre::Real> planeResult = downRay.intersects(this->groundPlane);
+        // Fallback plane through the world origin with normal
+        // 'up' — the direct generalization of the old groundPlane(UNIT_Y, 0).
+        Ogre::Plane framePlane(up, 0.0f);
+        std::pair<bool, Ogre::Real> planeResult = downRay.intersects(framePlane);
         if (planeResult.first && planeResult.second > 0.0f)
         {
-            Ogre::Real groundHeight = rayOrigin.y - planeResult.second;
-            return groundHeight + this->heightOffset->getReal();
+            const Ogre::Vector3 p = downRay.getPoint(planeResult.second);
+            return up.dotProduct(p) + this->heightOffset->getReal();
         }
 
         return position.y + this->heightOffset->getReal();
@@ -2312,7 +2361,11 @@ namespace NOWA
         }
 
         Ogre::Ray ray = camera->getCameraToViewportRay(screenX, screenY);
-        std::pair<bool, Ogre::Real> result = ray.intersects(this->groundPlane);
+        // Fallback plane in the road frame (through the
+        // world origin, normal = frame up) — identical to groundPlane(UNIT_Y, 0)
+        // when roadFrame == IDENTITY, but reachable when drawing on the underside.
+        Ogre::Plane framePlane(this->roadFrame * Ogre::Vector3::UNIT_Y, 0.0f);
+        std::pair<bool, Ogre::Real> result = ray.intersects(framePlane);
         if (result.first && result.second > 0.0f)
         {
             hitPosition = ray.getPoint(result.second);
@@ -2363,7 +2416,7 @@ namespace NOWA
                 cp.position = p0.position * (1.0f - t) + p1.position * t;
                 cp.position.y = 0.0f;
 
-                // FIXED: Preserve original endpoint heights, only raycast intermediate points
+                // Preserve original endpoint heights, only raycast intermediate points
                 if (j == 0)
                 {
                     // First point - use original height
@@ -2461,10 +2514,6 @@ namespace NOWA
             this->generateSeamQuad(points, miterData, last, 0);
         }
     }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // CHANGED: addRoadQuad - FIXED winding order + per-face normal computation
-    ///////////////////////////////////////////////////////////////////////////
 
     void ProceduralRoadComponent::addRoadQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0, Ogre::Real u1, Ogre::Real v0Val, Ogre::Real v1Val,
         bool isCenter)
@@ -2753,7 +2802,7 @@ namespace NOWA
         // forward+backward clamping fight each other and leave the road hovering
         // in the air far above the cliff face.
         //
-        // Fix: if the direct endpoint-to-endpoint gradient exceeds MaxGradient,
+        // if the direct endpoint-to-endpoint gradient exceeds MaxGradient,
         // use straight-line (chord) height interpolation for all intermediate
         // points — the road becomes a natural bridge/overpass through the air.
         // MaxGradient still controls gentle slopes; steep cliffs get a bridge.
@@ -3599,7 +3648,7 @@ namespace NOWA
         }
 
         // -----------------------------------------------------------------------
-        // FIX 3: Gaussian smoothing BEFORE appending closure waypoints.
+        // Gaussian smoothing BEFORE appending closure waypoints.
         // Previously the closure waypoints were appended first, then smoothing
         // modified them (they're middle points, not first/last), causing the
         // appended start copies to drift — producing a kink at the seam.
@@ -4019,8 +4068,7 @@ namespace NOWA
         {
             // jp.worldPos is world-space XZ; look up terrain there.
             // getGroundHeightCached returns world Y; subtract origin.y for local Y.
-            const Ogre::Real terrainY = this->getGroundHeightCached(
-                Ogre::Vector3(jp.worldPos.x, 0.f, jp.worldPos.z));
+            const Ogre::Real terrainY = this->getGroundHeightCached(Ogre::Vector3(jp.worldPos.x, 0.f, jp.worldPos.z));
             centreLocalY = terrainY - origin.y + this->heightOffset->getReal();
         }
         const Ogre::Vector3 localCentre(jp.worldPos.x - origin.x, centreLocalY, jp.worldPos.z - origin.z);
@@ -4305,6 +4353,13 @@ namespace NOWA
         return this->isSnapToRoad;
     }
 
+    // ------------------------------------------------------------------------
+    // A9 — scheduleSnapIndicatorUpdate: the circle is built from LOCAL
+    // coordinates (snapToRoadPoint) — orient the overlay node with the road
+    // frame so world = frame * local (node position stays ZERO).  This one
+    // orientation line makes the indicator lie in the frame's tangent plane
+    // on any hemisphere.
+    // ------------------------------------------------------------------------
     void ProceduralRoadComponent::scheduleSnapIndicatorUpdate(void)
     {
         if (nullptr == this->segOverlayObject)
@@ -4380,6 +4435,9 @@ namespace NOWA
             }
             if (this->segOverlayNode)
             {
+                // Overlay geometry is LOCAL — the node
+                // carries the frame, so world = roadFrame * local.
+                this->segOverlayNode->setOrientation(this->roadFrame);
                 this->segOverlayNode->setVisible(true);
             }
         };
@@ -4584,8 +4642,10 @@ namespace NOWA
                 const auto& wp = allWps[wi];
 
                 Ogre::SceneNode* node = sm->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-                node->setPosition(wp.pos);
-                node->setOrientation(wp.orient);
+                // wp.pos / wp.orient are ROAD-LOCAL —
+                // rotate into world once, here at the creation boundary.
+                node->setPosition(this->roadFrame * wp.pos);
+                node->setOrientation(this->roadFrame * wp.orient);
                 node->setScale(Ogre::Vector3::UNIT_SCALE);
 
                 Ogre::Item* item = sm->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
@@ -4631,6 +4691,11 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] createWaypointNodes: done.");
     }
 
+    // ------------------------------------------------------------------------
+    // A5 — splitSegmentAtPoint: 'splitWorldPos' is a WORLD position (external
+    // API contract stays world) — convert once at the entry boundary; stored
+    // control points are local.
+    // ------------------------------------------------------------------------
     void ProceduralRoadComponent::splitSegmentAtPoint(int segIdx, float t, const Ogre::Vector3& splitWorldPos)
     {
         if (segIdx < 0 || segIdx >= static_cast<int>(this->roadSegments.size()))
@@ -4644,6 +4709,9 @@ namespace NOWA
             return;
         }
 
+        // world -> road-local at the entry boundary.
+        const Ogre::Vector3 localSplit = this->roadFrame.Inverse() * splitWorldPos;
+
         // Interpolate a new control point at the split position
         // Find which sub-interval t falls in
         const size_t n = original.controlPoints.size();
@@ -4656,7 +4724,7 @@ namespace NOWA
         const RoadControlPoint& cpB = original.controlPoints[segPart + 1];
 
         RoadControlPoint splitCP;
-        splitCP.position = splitWorldPos;
+        splitCP.position = localSplit;
         splitCP.position.y = 0.0f;
         splitCP.groundHeight = cpA.groundHeight + (cpB.groundHeight - cpA.groundHeight) * localT;
         splitCP.smoothedHeight = cpA.smoothedHeight + (cpB.smoothedHeight - cpA.smoothedHeight) * localT;
@@ -5137,8 +5205,15 @@ namespace NOWA
         if (false == this->originPositionSet)
         {
             this->originPositionSet = true;
-            this->gameObjectPtr->getSceneNode()->setPosition(origin);
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Set initial road position: " + Ogre::StringConverter::toString(origin));
+            // 'origin' (= roadOrigin) is ROAD-LOCAL now.
+            // World position of the node = roadFrame * origin, and the node also
+            // carries the frame as its orientation — this is the single place where
+            // the whole (local-built) road mesh gets rotated onto the planet.
+            // With roadFrame == IDENTITY both lines behave exactly like before
+            // (setPosition(origin) + implicit identity orientation).
+            this->gameObjectPtr->getSceneNode()->setPosition(this->roadFrame * origin);
+            this->gameObjectPtr->getSceneNode()->setOrientation(this->roadFrame);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Set initial road position: " + Ogre::StringConverter::toString(this->roadFrame * origin));
         }
         else
         {
@@ -5398,8 +5473,11 @@ namespace NOWA
 
             this->previewItem = this->gameObjectPtr->getSceneManager()->createItem(this->previewMesh, Ogre::SCENE_DYNAMIC);
 
-            // Position the preview node at the start point
-            this->previewNode->setPosition(previewPosition);
+             // previewPosition is ROAD-LOCAL (absolute) —
+            // transform to world and carry the frame on the node so the
+            // origin-relative preview verts rotate with it.
+            this->previewNode->setPosition(this->roadFrame * previewPosition);
+            this->previewNode->setOrientation(this->roadFrame);
             this->previewNode->attachObject(this->previewItem);
 
             // Apply a semi-transparent material for preview if available
@@ -5475,7 +5553,7 @@ namespace NOWA
                 segmentDataSize += seg.controlPoints.size() * 20; // 5 floats * 4 bytes each
             }
 
-            size_t headerSize = 41; // FIXED: 40 bytes + 1 byte for originPositionSet
+            size_t headerSize = 41; // 40 bytes + 1 byte for originPositionSet
             size_t centerVertBytes = numCenterVerts * floatsPerVertex * sizeof(float);
             size_t centerIdxBytes = numCenterIdx * sizeof(uint32_t);
             size_t edgeVertBytes = numEdgeVerts * floatsPerVertex * sizeof(float);
@@ -5486,7 +5564,7 @@ namespace NOWA
             std::vector<unsigned char> buffer(totalSize);
             size_t off = 0;
 
-            // --- Header (41 bytes) ---  // FIXED: updated comment
+            // --- Header (41 bytes) ---
             uint32_t magic = ROADDATA_MAGIC;
             uint32_t version = ROADDATA_VERSION;
             memcpy(&buffer[off], &magic, 4);
@@ -5610,7 +5688,7 @@ namespace NOWA
             size_t fileSize = static_cast<size_t>(inFile.tellg());
             inFile.seekg(0, std::ios::beg);
 
-            if (fileSize < 41) // FIXED: changed from 40 to 41
+            if (fileSize < 41)
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] File too small: " + filePath);
                 inFile.close();
@@ -5730,7 +5808,6 @@ namespace NOWA
             size_t edgeVertBytes = numEdgeVerts * floatsPerVertex * sizeof(float);
             size_t edgeIdxBytes = numEdgeIdx * sizeof(uint32_t);
 
-            // FIXED: Removed the + 1
             size_t expectedRemaining = centerVertBytes + centerIdxBytes + edgeVertBytes + edgeIdxBytes;
             size_t resultBytes = off + expectedRemaining;
             if (resultBytes > fileSize)
@@ -5842,7 +5919,7 @@ namespace NOWA
             segmentDataSize += seg.controlPoints.size() * 20; // 5 floats per CP
         }
 
-        size_t headerSize = 41; // FIXED: 40 bytes + 1 byte for originPositionSet
+        size_t headerSize = 41;
         size_t centerVertBytes = numCenterVerts * floatsPerVertex * sizeof(float);
         size_t centerIdxBytes = numCenterIdx * sizeof(uint32_t);
         size_t edgeVertBytes = numEdgeVerts * floatsPerVertex * sizeof(float);
@@ -5853,7 +5930,7 @@ namespace NOWA
         result.resize(totalSize);
         size_t off = 0;
 
-        // --- Header (41 bytes) ---  // FIXED: updated comment
+        // --- Header (41 bytes) ---
         uint32_t magic = ROADDATA_MAGIC;
         uint32_t version = ROADDATA_VERSION;
         memcpy(&result[off], &magic, 4);
@@ -5938,49 +6015,82 @@ namespace NOWA
 
     void ProceduralRoadComponent::addRoadSegmentLua(const Ogre::Vector3& start, const Ogre::Vector3& end)
     {
+        if (false == this->roadFrameSet && false == this->hasRoadOrigin && true == this->roadSegments.empty())
+        {
+            this->roadFrame = this->deriveRoadFrame(start, this->roadFrame);
+            this->roadFrameSet = true;
+        }
+
+        // World -> road-local (pure rotation, no origin).
+        // With roadFrame == IDENTITY this is a no-op and everything below is
+        // byte-identical to the previous implementation.
+        const Ogre::Quaternion invFrame = this->roadFrame.Inverse();
+        const Ogre::Vector3 localStart = invFrame * start;
+        const Ogre::Vector3 localEnd = invFrame * end;
+
         RoadSegment seg;
         seg.isCurved = false;
         seg.curvature = 0.0f;
 
         RoadControlPoint cpStart;
-        cpStart.position = start;
+        cpStart.position = localStart;
         cpStart.position.y = 0.0f;
-        cpStart.groundHeight = this->adaptToGround->getBool() ? this->getGroundHeightCached(start) : start.y;
+        // No ternary; fallback uses the LOCAL height the
+        // caller provided (localStart.y = height along frame up), matching the
+        // local heights getGroundHeightCached now returns.
+        if (true == this->adaptToGround->getBool())
+        {
+            cpStart.groundHeight = this->getGroundHeightCached(localStart);
+        }
+        else
+        {
+            cpStart.groundHeight = localStart.y;
+        }
         cpStart.smoothedHeight = cpStart.groundHeight;
         cpStart.bankingAngle = 0.0f;
         cpStart.distFromStart = 0.0f;
 
         RoadControlPoint cpEnd;
-        cpEnd.position = end;
+        cpEnd.position = localEnd;
         cpEnd.position.y = 0.0f;
-        cpEnd.groundHeight = this->adaptToGround->getBool() ? this->getGroundHeightCached(end) : end.y;
+        if (true == this->adaptToGround->getBool())
+        {
+            cpEnd.groundHeight = this->getGroundHeightCached(localEnd);
+        }
+        else
+        {
+            cpEnd.groundHeight = localEnd.y;
+        }
         cpEnd.smoothedHeight = cpEnd.groundHeight;
         cpEnd.bankingAngle = 0.0f;
-        cpEnd.distFromStart = start.distance(end);
+        // Rotation preserves distances — local distance == world distance.
+        cpEnd.distFromStart = localStart.distance(localEnd);
 
         // Pre-warm the height cache for all intermediate subdivision points.
         // rebuildMesh() samples at terrainSampleInterval spacing — if those points are
         // already cached, a later delete (or any full rebuild) fires ZERO new raycasts.
         // Only genuinely new points on new segments miss cache.
-        if (this->adaptToGround->getBool())
+        // Interpolation runs in LOCAL space so the cache keys
+        // match exactly what rebuildMesh will ask for.
+        if (true == this->adaptToGround->getBool())
         {
             const Ogre::Real interval = std::max(0.5f, this->terrainSampleInterval->getReal());
-            const Ogre::Real segLen   = start.distance(end);
-            const int        numSubs  = std::max(2, static_cast<int>(segLen / interval) + 1);
+            const Ogre::Real segLen = localStart.distance(localEnd);
+            const int numSubs = std::max(2, static_cast<int>(segLen / interval) + 1);
             for (int si = 1; si < numSubs - 1; ++si)
             {
                 const Ogre::Real t = static_cast<Ogre::Real>(si) / static_cast<Ogre::Real>(numSubs - 1);
-                const Ogre::Vector3 mid(
-                    start.x * (1.0f - t) + end.x * t,
-                    0.0f,
-                    start.z * (1.0f - t) + end.z * t);
+                const Ogre::Vector3 mid(localStart.x * (1.0f - t) + localEnd.x * t, 0.0f, localStart.z * (1.0f - t) + localEnd.z * t);
                 this->getGroundHeightCached(mid); // populates cache — result discarded here
             }
         }
 
         if (false == this->hasRoadOrigin)
         {
-            this->roadOrigin = start;
+            // roadOrigin is stored in LOCAL space now.
+            // World position of the road node = roadFrame * roadOrigin
+            // (applied in createRoadMeshInternal).
+            this->roadOrigin = localStart;
             this->roadOrigin.y = cpStart.groundHeight;
             this->hasRoadOrigin = true;
         }
@@ -6019,7 +6129,7 @@ namespace NOWA
             return;
         }
 
-        if (data.size() < 41) // FIXED: changed from 40 to 41
+        if (data.size() < 41)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] setRoadData: buffer too small");
             return;
@@ -6331,6 +6441,11 @@ namespace NOWA
         }
     }
 
+    // ------------------------------------------------------------------------
+    // A3 — getRoadConnectionPoint: stored points are LOCAL now, callers
+    // (ProceduralCityComponent::connectExternalRoad) expect WORLD — wrap on
+    // the way out.  The empty-case node position is already world.
+    // ------------------------------------------------------------------------
     Ogre::Vector3 ProceduralRoadComponent::getRoadConnectionPoint(bool atStart) const
     {
         if (this->roadSegments.empty())
@@ -6340,24 +6455,24 @@ namespace NOWA
 
         if (atStart)
         {
-            // roadOrigin is the world-space XZ origin recorded when the first segment
-            // was placed. First control point is at roadOrigin + cp.position (where
-            // cp.position is local-to-origin offset in world XZ from addRoadSegmentLua).
-            // Since addRoadSegmentLua stores the world-space XZ directly in cp.position
-            // (before the origin-subtraction pass in rebuildMesh), we can use it directly.
+            // cp.position / smoothedHeight are ROAD-LOCAL (see addRoadSegmentLua).
+            // Transform local -> world for the caller.
             const RoadControlPoint& cp = this->roadSegments.front().controlPoints.front();
-            return Ogre::Vector3(cp.position.x, cp.smoothedHeight, cp.position.z);
+            return this->roadFrame * Ogre::Vector3(cp.position.x, cp.smoothedHeight, cp.position.z);
         }
         else
         {
-            // loadedRoadEndpoint is maintained by updateContinuationPoint() which
-            // is called at the end of every addRoadSegmentLua(). It holds the world-
-            // space XZ position of the last control point of the last segment, and
-            // loadedRoadEndpointHeight holds its terrain Y.
-            return Ogre::Vector3(this->loadedRoadEndpoint.x, this->loadedRoadEndpointHeight, this->loadedRoadEndpoint.z);
+            // loadedRoadEndpoint / loadedRoadEndpointHeight are ROAD-LOCAL
+            // (maintained by updateContinuationPoint from local control points).
+            // Transform local -> world for the caller.
+            return this->roadFrame * Ogre::Vector3(this->loadedRoadEndpoint.x, this->loadedRoadEndpointHeight, this->loadedRoadEndpoint.z);
         }
     }
 
+    // ------------------------------------------------------------------------
+    // A4 — getRoadApproachDirection: direction computed from LOCAL points —
+    // rotate into world for external callers.
+    // ------------------------------------------------------------------------
     Ogre::Vector3 ProceduralRoadComponent::getRoadApproachDirection(bool atStart) const
     {
         if (this->roadSegments.empty())
@@ -6395,24 +6510,35 @@ namespace NOWA
             }
         }
 
-        dir.y = 0.f;
+        dir.y = 0.0f;
         if (dir.isZeroLength())
         {
             return Ogre::Vector3::UNIT_Z;
         }
 
         dir.normalise();
-        return dir;
+        // local direction -> world direction.
+        return this->roadFrame * dir;
     }
 
+    // ------------------------------------------------------------------------
+    // A6 — addRoadSegmentBatch: same world -> local conversion as
+    // addRoadSegmentLua (no caller in this file currently, but the public
+    // contract stays WORLD — keep it consistent so a future caller works).
+    // ------------------------------------------------------------------------
     void ProceduralRoadComponent::addRoadSegmentBatch(const Ogre::Vector3& start, const Ogre::Vector3& end)
     {
         // Identical to addRoadSegmentLua() but WITHOUT the rebuildMesh() call.
         // After adding all segments, call finalizeBatch() once to build the mesh.
 
+        // world -> road-local at the entry boundary.
+        const Ogre::Quaternion invFrame = this->roadFrame.Inverse();
+        const Ogre::Vector3 localStart = invFrame * start;
+        const Ogre::Vector3 localEnd = invFrame * end;
+
         if (!this->originPositionSet)
         {
-            this->roadOrigin = start;
+            this->roadOrigin = localStart;
             this->roadOrigin.y = 0.0f;
             this->originPositionSet = true;
         }
@@ -6422,14 +6548,14 @@ namespace NOWA
         seg.curvature = 0.5f;
 
         RoadControlPoint cp0;
-        cp0.position = start;
-        cp0.groundHeight = this->getGroundHeight(start);
+        cp0.position = localStart;
+        cp0.groundHeight = this->getGroundHeight(localStart);
         cp0.smoothedHeight = cp0.groundHeight;
         seg.controlPoints.push_back(cp0);
 
         RoadControlPoint cp1;
-        cp1.position = end;
-        cp1.groundHeight = this->getGroundHeight(end);
+        cp1.position = localEnd;
+        cp1.groundHeight = this->getGroundHeight(localEnd);
         cp1.smoothedHeight = cp1.groundHeight;
         seg.controlPoints.push_back(cp1);
 
@@ -6453,6 +6579,43 @@ namespace NOWA
     {
         this->bBatchMode = false;
         this->rebuildMesh();
+    }
+
+    void ProceduralRoadComponent::setRoadFrame(const Ogre::Quaternion& frame)
+    {
+        // Mark the frame as externally owned (by the city).  deriveRoadFrame's auto-derivation (mousePressed / addRoadSegmentLua) only fires when this is still false.
+        this->roadFrameSet = true;
+
+        // changing the frame changes the raycast direction, so every cached
+        // ground height becomes invalid.
+        if (false == frame.equals(this->roadFrame, Ogre::Radian(0.0001f)))
+        {
+            this->groundHeightCache.clear();
+        }
+        this->roadFrame = frame;
+    }
+
+    Ogre::Quaternion ProceduralRoadComponent::deriveRoadFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation) const
+    {
+        if (false == this->adaptToGround->getBool() || origin.squaredLength() <= 1.f)
+        {
+            return currentOrientation;
+        }
+
+        const Ogre::Vector3 radialUp = origin.normalisedCopy();
+        // Preserve heading: project currentOrientation's forward axis onto the
+        // tangent plane of the planet at 'origin'.
+        const Ogre::Vector3 curForward = currentOrientation * Ogre::Vector3::UNIT_Z;
+        Ogre::Vector3 tangentForward = curForward - radialUp * curForward.dotProduct(radialUp);
+        if (tangentForward.squaredLength() < 1e-6f)
+        {
+            // Forward is parallel to the radial — pick any stable tangent.
+            tangentForward = radialUp.perpendicular();
+        }
+        tangentForward.normalise();
+        Ogre::Vector3 tangentRight = radialUp.crossProduct(tangentForward);
+        tangentRight.normalise();
+        return Ogre::Quaternion(tangentRight, radialUp, tangentForward);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -6616,17 +6779,25 @@ namespace NOWA
             Ogre::Vector3 up = Ogre::Vector3::UNIT_Y;
             if (this->adaptToGround->getBool())
             {
-                const Ogre::Vector3 worldPos(
-                    points[i].position.x + this->roadOrigin.x,
-                    points[i].smoothedHeight + this->roadOrigin.y,
-                    points[i].position.z + this->roadOrigin.z);
-                if (worldPos.y > 50.0f && worldPos.squaredLength() > 2500.0f)
+                // Points are origin-relative LOCAL;
+                // absolute-local = position + roadOrigin (heights along frame up),
+                // world = roadFrame * absolute-local.
+                const Ogre::Vector3 absLocal(points[i].position.x + this->roadOrigin.x, points[i].smoothedHeight + this->roadOrigin.y, points[i].position.z + this->roadOrigin.z);
+                const Ogre::Vector3 worldPos = this->roadFrame * absLocal;
+                // Radial height ALONG THE FRAME UP replaces the old
+                // "worldPos.y > 50" guard — identical on flat terrain
+                // (frame == IDENTITY), correct on BOTH hemispheres.
+                const Ogre::Vector3 frameUp = this->roadFrame * Ogre::Vector3::UNIT_Y;
+                const Ogre::Real radialHeight = frameUp.dotProduct(worldPos);
+                if (radialHeight > 50.0f && worldPos.squaredLength() > 2500.0f)
                 {
-                    Ogre::Vector3 planetNorm = worldPos.normalisedCopy();
+                    // Planet normal expressed in LOCAL space (cross-section math
+                    // below runs local) — replaces "planetNorm.dot(UNIT_Y)".
+                    const Ogre::Vector3 localNorm = this->roadFrame.Inverse() * worldPos.normalisedCopy();
                     // Only deviate from UNIT_Y when the surface is meaningfully tilted
-                    if (planetNorm.dotProduct(Ogre::Vector3::UNIT_Y) > 0.05f)
+                    if (localNorm.dotProduct(Ogre::Vector3::UNIT_Y) > 0.05f)
                     {
-                        up = planetNorm;
+                        up = localNorm;
                     }
                 }
             }
@@ -8022,6 +8193,7 @@ namespace NOWA
 
             if (this->segOverlayNode)
             {
+                this->segOverlayNode->setOrientation(this->roadFrame);
                 this->segOverlayNode->setVisible(true);
             }
         };

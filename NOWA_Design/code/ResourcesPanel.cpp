@@ -207,36 +207,39 @@ void ResourcesPanelMeshes::initialise()
 
 void ResourcesPanelMeshes::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshes::shutdown",
-	{
-		this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
-		this->meshesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodeSelected);
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
+        this->meshesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodeSelected);
 
-		BaseLayout::shutdown();
-	});
+        BaseLayout::shutdown();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelMeshes::shutdown");
 }
 
 void ResourcesPanelMeshes::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelMeshes::editTextChange", _1(editBox),
-	{
-			// Start a new search each time for resources that do match the search caption string
-			this->autoCompleteSearch.reset();
-			this->clear();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, editBox]()
+    {
+        // Start a new search each time for resources that do match the search caption string
+        this->autoCompleteSearch.reset();
+        this->clear();
 
-			this->loadMeshes(editBox->getOnlyText());
-	});
+        this->loadMeshes(editBox->getOnlyText());
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelMeshes::editTextChange");
 }
 
 void ResourcesPanelMeshes::handleRefreshMeshResources(NOWA::EventDataPtr eventData)
 {
 	// Wait will block for ever, have no idea why
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelMeshes::handleRefreshMeshResources",
-	{
-		this->clear();
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->clear();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelMeshes::handleRefreshMeshResources");
 }
 
 void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
@@ -554,10 +557,11 @@ void ResourcesPanelMeshPreview::initialise()
 
 void ResourcesPanelMeshPreview::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshPreview::shutdown",
-	{
-		BaseLayout::shutdown();
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        BaseLayout::shutdown();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelMeshPreview::shutdown");
 }
 
 void ResourcesPanelMeshPreview::actualizeMesh(void)
@@ -633,32 +637,34 @@ void ResourcesPanelGameObjects::initialise()
 
 void ResourcesPanelGameObjects::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::shutdown",
-	{
-		this->resourcesSearchEdit->eventToolTip -= MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->resourcesSearchEdit->eventMouseLostFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
-		this->resourcesSearchEdit->eventRootMouseChangeFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
-		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
-		this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
-		this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
-		this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->resourcesSearchEdit->eventToolTip -= MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->resourcesSearchEdit->eventMouseLostFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
+        this->resourcesSearchEdit->eventRootMouseChangeFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
+        this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
+        this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
+        this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
+        this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
 
-		BaseLayout::shutdown();
-	});
+        BaseLayout::shutdown();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelGameObjects::shutdown");
 }
 
 void ResourcesPanelGameObjects::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelGameObjects::editTextChange", _1(editBox),
-	{
-		// Start a new search each time for resources that do match the search caption string
-		this->autoCompleteSearch.reset();
-		this->clear();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, editBox]()
+    {
+        // Start a new search each time for resources that do match the search caption string
+        this->autoCompleteSearch.reset();
+        this->clear();
 
-		this->refresh(editBox->getOnlyText());
-	});
+        this->refresh(editBox->getOnlyText());
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelGameObjects::editTextChange");
 
 	// If user is entering something, do not move camera, if the user entered something like asdf
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
@@ -827,22 +833,23 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 		}
 	}
 
-	/*MyGUI::TreeControl::Node* emptyNode = new MyGUI::TreeControl::Node("", "Data");
-    root->add(emptyNode);*/
-
 	root->setExpanded(true);
 }
 
 void ResourcesPanelGameObjects::clear(void)
 {
-	// is called from render thread
-	MyGUI::TreeControl::Node * root = this->gameObjectsTree->getRoot();
-    if (nullptr != root)
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
-        root->removeAll();
-    }
+        MyGUI::TreeControl::Node* root = this->gameObjectsTree->getRoot();
+        if (nullptr != root)
+        {
+            root->removeAll();
+        }
 
-	this->refresh("");
+        this->refresh("");
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelGameObjects::clear");
+	
 }
 
 void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
@@ -969,49 +976,47 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 
 	if (this->ctrlPressed && key == MyGUI::KeyCode::A)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelGameObjects::selectAll", _1(sender),
-		{
-			MyGUI::TreeControl* treeControl = static_cast<MyGUI::TreeControl*>(sender);
-			this->selectAll = true;
-			selectAllNodes(treeControl);
-			this->selectAll = false;
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
+        {
+            MyGUI::TreeControl* treeControl = static_cast<MyGUI::TreeControl*>(sender);
+            this->selectAll = true;
+            selectAllNodes(treeControl);
+            this->selectAll = false;
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelGameObjects::selectAll");
 	}
 }
 
 void ResourcesPanelGameObjects::handleRefreshGameObjectsPanel(NOWA::EventDataPtr eventData)
 {
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-	{
-		this->clear();
-	};
-	NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelGameObjects::handleRefreshGameObjectsPanel");
+	this->clear();
 }
 
 void ResourcesPanelGameObjects::selectAllNodes(MyGUI::TreeControl* treeControl)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelGameObjects::selectAllNodes", _1(treeControl),
-	{
-		auto rootNodes = treeControl->getRoot();
-		for (const auto& node : rootNodes->getChildren())
-		{
-			this->notifyTreeNodeSelected(treeControl, node);
-			// Optionally, traverse child nodes if necessary
-			std::stack<MyGUI::TreeControl::Node*> nodeStack;
-			nodeStack.push(node);
-			while (!nodeStack.empty())
-			{
-				MyGUI::TreeControl::Node* currentNode = nodeStack.top();
-				nodeStack.pop();
-				this->notifyTreeNodeSelected(treeControl, currentNode);
-				auto childNodes = currentNode->getChildren();
-				for (const auto& childNode : childNodes)
-				{
-					nodeStack.push(childNode);
-				}
-			}
-		}
-	});
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, treeControl]()
+    {
+        auto rootNodes = treeControl->getRoot();
+        for (const auto& node : rootNodes->getChildren())
+        {
+            this->notifyTreeNodeSelected(treeControl, node);
+            // Optionally, traverse child nodes if necessary
+            std::stack<MyGUI::TreeControl::Node*> nodeStack;
+            nodeStack.push(node);
+            while (!nodeStack.empty())
+            {
+                MyGUI::TreeControl::Node* currentNode = nodeStack.top();
+                nodeStack.pop();
+                this->notifyTreeNodeSelected(treeControl, currentNode);
+                auto childNodes = currentNode->getChildren();
+                for (const auto& childNode : childNodes)
+                {
+                    nodeStack.push(childNode);
+                }
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelGameObjects::selectAllNodes");
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1060,29 +1065,31 @@ void ResourcesPanelDataBlocks::initialise()
 
 void ResourcesPanelDataBlocks::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::shutdown",
-	{
-		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelDataBlocks::editTextChange);
-		this->dataBlocksTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeNodeSelected);
-		this->dataBlocksTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelDataBlocks::notifyKeyButtonPressed);
-		this->dataBlocksTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeContextMenu);
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelDataBlocks::editTextChange);
+        this->dataBlocksTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeNodeSelected);
+        this->dataBlocksTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelDataBlocks::notifyKeyButtonPressed);
+        this->dataBlocksTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeContextMenu);
 
-		BaseLayout::shutdown();
-	});
+        BaseLayout::shutdown();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelDataBlocks::shutdown");
 }
 
 void ResourcesPanelDataBlocks::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelDataBlocks::editTextChange", _1(editBox),
-	{
-		// Start a new search each time for resources that do match the search caption string
-		this->autoCompleteSearch.reset();
-		this->clear();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, editBox]()
+    {
+        // Start a new search each time for resources that do match the search caption string
+        this->autoCompleteSearch.reset();
+        this->clear();
 
-		this->loadDataBlocks(editBox->getOnlyText());
-	});
+        this->loadDataBlocks(editBox->getOnlyText());
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelDataBlocks::editTextChange");
 }
 
 void ResourcesPanelDataBlocks::loadDataBlocks(const Ogre::String& filter)
@@ -1142,13 +1149,14 @@ void ResourcesPanelDataBlocks::loadDataBlocks(const Ogre::String& filter)
 
 void ResourcesPanelDataBlocks::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelDataBlocks::clear",
-	{
-		MyGUI::TreeControl::Node * root = this->dataBlocksTree->getRoot();
-		root->removeAll();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        MyGUI::TreeControl::Node* root = this->dataBlocksTree->getRoot();
+        root->removeAll();
 
-		this->loadDataBlocks("");
-	});
+        this->loadDataBlocks("");
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelDataBlocks::clear");
 }
 
 void ResourcesPanelDataBlocks::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
@@ -1160,19 +1168,20 @@ void ResourcesPanelDataBlocks::notifyTreeNodeSelected(MyGUI::TreeControl* treeCo
 
 	this->selectedText = node->getText();
 
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelDataBlocks::editTextChange",
-	{
-		Ogre::HlmsDatablock* datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
-		Ogre::HlmsPbsDatablock* pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
-		if (nullptr != pbsDataBlock)
-		{
-			Ogre::TextureGpu* texture = pbsDataBlock->getTexture(Ogre::PbsTextureTypes::PBSM_DIFFUSE);
-			if (nullptr != texture)
-			{
-				this->datablockPreview->setImageTexture(texture->getNameStr());
-			}
-		}
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        Ogre::HlmsDatablock* datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
+        Ogre::HlmsPbsDatablock* pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
+        if (nullptr != pbsDataBlock)
+        {
+            Ogre::TextureGpu* texture = pbsDataBlock->getTexture(Ogre::PbsTextureTypes::PBSM_DIFFUSE);
+            if (nullptr != texture)
+            {
+                this->datablockPreview->setImageTexture(texture->getNameStr());
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelDataBlocks::notifyTreeNodeSelected");
 }
 
 void ResourcesPanelDataBlocks::notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
@@ -1195,24 +1204,24 @@ void ResourcesPanelDataBlocks::notifyTreeContextMenu(MyGUI::TreeControl* treeCon
 
 	this->selectedText = node->getText();
 
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelDataBlocks::notifyTGreeContextMenu",
-	{
-		Ogre::HlmsDatablock * datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
-		Ogre::HlmsPbsDatablock * pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
-		if (nullptr != pbsDataBlock)
-		{
-			const Ogre::String* fileName;
-			const Ogre::String* resourceGroup;
-			datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        Ogre::HlmsDatablock* datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
+        Ogre::HlmsPbsDatablock* pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
+        if (nullptr != pbsDataBlock)
+        {
+            const Ogre::String* fileName;
+            const Ogre::String* resourceGroup;
+            datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
 
-			if (false == (*fileName).empty())
-			{
-				 Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
-				 MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", data,
-					 MyGUI::MessageBoxStyle::IconInfo | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-			}
-		}
-	});
+            if (false == (*fileName).empty())
+            {
+                Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
+                MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", data, MyGUI::MessageBoxStyle::IconInfo | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelDataBlocks::notifyTGreeContextMenu");
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1258,29 +1267,31 @@ void ResourcesPanelTextures::initialise()
 
 void ResourcesPanelTextures::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::shutdown",
-	{
-		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelTextures::editTextChange);
-		this->texturesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelTextures::notifyTreeNodeSelected);
-		this->texturesTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelTextures::notifyKeyButtonPressed);
-		this->texturesTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelTextures::notifyTreeContextMenu);
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelTextures::editTextChange);
+        this->texturesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelTextures::notifyTreeNodeSelected);
+        this->texturesTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelTextures::notifyKeyButtonPressed);
+        this->texturesTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelTextures::notifyTreeContextMenu);
 
-		BaseLayout::shutdown();
-	});
+        BaseLayout::shutdown();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelTextures::shutdown");
 }
 
 void ResourcesPanelTextures::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelTextures::editTextChange", _1(editBox),
-	{
-		// Start a new search each time for resources that do match the search caption string
-		this->autoCompleteSearch.reset();
-		this->clear();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, editBox]()
+    {
+        // Start a new search each time for resources that do match the search caption string
+        this->autoCompleteSearch.reset();
+        this->clear();
 
-		this->loadTextures(editBox->getOnlyText());
-	});
+        this->loadTextures(editBox->getOnlyText());
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelTextures::editTextChange");
 }
 
 void ResourcesPanelTextures::loadTextures(const Ogre::String& filter)
@@ -1326,13 +1337,14 @@ void ResourcesPanelTextures::loadTextures(const Ogre::String& filter)
 void ResourcesPanelTextures::clear(void)
 {
 	// Wait will block for ever, have no idea why
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelTextures::clear",
-	{
-		MyGUI::TreeControl::Node * root = this->texturesTree->getRoot();
-		root->removeAll();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        MyGUI::TreeControl::Node* root = this->texturesTree->getRoot();
+        root->removeAll();
 
-		this->loadTextures("");
-	});
+        this->loadTextures("");
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelTextures::clear");
 }
 
 void ResourcesPanelTextures::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
@@ -1343,15 +1355,16 @@ void ResourcesPanelTextures::notifyTreeNodeSelected(MyGUI::TreeControl* treeCont
 	}
 	this->selectedText = node->getText();
 
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelTextures::notifyTreeNodeSelected",
-	{
-		// if (nullptr != texturePtr)
-		{
-			// Does not work, because only textures of mygui are added somehow, and even create texture creates texture, but internal pointer is zero
-			this->texturePreview->setImageTexture(this->selectedText);
-		}
-		// this->texturePreview->setItemResource(this->selectedText);
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        // if (nullptr != texturePtr)
+        {
+            // Does not work, because only textures of mygui are added somehow, and even create texture creates texture, but internal pointer is zero
+            this->texturePreview->setImageTexture(this->selectedText);
+        }
+        // this->texturePreview->setItemResource(this->selectedText);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelTextures::notifyTreeNodeSelected");
 }
 
 void ResourcesPanelTextures::notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
@@ -1374,17 +1387,17 @@ void ResourcesPanelTextures::notifyTreeContextMenu(MyGUI::TreeControl* treeContr
 
 	this->selectedText = node->getText();
 
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelTextures::notifyTreeContextMenu", 
-	{
-		Ogre::String textureFilePathName = NOWA::Core::getSingletonPtr()->getResourceFilePathName(this->selectedText);
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        Ogre::String textureFilePathName = NOWA::Core::getSingletonPtr()->getResourceFilePathName(this->selectedText);
 
-		if (false == textureFilePathName.empty())
-		{
-			Ogre::String data = "Location: '" + textureFilePathName + "'";
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", data,
-				MyGUI::MessageBoxStyle::IconInfo | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-		}
-	});
+        if (false == textureFilePathName.empty())
+        {
+            Ogre::String data = "Location: '" + textureFilePathName + "'";
+            MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", data, MyGUI::MessageBoxStyle::IconInfo | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelTextures::notifyTreeContextMenu");
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1439,60 +1452,64 @@ void ResourcesPanelProject::initialise(void)
 
 void ResourcesPanelProject::shutdown(void)
 {
-    ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::shutdown", {
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
         this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
         this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
         this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
 
         BaseLayout::shutdown();
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelProject::shutdown");
 }
 
 void ResourcesPanelProject::clear(void)
 {
 	// Wait will block for ever, have no idea why
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::clear",
-	{
-		this->selectedText.clear();
-		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
-		root->removeAll();
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->selectedText.clear();
+        MyGUI::TreeControl::Node* root = this->filesTreeControl->getRoot();
+        root->removeAll();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelProject::clear");
 }
 
 void ResourcesPanelProject::populateFilesTree(const Ogre::String& folderPath)
 {
 	this->clear();
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelProject::populateFilesTree", _1(folderPath),
-	{
-		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, folderPath]()
+    {
+        MyGUI::TreeControl::Node* root = this->filesTreeControl->getRoot();
 
-		for (const auto& entry : std::filesystem::directory_iterator(folderPath))
-		{
-			if (entry.is_directory())
-			{
-				MyGUI::TreeControl::Node* folderNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
-				folderNode->setExpanded(true);
-				root->add(folderNode);
+        for (const auto& entry : std::filesystem::directory_iterator(folderPath))
+        {
+            if (entry.is_directory())
+            {
+                MyGUI::TreeControl::Node* folderNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
+                folderNode->setExpanded(true);
+                root->add(folderNode);
 
-				for (const auto& subEntry : std::filesystem::directory_iterator(entry.path()))
-				{
-					if (subEntry.is_regular_file())
-					{
-						MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(subEntry.path().filename().string(), "Data");
-						folderNode->add(fileNode);
-					}
-				}
-			}
-			else if (entry.is_regular_file())
-			{
-				MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
-				root->add(fileNode);
-			}
-		}
+                for (const auto& subEntry : std::filesystem::directory_iterator(entry.path()))
+                {
+                    if (subEntry.is_regular_file())
+                    {
+                        MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(subEntry.path().filename().string(), "Data");
+                        folderNode->add(fileNode);
+                    }
+                }
+            }
+            else if (entry.is_regular_file())
+            {
+                MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
+                root->add(fileNode);
+            }
+        }
 
-		this->sortTreeNodesByName(root);
-	});
+        this->sortTreeNodesByName(root);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelProject::populateFilesTree");
 }
 
 void ResourcesPanelProject::notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
@@ -1618,13 +1635,14 @@ void ResourcesPanelProject::handleDoubleClick(MyGUI::TreeControl::Node* node)
 
 				if (true == this->hasSceneChanges)
 				{
-					ENQUEUE_RENDER_COMMAND("ResourcesPanelProject::MessageBoxSceneModified",
-					{
-						MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("Project", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
-							MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+					NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                    {
+                        MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Project", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
+                            MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
-						messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyMessageBoxEndLoad);
-					});
+                        messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyMessageBoxEndLoad);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelProject::MessageBoxSceneModified");
 				}
 				else
 				{
@@ -1693,9 +1711,7 @@ ResourcesPanelLuaScript::ResourcesPanelLuaScript()
 
 ResourcesPanelLuaScript::~ResourcesPanelLuaScript()
 {
-    ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::shutdown", {
-        BaseLayout::shutdown();
-    });
+	
 }
 
 void ResourcesPanelLuaScript::setEditorManager(NOWA::EditorManager* editorManager)
@@ -1730,81 +1746,86 @@ void ResourcesPanelLuaScript::initialise(void)
 
 void ResourcesPanelLuaScript::shutdown(void)
 {
-    ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::shutdown", {
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
         BaseLayout::shutdown();
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelLuaScript::shutdown");
 }
 
 void ResourcesPanelLuaScript::clear(void)
 {
 	// Wait will block for ever, have no idea why
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelLuaScript::clear",
-	{
-		this->selectedText.clear();
-		this->listBox->removeAllItems();
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->selectedText.clear();
+        this->listBox->removeAllItems();
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelLuaScript::clear");
 }
 
 void ResourcesPanelLuaScript::populateListBox(void)
 {
 	this->clear();
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::clear",
-	{
-		auto luaScripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        auto luaScripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
 
-		for (const auto& weakScript : luaScripts)
-		{
-			if (auto luaScriptComponent = NOWA::makeStrongPtr(weakScript))
-			{
-				Ogre::String identifier = "Id: " + Ogre::StringConverter::toString(luaScriptComponent->getOwner()->getId()) + " - " + luaScriptComponent->getScriptFile();
-				this->listBox->addItem(identifier);
-			}
-		}
-	});
+        for (const auto& weakScript : luaScripts)
+        {
+            if (auto luaScriptComponent = NOWA::makeStrongPtr(weakScript))
+            {
+                Ogre::String identifier = "Id: " + Ogre::StringConverter::toString(luaScriptComponent->getOwner()->getId()) + " - " + luaScriptComponent->getScriptFile();
+                this->listBox->addItem(identifier);
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelLuaScript::populateListBox");
 }
 
 void ResourcesPanelLuaScript::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelLuaScript::buttonHit", _1(sender),
-	{
-		if (sender == this->upButton)
-		{
-			auto selectedIndex = this->listBox->getIndexSelected();
-			if (selectedIndex != MyGUI::ITEM_NONE)
-			{
-				auto luaScriptComponent = NOWA::makeStrongPtr(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts()[selectedIndex]);
-				if (nullptr != luaScriptComponent)
-				{
-					NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptUp(luaScriptComponent);
-					this->populateListBox();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
+    {
+        if (sender == this->upButton)
+        {
+            auto selectedIndex = this->listBox->getIndexSelected();
+            if (selectedIndex != MyGUI::ITEM_NONE)
+            {
+                auto luaScriptComponent = NOWA::makeStrongPtr(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts()[selectedIndex]);
+                if (nullptr != luaScriptComponent)
+                {
+                    NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptUp(luaScriptComponent);
+                    this->populateListBox();
 
-					// After updating the list, set the selected index back
-					// If the script moved up, the selected index should decrease by 1
-					this->listBox->setItemSelect(selectedIndex - 1);
-				}
-			}
-		}
-		else if (sender == this->downButton)
-		{
-			auto selectedIndex = this->listBox->getIndexSelected();
-			auto scripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
+                    // After updating the list, set the selected index back
+                    // If the script moved up, the selected index should decrease by 1
+                    this->listBox->setItemSelect(selectedIndex - 1);
+                }
+            }
+        }
+        else if (sender == this->downButton)
+        {
+            auto selectedIndex = this->listBox->getIndexSelected();
+            auto scripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
 
-			if (selectedIndex != MyGUI::ITEM_NONE && selectedIndex < scripts.size() - 1)
-			{
-				auto luaScriptComponent = NOWA::makeStrongPtr(scripts[selectedIndex]);
-				if (nullptr != luaScriptComponent)
-				{
-					NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptDown(luaScriptComponent);
-					this->populateListBox();
+            if (selectedIndex != MyGUI::ITEM_NONE && selectedIndex < scripts.size() - 1)
+            {
+                auto luaScriptComponent = NOWA::makeStrongPtr(scripts[selectedIndex]);
+                if (nullptr != luaScriptComponent)
+                {
+                    NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptDown(luaScriptComponent);
+                    this->populateListBox();
 
-					// After updating the list, set the selected index back
-					// If the script moved down, the selected index should increase by 1
-					this->listBox->setItemSelect(selectedIndex + 1);
-				}
-			}
-		}
-	});
+                    // After updating the list, set the selected index back
+                    // If the script moved down, the selected index should increase by 1
+                    this->listBox->setItemSelect(selectedIndex + 1);
+                }
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelLuaScript::buttonHit");
 }
 
 void ResourcesPanelLuaScript::handleLuaScriptModified(NOWA::EventDataPtr eventData)
@@ -1869,10 +1890,12 @@ void ResourcesPanelPlugins::initialise(void)
 
 void ResourcesPanelPlugins::shutdown(void)
 {
-    ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::shutdown", {
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
         this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
         BaseLayout::shutdown();
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelPlugins::shutdown");
 }
 
 void ResourcesPanelPlugins::clear(void)
@@ -1883,7 +1906,7 @@ void ResourcesPanelPlugins::clear(void)
 		this->selectedText.clear();
 		this->listBox->removeAllItems();
     };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelPlugins::clear");
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelPlugins::clear");
 }
 
 void ResourcesPanelPlugins::populateListBox(void)

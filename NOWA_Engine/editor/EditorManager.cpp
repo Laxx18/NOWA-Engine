@@ -2497,11 +2497,34 @@ namespace NOWA
                 }
                 if (MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects))
                 {
+                    // setDirection is INCREMENTAL —
+                    // Ogre computes the shortest arc from the CURRENT direction of
+                    // localDirectionVector to the target and multiplies it onto the
+                    // EXISTING orientation, keeping the twist around the target
+                    // axis.  Without a reset, the yaw applied below survives into
+                    // the next mouseMove and gets applied AGAIN — the preview
+                    // spins by rotateFactor per event.  Resetting first makes the
+                    // result fully deterministic per frame:
+                    //   orientation = shortestArc(-UNIT_Y -> normal) * yaw(rotateFactor)
+                    this->placeNode->resetOrientation();
                     this->placeNode->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+                    if (this->rotateFactor != 0.0f)
+                    {
+                        this->placeNode->rotate(Ogre::Vector3::UNIT_Y, Ogre::Degree(this->rotateFactor), Ogre::Node::TS_LOCAL);
+                    }
                 }
                 else
                 {
-                    ENQUEUE_RENDER_COMMAND("placenode reset orientation2", { this->placeNode->resetOrientation(); });
+                    // Keep the user yaw when pointing
+                    // at nothing (previously the nested render command reset the
+                    // orientation one frame later and dropped the yaw entirely).
+                    // We are already on the render thread here — direct calls,
+                    // same as setDirection above.
+                    this->placeNode->resetOrientation();
+                    if (this->rotateFactor != 0.0f)
+                    {
+                        this->placeNode->rotate(Ogre::Vector3::UNIT_Y, Ogre::Degree(this->rotateFactor), Ogre::Node::TS_LOCAL);
+                    }
                 }
 
                 // If nothing to stack to, calc the hit point on floor plane
@@ -2608,6 +2631,19 @@ namespace NOWA
         if (this->rotateFactor < 0.0f)
         {
             this->rotateFactor += 360.0f;
+        }
+
+        // In this mode movePlaceNode is the single
+        // owner of the placeNode orientation (surface alignment via
+        // setDirection + local yaw).  Setting an absolute WORLD yaw here every
+        // frame destroyed that alignment as soon as rotateFactor became
+        // non-zero — the preview stayed correct (temp node untouched), but the
+        // click committed the yaw-only placeNode: the placed object flipped
+        // back.  Here we only accumulate the wheel input; movePlaceNode
+        // applies it around the surface normal.
+        if (EDITOR_PLACE_MODE_STACK_ORIENTATED == this->placeMode)
+        {
+            return;
         }
 
         if (nullptr != this->placeNode && this->rotateFactor != 0.0f)

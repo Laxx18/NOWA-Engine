@@ -349,6 +349,21 @@ namespace NOWA
 
         int getSegmentCountLua(void) const;
 
+        /**
+         * @brief Sets the wall frame (plumb direction) explicitly — for future
+         *        external owners (mirrors ProceduralRoadComponent::setRoadFrame).
+         *        IDENTITY = classic flat-world behavior.
+         */
+        void setWallFrame(const Ogre::Quaternion& frame);
+
+        /**
+        * @brief Derives a frame from 'origin': planet mode (adaptToGround on,
+        *        origin far enough from world (0,0,0)) returns a radial basis
+        *        keeping only currentOrientation's heading; otherwise passes
+        *        currentOrientation through unchanged.
+        */
+        Ogre::Quaternion deriveWallFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation) const;
+
     public:
         // Static attribute names
         static Ogre::String AttrActivated(void)
@@ -598,6 +613,9 @@ namespace NOWA
         Ogre::ManualObject* segOverlayObject;
         Ogre::SceneNode* snapOverlayNode;
         Ogre::ManualObject* snapOverlayObject;
+
+        Ogre::Quaternion wallFrame;
+        bool wallFrameSet;  
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

@@ -1083,7 +1083,13 @@ namespace NOWA
                 {
                     auto queryToDestroy = this->sphereSceneQuery;
                     auto sceneManager = this->currentSceneManager;
-                    ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Destroy sphere query", _2(sceneManager, queryToDestroy), { sceneManager->destroyQuery(queryToDestroy); });
+
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, queryToDestroy]()
+                    {
+                        sceneManager->destroyQuery(queryToDestroy);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectController::internalClone::Destroy sphere query");
+
                     this->sphereSceneQuery = nullptr;
                 }
                 this->currentSceneManager = nullptr;

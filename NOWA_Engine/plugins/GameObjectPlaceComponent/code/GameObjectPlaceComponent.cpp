@@ -1392,7 +1392,13 @@ namespace NOWA
             return;
         }
 
-        this->shadowPhysicsComponent = NOWA::makeStrongPtr(shadowGameObjectPtr->getComponent<PhysicsComponent>()).get();
+       auto physicsCompPtr = NOWA::makeStrongPtr(shadowGameObjectPtr->getComponent<PhysicsComponent>());
+        if (nullptr != physicsCompPtr)
+        {
+            this->shadowPhysicsComponent = physicsCompPtr.get();
+            // Do not collide during placement if physics component is involved.
+            this->shadowPhysicsComponent->setActivated(false);
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -1441,6 +1447,15 @@ namespace NOWA
                 return true;
             }
 
+            auto physicsCompPtr = NOWA::makeStrongPtr(clonedGameObjectPtr->getComponent<PhysicsComponent>());
+            if (nullptr != physicsCompPtr)
+            {
+                if (false == physicsCompPtr->isActivated())
+                {
+                    physicsCompPtr->setActivated(true);
+                }
+            }
+            
             // TODO: Just for debugging
             // AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawObstacleBoxes(this->gameObjectPtr->getSceneManager());
 

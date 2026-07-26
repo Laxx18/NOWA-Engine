@@ -446,6 +446,10 @@ namespace NOWA
 
         void endBatch(void);
 
+        void setRoadFrame(const Ogre::Quaternion& frame);
+
+        Ogre::Quaternion deriveRoadFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation) const;
+
     public:
         // Static attribute names
         static Ogre::String AttrActivated(void)
@@ -823,6 +827,8 @@ namespace NOWA
         Ogre::Real snapRadius;         // = roadWidth * 1.5f, set in postInit
         bool bBatchMode;
         bool roadLoadedFromScene;
+        Ogre::Quaternion roadFrame;
+        bool roadFrameSet;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

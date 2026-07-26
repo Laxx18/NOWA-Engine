@@ -373,11 +373,11 @@ namespace NOWA
     }
 
 	void PhysicsArtifactComponent::reCreateCollision(bool overwrite)
-	{
+    {
         if (nullptr == this->physicsBody)
-		{
-			return;
-		}
+        {
+            return;
+        }
 
         if (COLLISION_COMPOUND == this->collisionMode)
         {
@@ -414,7 +414,27 @@ namespace NOWA
                 this->physicsBody->setCollision(compoundCollision);
             }
 
-			// Re-apply material group ID — reCreateCollision creates a fresh body
+            // TreeCollision/Compound shapes are MESH-LOCAL
+            // (vertex data + scale only, see OgreNewt::TreeCollision(Item) ctor).
+            // The body transform is therefore the ONLY carrier of the world
+            // placement — but reCreateCollision never updated it. The body kept
+            // the transform captured in createStaticBody's postInit, which on
+            // scene load runs BEFORE the city exists (placeholder Node.mesh item,
+            // node possibly still at ZERO). Sync the body to the CURRENT node
+            // transform whenever the collision is rebuilt.
+            Ogre::SceneNode* itemNode = this->gameObjectPtr->getSceneNode();
+            Ogre::MovableObject* syncMovable = this->gameObjectPtr->getMovableObject();
+            if (nullptr != syncMovable && nullptr != syncMovable->getParentSceneNode())
+            {
+                itemNode = syncMovable->getParentSceneNode();
+            }
+            this->initialPosition = itemNode->getPosition();
+            this->initialOrientation = itemNode->getOrientation();
+            this->initialScale = itemNode->getScale();
+            this->setPosition(this->initialPosition);
+            this->setOrientation(this->initialOrientation);
+
+            // Re-apply material group ID — reCreateCollision creates a fresh body
             // which resets m_shapeMaterial.m_userId to 0
             const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
             this->physicsBody->setMaterialGroupID(materialId);
@@ -429,17 +449,17 @@ namespace NOWA
             this->destroyCollision();
         }
 
-		// Collision for static objects
-		OgreNewt::CollisionPtr staticCollision;
-		if (false == this->serialize->getBool())
-		{
-			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr != item)
-			{
-				meshName = item->getMesh()->getName();
-				if (Ogre::StringUtil::match(meshName, "Plane*", true))
-				{
-					NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
+        // Collision for static objects
+        OgreNewt::CollisionPtr staticCollision;
+        if (false == this->serialize->getBool())
+        {
+            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+            if (nullptr != item)
+            {
+                meshName = item->getMesh()->getName();
+                if (Ogre::StringUtil::match(meshName, "Plane*", true))
+                {
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
                     {
                         // if the mesh name is a plane, the tree collision does not work, so use box
                         // Attention: Is this correct?
@@ -448,51 +468,68 @@ namespace NOWA
                         staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
                     };
                     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::reCreateBoxCollision");
-				}
-				else
-				{
+                }
+                else
+                {
                     NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
                     {
                         staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
                     };
                     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::reCreateTreeCollision");
-				}
-			}
-			else
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
-				throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName() + ".\n", "NOWA");
-			}
-		}
-		else
-		{
-			// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
-			// Note: Collision file is located in the project folder for all scenes
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, overwrite, &staticCollision]()
+                }
+            }
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
+                throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName() + ".\n",
+                    "NOWA");
+            }
+        }
+        else
+        {
+            // For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
+            // Note: Collision file is located in the project folder for all scenes
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, overwrite, &staticCollision]()
             {
                 Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
                 staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), overwrite));
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsComponent::serializeTreeCollision");
-		}
+        }
 
-		if (nullptr == staticCollision)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Could create collision file for game object: "
-				+ this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Could create collision file for game object: "
-				+ this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.\n", "NOWA");
-		}
+        if (nullptr == staticCollision)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Could create collision file for game object: " + this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Could create collision file for game object: " + this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.\n", "NOWA");
+        }
 
-		// Set the new collision hull
-		this->physicsBody->setCollision(staticCollision);
+        // Set the new collision hull
+        this->physicsBody->setCollision(staticCollision);
         this->physicsBody->setCollidable(this->collidable->getBool());
 
-		// Re-apply material group ID — reCreateCollision creates a fresh body
+        // Sync body transform to the CURRENT node transform
+        // (mesh-local collision — see comment in the compound branch above).
+        // createCityOnRenderThread calls reCreateCollision AFTER setting the node
+        // to cityOrigin/cityFrame, so this line places the hull exactly where the
+        // freshly built city mesh actually is — independent of postInit order.
+        Ogre::SceneNode* itemNode = this->gameObjectPtr->getSceneNode();
+        Ogre::MovableObject* syncMovable = this->gameObjectPtr->getMovableObject();
+        if (nullptr != syncMovable && nullptr != syncMovable->getParentSceneNode())
+        {
+            itemNode = syncMovable->getParentSceneNode();
+        }
+        this->initialPosition = itemNode->getPosition();
+        this->initialOrientation = itemNode->getOrientation();
+        this->initialScale = itemNode->getScale();
+        this->setPosition(this->initialPosition);
+        this->setOrientation(this->initialOrientation);
+
+        // Re-apply material group ID — reCreateCollision creates a fresh body
         // which resets m_shapeMaterial.m_userId to 0
         const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
         this->physicsBody->setMaterialGroupID(materialId);
-	}
+    }
 
 	void PhysicsArtifactComponent::setSerialize(bool serialize)
 	{

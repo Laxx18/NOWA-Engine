@@ -148,7 +148,6 @@ namespace NOWA
         curbDatablockAttr(new Variant(AttrCurbDatablock(), Ogre::String("city_curb_01"), this->attributes)),
         roadComponentIdAttr(new Variant(AttrRoadComponentId(), Ogre::String("0"), this->attributes)),
         roadConnectionAtStartAttr(new Variant(AttrRoadConnectionAtStart(), false, this->attributes)),
-        districtCountAttr(new Variant(AttrDistrictCount(), 9u, this->attributes)),
         doorDatablockAttr(new Variant(AttrDoorDatablock(), Ogre::String("city_door_01"), this->attributes)),
         garageDatablockAttr(new Variant(AttrGarageDatablock(), Ogre::String("city_garage_01"), this->attributes)),
         generateGarageAttr(new Variant(AttrGenerateGarage(), true, this->attributes)),
@@ -157,11 +156,14 @@ namespace NOWA
         clearBtn(new Variant(AttrClear(), Ogre::String("Clear"), this->attributes)),
         generateBuildingsBtn(new Variant(AttrGenerateBuildings(), Ogre::String("Generate Buildings"), this->attributes)),
         editModeAttr(new Variant(AttrEditMode(), std::vector<Ogre::String>{"Object", "Segment"}, this->attributes)),
+        districtCountAttr(new Variant(AttrDistrictCount(), 9u, this->attributes)),
         selectedBuildingIdx(-1),
         isSelected(false),
         inputListenerRegistered(false),
         selOverlayObject(nullptr),
-        selOverlayNode(nullptr)
+        selOverlayNode(nullptr),
+        cityFrame(Ogre::Quaternion::IDENTITY),
+        isTranslatingBuilding(false)
     {
         this->generateBtn->addUserData(GameObject::AttrActionExec());
         this->generateBtn->addUserData(GameObject::AttrActionExecId(), ActionGenerate());
@@ -426,7 +428,7 @@ namespace NOWA
         this->groundQuery->setSortByDistance(true);
         this->groundPlane = Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f);
 
-        this->gameObjectPtr->setAttributePosition(Ogre::Vector3::ZERO);
+        // this->gameObjectPtr->setAttributePosition(Ogre::Vector3::ZERO);
 
         this->createSelectionOverlay();
 
@@ -1065,36 +1067,31 @@ namespace NOWA
             },
             "ProceduralCityComponent::loadOrGenerateCity_DestroyBuildings");
 
+        // Capture origin AND frame BEFORE loadCityDataFromFile.  The cached
+        // local data was produced with the derived (radial) frame — taking
+        // the raw node orientation here would glue the cached buildings to
+        // the world with the WRONG frame on load.
+        this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
+        this->cityFrame = this->deriveCityFrame(this->cityOrigin, this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated());
+
         std::vector<CityBatch> batches;
         bool fromCache = this->loadCityDataFromFile(batches);
 
-        if (true == fromCache)
+        if (false == fromCache)
         {
-            // cityOrigin is NOT persisted in the batch cache file and is otherwise only
-            // ever set inside generateCityLayout(). On a cache-hit load, generateCityLayout()
-            // never runs, so cityOrigin would silently stay at its default ZERO — placing
-            // the rebuilt city Item at world origin instead of the GameObject's actual
-            // (correctly loaded) scene position. Derive it from the SceneNode instead,
-            // same as generateBuildingsOnly() already does.
-            this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
-        }
-        else
-        {
-            // We're about to regenerate the road network ourselves (generateCityLayout
-            // calls buildCityRoadNetwork internally) — NOW it's safe/correct to clear
-            // whatever the road component currently has, since we're replacing it.
-            ProceduralRoadComponent* roadCompForClear = this->findRoadComponent();
-            if (nullptr != roadCompForClear)
-            {
-                roadCompForClear->clearAllSegments();
-            }
-
-            batches = this->generateCityLayout(); // also calls buildCityRoadNetwork + syncs
-            if (batches.empty())
-            {
-                return;
-            }
-            this->saveCityDataToFile(batches);
+            // This function is ONLY ever reached via scene load
+            // (handleSceneParsed) — there is no other caller. A cache miss
+            // (missing file, or design parameters changed since the cache
+            // was written) must NOT silently trigger a full regenerate here:
+            // that used to rebuild every building from scratch (discarding
+            // any Segment-mode deletions) and rebuild the whole road network
+            // via live terrain raycasts at an arbitrary point during scene
+            // loading. Loading now means loading, full stop — the city stays
+            // exactly as it was (empty, on a genuinely first load) until the
+            // designer presses "Generate Now" explicitly.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] loadOrGenerateCity: no valid .citydata cache for '" + this->gameObjectPtr->getName() +
+                                                                                    "' (missing file, or parameters changed since it was written). NOT auto-regenerating on scene load -- press 'Generate Now' to (re)build this city.");
+            return;
         }
 
         this->createCityOnRenderThread(std::move(batches));
@@ -1111,7 +1108,7 @@ namespace NOWA
 
         // Destroy old building batches on the render thread.
         // ProceduralRoadComponent owns its own Ogre::Item — destroyCityOnRenderThread()
-        // ONLY removes city batch items (buildings), NOT the road component's mesh. ✓
+        // ONLY removes city batch items (buildings), NOT the road component's mesh.
         GraphicsModule::getInstance()->enqueueAndWait(
             [this]()
             {
@@ -1119,11 +1116,11 @@ namespace NOWA
             },
             "ProceduralCityComponent::GenerateBuildingsOnly");
 
-        // Capture cityOrigin from the road component's current SceneNode position.
-        // ProceduralRoadComponent::createRoadMeshInternal() called setPosition(roadOrigin)
-        // when roads were built.  Using that same position keeps buildings in the same
-        // local coordinate space as the road mesh so they always align correctly.
+        // Capture position and DERIVE the frame — same
+        // helper as generateCityLayout and loadOrGenerateCity, so all three
+        // entry points agree on the frame for the same node transform.
         this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
+        this->cityFrame = this->deriveCityFrame(this->cityOrigin, this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated());
 
         // Keep organicRoadSegs from the previous organic generation.
         // When the designer uses "Generate Buildings", roads stay as-is and we want
@@ -1149,8 +1146,13 @@ namespace NOWA
 
     // =========================================================================
     // generateCityLayout — logic thread
-    // skipRoads: when true, skips buildCityRoadNetwork() and captures cityOrigin
-    //            from the current SceneNode (road component's existing position).
+    // skipRoads: when true, skips buildCityRoadNetwork() (roads stay untouched).
+    //
+    //   Coordinate contract:
+    //   cityBounds/grid/blocks/lots are LOCAL coordinates around the GameObject
+    //   node.  cityOrigin/cityFrame are captured ONCE, up front, from the node
+    //   AS PLACED BY THE USER, and are the single local->world mapping for the
+    //   whole generation (ground raycasts, road endpoints, final cityNode).
     // =========================================================================
 
     std::vector<CityBatch> ProceduralCityComponent::generateCityLayout(bool skipRoads)
@@ -1163,6 +1165,44 @@ namespace NOWA
         const Ogre::Real blockSz = this->blockSizeAttr->getReal();
         const unsigned int mSeed = this->masterSeedAttr->getUInt();
         const Ogre::Real variance = this->roadVarianceAttr->getReal();
+
+        // Capture the city frame ONCE, at the very top —
+        // BEFORE any getGroundHeight call, because the raycast start position and
+        // direction depend on cityOrigin/cityFrame.
+        this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
+        this->cityFrame = this->deriveCityFrame(this->cityOrigin, this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated());
+
+        // PLANET MODE — derive the frame from the RADIAL
+        // direction at the node POSITION instead of trusting the hand-set node
+        // orientation.  A node tilted by only ~14 degrees offsets the (parallel)
+        // ground rays by planetRadius * sin(14 deg) ~ 113m sideways — on a 467m
+        // planet the rays on the tilt-averted half MISS the sphere entirely, the
+        // plane fallback returns gh=0, and those buildings float on the tilted
+        // tangent plane (exactly the scattered-buildings bug).  With the radial
+        // frame the rays are parallel to the local vertical at the origin and hit
+        // the sphere everywhere inside the bounds — same geometry that made the
+        // orientation-0 test work, but now on ANY hemisphere, chosen purely by
+        // WHERE the node is placed.  Only the node's heading (yaw around the
+        // radial axis) is kept.  Terrain mode (gradientAlignment off) keeps the
+        // node orientation unchanged.
+        if (true == this->gradientAlignmentAttr->getBool() && this->cityOrigin.squaredLength() > 1.f)
+        {
+            const Ogre::Vector3 radialUp = this->cityOrigin.normalisedCopy();
+            // Preserve the node's heading: project its forward axis onto the
+            // tangent plane of the planet at the node position.
+            const Ogre::Vector3 nodeForward = this->cityFrame * Ogre::Vector3::UNIT_Z;
+            Ogre::Vector3 tangentForward = nodeForward - radialUp * nodeForward.dotProduct(radialUp);
+            if (tangentForward.squaredLength() < 1e-6f)
+            {
+                // Node forward is parallel to the radial — pick any stable tangent.
+                tangentForward = radialUp.perpendicular();
+            }
+            tangentForward.normalise();
+            // Right-handed orthonormal basis: X = Y cross Z.
+            Ogre::Vector3 tangentRight = radialUp.crossProduct(tangentForward);
+            tangentRight.normalise();
+            this->cityFrame = Ogre::Quaternion(tangentRight, radialUp, tangentForward);
+        }
 
         // ---- Build the road grid (may be perturbed by variance) ----------------
         // The same grid is used for road generation AND block center/size calculation
@@ -1265,43 +1305,25 @@ namespace NOWA
         }
 
         // =====================================================================
-        // ROOT-CAUSE FIX for the road/building offset on clear+regenerate:
-        //
-        // ProceduralRoadComponent::createRoadMeshInternal() calls:
-        //   gameObjectPtr->getSceneNode()->setPosition(roadOrigin)
-        // which MOVES the shared city SceneNode to the first road grid endpoint.
-        //
-        // If cityOrigin is computed from the bounds centre (a different XYZ than
-        // roadOrigin), buildings and roads end up in different coordinate spaces
-        // and appear offset from each other every time the city is regenerated.
-        //
-        // THE FIX: build the road grid FIRST so the SceneNode is at roadOrigin,
-        // then set cityOrigin = SceneNode position (= roadOrigin).
-        // All subsequent building geometry is then generated in the same local
-        // space as the road, so both always line up — even across regenerations.
-        // =====================================================================
-        // =====================================================================
         // Road build (skipped when called from generateBuildingsOnly)
+        // CityOrigin is NOT recaptured after the road
+        // build anymore — see the comment at the capture at the top.
         // =====================================================================
         if (false == skipRoads && this->generateRoadsAttr->getBool())
         {
-            // Build road first (moves SceneNode to roadOrigin via ProceduralRoadComponent)
             this->buildCityRoadNetwork(blocks);
-            // Now capture that exact position as cityOrigin
-            this->cityOrigin = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
         }
         else if (skipRoads)
         {
-            // Roads are untouched.  cityOrigin was already captured in generateBuildingsOnly()
-            // from the road component's current SceneNode, so nothing to do here.
+            // Roads are untouched.  cityOrigin/cityFrame were already captured in
+            // generateBuildingsOnly() (and re-captured identically above).
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralCityComponent] generateCityLayout: road build skipped (skipRoads=true).");
         }
         else
         {
-            // Roads off: fall back to bounds centre as origin
-            const Ogre::Real cx2 = (minX + maxX) * 0.5f;
-            const Ogre::Real cz2 = (minZ + maxZ) * 0.5f;
-            this->cityOrigin = Ogre::Vector3(cx2, this->getGroundHeight(Ogre::Vector3(cx2, 0.f, cz2)), cz2);
+            // Roads off — origin/frame already captured at
+            // the top.  The old fallback (world bounds centre as origin) is
+            // meaningless now that bounds are local to the node.
         }
         const Ogre::Vector3& localOrigin = this->cityOrigin;
 
@@ -1409,7 +1431,7 @@ namespace NOWA
                 }
 
                 building.groundHeight = lot.groundHeight;
-                // Lot half-width: actual distance from the BUILDING'S world position to the
+                // Lot half-width: actual distance from the BUILDING'S local position to the
                 // NEAREST block boundary in either X or Z, minus the road inset.
                 // Using the minimum of all 4 directions gives the most conservative bound
                 // so garages never extend past the lot edge regardless of building position
@@ -1431,25 +1453,26 @@ namespace NOWA
                 building.orientation.FromAngleAxis(Ogre::Radian(baseAngle + jitter), Ogre::Vector3::UNIT_Y);
 
                 // ---- Gradient alignment (planet surface tilt) --------------------
-                // Compute gradientQ but do NOT bake it into building.orientation yet.
-                // generateBuildingGeometry uses UNIT_Y for heights → correct face winding.
-                // After generation we rotate all new vertices + normals + tangents
-                // by gradientQ as a post-process.  This way:
-                //   • winding is always correct (generated with standard UNIT_Y up)
-                //   • roof, walls, stairs ALL tilt together with the building
-                //   • road-facing direction (building.orientation) stays unaffected
+                // building.position / groundHeight are LOCAL to the city frame.
+                // Transform to world, take the radial planet normal there (planet
+                // centre = 0,0,0), then express that normal IN the city frame so
+                // the building only receives the RESIDUAL curvature tilt relative
+                // to the node's up axis.  On the underside the 180° flip comes
+                // from the frame itself (cityNode->setOrientation), not from here.
                 Ogre::Quaternion gradientQ = Ogre::Quaternion::IDENTITY;
                 if (this->gradientAlignmentAttr->getBool())
                 {
-                    const Ogre::Vector3 worldPos(building.position.x, building.groundHeight, building.position.z);
-                    const Ogre::Vector3 toSurface = worldPos;
-                    // Guard: if groundHeight is much lower than localOrigin.y the terrain raycast
-                    // missed (building outside Terra mesh bounds). Surface normal would be
-                    // horizontal → 90° rotation → buildings become flat planes in space.
-                    const bool terrainValid = (building.groundHeight > localOrigin.y * 0.3f) && (toSurface.squaredLength() > 1.f);
+                    const Ogre::Vector3 frameUp = this->cityFrame * Ogre::Vector3::UNIT_Y;
+                    const Ogre::Vector3 worldPos = this->cityOrigin + this->cityFrame * Ogre::Vector3(building.position.x, building.groundHeight, building.position.z);
+                    const Ogre::Vector3 worldNorm = worldPos.normalisedCopy();
+                    // Guard: the terrain hit is valid when the radial planet normal
+                    // roughly agrees with the node's up direction.  Works on BOTH
+                    // hemispheres — the old check (groundHeight > localOrigin.y*0.3)
+                    // inverted its meaning for negative Y.
+                    const bool terrainValid = (worldPos.squaredLength() > 1.f) && (worldNorm.dotProduct(frameUp) > 0.5f);
                     if (terrainValid)
                     {
-                        const Ogre::Vector3 surfNorm = toSurface.normalisedCopy();
+                        const Ogre::Vector3 surfNorm = this->cityFrame.Inverse() * worldNorm; // radial normal in LOCAL city space
                         const Ogre::Vector3 axis = Ogre::Vector3::UNIT_Y.crossProduct(surfNorm);
                         const Ogre::Real dot = Ogre::Vector3::UNIT_Y.dotProduct(surfNorm);
                         if (axis.squaredLength() < 1e-6f)
@@ -1458,7 +1481,13 @@ namespace NOWA
                         }
                         else
                         {
-                            gradientQ.FromAngleAxis(Ogre::Math::ACos(Ogre::Math::Clamp(dot, -1.f, 1.f)), axis.normalisedCopy());
+                            Ogre::Radian tiltAngle = Ogre::Math::ACos(Ogre::Math::Clamp(dot, -1.f, 1.f));
+                            const Ogre::Radian maxTilt(Ogre::Degree(20.f));
+                            if (tiltAngle > maxTilt)
+                            {
+                                tiltAngle = maxTilt;
+                            }
+                            gradientQ.FromAngleAxis(tiltAngle, axis.normalisedCopy());
                         }
                         building.orientation = gradientQ * building.orientation;
                     }
@@ -1488,8 +1517,7 @@ namespace NOWA
             }
         }
 
-        // Roads are built BEFORE buildings (see ROOT-CAUSE FIX above) so the
-        // ProceduralRoadComponent SceneNode position is already established as cityOrigin.
+        // Roads are built BEFORE buildings so their exclusion segments exist.
         // Road/curb batch slots are left empty — ProceduralRoadComponent owns the road mesh.
 
         // Wall generation removed — designer places walls manually
@@ -1637,34 +1665,44 @@ namespace NOWA
     //
     // Building coordinate basis:
     //   wallDir = orientation * UNIT_Z  (building forward, runs along block edge)
-    //   right   = wallDir.crossProduct(UNIT_Y)  — NEVER swap this order
-    //   UNIT_Y  = vertical (world up)
+    //   right   = wallDir.crossProduct(up)  — NEVER swap this order
+    //   up      = orientation * UNIT_Y
     //
     // Face normals:
     //   front (-wallDir face): normal = -wallDir   (facing street at -Z side)
     //   back  (+wallDir face): normal = +wallDir
-    //   left  (-right  face): normal = -right      (from wallDir.crossProduct(UNIT_Y))
+    //   left  (-right  face): normal = -right      (from wallDir.crossProduct(up))
     //   right (+right  face): normal = +right
-    //   top / parapet:        normal = +UNIT_Y
+    //   top / parapet:        normal = +up
     //
-    // Y origin fix:
+    //   Coordinates:
+    //   building.position (XZ) and building.groundHeight are ALREADY LOCAL to
+    //   the city frame (bounds are local, getGroundHeight returns local
+    //   heights), so the old "world minus localOrigin" subtraction is gone.
+    //   The world transform is applied ONCE, at the SceneNode
+    //   (createCityOnRenderThread: setPosition(cityOrigin) + setOrientation(cityFrame)).
+    //   'localOrigin' stays in the signature for header/ABI stability but is
+    //   intentionally unused.
+    //
+    // Y origin fix (still valid, now purely local):
     //   building.position.y is stored as 0 (XZ only).
-    //   building.groundHeight holds the terrain Y at that XZ position.
+    //   building.groundHeight holds the LOCAL terrain height at that XZ position.
     //   base = Vector3(pos.x, groundHeight - SINK_DEPTH, pos.z)
-    //   Earlier bug: lot.centre.y == groundHeight was stored in position.y
-    //   AND base = position + (0, groundHeight, 0) → Y appeared twice.
     // =========================================================================
 
     void ProceduralCityComponent::generateBuildingGeometry(const BuildingInstance& building, const CityDistrict& district, const Ogre::Vector3& localOrigin, std::vector<float>& wallV, std::vector<Ogre::uint32>& wallI, size_t& wallN,
         std::vector<float>& roofV, std::vector<Ogre::uint32>& roofI, size_t& roofN, std::vector<float>& windowV, std::vector<Ogre::uint32>& windowI, size_t& windowN, std::vector<float>& trimV, std::vector<Ogre::uint32>& trimI, size_t& trimN,
         std::vector<float>& doorV, std::vector<Ogre::uint32>& doorI, size_t& doorN, std::vector<float>& garageV, std::vector<Ogre::uint32>& garageI, size_t& garageN)
     {
+        // Coordinates are already local — no origin
+        // subtraction anymore.  Parameter kept for header/ABI stability.
+        (void)localOrigin;
+
         const Ogre::Vector3 wallDir = building.orientation * Ogre::Vector3::UNIT_Z;
         // up = orientation * UNIT_Y.
         // On flat terrain (orientation = yaw-only): up = UNIT_Y — no change.
-        // With gradient alignment on a planet: up = planet surface normal at this building.
-        // Using 'up' instead of hardcoded UNIT_Y makes all wall heights, roof, trim, stairs
-        // and garage tilt correctly with the building relative to the planet surface.
+        // With gradient alignment on a planet: up = residual surface normal at this
+        // building, expressed in the LOCAL city frame (the frame supplies the rest).
         const Ogre::Vector3 up = building.orientation * Ogre::Vector3::UNIT_Y;
         const Ogre::Vector3 right = wallDir.crossProduct(up).normalisedCopy();
 
@@ -1674,9 +1712,11 @@ namespace NOWA
 
         // Y fix: groundHeight applied once only.  CITY_SINK_DEPTH pulls the building
         // slightly below terrain surface to close any gap on sloped ground.
-        // All coordinates are LOCAL — world position minus localOrigin.
-        // Same origin-subtraction pattern as ProceduralRoadComponent.
-        const Ogre::Vector3 base(building.position.x - localOrigin.x, building.groundHeight - CITY_SINK_DEPTH - localOrigin.y, building.position.z - localOrigin.z);
+        // position/groundHeight are LOCAL — no localOrigin
+        // subtraction (the SceneNode carries the world transform).
+        // extraSinkDepth is the user-tunable per-building nudge from "T" mode
+        // (0 by default = unchanged behavior).
+        const Ogre::Vector3 base(building.position.x, building.groundHeight - CITY_SINK_DEPTH - building.extraSinkDepth, building.position.z);
 
         // Eight corners (bottom, then top)
         const Ogre::Vector3 flb = base - right * hw - wallDir * hd;
@@ -1709,7 +1749,7 @@ namespace NOWA
         // Direction v0->v1 = brb - frb = +wallDir (correct faceRight for windows)
         this->pushQuad(wallV, wallI, wallN, frb + (up * trimH), brb + (up * trimH), brt, frt, right, fD / wallTile, (wh - trimH) / wallTile);
 
-        // Parapet cap — normal = +UNIT_Y
+        // Parapet cap — normal = +up
         this->pushQuad(wallV, wallI, wallN, flt, frt, brt, blt, up, fW / wallTile, fD / wallTile);
 
         // ---- Trim strip — slot 3 (ground-level band) -------------------------
@@ -1760,7 +1800,7 @@ namespace NOWA
 
         // ---- Windows — slot 2 ------------------------------------------------
         // Windows placed as inset quads slightly in front of each wall face.
-        // FIX: faceRight must match the v0->v1 direction of the corresponding wall
+        // FaceRight must match the v0->v1 direction of the corresponding wall
         // quad so windows are placed WITHIN the face, not outside it:
         //   front face v0->v1 = frb-flb = +right        → faceOriginBL=flb, faceRight=+right
         //   back  face v0->v1 = blb-brb = -right        → faceOriginBL=brb, faceRight=-right
@@ -1812,8 +1852,39 @@ namespace NOWA
             // Correct faceRight per face — matches v0->v1 direction of each wall pushQuad
             addWindowRow(flb, right, -wallDir, fW, availH);  // front
             addWindowRow(brb, -right, wallDir, fW, availH);  // back
-            addWindowRow(blb, -wallDir, -right, fD, availH); // left  (FIX: was +wallDir)
-            addWindowRow(frb, wallDir, right, fD, availH);   // right (FIX: was -wallDir)
+            addWindowRow(blb, -wallDir, -right, fD, availH); // left 
+            addWindowRow(frb, wallDir, right, fD, availH);   // right
+        }
+
+        // ---- Front-face terrain sample — SHARED by door + stairs ------------
+        // The door block and stairs block below used to
+        // compute the IDENTICAL frontLocalX/frontLocalZ point and each fire
+        // an independent this->getGroundHeight() raycast for it — two full
+        // scene raycasts per building, every single call, for the same
+        // point. Compute it ONCE here and cache it on the building instance
+        // (mutable, so it survives through the const& parameter): the value
+        // is a pure function of this building's fixed XZ position, so once
+        // computed it never needs to be re-raycast for THIS building again —
+        // not on the next X-delete of a different building, not on the next
+        // "T"-mode extraSinkDepth nudge of this same building (extraSinkDepth
+        // is a pure Y-offset applied AFTER this sample, it never changes the
+        // sampled XZ point). rebuildBatchesFromStoredBuildings() regenerates
+        // EVERY surviving building on every single edit, so for a
+        // 200+-building city this collapses what used to be 400-500+
+        // redundant raycasts per keystroke down to (at most) one raycast per
+        // building, ever.
+        const Ogre::Real frontLocalX = building.position.x + (-wallDir.x) * hd;
+        const Ogre::Real frontLocalZ = building.position.z + (-wallDir.z) * hd;
+        Ogre::Real frontTerrainY;
+        if (true == building.hasFrontTerrainCache)
+        {
+            frontTerrainY = building.cachedFrontTerrainY;
+        }
+        else
+        {
+            frontTerrainY = this->getGroundHeight(Ogre::Vector3(frontLocalX, 0.f, frontLocalZ));
+            building.cachedFrontTerrainY = frontTerrainY;
+            building.hasFrontTerrainCache = true;
         }
 
         // ---- Door — slot 4 ---------------------------------------------------
@@ -1826,12 +1897,11 @@ namespace NOWA
             const Ogre::Real doorOff = 0.05f;
             const Ogre::Vector3 pushOut = (-wallDir) * doorOff;
 
-            // World XZ of the front face centre
-            const Ogre::Real frontWorldX = building.position.x + (-wallDir.x) * hd;
-            const Ogre::Real frontWorldZ = building.position.z + (-wallDir.z) * hd;
-            const Ogre::Real frontTerrainY = this->getGroundHeight(Ogre::Vector3(frontWorldX, 0.f, frontWorldZ));
-            // Door base in local space: never lower than the actual front-face terrain
-            const Ogre::Real doorBaseLocal = std::max(base.y, frontTerrainY - CITY_SINK_DEPTH - localOrigin.y);
+            // Door base in local space: never lower than the actual front-face terrain.
+            // extraSinkDepth subtracted here too, so the door threshold sinks
+            // together with the building instead of being clamped back up to
+            // the un-adjusted terrain level.
+            const Ogre::Real doorBaseLocal = std::max(base.y, frontTerrainY - CITY_SINK_DEPTH - building.extraSinkDepth);
 
             const Ogre::Vector3 frontBaseCentre = Ogre::Vector3(base.x + (-wallDir.x) * hd, doorBaseLocal, base.z + (-wallDir.z) * hd);
 
@@ -1849,13 +1919,13 @@ namespace NOWA
         // ---- Stairs — 3 steps in front of the door (wall geometry slot) ------
         // Steps run outward from the building front face in the -wallDir direction.
         // Step 0 = lowest/outermost, step 2 = highest/closest to door.
-        // Each step has a TOP face (normal +Y) and a FRONT face (normal -wallDir).
+        // Each step has a TOP face (normal +up) and a FRONT face (normal -wallDir).
         // Width = doorW + 0.6m, height per step = 0.15m, depth per step = 0.28m.
         // Winding convention: Cross(e1,e2) = -intended_normal (same as all other faces).
         //
         // Winding proof (reusing house-wall convention):
-        //   TOP face  (+Y): FrontLeft,FrontRight,BackRight,BackLeft  → Cross = right×wallDir = -Y ✓
-        //   FRONT face(-wallDir): BotLeft,BotRight,TopRight,TopLeft  → Cross = right×Y = +wallDir ✓
+        //   TOP face  (+up): FrontLeft,FrontRight,BackRight,BackLeft  → Cross = right×wallDir = -up ✓
+        //   FRONT face(-wallDir): BotLeft,BotRight,TopRight,TopLeft  → Cross = right×up = +wallDir ✓
         {
             const Ogre::Real doorW = std::min(1.2f, fW * 0.25f);
             const Ogre::Real stairH = 0.15f;
@@ -1863,14 +1933,13 @@ namespace NOWA
             const int nSteps = 3;
             const Ogre::Real stairHW = doorW * 0.5f + 0.3f;
 
-            // Front face centre at door-base height — same origin as the door block.
-            const Ogre::Real frontWorldX2 = building.position.x + (-wallDir.x) * hd;
-            const Ogre::Real frontWorldZ2 = building.position.z + (-wallDir.z) * hd;
-            const Ogre::Real frontTerrainY2 = this->getGroundHeight(Ogre::Vector3(frontWorldX2, 0.f, frontWorldZ2));
-            const Ogre::Real doorBaseLocal2 = std::max(base.y, frontTerrainY2 - CITY_SINK_DEPTH - localOrigin.y);
+            // Reuses the SAME frontTerrainY computed once
+            // above for the door block — was previously an independent
+            // second raycast at the identical (frontLocalX, frontLocalZ)
+            // point.
+            const Ogre::Real doorBaseLocal2 = std::max(base.y, frontTerrainY - CITY_SINK_DEPTH - building.extraSinkDepth);
 
             // Use frontBase (= front-face centre at door-base Y) as stair origin.
-            // FIX: was "baseXZ(base.x, 0, base.z)" which hardcoded Y=0 — wrong on planet.
             const Ogre::Vector3 frontBase(base.x + (-wallDir.x) * hd, doorBaseLocal2, base.z + (-wallDir.z) * hd);
 
             const Ogre::Vector3 rL = right * (-stairHW);
@@ -1878,7 +1947,7 @@ namespace NOWA
 
             for (int s = 0; s < nSteps; ++s)
             {
-                // FIX: use RELATIVE heights above frontBase, not absolute local-Y values.
+                // Use RELATIVE heights above frontBase, not absolute local-Y values.
                 // Old code used absolute botY/topY (~= base.y + steps) multiplied by the
                 // tilted 'up' vector — this displaced stairs wildly on a planet.
                 const Ogre::Real botRelH = static_cast<Ogre::Real>(s) * stairH;
@@ -1924,12 +1993,6 @@ namespace NOWA
             }
         }
 
-        // ---- Garage — slot 5 (city_garage_01 datablock) -----------------------
-        // Only on Residential buildings, 30% chance (seeded), not on very small lots.
-        // The garage is a low rectangular box attached to the RIGHT face of the house,
-        // extending outward by garageDept.  Walls use the wall slot (existing),
-        // the outward-facing garage door quad uses this dedicated garage slot.
-        // Winding/normal rules are identical to the house faces — explicit normals.
         // ---- Garage — slot 5 (city_garage_01 datablock) ----------------------
         // Garage is attached DIRECTLY to the RIGHT face of the house (no gap),
         // at the FRONT of the house so the door faces the street.
@@ -1953,7 +2016,7 @@ namespace NOWA
 
         // Space check: garage extends gd meters to the right of the house right wall.
         // building.lotHalfRight is the lot's half-width in the right direction (from the
-        // building's world position ≈ lot center to the road boundary).
+        // building's local position ≈ lot center to the road boundary).
         // Available space = lotHalfRight - hw (building already occupies hw from center).
         // Use 1m safety margin so the garage never touches the sidewalk edge.
         const Ogre::Real spaceRight = std::max(0.f, building.lotHalfRight - hw - 1.0f);
@@ -2019,6 +2082,14 @@ namespace NOWA
         roadComp->setRoadWidth(this->roadWidthAttr->getReal());
         roadComp->setCenterDatablock(this->roadDatablockAttr->getString());
         roadComp->setEdgeDatablock(this->curbDatablockAttr->getString());
+        // Hand the city frame to the PRC BEFORE any
+        // segment is added — without this the PRC raycasts along world -Y
+        // (roadFrame == IDENTITY) and snaps all heights to the TOP hemisphere
+        // while the XZ pattern stays correct (roads on top, buildings below).
+        // cityFrame is already the radial frame here (captured/derived at the
+        // top of generateCityLayout), and setRoadFrame clears the PRC height
+        // cache on change.
+        roadComp->setRoadFrame(this->cityFrame);
 
         // heightOffset is intentionally NOT reset to 0 here.
         // ProceduralRoadComponent::getGroundHeight() excludes its own roadItem,
@@ -2196,9 +2267,12 @@ namespace NOWA
             this->organicRoadSegs.clear();
             this->organicRoadSegs.reserve(pHalfEdges.size() / 2u);
 
-            // When GradientAlignment is on (planet mode), look up terrain Y per node
-            // so PRC gets correct starting heights for AdaptToGround on a curved surface.
-            // Cache per node to avoid redundant raycasts (edges share nodes).
+            // When GradientAlignment is on (planet mode), look up terrain height per
+            // node so PRC gets correct starting heights for AdaptToGround on a curved
+            // surface.  Cache per node to avoid redundant raycasts (edges share nodes).
+            // getGroundHeight returns LOCAL heights now (along
+            // the frame's up axis, relative to cityOrigin) — they are converted to
+            // world below together with the XZ grid coordinates.
             const bool usePlanetY = this->gradientAlignmentAttr->getBool();
             std::vector<Ogre::Real> nodeY(pNodes.size(), 0.f);
             if (usePlanetY)
@@ -2226,7 +2300,15 @@ namespace NOWA
                 this->organicRoadSegs.push_back(seg);
                 const Ogre::Real ya = usePlanetY ? nodeY[static_cast<size_t>(he.from)] : 0.f;
                 const Ogre::Real yb = usePlanetY ? nodeY[static_cast<size_t>(he.to)]   : 0.f;
-                roadComp->addRoadSegmentLua(Ogre::Vector3(a.x, ya, a.y), Ogre::Vector3(b.x, yb, b.y));
+                // Grid coordinates and nodeY heights are LOCAL
+                // to the city frame — ProceduralRoadComponent expects WORLD
+                // coordinates, so this is the local→world boundary crossing.
+                // With an unrotated node (cityFrame == IDENTITY) this reduces to
+                // "cityOrigin + local", which is exactly the roads-start-at-the-node
+                // fix; no PRC change is required for that case.
+                const Ogre::Vector3 wa = this->cityOrigin + this->cityFrame * Ogre::Vector3(a.x, ya, a.y);
+                const Ogre::Vector3 wb = this->cityOrigin + this->cityFrame * Ogre::Vector3(b.x, yb, b.y);
+                roadComp->addRoadSegmentLua(wa, wb);
             }
             roadComp->endBatch();
 
@@ -2353,49 +2435,57 @@ namespace NOWA
         // with no new data.
         const Ogre::Vector3 roadEndpt = roadComp->getRoadConnectionPoint(this->roadConnectionAtStart);
 
+        // cityBounds are LOCAL to the city frame — bring the
+        // WORLD road endpoint into local space first, clamp against the local
+        // bounds, then transform the resulting entry point back to world for the
+        // PRC call.  With cityFrame == IDENTITY this is just "minus cityOrigin".
+        const Ogre::Vector3 localEndpt = this->cityFrame.Inverse() * (roadEndpt - this->cityOrigin);
+
         const Ogre::Vector4 bounds = this->cityBoundsAttr->getVector4();
-        const float dxNeg = std::abs(roadEndpt.x - bounds.x);
-        const float dxPos = std::abs(roadEndpt.x - bounds.z);
-        const float dzNeg = std::abs(roadEndpt.z - bounds.y);
-        const float dzPos = std::abs(roadEndpt.z - bounds.w);
+        const float dxNeg = std::abs(localEndpt.x - bounds.x);
+        const float dxPos = std::abs(localEndpt.x - bounds.z);
+        const float dzNeg = std::abs(localEndpt.z - bounds.y);
+        const float dzPos = std::abs(localEndpt.z - bounds.w);
         const float minDist = std::min({dxNeg, dxPos, dzNeg, dzPos});
 
         Ogre::Vector3 boundaryEntry;
         if (minDist == dxNeg)
         {
             boundaryEntry.x = bounds.x;
-            boundaryEntry.z = Ogre::Math::Clamp(roadEndpt.z, bounds.y, bounds.w);
+            boundaryEntry.z = Ogre::Math::Clamp(localEndpt.z, bounds.y, bounds.w);
         }
         else if (minDist == dxPos)
         {
             boundaryEntry.x = bounds.z;
-            boundaryEntry.z = Ogre::Math::Clamp(roadEndpt.z, bounds.y, bounds.w);
+            boundaryEntry.z = Ogre::Math::Clamp(localEndpt.z, bounds.y, bounds.w);
         }
         else if (minDist == dzNeg)
         {
             boundaryEntry.z = bounds.y;
-            boundaryEntry.x = Ogre::Math::Clamp(roadEndpt.x, bounds.x, bounds.z);
+            boundaryEntry.x = Ogre::Math::Clamp(localEndpt.x, bounds.x, bounds.z);
         }
         else
         {
             boundaryEntry.z = bounds.w;
-            boundaryEntry.x = Ogre::Math::Clamp(roadEndpt.x, bounds.x, bounds.z);
+            boundaryEntry.x = Ogre::Math::Clamp(localEndpt.x, bounds.x, bounds.z);
         }
-        boundaryEntry.y = this->getGroundHeight(boundaryEntry);
+        boundaryEntry.y = this->getGroundHeight(boundaryEntry); // LOCAL height
 
         roadComp->setRoadWidth(this->roadWidthAttr->getReal());
-        roadComp->addRoadSegmentLua(roadEndpt, boundaryEntry);
+        // local -> world boundary crossing for the PRC call.
+        const Ogre::Vector3 worldEntry = this->cityOrigin + this->cityFrame * boundaryEntry;
+        roadComp->addRoadSegmentLua(roadEndpt, worldEntry);
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Connected road to city boundary at " + Ogre::StringConverter::toString(boundaryEntry));
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Connected road to city boundary at " + Ogre::StringConverter::toString(worldEntry));
     }
 
     // =========================================================================
     // createCityOnRenderThread
     // =========================================================================
 
-    void ProceduralCityComponent::createCityOnRenderThread(std::vector<CityBatch>&& batches)
+    void ProceduralCityComponent::createCityOnRenderThread(std::vector<CityBatch>&& batches, bool skipCollisionRebuild)
     {
-        GraphicsModule::RenderCommand cmd = [this, batches = std::move(batches)]() mutable
+        GraphicsModule::RenderCommand cmd = [this, batches = std::move(batches), skipCollisionRebuild]() mutable
         {
             Ogre::Root* root = Ogre::Root::getSingletonPtr();
             Ogre::VaoManager* vm = root->getRenderSystem()->getVaoManager();
@@ -2582,17 +2672,12 @@ namespace NOWA
 
             unsigned int subIdx = 0u;
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[ProceduralCityComponent] === Datablock assignment (subMesh -> slot -> datablock) ===");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] === Datablock assignment (subMesh -> slot -> datablock) ===");
 
             auto applyDb = [&](const Ogre::String& dbName, const char* slotLabel)
             {
                 // Log every assignment so wrong datablocks can be traced
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[ProceduralCityComponent]  subMesh " +
-                    Ogre::StringConverter::toString(subIdx) +
-                    "  slot=" + Ogre::String(slotLabel) +
-                    "  datablock='" + dbName + "'");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent]  subMesh " + Ogre::StringConverter::toString(subIdx) + "  slot=" + Ogre::String(slotLabel) + "  datablock='" + dbName + "'");
 
                 if (false == dbName.empty())
                 {
@@ -2612,7 +2697,7 @@ namespace NOWA
 
             for (unsigned int vi = 0u; vi < NUM_BUILDING_VARIANTS; ++vi)
             {
-                const Ogre::String doorDb   = (vi % 2u == 0u) ? this->doorDatablockAttr->getString() : Ogre::String("WoodenDoor");
+                const Ogre::String doorDb = (vi % 2u == 0u) ? this->doorDatablockAttr->getString() : Ogre::String("WoodenDoor");
                 const Ogre::String garageDb = this->garageDatablockAttr->getString();
 
                 // Submesh order per variant: face(0), roof(1), window(2), trim(3), door(4), garage(5)
@@ -2624,18 +2709,18 @@ namespace NOWA
                     // slot 0 — main building faces (from trimH to roofline). Randomly varied per variant.
                     // Uses roofDatablocks as facade material pool (solid PBR stone/brick textures).
                     // TODO: add dedicated DistrictFacadeDatablock attributes for full control.
-                    applyDb(this->districts[d0].faceDatablocks[vi % 6],   "face");   // slot 0 — main faces
-                    applyDb(this->districts[d0].roofDatablocks[vi % 3],   "roof");   // slot 1 — roof
+                    applyDb(this->districts[d0].faceDatablocks[vi % 6], "face");     // slot 0 — main faces
+                    applyDb(this->districts[d0].roofDatablocks[vi % 3], "roof");     // slot 1 — roof
                     applyDb(this->districts[d0].windowDatablocks[vi % 3], "window"); // slot 2 — windows
                     // slot 3 — trim: the thin ground-level plinth band (max 1.5m tall).
                     // Uses trimDatablocks which contain stone/cobblestone textures as accent.
-                    applyDb(this->districts[d0].trimDatablocks[vi % 2],   "trim");   // slot 3 — base plinth
+                    applyDb(this->districts[d0].trimDatablocks[vi % 2], "trim"); // slot 3 — base plinth
                 }
                 else
                 {
-                    subIdx += 4u;  // skip face + roof + window + trim
+                    subIdx += 4u; // skip face + roof + window + trim
                 }
-                applyDb(doorDb,   "door");   // slot 4
+                applyDb(doorDb, "door");     // slot 4
                 applyDb(garageDb, "garage"); // slot 5
             }
 
@@ -2648,7 +2733,15 @@ namespace NOWA
             // ----------------------------------------------------------------
             Ogre::SceneNode* cityNode = sm->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
             cityNode->setPosition(this->cityOrigin);
-            cityNode->setOrientation(Ogre::Quaternion::IDENTITY);
+            // Apply the captured city frame.
+            // Quaternion::IDENTITY here silently discarded the frame: the LOCAL
+            // city map (built with heights along the RADIAL up axis) was attached
+            // to the world WITHOUT the rotation.  On the underside that flips the
+            // whole height field relative to the surface — the city bowl curves
+            // AWAY from the planet instead of hugging it, and roofs point AT the
+            // planet: exactly the "mirrored / upside down" look.  This single
+            // line is the local→world rotation for the entire building mesh.
+            cityNode->setOrientation(this->cityFrame);
             cityNode->setScale(Ogre::Vector3::UNIT_SCALE);
             cityNode->attachObject(unifiedItem);
             sm->notifyStaticAabbDirty(unifiedItem);
@@ -2678,7 +2771,23 @@ namespace NOWA
             this->gameObjectPtr->init(unifiedItem);
             this->gameObjectPtr->setDoNotDestroyMovableObject(true);
 
-            if (nullptr != this->physicsArtifactComponent)
+            // This rebuild of the Newton TreeCollision hull
+            // (optimize=true, full BVH build over the ENTIRE unified
+            // buildings+road+curb mesh) is exactly the "1-5 seconds" cost
+            // the comment in rebuildBatchesFromStoredBuildings already warns
+            // about -- and it scales with city size. Interactive Segment-mode
+            // editing (X-delete, "T" sink-nudge) calls this function on
+            // every single keystroke via rebuildBatchesFromStoredBuildings;
+            // without a way to skip it, every keystroke pays this full cost
+            // synchronously (enqueueAndWait blocks the logic thread), which
+            // is what turned a single delete into a ~30s stall and made "T"
+            // nudging feel completely unresponsive. skipCollisionRebuild
+            // (default false, so every OTHER call site -- generateCity,
+            // loadOrGenerateCity, generateBuildingsOnly -- is completely
+            // unaffected) lets rebuildBatchesFromStoredBuildings opt out; the
+            // hull is rebuilt exactly once, when Segment mode is actually
+            // left (see updateModificationState below).
+            if (false == skipCollisionRebuild && nullptr != this->physicsArtifactComponent)
             {
                 this->physicsArtifactComponent->reCreateCollision();
             }
@@ -2834,6 +2943,8 @@ namespace NOWA
                 const uint32_t rt = inst.roofType;
                 const float rp = inst.roofPitch;
                 const float gh = inst.groundHeight;
+                // Persist the per-building nudge.
+                const float esd = inst.extraSinkDepth;
                 out.write(reinterpret_cast<const char*>(pos), sizeof(pos));
                 out.write(reinterpret_cast<const char*>(ori), sizeof(ori));
                 out.write(reinterpret_cast<const char*>(fp), sizeof(fp));
@@ -2842,6 +2953,7 @@ namespace NOWA
                 out.write(reinterpret_cast<const char*>(&rt), sizeof(rt));
                 out.write(reinterpret_cast<const char*>(&rp), sizeof(rp));
                 out.write(reinterpret_cast<const char*>(&gh), sizeof(gh));
+                out.write(reinterpret_cast<const char*>(&esd), sizeof(esd));
             }
         }
         return true;
@@ -2910,6 +3022,10 @@ namespace NOWA
                 in.read(reinterpret_cast<char*>(&rt), sizeof(rt));
                 in.read(reinterpret_cast<char*>(&rp), sizeof(rp));
                 in.read(reinterpret_cast<char*>(&gh), sizeof(gh));
+                // Read the per-building nudge saved by
+                // saveCityDataToFile above.
+                float esd = 0.f;
+                in.read(reinterpret_cast<char*>(&esd), sizeof(esd));
                 if (false == in.good())
                 {
                     return false;
@@ -2923,9 +3039,27 @@ namespace NOWA
                 inst.roofType = rt;
                 inst.roofPitch = rp;
                 inst.groundHeight = gh;
+                inst.extraSinkDepth = esd;
                 batch.instances.push_back(inst);
             }
             loaded.push_back(std::move(batch));
+        }
+
+        // Rebuild storedBuildings from the instances just read
+        // from disk, BEFORE 'loaded' is touched further or moved out. Only
+        // the base+0 slot of each variant group actually carries instances
+        // (that's the only slot generateCityLayout ever pushed into when the
+        // city was first generated / saved) — the loop below simply collects
+        // whatever each batch's instances vector holds, empty or not, so it
+        // needs no knowledge of that layout.
+        this->storedBuildings.clear();
+        this->selectedBuildingIdx = -1;
+        for (const auto& batch : loaded)
+        {
+            for (const auto& inst : batch.instances)
+            {
+                this->storedBuildings.push_back(inst);
+            }
         }
 
         // Regenerate geometry from saved instances.
@@ -3023,9 +3157,13 @@ namespace NOWA
         {
             return position.y;
         }
-        Ogre::Ray ray(Ogre::Vector3(position.x, position.y + 1000.f, position.z), Ogre::Vector3::NEGATIVE_UNIT_Y);
+
+        // Build the ray in the city frame.
+        const Ogre::Vector3 up = this->cityFrame * Ogre::Vector3::UNIT_Y;
+        const Ogre::Vector3 worldXZ = this->cityOrigin + this->cityFrame * Ogre::Vector3(position.x, 0.0f, position.z);
+        const Ogre::Vector3 rayStart = worldXZ + up * 1000.f;
+        Ogre::Ray ray(rayStart, -up);
         this->groundQuery->setRay(ray);
-        const Ogre::Real rayStartY = position.y + 1000.f; // hit must be below this
 
         std::vector<Ogre::MovableObject*> exclude;
         for (const auto& b : this->cityBatches)
@@ -3068,29 +3206,36 @@ namespace NOWA
 
             if (false == isEditorHelper)
             {
-                // Accept the hit if it is BELOW the ray start and within 2000m.
-                // Old check: hp.y < cityOrigin.y - 100 || hp.y > cityOrigin.y + 300
-                //   → fails for planet cities where cityOrigin.y=0 but surface is at Y=479.
-                // New check: purely distance-based from the ray origin so it works for
-                // flat worlds (Y≈0), elevated terrain, AND spherical planets at any radius.
-                const Ogre::Real hitDist = rayStartY - hp.y; // positive = below ray start
+                // Accept the hit if it is within 2000m ALONG THE RAY.
+                // Measured along the ray direction instead of
+                // as a world-Y difference — a world-Y delta is meaningless once the
+                // ray no longer points along world -Y (rotated node / underside).
+                // hp = rayStart - up * t  →  t = (rayStart - hp) · up
+                const Ogre::Real hitDist = (rayStart - hp).dotProduct(up);
                 if (hitDist < 0.f || hitDist > 2000.f)
                 {
                     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                        "[ProceduralCityComponent] getGroundHeight: hit Y=" + Ogre::StringConverter::toString(hp.y) + " dist=" + Ogre::StringConverter::toString(hitDist) + " rejected (above ray start or >2000m away).");
+                        "[ProceduralCityComponent] getGroundHeight: hit dist=" + Ogre::StringConverter::toString(hitDist) + " rejected (behind ray start or >2000m away).");
                 }
                 else
                 {
-                    return hp.y;
+                    // LOCAL height along the frame's up axis,
+                    // relative to cityOrigin (was: world hp.y).
+                    return up.dotProduct(hp - this->cityOrigin);
                 }
             }
             // else fall through to ground plane fallback below
         }
 
-        auto res = ray.intersects(this->groundPlane);
+        // Fallback plane through cityOrigin with normal 'up'
+        // — the direct generalization of the fixed groundPlane(UNIT_Y, 0), which
+        // was a world-space plane and wrong for any placed/rotated node.
+        Ogre::Plane framePlane(up, this->cityOrigin);
+        std::pair<bool, Ogre::Real> res = ray.intersects(framePlane);
         if (res.first && res.second > 0.f)
         {
-            return position.y + 1000.f - res.second;
+            const Ogre::Vector3 p = ray.getPoint(res.second);
+            return up.dotProduct(p - this->cityOrigin);
         }
         return position.y;
     }
@@ -3112,6 +3257,36 @@ namespace NOWA
         }
         auto comp = NOWA::makeStrongPtr(go->getComponent<ProceduralRoadComponent>());
         return comp ? comp.get() : nullptr;
+    }
+
+    // Planet mode (gradientAlignment on): frame = radial basis at 'origin',
+    // keeping only the node's heading (forward projected onto the tangent
+    // plane).  Terrain mode: the node orientation passes through unchanged.
+    // Deterministic: same (origin, nodeOrientation) -> same frame, on
+    // generate AND on load — that is what keeps the .citydata cache valid.
+    // ------------------------------------------------------------------------
+    Ogre::Quaternion ProceduralCityComponent::deriveCityFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& nodeOrientation) const
+    {
+        if (false == this->gradientAlignmentAttr->getBool() || origin.squaredLength() <= 1.f)
+        {
+            return nodeOrientation;
+        }
+
+        const Ogre::Vector3 radialUp = origin.normalisedCopy();
+        // Preserve the node's heading: project its forward axis onto the
+        // tangent plane of the planet at the node position.
+        const Ogre::Vector3 nodeForward = nodeOrientation * Ogre::Vector3::UNIT_Z;
+        Ogre::Vector3 tangentForward = nodeForward - radialUp * nodeForward.dotProduct(radialUp);
+        if (tangentForward.squaredLength() < 1e-6f)
+        {
+            // Node forward is parallel to the radial — pick any stable tangent.
+            tangentForward = radialUp.perpendicular();
+        }
+        tangentForward.normalise();
+        // Right-handed orthonormal basis: X = Y cross Z.
+        Ogre::Vector3 tangentRight = radialUp.crossProduct(tangentForward);
+        tangentRight.normalise();
+        return Ogre::Quaternion(tangentRight, radialUp, tangentForward);
     }
 
     void ProceduralCityComponent::handleComponentManuallyDeleted(NOWA::EventDataPtr eventData)
@@ -3147,7 +3322,7 @@ namespace NOWA
         // We do NOT require EditorMeshModifyMode — that event fires every frame and
         // caused severe FPS drops + camera input corruption when used as a trigger.
         const bool segMode = (this->editModeAttr->getListSelectedValue() == "Segment");
-        const bool shouldListen = segMode && this->isSelected && this->activated->getBool();
+        const bool shouldListen = segMode && this->isSelected;
 
         // Only call addInputListener / removeInputListener when the state CHANGES.
         // Calling them every frame causes O(n) map operations in InputDeviceCore.
@@ -3161,7 +3336,23 @@ namespace NOWA
             this->removeInputListener();
             this->inputListenerRegistered = false;
             this->selectedBuildingIdx = -1;
+            this->isTranslatingBuilding = false;
             this->updateSelectionOverlay();
+
+            // This is the "once when the user explicitly
+            // leaves Segment mode" moment the comment in
+            // rebuildBatchesFromStoredBuildings always referred to. Every
+            // X-delete / "T"-nudge while INSIDE Segment mode now skips
+            // collision rebuild entirely (see createCityOnRenderThread's
+            // skipCollisionRebuild parameter) -- so the physics hull can be
+            // briefly stale relative to the visual mesh WHILE actively
+            // editing. Leaving Segment mode brings it back in sync exactly
+            // once, regardless of how many deletes/nudges happened in
+            // between.
+            if (nullptr != this->physicsArtifactComponent)
+            {
+                this->physicsArtifactComponent->reCreateCollision();
+            }
         }
     }
 
@@ -3190,10 +3381,6 @@ namespace NOWA
     // =========================================================================
     bool ProceduralCityComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
     {
-        if (false == this->activated->getBool())
-        {
-            return true;
-        }
         if (id != OIS::MB_Left)
         {
             return true;
@@ -3209,6 +3396,7 @@ namespace NOWA
 
         const int idx = this->findBuildingAtScreenPos(evt.state.X.abs, evt.state.Y.abs);
         this->selectedBuildingIdx = idx;
+        this->isTranslatingBuilding = false;
         this->updateSelectionOverlay();
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
@@ -3229,15 +3417,44 @@ namespace NOWA
     // =========================================================================
     // OIS::KeyListener
     // =========================================================================
+
     bool ProceduralCityComponent::keyPressed(const OIS::KeyEvent& evt)
     {
-        if (false == this->activated->getBool())
-        {
-            return true;
-        }
         if (this->editModeAttr->getListSelectedValue() != "Segment")
         {
             return true;
+        }
+
+        if (evt.key == OIS::KC_T && this->selectedBuildingIdx >= 0)
+        {
+            this->isTranslatingBuilding = !this->isTranslatingBuilding;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Sink-adjust mode " + Ogre::String(this->isTranslatingBuilding ? "ON" : "OFF") + " for building " +
+                                                                                    Ogre::StringConverter::toString(this->selectedBuildingIdx) + (this->isTranslatingBuilding ? " -- Up/Down arrows to nudge, T or Escape to exit." : ""));
+            return false;
+        }
+
+        if (true == this->isTranslatingBuilding && this->selectedBuildingIdx >= 0 && static_cast<size_t>(this->selectedBuildingIdx) < this->storedBuildings.size())
+        {
+            if (evt.key == OIS::KC_ESCAPE)
+            {
+                this->isTranslatingBuilding = false;
+                return false;
+            }
+
+            if (evt.key == OIS::KC_UP || evt.key == OIS::KC_DOWN)
+            {
+                BuildingInstance& b = this->storedBuildings[static_cast<size_t>(this->selectedBuildingIdx)];
+                const Ogre::Real step = 0.1f;
+                const Ogre::Real maxSink = b.footprint.y * 0.6f;
+                b.extraSinkDepth = Ogre::Math::Clamp(b.extraSinkDepth + (evt.key == OIS::KC_UP ? step : -step), -0.5f, maxSink);
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[ProceduralCityComponent] Building " + Ogre::StringConverter::toString(this->selectedBuildingIdx) + " extraSinkDepth = " + Ogre::StringConverter::toString(b.extraSinkDepth));
+
+                this->rebuildBatchesFromStoredBuildings();
+                this->updateSelectionOverlay();
+                return false;
+            }
         }
 
         if (evt.key == OIS::KC_X && this->selectedBuildingIdx >= 0)
@@ -3282,8 +3499,11 @@ namespace NOWA
         {
             const BuildingInstance& b = this->storedBuildings[i];
 
-            // World centre of building (mid-height)
-            const Ogre::Vector3 centre(b.position.x, b.groundHeight + b.footprint.y * 0.5f, b.position.z);
+            // Stored positions/heights are LOCAL to the city
+            // frame — transform to world before intersecting with the (world-space)
+            // camera ray, otherwise Segment-mode picking selects thin air on a
+            // placed node.
+            const Ogre::Vector3 centre = this->cityOrigin + this->cityFrame * Ogre::Vector3(b.position.x, b.groundHeight + b.footprint.y * 0.5f, b.position.z);
 
             // Selection radius = max(footprint half-width, half-depth) + small margin
             const float radius = std::max(b.footprint.x, b.footprint.z) * 0.6f + 1.0f;
@@ -3325,63 +3545,10 @@ namespace NOWA
 
         this->storedBuildings.erase(this->storedBuildings.begin() + this->selectedBuildingIdx);
         this->selectedBuildingIdx = -1;
+        this->isTranslatingBuilding = false;
         this->updateSelectionOverlay();
         this->rebuildBatchesFromStoredBuildings();
     }
-
-    // =========================================================================
-    // rebuildBatchesFromStoredBuildings
-    // Regenerates all batch geometry from this->storedBuildings and re-uploads
-    // the GPU meshes.  Called after deletion or undo.
-    // =========================================================================
-    //void ProceduralCityComponent::rebuildBatchesFromStoredBuildings(void)
-    //{
-    //    std::vector<CityBatch> batches(TOTAL_CITY_BATCHES);
-    //    for (unsigned int s = 0; s < TOTAL_CITY_BATCHES; ++s)
-    //    {
-    //        batches[s].materialSlot = s;
-    //    }
-
-    //    const Ogre::Vector3& localOrigin = this->cityOrigin;
-
-    //    for (const auto& building : this->storedBuildings)
-    //    {
-    //        if (building.archetypeIdx >= this->districts.size())
-    //        {
-    //            continue;
-    //        }
-    //        const CityDistrict& district = this->districts[building.archetypeIdx];
-
-    //        const unsigned int vi = building.variantSeed % NUM_BUILDING_VARIANTS;
-    //        const unsigned int base = vi * SLOTS_PER_VARIANT;
-    //        this->generateBuildingGeometry(building, district, localOrigin, batches[base + 0].rawVertices, batches[base + 0].rawIndices, batches[base + 0].numVertices, batches[base + 1].rawVertices, batches[base + 1].rawIndices,
-    //            batches[base + 1].numVertices, batches[base + 2].rawVertices, batches[base + 2].rawIndices, batches[base + 2].numVertices, batches[base + 3].rawVertices, batches[base + 3].rawIndices, batches[base + 3].numVertices,
-    //            batches[base + 4].rawVertices, batches[base + 4].rawIndices, batches[base + 4].numVertices, batches[base + 5].rawVertices, batches[base + 5].rawIndices, batches[base + 5].numVertices);
-    //    }
-
-    //    // Destroy old batches, recreate with new geometry
-    //    // DIAGNOSTIC: two sequential enqueueAndWait here block logic thread.
-    //    // ~N*0.1ms per building. For 200 buildings expect 200-600ms freeze on X press.
-    //    auto tD = std::chrono::high_resolution_clock::now();
-    //    GraphicsModule::getInstance()->enqueueAndWait(
-    //        [this]()
-    //        {
-    //            this->destroyCityOnRenderThread();
-    //        },
-    //        "ProceduralCityComponent::RebuildFromStoredBuildings_Destroy");
-    //    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-    //        "[ProceduralCityComponent] rebuildBatches Destroy " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tD).count()) + "ms");
-
-    //    auto tC = std::chrono::high_resolution_clock::now();
-    //    GraphicsModule::getInstance()->enqueueAndWait(
-    //        [this, batches]() mutable
-    //        {
-    //            this->createCityOnRenderThread(std::move(batches));
-    //        },
-    //        "ProceduralCityComponent::RebuildFromStoredBuildings_Create");
-    //    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-    //        "[ProceduralCityComponent] rebuildBatches Create " + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - tC).count()) + "ms");
-    //}
 
     void ProceduralCityComponent::rebuildBatchesFromStoredBuildings(void)
     {
@@ -3405,7 +3572,23 @@ namespace NOWA
             this->generateBuildingGeometry(building, district, localOrigin, batches[base + 0].rawVertices, batches[base + 0].rawIndices, batches[base + 0].numVertices, batches[base + 1].rawVertices, batches[base + 1].rawIndices,
                 batches[base + 1].numVertices, batches[base + 2].rawVertices, batches[base + 2].rawIndices, batches[base + 2].numVertices, batches[base + 3].rawVertices, batches[base + 3].rawIndices, batches[base + 3].numVertices,
                 batches[base + 4].rawVertices, batches[base + 4].rawIndices, batches[base + 4].numVertices, batches[base + 5].rawVertices, batches[base + 5].rawIndices, batches[base + 5].numVertices);
+
+            // Persist the surviving building into its batch's
+            // instance list — this is the exact list saveCityDataToFile()
+            // serializes. Without this line every batch always had ZERO
+            // instances here regardless of what storedBuildings contained.
+            batches[base + 0].instances.push_back(building);
         }
+
+        // Write the deletion (or sink-depth nudge) to the .citydata cache
+        // file BEFORE the batches are moved into the render-thread lambda.
+        // saveCityDataToFile takes a const std::vector<CityBatch>&, so this
+        // is safe to call here — the render thread still gets its own moved
+        // copy right after. Without this call, deleteSelectedBuilding() never
+        // touched the cache at all: the file on disk still described the
+        // pre-deletion city, and the next scene load would silently restore
+        // every "deleted" building.
+        this->saveCityDataToFile(batches);
 
         // Merge both render-thread operations into a SINGLE enqueueAndWait.
         // Previously: two sequential enqueueAndWait calls -- the logic thread
@@ -3416,12 +3599,14 @@ namespace NOWA
         // TreeCollision rebuild on a large merged mesh takes 1-5 seconds and
         // is only needed for gameplay, not for the editor Segment delete workflow.
         // Collision is rebuilt once when the user explicitly leaves Segment mode.
+        // "true" actually wires up the skip described in the
+        // comment above -- previously createCityOnRenderThread had no
+        // parameter to honor it and always rebuilt collision anyway.
         GraphicsModule::getInstance()->enqueueAndWait(
             [this, batches = std::move(batches)]() mutable
             {
                 this->destroyCityOnRenderThread();
-                // Pass skipCollision=true -- caller will rebuild when appropriate.
-                this->createCityOnRenderThread(std::move(batches));
+                this->createCityOnRenderThread(std::move(batches), true);
             },
             "ProceduralCityComponent::RebuildFromStoredBuildings");
     }
@@ -3959,7 +4144,12 @@ namespace NOWA
             const Ogre::Real hw = b.footprint.x * 0.5f;
             const Ogre::Real hd = b.footprint.z * 0.5f;
             const Ogre::Real ht = b.footprint.y;
-            const Ogre::Real y0 = b.groundHeight;
+            // Match generateBuildingGeometry's actual
+            // base.y exactly (CITY_SINK_DEPTH + the per-building
+            // extraSinkDepth), so the selection wireframe visually tracks
+            // every "T"-mode nudge instead of floating at the un-adjusted
+            // groundHeight.
+            const Ogre::Real y0 = b.groundHeight - CITY_SINK_DEPTH - b.extraSinkDepth;
             const Ogre::Real y1 = y0 + ht;
 
             // Build oriented corners in local space then rotate by orientation
@@ -3978,10 +4168,17 @@ namespace NOWA
             const Ogre::Vector3 t3 = b3 + Ogre::Vector3(0, ht, 0);
 
             const Ogre::ColourValue col(1.f, 0.85f, 0.f, 1.f); // yellow selection
+            // Corners above are LOCAL to the city frame —
+            // the overlay ManualObject lives on a world-space node, so transform
+            // every point on its way into the line buffer.
+            auto toWorld = [this](const Ogre::Vector3& localP)
+            {
+                return this->cityOrigin + this->cityFrame * localP;
+            };
             auto addLine = [&](const Ogre::Vector3& a, const Ogre::Vector3& bv)
             {
-                lines.push_back({a, col});
-                lines.push_back({bv, col});
+                lines.push_back({toWorld(a), col});
+                lines.push_back({toWorld(bv), col});
             };
             // Bottom quad
             addLine(b0, b1);
@@ -4039,4 +4236,5 @@ namespace NOWA
             },
             "ProceduralCityComponent::selOverlay_draw");
     }
+
 } // namespace NOWA

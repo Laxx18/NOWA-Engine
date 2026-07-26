@@ -319,6 +319,8 @@ namespace NOWA
     {
         PhysicsComponent::connect();
 
+        this->setGravitySourceCategory(this->gravitySourceCategory->getString());
+
         this->lastTime = static_cast<double>(this->timer.getMilliseconds()) * 0.001;
 
         return true;

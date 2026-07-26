@@ -542,16 +542,22 @@ void DesignState::setupMyGUIWidgets(void)
 		MyGUI::MenuItem* placeItem1 = this->placeModePopupMenu->addItem("placeItem1"/*, MyGUI::MenuItemType::Popup*/);
 		placeItem1->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		placeItem1->setCaption("Normal");
+        placeItem1->setStateCheck(false);
+        placeItem1->setStateSelected(false);
 		placeItem1->hideItemChild();
 		placeItem1->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 		MyGUI::MenuItem* placeItem2 = this->placeModePopupMenu->addItem("placeItem2"/*, MyGUI::MenuItemType::Popup*/);
 		placeItem2->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		placeItem2->setCaptionWithReplacing("#{Stack}");
+        placeItem2->setStateCheck(false);
+        placeItem2->setStateSelected(false);
 		placeItem2->hideItemChild();
 		placeItem2->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 		MyGUI::MenuItem* placeItem3 = this->placeModePopupMenu->addItem("placeItem3"/*, MyGUI::MenuItemType::Popup*/);
 		placeItem3->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		placeItem3->setCaptionWithReplacing("#{StackOrientated}");
+        placeItem3->setStateCheck(true);
+        placeItem3->setStateSelected(true);
 		placeItem3->hideItemChild();
 		placeItem3->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 
@@ -843,7 +849,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
             auto sceneBoundsRightFar = NOWA::Core::getSingletonPtr()->getCurrentSceneBoundRightFar();
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[NOWADesign]: Scene bounds left near: " + Ogre::StringConverter::toString(sceneBoundsLeftNear) + " right far: " + Ogre::StringConverter::toString(sceneBoundsRightFar));
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleProjectManipulation");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleProjectManipulation");
 
 		this->hasSceneChanges = false;
 
@@ -925,7 +931,7 @@ void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
 			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Feedback", MyGUI::LanguageManager::getInstancePtr()->replaceTags(castEventData->getFeedbackMessage()),
 				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleFeedback::createMessageBox");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleFeedback::createMessageBox");
 	}
 
 	Ogre::String feedbackMessage = castEventData->getFeedbackMessage();
@@ -955,7 +961,7 @@ void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
 				this->cameraSpeedUpButton->setEnabled(true);
 				this->cameraSpeedDownButton->setEnabled(true);
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleFeedback");
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleFeedback");
         }
         return; // Don't display this in the status bar
     }
@@ -1102,7 +1108,7 @@ void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
             {
                 this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::itemSelected1");
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::itemSelected1");
 		}
 	}
 	else if (this->gridValueComboBox == sender)
@@ -1116,7 +1122,7 @@ void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
             {
                 this->editorManager->setGridStep(Ogre::StringConverter::parseReal(selectedGridValue));
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::itemSelected2");
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::itemSelected2");
 		}
 	}
 }
@@ -1131,7 +1137,7 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
         {
             this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyEditSelectAccept_categories");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::notifyEditSelectAccept_categories");
 	}
 	else if (sender == this->findObjectEdit)
 	{
@@ -1288,7 +1294,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             }
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit3");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit3");
 	}
 	else if (this->translateModeCheck == sender)
 	{
@@ -1306,7 +1312,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             }
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit4");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit4");
 	}
 	else if (this->pickModeCheck == sender)
 	{
@@ -1319,7 +1325,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
                 this->propertiesPanel->clearProperties();
                 this->playButton->setStateSelected(false);
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit5");
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit5");
 
 			this->simulate(false, true);
 			NOWA::GraphicsModule::RenderCommand renderCommand2 = [this]()
@@ -1327,7 +1333,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
                 this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PICKER_MODE);
                 this->editorManager->getGizmo()->setEnabled(false);
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand2), "DesignState::buttonHit5_mode");
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand2), "DesignState::buttonHit5_mode");
 		}
 	}
 	else if (this->scaleModeCheck == sender)
@@ -1337,7 +1343,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->scaleModeCheck->setStateSelected(true);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SCALE_MODE);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit6");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit6");
 	}
 	else if (this->rotate1ModeCheck == sender)
 	{
@@ -1346,7 +1352,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->rotate1ModeCheck->setStateSelected(true);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE1);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit7");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit7");
 	}
 	else if (this->rotate2ModeCheck == sender)
 	{
@@ -1355,7 +1361,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->rotate2ModeCheck->setStateSelected(true);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE2);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit8");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit8");
 	}
 	else if (this->terrainModifyModeCheck == sender)
 	{
@@ -1367,7 +1373,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->meshModifyModeCheck->setStateSelected(false);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit9");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit9");
 	}
 	else if (this->terrainSmoothModeCheck == sender)
 	{
@@ -1379,7 +1385,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->meshModifyModeCheck->setStateSelected(false);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit10");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit10");
 	}
 	else if (this->terrainPaintModeCheck == sender)
 	{
@@ -1391,7 +1397,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->meshModifyModeCheck->setStateSelected(false);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit11");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit11");
 	}
 	else if (this->meshModifyModeCheck == sender)
 	{
@@ -1403,7 +1409,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->meshModifyModeCheck->setStateSelected(true);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit12");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit12");
 	}
 	else if (this->undoButton == sender)
 	{
@@ -1613,7 +1619,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             }
         }
     };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand2), "DesignState::buttonHit17");
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand2), "DesignState::buttonHit17");
 }
 
 void DesignState::mouseClicked(MyGUI::Widget* sender)
@@ -1626,7 +1632,7 @@ void DesignState::mouseClicked(MyGUI::Widget* sender)
             {
                 this->mainMenuBar->showLuaAnalysisWindow();
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::mouseClicked");
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::mouseClicked");
 		}
 	}
 }
@@ -1656,7 +1662,7 @@ void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBox
 
         messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEndExit);
     };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyMessageBoxEnd");
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::notifyMessageBoxEnd");
 }
 
 void DesignState::notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
@@ -1668,7 +1674,7 @@ void DesignState::notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::Message
             this->bQuit = true;
         }
     };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyMessageBoxEndExit");
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::notifyMessageBoxEndExit");
 }
 
 void DesignState::setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
@@ -2049,7 +2055,7 @@ void DesignState::showContextMenu(int mouseX, int mouseY)
         this->editPopupMenu->setPopupAccept(true);
         this->editPopupMenu->setVisible(true);
     };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::showContextMenu");
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::showContextMenu");
 }
 
 void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* item)
@@ -2140,7 +2146,7 @@ void DesignState::toggleGuiVisibility(bool visible)
             this->manipulationWindow->setVisible(visible);
         }
     };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::toggleGuiVisibility");
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::toggleGuiVisibility");
 }
 
 bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
@@ -2297,7 +2303,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
                             {
                                 this->componentsPanel->showComponents(-1);
                             };
-                            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::ShowComponents");
+                            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::ShowComponents");
 						}
 					}
 					return true;
@@ -2607,7 +2613,7 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
                 {
                     scrollView->setViewOffset(MyGUI::IntPoint(scrollView->getViewOffset().left, scrollAmount));
                 };
-                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::scroll");
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::scroll");
 
 				unsigned long id = -1;
 				

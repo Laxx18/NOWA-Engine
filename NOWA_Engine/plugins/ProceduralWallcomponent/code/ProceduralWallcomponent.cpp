@@ -66,6 +66,8 @@ namespace NOWA
         segOverlayObject(nullptr),
         snapOverlayNode(nullptr),
         snapOverlayObject(nullptr),
+        wallFrame(Ogre::Quaternion::IDENTITY),
+        wallFrameSet(false),
         physicsArtifactComponent(nullptr)
     {
         this->activated = new Variant(ProceduralWallComponent::AttrActivated(), true, this->attributes);
@@ -259,6 +261,15 @@ namespace NOWA
 
         // Create preview scene node
         this->previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+
+        // >>> PLANET-FRAME FIX: restore the frame from the saved node
+        // orientation BEFORE any load / ground sampling happens. The node
+        // orientation was written from wallFrame on the first build and is
+        // scene-managed since — recovering it here means loadWallDataFromFile
+        // (which regenerates geometry and re-samples terrain for anything not
+        // taken straight from cache) uses the correct plumb direction.
+        this->wallFrame = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
+        this->wallFrameSet = true;
 
         // Load wall data from file
         if (true == this->loadWallDataFromFile())
@@ -631,6 +642,11 @@ namespace NOWA
 
             if (hit)
             {
+                // >>> PLANET-FRAME FIX: raycast hit is WORLD — stored
+                // segments are LOCAL, so convert before the nearest-segment
+                // query.
+                hitPos = this->wallFrame.Inverse() * hitPos;
+
                 const Ogre::Real radius = this->wallThickness->getReal() * 2.0f + 1.0f;
                 this->selectedSegmentIndex = this->findNearestSegmentWithinRadius(hitPos, radius);
             }
@@ -665,6 +681,23 @@ namespace NOWA
         Ogre::Vector3 hitPosition;
         if (this->raycastGround(screenX, screenY, hitPosition))
         {
+            // >>> PLANET-FRAME FIX: on the very FIRST point of a brand new
+            // wall (no segments yet, no origin established, nobody has
+            // pushed a frame via setWallFrame), derive the frame from this
+            // WORLD hit position before anything is converted to local
+            // space.
+            if (false == this->wallFrameSet && false == this->hasWallOrigin && true == this->wallSegments.empty())
+            {
+                this->wallFrame = this->deriveWallFrame(hitPosition, this->wallFrame);
+                this->wallFrameSet = true;
+            }
+
+            // >>> PLANET-FRAME FIX: raycastGround returns a WORLD hit — the
+            // whole placement pipeline below (grid snap, control points,
+            // wallOrigin, loadedWallEndpoint) works in WALL-LOCAL space, so
+            // convert exactly once, right here at the boundary.
+            hitPosition = this->wallFrame.Inverse() * hitPosition;
+
             if (this->snapToGrid->getBool())
             {
                 hitPosition = this->snapToGridFunc(hitPosition);
@@ -739,6 +772,10 @@ namespace NOWA
         Ogre::Vector3 hitPosition;
         if (this->raycastGround(screenX, screenY, hitPosition))
         {
+            // >>> PLANET-FRAME FIX: world -> wall-local, once, at the
+            // boundary.
+            hitPosition = this->wallFrame.Inverse() * hitPosition;
+
             if (true == this->snapToGrid->getBool())
             {
                 hitPosition = this->snapToGridFunc(hitPosition);
@@ -1100,13 +1137,36 @@ namespace NOWA
 
     void ProceduralWallComponent::addWallSegment(const Ogre::Vector3& start, const Ogre::Vector3& end)
     {
+        // >>> PLANET-FRAME FIX: derive the frame from the first WORLD point
+        // if nobody has supplied one yet (mirrors the mousePressed guard).
+        if (false == this->wallFrameSet && false == this->hasWallOrigin && true == this->wallSegments.empty())
+        {
+            this->wallFrame = this->deriveWallFrame(start, this->wallFrame);
+            this->wallFrameSet = true;
+        }
+
+        // >>> PLANET-FRAME FIX: world -> wall-local at the entry boundary.
+        const Ogre::Quaternion invFrame = this->wallFrame.Inverse();
+        const Ogre::Vector3 localStart = invFrame * start;
+        const Ogre::Vector3 localEnd = invFrame * end;
+
         WallSegment segment;
-        segment.startPoint = start;
-        segment.endPoint = end;
-        segment.groundHeightStart = this->adaptToGround->getBool() ? this->getGroundHeight(start) : 0.0f;
-        segment.groundHeightEnd = this->adaptToGround->getBool() ? this->getGroundHeight(end) : 0.0f;
+        segment.startPoint = localStart;
+        segment.endPoint = localEnd;
+        segment.groundHeightStart = this->adaptToGround->getBool() ? this->getGroundHeight(localStart) : 0.0f;
+        segment.groundHeightEnd = this->adaptToGround->getBool() ? this->getGroundHeight(localEnd) : 0.0f;
         segment.hasStartPillar = this->createPillars->getBool();
         segment.hasEndPillar = this->createPillars->getBool();
+
+        if (false == this->hasWallOrigin)
+        {
+            // >>> PLANET-FRAME FIX: wallOrigin is stored in LOCAL space now —
+            // world position of the wall node = wallFrame * wallOrigin
+            // (applied in createWallMeshInternal).
+            this->wallOrigin = localStart;
+            this->wallOrigin.y = segment.groundHeightStart;
+            this->hasWallOrigin = true;
+        }
 
         this->wallSegments.push_back(segment);
         this->rebuildMesh();
@@ -1160,6 +1220,11 @@ namespace NOWA
         this->destroyWallMesh();
         this->hasWallOrigin = false;
         this->wallOrigin = Ogre::Vector3::ZERO;
+        // >>> PLANET-FRAME FIX: allow the next first segment to re-place AND
+        // re-orient the node, and to re-derive a fresh frame from the new
+        // start point.
+        this->originPositionSet = false;
+        this->wallFrameSet = false;
 
         // Clear cache too
         this->cachedWallVertices.clear();
@@ -1548,7 +1613,10 @@ namespace NOWA
                 }
                 if (this->segOverlayNode)
                 {
-                    this->segOverlayNode->setVisible(false);
+                    // Overlay lines are built from LOCAL
+                    // wall-segment data — the node carries the frame.
+                    this->segOverlayNode->setOrientation(this->wallFrame);
+                    this->segOverlayNode->setVisible(true);
                 }
             };
             NOWA::GraphicsModule::getInstance()->enqueue(std::move(hideCmd), "ProceduralWallComponent::segOverlay_hide");
@@ -1794,6 +1862,9 @@ namespace NOWA
             }
             if (this->snapOverlayNode)
             {
+                // The circle is built from LOCAL
+                // coordinates (snapToWallPoint) — the node carries the frame.
+                this->snapOverlayNode->setOrientation(this->wallFrame);
                 this->snapOverlayNode->setVisible(true);
             }
         };
@@ -1809,11 +1880,16 @@ namespace NOWA
             return position.y;
         }
 
-        // Create a ray from high above pointing down
-        Ogre::Vector3 rayOrigin = Ogre::Vector3(position.x, position.y + 1000.0f, position.z);
-        Ogre::Ray downRay(rayOrigin, Ogre::Vector3::NEGATIVE_UNIT_Y);
+        // >>> PLANET-FRAME FIX: cast along the frame's DOWN direction instead
+        // of world -Y. For a wall on the planet underside up = (0,-1,0)-ish,
+        // so the ray starts BELOW the planet and fires upward into the
+        // underside surface — the old NEGATIVE_UNIT_Y ray always hit the TOP
+        // hemisphere.
+        const Ogre::Vector3 up = this->wallFrame * Ogre::Vector3::UNIT_Y;
+        const Ogre::Vector3 worldXZ = this->wallFrame * Ogre::Vector3(position.x, 0.0f, position.z);
+        const Ogre::Vector3 rayOrigin = worldXZ + up * 1000.0f;
+        Ogre::Ray downRay(rayOrigin, -up);
 
-        // Set the ray on the query BEFORE calling MathHelper
         this->groundQuery->setRay(downRay);
         this->groundQuery->setSortByDistance(true);
 
@@ -1833,31 +1909,37 @@ namespace NOWA
             excludeMovableObjects.emplace_back(this->previewItem);
         }
 
-        // Perform raycast using MathHelper
         bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(this->groundQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal,
             &excludeMovableObjects, false);
 
-        // If we hit terrain, use that height
         if (hitFound && hitMovableObject != nullptr)
         {
+            // >>> PLANET-FRAME FIX: LOCAL height = signed distance of the hit
+            // point along the frame's up axis (pure rotation -> no origin term
+            // needed). With identity frame: up.dot(hp) == hp.y — identical to
+            // the old code.
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
                 "[ProceduralWallComponent] Ground height at (" + Ogre::StringConverter::toString(position.x) + ", " + Ogre::StringConverter::toString(position.z) + ") = " + Ogre::StringConverter::toString(internalHitPoint.y));
 
-            return internalHitPoint.y;
+            return up.dotProduct(internalHitPoint);
         }
 
-        // Fallback: try plane intersection
-        std::pair<bool, Ogre::Real> planeResult = downRay.intersects(this->groundPlane);
+        // >>> PLANET-FRAME FIX: fallback plane through the world origin with
+        // normal 'up' — the direct generalization of the old
+        // groundPlane(UNIT_Y, 0).
+        Ogre::Plane framePlane(up, 0.0f);
+        std::pair<bool, Ogre::Real> planeResult = downRay.intersects(framePlane);
         if (planeResult.first && planeResult.second > 0.0f)
         {
-            Ogre::Real groundHeight = rayOrigin.y - planeResult.second;
+            const Ogre::Vector3 p = downRay.getPoint(planeResult.second);
+            const Ogre::Real groundHeight = up.dotProduct(p);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Ground height (plane fallback) = " + Ogre::StringConverter::toString(groundHeight));
 
             return groundHeight;
         }
 
-        // Last resort: return 0
+        // Last resort
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] No ground found at position, using Y=0");
 
         return 0.0f;
@@ -1902,9 +1984,13 @@ namespace NOWA
             return true;
         }
 
-        // Fallback: intersect with ground plane at Y=0
+        // >>> PLANET-FRAME FIX: fallback plane in the wall frame (through the
+        // world origin, normal = frame up) — identical to
+        // groundPlane(UNIT_Y, 0) when wallFrame == IDENTITY, but reachable
+        // when drawing on the underside.
         Ogre::Ray ray = camera->getCameraToViewportRay(screenX, screenY);
-        std::pair<bool, Ogre::Real> result = ray.intersects(this->groundPlane);
+        Ogre::Plane framePlane(this->wallFrame * Ogre::Vector3::UNIT_Y, 0.0f);
+        std::pair<bool, Ogre::Real> result = ray.intersects(framePlane);
         if (result.first && result.second > 0.0f)
         {
             hitPosition = ray.getPoint(result.second);
@@ -2431,11 +2517,21 @@ namespace NOWA
 
         // At the end, ONLY set position if this is the first time creating the wall
         // After that, let the scene file manage the GameObject position
+        // At the end, ONLY set position if this is the first time creating the wall
+        // After that, let the scene file manage the GameObject position
         if (false == this->originPositionSet)
         {
             this->originPositionSet = true;
-            this->gameObjectPtr->getSceneNode()->setPosition(wallOrigin);
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Set initial wall position: " + Ogre::StringConverter::toString(wallOrigin));
+            // 'wallOrigin' is WALL-LOCAL now. World
+            // position of the node = wallFrame * wallOrigin, and the node
+            // also carries the frame as its orientation — this is the single
+            // place where the whole (local-built) wall mesh gets rotated
+            // onto the planet. With wallFrame == IDENTITY both lines behave
+            // exactly like before (setPosition(wallOrigin) + implicit
+            // identity orientation).
+            this->gameObjectPtr->getSceneNode()->setPosition(this->wallFrame * wallOrigin);
+            this->gameObjectPtr->getSceneNode()->setOrientation(this->wallFrame);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Set initial wall position: " + Ogre::StringConverter::toString(this->wallFrame * wallOrigin));
         }
         else
         {
@@ -2700,7 +2796,8 @@ namespace NOWA
             this->previewItem = this->gameObjectPtr->getSceneManager()->createItem(this->previewMesh, Ogre::SCENE_DYNAMIC);
 
             // Position the preview node at the start point
-            this->previewNode->setPosition(previewPosition);
+            this->previewNode->setPosition(this->wallFrame * previewPosition);
+            this->previewNode->setOrientation(this->wallFrame);
             this->previewNode->attachObject(this->previewItem);
 
             // Apply a semi-transparent material for preview if available
@@ -4433,6 +4530,38 @@ namespace NOWA
     int ProceduralWallComponent::getSegmentCountLua(void) const
     {
         return static_cast<int>(this->wallSegments.size());
+    }
+
+    void ProceduralWallComponent::setWallFrame(const Ogre::Quaternion& frame)
+    {
+        // Mark the frame as externally owned — deriveWallFrame's
+        // auto-derivation (mousePressed / addWallSegment) only fires when
+        // this is still false.
+        this->wallFrameSet = true;
+        this->wallFrame = frame;
+    }
+
+    Ogre::Quaternion ProceduralWallComponent::deriveWallFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation) const
+    {
+        if (false == this->adaptToGround->getBool() || origin.squaredLength() <= 1.f)
+        {
+            return currentOrientation;
+        }
+
+        const Ogre::Vector3 radialUp = origin.normalisedCopy();
+        // Preserve heading: project currentOrientation's forward axis onto the
+        // tangent plane of the planet at 'origin'.
+        const Ogre::Vector3 curForward = currentOrientation * Ogre::Vector3::UNIT_Z;
+        Ogre::Vector3 tangentForward = curForward - radialUp * curForward.dotProduct(radialUp);
+        if (tangentForward.squaredLength() < 1e-6f)
+        {
+            // Forward is parallel to the radial — pick any stable tangent.
+            tangentForward = radialUp.perpendicular();
+        }
+        tangentForward.normalise();
+        Ogre::Vector3 tangentRight = radialUp.crossProduct(tangentForward);
+        tangentRight.normalise();
+        return Ogre::Quaternion(tangentRight, radialUp, tangentForward);
     }
 
     // =========================================================================

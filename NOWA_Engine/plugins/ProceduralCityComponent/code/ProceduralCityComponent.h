@@ -139,6 +139,9 @@ namespace NOWA
         float groundHeight;           ///< World Y of the lot's ground surface
         float lotHalfRight;           ///< Half-width of the lot in the building's 'right' direction
                                       ///  (used by garage generation to avoid extending into the road)
+        Ogre::Real extraSinkDepth = 0.0f; /// < user-adjustable extra sink, meters
+        mutable bool hasFrontTerrainCache = false;
+        mutable Ogre::Real cachedFrontTerrainY = 0.0f;
     };
 
     /**
@@ -884,7 +887,7 @@ namespace NOWA
          *        first-frame bug documented in ProceduralFoliageVolumeComponent.
          *        Also calls vaoManager->_update() before creating buffers.
          */
-        void createCityOnRenderThread(std::vector<CityBatch>&& batches);
+        void createCityOnRenderThread(std::vector<CityBatch>&& batches, bool skipCollisionRebuild = false);
 
         /**
          * @brief Destroy all Items and SceneNodes.  Must run on the render thread
@@ -963,6 +966,8 @@ namespace NOWA
          */
         ProceduralRoadComponent* findRoadComponent(void) const;
 
+        Ogre::Quaternion deriveCityFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& nodeOrientation) const;
+
         // ---- Event handlers -----------------------------------------------
 
         /**
@@ -976,6 +981,7 @@ namespace NOWA
          *        Does NOT fire on normal scene teardown — only on explicit deletion.
          */
         void handleComponentManuallyDeleted(NOWA::EventDataPtr eventData);
+
         void handleGameObjectSelected(NOWA::EventDataPtr eventData);
 
     private:
@@ -1063,9 +1069,11 @@ namespace NOWA
         Ogre::Plane groundPlane;
 
         Ogre::Vector3 cityOrigin; ///< World-space XYZ origin of the city grid; all geometry is stored relative to this. Set in generateCityLayout(), used in createCityOnRenderThread() to position the SCENE_STATIC nodes.
+        Ogre::Quaternion cityFrame;
 
         bool isDirty;
         bool cityLoadedFromScene;
+        bool isTranslatingBuilding;
     };
 
 } // namespace NOWA

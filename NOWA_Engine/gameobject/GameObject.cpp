@@ -2853,6 +2853,11 @@ namespace NOWA
     {
         std::pair<bool, Ogre::Real> result = {false, 0.0f};
 
+        if (nullptr == this->movableObject)
+        {
+            return result;
+        }
+
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, &result]()
         {
             bool success = false;
