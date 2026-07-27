@@ -556,9 +556,52 @@ bool PropertiesPanel::getShowPropertiesFlag(void)
 
 PropertiesPanelInfo::PropertiesPanelInfo()
 	: BasePanelViewItem("PropertiesPanelInfo.layout"),
-	heightCurrent(200) // Need space for property info
+	heightCurrent(8) // Need space for property info
 {
 
+}
+
+void PropertiesPanelInfo::initialise()
+{
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        mPanelCell->setCaption("Info");
+        mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        assignWidget(this->propertyInfo, "propertyInfo");
+        this->propertyInfo->setVisible(false); // hidden by default; setInfo() can re-show it if actually used
+        this->propertyInfo->setEditMultiLine(true);
+        this->propertyInfo->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+        this->propertyInfo->setEditWordWrap(true);
+        this->propertyInfo->setEditStatic(false);
+        this->propertyInfo->setEditReadOnly(true);
+        this->propertyInfo->showVScroll(true);
+        this->propertyInfo->showHScroll(false);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelInfo::initialise");
+}
+
+void PropertiesPanelInfo::shutdown()
+{
+	// Threadsafe from the outside
+	// Move the vectors for render thread cleanup
+	auto textItems = std::move(this->itemsText);
+	auto editItems = std::move(this->itemsEdit);
+
+	// Ensure main thread doesn't touch them anymore
+	this->itemsText.clear();
+	this->itemsEdit.clear();
+
+	for (auto* widget : textItems)
+	{
+		if (widget)
+			MyGUI::Gui::getInstance().destroyWidget(widget);
+	}
+
+	for (auto* widget : editItems)
+	{
+		if (widget)
+			MyGUI::Gui::getInstance().destroyWidget(widget);
+	}
 }
 
 void PropertiesPanelInfo::setInfo(const Ogre::String& info)
@@ -585,21 +628,42 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 
         for (size_t i = 0; i < gameObject->getComponents()->size(); i++)
         {
-            const int informationHeight = 256;
-
             Ogre::String className = NOWA::makeStrongPtr(gameObject->getComponentByIndex(i))->getClassName();
-
             Ogre::String information = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(className);
-            MyGUI::IntCoord coord = MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(this->mWidgetClient->getWidth() * 0.9f), informationHeight);
+            Ogre::String fullText = className + "\n\n" + information;
+
+            const int editWidth = static_cast<int>(this->mWidgetClient->getWidth() * 0.9f);
+            const int minHeight = 60;
+            const int maxHeight = 400;
+
+            // Create with a provisional height first - real height is only known after
+            // caption + word wrap are applied at this width.
+            MyGUI::IntCoord coord = MyGUI::IntCoord(keyLeft, this->heightCurrent, editWidth, minHeight);
             MyGUI::EditBox* informationEdit = this->mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", coord, MyGUI::Align::HStretch | MyGUI::Align::Top);
             informationEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
             informationEdit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
             informationEdit->setEditMultiLine(true);
             informationEdit->setEditWordWrap(true);
-            informationEdit->showHScroll(true);
-            informationEdit->setCaptionWithReplacing(className + "\n\n" + information);
             informationEdit->setEditReadOnly(true);
             informationEdit->setEditStatic(false);
+            informationEdit->setCaptionWithReplacing(fullText);
+
+            // Now that width + wrapped text are set, ask MyGUI for the real required height.
+            MyGUI::IntSize textSize = informationEdit->getTextSize();
+            int informationHeight = Ogre::Math::Clamp(static_cast<int>(textSize.height) + 12, minHeight, maxHeight);
+            informationEdit->setSize(editWidth, informationHeight);
+
+            // Only show scrollbars if the text actually got clamped to maxHeight.
+            bool needsScroll = static_cast<int>(textSize.height) + 12 > maxHeight;
+            informationEdit->showVScroll(needsScroll);
+            informationEdit->showHScroll(false); // word wrap is on, horizontal scroll is never needed/meaningful here
+            informationEdit->setVisibleVScroll(true);
+
+            // Reset scroll position to top - EditBox otherwise lands wherever the
+            // cursor ended up after setCaptionWithReplacing, which is why the box
+            // was showing mid-text instead of the start.
+            informationEdit->setVScrollPosition(0);
+
             this->itemsText.push_back(informationEdit);
             this->heightCurrent += informationHeight + 2;
         }
@@ -841,49 +905,6 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelInfo::listData");
 }
-
-void PropertiesPanelInfo::initialise()
-{
-    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-    {
-        mPanelCell->setCaption("Info");
-        mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-        assignWidget(this->propertyInfo, "propertyInfo");
-        this->propertyInfo->setEditMultiLine(true);
-        this->propertyInfo->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
-        this->propertyInfo->setEditWordWrap(true);
-        this->propertyInfo->setEditStatic(false);
-        this->propertyInfo->setEditReadOnly(true);
-        this->propertyInfo->showVScroll(true);
-        this->propertyInfo->showHScroll(true);
-    };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelInfo::initialise");
-}
-
-void PropertiesPanelInfo::shutdown()
-{
-	// Threadsafe from the outside
-	// Move the vectors for render thread cleanup
-	auto textItems = std::move(this->itemsText);
-	auto editItems = std::move(this->itemsEdit);
-
-	// Ensure main thread doesn't touch them anymore
-	this->itemsText.clear();
-	this->itemsEdit.clear();
-
-	for (auto* widget : textItems)
-	{
-		if (widget)
-			MyGUI::Gui::getInstance().destroyWidget(widget);
-	}
-
-	for (auto* widget : editItems)
-	{
-		if (widget)
-			MyGUI::Gui::getInstance().destroyWidget(widget);
-	}
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 

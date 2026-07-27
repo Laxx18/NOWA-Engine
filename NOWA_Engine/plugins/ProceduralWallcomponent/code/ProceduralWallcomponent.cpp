@@ -451,16 +451,7 @@ namespace NOWA
         }
         else if (ProceduralWallComponent::AttrEditMode() == attribute->getName())
         {
-            this->editMode->setListSelectedValue(attribute->getListSelectedValue());
-            this->selectedSegmentIndex = -1;
-            if (this->getEditModeEnum() == EditMode::SEGMENT && this->buildState == BuildState::DRAGGING)
-            {
-                this->cancelWall();
-            }
-            // Fire mesh modify mode immediately when switching to Segment
-            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
-            this->scheduleSegmentOverlayUpdate();
+            this->setEditMode(attribute->getListSelectedValue());
         }
     }
 
@@ -1453,6 +1444,29 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Failed to export mesh: " + e.getDescription());
             return false;
         }
+    }
+
+    void ProceduralWallComponent::setEditMode(const Ogre::String& editMode)
+    {
+        this->editMode->setListSelectedValue(editMode);
+        this->selectedSegmentIndex = -1;
+        if (this->getEditModeEnum() == EditMode::SEGMENT && this->buildState == BuildState::DRAGGING)
+        {
+            this->cancelWall();
+        }
+        // Fire mesh modify mode immediately when switching to Segment
+        if (this->getEditModeEnum() == EditMode::SEGMENT)
+        {
+            // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+        }
+        else
+        {
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_SELECT_MODE));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+        }
+        this->scheduleSegmentOverlayUpdate();
     }
 
     ProceduralWallComponent::EditMode ProceduralWallComponent::getEditModeEnum(void) const
@@ -4172,6 +4186,11 @@ namespace NOWA
         if (castEventData->getGameObjectId() == this->gameObjectPtr->getId())
         {
             this->isSelected = castEventData->getIsSelected();
+            if (false == this->isSelected)
+            {
+                this->setEditMode("Object");
+                return;
+            }
         }
         else if (castEventData->getIsSelected())
         {
@@ -4180,8 +4199,10 @@ namespace NOWA
 
         if (false == castEventData->getIsPartOfMultiSelection())
         {
-            if (this->getEditModeEnum() == EditMode::SEGMENT)
+            const bool segmentMode = (this->getEditModeEnum() == EditMode::SEGMENT);
+            if (true == segmentMode)
             {
+                // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
                 boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
                 NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
             }

@@ -611,3 +611,26 @@ compositor_node Dither
 	out 0 rt_output
 	out 1 rt_input
 }
+
+// Stargate Travel — Wormhole Tunnel Effect
+// Standard in 0 / in 1 — no depth needed.
+compositor_node "Stargate Travel"
+{
+    in 0 rt_input
+    in 1 rt_output
+
+    custom_id Ogre/Postprocess
+
+    target rt_output
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/StargateTravel
+            input 0 rt_input
+        }
+    }
+
+    out 0 rt_output
+    out 1 rt_input
+}

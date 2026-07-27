@@ -1198,6 +1198,10 @@ namespace NOWA
 						this->exportOcean(gameObject, ocean, nodeXML, doc);
 					}
 				}
+                if (nullptr == gameObject->getMovableObject())
+                {
+                    foundType = true;
+                }
 				if (true == foundType)
 				{
 					nodesXML->append_node(nodeXML);

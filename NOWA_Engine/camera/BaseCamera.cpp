@@ -9,8 +9,8 @@
 
 namespace NOWA
 {
-    BaseCamera::BaseCamera(unsigned int id, Ogre::Real moveSpeed, Ogre::Real rotateSpeed, Ogre::Real smoothValue, const Ogre::Vector3& defaultDirection) :
-        id(id),
+    BaseCamera::BaseCamera(unsigned int id, Ogre::Real moveSpeed, Ogre::Real rotateSpeed, Ogre::Real smoothValue, const Ogre::Vector3& defaultDirection)
+        : id(id),
         moveSpeed(moveSpeed),
         rotateSpeed(rotateSpeed),
         smoothValue(smoothValue),
@@ -25,7 +25,11 @@ namespace NOWA
         cameraControlLocked(false),
         moveCameraWeight(1.0f),
         rotateCameraWeight(1.0f),
-        gravityDirection(Ogre::Vector3::UNIT_Y)
+        gravityDirection(Ogre::Vector3::UNIT_Y),
+        currentYaw(Ogre::Radian(0.0f)),
+        currentPitch(Ogre::Radian(0.0f)),
+        gravityBaseOrientation(Ogre::Quaternion::IDENTITY),
+        lastUpVector(Ogre::Vector3::UNIT_Y)
     {
         this->smoothValue = 0.01f;
     }
@@ -317,9 +321,22 @@ namespace NOWA
             // Get current orientation - we need the camera orientation here
             Ogre::Quaternion currentOrientation = this->getOrientation();
 
+            // Detect whether the camera is currently upside down relative to the
+            // gravity-based up vector. If so, yaw input feels inverted to the user,
+            // so we flip it to compensate. Use a separate local variable here -
+            // rotationValue.x itself must stay unflipped, since it is stored into
+            // this->lastValue below and reused as the low-pass filter history for
+            // the next frame. Flipping it in place would corrupt that history and
+            // make yaw cancel itself out via the filter.
+            Ogre::Real yawInput = rotationValue.x;
+            Ogre::Vector3 cameraUp = currentOrientation * Ogre::Vector3::UNIT_Y;
+            if (cameraUp.dotProduct(upVector) < 0.0f)
+            {
+                yawInput = -yawInput;
+            }
+
             // Create rotation quaternions for yaw and pitch
-            // Create rotation quaternions for yaw and pitch
-            Ogre::Quaternion yawRotation(Ogre::Degree(rotationValue.x), upVector);
+            Ogre::Quaternion yawRotation(Ogre::Degree(yawInput), upVector);
 
             // For pitch, we need the camera's right vector (perpendicular to up)
             Ogre::Vector3 rightVector = currentOrientation * Ogre::Vector3::UNIT_X;

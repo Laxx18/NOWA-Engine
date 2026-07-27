@@ -1933,12 +1933,12 @@ void DesignState::renderUpdate(Ogre::Real dt)
     }
 
 	// Prevent rotation, when user does something in GUI, or control is pressed
-	if (true == validScene && 0 == GetAsyncKeyState(VK_LCONTROL)/* && false == this->playerInControl*/)
-	{
-		if (ms.buttonDown(OIS::MB_Right) && GetAsyncKeyState(VK_LSHIFT) && this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-		{
-			this->orbitCamera(dt);
-		}
+    if (true == validScene && 0 == GetAsyncKeyState(VK_LCONTROL) /* && false == this->playerInControl*/)
+    {
+        if (ms.buttonDown(OIS::MB_Right) && GetAsyncKeyState(VK_LSHIFT) && this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+        {
+            this->orbitCamera(dt);
+        }
         else if (ms.buttonDown(OIS::MB_Right))
         {
             this->firstTimeValueSet = true;
@@ -1954,32 +1954,37 @@ void DesignState::renderUpdate(Ogre::Real dt)
             }
             else
             {
+                // Nothing selected at all: fall back to world down.
                 behavior->setGravityDirection(Ogre::Vector3::NEGATIVE_UNIT_Y);
             }
 
             cameraManager->rotateCamera(dt, false);
         }
-		else if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(0))
-		{
-			this->firstTimeValueSet = true;
-			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->rotateCamera(dt, true);
-		}
+        else if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(0))
+        {
+            this->firstTimeValueSet = true;
+            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->rotateCamera(dt, true);
+        }
 
-		if (GetAsyncKeyState(VK_LSHIFT))
-		{
-			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 200.0f;
-			if (this->cameraMoveSpeed < 2.0f)
-				this->cameraMoveSpeed = 2.0f;
-			if (this->cameraMoveSpeed > 5000.0f)
-				this->cameraMoveSpeed = 5000.0f;
+        if (GetAsyncKeyState(VK_LSHIFT))
+        {
+            this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 200.0f;
+            if (this->cameraMoveSpeed < 2.0f)
+            {
+                this->cameraMoveSpeed = 2.0f;
+            }
+            if (this->cameraMoveSpeed > 5000.0f)
+            {
+                this->cameraMoveSpeed = 5000.0f;
+            }
 
-			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-			if (nullptr != cameraBehavior)
-			{
-				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
-			}
-		}
-	}
+            auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != cameraBehavior)
+            {
+                cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+            }
+        }
+    }
 }
 
 void DesignState::orbitCamera(Ogre::Real dt)

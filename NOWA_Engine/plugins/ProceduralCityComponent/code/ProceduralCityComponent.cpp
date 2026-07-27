@@ -388,7 +388,7 @@ namespace NOWA
                     propertyElement = propertyElement->next_sibling("property");
                 }
             }
-            for (unsigned int v = 0; v < 3u; ++v)
+            for (unsigned int v = 0; v < 4u; ++v)
             {
                 Ogre::String key = AttrDistrictWindowDatablock() + idx + "_" + Ogre::StringConverter::toString(v);
                 if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == key)
@@ -475,6 +475,9 @@ namespace NOWA
                     prcRaw->getAttribute(ProceduralRoadComponent::AttrCenterDatablock())->setValue(this->roadDatablockAttr->getString());
                     prcRaw->getAttribute(ProceduralRoadComponent::AttrEdgeDatablock())->setValue(this->curbDatablockAttr->getString());
                     prcRaw->postInit();
+                    // Road would go to mesh modify mode automatically after post init, but for city generation, that is bad, because the designer then has to click 2x escape to go back to place mode
+                    boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_PLACE_MODE));
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
                 }
 
                 this->roadComponentId = roadsGo->getId();
@@ -2093,7 +2096,7 @@ namespace NOWA
 
         // heightOffset is intentionally NOT reset to 0 here.
         // ProceduralRoadComponent::getGroundHeight() excludes its own roadItem,
-        // so each addRoadSegmentLua correctly samples terrain + heightOffset (0.1 by default)
+        // so each addRoadSegment correctly samples terrain + heightOffset (0.1 by default)
         // without hitting the previously-built road mesh.  Resetting to 0 would move the
         // road flush to the terrain surface, causing z-fighting against the Terra mesh.
 
@@ -2308,7 +2311,7 @@ namespace NOWA
                 // fix; no PRC change is required for that case.
                 const Ogre::Vector3 wa = this->cityOrigin + this->cityFrame * Ogre::Vector3(a.x, ya, a.y);
                 const Ogre::Vector3 wb = this->cityOrigin + this->cityFrame * Ogre::Vector3(b.x, yb, b.y);
-                roadComp->addRoadSegmentLua(wa, wb);
+                roadComp->addRoadSegment(wa, wb);
             }
             roadComp->endBatch();
 
@@ -2474,7 +2477,7 @@ namespace NOWA
         roadComp->setRoadWidth(this->roadWidthAttr->getReal());
         // local -> world boundary crossing for the PRC call.
         const Ogre::Vector3 worldEntry = this->cityOrigin + this->cityFrame * boundaryEntry;
-        roadComp->addRoadSegmentLua(roadEndpt, worldEntry);
+        roadComp->addRoadSegment(roadEndpt, worldEntry);
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Connected road to city boundary at " + Ogre::StringConverter::toString(worldEntry));
     }
@@ -2711,7 +2714,7 @@ namespace NOWA
                     // TODO: add dedicated DistrictFacadeDatablock attributes for full control.
                     applyDb(this->districts[d0].faceDatablocks[vi % 6], "face");     // slot 0 — main faces
                     applyDb(this->districts[d0].roofDatablocks[vi % 3], "roof");     // slot 1 — roof
-                    applyDb(this->districts[d0].windowDatablocks[vi % 3], "window"); // slot 2 — windows
+                    applyDb(this->districts[d0].windowDatablocks[vi % 4], "window"); // slot 2 — windows
                     // slot 3 — trim: the thin ground-level plinth band (max 1.5m tall).
                     // Uses trimDatablocks which contain stone/cobblestone textures as accent.
                     applyDb(this->districts[d0].trimDatablocks[vi % 2], "trim"); // slot 3 — base plinth
@@ -2898,7 +2901,7 @@ namespace NOWA
             {
                 cityHashCombine(cs, cityHashString(d.roofDatablocks[v]));
             }
-            for (int v = 0; v < 3; ++v)
+            for (int v = 0; v < 4; ++v)
             {
                 cityHashCombine(cs, cityHashString(d.windowDatablocks[v]));
             }
@@ -3666,7 +3669,7 @@ namespace NOWA
             "M_rooftiles_01"                               // real asset
         };
 
-        static const char* winDef[3] = {"city_window_01", "city_window_02", "city_window_01"};
+        static const char* winDef[4] = {"city_window_01", "city_window_02", "city_window_03", "city_window_04"};
         static const char* trimDef[2] = {"/dural/structures/ossyja_inner_walls/texture", "/dural/structures/rezpa_inner_walls/texture"};
 
         for (size_t i = old; i < count; ++i)
@@ -3750,6 +3753,9 @@ namespace NOWA
 
                     this->districts[i].roofDatablocks[v] = roofDef[v];
                 }
+            }
+            for (unsigned int v = 0; v < 4u; ++v)
+            {
                 if (nullptr == this->districtWindowDbAttrs[i][v])
                 {
                     Ogre::String key = AttrDistrictWindowDatablock() + idx + "_" + Ogre::StringConverter::toString(v);
@@ -4045,7 +4051,7 @@ namespace NOWA
 
     void ProceduralCityComponent::setDistrictWindowDatablock(unsigned int di, unsigned int v, const Ogre::String& name)
     {
-        if (di < this->districts.size() && v < 3u)
+        if (di < this->districts.size() && v < 4u)
         {
             this->districts[di].windowDatablocks[v] = name;
             if (this->districtWindowDbAttrs[di][v])
@@ -4056,7 +4062,7 @@ namespace NOWA
     }
     Ogre::String ProceduralCityComponent::getDistrictWindowDatablock(unsigned int di, unsigned int v) const
     {
-        return (di < this->districts.size() && v < 3u) ? this->districts[di].windowDatablocks[v] : "";
+        return (di < this->districts.size() && v < 4u) ? this->districts[di].windowDatablocks[v] : "";
     }
 
     void ProceduralCityComponent::setDistrictTrimDatablock(unsigned int di, unsigned int v, const Ogre::String& name)

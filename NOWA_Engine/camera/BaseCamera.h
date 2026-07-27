@@ -90,6 +90,10 @@ namespace NOWA
         Ogre::Real moveCameraWeight;
         Ogre::Real rotateCameraWeight;
         Ogre::Vector3 gravityDirection;
+        Ogre::Radian currentYaw;
+        Ogre::Radian currentPitch;
+        Ogre::Quaternion gravityBaseOrientation;
+        Ogre::Vector3 lastUpVector;
     };
 
 }; // namespace end

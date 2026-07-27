@@ -13,6 +13,7 @@ GPL v3
 #include "gameobject/NodeComponent.h"
 #include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/TerraComponent.h"
+#include "gameobject/PlanetTerraComponentBase.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/InputDeviceCore.h"
@@ -91,6 +92,7 @@ namespace NOWA
         continuousMode(false),
         hasRoadOrigin(false),
         groundQuery(nullptr),
+        otherRoadQuery(nullptr),
         originPositionSet(false),
         hasLoadedRoadEndpoint(false),
         loadedRoadEndpointHeight(0.0f),
@@ -339,37 +341,39 @@ namespace NOWA
 
     GameObjectCompPtr ProceduralRoadComponent::clone(GameObjectPtr clonedGameObjectPtr)
     {
-        ProceduralRoadComponentPtr clonedCompPtr(boost::make_shared<ProceduralRoadComponent>());
+        //ProceduralRoadComponentPtr clonedCompPtr(boost::make_shared<ProceduralRoadComponent>());
 
-        clonedCompPtr->setActivated(this->activated->getBool());
-        clonedCompPtr->setRoadWidth(this->roadWidth->getReal());
-        clonedCompPtr->setEdgeWidth(this->edgeWidth->getReal());
-        clonedCompPtr->setRoadStyle(this->roadStyle->getListSelectedValue());
-        clonedCompPtr->setSnapToGrid(this->snapToGrid->getBool());
-        clonedCompPtr->setGridSize(this->gridSize->getReal());
-        clonedCompPtr->setAdaptToGround(this->adaptToGround->getBool());
-        clonedCompPtr->setHeightOffset(this->heightOffset->getReal());
-        clonedCompPtr->setMaxGradient(this->maxGradient->getReal());
-        clonedCompPtr->setSmoothingFactor(this->smoothingFactor->getReal());
-        clonedCompPtr->setEnableBanking(this->enableBanking->getBool());
-        clonedCompPtr->setBankingAngle(this->bankingAngle->getReal());
-        clonedCompPtr->setCurveSubdivisions(this->curveSubdivisions->getInt());
-        clonedCompPtr->setCenterDatablock(this->centerDatablock->getString());
-        clonedCompPtr->setEdgeDatablock(this->edgeDatablock->getString());
-        clonedCompPtr->setCenterUVTiling(this->centerUVTiling->getVector2());
-        clonedCompPtr->setEdgeUVTiling(this->edgeUVTiling->getVector2());
-        clonedCompPtr->setCurbHeight(this->curbHeight->getReal());
-        clonedCompPtr->setTerrainSampleInterval(this->terrainSampleInterval->getReal());
-        clonedCompPtr->setSourceTerraLayer(this->sourceTerraLayer->getUInt());
-        clonedCompPtr->setTraceStepMeters(this->traceStepMeters->getReal());
-        clonedCompPtr->setTraceThreshold(this->traceThreshold->getUInt());
-        clonedCompPtr->setGenerateFromLayer(this->generateFromLayer->getString());
+        //clonedCompPtr->setActivated(this->activated->getBool());
+        //clonedCompPtr->setRoadWidth(this->roadWidth->getReal());
+        //clonedCompPtr->setEdgeWidth(this->edgeWidth->getReal());
+        //clonedCompPtr->setRoadStyle(this->roadStyle->getListSelectedValue());
+        //clonedCompPtr->setSnapToGrid(this->snapToGrid->getBool());
+        //clonedCompPtr->setGridSize(this->gridSize->getReal());
+        //clonedCompPtr->setAdaptToGround(this->adaptToGround->getBool());
+        //clonedCompPtr->setHeightOffset(this->heightOffset->getReal());
+        //clonedCompPtr->setMaxGradient(this->maxGradient->getReal());
+        //clonedCompPtr->setSmoothingFactor(this->smoothingFactor->getReal());
+        //clonedCompPtr->setEnableBanking(this->enableBanking->getBool());
+        //clonedCompPtr->setBankingAngle(this->bankingAngle->getReal());
+        //clonedCompPtr->setCurveSubdivisions(this->curveSubdivisions->getInt());
+        //clonedCompPtr->setCenterDatablock(this->centerDatablock->getString());
+        //clonedCompPtr->setEdgeDatablock(this->edgeDatablock->getString());
+        //clonedCompPtr->setCenterUVTiling(this->centerUVTiling->getVector2());
+        //clonedCompPtr->setEdgeUVTiling(this->edgeUVTiling->getVector2());
+        //clonedCompPtr->setCurbHeight(this->curbHeight->getReal());
+        //clonedCompPtr->setTerrainSampleInterval(this->terrainSampleInterval->getReal());
+        //clonedCompPtr->setSourceTerraLayer(this->sourceTerraLayer->getUInt());
+        //clonedCompPtr->setTraceStepMeters(this->traceStepMeters->getReal());
+        //clonedCompPtr->setTraceThreshold(this->traceThreshold->getUInt());
+        //// clonedCompPtr->setGenerateFromLayer(this->generateFromLayer->getString());
 
-        clonedGameObjectPtr->addComponent(clonedCompPtr);
-        clonedCompPtr->setOwner(clonedGameObjectPtr);
+        //clonedGameObjectPtr->addComponent(clonedCompPtr);
+        //clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-        return clonedCompPtr;
+        //GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        //return clonedCompPtr;
+
+        return nullptr;
     }
 
     bool ProceduralRoadComponent::postInit(void)
@@ -385,6 +389,14 @@ namespace NOWA
         // Create raycast query for ground detection
         this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId("All-City"));
         this->groundQuery->setSortByDistance(true);
+
+        // Separate query, ALL_CATEGORIES_ID, so it
+        // can see ANY other GameObject's road item regardless of category —
+        // deliberately independent of groundQuery's "All-City" scope, which
+        // I don't want to touch or risk for the existing ground-sampling
+        // behavior. Used only by findOtherRoadNearby().
+        this->otherRoadQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
+        this->otherRoadQuery->setSortByDistance(true);
 
         // Setup fallback ground plane at Y=0
         this->groundPlane = Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f);
@@ -487,6 +499,9 @@ namespace NOWA
         boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 
+        // boost::shared_ptr<NOWA::EventDataGameObjectSelected> eventDataGameObjectSelected(new NOWA::EventDataGameObjectSelected(this->gameObjectPtr->getId(), true, false));
+        // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectSelected);
+
         this->isSelected = true;
         this->addInputListener();
     }
@@ -506,6 +521,13 @@ namespace NOWA
         {
             this->gameObjectPtr->getSceneManager()->destroyQuery(this->groundQuery);
             this->groundQuery = nullptr;
+        }
+
+        // >>> CROSS-NETWORK SNAP FIX: destroy the query added in postInit.
+        if (nullptr != this->otherRoadQuery)
+        {
+            this->gameObjectPtr->getSceneManager()->destroyQuery(this->otherRoadQuery);
+            this->otherRoadQuery = nullptr;
         }
 
         InputDeviceCore::getSingletonPtr()->removeKeyListener(ProceduralRoadComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
@@ -643,21 +665,7 @@ namespace NOWA
         }
         else if (ProceduralRoadComponent::AttrEditMode() == attribute->getName())
         {
-            this->editMode->setListSelectedValue(attribute->getListSelectedValue());
-            this->selectedSegmentIndex = -1;
-
-            // Cancel any in-progress drag when entering Segment mode
-            if (this->getEditModeEnum() == EditMode::SEGMENT && this->buildState == BuildState::DRAGGING)
-            {
-                this->cancelRoad();
-            }
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] EditMode changed to: " + attribute->getListSelectedValue() + " | segments: " + Ogre::StringConverter::toString(this->roadSegments.size()) +
-                                                                                   " | isEditorMeshModifyMode: " + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " | isSelected: " + Ogre::StringConverter::toString(this->isSelected));
-
-            // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
-            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+            this->setEditMode(attribute->getListSelectedValue());
         }
         else if (ProceduralRoadComponent::AttrInvertWaypoints() == attribute->getName())
         {
@@ -822,7 +830,7 @@ namespace NOWA
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     // ------------------------------------------------------------------------
-    // A7 — mousePressed: convert the WORLD raycast hits to ROAD-LOCAL right
+    // Convert the WORLD raycast hits to ROAD-LOCAL right
     // after the raycasts.  Everything downstream (snapToGridFunc — pure XZ
     // rounding, detectSnapToRoad, findNearestSegmentWithinRadius,
     // startRoadPlacement, updateRoadPreview, confirmRoad, loadedRoadEndpoint)
@@ -942,7 +950,45 @@ namespace NOWA
             // capturing/deriving cityFrame at generation time.
             if (false == this->roadFrameSet && false == this->hasRoadOrigin && true == this->roadSegments.empty())
             {
-                this->roadFrame = this->deriveRoadFrame(hitPosition, this->roadFrame);
+                // Determine "is this actually a planet"
+                // by casting hitMovableObject (from the raycast ABOVE, at the
+                // top of this OBJECT-mode section — the same one you showed
+                // me in the debugger) to its GameObject and checking for
+                // PlanetTerraComponentBase, instead of the old distance-from-
+                // world-origin guess that false-positived on ordinary flat
+                // terrain. If that earlier raycast found nothing (hitFound ==
+                // false), isPlanet stays false here and deriveRoadFrame
+                // safely returns currentOrientation (IDENTITY) — the correct
+                // default for flat ground.
+                bool isPlanet = false;
+                Ogre::Vector3 planetCenter = Ogre::Vector3::ZERO;
+                if (true == hitFound && nullptr != hitMovableObject)
+                {
+                    const Ogre::Any& userAny = hitMovableObject->getUserObjectBindings().getUserAny();
+                    if (false == userAny.isEmpty())
+                    {
+                        GameObject* hitGameObject = nullptr;
+                        try
+                        {
+                            hitGameObject = Ogre::any_cast<GameObject*>(userAny);
+                        }
+                        catch (Ogre::Exception&)
+                        {
+                        }
+
+                        if (nullptr != hitGameObject)
+                        {
+                            const auto& planetCompPtr = NOWA::makeStrongPtr(hitGameObject->getComponent<PlanetTerraComponentBase>());
+                            if (planetCompPtr)
+                            {
+                                isPlanet = true;
+                                planetCenter = hitGameObject->getSceneNode()->_getDerivedPositionUpdated();
+                            }
+                        }
+                    }
+                }
+
+                this->roadFrame = this->deriveRoadFrame(hitPosition, this->roadFrame, isPlanet, planetCenter);
                 this->roadFrameSet = true;
             }
 
@@ -952,7 +998,17 @@ namespace NOWA
             // convert exactly once, right here at the boundary.
             hitPosition = this->roadFrame.Inverse() * hitPosition;
 
-            if (this->snapToGrid->getBool())
+            // Cross-network snap check for a DIFFERENT road's centerline —
+            // only relevant when actually placing a new point.
+            Ogre::Vector3 otherRoadSnapWorld;
+            RoadComponentBase* otherRoad = this->findOtherRoadNearby(this->roadFrame * hitPosition, this->snapRadius, otherRoadSnapWorld);
+            if (nullptr != otherRoad)
+            {
+                hitPosition = this->roadFrame.Inverse() * otherRoadSnapWorld;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Snapped to a DIFFERENT road network at " + Ogre::StringConverter::toString(otherRoadSnapWorld));
+            }
+
+            if (this->snapToGrid->getBool() && nullptr == otherRoad)
             {
                 hitPosition = this->snapToGridFunc(hitPosition);
             }
@@ -996,12 +1052,6 @@ namespace NOWA
         return false;
     }
 
-    // ------------------------------------------------------------------------
-    // A8 — mouseMoved: same single world -> local conversion after
-    // raycastGround.  detectSnapToRoad then compares local vs local, and
-    // snapToRoadPoint stays local — which is exactly what confirmRoad and
-    // updateRoadPreview expect.
-    // ------------------------------------------------------------------------
     bool ProceduralRoadComponent::mouseMoved(const OIS::MouseEvent& evt)
     {
         if (false == this->activated->getBool())
@@ -1025,19 +1075,49 @@ namespace NOWA
         Ogre::Vector3 hitPosition;
         if (this->raycastGround(screenX, screenY, hitPosition))
         {
+            // Check for a DIFFERENT road network near the raw world hit BEFORE
+            // converting to local space — this is what makes the live PREVIEW
+            // jump onto the other network as you drag close to it, instead of
+            // only snapping at the moment of the final click.
+            Ogre::Vector3 otherRoadSnapWorld;
+            RoadComponentBase* otherRoad = this->findOtherRoadNearby(hitPosition, this->snapRadius, otherRoadSnapWorld);
+            bool snappedToOtherRoad = false;
+            if (nullptr != otherRoad)
+            {
+                hitPosition = otherRoadSnapWorld;
+                snappedToOtherRoad = true;
+            }
+
             // world -> road-local, once, at the boundary.
             hitPosition = this->roadFrame.Inverse() * hitPosition;
 
-            if (true == this->snapToGrid->getBool())
+            if (true == this->snapToGrid->getBool() && false == snappedToOtherRoad)
             {
                 hitPosition = this->snapToGridFunc(hitPosition);
             }
 
-            // Snap to existing road takes priority over grid
-            const Ogre::Real sr = this->roadWidth->getReal() * 0.4f;
-            this->detectSnapToRoad(hitPosition, sr);
+            Ogre::Vector3 previewPos = hitPosition;
 
-            const Ogre::Vector3 previewPos = this->isSnapToRoad ? this->snapToRoadPoint : hitPosition;
+            if (false == snappedToOtherRoad)
+            {
+                // Snap to existing (OWN) road takes priority over grid
+                const Ogre::Real sr = this->roadWidth->getReal() * 0.4f;
+                this->detectSnapToRoad(hitPosition, sr);
+                previewPos = this->isSnapToRoad ? this->snapToRoadPoint : hitPosition;
+            }
+            else
+            {
+                // Reuse the existing snap-indicator state instead of
+                // clearing it. hitPosition here is already the LOCAL point on
+                // the OTHER network (converted above), exactly what
+                // detectSnapToRoad would have written into snapToRoadPoint for
+                // an own-network snap — so scheduleSnapIndicatorUpdate() draws
+                // the circle at the correct cross-network location with no
+                // further changes needed.
+                this->isSnapToRoad = true;
+                this->snapToRoadPoint = hitPosition;
+                previewPos = hitPosition;
+            }
 
             this->updateRoadPreview(previewPos);
             this->scheduleSnapIndicatorUpdate();
@@ -1251,7 +1331,13 @@ namespace NOWA
             return;
         }
 
-        Ogre::Vector3 currentPos = this->snapToGrid->getBool() ? this->snapToGridFunc(worldPosition) : worldPosition;
+        // >>> FIX: if isSnapToRoad is already true (set by either
+        // detectSnapToRoad for an own-network snap, or by mouseMoved for a
+        // cross-network snap), worldPosition IS ALREADY the resolved,
+        // exact snap point -- re-applying grid snapping here would silently
+        // nudge it off that point again, discarding the precision of
+        // whichever snap just ran. Only grid-snap when nothing was snapped.
+        Ogre::Vector3 currentPos = (this->snapToGrid->getBool() && false == this->isSnapToRoad) ? this->snapToGridFunc(worldPosition) : worldPosition;
 
         // Constrain to axis if ctrl is held (like wall component)
         if (true == this->isCtrlPressed)
@@ -1311,7 +1397,20 @@ namespace NOWA
         }
 
         // ── Snap-to-road: just override the endpoint position ─────────────────
-        const bool wasSnapping = (this->isSnapToRoad && this->snapToRoadSegmentIdx >= 0);
+        // >>> FIX: dropped the "snapToRoadSegmentIdx >= 0" requirement.
+        // That index only ever gets set for an OWN-network snap
+        // (detectSnapToRoad, matching an index into this->roadSegments) -- a
+        // cross-network snap (mouseMoved -> findOtherRoadNearby) has no such
+        // index at all, since the match lives on a DIFFERENT component's
+        // segment list. Requiring it here meant a cross-network snap always
+        // evaluated wasSnapping=false, silently skipping this whole override
+        // block and leaving the endpoint at whatever grid-snapped/raw value
+        // updateRoadPreview last wrote -- the exact cause of the visible gap.
+        // isSnapToRoad alone is sufficient: it is authoritative for BOTH the
+        // own-network and cross-network cases (set by detectSnapToRoad or by
+        // mouseMoved respectively), and this block never reads
+        // snapToRoadSegmentIdx's value for anything other than this gate.
+        const bool wasSnapping = this->isSnapToRoad;
 
         if (wasSnapping)
         {
@@ -1459,32 +1558,6 @@ namespace NOWA
         this->isCtrlPressed = false;
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Cancelled road placement");
-    }
-
-    void ProceduralRoadComponent::addRoadSegment(const std::vector<Ogre::Vector3>& controlPoints, bool curved)
-    {
-        if (controlPoints.size() < 2)
-        {
-            return;
-        }
-
-        RoadSegment segment;
-        segment.isCurved = curved;
-        segment.curvature = curved ? 0.5f : 0.0f;
-
-        for (const auto& pos : controlPoints)
-        {
-            RoadControlPoint point;
-            point.position = pos;
-            point.position.y = 0.0f;
-            point.groundHeight = this->getGroundHeight(pos);
-            point.smoothedHeight = point.groundHeight;
-            segment.controlPoints.push_back(point);
-        }
-
-        this->smoothHeightTransitions(segment.controlPoints);
-        this->roadSegments.push_back(segment);
-        this->rebuildMesh();
     }
 
     void ProceduralRoadComponent::removeLastSegment(void)
@@ -4036,6 +4109,74 @@ namespace NOWA
         return bestSeg;
     }
 
+    RoadComponentBase* ProceduralRoadComponent::findOtherRoadNearby(const Ogre::Vector3& worldPos, Ogre::Real maxRadius, Ogre::Vector3& outSnapPoint) const
+    {
+        if (nullptr == this->otherRoadQuery)
+        {
+            return nullptr;
+        }
+
+        // Vertical ray along this road's OWN frame (consistent with
+        // getGroundHeight) — casts wide enough to reach terrain-scale
+        // meshes above/below worldPos.
+        const Ogre::Vector3 up = this->roadFrame * Ogre::Vector3::UNIT_Y;
+        const Ogre::Vector3 rayOrigin = worldPos + up * 1000.0f;
+        Ogre::Ray ray(rayOrigin, -up);
+
+        this->otherRoadQuery->setRay(ray);
+        this->otherRoadQuery->setSortByDistance(true);
+        Ogre::RaySceneQueryResult& result = this->otherRoadQuery->execute();
+
+        for (const auto& entry : result)
+        {
+            if (nullptr == entry.movable)
+            {
+                continue;
+            }
+            // Skip our own road item / preview item.
+            if (entry.movable == this->roadItem || entry.movable == this->previewItem)
+            {
+                continue;
+            }
+
+            const Ogre::Any& userAny = entry.movable->getUserObjectBindings().getUserAny();
+            if (true == userAny.isEmpty())
+            {
+                continue;
+            }
+
+            GameObject* otherGameObject = nullptr;
+            try
+            {
+                otherGameObject = Ogre::any_cast<GameObject*>(userAny);
+            }
+            catch (Ogre::Exception&)
+            {
+                continue;
+            }
+
+            if (nullptr == otherGameObject || otherGameObject->getId() == this->gameObjectPtr->getId())
+            {
+                continue;
+            }
+
+            const auto& otherRoadCompPtr = NOWA::makeStrongPtr(otherGameObject->getComponent<RoadComponentBase>());
+            if (!otherRoadCompPtr)
+            {
+                continue;
+            }
+
+            Ogre::Vector3 candidate;
+            if (true == otherRoadCompPtr->getNearestPointOnRoad(worldPos, maxRadius, candidate))
+            {
+                outSnapPoint = candidate;
+                return otherRoadCompPtr.get();
+            }
+        }
+
+        return nullptr;
+    }
+
     void ProceduralRoadComponent::generateJunctionPatch(const JunctionPoint& jp, const Ogre::Vector3& origin)
     {
         const size_t numArms = jp.patchCorners.size() / 2;
@@ -6013,11 +6154,131 @@ namespace NOWA
         return result;
     }
 
-    void ProceduralRoadComponent::addRoadSegmentLua(const Ogre::Vector3& start, const Ogre::Vector3& end)
+    bool ProceduralRoadComponent::getNearestPointOnRoad(const Ogre::Vector3& worldPos, Ogre::Real maxRadius, Ogre::Vector3& outPoint) const
+    {
+        if (true == this->roadSegments.empty())
+        {
+            return false;
+        }
+
+        // World -> this road's own local space (pure rotation, no origin —
+        // see addRoadSegment for the same convention).
+        const Ogre::Vector3 localPos = this->roadFrame.Inverse() * worldPos;
+        const Ogre::Vector2 p(localPos.x, localPos.z);
+
+        Ogre::Real bestDistSq = maxRadius * maxRadius;
+        bool found = false;
+        Ogre::Vector3 bestLocal = Ogre::Vector3::ZERO;
+
+        for (const auto& seg : this->roadSegments)
+        {
+            const size_t n = seg.controlPoints.size();
+            if (n < 2)
+            {
+                continue;
+            }
+            for (size_t i = 0; i + 1 < n; ++i)
+            {
+                const RoadControlPoint& cpA = seg.controlPoints[i];
+                const RoadControlPoint& cpB = seg.controlPoints[i + 1];
+
+                const Ogre::Vector2 a(cpA.position.x, cpA.position.z);
+                const Ogre::Vector2 b(cpB.position.x, cpB.position.z);
+                const Ogre::Vector2 ab = b - a;
+                const Ogre::Real ab2 = ab.dotProduct(ab);
+
+                Ogre::Real t = 0.0f;
+                if (ab2 > 1e-6f)
+                {
+                    t = Ogre::Math::Clamp((p - a).dotProduct(ab) / ab2, 0.0f, 1.0f);
+                }
+
+                const Ogre::Vector2 closest2 = a + ab * t;
+                const Ogre::Real distSq = (p - closest2).squaredLength();
+
+                if (distSq < bestDistSq)
+                {
+                    bestDistSq = distSq;
+                    found = true;
+
+                    // Interpolate height the same way the control points store it —
+                    // smoothedHeight, linearly between the two control points.
+                    const Ogre::Real h = cpA.smoothedHeight + (cpB.smoothedHeight - cpA.smoothedHeight) * t;
+                    bestLocal = Ogre::Vector3(closest2.x, h, closest2.y);
+                }
+            }
+        }
+
+        if (false == found)
+        {
+            return false;
+        }
+
+        // Local -> world for the caller.
+        outPoint = this->roadFrame * bestLocal;
+        return true;
+    }
+
+    void ProceduralRoadComponent::addRoadSegment(const Ogre::Vector3& start, const Ogre::Vector3& end)
     {
         if (false == this->roadFrameSet && false == this->hasRoadOrigin && true == this->roadSegments.empty())
         {
-            this->roadFrame = this->deriveRoadFrame(start, this->roadFrame);
+            // No click/camera context exists here (this
+            // is the scripted/city entry point, not a mouse event), so run a
+            // small dedicated vertical probe raycast at 'start' (world -Y,
+            // since no frame exists yet) purely to find what GameObject is
+            // underneath and check it for PlanetTerraComponentBase — same
+            // check as mousePressed, just via a fresh raycast instead of an
+            // already-available hitMovableObject.
+            // NOTE for city callers: buildCityRoadNetwork() already calls
+            // setRoadFrame(cityFrame) BEFORE the first addRoadSegment, so
+            // roadFrameSet is already true by the time we get here and this
+            // whole block is skipped for city-owned roads — this probe only
+            // ever runs for a standalone/scripted caller that never supplied
+            // a frame explicitly.
+            bool isPlanet = false;
+            Ogre::Vector3 planetCenter = Ogre::Vector3::ZERO;
+            {
+                Ogre::Vector3 probeHit = Ogre::Vector3::ZERO;
+                Ogre::MovableObject* probeMovable = nullptr;
+                Ogre::Real probeDist = 0.0f;
+                Ogre::Vector3 probeNormal = Ogre::Vector3::ZERO;
+
+                Ogre::Ray downRay(start + Ogre::Vector3::UNIT_Y * 1000.0f, Ogre::Vector3::NEGATIVE_UNIT_Y);
+                this->groundQuery->setRay(downRay);
+                this->groundQuery->setSortByDistance(true);
+
+                const bool probeHitFound =
+                    MathHelper::getInstance()->getRaycastFromPoint(this->groundQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), probeHit, (size_t&)probeMovable, probeDist, probeNormal, nullptr, false);
+
+                if (true == probeHitFound && nullptr != probeMovable)
+                {
+                    const Ogre::Any& userAny = probeMovable->getUserObjectBindings().getUserAny();
+                    if (false == userAny.isEmpty())
+                    {
+                        GameObject* probeGameObject = nullptr;
+                        try
+                        {
+                            probeGameObject = Ogre::any_cast<GameObject*>(userAny);
+                        }
+                        catch (Ogre::Exception&)
+                        {
+                        }
+
+                        if (nullptr != probeGameObject)
+                        {
+                            const auto& planetCompPtr = NOWA::makeStrongPtr(probeGameObject->getComponent<PlanetTerraComponentBase>());
+                            if (planetCompPtr)
+                            {
+                                isPlanet = true;
+                                planetCenter = probeGameObject->getSceneNode()->_getDerivedPositionUpdated();
+                            }
+                        }
+                    }
+                }
+            }
+
+            this->roadFrame = this->deriveRoadFrame(start, this->roadFrame, isPlanet, planetCenter);
             this->roadFrameSet = true;
         }
 
@@ -6344,6 +6605,11 @@ namespace NOWA
         if (castEventData->getGameObjectId() == this->gameObjectPtr->getId())
         {
             this->isSelected = castEventData->getIsSelected();
+            if (false == this->isSelected)
+            {
+                this->setEditMode("Object");
+                return;
+            }
         }
         else if (castEventData->getIsSelected())
         {
@@ -6455,7 +6721,7 @@ namespace NOWA
 
         if (atStart)
         {
-            // cp.position / smoothedHeight are ROAD-LOCAL (see addRoadSegmentLua).
+            // cp.position / smoothedHeight are ROAD-LOCAL (see addRoadSegment).
             // Transform local -> world for the caller.
             const RoadControlPoint& cp = this->roadSegments.front().controlPoints.front();
             return this->roadFrame * Ogre::Vector3(cp.position.x, cp.smoothedHeight, cp.position.z);
@@ -6523,12 +6789,12 @@ namespace NOWA
 
     // ------------------------------------------------------------------------
     // A6 — addRoadSegmentBatch: same world -> local conversion as
-    // addRoadSegmentLua (no caller in this file currently, but the public
+    // addRoadSegment (no caller in this file currently, but the public
     // contract stays WORLD — keep it consistent so a future caller works).
     // ------------------------------------------------------------------------
     void ProceduralRoadComponent::addRoadSegmentBatch(const Ogre::Vector3& start, const Ogre::Vector3& end)
     {
-        // Identical to addRoadSegmentLua() but WITHOUT the rebuildMesh() call.
+        // Identical to addRoadSegment() but WITHOUT the rebuildMesh() call.
         // After adding all segments, call finalizeBatch() once to build the mesh.
 
         // world -> road-local at the entry boundary.
@@ -6583,7 +6849,7 @@ namespace NOWA
 
     void ProceduralRoadComponent::setRoadFrame(const Ogre::Quaternion& frame)
     {
-        // Mark the frame as externally owned (by the city).  deriveRoadFrame's auto-derivation (mousePressed / addRoadSegmentLua) only fires when this is still false.
+        // Mark the frame as externally owned (by the city).  deriveRoadFrame's auto-derivation (mousePressed / addRoadSegment) only fires when this is still false.
         this->roadFrameSet = true;
 
         // changing the frame changes the raycast direction, so every cached
@@ -6595,14 +6861,14 @@ namespace NOWA
         this->roadFrame = frame;
     }
 
-    Ogre::Quaternion ProceduralRoadComponent::deriveRoadFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation) const
+    Ogre::Quaternion ProceduralRoadComponent::deriveRoadFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation, bool isPlanet, const Ogre::Vector3& planetCenter) const
     {
-        if (false == this->adaptToGround->getBool() || origin.squaredLength() <= 1.f)
+        if (false == isPlanet)
         {
             return currentOrientation;
         }
 
-        const Ogre::Vector3 radialUp = origin.normalisedCopy();
+        const Ogre::Vector3 radialUp = (origin - planetCenter).normalisedCopy();
         // Preserve heading: project currentOrientation's forward axis onto the
         // tangent plane of the planet at 'origin'.
         const Ogre::Vector3 curForward = currentOrientation * Ogre::Vector3::UNIT_Z;
@@ -7876,6 +8142,33 @@ namespace NOWA
         return this->generateFromLayer->getString();
     }
 
+    void ProceduralRoadComponent::setEditMode(const Ogre::String& editMode)
+    {
+        this->editMode->setListSelectedValue(editMode);
+        this->selectedSegmentIndex = -1;
+
+        // Cancel any in-progress drag when entering Segment mode
+        if (this->getEditModeEnum() == EditMode::SEGMENT && this->buildState == BuildState::DRAGGING)
+        {
+            this->cancelRoad();
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] EditMode changed to: " + editMode + " | segments: " + Ogre::StringConverter::toString(this->roadSegments.size()) +
+                                                                               " | isEditorMeshModifyMode: " + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " | isSelected: " + Ogre::StringConverter::toString(this->isSelected));
+        if (this->getEditModeEnum() == EditMode::SEGMENT)
+        {
+            // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+        }
+        else
+        {
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_SELECT_MODE));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+        }
+        this->scheduleSegmentOverlayUpdate();
+    }
+
     ProceduralRoadComponent::EditMode ProceduralRoadComponent::getEditModeEnum(void) const
     {
         return (this->editMode->getListSelectedValue() == "Segment") ? EditMode::SEGMENT : EditMode::OBJECT;
@@ -8272,7 +8565,7 @@ namespace NOWA
 
                 // ── Segment management ────────────────────────────────────────
                 .def("getSegmentCount", &ProceduralRoadComponent::getSegmentCount)
-                .def("addRoadSegment", &ProceduralRoadComponent::addRoadSegmentLua)];
+                .def("addRoadSegment", &ProceduralRoadComponent::addRoadSegment)];
 
         // ── LuaScriptApi documentation ─────────────────────────────────────────
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "class inherits GameObjectComponent", ProceduralRoadComponent::getStaticInfoText());

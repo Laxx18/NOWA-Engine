@@ -51,7 +51,7 @@ namespace NOWA
      * An optional ProceduralRoadComponent may be referenced by @p roadComponentId
      * to connect a hand-drawn road (e.g. a highway through the forest) to the
      * city grid.  When set, ONE connecting road segment is added to that external
-     * road component via addRoadSegmentLua() at generation time, running from the
+     * road component via addRoadSegment() at generation time, running from the
      * road's chosen endpoint (controlled by @p roadConnectionAtStart) to the
      * nearest city grid boundary intersection.  The external road component owns
      * that segment; the city component owns everything inside the grid.
@@ -267,7 +267,11 @@ namespace NOWA
                    "ProceduralRoadComponent (e.g. a highway) via RoadComponentId. "
                    "Press 'Generate Now' to build or rebuild the city at the current "
                    "GameObject position. Results are cached to .citydata; cache is "
-                   "auto-invalidated when any parameter changes.";
+                   "auto-invalidated when any parameter changes. "
+                   "In Segment edit mode, select a building and press 'T' to toggle "
+                   "sink-adjust mode, then use Up/Down arrows to nudge it deeper into or "
+                   "out of the terrain ('T' or Escape exits sink-adjust mode). "
+                   "Press 'X' with a building selected to delete it.";
         }
 
         static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor();
@@ -549,7 +553,7 @@ namespace NOWA
          *        When non-zero, generateCity() locates the road component,
          *        determines its connection endpoint (see roadConnectionAtStart),
          *        finds the nearest city grid boundary intersection, and calls
-         *        ProceduralRoadComponent::addRoadSegmentLua(roadEndpoint,
+         *        ProceduralRoadComponent::addRoadSegment(roadEndpoint,
          *        cityBoundaryEntry) once.  The external road component owns
          *        that segment; the city owns everything inside the grid.
          *
@@ -733,7 +737,7 @@ namespace NOWA
              
             Ogre::String faceDatablocks[6];
             Ogre::String roofDatablocks[3];
-            Ogre::String windowDatablocks[3];
+            Ogre::String windowDatablocks[4];
             Ogre::String trimDatablocks[2];
         };
 
@@ -845,7 +849,7 @@ namespace NOWA
          *        getRoadConnectionPoint(roadConnectionAtStart) and approach
          *        direction via getRoadApproachDirection(roadConnectionAtStart),
          *        then locates the nearest city grid boundary intersection and
-         *        calls roadComp->addRoadSegmentLua(roadEndpoint, boundaryEntry).
+         *        calls roadComp->addRoadSegment(roadEndpoint, boundaryEntry).
          *
          *        Also calls roadComp->setRoadWidth(roadWidth) before adding
          *        the segment so the connecting segment matches the city's internal
@@ -1051,7 +1055,7 @@ namespace NOWA
         // [districtIdx][variantIdx]
         std::vector<std::array<Variant*, 6>> districtFaceDbAttrs;
         std::vector<std::array<Variant*, 3>> districtRoofDbAttrs;
-        std::vector<std::array<Variant*, 3>> districtWindowDbAttrs;
+        std::vector<std::array<Variant*, 4>> districtWindowDbAttrs;
         std::vector<std::array<Variant*, 2>> districtTrimDbAttrs;
 
         // ---- Internal runtime state ---------------------------------------

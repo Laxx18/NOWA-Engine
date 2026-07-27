@@ -231,6 +231,7 @@ namespace NOWA
                    "- Edge strips and curbs are generated on the open boundary of each junction arm.\n"
                    "- For Highway style roads, branches may only depart to the right relative to the\n"
                    "  direction of travel, matching real motorway exit conventions.\n\n"
+                   "- Its also possible to connect one road endpoint for another road segment!"
                    "ROAD STYLES:\n"
                    "- Paved: solid road surface with raised curbs and edge strips.\n"
                    "- Highway: paved road with a center divider strip. Branches exit to the right only.\n"
@@ -306,9 +307,6 @@ namespace NOWA
         void updateContinuationPoint(void);
 
         void cancelRoad(void);
-
-        // Road segment management
-        void addRoadSegment(const std::vector<Ogre::Vector3>& controlPoints, bool curved = false);
 
         void removeLastSegment(void);
 
@@ -407,6 +405,7 @@ namespace NOWA
         void setGenerateFromLayer(const Ogre::String& layer);
         Ogre::String getGenerateFromLayer(void) const;
 
+        void setEditMode(const Ogre::String& editMode);
         EditMode getEditModeEnum(void) const;
 
         int findNearestSegmentWithinRadius(const Ogre::Vector3& worldPos, Ogre::Real radius) const;
@@ -423,7 +422,9 @@ namespace NOWA
 
         virtual std::vector<unsigned char> getRoadData(void) const override;
 
-        void addRoadSegmentLua(const Ogre::Vector3& start, const Ogre::Vector3& end);
+        virtual bool getNearestPointOnRoad(const Ogre::Vector3& worldPos, Ogre::Real maxRadius, Ogre::Vector3& outPoint) const override;
+
+        void addRoadSegment(const Ogre::Vector3& start, const Ogre::Vector3& end);
 
         int getSegmentCount(void) const;
 
@@ -433,13 +434,6 @@ namespace NOWA
 
         void addRoadSegmentBatch(const Ogre::Vector3& start, const Ogre::Vector3& end);
 
-         /**
-         * @brief Returns the XZ start/end positions of every current road segment.
-         *        Used by ProceduralCityComponent::generateBuildingsOnly() to build
-         *        fresh road-exclusion zones from the current (designer-edited) road state.
-         */
-        std::vector<std::pair<Ogre::Vector2, Ogre::Vector2>> getSegmentEndpoints(void) const;
-
         void finalizeBatch(void);
 
         void beginBatch(void);
@@ -448,7 +442,7 @@ namespace NOWA
 
         void setRoadFrame(const Ogre::Quaternion& frame);
 
-        Ogre::Quaternion deriveRoadFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation) const;
+        Ogre::Quaternion deriveRoadFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation, bool isPlanet, const Ogre::Vector3& planetCenter) const;
 
     public:
         // Static attribute names
@@ -614,10 +608,12 @@ namespace NOWA
 
         // Spline interpolation for curves
         Ogre::Vector3 evaluateCatmullRom(const std::vector<RoadControlPoint>& points, Ogre::Real t);
+
         std::vector<Ogre::Vector3> generateCurvePoints(const std::vector<RoadControlPoint>& controlPoints, int subdivisions);
 
         // Height smoothing for realistic gradients
         void smoothHeightTransitions(std::vector<RoadControlPoint>& points);
+
         Ogre::Real calculateSmoothedHeight(const std::vector<RoadControlPoint>& points, int index);
 
         void addRoadQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0, Ogre::Real u1, Ogre::Real v0Val,
@@ -629,6 +625,7 @@ namespace NOWA
         Ogre::Real calculateBanking(const Ogre::Vector3& p0, const Ogre::Vector3& p1, const Ogre::Vector3& p2);
 
         Ogre::Vector3 snapToGridFunc(const Ogre::Vector3& position);
+
         RoadStyle getRoadStyleEnum(void) const;
 
         std::vector<PointData> computeMiterData(const std::vector<RoadControlPoint>& points, bool isClosed);
@@ -701,6 +698,8 @@ namespace NOWA
         void generateRoadFromTerraLayer(void);
 
         int findNearestSegment(const Ogre::Vector3& worldPos) const;
+
+        RoadComponentBase* findOtherRoadNearby(const Ogre::Vector3& worldPos, Ogre::Real maxRadius, Ogre::Vector3& outSnapPoint) const;
 
         void generateJunctionPatch(const JunctionPoint& jp, const Ogre::Vector3& origin);
 
@@ -794,6 +793,7 @@ namespace NOWA
         bool hasRoadOrigin;
         Ogre::Plane groundPlane;
         Ogre::RaySceneQuery* groundQuery;
+        Ogre::RaySceneQuery* otherRoadQuery; 
 
         // Cached data for save/load
         std::vector<float> cachedCenterVertices;

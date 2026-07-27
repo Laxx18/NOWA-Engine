@@ -171,6 +171,7 @@ private:
 	MyGUI::VectorWidgetPtr itemsText;
 	MyGUI::VectorWidgetPtr itemsEdit;
 	int heightCurrent;
+    MyGUI::ScrollView* infoScrollView;
 };
 
 ///////////////////////////////////////////////////////////////////////

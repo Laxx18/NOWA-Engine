@@ -804,7 +804,8 @@ namespace NOWA
 
         virtual void undo(void) override
         {
-            ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectGroupUndoCommand::undo", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 
                 rapidxml::xml_document<> doc;
@@ -835,7 +836,8 @@ namespace NOWA
                 out << '\0';
                 // Set the stream
                 this->gameObjectsToAddStream = out.str();
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CloneGameObjectGroupUndoCommand::undo");
 
             boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
@@ -1849,7 +1851,11 @@ namespace NOWA
                 boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
                 NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
 
-                ENQUEUE_RENDER_COMMAND("placenode reset orientation1", { this->placeNode->resetOrientation(); });
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    this->placeNode->resetOrientation();
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "placenode reset orientation1");
 
                 // Regenerate categories
                 boost::shared_ptr<EventDataGenerateCategories> eventDataGenerateCategories(new EventDataGenerateCategories());
@@ -2122,10 +2128,12 @@ namespace NOWA
     {
         unsigned int generatedCategoryId = this->selectionManager->filterCategories(categories);
 
-        ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::filterCategories", _1(generatedCategoryId), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, generatedCategoryId]()
+        {
             this->movePicker->updateQueryMask(generatedCategoryId);
             this->movePicker2->updateQueryMask(generatedCategoryId);
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "EditorManager::filterCategories");
     }
 
     void EditorManager::focusCameraGameObject(GameObject* gameObject)
@@ -3388,7 +3396,8 @@ namespace NOWA
     {
         std::tuple<bool, Ogre::Real, Ogre::Vector3> result = {false, 0.0f, Ogre::Vector3::ZERO};
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::getTranslateYData", _2(gameObject, &result), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObject, &result]()
+        {
             bool success = false;
             Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
             Ogre::Vector3 normal = Ogre::Vector3::ZERO;
@@ -3429,7 +3438,8 @@ namespace NOWA
             }
 
             result = std::make_tuple(success, internalHitPoint.y, normal); // Set the result
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "EditorManager::getTranslateYData");
 
         return result;
     }
@@ -3598,8 +3608,11 @@ namespace NOWA
                 if (Ogre::Vector3::ZERO != normal)
                 {
                     // TODO: How to use interpolation?
-                    ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::moveObjects2", _2(selectedGameObject, normal),
-                        { selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y); });
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, selectedGameObject, normal]()
+                    {
+                        selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "EditorManager::moveObjects2");
                 }
             }
 
@@ -4013,7 +4026,13 @@ namespace NOWA
     void EditorManager::deactivatePlaceMode(void)
     {
         this->destroyTempPlaceMovableObjectNode();
-        ENQUEUE_RENDER_COMMAND("EditorManager::deactivatePlaceMode", { this->placeNode->setVisible(false); });
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->placeNode->setVisible(false);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "EditorManager::deactivatePlaceMode");
+
         // Delete the group
         for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
         {

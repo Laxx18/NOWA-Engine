@@ -512,6 +512,7 @@ namespace NOWA
          */
         bool exportMesh(const Ogre::String& filename);
 
+        void setEditMode(const Ogre::String& editMode);
         EditMode getEditModeEnum(void) const;
 
         int findNearestSegmentWithinRadius(const Ogre::Vector3& worldPos, Ogre::Real radius) const;

@@ -237,11 +237,11 @@ namespace NOWA
 		Ogre::CompositorNode* node = this->workspaceBaseComponent->getWorkspace()->findNode(effectName);
 		if (nullptr != node)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectBaseComponent::enableEffect", _2(node, enabled),
-			{
-				node->setEnabled(enabled);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, node, enabled]()
+            {
+                node->setEnabled(enabled);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectBaseComponent::enableEffect");
 		}
 		else
 		{
@@ -407,11 +407,11 @@ namespace NOWA
 
 		if (nullptr != this->passes[3])
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectBloomComponent::setImageWeight", _1(imageWeight),
-			{
-				this->passes[3]->getFragmentProgramParameters()->setNamedConstant("OriginalImageWeight", imageWeight);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, imageWeight]()
+            {
+                this->passes[3]->getFragmentProgramParameters()->setNamedConstant("OriginalImageWeight", imageWeight);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectBloomComponent::setImageWeight");
 		}
 	}
 
@@ -426,11 +426,11 @@ namespace NOWA
 
 		if (nullptr != this->passes[3])
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectBloomComponent::setBlurWeight", _1(blurWeight),
-			{
-				this->passes[3]->getFragmentProgramParameters()->setNamedConstant("BlurWeight", blurWeight);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, blurWeight]()
+            {
+                this->passes[3]->getFragmentProgramParameters()->setNamedConstant("BlurWeight", blurWeight);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectBloomComponent::setBlurWeight");
 		}
 	}
 
@@ -541,11 +541,11 @@ namespace NOWA
 
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectGlassComponent::setGlassWeight", _1(glassWeight),
-			{
-				this->pass->getFragmentProgramParameters()->setNamedConstant("GlassWeight", glassWeight);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, glassWeight]()
+            {
+                this->pass->getFragmentProgramParameters()->setNamedConstant("GlassWeight", glassWeight);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectGlassComponent::setGlassWeight");
 		}
 	}
 
@@ -791,11 +791,11 @@ namespace NOWA
 		this->distortionFrequency->setValue(distortionFrequency);
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setDistortionFrequency", _1(distortionFrequency),
-			{
-				this->pass->getFragmentProgramParameters()->setNamedConstant("distortionFreq", distortionFrequency);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, distortionFrequency]()
+            {
+                this->pass->getFragmentProgramParameters()->setNamedConstant("distortionFreq", distortionFrequency);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectGlassComponent::setDistortionFrequency");
 		}
 	}
 
@@ -809,11 +809,11 @@ namespace NOWA
 		this->distortionScale->setValue(distortionScale);
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setDistortionScale", _1(distortionScale),
-			{
-				this->pass->getFragmentProgramParameters()->setNamedConstant("distortionScale", distortionScale);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, distortionScale]()
+            {
+                this->pass->getFragmentProgramParameters()->setNamedConstant("distortionScale", distortionScale);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectGlassComponent::setDistortionScale");
 		}
 	}
 
@@ -827,11 +827,11 @@ namespace NOWA
 		this->distortionRoll->setValue(distortionRoll);
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setDistortionRoll", _1(distortionRoll),
-			{
-				this->pass->getFragmentProgramParameters()->setNamedConstant("distortionRoll", distortionRoll);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, distortionRoll]()
+            {
+                this->pass->getFragmentProgramParameters()->setNamedConstant("distortionRoll", distortionRoll);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectGlassComponent::setDistortionRoll");
 		}
 	}
 
@@ -845,11 +845,11 @@ namespace NOWA
 		this->interference->setValue(interference);
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setInterference", _1(interference),
-			{
-				this->pass->getFragmentProgramParameters()->setNamedConstant("interference", interference);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, interference]()
+            {
+                this->pass->getFragmentProgramParameters()->setNamedConstant("interference", interference);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectGlassComponent::setInterference");
 		}
 	}
 
@@ -863,11 +863,11 @@ namespace NOWA
 		this->frameLimit->setValue(frameLimit);
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setFrameLimit", _1(frameLimit),
-			{
-				this->pass->getFragmentProgramParameters()->setNamedConstant("frameLimit", frameLimit);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, frameLimit]()
+            {
+                this->pass->getFragmentProgramParameters()->setNamedConstant("frameLimit", frameLimit);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOldTvComponent::setFrameLimit");
 		}
 	}
 
@@ -881,11 +881,11 @@ namespace NOWA
 		this->frameShape->setValue(frameShape);
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setFrameShape", _1(frameShape),
-			{
-				this->pass->getFragmentProgramParameters()->setNamedConstant("frameShape", frameShape);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, frameShape]()
+            {
+                this->pass->getFragmentProgramParameters()->setNamedConstant("frameShape", frameShape);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOldTvComponent::setFrameShape");
 		}
 	}
 
@@ -899,11 +899,11 @@ namespace NOWA
 		this->frameSharpness->setValue(frameSharpness);
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setFrameSharpness", _1(frameSharpness),
-			{
-				this->pass->getFragmentProgramParameters()->setNamedConstant("frameSharpness", frameSharpness);
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, frameSharpness]()
+            {
+                this->pass->getFragmentProgramParameters()->setNamedConstant("frameSharpness", frameSharpness);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOldTvComponent::setFrameSharpness");
 		}
 	}
 
@@ -917,12 +917,12 @@ namespace NOWA
 		this->time->setValue(time);
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setTime", _1(time),
-			{
-				// this->pass->getFragmentProgramParameters()->setNamedConstant("time_0_X", time);
-				this->pass->getFragmentProgramParameters()->setNamedConstantFromTime("time_0_X", static_cast<Ogre::Real>(time));
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, time]()
+            {
+                // this->pass->getFragmentProgramParameters()->setNamedConstant("time_0_X", time);
+                this->pass->getFragmentProgramParameters()->setNamedConstantFromTime("time_0_X", static_cast<Ogre::Real>(time));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOldTvComponent::setTime");
 		}
 	}
 
@@ -936,12 +936,11 @@ namespace NOWA
 		this->sinusTime->setValue(sinusTime);
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setSinusTime", _1(sinusTime),
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, sinusTime]()
 			{
-				// this->pass->getFragmentProgramParameters()->setNamedConstant("sin_time_0_X", sinusTime);
 				this->pass->getFragmentProgramParameters()->setNamedConstantFromTime("sin_time_0_X", static_cast<Ogre::Real>(sinusTime));
-			});
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOldTvComponent::setSinusTime");
 		}
 	}
 
@@ -1053,11 +1052,11 @@ namespace NOWA
 
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectBlackAndWhiteComponent::setColor", _1(color),
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, color]()
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("color", color);
-			});
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectBlackAndWhiteComponent::setColor");
 		}
 	}
 
@@ -1169,11 +1168,11 @@ namespace NOWA
 
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectColorComponent::setColor", _1(color),
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, color]()
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("color", color);
-			});
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectColorComponent::setColor");
 		}
 	}
 
@@ -1284,11 +1283,11 @@ namespace NOWA
 
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectEmbossedComponent::setWeight", _1(weight),
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, weight]()
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("weight", weight);
-			});
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectEmbossedComponent::setWeight");
 		}
 	}
 
@@ -1401,11 +1400,11 @@ namespace NOWA
 
 		if (nullptr != this->pass)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectSharpenEdgesComponent::setWeight", _1(weight),
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, weight]()
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("weight", weight);
-			});
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectSharpenEdgesComponent::setWeight");
 		}
 	}
 
@@ -1606,7 +1605,11 @@ namespace NOWA
 
         if (nullptr != this->edgePass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setEdgeThreshold", _1(edgeThreshold), { this->edgePass->getFragmentProgramParameters()->setNamedConstant("edgeThreshold", edgeThreshold); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, edgeThreshold]()
+            {
+                this->edgePass->getFragmentProgramParameters()->setNamedConstant("edgeThreshold", edgeThreshold);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectCartoonComponent::setEdgeThreshold");
         }
     }
 
@@ -1621,7 +1624,11 @@ namespace NOWA
 
         if (nullptr != this->edgePass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setEdgeStrength", _1(edgeStrength), { this->edgePass->getFragmentProgramParameters()->setNamedConstant("edgeStrength", edgeStrength); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, edgeStrength]()
+            {
+                this->edgePass->getFragmentProgramParameters()->setNamedConstant("edgeStrength", edgeStrength);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectCartoonComponent::setEdgeStrength");
         }
     }
 
@@ -1640,7 +1647,11 @@ namespace NOWA
 
         if (nullptr != this->colorPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setNumBands", _1(numBands), { this->colorPass->getFragmentProgramParameters()->setNamedConstant("numBands", numBands); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, numBands]()
+            {
+                this->colorPass->getFragmentProgramParameters()->setNamedConstant("numBands", numBands);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectCartoonComponent::setNumBands");
         }
     }
 
@@ -1655,7 +1666,11 @@ namespace NOWA
 
         if (nullptr != this->colorPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setSaturation", _1(saturation), { this->colorPass->getFragmentProgramParameters()->setNamedConstant("saturation", saturation); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, saturation]()
+            {
+                this->colorPass->getFragmentProgramParameters()->setNamedConstant("saturation", saturation);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectCartoonComponent::setSaturation");
         }
     }
 
@@ -1670,7 +1685,11 @@ namespace NOWA
 
         if (nullptr != this->colorPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setEdgeDarkness", _1(edgeDarkness), { this->colorPass->getFragmentProgramParameters()->setNamedConstant("edgeDarkness", edgeDarkness); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, edgeDarkness]()
+            {
+                this->colorPass->getFragmentProgramParameters()->setNamedConstant("edgeDarkness", edgeDarkness);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectCartoonComponent::setEdgeDarkness");
         }
     }
 
@@ -2097,7 +2116,11 @@ namespace NOWA
         this->sunThreshold->setValue(sunThreshold);
         if (nullptr != this->sunMaskPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setSunThreshold", _1(sunThreshold), { this->sunMaskPass->getFragmentProgramParameters()->setNamedConstant("sunThreshold", sunThreshold); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, sunThreshold]()
+            {
+                this->sunMaskPass->getFragmentProgramParameters()->setNamedConstant("sunThreshold", sunThreshold);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectVolumetricLightComponent::setSunThreshold");
         }
     }
 
@@ -2111,7 +2134,11 @@ namespace NOWA
         this->sunRadius->setValue(sunRadius);
         if (nullptr != this->sunMaskPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setSunRadius", _1(sunRadius), { this->sunMaskPass->getFragmentProgramParameters()->setNamedConstant("sunRadius", sunRadius); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, sunRadius]()
+            {
+                this->sunMaskPass->getFragmentProgramParameters()->setNamedConstant("sunRadius", sunRadius);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectVolumetricLightComponent::setSunRadius");
         }
     }
 
@@ -2127,7 +2154,11 @@ namespace NOWA
         this->decay->setValue(decay);
         if (nullptr != this->radialBlurPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setDecay", _1(decay), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("decay", decay); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, decay]()
+            {
+                this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("decay", decay);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectVolumetricLightComponent::setDecay");
         }
     }
 
@@ -2141,7 +2172,11 @@ namespace NOWA
         this->density->setValue(density);
         if (nullptr != this->radialBlurPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setDensity", _1(density), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("density", density); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, density]()
+            {
+                this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("density", density);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectVolumetricLightComponent::setDensity");
         }
     }
 
@@ -2155,7 +2190,11 @@ namespace NOWA
         this->exposure->setValue(exposure);
         if (nullptr != this->radialBlurPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setExposure", _1(exposure), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("exposure", exposure); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, exposure]()
+            {
+                this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("exposure", exposure);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectVolumetricLightComponent::setExposure");
         }
     }
 
@@ -2171,7 +2210,11 @@ namespace NOWA
         this->godRayStrength->setValue(godRayStrength);
         if (nullptr != this->blendPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setGodRayStrength", _1(godRayStrength), { this->blendPass->getFragmentProgramParameters()->setNamedConstant("godRayStrength", godRayStrength); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, godRayStrength]()
+            {
+                this->blendPass->getFragmentProgramParameters()->setNamedConstant("godRayStrength", godRayStrength);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectVolumetricLightComponent::setGodRayStrength");
         }
     }
 
@@ -2185,7 +2228,11 @@ namespace NOWA
         this->tint->setValue(tint);
         if (nullptr != this->blendPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setTint", _1(tint), { this->blendPass->getFragmentProgramParameters()->setNamedConstant("tint", tint); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, tint]()
+            {
+                this->blendPass->getFragmentProgramParameters()->setNamedConstant("tint", tint);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectVolumetricLightComponent::setTint");
         }
     }
 
@@ -2391,11 +2438,13 @@ namespace NOWA
 
             Ogre::Pass* pass = this->fogPass;
             Ogre::Camera* camera = this->camera;
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::postInit_projParams", _3(projAB, pass, camera), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [pass, projAB, camera]()
+            {
                 auto* params = pass->getFragmentProgramParameters().get();
                 params->setNamedConstant("projectionParams", projAB);
                 params->setNamedConstant("farClipDistance", camera->getFarClipDistance());
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectFogComponent::postInit_projParams");
         }
 
         // Push all tunable values
@@ -2542,7 +2591,11 @@ namespace NOWA
         this->depthFogDensity->setValue(density);
         if (nullptr != this->fogPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setDepthFogDensity", _1(density), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("depthFogDensity", density); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, density]()
+            {
+                this->fogPass->getFragmentProgramParameters()->setNamedConstant("depthFogDensity", density);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectFogComponent::setDepthFogDensity");
         }
     }
 
@@ -2556,7 +2609,11 @@ namespace NOWA
         this->depthFogStart->setValue(start);
         if (nullptr != this->fogPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setDepthFogStart", _1(start), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("depthFogStart", start); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, start]()
+            {
+                this->fogPass->getFragmentProgramParameters()->setNamedConstant("depthFogStart", start);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectFogComponent::setDepthFogStart");
         }
     }
 
@@ -2570,7 +2627,11 @@ namespace NOWA
         this->heightFogDensity->setValue(density);
         if (nullptr != this->fogPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setHeightFogDensity", _1(density), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("heightFogDensity", density); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, density]()
+            {
+                this->fogPass->getFragmentProgramParameters()->setNamedConstant("heightFogDensity", density);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectFogComponent::setHeightFogDensity");
         }
     }
 
@@ -2584,7 +2645,11 @@ namespace NOWA
         this->heightFogStart->setValue(worldY);
         if (nullptr != this->fogPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setHeightFogStart", _1(worldY), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("heightFogStart", worldY); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, worldY]()
+            {
+                this->fogPass->getFragmentProgramParameters()->setNamedConstant("heightFogStart", worldY);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectFogComponent::setHeightFogStart");
         }
     }
 
@@ -2598,7 +2663,11 @@ namespace NOWA
         this->heightFogEnd->setValue(worldY);
         if (nullptr != this->fogPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setHeightFogEnd", _1(worldY), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("heightFogEnd", worldY); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, worldY]()
+            {
+                this->fogPass->getFragmentProgramParameters()->setNamedConstant("heightFogEnd", worldY);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectFogComponent::setHeightFogEnd");
         }
     }
 
@@ -2612,7 +2681,11 @@ namespace NOWA
         this->fogColor->setValue(color);
         if (nullptr != this->fogPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setFogColor", _1(color), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("fogColor", color); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, color]()
+            {
+                this->fogPass->getFragmentProgramParameters()->setNamedConstant("fogColor", color);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectFogComponent::setFogColor");
         }
     }
 
@@ -2626,7 +2699,11 @@ namespace NOWA
         this->fogSkyBlend->setValue(blend);
         if (nullptr != this->fogPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setFogSkyBlend", _1(blend), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("fogSkyBlend", blend); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, blend]()
+            {
+                this->fogPass->getFragmentProgramParameters()->setNamedConstant("fogSkyBlend", blend);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectFogComponent::setFogSkyBlend");
         }
     }
 
@@ -3121,8 +3198,11 @@ namespace NOWA
         this->occlusionDepthThreshold->setValue(threshold);
         if (nullptr != this->occlusionMaskPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLightShaftsComponent::setOcclusionDepthThreshold", _1(threshold),
-                { this->occlusionMaskPass->getFragmentProgramParameters()->setNamedConstant("occlusionDepthThreshold", threshold); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, threshold]()
+            {
+                this->occlusionMaskPass->getFragmentProgramParameters()->setNamedConstant("occlusionDepthThreshold", threshold);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLightShaftsComponent::setOcclusionDepthThreshold");
         }
     }
 
@@ -3136,7 +3216,11 @@ namespace NOWA
         this->sunRadius->setValue(radius);
         if (nullptr != this->occlusionMaskPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLightShaftsComponent::setSunRadius", _1(radius), { this->occlusionMaskPass->getFragmentProgramParameters()->setNamedConstant("sunRadius", radius); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, radius]()
+            {
+                this->occlusionMaskPass->getFragmentProgramParameters()->setNamedConstant("sunRadius", radius);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLightShaftsComponent::setSunRadius");
         }
     }
 
@@ -3150,7 +3234,11 @@ namespace NOWA
         this->brightnessThreshold->setValue(threshold);
         if (nullptr != this->occlusionMaskPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLightShaftsComponent::setBrightnessThreshold", _1(threshold), { this->occlusionMaskPass->getFragmentProgramParameters()->setNamedConstant("brightnessThreshold", threshold); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, threshold]()
+            {
+                this->occlusionMaskPass->getFragmentProgramParameters()->setNamedConstant("brightnessThreshold", threshold);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLightShaftsComponent::setBrightnessThreshold");
         }
     }
 
@@ -3168,7 +3256,11 @@ namespace NOWA
         this->decay->setValue(decay);
         if (nullptr != this->radialBlurPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLightShaftsComponent::setDecay", _1(decay), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("decay", decay); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, decay]()
+            {
+                this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("decay", decay);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLightShaftsComponent::setDecay");
         }
     }
 
@@ -3182,7 +3274,11 @@ namespace NOWA
         this->density->setValue(density);
         if (nullptr != this->radialBlurPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLightShaftsComponent::setDensity", _1(density), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("density", density); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, density]()
+            {
+                this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("density", density);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLightShaftsComponent::setDensity");
         }
     }
 
@@ -3196,7 +3292,11 @@ namespace NOWA
         this->exposure->setValue(exposure);
         if (nullptr != this->radialBlurPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLightShaftsComponent::setExposure", _1(exposure), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("exposure", exposure); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, exposure]()
+            {
+                this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("exposure", exposure);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLightShaftsComponent::setExposure");
         }
     }
 
@@ -3210,7 +3310,11 @@ namespace NOWA
         this->shaftSharpness->setValue(sharpness);
         if (nullptr != this->radialBlurPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLightShaftsComponent::setShaftSharpness", _1(sharpness), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("shaftSharpness", sharpness); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, sharpness]()
+            {
+                this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("shaftSharpness", sharpness);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLightShaftsComponent::setShaftSharpness");
         }
     }
 
@@ -3228,7 +3332,11 @@ namespace NOWA
         this->shaftStrength->setValue(strength);
         if (nullptr != this->blendPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLightShaftsComponent::setShaftStrength", _1(strength), { this->blendPass->getFragmentProgramParameters()->setNamedConstant("shaftStrength", strength); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, strength]()
+            {
+                this->blendPass->getFragmentProgramParameters()->setNamedConstant("shaftStrength", strength);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLightShaftsComponent::setShaftStrength");
         }
     }
 
@@ -3242,7 +3350,11 @@ namespace NOWA
         this->tint->setValue(tint);
         if (nullptr != this->blendPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLightShaftsComponent::setTint", _1(tint), { this->blendPass->getFragmentProgramParameters()->setNamedConstant("tint", tint); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, tint]()
+            {
+                this->blendPass->getFragmentProgramParameters()->setNamedConstant("tint", tint);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLightShaftsComponent::setTint");
         }
     }
 
@@ -3463,11 +3575,13 @@ namespace NOWA
             const float farClip = this->camera->getFarClipDistance();
   
             Ogre::Pass* coc = this->cocPass;
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectDepthOfFieldComponent::postInit_proj", _3(projAB, farClip, coc), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [coc, projAB, farClip]()
+            {
                 auto* p = coc->getFragmentProgramParameters().get();
                 p->setNamedConstant("projectionParams", projAB);
                 p->setNamedConstant("farClipDistance", farClip);
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectDepthOfFieldComponent::postInit_proj");
         }
 
         return true;
@@ -3777,7 +3891,11 @@ namespace NOWA
         this->focusDistance->setValue(dist);
         if (nullptr != this->cocPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectDepthOfFieldComponent::setFocusDistance", _1(dist), { this->cocPass->getFragmentProgramParameters()->setNamedConstant("focusDistance", dist); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, dist]()
+            {
+                this->cocPass->getFragmentProgramParameters()->setNamedConstant("focusDistance", dist);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectDepthOfFieldComponent::setFocusDistance");
         }
     }
     Ogre::Real CompositorEffectDepthOfFieldComponent::getFocusDistance(void) const
@@ -3790,7 +3908,11 @@ namespace NOWA
         this->nearBlurRange->setValue(range);
         if (nullptr != this->cocPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectDepthOfFieldComponent::setNearBlurRange", _1(range), { this->cocPass->getFragmentProgramParameters()->setNamedConstant("nearBlurRange", range); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, range]()
+            {
+                this->cocPass->getFragmentProgramParameters()->setNamedConstant("nearBlurRange", range);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectDepthOfFieldComponent::setNearBlurRange");
         }
     }
     Ogre::Real CompositorEffectDepthOfFieldComponent::getNearBlurRange(void) const
@@ -3803,7 +3925,11 @@ namespace NOWA
         this->farBlurRange->setValue(range);
         if (nullptr != this->cocPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectDepthOfFieldComponent::setFarBlurRange", _1(range), { this->cocPass->getFragmentProgramParameters()->setNamedConstant("farBlurRange", range); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, range]()
+            {
+                this->cocPass->getFragmentProgramParameters()->setNamedConstant("farBlurRange", range);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectDepthOfFieldComponent::setFarBlurRange");
         }
     }
     Ogre::Real CompositorEffectDepthOfFieldComponent::getFarBlurRange(void) const
@@ -3850,7 +3976,11 @@ namespace NOWA
         this->blendStrength->setValue(strength);
         if (nullptr != this->blendPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectDepthOfFieldComponent::setBlendStrength", _1(strength), { this->blendPass->getFragmentProgramParameters()->setNamedConstant("blendStrength", strength); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, strength]()
+            {
+                this->blendPass->getFragmentProgramParameters()->setNamedConstant("blendStrength", strength);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectDepthOfFieldComponent::setBlendStrength");
         }
     }
     Ogre::Real CompositorEffectDepthOfFieldComponent::getBlendStrength(void) const
@@ -4040,11 +4170,13 @@ namespace NOWA
             const float farClip = this->camera->getFarClipDistance();
 
             Ogre::Pass* pass = this->outlinePass;
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOutlineComponent::postInit_proj", _3(pass, projAB, farClip), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [pass, projAB, farClip]()
+            {
                 auto* p = pass->getFragmentProgramParameters().get();
                 p->setNamedConstant("projectionParams", projAB);
                 p->setNamedConstant("farClipDistance", farClip);
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOutlineComponent::postInit_proj");
         }
 
         return true;
@@ -4163,7 +4295,11 @@ namespace NOWA
         this->outlineColor->setValue(color);
         if (nullptr != this->outlinePass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOutlineComponent::setOutlineColor", _1(color), { this->outlinePass->getFragmentProgramParameters()->setNamedConstant("outlineColor", color); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, color]()
+            {
+                this->outlinePass->getFragmentProgramParameters()->setNamedConstant("outlineColor", color);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOutlineComponent::setOutlineColor");
         }
     }
 
@@ -4177,7 +4313,11 @@ namespace NOWA
         this->outlineThickness->setValue(thickness);
         if (nullptr != this->outlinePass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOutlineComponent::setOutlineThickness", _1(thickness), { this->outlinePass->getFragmentProgramParameters()->setNamedConstant("outlineThickness", thickness); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, thickness]()
+            {
+                this->outlinePass->getFragmentProgramParameters()->setNamedConstant("outlineThickness", thickness);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOutlineComponent::setOutlineThickness");
         }
     }
 
@@ -4191,7 +4331,11 @@ namespace NOWA
         this->depthThreshold->setValue(threshold);
         if (nullptr != this->outlinePass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOutlineComponent::setDepthThreshold", _1(threshold), { this->outlinePass->getFragmentProgramParameters()->setNamedConstant("depthThreshold", threshold); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, threshold]()
+            {
+                this->outlinePass->getFragmentProgramParameters()->setNamedConstant("depthThreshold", threshold);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOutlineComponent::setDepthThreshold");
         }
     }
 
@@ -4205,7 +4349,11 @@ namespace NOWA
         this->outlineStrength->setValue(strength);
         if (nullptr != this->outlinePass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOutlineComponent::setOutlineStrength", _1(strength), { this->outlinePass->getFragmentProgramParameters()->setNamedConstant("outlineStrength", strength); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, strength]()
+            {
+                this->outlinePass->getFragmentProgramParameters()->setNamedConstant("outlineStrength", strength);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectOutlineComponent::setOutlineStrength");
         }
     }
 
@@ -4383,7 +4531,11 @@ namespace NOWA
 
         if (nullptr != this->combinePass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectMotionBlurComponent::setBlurStrength", _1(blurStrength), { this->combinePass->getFragmentProgramParameters()->setNamedConstant("blur", blurStrength); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, blurStrength]()
+            {
+                this->combinePass->getFragmentProgramParameters()->setNamedConstant("blur", blurStrength);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectMotionBlurComponent::setBlurStrength");
         }
     }
 
@@ -4601,7 +4753,12 @@ namespace NOWA
         // w    = 1 / (max - min)
         const Ogre::Vector4 centerUVPos(tempCenter.x, tempCenter.y, tempMinDistance, 1.0f / (tempMaxDistance - tempMinDistance));
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectRadialBlurComponent::applyCenterParams", _1(centerUVPos), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("centerUVPos", centerUVPos); });
+        Ogre::Pass* radialBlurPass = this->radialBlurPass;
+        NOWA::GraphicsModule::RenderCommand renderCommand = [radialBlurPass, centerUVPos]()
+        {
+            radialBlurPass->getFragmentProgramParameters()->setNamedConstant("centerUVPos", centerUVPos);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectRadialBlurComponent::applyCenterParams");
     }
 
     void CompositorEffectRadialBlurComponent::setCenter(const Ogre::Vector2& center)
@@ -4643,7 +4800,11 @@ namespace NOWA
 
         if (nullptr != this->radialBlurPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectRadialBlurComponent::setExponent", _1(exponent), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("exponent", exponent); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, exponent]()
+            {
+                this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("exponent", exponent);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectRadialBlurComponent::setExponent");
         }
     }
 
@@ -4842,12 +5003,14 @@ namespace NOWA
             const Ogre::Vector2 iNumTiles(1.0f / tempNumTiles.x, 1.0f / tempNumTiles.y);
             const Ogre::Vector2 iNumTiles2(0.5f / tempNumTiles.x, 0.5f / tempNumTiles.y);
 
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectAsciiComponent::setNumTiles", _3(tempNumTiles, iNumTiles, iNumTiles2), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, tempNumTiles, iNumTiles, iNumTiles2]()
+            {
                 Ogre::GpuProgramParametersSharedPtr params = this->asciiPass->getFragmentProgramParameters();
                 params->setNamedConstant("numTiles", tempNumTiles);
                 params->setNamedConstant("iNumTiles", iNumTiles);
                 params->setNamedConstant("iNumTiles2", iNumTiles2);
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectAsciiComponent::setNumTiles");
         }
     }
 
@@ -4862,7 +5025,11 @@ namespace NOWA
 
         if (nullptr != this->asciiPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectAsciiComponent::setCharBias", _1(charBias), { this->asciiPass->getFragmentProgramParameters()->setNamedConstant("charBias", charBias); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, charBias]()
+            {
+                this->asciiPass->getFragmentProgramParameters()->setNamedConstant("charBias", charBias);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectAsciiComponent::setCharBias");
         }
     }
 
@@ -5031,7 +5198,11 @@ namespace NOWA
 
         if (nullptr != this->laplacePass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLaplaceComponent::setPixelSize", _1(pixelSize), { this->laplacePass->getFragmentProgramParameters()->setNamedConstant("pixelSize", pixelSize); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, pixelSize]()
+            {
+                this->laplacePass->getFragmentProgramParameters()->setNamedConstant("pixelSize", pixelSize);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLaplaceComponent::setPixelSize");
         }
     }
 
@@ -5046,7 +5217,11 @@ namespace NOWA
 
         if (nullptr != this->laplacePass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectLaplaceComponent::setScale", _1(scale), { this->laplacePass->getFragmentProgramParameters()->setNamedConstant("scale", scale); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, scale]()
+            {
+                this->laplacePass->getFragmentProgramParameters()->setNamedConstant("scale", scale);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectLaplaceComponent::setScale");
         }
     }
 
@@ -5219,7 +5394,11 @@ namespace NOWA
 
         if (nullptr != this->tilingPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectTilingComponent::setNumTiles", _1(numTiles), { this->tilingPass->getFragmentProgramParameters()->setNamedConstant("NumTiles", numTiles); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, numTiles]()
+            {
+                this->tilingPass->getFragmentProgramParameters()->setNamedConstant("NumTiles", numTiles);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectTilingComponent::setNumTiles");
         }
     }
 
@@ -5234,7 +5413,11 @@ namespace NOWA
 
         if (nullptr != this->tilingPass)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectTilingComponent::setThreshold", _1(threshold), { this->tilingPass->getFragmentProgramParameters()->setNamedConstant("Threshold", threshold); });
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, threshold]()
+            {
+                this->tilingPass->getFragmentProgramParameters()->setNamedConstant("Threshold", threshold);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectTilingComponent::setThreshold");
         }
     }
 
