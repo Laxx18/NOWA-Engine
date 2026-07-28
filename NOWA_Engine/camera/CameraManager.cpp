@@ -219,7 +219,6 @@ namespace NOWA
 				if (entry.first != camera && false == entry.second.forSplitScreen)
 				{
 					entry.second.isActive = false;
-					// ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera1", _1(entry),
 					NOWA::GraphicsModule::RenderCommand renderCommand = [this, entry]()
 					{
 						entry.first->setVisible(false);
@@ -246,22 +245,26 @@ namespace NOWA
 					break;
 				}
 
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera2", _1(camera),
-				{
-					// Now set this camera as active
-					camera->setVisible(true);
-				});
+				NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
+                {
+                    // Now set this camera as active
+                    camera->setVisible(true);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::addCamera2");
+
 				cameraData.behaviorData.begin()->cameraBehavior->postInitialize(camera);
 				cameraData.behaviorData.begin()->cameraBehavior->onSetData();
 			}
 		}
 		else
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera3", _1(camera),
-			{
-				// If deactivating, just hide the camera and clear its data
-				camera->setVisible(false);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
+            {
+                // If deactivating, just hide the camera and clear its data
+                camera->setVisible(false);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::addCamera3");
+
 			cameraData.behaviorData.begin()->cameraBehavior->onClearData();
 		}
 
@@ -286,10 +289,12 @@ namespace NOWA
 				auto firstCamera = this->cameraDataMap.begin()->first;
 				CameraData& firstCameraData = this->cameraDataMap[firstCamera];
 				firstCameraData.isActive = true;
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera4", _1(firstCamera),
-				{
-					firstCamera->setVisible(true);
-				});
+
+				NOWA::GraphicsModule::RenderCommand renderCommand = [this, firstCamera]()
+                {
+                    firstCamera->setVisible(true);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::addCamera4");
 
 				firstCameraData.behaviorData.begin()->cameraBehavior->postInitialize(firstCamera);
 				firstCameraData.behaviorData.begin()->cameraBehavior->onSetData();
@@ -361,11 +366,11 @@ namespace NOWA
 
 				this->cameraDataMap.erase(it);
 				
-
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::removeCamera", _1(camera),
-				{
-					camera->setVisible(false);
-				});
+				NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
+                {
+                    camera->setVisible(false);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::removeCamera");
 
 				// Check if there is another active camera in the map
 				for (auto& entry : this->cameraDataMap)
@@ -383,10 +388,12 @@ namespace NOWA
 					auto firstCamera = this->cameraDataMap.begin()->first;
 					CameraData& firstCameraData = this->cameraDataMap[firstCamera];
 					firstCameraData.isActive = true;
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::removeCamera2", _1(firstCamera),
-					{
-						firstCamera->setVisible(true);
-					});
+
+					NOWA::GraphicsModule::RenderCommand renderCommand = [this, firstCamera]()
+                    {
+                        firstCamera->setVisible(true);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::removeCamera2");
 
 					firstCameraData.behaviorData.begin()->cameraBehavior->postInitialize(firstCamera);
 					firstCameraData.behaviorData.begin()->cameraBehavior->onSetData();
@@ -407,10 +414,12 @@ namespace NOWA
 				cameraData.behaviorData.clear();
 
 				this->cameraDataMap.erase(it);
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::removeCamera3", _1(camera),
-				{
-					camera->setVisible(false);
-				});
+
+				NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
+                {
+                    camera->setVisible(false);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::removeCamera3");
 			}
 		}
 	}
@@ -428,10 +437,13 @@ namespace NOWA
 					// Set all cameras as inactive
 					entry.second.isActive = false;
 					entry.first->setVisible(false);
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::activateCamera", _1(camera),
-					{
-						camera->setVisible(false);
-					});
+
+					NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
+                    {
+                        camera->setVisible(false);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::activateCamera");
+
 					entry.second.behaviorData.begin()->cameraBehavior->onClearData();
 				}
 			}
@@ -440,10 +452,11 @@ namespace NOWA
 			CameraData& cameraData = it->second;
 			cameraData.isActive = true;
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::activateCamera2", _1(camera),
-			{
-				camera->setVisible(true);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
+            {
+                camera->setVisible(true);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::activateCamera2");
 
 			// Ensure the first behavior is set and initialized
 			if (!cameraData.behaviorData.empty())

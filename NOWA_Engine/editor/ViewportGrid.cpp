@@ -168,13 +168,14 @@ namespace NOWA
 		auto nodeLocal = this->node;
 		auto gridLocal = this->grid;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ViewportGrid::enable", _2(nodeLocal, gridLocal),
-		{
-			if (!gridLocal->isAttached())
-			{
-				nodeLocal->attachObject(gridLocal);
-			}
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, nodeLocal, gridLocal]()
+        {
+            if (!gridLocal->isAttached())
+            {
+                nodeLocal->attachObject(gridLocal);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ViewportGrid::enable");
 
 		this->applyForceUpdate();
 	}
@@ -186,13 +187,14 @@ namespace NOWA
 		auto nodeLocal = this->node;
 		auto gridLocal = this->grid;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ViewportGrid::disable", _2(nodeLocal, gridLocal),
-		{
-			if (gridLocal->isAttached())
-			{
-				nodeLocal->detachObject(gridLocal);
-			}
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, nodeLocal, gridLocal]()
+        {
+            if (gridLocal->isAttached())
+            {
+                nodeLocal->detachObject(gridLocal);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ViewportGrid::disable");
 	}
 
 
@@ -233,26 +235,27 @@ namespace NOWA
 
 	void ViewportGrid::createGrid()
 	{
-		ENQUEUE_RENDER_COMMAND("ViewportGrid::createGrid",
-		{
-			Ogre::String name = "ViewportGrid";
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            Ogre::String name = "ViewportGrid";
 
-			// Create the manual object
-			// this->grid = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-			this->grid = this->sceneManager->createManualObject(Ogre::SCENE_DYNAMIC);
-			this->grid->setName(name);
-			this->grid->setQueryFlags(0 << 0);
-			this->grid->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+            // Create the manual object
+            // this->grid = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+            this->grid = this->sceneManager->createManualObject(Ogre::SCENE_DYNAMIC);
+            this->grid->setName(name);
+            this->grid->setQueryFlags(0 << 0);
+            this->grid->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 
-			// Really important: When an unlit datablock is used for manual object, no shadows must be cast!! else there is an error in an dx script with 'depthRange'!
-			this->grid->setCastShadows(false);
+            // Really important: When an unlit datablock is used for manual object, no shadows must be cast!! else there is an error in an dx script with 'depthRange'!
+            this->grid->setCastShadows(false);
 
-			// Create the scene node (not attached yet)
-			this->node = this->sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-			this->node->setName(name);
-			this->node->attachObject(this->grid);
-			this->enabled = false;
-		});
+            // Create the scene node (not attached yet)
+            this->node = this->sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+            this->node->setName(name);
+            this->node->attachObject(this->grid);
+            this->enabled = false;
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ViewportGrid::createGrid");
 	}
 
 	void ViewportGrid::intenralUpdate()

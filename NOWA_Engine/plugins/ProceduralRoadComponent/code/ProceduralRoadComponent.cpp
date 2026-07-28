@@ -8222,8 +8222,68 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] EditMode changed to: " + editMode + " | segments: " + Ogre::StringConverter::toString(this->roadSegments.size()) +
                                                                                " | isEditorMeshModifyMode: " + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " | isSelected: " + Ogre::StringConverter::toString(this->isSelected));
+
         if (this->getEditModeEnum() == EditMode::SEGMENT)
         {
+            // >>> One-shot resync against the GameObject's actual current
+            // transform, exactly once per Segment-mode entry -- now covers
+            // BOTH translation and rotation via the same shared-delta shift.
+            if (true == this->hasRoadOrigin && true == this->roadFrameSet && nullptr != this->gameObjectPtr)
+            {
+                Ogre::SceneNode* node = this->gameObjectPtr->getSceneNode();
+                if (nullptr != node)
+                {
+                    const Ogre::Vector3 liveWorldPos = node->_getDerivedPositionUpdated();
+                    const Ogre::Quaternion liveOrientation = node->_getDerivedOrientationUpdated();
+
+                    const Ogre::Vector3 expectedWorldPos = this->roadFrame * this->roadOrigin;
+                    const bool positionChanged = false == MathHelper::getInstance()->vector3Equals(liveWorldPos, expectedWorldPos, 0.01f);
+                    const bool orientationChanged = false == liveOrientation.equals(this->roadFrame, Ogre::Radian(0.001f));
+
+                    if (true == positionChanged || true == orientationChanged)
+                    {
+                        // New frame = the node's actual current orientation.
+                        const Ogre::Quaternion newFrame = liveOrientation;
+                        // New origin, keeping the "node position == frame * origin"
+                        // invariant used everywhere else in this file.
+                        const Ogre::Vector3 newRoadOrigin = newFrame.Inverse() * liveWorldPos;
+                        // Shared delta -- correct for translation, rotation, or
+                        // both simultaneously (see the derivation above:
+                        // cp.position - roadOrigin is a fixed invariant, so
+                        // this single delta keeps that invariant true in the
+                        // new frame for every stored point at once).
+                        const Ogre::Vector3 delta = newRoadOrigin - this->roadOrigin;
+
+                        for (RoadSegment& seg : this->roadSegments)
+                        {
+                            for (RoadControlPoint& cp : seg.controlPoints)
+                            {
+                                cp.position += delta;
+                            }
+                        }
+                        this->roadOrigin = newRoadOrigin;
+                        this->roadFrame = newFrame;
+
+                        if (true == this->hasLoadedRoadEndpoint)
+                        {
+                            this->loadedRoadEndpoint += delta;
+                        }
+
+                        // Cached heights are keyed by LOCAL xz -- after the
+                        // shift/rotation, the same local key now corresponds
+                        // to a different world spot.
+                        this->invalidateGroundHeightCache();
+
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Segment mode entered: detected external GameObject move/rotate, resyncing "
+                                                                                           "road data (positionChanged=" +
+                                                                                               Ogre::StringConverter::toString(positionChanged) + ", orientationChanged=" + Ogre::StringConverter::toString(orientationChanged) + ")");
+
+                        // ONE clean rebuild, not a repeated per-frame one.
+                        this->rebuildMesh();
+                    }
+                }
+            }
+
             // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
             boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
@@ -8233,7 +8293,6 @@ namespace NOWA
             boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_SELECT_MODE));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         }
-        this->scheduleSegmentOverlayUpdate();
     }
 
     ProceduralRoadComponent::EditMode ProceduralRoadComponent::getEditModeEnum(void) const

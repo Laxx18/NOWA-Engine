@@ -190,17 +190,18 @@ namespace NOWA
 	{
 		this->destroyingLine.store(false, std::memory_order_release);
 
-		ENQUEUE_RENDER_COMMAND_WAIT("Picker::createLine",
-		{
-			this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-			// this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-			this->dragLineObject = this->sceneManager->createManualObject();
-			this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-			this->dragLineObject->setName("PickerDragLines");
-			this->dragLineObject->setQueryFlags(0 << 0);
-			this->dragLineObject->setCastShadows(false);
-			this->dragLineNode->attachObject(this->dragLineObject);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+            // this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+            this->dragLineObject = this->sceneManager->createManualObject();
+            this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+            this->dragLineObject->setName("PickerDragLines");
+            this->dragLineObject->setQueryFlags(0 << 0);
+            this->dragLineObject->setCastShadows(false);
+            this->dragLineNode->attachObject(this->dragLineObject);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Picker::createLine");
 	}
 
 	void Picker::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
@@ -216,21 +217,21 @@ namespace NOWA
 		}
 
 		auto closureFunction = [this, startPosition, endPosition](Ogre::Real renderDt)
+		{
+			if (nullptr == this->dragLineObject)
 			{
-				if (nullptr == this->dragLineObject)
-				{
-					return;
-				}
+				return;
+			}
 
-				// Draw a 3D line between these points for visual effect
-				this->dragLineObject->clear();
-				this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
-				this->dragLineObject->position(startPosition);
-				this->dragLineObject->index(0);
-				this->dragLineObject->position(endPosition);
-				this->dragLineObject->index(1);
-				this->dragLineObject->end();
-			};
+			// Draw a 3D line between these points for visual effect
+			this->dragLineObject->clear();
+			this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
+			this->dragLineObject->position(startPosition);
+			this->dragLineObject->index(0);
+			this->dragLineObject->position(endPosition);
+			this->dragLineObject->index(1);
+			this->dragLineObject->end();
+		};
 		Ogre::String id = "Picker_drawLine_" + this->cameraName;
 		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
@@ -251,19 +252,20 @@ namespace NOWA
 		auto localDragLineNode = this->dragLineNode;
 		auto localDragLineObject = this->dragLineObject;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Picker::destroyLine", _3(localSceneManager, localDragLineNode, localDragLineObject),
-			{
-				localDragLineObject->clear();
-				localDragLineNode->detachAllObjects();
-				if (localDragLineObject)
-				{
-					localSceneManager->destroyManualObject(localDragLineObject);
-				}
-				if (localDragLineNode->getParentSceneNode())
-				{
-					localDragLineNode->getParentSceneNode()->removeAndDestroyChild(localDragLineNode);
-				}
-			});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, localSceneManager, localDragLineNode, localDragLineObject]()
+        {
+            localDragLineObject->clear();
+            localDragLineNode->detachAllObjects();
+            if (localDragLineObject)
+            {
+                localSceneManager->destroyManualObject(localDragLineObject);
+            }
+            if (localDragLineNode->getParentSceneNode())
+            {
+                localDragLineNode->getParentSceneNode()->removeAndDestroyChild(localDragLineNode);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Picker::destroyLine");
 
 		this->dragLineObject = nullptr;
 		this->dragLineNode = nullptr;
@@ -711,17 +713,18 @@ namespace NOWA
 	{
 		this->destroyingLine.store(false, std::memory_order_release);
 
-		ENQUEUE_RENDER_COMMAND_WAIT("GameObjectPicker::createLine",
-		{
-			this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-			// this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-			this->dragLineObject = this->sceneManager->createManualObject();
-			this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-			this->dragLineObject->setName("PickerDragLines");
-			this->dragLineObject->setQueryFlags(0 << 0);
-			this->dragLineObject->setCastShadows(false);
-			this->dragLineNode->attachObject(this->dragLineObject);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+            // this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+            this->dragLineObject = this->sceneManager->createManualObject();
+            this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+            this->dragLineObject->setName("PickerDragLines");
+            this->dragLineObject->setQueryFlags(0 << 0);
+            this->dragLineObject->setCastShadows(false);
+            this->dragLineNode->attachObject(this->dragLineObject);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPicker::createLine");
 	}
 
 	void GameObjectPicker::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
@@ -737,20 +740,20 @@ namespace NOWA
 		}
 
 		auto closureFunction = [this, startPosition, endPosition](Ogre::Real renderDt)
+		{
+			if (nullptr == this->dragLineObject)
 			{
-				if (nullptr == this->dragLineObject)
-				{
-					return;
-				}
-				// Draw a 3D line between these points for visual effect
-				this->dragLineObject->clear();
-				this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
-				this->dragLineObject->position(startPosition);
-				this->dragLineObject->index(0);
-				this->dragLineObject->position(endPosition);
-				this->dragLineObject->index(1);
-				this->dragLineObject->end();
-			};
+				return;
+			}
+			// Draw a 3D line between these points for visual effect
+			this->dragLineObject->clear();
+			this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
+			this->dragLineObject->position(startPosition);
+			this->dragLineObject->index(0);
+			this->dragLineObject->position(endPosition);
+			this->dragLineObject->index(1);
+			this->dragLineObject->end();
+		};
 		Ogre::String id = "GameObjectPicker_drawLine_" + camera->getName();
 		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
@@ -771,19 +774,20 @@ namespace NOWA
 		auto localDragLineNode = this->dragLineNode;
 		auto localDragLineObject = this->dragLineObject;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectPicker::destroyLine", _3(localSceneManager, localDragLineNode, localDragLineObject),
-			{
-				localDragLineObject->clear();
-				localDragLineNode->detachAllObjects();
-				if (localDragLineObject)
-				{
-					localSceneManager->destroyManualObject(localDragLineObject);
-				}
-				if (localDragLineNode->getParentSceneNode())
-				{
-					localDragLineNode->getParentSceneNode()->removeAndDestroyChild(localDragLineNode);
-				}
-			});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, localSceneManager, localDragLineNode, localDragLineObject]()
+        {
+            localDragLineObject->clear();
+            localDragLineNode->detachAllObjects();
+            if (localDragLineObject)
+            {
+                localSceneManager->destroyManualObject(localDragLineObject);
+            }
+            if (localDragLineNode->getParentSceneNode())
+            {
+                localDragLineNode->getParentSceneNode()->removeAndDestroyChild(localDragLineNode);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPicker::destroyLine");
 
 		this->dragLineObject = nullptr;
 		this->dragLineNode = nullptr;
