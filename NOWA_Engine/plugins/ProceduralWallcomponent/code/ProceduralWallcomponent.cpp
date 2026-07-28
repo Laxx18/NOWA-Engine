@@ -3,6 +3,7 @@
 #include "editor/EditorManager.h"
 #include "gameObject/GameObjectController.h"
 #include "gameobject/PhysicsArtifactComponent.h"
+#include "gameobject/PlanetTerraComponentBase.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/InputDeviceCore.h"
@@ -262,7 +263,10 @@ namespace NOWA
         // Create preview scene node
         this->previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 
-        // >>> PLANET-FRAME FIX: restore the frame from the saved node
+        // Start with add wall mode by default
+        this->isShiftPressed = true;
+
+        // Restore the frame from the saved node
         // orientation BEFORE any load / ground sampling happens. The node
         // orientation was written from wallFrame on the first build and is
         // scene-managed since — recovering it here means loadWallDataFromFile
@@ -311,6 +315,10 @@ namespace NOWA
     {
         boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+
+        // Causes correct wall selection, if another wall is added
+        boost::shared_ptr<NOWA::EventDataGameObjectSelected> eventDataGameObjectSelected(new NOWA::EventDataGameObjectSelected(this->gameObjectPtr->getId(), true, false));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectSelected);
 
         this->isSelected = true;
         this->addInputListener();
@@ -633,7 +641,7 @@ namespace NOWA
 
             if (hit)
             {
-                // >>> PLANET-FRAME FIX: raycast hit is WORLD — stored
+                // Raycast hit is WORLD — stored
                 // segments are LOCAL, so convert before the nearest-segment
                 // query.
                 hitPos = this->wallFrame.Inverse() * hitPos;
@@ -672,18 +680,46 @@ namespace NOWA
         Ogre::Vector3 hitPosition;
         if (this->raycastGround(screenX, screenY, hitPosition))
         {
-            // >>> PLANET-FRAME FIX: on the very FIRST point of a brand new
+            // On the very FIRST point of a brand new
             // wall (no segments yet, no origin established, nobody has
             // pushed a frame via setWallFrame), derive the frame from this
             // WORLD hit position before anything is converted to local
             // space.
             if (false == this->wallFrameSet && false == this->hasWallOrigin && true == this->wallSegments.empty())
             {
-                this->wallFrame = this->deriveWallFrame(hitPosition, this->wallFrame);
+                bool isPlanet = false;
+                Ogre::Vector3 planetCenter = Ogre::Vector3::ZERO;
+                if (true == hitFound && nullptr != hitMovableObject)
+                {
+                    const Ogre::Any& userAny = hitMovableObject->getUserObjectBindings().getUserAny();
+                    if (false == userAny.isEmpty())
+                    {
+                        GameObject* hitGameObject = nullptr;
+                        try
+                        {
+                            hitGameObject = Ogre::any_cast<GameObject*>(userAny);
+                        }
+                        catch (Ogre::Exception&)
+                        {
+                        }
+
+                        if (nullptr != hitGameObject)
+                        {
+                            const auto& planetCompPtr = NOWA::makeStrongPtr(hitGameObject->getComponent<PlanetTerraComponentBase>());
+                            if (planetCompPtr)
+                            {
+                                isPlanet = true;
+                                planetCenter = hitGameObject->getSceneNode()->_getDerivedPositionUpdated();
+                            }
+                        }
+                    }
+                }
+
+                this->wallFrame = this->deriveWallFrame(hitPosition, this->wallFrame, isPlanet, planetCenter);
                 this->wallFrameSet = true;
             }
 
-            // >>> PLANET-FRAME FIX: raycastGround returns a WORLD hit — the
+            // raycastGround returns a WORLD hit — the
             // whole placement pipeline below (grid snap, control points,
             // wallOrigin, loadedWallEndpoint) works in WALL-LOCAL space, so
             // convert exactly once, right here at the boundary.
@@ -696,7 +732,7 @@ namespace NOWA
 
             if (this->buildState == BuildState::IDLE)
             {
-                if (this->isShiftPressed && this->hasLoadedWallEndpoint && !this->wallSegments.empty())
+                if (this->isShiftPressed && this->hasLoadedWallEndpoint && false == this->wallSegments.empty())
                 {
                     this->currentSegment.startPoint = this->loadedWallEndpoint;
                     this->currentSegment.startPoint.y = 0.0f;
@@ -717,7 +753,7 @@ namespace NOWA
             else if (this->buildState == BuildState::DRAGGING)
             {
                 // Check snap
-                const bool wasSnapping = (this->isSnapToWall && this->snapToWallSegmentIdx >= 0);
+                /*const bool wasSnapping = (this->isSnapToWall && this->snapToWallSegmentIdx >= 0);
                 if (wasSnapping)
                 {
                     this->currentSegment.endPoint = this->snapToWallPoint;
@@ -730,7 +766,7 @@ namespace NOWA
                     this->buildState = BuildState::IDLE;
                     this->removeInputListener();
                 }
-                else
+                else*/
                 {
                     this->confirmWall();
                 }
@@ -763,8 +799,7 @@ namespace NOWA
         Ogre::Vector3 hitPosition;
         if (this->raycastGround(screenX, screenY, hitPosition))
         {
-            // >>> PLANET-FRAME FIX: world -> wall-local, once, at the
-            // boundary.
+            // world -> wall-local, once, at the boundary.
             hitPosition = this->wallFrame.Inverse() * hitPosition;
 
             if (true == this->snapToGrid->getBool())
@@ -810,7 +845,11 @@ namespace NOWA
             this->isExtendingFromSegment = false;
             this->isSnapToWall = false;
             this->cancelWall();
-            this->removeInputListener();
+            if (this->getEditModeEnum() != EditMode::SEGMENT)
+            {
+                // Remove listeners - user wants to stop building
+                this->removeInputListener();
+            }
             return false;
         }
 
@@ -913,7 +952,7 @@ namespace NOWA
         if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
         {
             // cancelWall does it
-            // this->isShiftPressed = false;
+            this->isShiftPressed = false;
         }
         else if (evt.key == OIS::KC_LCONTROL || evt.key == OIS::KC_RCONTROL)
         {
@@ -1128,15 +1167,72 @@ namespace NOWA
 
     void ProceduralWallComponent::addWallSegment(const Ogre::Vector3& start, const Ogre::Vector3& end)
     {
-        // >>> PLANET-FRAME FIX: derive the frame from the first WORLD point
+        // Derive the frame from the first WORLD point
         // if nobody has supplied one yet (mirrors the mousePressed guard).
         if (false == this->wallFrameSet && false == this->hasWallOrigin && true == this->wallSegments.empty())
         {
-            this->wallFrame = this->deriveWallFrame(start, this->wallFrame);
+            // No click/camera context exists here (this
+            // is the scripted/city entry point, not a mouse event), so run a
+            // small dedicated vertical probe raycast at 'start' (world -Y,
+            // since no frame exists yet) purely to find what GameObject is
+            // underneath and check it for PlanetTerraComponentBase — same
+            // check as mousePressed, just via a fresh raycast instead of an
+            // already-available hitMovableObject.
+            // NOTE for city callers: buildCityRoadNetwork() already calls
+            // setRoadFrame(cityFrame) BEFORE the first addRoadSegment, so
+            // roadFrameSet is already true by the time we get here and this
+            // whole block is skipped for city-owned roads — this probe only
+            // ever runs for a standalone/scripted caller that never supplied
+            // a frame explicitly.
+            bool isPlanet = false;
+            Ogre::Vector3 planetCenter = Ogre::Vector3::ZERO;
+            {
+                Ogre::Vector3 probeHit = Ogre::Vector3::ZERO;
+                Ogre::MovableObject* probeMovable = nullptr;
+                Ogre::Real probeDist = 0.0f;
+                Ogre::Vector3 probeNormal = Ogre::Vector3::ZERO;
+
+                Ogre::Ray downRay(start + Ogre::Vector3::UNIT_Y * 1000.0f, Ogre::Vector3::NEGATIVE_UNIT_Y);
+                this->groundQuery->setRay(downRay);
+                this->groundQuery->setSortByDistance(true);
+
+                const bool probeHitFound =
+                    MathHelper::getInstance()->getRaycastFromPoint(this->groundQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), probeHit, (size_t&)probeMovable, probeDist, probeNormal, nullptr, false);
+
+                if (true == probeHitFound && nullptr != probeMovable)
+                {
+                    const Ogre::Any& userAny = probeMovable->getUserObjectBindings().getUserAny();
+                    if (false == userAny.isEmpty())
+                    {
+                        GameObject* probeGameObject = nullptr;
+                        try
+                        {
+                            probeGameObject = Ogre::any_cast<GameObject*>(userAny);
+                        }
+                        catch (Ogre::Exception&)
+                        {
+                        }
+
+                        if (nullptr != probeGameObject)
+                        {
+                            const auto& planetCompPtr = NOWA::makeStrongPtr(probeGameObject->getComponent<PlanetTerraComponentBase>());
+                            if (planetCompPtr)
+                            {
+                                isPlanet = true;
+                                planetCenter = probeGameObject->getSceneNode()->_getDerivedPositionUpdated();
+                            }
+                        }
+                    }
+                }
+            }
+
+            this->wallFrame = this->deriveWallFrame(start, this->wallFrame, isPlanet, planetCenter);
             this->wallFrameSet = true;
         }
 
-        // >>> PLANET-FRAME FIX: world -> wall-local at the entry boundary.
+        // World -> road-local (pure rotation, no origin).
+        // With roadFrame == IDENTITY this is a no-op and everything below is
+        // byte-identical to the previous implementation.
         const Ogre::Quaternion invFrame = this->wallFrame.Inverse();
         const Ogre::Vector3 localStart = invFrame * start;
         const Ogre::Vector3 localEnd = invFrame * end;
@@ -4227,32 +4323,24 @@ namespace NOWA
     void ProceduralWallComponent::addInputListener(void)
     {
         const Ogre::String listenerName = ProceduralWallComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
+        if (auto* core = InputDeviceCore::getSingletonPtr())
         {
             if (auto* core = InputDeviceCore::getSingletonPtr())
             {
-                if (auto* core = InputDeviceCore::getSingletonPtr())
-                {
-                    core->addKeyListener(this, listenerName);
-                    core->addMouseListener(this, listenerName);
-                }
+                core->addKeyListener(this, listenerName);
+                core->addMouseListener(this, listenerName);
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralWallComponent::addInputListener");
     }
 
     void ProceduralWallComponent::removeInputListener(void)
     {
         const Ogre::String listenerName = ProceduralWallComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
+        if (auto* core = InputDeviceCore::getSingletonPtr())
         {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->removeKeyListener(listenerName);
-                core->removeMouseListener(listenerName);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralWallComponent::removeInputListener");
+            core->removeKeyListener(listenerName);
+            core->removeMouseListener(listenerName);
+        }
     }
 
     void ProceduralWallComponent::updateModificationState(void)
@@ -4562,14 +4650,14 @@ namespace NOWA
         this->wallFrame = frame;
     }
 
-    Ogre::Quaternion ProceduralWallComponent::deriveWallFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation) const
+    Ogre::Quaternion ProceduralWallComponent::deriveWallFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation, bool isPlanet, const Ogre::Vector3& planetCenter) const
     {
-        if (false == this->adaptToGround->getBool() || origin.squaredLength() <= 1.f)
+        if (false == isPlanet)
         {
             return currentOrientation;
         }
 
-        const Ogre::Vector3 radialUp = origin.normalisedCopy();
+        const Ogre::Vector3 radialUp = (origin - planetCenter).normalisedCopy();
         // Preserve heading: project currentOrientation's forward axis onto the
         // tangent plane of the planet at 'origin'.
         const Ogre::Vector3 curForward = currentOrientation * Ogre::Vector3::UNIT_Z;

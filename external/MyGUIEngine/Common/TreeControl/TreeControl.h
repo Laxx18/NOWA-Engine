@@ -63,11 +63,31 @@ namespace MyGUI
 		void setRootVisible(bool bValue);
 		bool isRootVisible() const;
 
+		// Enables/disables multi-selection mode.
+		// Default is false (classic single-selection behaviour, backward compatible).
+		void setMultiSelectMode(bool bValue);
+		bool isMultiSelectMode() const;
+
+		// Returns the "primary" selected node (the most recently selected one),
+		// or nullptr if nothing is selected. Kept for backward compatibility with
+		// single-selection call sites.
 		Node* getSelection() const;
+
+		// Single-selection API: replaces the whole selection with just pSelection
+		// (or clears it if pSelection is nullptr). Works in both single- and
+		// multi-select mode.
 		void setSelection(Node* pSelection);
 
-		/*void addSelection(Node* pSelection);*/
+		// Multi-selection API. addToSelection/removeFromSelection/toggleSelection
+		// only add more than one node to the selection set if multi-select mode
+		// is enabled; otherwise they behave like setSelection().
+		const VectorNodePtr& getSelectedNodes() const;
+		void addToSelection(Node* pNode);
+		void removeFromSelection(Node* pNode);
+		void toggleSelection(Node* pNode);
 
+		// Clears the whole selection and immediately resets the visual
+		// "selected" state of every currently visible item widget.
 		void clearSelection(void);
 
 		void invalidate();
@@ -101,7 +121,6 @@ namespace MyGUI
 
 	private:
 		typedef std::vector<TreeControlItem*> VectorTreeItemPtr;
-		std::vector<Node*> selectedNodes;
 
 		void validate();
 
@@ -111,18 +130,24 @@ namespace MyGUI
 		void scrollTo(size_t nPosition);
 		void sendScrollingEvents(size_t nPosition);
 
+		// Removes pNode from the selection set without firing eventTreeNodeSelected.
+		// Called from Node's destructor so a node being destroyed can never be left
+		// dangling inside mSelectedNodes.
+		void removeFromSelectionSilent(Node* pNode);
+
 		ScrollBar* mpWidgetScroll;
 		VectorTreeItemPtr mItemWidgets;
 		UString mstrSkinLine;
 		bool mbScrollAlwaysVisible;
 		bool mbInvalidated;
 		bool mbRootVisible;
+		bool mbMultiSelectMode;
 		int mnItemHeight;
 		int mnScrollRange;
 		int mnTopIndex;
 		int mnTopOffset;
 		size_t mnFocusIndex;
-		Node* mpSelection;
+		VectorNodePtr mSelectedNodes;
 		Node* mpRoot;
 		size_t mnExpandedNodes;
 		int mnLevelOffset;
@@ -169,9 +194,17 @@ namespace MyGUI
 	{
 		return mbRootVisible;
 	}
+	inline bool TreeControl::isMultiSelectMode() const
+	{
+		return mbMultiSelectMode;
+	}
+	inline const TreeControl::VectorNodePtr& TreeControl::getSelectedNodes() const
+	{
+		return mSelectedNodes;
+	}
 	inline TreeControl::Node* TreeControl::getSelection() const
 	{
-		return mpSelection;
+		return mSelectedNodes.empty() ? nullptr : mSelectedNodes.front();
 	}
 }
 

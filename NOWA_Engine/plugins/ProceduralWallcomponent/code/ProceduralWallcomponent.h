@@ -362,7 +362,7 @@ namespace NOWA
         *        keeping only currentOrientation's heading; otherwise passes
         *        currentOrientation through unchanged.
         */
-        Ogre::Quaternion deriveWallFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation) const;
+        Ogre::Quaternion deriveWallFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation, bool isPlanet, const Ogre::Vector3& planetCenter) const;
 
     public:
         // Static attribute names

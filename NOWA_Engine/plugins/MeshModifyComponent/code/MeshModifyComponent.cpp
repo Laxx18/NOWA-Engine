@@ -2069,30 +2069,23 @@ namespace NOWA
         }
 
         const Ogre::String listenerName = MeshModifyComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
+        if (auto* core = InputDeviceCore::getSingletonPtr())
         {
             if (auto* core = InputDeviceCore::getSingletonPtr())
             {
-                if (auto* core = InputDeviceCore::getSingletonPtr())
-                {
-                    core->addMouseListener(this, listenerName);
-                }
+                core->addMouseListener(this, listenerName);
             }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MeshModifyComponent::addInputListener");
+        }
     }
 
     void MeshModifyComponent::removeInputListener(void)
     {
         const Ogre::String listenerName = MeshModifyComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
+
+        if (auto* core = InputDeviceCore::getSingletonPtr())
         {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->removeMouseListener(listenerName);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MeshModifyComponent::removeInputListener");
+            core->removeMouseListener(listenerName);
+        }
     }
 
     // ==================== MOUSE HANDLERS ====================

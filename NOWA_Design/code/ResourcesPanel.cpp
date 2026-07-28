@@ -207,6 +207,8 @@ void ResourcesPanelMeshes::initialise()
 
 void ResourcesPanelMeshes::shutdown()
 {
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelMeshes::handleRefreshMeshResources), NOWA::EventDataRefreshMeshResources::getStaticEventType());
+
 	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
@@ -600,6 +602,7 @@ ResourcesPanelGameObjects::ResourcesPanelGameObjects()
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), EventDataRefreshResourcesPanel::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), NOWA::EventDataNewGameObject::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), NOWA::EventDataEditorMode::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleGameObjectDeleted), NOWA::EventDataDeleteGameObject::getStaticEventType());
 }
 
 void ResourcesPanelGameObjects::setEditorManager(NOWA::EditorManager* editorManager)
@@ -609,34 +612,39 @@ void ResourcesPanelGameObjects::setEditorManager(NOWA::EditorManager* editorMana
 
 void ResourcesPanelGameObjects::initialise()
 {
-	mPanelCell->setCaption("GameObjects");
-	mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+    mPanelCell->setCaption("GameObjects");
+    mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 
-	assignWidget(this->gameObjectsTree, "Tree");
-	assignWidget(this->imageBox, "previewImage");
-	this->gameObjectsTree->eventTreeNodeSelected += newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
-	this->gameObjectsTree->eventKeyButtonPressed += newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
-	this->gameObjectsTree->setSize(MyGUI::IntSize(mWidgetClient->getWidth() - 8, 350));
-	// Not necessary, else game objects are filled two times -> performance
-	// this->refresh();
-	assignWidget(this->resourcesSearchEdit, "ResourcesSearchEdit");
-	this->resourcesSearchEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-	this->resourcesSearchEdit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
-	this->resourcesSearchEdit->setEditStatic(false);
-	this->resourcesSearchEdit->setEditReadOnly(false);
-	this->resourcesSearchEdit->eventEditTextChange += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
-	this->resourcesSearchEdit->eventMouseButtonClick += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
-	this->resourcesSearchEdit->setNeedToolTip(true);
-	// Silly bug: edit: the one pixel border must be hit via mouse in order to see the tooltip
-	this->resourcesSearchEdit->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-	this->resourcesSearchEdit->eventMouseLostFocus += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
-	this->resourcesSearchEdit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
+    assignWidget(this->gameObjectsTree, "Tree");
+    assignWidget(this->imageBox, "previewImage");
+    this->gameObjectsTree->eventTreeNodeSelected += newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
+    this->gameObjectsTree->eventKeyButtonPressed += newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
+    this->gameObjectsTree->eventKeyButtonReleased += newDelegate(this, &ResourcesPanelGameObjects::keyButtonReleased);
+    this->gameObjectsTree->setSize(MyGUI::IntSize(mWidgetClient->getWidth() - 8, 350));
+    this->gameObjectsTree->setMultiSelectMode(true);
 
-	this->imageBox->setVisible(false);
+    assignWidget(this->resourcesSearchEdit, "ResourcesSearchEdit");
+    this->resourcesSearchEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+    this->resourcesSearchEdit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+    this->resourcesSearchEdit->setEditStatic(false);
+    this->resourcesSearchEdit->setEditReadOnly(false);
+    this->resourcesSearchEdit->eventEditTextChange += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
+    this->resourcesSearchEdit->eventMouseButtonClick += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
+    this->resourcesSearchEdit->setNeedToolTip(true);
+    this->resourcesSearchEdit->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+    this->resourcesSearchEdit->eventMouseLostFocus += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
+    this->resourcesSearchEdit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
+
+    this->imageBox->setVisible(false);
 }
 
 void ResourcesPanelGameObjects::shutdown()
 {
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), EventDataRefreshResourcesPanel::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), NOWA::EventDataNewGameObject::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), NOWA::EventDataEditorMode::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleGameObjectDeleted), NOWA::EventDataDeleteGameObject::getStaticEventType());
+
 	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         this->resourcesSearchEdit->eventToolTip -= MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
@@ -646,6 +654,7 @@ void ResourcesPanelGameObjects::shutdown()
         this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
         this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
         this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
+        this->gameObjectsTree->eventKeyButtonReleased -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonReleased);
 
         BaseLayout::shutdown();
     };
@@ -654,21 +663,19 @@ void ResourcesPanelGameObjects::shutdown()
 
 void ResourcesPanelGameObjects::editTextChange(MyGUI::Widget* sender)
 {
-	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
+    MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, editBox]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, editBox]()
     {
-        // Start a new search each time for resources that do match the search caption string
         this->autoCompleteSearch.reset();
-        this->clear();
+        this->clear(); // Blocks until finished
 
         this->refresh(editBox->getOnlyText());
     };
     NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelGameObjects::editTextChange");
 
-	// If user is entering something, do not move camera, if the user entered something like asdf
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
 }
 
 void ResourcesPanelGameObjects::mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
@@ -692,8 +699,9 @@ void ResourcesPanelGameObjects::onMouseClick(MyGUI::Widget* sender)
 
 void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 {
-	MyGUI::TreeControl::Node* root = this->gameObjectsTree->getRoot();
-	root->removeAll();
+    MyGUI::TreeControl::Node* root = this->gameObjectsTree->getRoot();
+    this->gameObjectsTree->setSelection(nullptr); // Dangling mpSelection verhindern, bevor Nodes zerstört werden
+    root->removeAll();
 
 	/* auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 	for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
@@ -843,136 +851,83 @@ void ResourcesPanelGameObjects::clear(void)
         MyGUI::TreeControl::Node* root = this->gameObjectsTree->getRoot();
         if (nullptr != root)
         {
+            this->gameObjectsTree->setSelection(nullptr);
             root->removeAll();
         }
 
         this->refresh("");
     };
-    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelGameObjects::clear");
-	
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelGameObjects::clear");
 }
 
 void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
 {
-	if (nullptr == node /*|| this->oldSelectedText == Ogre::String(node->getText())*/)
-	{
-		return;
-	}
-	this->oldSelectedText = node->getText();
+    if (nullptr == node /*|| this->oldSelectedText == Ogre::String(node->getText())*/)
+    {
+        return;
+    }
+    this->oldSelectedText = node->getText();
 
-	if (false == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT) && false == this->selectAll)
-	{
-		this->editorManager->getSelectionManager()->clearSelection();
-		// treeControl->clearSelection();
-	}
-	// Delete game objects
-	if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_DELETE))
-	{
-		std::vector<unsigned long> gameObjectIds;
-		// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-		for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
-		{
-			// SunLight must not be deleted by the user!
-			if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID)
-			{
-				gameObjectIds.emplace_back(it->second.gameObject->getId());
-			}
-			// MainCamera must not be deleted by the user!
-			if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID)
-			{
-				gameObjectIds.emplace_back(it->second.gameObject->getId());
-			}
-			// MainGameObject must not be deleted by the user!
-			if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
-			{
-				gameObjectIds.emplace_back(it->second.gameObject->getId());
-			}
-			// Terra must not be deleted by the user!
-			/*if (it->second.gameObject->getName() != "Terra")
-			{
-				gameObjectIds.emplace_back(it->second.gameObject->getId());
-			}*/
-		}
-		if (gameObjectIds.size() > 0)
-		{
-			this->editorManager->deleteGameObjects(gameObjectIds);
-			this->editorManager->getSelectionManager()->clearSelection();
-			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    if (false == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT) && false == this->selectAll)
+    {
+        this->editorManager->getSelectionManager()->clearSelection();
+        // treeControl->clearSelection();
+    }
+    // Delete game objects
+    if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_DELETE))
+    {
+        this->deleteSelectedGameObjects();
+        return;
+    }
 
-			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+    // Select game object
+    auto gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(node->getText());
+    if (nullptr != gameObjectPtr)
+    {
+        this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
+        this->editorManager->getSelectionManager()->select(gameObjectPtr->getId());
+        // Focus object if Alt has been pressed
+        if (GetAsyncKeyState(VK_RCONTROL))
+        {
+            this->editorManager->focusCameraGameObject(gameObjectPtr.get());
+        }
+        // treeControl->setSelection(node);
+        // treeControl->addSelection(node);
+    }
 
-			// Regenerate categories
-			boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
-		}
-	}
+    // Check if a category has been selected and select all game objects in category
+    if (NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->hasCategory(node->getText()))
+    {
+        auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(node->getText());
 
-	// Select game object
-	auto gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(node->getText());
-	if (nullptr != gameObjectPtr)
-	{
-		this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
-		this->editorManager->getSelectionManager()->select(gameObjectPtr->getId());
-		// Focus object if Alt has been pressed
-		if (GetAsyncKeyState(VK_RCONTROL))
-			this->editorManager->focusCameraGameObject(gameObjectPtr.get());
-		// treeControl->setSelection(node);
-		// treeControl->addSelection(node);
-	}
+        if (false == gameObjects.empty())
+        {
+            this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
+        }
 
-	// Check if a category has been selected and select all game objects in category
-	if (NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->hasCategory(node->getText()))
-	{
-		auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(node->getText());
+        for (size_t i = 0; i < gameObjects.size(); i++)
+        {
+            this->editorManager->getSelectionManager()->select(gameObjects[i]->getId());
+        }
+    }
 
-		if (false == gameObjects.empty())
-		{
-			this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
-		}
-
-		for (size_t i = 0; i < gameObjects.size(); i++)
-		{
-			this->editorManager->getSelectionManager()->select(gameObjects[i]->getId());
-		}
-	}
-
-	// Sent when game objects are selected, so that the properties panel can be refreshed with new values
-	boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    // Sent when game objects are selected, so that the properties panel can be refreshed with new values
+    boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 }
 
 void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char _char)
 {
-	if (MyGUI::KeyCode::Delete == key)
-	{
-		std::vector<unsigned long> gameObjectIds;
-		// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-		for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
-		{
-			// SunLight must not be deleted by the user!
-			if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID 
-				&& it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
-			{
-				gameObjectIds.emplace_back(it->second.gameObject->getId());
-			}
-		}
-		if (gameObjectIds.size() > 0)
-		{
-			this->editorManager->deleteGameObjects(gameObjectIds);
-			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    if (MyGUI::KeyCode::Delete == key)
+    {
+        this->deleteSelectedGameObjects();
+        return;
+    }
 
-			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
-		}
-	}
-
-	if (key == MyGUI::KeyCode::LeftControl || key == MyGUI::KeyCode::RightControl)
-	{
-		this->ctrlPressed = !this->ctrlPressed;
-	}
+    if (key == MyGUI::KeyCode::LeftControl || key == MyGUI::KeyCode::RightControl)
+    {
+        this->ctrlPressed = true;
+    }
 
 	if (this->ctrlPressed && key == MyGUI::KeyCode::A)
 	{
@@ -985,6 +940,14 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelGameObjects::selectAll");
 	}
+}
+
+void ResourcesPanelGameObjects::keyButtonReleased(MyGUI::Widget* sender, MyGUI::KeyCode key)
+{
+    if (key == MyGUI::KeyCode::LeftControl || key == MyGUI::KeyCode::RightControl)
+    {
+        this->ctrlPressed = false;
+    }
 }
 
 void ResourcesPanelGameObjects::handleRefreshGameObjectsPanel(NOWA::EventDataPtr eventData)
@@ -1017,6 +980,57 @@ void ResourcesPanelGameObjects::selectAllNodes(MyGUI::TreeControl* treeControl)
         }
     };
     NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelGameObjects::selectAllNodes");
+}
+
+void ResourcesPanelGameObjects::deleteSelectedGameObjects()
+{
+    std::vector<unsigned long> gameObjectIds;
+    for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+    {
+        if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID &&
+            it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
+        {
+            gameObjectIds.emplace_back(it->second.gameObject->getId());
+        }
+    }
+
+    if (true == gameObjectIds.empty())
+    {
+        return;
+    }
+
+    // Merken, auf welche Ids wir warten - der Tree wird erst neu aufgebaut,
+    // wenn ALLE tatsächlich über EventDataDeleteGameObject bestätigt wurden.
+    for (auto id : gameObjectIds)
+    {
+        this->pendingDeletionIds.insert(id);
+    }
+
+    this->editorManager->deleteGameObjects(gameObjectIds);
+    this->editorManager->getSelectionManager()->clearSelection();
+
+    // No immediate delete EventDataRefreshResourcesPanel, because handleGameObjectDeleted does it
+}
+
+void ResourcesPanelGameObjects::handleGameObjectDeleted(NOWA::EventDataPtr eventData)
+{
+    boost::shared_ptr<NOWA::EventDataDeleteGameObject> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteGameObject>(eventData);
+
+    this->pendingDeletionIds.erase(castEventData->getGameObjectId());
+
+    // Erst refreshen, wenn wirklich alle angeforderten Löschungen durch sind -
+    // verhindert mehrfaches Flackern bei Mehrfach-Löschung.
+    if (true == this->pendingDeletionIds.empty())
+    {
+        boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+
+        boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+
+        boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1411,6 +1425,8 @@ ResourcesPanelProject::ResourcesPanelProject()
 	hasSceneChanges(false)
 {
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataResourceCreated), NOWA::EventDataResourceCreated::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 }
 
 ResourcesPanelProject::~ResourcesPanelProject()
@@ -1445,13 +1461,14 @@ void ResourcesPanelProject::initialise(void)
 	// this->filesTreeControl->eventTreeNodeActivated
 
 	this->populateFilesTree(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
-
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataResourceCreated), NOWA::EventDataResourceCreated::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 }
 
 void ResourcesPanelProject::shutdown(void)
 {
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataResourceCreated), NOWA::EventDataResourceCreated::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
+
 	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
@@ -1682,7 +1699,6 @@ void ResourcesPanelProject::handleEventDataResourceCreated(NOWA::EventDataPtr ev
 	NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 	delayProcess->attachChild(closureProcess);
 	NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-	
 }
 
 void ResourcesPanelProject::handleSceneModified(NOWA::EventDataPtr eventData)
@@ -1706,7 +1722,7 @@ ResourcesPanelLuaScript::ResourcesPanelLuaScript()
 	editorManager(nullptr),
 	projectManager(nullptr)
 {
-
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelLuaScript::handleLuaScriptModified), NOWA::EventDataLuaScriptModfied::getStaticEventType());
 }
 
 ResourcesPanelLuaScript::~ResourcesPanelLuaScript()
@@ -1740,12 +1756,12 @@ void ResourcesPanelLuaScript::initialise(void)
 	this->downButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ResourcesPanelLuaScript::buttonHit);
 
 	this->populateListBox();
-
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelLuaScript::handleLuaScriptModified), NOWA::EventDataLuaScriptModfied::getStaticEventType());
 }
 
 void ResourcesPanelLuaScript::shutdown(void)
 {
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelLuaScript::handleLuaScriptModified), NOWA::EventDataLuaScriptModfied::getStaticEventType());
+
     NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         BaseLayout::shutdown();

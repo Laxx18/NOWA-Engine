@@ -181,6 +181,7 @@ public:
 protected:
 	void notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node);
 	void keyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char _char);
+    void keyButtonReleased(MyGUI::Widget* sender, MyGUI::KeyCode key);
 	void editTextChange(MyGUI::Widget* sender);
 	void mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget);
 	void mouseRootChangeFocus(MyGUI::Widget* sender, bool bFocus);
@@ -189,7 +190,12 @@ private:
 	// Event delegates
 	void handleRefreshGameObjectsPanel(NOWA::EventDataPtr eventData);
 
+	void handleGameObjectDeleted(NOWA::EventDataPtr eventData);
+
 	void selectAllNodes(MyGUI::TreeControl* treeControl);
+
+	void deleteSelectedGameObjects(void);
+
 private:
 	MyGUI::EditBox* resourcesSearchEdit;
 	NOWA::AutoCompleteSearch autoCompleteSearch;
@@ -199,6 +205,7 @@ private:
 	Ogre::String oldSelectedText;
 	bool ctrlPressed;
 	bool selectAll;
+    std::set<unsigned long> pendingDeletionIds;
 };
 
 ///////////////////////////////////////////////////////////////////////

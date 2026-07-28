@@ -593,29 +593,21 @@ namespace NOWA
     void PlanetTerraComponent::addInputListener(void)
     {
         const Ogre::String id = getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand cmd = [this, id]()
+        if (auto* core = InputDeviceCore::getSingletonPtr())
         {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->addKeyListener(this, id);
-                core->addMouseListener(this, id);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetTerraComponent::addInputListener");
+            core->addKeyListener(this, id);
+            core->addMouseListener(this, id);
+        }
     }
 
     void PlanetTerraComponent::removeInputListener(void)
     {
         const Ogre::String id = getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand cmd = [id]()
+        if (auto* core = InputDeviceCore::getSingletonPtr())
         {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->removeKeyListener(id);
-                core->removeMouseListener(id);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetTerraComponent::removeInputListener");
+            core->removeKeyListener(id);
+            core->removeMouseListener(id);
+        }
     }
 
     // =========================================================================

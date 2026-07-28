@@ -15,27 +15,30 @@ namespace MyGUI
 		mbIsPrepared(false),
 		mbIsExpanded(true),
 		mstrImage("Folder")
-	{
-	}
+	{}
 
 	TreeControl::Node::Node(const UString& strText, Node* pParent) :
 		GenericNode<Node, TreeControl>(strText, pParent),
 		mbIsPrepared(false),
 		mbIsExpanded(false),
 		mstrImage("Folder")
-	{
-	}
+	{}
 
 	TreeControl::Node::Node(const UString& strText, const UString& strImage, Node* pParent) :
 		GenericNode<Node, TreeControl>(strText, pParent),
 		mbIsPrepared(false),
 		mbIsExpanded(false),
 		mstrImage(strImage)
-	{
-	}
+	{}
 
 	TreeControl::Node::~Node()
 	{
+		// Make sure this node can never be left dangling inside the owner's
+		// selection set (single- or multi-select) once it is destroyed.
+		if (nullptr != mpOwner)
+		{
+			mpOwner->removeFromSelectionSilent(this);
+		}
 	}
 
 	void TreeControl::Node::prepare()
@@ -88,24 +91,23 @@ namespace MyGUI
 		mbScrollAlwaysVisible(true),
 		mbInvalidated(false),
 		mbRootVisible(false),
+		mbMultiSelectMode(false),
 		mnItemHeight(1),
 		mnScrollRange(-1),
 		mnTopIndex(0),
 		mnTopOffset(0),
 		mnFocusIndex(ITEM_NONE),
-		mpSelection(nullptr),
 		mpRoot(nullptr),
 		mnExpandedNodes(0),
 		mnLevelOffset(0),
 		mClient(nullptr)
-	{
-	}
+	{}
 
 	void TreeControl::initialiseOverride()
 	{
 		Base::initialiseOverride();
 
-		// FIXME перенесенно из конструктора, проверить смену скина
+		// FIXME: this is not localized, should be revisited at some point
 		mpRoot = new Node(this);
 
 		//FIXME
@@ -150,7 +152,7 @@ namespace MyGUI
 	{
 		mpWidgetScroll = nullptr;
 		mClient = nullptr;
-		// FIXME перенесенно из деструктора, проверить смену скина
+		// FIXME: this is not localized, should be revisited at some point
 		delete mpRoot;
 
 		Base::shutdownOverride();
@@ -165,35 +167,122 @@ namespace MyGUI
 		invalidate();
 	}
 
+	void TreeControl::setMultiSelectMode(bool bValue)
+	{
+		mbMultiSelectMode = bValue;
+
+		// Switching back to single-select mode while more than one node is
+		// selected: keep only the most recently selected node.
+		if (false == mbMultiSelectMode && mSelectedNodes.size() > 1)
+		{
+			Node* pKeep = mSelectedNodes.back();
+			clearSelection();
+			addToSelection(pKeep);
+		}
+	}
+
 	void TreeControl::setSelection(Node* pSelection)
 	{
-		// if (mpSelection == pSelection)
-		// 	return;
+		clearSelection();
 
-		mpSelection = pSelection;
-		while (pSelection)
+		if (nullptr != pSelection)
 		{
-			pSelection->setExpanded(true);
-			pSelection = pSelection->getParent();
+			addToSelection(pSelection);
+		}
+	}
+
+	void TreeControl::addToSelection(Node* pNode)
+	{
+		if (nullptr == pNode)
+			return;
+
+		// Already selected, nothing to do.
+		for (VectorNodePtr::const_iterator it = mSelectedNodes.cbegin(); it != mSelectedNodes.cend(); ++it)
+		{
+			if (*it == pNode)
+				return;
+		}
+
+		if (false == mbMultiSelectMode)
+		{
+			mSelectedNodes.clear();
+		}
+
+		mSelectedNodes.push_back(pNode);
+
+		// Expand all ancestors so the newly selected node is visible.
+		Node* pAncestor = pNode;
+		while (nullptr != pAncestor)
+		{
+			pAncestor->setExpanded(true);
+			pAncestor = pAncestor->getParent();
 		}
 
 		invalidate();
-		eventTreeNodeSelected(this, mpSelection);
+		eventTreeNodeSelected(this, pNode);
 	}
 
-	/*void TreeControl::addSelection(Node* pSelection)
+	void TreeControl::removeFromSelection(Node* pNode)
 	{
-		this->selectedNodes.emplace_back(pSelection);
-	}*/
+		if (nullptr == pNode)
+			return;
+
+		for (VectorNodePtr::iterator it = mSelectedNodes.begin(); it != mSelectedNodes.end(); ++it)
+		{
+			if (*it == pNode)
+			{
+				mSelectedNodes.erase(it);
+				invalidate();
+				eventTreeNodeSelected(this, mSelectedNodes.empty() ? nullptr : mSelectedNodes.back());
+				return;
+			}
+		}
+	}
+
+	void TreeControl::toggleSelection(Node* pNode)
+	{
+		if (nullptr == pNode)
+			return;
+
+		for (VectorNodePtr::const_iterator it = mSelectedNodes.cbegin(); it != mSelectedNodes.cend(); ++it)
+		{
+			if (*it == pNode)
+			{
+				removeFromSelection(pNode);
+				return;
+			}
+		}
+
+		addToSelection(pNode);
+	}
 
 	void TreeControl::clearSelection(void)
 	{
-		for (size_t i = 0; i < mItemWidgets.size(); i++)
+		mSelectedNodes.clear();
+
+		// Reset the visual "selected" state of every currently visible item
+		// immediately, instead of relying on validate() to get around to it
+		// on some later frame. This avoids stale highlighted items whenever
+		// the item->node mapping changes (scrolling, expand/collapse, rebuild)
+		// between this call and the next validate() pass.
+		for (size_t i = 0; i < mItemWidgets.size(); ++i)
 		{
-			TreeControlItem* pItem = mItemWidgets[i];
-			pItem->setStateSelected(false);
+			mItemWidgets[i]->setStateSelected(false);
 		}
-		this->selectedNodes.clear();
+
+		invalidate();
+	}
+
+	void TreeControl::removeFromSelectionSilent(Node* pNode)
+	{
+		for (VectorNodePtr::iterator it = mSelectedNodes.begin(); it != mSelectedNodes.end(); ++it)
+		{
+			if (*it == pNode)
+			{
+				mSelectedNodes.erase(it);
+				break;
+			}
+		}
 	}
 
 	void TreeControl::onMouseWheel(int nValue)
@@ -209,10 +298,11 @@ namespace MyGUI
 
 		if (MyGUI::KeyCode::ArrowUp == Key)
 		{
+			Node* pCurrent = getSelection();
 			for (size_t i = 0; i < mItemWidgets.size(); i++)
 			{
-				TreeControl::Node* node = mItemWidgets[i]->getNode();
-				if (node && node == mpSelection)
+				Node* node = mItemWidgets[i]->getNode();
+				if (node && node == pCurrent)
 				{
 					if (i > 0)
 					{
@@ -223,10 +313,11 @@ namespace MyGUI
 		}
 		else if (MyGUI::KeyCode::ArrowDown == Key)
 		{
+			Node* pCurrent = getSelection();
 			for (size_t i = 0; i < mItemWidgets.size(); i++)
 			{
-				TreeControl::Node* node = mItemWidgets[i]->getNode();
-				if (node && node == mpSelection)
+				Node* node = mItemWidgets[i]->getNode();
+				if (node && node == pCurrent)
 				{
 					if (i < mItemWidgets.size() - 1)
 					{
@@ -309,12 +400,12 @@ namespace MyGUI
 		while ((nHeight <= (mClient->getHeight() + mnItemHeight)) && mItemWidgets.size() < mnExpandedNodes)
 		{
 			TreeControlItem* pItem = mClient->createWidget<TreeControlItem>(
-					mstrSkinLine,
-					0,
-					nHeight,
-					mClient->getWidth(),
-					mnItemHeight,
-					Align::Top | Align::HStretch);
+				mstrSkinLine,
+				0,
+				nHeight,
+				mClient->getWidth(),
+				mnItemHeight,
+				Align::Top | Align::HStretch);
 
 			pItem->eventMouseButtonPressed += newDelegate(this, &TreeControl::notifyMousePressed);
 			pItem->eventMouseButtonDoubleClick += newDelegate(this, &TreeControl::notifyMouseDoubleClick);
@@ -397,7 +488,9 @@ namespace MyGUI
 
 			if (nIndex >= (size_t)mnTopIndex)
 			{
-				// FIXME проверка вставлена так как падает индекс айтема больше чем всего айтемов
+				// FIXME: this early break based on stale getTop() may skip
+				// updating item widgets further down the list on frames
+				// where the visible structure changed since the last pass
 				if (nItem >= mItemWidgets.size())
 					break;
 
@@ -408,22 +501,22 @@ namespace MyGUI
 				pItem->setVisible(true);
 				pItem->setCaption(pNode->getText());
 				pItem->setPosition(IntPoint(nLevel * mnLevelOffset, nOffset));
-				// if (true == this->selectedNodes.empty())
+
+				// Recompute the selected state for this item from scratch every
+				// frame, against the full selection set. This is what keeps
+				// highlighting correct regardless of scrolling, recycling, or
+				// tree structure changes between frames.
+				bool bIsSelected = false;
+				for (VectorNodePtr::const_iterator it = mSelectedNodes.cbegin(); it != mSelectedNodes.cend(); ++it)
 				{
-					pItem->setStateSelected(pNode == mpSelection);
+					if (*it == pNode)
+					{
+						bIsSelected = true;
+						break;
+					}
 				}
-				//else
-				//{
-				//	for (size_t i = 0; i < this->selectedNodes.size(); i++)
-				//	{
-				//		if (this->selectedNodes[i] == *pItem->getUserData<Node*>(false))
-				//		{
-				//			pItem->setStateSelected(true);
-				//			// pItem->setUserData(pSelection);
-				//			break;
-				//		}
-				//	}
-				//}
+				pItem->setStateSelected(bIsSelected);
+
 				pItem->setUserData(pNode);
 
 				Button* pButtonExpandCollapse = pItem->getButtonExpandCollapse();
@@ -498,16 +591,54 @@ namespace MyGUI
 	{
 		if ((nID == MouseButton::Left || nID == MouseButton::Right) && pSender != mpWidgetScroll)
 		{
-			Node* pSelection = mpSelection;
-			if (pSender == mClient)
-				pSelection = nullptr;
-			else if (pSender->getVisible())
-				pSelection = *pSender->getUserData<Node*>();
+			Node* pNode = nullptr;
+			if (pSender != mClient && pSender->getVisible())
+				pNode = *pSender->getUserData<Node*>();
 
-			setSelection(pSelection);
+			if (nID == MouseButton::Left)
+			{
+				// Multi-select (accumulating/toggling) only kicks in while Shift is
+				// held AND multi-select mode is enabled. A plain click - even in
+				// multi-select mode - must always replace the whole selection with
+				// just the clicked node (or clear it, if empty space was clicked),
+				// exactly like classic single-selection. Without this check every
+				// click went through toggleSelection() regardless of Shift, so
+				// selections only ever accumulated and nothing was ever replaced.
+				bool bShiftMultiSelect = true == mbMultiSelectMode && InputManager::getInstance().isShiftPressed();
 
-			if (nID == MouseButton::Right)
-				eventTreeNodeContextMenu(this, mpSelection);
+				if (true == bShiftMultiSelect)
+				{
+					// Shift-click on empty space: leave the current selection as is.
+					// Shift-click on an item: toggle just that item in/out.
+					if (nullptr != pNode)
+						toggleSelection(pNode);
+				}
+				else
+				{
+					setSelection(pNode);
+				}
+			}
+			else // MouseButton::Right
+			{
+				// Right-click on an item that is already part of the current
+				// selection should open the context menu without changing the
+				// selection; otherwise it replaces the selection with just
+				// this node (classic single-click-to-select behaviour).
+				bool bAlreadySelected = false;
+				for (VectorNodePtr::const_iterator it = mSelectedNodes.cbegin(); it != mSelectedNodes.cend(); ++it)
+				{
+					if (*it == pNode)
+					{
+						bAlreadySelected = true;
+						break;
+					}
+				}
+
+				if (false == bAlreadySelected)
+					setSelection(pNode);
+
+				eventTreeNodeContextMenu(this, pNode);
+			}
 		}
 	}
 
@@ -538,8 +669,9 @@ namespace MyGUI
 
 	void TreeControl::notifyMouseDoubleClick(Widget* pSender)
 	{
-		if (mpSelection)
-			eventTreeNodeActivated(this, mpSelection);
+		Node* pSelection = getSelection();
+		if (nullptr != pSelection)
+			eventTreeNodeActivated(this, pSelection);
 	}
 
 	void TreeControl::notifyMouseSetFocus(Widget* pSender, Widget* pPreviousWidget)
@@ -572,10 +704,27 @@ namespace MyGUI
 		Node* pNode = pItem->getNode();
 		pNode->setExpanded(!pNode->isExpanded());
 
-		if (!pNode->isExpanded() && mpSelection && mpSelection->hasAncestor(pNode))
+		if (false == pNode->isExpanded())
 		{
-			mpSelection = pNode;
-			eventTreeNodeSelected(this, mpSelection);
+			// Collapsing this node hides all of its descendants, so any
+			// selected descendant must be dropped from the selection set,
+			// otherwise it would keep contributing a (now invisible) selected
+			// state and getSelection()/eventTreeNodeSelected would still point
+			// to a node the user can no longer see.
+			bool bSelectionChanged = false;
+			for (VectorNodePtr::iterator it = mSelectedNodes.begin(); it != mSelectedNodes.end();)
+			{
+				if ((*it)->hasAncestor(pNode))
+				{
+					it = mSelectedNodes.erase(it);
+					bSelectionChanged = true;
+				}
+				else
+					++it;
+			}
+
+			if (bSelectionChanged)
+				eventTreeNodeSelected(this, mSelectedNodes.empty() ? nullptr : mSelectedNodes.back());
 		}
 
 		invalidate();

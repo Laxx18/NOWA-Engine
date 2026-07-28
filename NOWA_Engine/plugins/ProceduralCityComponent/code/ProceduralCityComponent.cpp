@@ -3292,12 +3292,29 @@ namespace NOWA
         return Ogre::Quaternion(tangentRight, radialUp, tangentForward);
     }
 
-    void ProceduralCityComponent::handleComponentManuallyDeleted(NOWA::EventDataPtr eventData)
+     void ProceduralCityComponent::handleComponentManuallyDeleted(NOWA::EventDataPtr eventData)
     {
         auto data = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
         if (data->getGameObjectId() == this->gameObjectPtr->getId())
         {
             this->deleteCityDataFile();
+        }
+        // The deleted component may belong to a DIFFERENT
+        // GameObject -- specifically, the CityRoads_N this city currently
+        // references. This happens when ProceduralRoadComponent::
+        // mergeOtherRoadIntoThis() absorbs and deletes a road GameObject
+        // that happened to be this city's own road (e.g. the user manually
+        // connected it to some other, unrelated road network). Without this
+        // branch, roadComponentId keeps pointing at a GameObject that no
+        // longer exists, and findRoadComponent() silently returns nullptr
+        // forever after.
+        else if (0ul != this->roadComponentId && data->getGameObjectId() == this->roadComponentId && ProceduralRoadComponent::getStaticClassName() == data->getComponentName())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralCityComponent] Referenced CityRoads GO (id=" + Ogre::StringConverter::toString(this->roadComponentId) +
+                                                                                    ") was deleted externally (e.g. merged into another road network) -- resetting roadComponentId to 0. "
+                                                                                    "Press 'Generate Now' to create a fresh CityRoads_N for this city.");
+            this->roadComponentId = 0ul;
+            this->roadComponentIdAttr->setValue(Ogre::String("0"));
         }
     }
 

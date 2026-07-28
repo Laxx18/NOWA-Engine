@@ -1295,7 +1295,6 @@ namespace NOWA
     {
         if (nullptr != this->physicsBody)
         {
-            Ogre::String name = this->gameObjectPtr->getMovableObject()->getName();
             if (nullptr != this->collisionPtr)
             {
                 this->collisionPtr.reset();

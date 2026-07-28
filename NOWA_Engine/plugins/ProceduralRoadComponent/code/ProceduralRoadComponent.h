@@ -231,7 +231,8 @@ namespace NOWA
                    "- Edge strips and curbs are generated on the open boundary of each junction arm.\n"
                    "- For Highway style roads, branches may only depart to the right relative to the\n"
                    "  direction of travel, matching real motorway exit conventions.\n\n"
-                   "- Its also possible to connect one road endpoint for another road segment!"
+                   "CONNECTIONS:\n"
+                   "- Its also possible to connect one road endpoint for another road segment! But then the latter road will be destroyed, because the roads are then merged."
                    "ROAD STYLES:\n"
                    "- Paved: solid road surface with raised curbs and edge strips.\n"
                    "- Highway: paved road with a center divider strip. Branches exit to the right only.\n"
@@ -701,6 +702,8 @@ namespace NOWA
 
         RoadComponentBase* findOtherRoadNearby(const Ogre::Vector3& worldPos, Ogre::Real maxRadius, Ogre::Vector3& outSnapPoint) const;
 
+        void mergeOtherRoadIntoThis(ProceduralRoadComponent* otherRoad);
+
         void generateJunctionPatch(const JunctionPoint& jp, const Ogre::Vector3& origin);
 
         void addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, bool isCenter);
@@ -829,6 +832,8 @@ namespace NOWA
         bool roadLoadedFromScene;
         Ogre::Quaternion roadFrame;
         bool roadFrameSet;
+        bool pendingCrossNetworkSnap; 
+        ProceduralRoadComponent* pendingMergeOtherRoad;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

@@ -6376,29 +6376,21 @@ namespace NOWA
             return;
         }
         const Ogre::String listenerName = MeshEditComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand cmd = [this, listenerName]()
+        if (auto* core = InputDeviceCore::getSingletonPtr())
         {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->addKeyListener(this, listenerName);
-                core->addMouseListener(this, listenerName);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshEditComponent::addInputListener");
+            core->addKeyListener(this, listenerName);
+            core->addMouseListener(this, listenerName);
+        }
     }
 
     void MeshEditComponent::removeInputListener(void)
     {
         const Ogre::String listenerName = MeshEditComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-        NOWA::GraphicsModule::RenderCommand cmd = [this, listenerName]()
+        if (auto* core = InputDeviceCore::getSingletonPtr())
         {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->removeKeyListener(listenerName);
-                core->removeMouseListener(listenerName);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshEditComponent::removeInputListener");
+            core->removeKeyListener(listenerName);
+            core->removeMouseListener(listenerName);
+        }
     }
 
     void MeshEditComponent::updateModificationState(void)
