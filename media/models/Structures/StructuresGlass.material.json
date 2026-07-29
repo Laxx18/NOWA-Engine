@@ -1,0 +1,95 @@
+{
+	"samplers" :
+	{
+		"StructuresGlass_Sampler" :
+		{
+			"min" : "anisotropic",
+			"mag" : "anisotropic",
+			"mip" : "anisotropic",
+			"u" : "wrap",
+			"v" : "wrap",
+			"w" : "wrap",
+			"miplodbias" : 0,
+			"max_anisotropic" : 1,
+			"compare_function" : "disabled",
+			"border" :[1, 1, 1, 1],
+			"min_lod" : -3.40282e+38,
+			"max_lod" : 3.40282e+38
+		}
+	},
+
+	"macroblocks" :
+	{
+		"StructuresGlass_Macroblock" :
+		{
+			"scissor_test" : false,
+			"depth_check" : true,
+			"depth_write" : true,
+			"depth_function" : "less_equal",
+			"depth_bias_constant" : 0,
+			"depth_bias_slope_scale" : 0,
+			"cull_mode" : "none",
+			"polygon_mode" : "solid"
+		}
+	},
+
+	"blendblocks" :
+	{
+		"StructuresGlass_Blendblock" :
+		{
+			"alpha_to_coverage" : false,
+			"blendmask" : "rgba",
+			"separate_blend" : false,
+			"src_blend_factor" : "src_alpha",
+			"dst_blend_factor" : "one_minus_src_alpha",
+			"blend_operation" : "add"
+		}
+	},
+
+	"pbs" : 
+	{
+
+		"/dural/structures/windows/texture" :
+		{
+			"macroblock" : "StructuresGlass_Macroblock",
+			"blendblock" : "StructuresGlass_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"transparency" :
+			{
+				"value" : 0.95,
+				"mode" : "Fade",
+				"use_alpha_from_textures" : true
+			},
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "windowsD.png",
+				"sampler" : "StructuresGlass_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.9,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "windowsN.dds",
+				"sampler" : "StructuresGlass_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "windowsS.png",
+				"sampler" : "StructuresGlass_Sampler"
+			}
+		}
+	}
+}

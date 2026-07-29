@@ -1,0 +1,1502 @@
+{
+	"samplers" :
+	{
+		"StructuresWood_Sampler" :
+		{
+			"min" : "anisotropic",
+			"mag" : "anisotropic",
+			"mip" : "anisotropic",
+			"u" : "wrap",
+			"v" : "wrap",
+			"w" : "wrap",
+			"miplodbias" : 0,
+			"max_anisotropic" : 1,
+			"compare_function" : "disabled",
+			"border" :[1, 1, 1, 1],
+			"min_lod" : -3.40282e+38,
+			"max_lod" : 3.40282e+38
+		}
+	},
+
+	"macroblocks" :
+	{
+		"StructuresWood_Macroblock" :
+		{
+			"scissor_test" : false,
+			"depth_check" : true,
+			"depth_write" : true,
+			"depth_function" : "less_equal",
+			"depth_bias_constant" : 0,
+			"depth_bias_slope_scale" : 0,
+			"cull_mode" : "clockwise",
+			"polygon_mode" : "solid"
+		}
+	},
+
+	"blendblocks" :
+	{
+		"StructuresWood_Blendblock" :
+		{
+			"alpha_to_coverage" : false,
+			"blendmask" : "rgba",
+			"separate_blend" : false,
+			"src_blend_factor" : "one",
+			"dst_blend_factor" : "zero",
+			"blend_operation" : "add"
+		}
+	},
+
+	"pbs" : 
+	{
+
+		"/dural/structures/building_elements/texture/door_elements" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "door_elementsD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "door_elementsN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "door_elementsS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/cg_door_a/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cg_door_aD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.1,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cg_door_aN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "cg_door_aS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/doors/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "doorsD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "doorsN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.01
+			}
+		},
+		
+		"/dural/structures/moraf_beam_end/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_beam_endD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.1,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_beam_endN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "moraf_beam_endS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_rope/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_ropeD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_ropeN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.01
+			}
+		},
+		
+		"/dural/structures/rezpa_wood/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_woodD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_woodN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "rezpa_woodS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/roof_shale/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "roof_shaleD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "roof_shaleN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "roof_shaleS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/roof_shingle/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "roof_shingleD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "roof_shingleN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"/dural/structures/roof_straw/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "roof_strawD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "roof_strawN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"/dural/structures/sharpened_log/texture/birch" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "sharpened_log_birchD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "sharpened_log_birchN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "sharpened_log_birchS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/sharpened_log/texture/fir" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "sharpened_log_firD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "sharpened_log_firN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "sharpened_log_firS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/sign_post/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "sign_postD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "sign_postN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"/dural/structures/straw/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "strawD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "strawN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "strawS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/tent_blue/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "tent_blueD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "tent_blueN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "tent_blueS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/tent_red/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "tent_redD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "tent_redN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "tent_redS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/wall_inner_luxurious/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "wall_inner_luxuriousD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "wall_inner_luxuriousN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"/dural/structures/wall_inner_stained/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "wall_inner_stainedD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "wall_inner_stainedN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"/dural/structures/rezpa_stained_walls/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "wall_inner_stained2D.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "wall_inner_stained2N.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"/dural/structures/weathered/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "weatheredD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "weatheredN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "weatheredS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"/dural/structures/wood/textureStructure" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "woodD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "woodN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"/dural/structures/wooden_fence/texture" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "wooden_fenceD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "wooden_fenceN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5,
+				"texture" : "wooden_fenceS.png",
+				"sampler" : "StructuresWood_Sampler"
+			}
+		},
+		
+		"fence4" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "fence4D.jpg",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "fence4N.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"ropes02.mat/TWOSIDE/TEXFACE/bridgeropes.png" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "bridgeropesD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "bridgeropesN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"ropes01.mat/TWOSIDE/TEXFACE/bridgeropes.png" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "bridgeropesD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "bridgeropesN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"house.01.rooftiles/SOLID/TEX/highlander.house.01.jpg/VertCol/TWOSIDE" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "highlander.house.01D.jpg",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "highlander.house.01N.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"highlanderhouse.01.ma/SOLID/TEX/highlander.house.01.jpg/VertCol" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "highlander.house.01D.jpg",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "highlander.house.01N.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"house.01.crossbeams/SOLID/TEX/highlander.house.01.jpg/VertCol" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "highlander.house.01D.jpg",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "highlander.house.01N.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"house.01.stepston/SOLID/TEX/highlander.house.01.jpg/VertCol" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "highlander.house.01D.jpg",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "highlander.house.01N.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"house.01.mortar/SOLID/TEX/highlander.house.01.jpg/VertCol" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "highlander.house.01D.jpg",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "highlander.house.01N.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"house.01.rooftiles/SOLID/TEX/highlander.house.01.jpg/VertCol" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "highlander.house.01D.jpg",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "highlander.house.01N.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"stepsAndRamps001" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "GrassAndDirtD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "GrassAndDirtN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"Objects/Waterput" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "waterputD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "waterputN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"Material/SOLID/TEX/ramp_wood.png" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "wood2D.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "wood2N.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"Material/Bridge_1" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "bridge_ropeD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "bridge_ropeN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"Material/Bridge_0" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "bridge_matD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "bridge_matN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"Wood-F012" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "doorD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "doorN.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"Wood-02" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [0.48, 0.24, 0.02],
+				"background" : [1, 1, 1, 1]
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"WoodBridge" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "WoodBridgeD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "WoodBridgeN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"WoodenDoor" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "WoodenDoorD.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "WoodenDoorN.dds",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"city_door_01" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_door_01_d.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_door_01_n.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"city_door_02" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_door_02_d.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_door_02_n.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"city_door_03" :
+		{
+			"macroblock" : "StructuresWood_Macroblock",
+			"blendblock" : "StructuresWood_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_door_03_d.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_door_03_n.png",
+				"sampler" : "StructuresWood_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		}
+	}
+}

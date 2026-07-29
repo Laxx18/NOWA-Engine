@@ -1,0 +1,365 @@
+{
+	"samplers" :
+	{
+		"StructuresMetal_Sampler" :
+		{
+			"min" : "anisotropic",
+			"mag" : "anisotropic",
+			"mip" : "anisotropic",
+			"u" : "wrap",
+			"v" : "wrap",
+			"w" : "wrap",
+			"miplodbias" : 0,
+			"max_anisotropic" : 1,
+			"compare_function" : "disabled",
+			"border" :[1, 1, 1, 1],
+			"min_lod" : -3.40282e+38,
+			"max_lod" : 3.40282e+38
+		}
+	},
+
+	"macroblocks" :
+	{
+		"StructuresMetal_Macroblock" :
+		{
+			"scissor_test" : false,
+			"depth_check" : true,
+			"depth_write" : true,
+			"depth_function" : "less_equal",
+			"depth_bias_constant" : 0,
+			"depth_bias_slope_scale" : 0,
+			"cull_mode" : "clockwise",
+			"polygon_mode" : "solid"
+		}
+	},
+
+	"blendblocks" :
+	{
+		"StructuresMetal_Blendblock" :
+		{
+			"alpha_to_coverage" : false,
+			"blendmask" : "rgba",
+			"separate_blend" : false,
+			"src_blend_factor" : "one",
+			"dst_blend_factor" : "zero",
+			"blend_operation" : "add"
+		}
+	},
+
+	"pbs" : 
+	{
+		"/dural/structures/metal_rusty/texture" :
+		{
+			"macroblock" : "StructuresMetal_Macroblock",
+			"blendblock" : "StructuresMetal_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "metallic",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "metal_rustyD.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"metalness" :
+			{
+				"value" : 0.72
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "metal_rustyN.dds",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.2
+			}
+		},
+		
+		"g_pyr/SOLID/TEX/pyramid_metal" :
+		{
+			"macroblock" : "StructuresMetal_Macroblock",
+			"blendblock" : "StructuresMetal_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "metallic",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "pyramid_metalD.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"metalness" :
+			{
+				"value" : 0.72
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "pyramid_metalN.dds",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.2
+			}
+		},
+		
+		"Material.002/SOLID/TEX/innibble_grey.tga/VertCol" :
+		{
+			"macroblock" : "StructuresMetal_Macroblock",
+			"blendblock" : "StructuresMetal_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "metallic",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "innibble_greyD.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"metalness" :
+			{
+				"value" : 0.72
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "innibble_greyN.dds",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.2
+			}
+		},
+		
+		"Rail" :
+		{
+			"macroblock" : "StructuresMetal_Macroblock",
+			"blendblock" : "StructuresMetal_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "metallic",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rail01D.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"metalness" :
+			{
+				"value" : 0.72
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rail01N.dds",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.2,
+				"texture" : "rail01S.png",
+				"sampler" : "StructuresMetal_Sampler"
+			}
+		},
+		
+		"city_garage_01" :
+		{
+			"macroblock" : "StructuresMetal_Macroblock",
+			"blendblock" : "StructuresMetal_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "metallic",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_garage_01_d.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"metalness" :
+			{
+				"value" : 0.72
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_garage_01_n.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.2,
+				"texture" : "rail01S.png",
+				"sampler" : "StructuresMetal_Sampler"
+			}
+		},
+		
+		"city_window_01" :
+		{
+			"macroblock" : "StructuresMetal_Macroblock",
+			"blendblock" : "StructuresMetal_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_window_01_d.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [0.04, 0.04, 0.04]
+			},
+			"fresnel" :
+			{
+				"value" : 0.03,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_window_01_n.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.15
+			}
+		},
+
+		"city_window_02" :
+		{
+			"macroblock" : "StructuresMetal_Macroblock",
+			"blendblock" : "StructuresMetal_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_window_02_d.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [0.04, 0.04, 0.04]
+			},
+			"fresnel" :
+			{
+				"value" : 0.03,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_window_02_n.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.15
+			}
+		},
+		
+		"city_window_03" :
+		{
+			"macroblock" : "StructuresMetal_Macroblock",
+			"blendblock" : "StructuresMetal_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_window_03_d.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [0.04, 0.04, 0.04]
+			},
+			"fresnel" :
+			{
+				"value" : 0.03,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_window_03_n.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.15
+			}
+		},
+		
+		"city_window_04" :
+		{
+			"macroblock" : "StructuresMetal_Macroblock",
+			"blendblock" : "StructuresMetal_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "cook_torrance_separate_diffuse_fresnel",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_window_04_d.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [0.04, 0.04, 0.04]
+			},
+			"fresnel" :
+			{
+				"value" : 0.03,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_window_04_n.png",
+				"sampler" : "StructuresMetal_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 0.15
+			}
+		}
+	}
+}

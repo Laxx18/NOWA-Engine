@@ -1,0 +1,5106 @@
+{
+	"samplers" :
+	{
+		"StructuresStone_Sampler" :
+		{
+			"min" : "anisotropic",
+			"mag" : "anisotropic",
+			"mip" : "anisotropic",
+			"u" : "wrap",
+			"v" : "wrap",
+			"w" : "wrap",
+			"miplodbias" : 0,
+			"max_anisotropic" : 1,
+			"compare_function" : "disabled",
+			"border" :[1, 1, 1, 1],
+			"min_lod" : -3.40282e+38,
+			"max_lod" : 3.40282e+38
+		}
+	},
+
+	"macroblocks" :
+	{
+		"StructuresStone_Macroblock" :
+		{
+			"scissor_test" : false,
+			"depth_check" : true,
+			"depth_write" : true,
+			"depth_function" : "less_equal",
+			"depth_bias_constant" : 0,
+			"depth_bias_slope_scale" : 0,
+			"cull_mode" : "clockwise",
+			"polygon_mode" : "solid"
+		}
+	},
+
+	"blendblocks" :
+	{
+		"StructuresStone_Blendblock" :
+		{
+			"alpha_to_coverage" : false,
+			"blendmask" : "rgba",
+			"separate_blend" : false,
+			"src_blend_factor" : "one",
+			"dst_blend_factor" : "zero",
+			"blend_operation" : "add"
+		},
+		
+		"StructuresStone_Blendblock_Transparent" :
+		{
+			"alpha_to_coverage" : false,
+			"blendmask" : "rgba",
+			"separate_blend" : false,
+			"src_blend_factor" : "src_alpha",
+			"dst_blend_factor" : "one_minus_src_alpha",
+			"blend_operation" : "add",
+			"blend_operation_alpha" : "add"
+		}
+	},
+
+	"pbs" : 
+	{
+
+		"/dural/structures/bloomery/texture/down_part" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "metallic",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "bloomery_down_partD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"metalness" :
+			{
+				"value" : 0.15
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "bloomery_down_partN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/bloomery/texture/up_part" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "metallic",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "bloomery_up_partD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"metalness" :
+			{
+				"value" : 0.15
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "bloomery_up_partN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/brick/texture/brick_gray" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "brick_grayD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "brick_grayN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/brick/texture/brick_grimy" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "brick_grimyD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "brick_grimyN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/brick/texture/brick_yellow" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "brick_yellowD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "brick_yellowN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "brick_yellowS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/cathedral/texture/cathedral_base_cap" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cathedral_base_capD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cathedral_base_capN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cathedral/texture/cathedral_column" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cathedral_columnD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cathedral_columnN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cathedral/texture/cathedral_column_b" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cathedral_column_bD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cathedral_column_bN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cathedral/texture/cathedral_decorators" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cathedral_decoratorsD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cathedral_decoratorsN.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cathedral/texture/cathedral_trims" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cathedral_trimsD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cathedral_trimsN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cathedral/texture/cathedral_sun_pendant" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cathedral_sun_pendantD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cathedral_sun_pendantN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cathedral_pew/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cathedral_pewD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cathedral_pewN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "cathedral_pewS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/cg_outer_wall/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cg_outer_wallD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cg_outer_wallN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cg_roof/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cg_roofD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cg_roofN.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "cg_roofS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/cg_roof_shingles/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cg_roof_shinglesD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cg_roof_shinglesN.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "cg_roof_shinglesS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/cg_statue/texture/statue_arms" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_armsD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_armsN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cg_statue/texture/statue_belt" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_beltD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_beltN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cg_statue/texture/statue_bezier" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_bezierD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_bezierN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cg_statue/texture/statue_body" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_bodyD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_bodyN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cg_statue/texture/statue_helmet" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_helmetD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_helmetN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cg_statue/texture/statue_shin" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_shinD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_shinN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cg_statue/texture/statue_weapon" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_weaponD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_weaponN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cobblestone_tile_A/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cobblestone_tile_AD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cobblestone_tile_AN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cobblestone_tile_B/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cobblestone_tile_BD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cobblestone_tile_BN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cobblestones/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cobblestonesD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cobblestonesN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/curtain_wall_shale/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "curtain_wall_shaleD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "curtain_wall_shaleN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "curtain_wall_shaleS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/curtain_wall_shingle/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "curtain_wall_shingleD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "curtain_wall_shingleN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/curtain_wall_straw/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "curtain_wall_strawD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "curtain_wall_strawN.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/dirty_concrete/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "dirty_concreteD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "dirty_concreteN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/firepit_embers/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "firepit_embersD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "firepit_embersN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/floor/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "floorD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "floorN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/foundation_brick/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "foundation_brickD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "foundation_brickN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "foundation_brickS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/gargoyle_a/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "gargoyle_aD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "gargoyle_aN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "gargoyle_aS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/marketstall_details_blue/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "marketstall_details_blueD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "marketstall_details_blueN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "marketstall_details_blueS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/marketstall_details_red/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "marketstall_details_redD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "marketstall_details_redN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/marketstall_main_blue/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "marketstall_main_blueD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "marketstall_main_blueN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "marketstall_main_blueS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/marketstall_main_red/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "marketstall_main_redD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "marketstall_main_redN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "marketstall_main_redS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/marketstall_details_umber/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "marketstall_details_umberD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "marketstall_details_umberN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/marketstall_main_umber/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "marketstall_main_umberD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "marketstall_main_umberN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/moraf_big_arc/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_big_arcD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_big_arcN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_big_arcS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_ceiling/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_ceilingD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_ceilingN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_ceilingS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_floor_east_west_side/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_floor_east_west_sideD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_floor_east_west_sideN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_floor_east_west_sideS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_floor_north_south_side/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_floor_north_south_sideD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_floor_north_south_sideN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_floor_north_south_sideS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_normal_wall/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_normal_wallD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_normal_wallN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_normal_wallS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_roof_bottom/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_roof_bottomD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_roof_bottomN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_roof_bottomS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_roof_shingles_combo/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_roof_shingles_comboD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_roof_shingles_comboN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_roof_shingles_comboS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_roof_straw/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock_Transparent",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"transparency" :
+			{
+				"value" : 1,
+				"mode" : "Fade",
+				"use_alpha_from_textures" : true
+			},
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_roof_strawD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_roof_strawN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/moraf_roof_straw_combo/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_roof_straw_comboD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_roof_straw_comboN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/moraf_stone_wall/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_stone_wallD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_stone_wallN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_stone_wallS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_stone_wall_side/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_stone_wall_sideD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_stone_wall_sideN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_stone_wall_sideS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_timber_beam/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_timber_beamD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_timber_beamN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_timber_beamS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/blue_floor_tile/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "blue_floor_tileD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "blue_floor_tileN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "blue_floor_tileS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_timber_wall/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_timber_wallD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_timber_wallN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_timber_wallS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_wall_bottom/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_wall_bottomD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_wall_bottomN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_wall_bottomS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/moraf_wall_top/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "moraf_wall_topD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "moraf_wall_topN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "moraf_wall_topS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_brick/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_brickD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_brickN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_brickS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_brick_trim/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_brick_trimD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_brick_trimN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_brick_trimS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_ceiling_tiles/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_ceiling_tilesD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_ceiling_tilesN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/ossyja_copper_rivet/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_copper_rivetD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_copper_rivetN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_copper_rivetS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_floor_planks/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_floor_planksD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_floor_planksN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_floor_planksS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_floor_tiles/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_floor_tilesD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_floor_tilesN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/ossyja_inner_walls/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_inner_wallsD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_inner_wallsN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_inner_wallsS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_metal_rivet/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_metal_rivetD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_metal_rivetN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_metal_rivetS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_planks/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_planksD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_planksN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_planksS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_post/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_postD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_postN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_postS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_rough_beams/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_rough_beamsD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_rough_beamsN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/ossyja_stairs/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_stairsD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_stairsN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_stairsS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_wall_cobblestone/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_wall_cobblestoneD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_wall_cobblestoneN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_wall_cobblestoneS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ossyja_wall_cobblestone_B/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ossyja_wall_cobblestone_BD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_wall_cobblestone_BN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ossyja_wall_cobblestone_BS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ozark_brick/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ozark_brickD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ozark_brickN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ozark_brickS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/ozark_planks/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ozark_planksD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ozark_planksN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/rezpa_arch/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_archD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_archN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_archS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_cobblestone/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_cobblestoneD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_cobblestoneN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_cobblestoneS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_column/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_columnD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_columnN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_columnS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_column_a/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_column_aD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_column_aN.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_column_aS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_column_a_base/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_column_a_baseD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_column_a_baseN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_column_a_baseS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_concrete/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_concreteD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_concreteN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_concreteS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_inner_walls/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_inner_wallsD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_inner_wallsN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_inner_wallsS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_interior_floor_stone/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_interior_floor_stoneD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_interior_floor_stoneN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_interior_floor_stoneS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_masonry/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_masonryD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_masonryN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_masonryS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_ornament/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_ornamentD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_ornamentN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_ornamentS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_plaster/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_plasterD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_plasterN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_plasterS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_staced_masonry/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_staced_masonryD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_staced_masonryN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_staced_masonryS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_stairs/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_stairsD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_stairsN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_stairsS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_stonecircularfloor/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_stonecircularfloorD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_stonecircularfloorN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_stonecircularfloorS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_stonetrim/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_stonetrimD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_stonetrimN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_stonetrimS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/rezpa_wall/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rezpa_wallD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_wallN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "rezpa_wallS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/roof_trim/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "roof_trimD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "roof_trimN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "roof_trimS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/stone/texture/cobble" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "stone_cobbleD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "stone_cobbleN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "stone_cobbleS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/stone/texture/stone_rough" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "stone_roughD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "stone_roughN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "stone_roughS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/stone_gray/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "stone_grayD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "stone_grayN.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/stone_mossy/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "stone_mossyD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "stone_mossyN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "stone_mossyS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/stone_palisade/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "stone_palisadeD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "stone_palisadeN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "stone_palisadeS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/temple/texture/temple_base" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "temple_baseD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "temple_baseN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "temple_baseS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/temple/texture/temple_main" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "temple_mainD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "temple_mainN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "temple_mainS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/temple/texture/temple_roof" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "temple_roofD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "temple_roofN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "temple_roofS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/wall_outer/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "wall_outerD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "wall_outerN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "wall_outerS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"/dural/structures/yellow_brick/texture" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "yellow_brickD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "yellow_brickN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"tower01" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "stone_cobbleD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.12,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "stone_cobbleN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 3,
+				"texture" : "stone_cobbleS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"Simple/RockWall" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "rockwallD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "rockwallN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SmallRobotHome/SOLID/TEX/block_haus2.jpg" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "block_haus2D.jpg",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "block_haus2N.jpg",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"building_001/SOLID/TEX/cwd_004.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "cwd_004D.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "cwd_004N.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Material/SOLID/TEX/BigBuilding1_BigBuilding.tga" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "BigBuilding1_BigBuildingD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "BigBuilding1_BigBuildingN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Material/SOLID/TEX/Wall2_Cube.001.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "Wall2_CubeD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "Wall2_CubeN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Material/SOLID/TEX/wall1.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "wall1D.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "wall1N.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/global/structures/statue_body" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_bodyD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_bodyN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/global/structures/statue_helmet" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_helmetD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_helmetN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/global/structures/statue_weapon" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_weaponD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_weaponN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/global/structures/statue_bezier" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_bezierD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_bezierN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/global/structures/statue_boots" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [0.5, 0.5, 0.5],
+				"background" : [1, 1, 1, 1]
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/global/structures/statue_belt" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_beltD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_beltN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/global/structures/statue_arms" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "statue_armsD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "statue_armsN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"/dural/structures/cathedral/texture/column" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "ColumnD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "ColumnN.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "ColumnS.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"Material/SOLID/TEX/tower1_Cube.tga" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "tower1_CubeD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "tower1_CubeN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"street_light/SOLID/TEX/street_light_Cylinder.tga" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "street_light_CylinderD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "street_light_CylinderN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Material/SOLID/TEX/depot.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "depotD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "depotN.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"dustbin/SOLID/TEX/dustbin_Cube.tga" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "dustbin_CubeD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "dustbin_CubeN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Stone_002" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "basic044D.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "basic044N.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Mat_Stone_1" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "stoneD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "stoneN.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/house1.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "house1D.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "house1N.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/house1b.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "house1bD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "house1N.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/house1c.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "house1cD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "house1N.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/house1d.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "house1dD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "house1N.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/house1e.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "house1eD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "house1N.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/House2.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "House2D.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "House2N.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/Savepoint.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "SavepointD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "SavepointN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/SaveStation.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "SaveStationD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "SaveStationN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Material/SOLID/TEX/HouseIntern1.2.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "HouseIntern1.2D.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "HouseIntern1.2N.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/DoorHouse1.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "DoorHouse1D.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "DoorHouse1N.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/Portal.png" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "PortalD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "PortalN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"SOLID/TEX/Eventhorizon.tga" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "EventhorizonD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "EventhorizonN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Pyramid" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [0.64, 0.42, 0.0],
+				"background" : [0.8, 0.53, 0.0, 1.0]
+			},
+			"specular" :
+			{
+				"value" : [0.5, 0.5, 0.5]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Elbow_Joint" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [0.64, 0.30, 0.30, 1.0],
+				"background" : [0.8, 0.38, 0.38, 1.0]
+			},
+			"specular" :
+			{
+				"value" : [0.5, 0.5, 0.5]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"StoneBridge" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "stone_roughD.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "stone_roughN.dds",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"Portal2" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"brdf" : "blinn_phong",
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "Portal2D.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1],
+				"texture" : "Portal2S.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "Portal2N.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 3,
+				"texture" : "Portal2R.png",
+				"sampler" : "StructuresStone_Sampler"
+			}
+		},
+		
+		"EventHorizont2" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock_Transparent",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_ogre",
+			"brdf" : "cook_torrance",
+			"transparency" :
+			{
+				"value" : 1,
+				"mode" : "Fade",
+				"use_alpha_from_textures" : true
+			},
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1],
+				"texture" : "EventHorizont2D.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0.05,
+				"mode" : "coeff"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		},
+		
+		"city_roof_01" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_roof_01_d.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_roof_01_n.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		
+		"city_roof_02" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_roof_02_d.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_roof_02_n.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		"city_curb_01" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_curb_01_d.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_curb_01_n.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		"city_road_01" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_road_01_d.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_road_01_n.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		},
+		"city_road_02" :
+		{
+			"macroblock" : "StructuresStone_Macroblock",
+			"blendblock" : "StructuresStone_Blendblock",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "city_road_02_d.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "city_road_02_n.png",
+				"sampler" : "StructuresStone_Sampler"
+			},
+			"roughness" :
+			{
+				"value" : 1
+			}
+		}
+	}
+}

@@ -1,0 +1,227 @@
+// Procedural grass materials for ProceduralFoliageVolumeComponent.
+// All use the Wind HLMS (HLMS_USER0) so blades sway via WindComponent.
+//
+// Property notes:
+//   cull_mode none          : blades visible from both sides (single-sided quads)
+//   alpha_hash yes          : dithered alpha cutout -- removes the popping/
+//                             aliasing edge of hard alpha_test, especially
+//                             noticeable on thin grass blade silhouettes.
+//                             alpha_hash is an OPAQUE technique: it writes
+//                             depth normally and needs NO blend mode and NO
+//                             back-to-front sorting.
+//   // alpha_to_coverage msaa_only : combines with MSAA for smoother edges
+//
+//   IMPORTANT: do NOT combine alpha_hash with scene_blend alpha_blend.
+//   alpha_hash already converts the texture alpha into a per-pixel
+//   stochastic pass/discard decision and writes depth like normal opaque
+//   geometry. Adding real alpha blending on top makes each blade's
+//   surviving fragments blend inconsistently against whatever happened to
+//   be drawn before it (since transparent draws are not depth-sorted),
+//   which is exactly what caused grass to look "see-through" to the
+//   terrain in patches. Leaving scene_blend at its opaque default
+//   (one zero) fixes this completely -- alpha_hash on its own already
+//   gives correct, fully opaque-looking cutout grass with smooth edges.
+//
+//   specular_map reuses diffuse: cheap approximation, fine for distant grass
+//   No normal_map: skipped per request, saves a texture fetch per pixel,
+//                  grass blades are too small/thin for normal mapping to matter
+
+hlms SwayingGrass1Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass1.png
+	specular_map grass1.png
+}
+
+hlms SwayingGrass2Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass2.png
+	specular_map grass2.png
+}
+
+hlms SwayingGrass3Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass3.png
+	specular_map grass3.png
+}
+
+hlms SwayingGrass4Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass4.png
+	specular_map grass4.png
+}
+
+hlms SwayingGrass5Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass5.png
+	specular_map grass5.png
+}
+
+hlms SwayingGrass6Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass6.png
+	specular_map grass6.png
+}
+
+hlms SwayingGrass7Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass7.png
+	specular_map grass7.png
+}
+
+hlms SwayingGrass8Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass8.png
+	specular_map grass8.png
+}
+
+hlms SwayingGrass9Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass9.png
+	specular_map grass9.png
+}
+
+hlms SwayingGrass10Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass10.png
+	specular_map grass10.png
+}
+
+hlms SwayingGrass11Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass11.png
+	specular_map grass11.png
+}
+
+hlms SwayingGrass12Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass12.png
+	specular_map grass12.png
+}
+
+hlms SwayingGrass13Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass13.png
+	specular_map grass13.png
+}
+
+hlms SwayingGrass14Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass14.png
+	specular_map grass14.png
+}
+
+hlms SwayingGrass15Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass15.png
+	specular_map grass15.png
+}
+
+hlms SwayingGrass16Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass16.png
+	specular_map grass16.png
+}
+
+hlms SwayingGrass17Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass17.png
+	specular_map grass17.png
+}
+
+hlms SwayingGrass18Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass18.png
+	specular_map grass18.png
+}
+
+hlms SwayingGrass19Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass19.png
+	specular_map grass19.png
+}
+
+hlms SwayingGrass20Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass20.png
+	specular_map grass20.png
+}

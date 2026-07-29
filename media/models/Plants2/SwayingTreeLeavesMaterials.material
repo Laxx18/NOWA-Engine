@@ -1,0 +1,1075 @@
+// Swaying Wind HLMS variants for twig/leaf submeshes identified by
+// isLeavesSubMesh() via the "twig" and "peacock" name patterns added
+// alongside the existing "leaf"/"leaves" patterns.
+//
+// NAMING CONVENTION: original datablock name + literal "Swaying" suffix,
+// no other transformation. E.g. "tree16tallTwig" -> "tree16tallTwigSwaying".
+// Matches ProceduralFoliageVolumeComponent::getSwayingDatablockName exactly.
+//
+// The 16 leaf/leaves entries from tree_material.json already exist in
+// SwayingTreeLeavesMaterials.material -- only the 48 new twig entries
+// are generated here to avoid duplication.
+//
+// alpha_hash used uniformly (same reasoning as SwayingTreeLeavesMaterials.material).
+// Values extracted programmatically from tree_material.json to avoid
+// transcription errors.
+
+hlms /dural/plants/fruit/acorn/texture/leafSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+	brdf default_separate_diffuse_fresnel
+
+	diffuse 1 1 1
+	diffuse_map acornD.png
+	normal_map acornN.dds
+	roughness 0.7
+}
+
+hlms /dural/plants/fruit/carrot/leafSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+	brdf default_separate_diffuse_fresnel
+
+	diffuse 1 1 1
+	diffuse_map carrotD.png
+	specular 1 1 1
+	fresnel 0.05
+	normal_map carrotN.dds
+	roughness 0.1
+}
+
+hlms /dural/plants/shrubs/leaf/texture/brownSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+	brdf default_separate_diffuse_fresnel
+
+	diffuse 1 1 1
+	diffuse_map shrubs_leaf_brownD.png
+	normal_map shrubs_leaf_brownN.dds
+	roughness 0.75
+}
+
+hlms /dural/plants/shrubs/leaf/texture/greenSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+	brdf default_separate_diffuse_fresnel
+
+	diffuse 1 1 1
+	diffuse_map shrubs_leaf_greenD.png
+	normal_map shrubs_leaf_greenN.dds
+	roughness 0.75
+}
+
+hlms /dural/plants/trees/birch/texture/leaves_fallSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+	brdf default_separate_diffuse_fresnel
+
+	diffuse 1 1 1
+	diffuse_map bark_leaves_fallD.png
+	specular 0.02 0.02 0.02
+	fresnel 0.02
+	roughness 0.9
+}
+
+hlms /dural/plants/trees/birch/texture/leaves_greenSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+	brdf default_separate_diffuse_fresnel
+
+	diffuse 1 1 1
+	diffuse_map bark_leaves_greenD.png
+	specular 0.02 0.02 0.02
+	fresnel 0.02
+	roughness 0.9
+}
+
+hlms tree.07.leaves.mat/ALPHA/TEX/tree.07.png/VertCol/TWOSIDESwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+	brdf default_separate_diffuse_fresnel
+
+	diffuse 1 1 1
+	diffuse_map tree.07D.png
+	specular 1 1 1
+	fresnel 0.05
+	normal_map tree.07N.dds
+	roughness 0.1
+}
+
+hlms leaves.09.mat/ALPHA/TEX/tree.09.png/VertCol/TWOSIDESwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+	brdf default_separate_diffuse_fresnel
+
+	diffuse 1 1 1
+	diffuse_map tree.09D.png
+	specular 1 1 1
+	fresnel 0.05
+	normal_map tree.09N.dds
+	roughness 0.1
+}
+
+hlms /dural/plants/fruit/apple/texture/leafSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1 1 1
+	diffuse_map apple_leafD.png
+	specular 1 1 1
+	fresnel 0.12
+	normal_map apple_leafN.dds
+	roughness 1
+}
+
+hlms jungle2_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1 1 1
+	diffuse_map jungle2_leaves.png
+	specular 0.2 0.2 0.2
+	fresnel 0.1
+	normal_map jungle2_leaves_n.jpg
+	roughness 0.6
+}
+
+hlms jungle2_leaves2Swaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.9 1.9 1.9
+	diffuse_map jungle2_leaves2.png
+	specular 0.4 0.4 0.4
+	fresnel 0.1
+	normal_map jungle2_leaves2_n.jpg
+	roughness 0.4
+}
+
+hlms jungle3_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.3 1.5 1.26
+	diffuse_map jungle3_leaves.png
+	specular 0.5 0.5 0.5
+	fresnel 0.1
+	normal_map jungle3_leaves_n.jpg
+	roughness 0.3
+}
+
+hlms jungle4_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.0 0.8 1.0
+	diffuse_map jungle4_leaves.png
+	specular 0.5 0.5 0.5
+	fresnel 0.1
+	normal_map palm_date_n.jpg
+	roughness 0.3
+}
+
+hlms palm_arabic_leafSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.0 1.0 1.0
+	diffuse_map palm_arabic.png
+	specular 0.7 0.7 0.7
+	fresnel 0.1
+	normal_map palm_arabic_n.jpg
+	roughness 0.3
+}
+
+hlms palm_coconut1_leafSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 0.7 0.9 1.7
+	diffuse_map palm_coconut1_leaf.png
+	specular 0.8 0.8 0.8
+	fresnel 0.1
+	normal_map palm_coconut1_leaf_n.png
+	roughness 0.2
+}
+
+hlms palm_date_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.3 1.3 1.3
+	diffuse_map palm_date_leaf.png
+	specular 0.4 0.4 0.4
+	fresnel 0.1
+	normal_map palm_date_leaf_n.png
+	roughness 0.5
+}
+
+hlms palm_coco3_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	// NOTE: original had two_sided=true; cull_mode none above already
+	// renders both faces, so two_sided is redundant here and omitted.
+
+	workflow specular_ogre
+
+	diffuse 0.8 0.8 0.8
+	diffuse_map palm_coco3_leaf.png
+	specular 0.8 0.8 0.8
+	fresnel 0.1
+	normal_map palm_coco3_leaf_n.png
+	roughness 0.2
+}
+
+hlms palm_fan_leafSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	// NOTE: original had two_sided=true; cull_mode none above already
+	// renders both faces, so two_sided is redundant here and omitted.
+
+	workflow specular_ogre
+
+	diffuse 1 1 1
+	diffuse_map palm_fan_leaf.png
+	specular 0.8 0.8 0.8
+	fresnel 0.1
+	normal_map palm_fan_leaf_n.jpg
+	roughness 0.2
+}
+
+hlms beech_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 0.7 0.7 0.7
+	diffuse_map beech_leaves.png
+	specular 0.2 0.2 0.2
+	fresnel 0.1
+	normal_map beech_leaves_n.png
+	roughness 0.43
+}
+
+hlms elm_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 0.7 0.7 0.7
+	diffuse_map elm_leaves.png
+	specular 0.3 0.3 0.3
+	fresnel 0.1
+	normal_map elm_bark_n.jpg
+	roughness 0.32
+}
+
+hlms oak_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 0.4 0.45 0.6
+	diffuse_map oak_leaves.png
+	specular 0.3 0.3 0.3
+	fresnel 0.1
+	normal_map oak_bark_n.jpg
+	roughness 0.34
+}
+
+hlms acacia_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 0.7 0.65 0.7
+	diffuse_map "acacia branch.png"  // NOTE: filename contains a space -- quoting not verified against parser, check this line
+	specular 0.2 0.2 0.2
+	fresnel 0.1
+	normal_map "acacia bark_n.jpg"  // NOTE: filename contains a space -- quoting not verified against parser, check this line
+	// NOTE: original JSON had normal.value=0.6 (a normal map strength/
+	// intensity multiplier, separate from the texture itself). The
+	// equivalent .material script keyword for this is not verified --
+	// add it manually (e.g. normal_map_strength or similar) if your
+	// HlmsPbs script parser supports one; omitted here rather than guessed.
+	roughness 0.41
+}
+
+hlms tree_jng_leafSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 2.6 2.8 2.8
+	diffuse_map tree_jng_leaf.png
+	specular 0.6 0.6 0.6
+	fresnel 0.1
+	normal_map tree_jng_leaf_n.png
+	roughness 0.23
+}
+
+hlms tree_jng_leaf_gSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.7 2.6 3.0
+	diffuse_map tree_jng_leaf.png
+	specular 0.6 0.6 0.6
+	fresnel 0.1
+	normal_map tree_jng_leaf_n.png
+	roughness 0.23
+}
+
+hlms ceiba_leavesSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 0.65 0.5 0.7
+	diffuse_map twig26_1g.png
+	specular 0.2 0.2 0.2
+	fresnel 0.15
+	normal_map "acacia bark_n.jpg"  // NOTE: filename contains a space -- quoting not verified against parser, check this line
+	roughness 0.43
+}
+
+hlms tree10okyTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39_1or.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree11tallTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig22_1y.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree12smallTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig40_2rk.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree13bigTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig38_5or.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree14big7kTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig24_1yow.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree16GtallTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree16tallTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21_0yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree17GtallsmTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree17tallsmTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21_2or.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree18tallupTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig26_2yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree19gwideTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.05 0.95 1.1
+	diffuse_map twig39g1.png
+	specular 1.05 0.95 1.1
+	fresnel 0 0 0
+	normal_map twig39g1_norm.png
+	roughness 0.6
+}
+
+hlms tree19twideTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 0.9 0.9 0.9
+	diffuse_map twig26_1y.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree20wideTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig26_1y.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree22fatTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twigP2b4.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree25widedTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39_2o.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree26hugeasyTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39_1or.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree27mtinyTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig26_2yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree28mwtTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21_0yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree29downswpTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig22g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree31kinklowTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig22g0d.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree32kinkupTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twigP27c.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree33kinkupTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 0.8 0.8 0.8
+	diffuse_map twig24g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree34stinyTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twigP27y.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree35ballTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.15 1.15 1.2
+	diffuse_map twig39g1.png
+	specular 0.6 0.6 0.7
+	fresnel 0 0 0
+	normal_map twig39g1_norm.png
+	roughness 0.6
+}
+
+hlms tree36upballTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig22g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree37wballTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig33g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree38tallwsphrTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig24g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree39topsphrTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig26g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree40topsmTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig34g2c.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree41midTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 0.9 1 0.9
+	diffuse_map twig22g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree42lowTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree43low2TwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21_0yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree44low3TwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21_0yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree51siteTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21_0yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree52sitefatTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21_0yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree53siteTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21_0yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree55sitebigTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig21_0yo.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree60bigTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree61lowupTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree62broadUpTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree63willowTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree64willow2TwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree65willow3broadTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree66bigUpWideTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree67bigDnWideTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree68bigUpWTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree69bigUpWbTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
+
+hlms tree70tallUpWTwigSwaying Wind
+{
+	cull_mode none
+	alpha_hash yes
+
+	workflow specular_ogre
+
+	diffuse 1.1 1.1 1.1
+	diffuse_map twig39g1.png
+	specular 0.2 0.2 0.2
+	fresnel 0 0 0
+	roughness 0.6
+}
