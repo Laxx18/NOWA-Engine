@@ -579,7 +579,6 @@ namespace NOWA
 
 		void setPullInSmoothValue(Ogre::Real pullInSmoothValue);
         Ogre::Real getPullInSmoothValue(void) const;
-
     public:
         static const Ogre::String AttrOffsetPosition(void)
         {

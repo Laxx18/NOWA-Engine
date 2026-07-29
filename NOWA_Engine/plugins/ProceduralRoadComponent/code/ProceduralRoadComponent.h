@@ -58,6 +58,13 @@ namespace NOWA
             SEGMENT
         };
 
+        enum class RoadMeshBuffer
+        {
+            CENTER,
+            EDGE,
+            JUNCTION
+        };
+
         struct RoadControlPoint
         {
             Ogre::Vector3 position;
@@ -382,31 +389,44 @@ namespace NOWA
 
         Ogre::String getEdgeDatablock(void) const;
 
+        void setJunctionDatablock(const Ogre::String& datablock);
+
+        Ogre::String getJunctionDatablock(void) const;
+
         void setCenterUVTiling(const Ogre::Vector2& tiling);
+
         Ogre::Vector2 getCenterUVTiling(void) const;
 
         void setEdgeUVTiling(const Ogre::Vector2& tiling);
+
         Ogre::Vector2 getEdgeUVTiling(void) const;
 
         void setCurbHeight(Ogre::Real height);
+
         Ogre::Real getCurbHeight(void) const;
 
         void setTerrainSampleInterval(Ogre::Real interval);
+
         Ogre::Real getTerrainSampleInterval(void) const;
 
         void setSourceTerraLayer(Ogre::uint32 layer);
+
         Ogre::uint32 getSourceTerraLayer(void) const;
 
         void setTraceStepMeters(Ogre::Real step);
+
         Ogre::Real getTraceStepMeters(void) const;
 
         void setTraceThreshold(Ogre::uint32 threshold);
+
         Ogre::uint32 getTraceThreshold(void) const;
 
         void setGenerateFromLayer(const Ogre::String& layer);
+
         Ogre::String getGenerateFromLayer(void) const;
 
         void setEditMode(const Ogre::String& editMode);
+
         EditMode getEditModeEnum(void) const;
 
         int findNearestSegmentWithinRadius(const Ogre::Vector3& worldPos, Ogre::Real radius) const;
@@ -459,6 +479,7 @@ namespace NOWA
         {
             return "Edge Width";
         }
+
         static Ogre::String AttrRoadStyle(void)
         {
             return "Road Style";
@@ -506,6 +527,10 @@ namespace NOWA
         static Ogre::String AttrEdgeDatablock(void)
         {
             return "Edge Datablock";
+        }
+        static const Ogre::String AttrJunctionDatablock()
+        {
+            return "Junction Datablock";
         }
         static Ogre::String AttrCenterUVTiling(void)
         {
@@ -591,8 +616,8 @@ namespace NOWA
     private:
         void createRoadMesh(void);
 
-        void createRoadMeshInternal(const std::vector<float>& centerVertices, const std::vector<Ogre::uint32>& centerIndices, size_t numCenterVertices, const std::vector<float>& edgeVertices,
-                                    const std::vector<Ogre::uint32>& edgeIndices, size_t numEdgeVertices, const Ogre::Vector3& roadOrigin);
+        void createRoadMeshInternal(const std::vector<float>& centerVerts, const std::vector<Ogre::uint32>& centerInds, size_t numCenterVerts, const std::vector<float>& edgeVerts, const std::vector<Ogre::uint32>& edgeInds,
+            size_t numEdgeVerts, const std::vector<float>& junctionVerts, const std::vector<Ogre::uint32>& junctionInds, size_t numJunctionVerts, const Ogre::Vector3& origin);
 
         void destroyRoadMesh(void);
 
@@ -706,7 +731,7 @@ namespace NOWA
 
         void generateJunctionPatch(const JunctionPoint& jp, const Ogre::Vector3& origin);
 
-        void addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, bool isCenter);
+        void addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, RoadMeshBuffer targetBuffer);
 
         bool detectSnapToRoad(const Ogre::Vector3& worldPos, Ogre::Real radius);
 
@@ -721,6 +746,8 @@ namespace NOWA
        Ogre::Real getGroundHeightCached(const Ogre::Vector3& position);
 
        void invalidateGroundHeightCache(void);
+
+       std::vector<RoadControlPoint> resamplePathUniformly(const std::vector<RoadControlPoint>& densePath, Ogre::Real stepMeters);
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;
@@ -744,6 +771,7 @@ namespace NOWA
         Variant* curveSubdivisions;
         Variant* centerDatablock;
         Variant* edgeDatablock;
+        Variant* junctionDatablock;
         Variant* centerUVTiling;
         Variant* edgeUVTiling;
         Variant* curbHeight;
@@ -806,6 +834,15 @@ namespace NOWA
         std::vector<float> cachedEdgeVertices;
         std::vector<Ogre::uint32> cachedEdgeIndices;
         size_t cachedNumEdgeVertices;
+
+        std::vector<float> junctionVertices;
+        std::vector<Ogre::uint32> junctionIndices;
+        Ogre::uint32 currentJunctionVertexIndex;
+
+        std::vector<float> cachedJunctionVertices;
+        std::vector<Ogre::uint32> cachedJunctionIndices;
+        size_t cachedNumJunctionVertices;
+
 
         Ogre::Vector3 cachedRoadOrigin;
         bool originPositionSet;

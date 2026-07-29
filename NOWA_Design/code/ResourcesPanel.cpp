@@ -862,58 +862,79 @@ void ResourcesPanelGameObjects::clear(void)
 
 void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
 {
-    if (nullptr == node /*|| this->oldSelectedText == Ogre::String(node->getText())*/)
+    if (nullptr == node)
     {
         return;
     }
-    this->oldSelectedText = node->getText();
 
-    if (false == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT) && false == this->selectAll)
-    {
-        this->editorManager->getSelectionManager()->clearSelection();
-        // treeControl->clearSelection();
-    }
-    // Delete game objects
-    if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_DELETE))
-    {
-        this->deleteSelectedGameObjects();
-        return;
-    }
+    // IMPORTANT: this is fired synchronously by TreeControl::addToSelection(), still
+    // nested inside TreeControl's own click-handling call stack (notifyMousePressed ->
+    // setSelection -> clearSelection/addToSelection -> eventTreeNodeSelected). Touching
+    // EditorManager/SelectionManager here directly can trigger a chain of events that
+    // re-enters gameObjectsTree (e.g. a queued-and-immediately-pumped refresh) WHILE
+    // TreeControl is still mid-call - corrupting its own selection bookkeeping. Deferring
+    // via RenderCommand::enqueue (exactly like ResourcesPanelMeshes::notifyTreeNodeSelected
+    // already does) lets TreeControl's call stack fully unwind and finish first.
+    Ogre::String nodeText = node->getText();
 
-    // Select game object
-    auto gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(node->getText());
-    if (nullptr != gameObjectPtr)
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, nodeText]()
     {
-        this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
-        this->editorManager->getSelectionManager()->select(gameObjectPtr->getId());
-        // Focus object if Alt has been pressed
-        if (GetAsyncKeyState(VK_RCONTROL))
+        this->oldSelectedText = nodeText;
+
+        if (false == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT) && false == this->selectAll)
         {
-            this->editorManager->focusCameraGameObject(gameObjectPtr.get());
+            this->editorManager->getSelectionManager()->clearSelection();
         }
-        // treeControl->setSelection(node);
-        // treeControl->addSelection(node);
-    }
 
-    // Check if a category has been selected and select all game objects in category
-    if (NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->hasCategory(node->getText()))
-    {
-        auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(node->getText());
+        // Delete game objects
+        if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_DELETE))
+        {
+            this->deleteSelectedGameObjects();
+            return;
+        }
 
-        if (false == gameObjects.empty())
+        // Select game object
+        auto gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(nodeText);
+        if (nullptr != gameObjectPtr)
         {
             this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
+            this->editorManager->getSelectionManager()->select(gameObjectPtr->getId());
+            // Focus object if Alt has been pressed
+            if (GetAsyncKeyState(VK_RCONTROL))
+            {
+                this->editorManager->focusCameraGameObject(gameObjectPtr.get());
+            }
         }
 
-        for (size_t i = 0; i < gameObjects.size(); i++)
+        // Check if a category has been selected and select all game objects in category
+        if (NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->hasCategory(nodeText))
         {
-            this->editorManager->getSelectionManager()->select(gameObjects[i]->getId());
-        }
-    }
+            auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(nodeText);
 
-    // Sent when game objects are selected, so that the properties panel can be refreshed with new values
-    boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+            if (false == gameObjects.empty())
+            {
+                this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
+            }
+
+            for (size_t i = 0; i < gameObjects.size(); i++)
+            {
+                this->editorManager->getSelectionManager()->select(gameObjects[i]->getId());
+            }
+        }
+
+		// Must be delayed, else treecontrol states are getting corrupted and it will look ugly
+		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.1f));
+        auto ptrFunction = [this]()
+        {
+            // Sent when game objects are selected, so that the properties panel can be refreshed with new values
+            boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+        };
+        NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+        delayProcess->attachChild(closureProcess);
+        NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelGameObjects::notifyTreeNodeSelected");
 }
 
 void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char _char)

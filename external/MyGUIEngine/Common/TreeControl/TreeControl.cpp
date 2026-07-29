@@ -268,6 +268,7 @@ namespace MyGUI
 		for (size_t i = 0; i < mItemWidgets.size(); ++i)
 		{
 			mItemWidgets[i]->setStateSelected(false);
+			mItemWidgets[i]->setColour(MyGUI::Colour::White);
 		}
 
 		invalidate();
@@ -488,13 +489,19 @@ namespace MyGUI
 
 			if (nIndex >= (size_t)mnTopIndex)
 			{
-				// FIXME: this early break based on stale getTop() may skip
-				// updating item widgets further down the list on frames
-				// where the visible structure changed since the last pass
+				// Use nOffset (computed fresh this frame from nLevel/mnItemHeight) instead
+				// of mItemWidgets[nItem]->getTop(), which reflects the position the widget
+				// had at the END of the PREVIOUS validate() pass. Reading a stale getTop()
+				// here could trigger an early break whenever the visible structure changed
+				// between frames (scrolling, recycling, rapid selection changes), silently
+				// skipping setStateSelected()/setUserData() for every remaining item in the
+				// pool - leaving them visually stuck with whatever selection highlight they
+				// had the last time they WERE reached. nOffset has no such staleness problem:
+				// it is deterministically derived purely from this frame's loop iteration.
 				if (nItem >= mItemWidgets.size())
 					break;
 
-				if (nIndex >= mnExpandedNodes || mItemWidgets[nItem]->getTop() > mClient->getHeight())
+				if (nIndex >= mnExpandedNodes || nOffset > mClient->getHeight())
 					break;
 
 				TreeControlItem* pItem = mItemWidgets[nItem];
@@ -515,7 +522,14 @@ namespace MyGUI
 						break;
 					}
 				}
+				// Bulletproof, unconditional selection indicator. This completely
+				// bypasses Button's internal normal/highlighted/pushed/_checked
+				// state machine and its hover/press tracking (mIsMouseFocus,
+				// mIsMousePressed) - none of which can affect a plain colour tint.
+				// Forced unconditionally every frame, no early-return/caching path
+				// can leave it stuck on a stale value.
 				pItem->setStateSelected(bIsSelected);
+				pItem->setColour(bIsSelected ? MyGUI::Colour(0.15f, 0.35f, 0.75f) : MyGUI::Colour::White);
 
 				pItem->setUserData(pNode);
 
@@ -558,6 +572,7 @@ namespace MyGUI
 			for (; nItem < mItemWidgets.size(); ++nItem)
 			{
 				mItemWidgets[nItem]->setStateSelected(false);
+				mItemWidgets[nItem]->setColour(MyGUI::Colour::White);
 				mItemWidgets[nItem]->setVisible(false);
 			}
 		}

@@ -90,7 +90,7 @@ namespace MyGUI
 			else if (mIsMouseFocus)
 			{
 				if (!_setState("highlighted_checked"))
-					_setState("pushed");
+					_setState("highlighted");
 			}
 			else
 				_setState("normal_checked");

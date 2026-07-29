@@ -53,6 +53,7 @@ namespace NOWA
         activated(new Variant(ProceduralRoadComponent::AttrActivated(), true, this->attributes)),
         roadWidth(new Variant(ProceduralRoadComponent::AttrRoadWidth(), 4.0f, this->attributes)),
         edgeWidth(new Variant(ProceduralRoadComponent::AttrEdgeWidth(), 0.5f, this->attributes)),
+        curbHeight(new Variant(ProceduralRoadComponent::AttrCurbHeight(), 0.01f, this->attributes)),
         roadStyle(new Variant(ProceduralRoadComponent::AttrRoadStyle(), {"Paved", "Highway", "Trail", "Dirt", "Cobblestone"}, this->attributes)),
         editMode(new Variant(ProceduralRoadComponent::AttrEditMode(), std::vector<Ogre::String>{"Object", "Segment"}, this->attributes)),
         snapToGrid(new Variant(ProceduralRoadComponent::AttrSnapToGrid(), false, this->attributes)),
@@ -66,9 +67,9 @@ namespace NOWA
         curveSubdivisions(new Variant(ProceduralRoadComponent::AttrCurveSubdivisions(), 10, this->attributes)),
         centerDatablock(new Variant(ProceduralRoadComponent::AttrCenterDatablock(), Ogre::String("proceduralWall1"), this->attributes)),
         edgeDatablock(new Variant(ProceduralRoadComponent::AttrEdgeDatablock(), Ogre::String("Stone 4"), this->attributes)),
+        junctionDatablock(new Variant(ProceduralRoadComponent::AttrJunctionDatablock(), Ogre::String("city_road_02"), this->attributes)),
         centerUVTiling(new Variant(ProceduralRoadComponent::AttrCenterUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
         edgeUVTiling(new Variant(ProceduralRoadComponent::AttrEdgeUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
-        curbHeight(new Variant(ProceduralRoadComponent::AttrCurbHeight(), 0.15f, this->attributes)),
         terrainSampleInterval(new Variant(ProceduralRoadComponent::AttrTerrainSampleInterval(), 2.0f, this->attributes)),
         convertToMesh(new Variant(ProceduralRoadComponent::AttrConvertToMesh(), Ogre::String("Convert to Mesh"), this->attributes)),
         conformTerrainToRoad(new Variant(ProceduralRoadComponent::AttrConformTerrainToRoad(), Ogre::String("Conform Terrain To Road"), this->attributes)),
@@ -99,6 +100,8 @@ namespace NOWA
         selectedSegmentIndex(-1),
         segOverlayNode(nullptr),
         segOverlayObject(nullptr),
+        currentJunctionVertexIndex(0),
+        cachedNumJunctionVertices(0),
         buildState(BuildState::IDLE),
         pendingMergeOtherRoad(nullptr),
         physicsArtifactComponent(nullptr),
@@ -125,6 +128,16 @@ namespace NOWA
         this->curveSubdivisions->setDescription("Number of segments for curved roads (higher = smoother)");
         this->curbHeight->setDescription("Height of the curb edges above the road surface (meters). Set 0 for flat edges.");
         this->terrainSampleInterval->setDescription("Distance between terrain height samples along the road (meters). Lower = better terrain following but more geometry.");
+
+        this->centerDatablock->setDescription("The center road datablock to set.");
+        this->centerDatablock->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
+        this->edgeDatablock->setDescription("PBS datablock for road curb edge.");
+        this->edgeDatablock->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
+        this->junctionDatablock->setDescription("PBS datablock for junction/crossing fill surfaces (where 3+ arms meet). "
+                                                "Kept separate from Center Datablock because a directional texture "
+                                                "(e.g. dashed centre line) has no single consistent forward direction "
+                                                "at a junction fan.");
+        this->junctionDatablock->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
 
         this->editMode->setDescription("Object: click-drag to build roads.\n"
                                        "Segment: LMB to select a segment, X to delete it.");
@@ -296,6 +309,11 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrEdgeDatablock())
         {
             this->edgeDatablock->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrJunctionDatablock())
+        {
+            this->junctionDatablock->setValue(XMLConverter::getAttrib(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrCenterUVTiling())
@@ -632,6 +650,10 @@ namespace NOWA
         {
             this->setEdgeDatablock(attribute->getString());
         }
+        else if (ProceduralRoadComponent::AttrJunctionDatablock() == attribute->getName())
+        {
+            this->setJunctionDatablock(attribute->getString());
+        }
         else if (ProceduralRoadComponent::AttrCenterUVTiling() == attribute->getName())
         {
             this->setCenterUVTiling(attribute->getVector2());
@@ -770,6 +792,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
         propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralRoadComponent::AttrEdgeDatablock().c_str())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->edgeDatablock->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralRoadComponent::AttrJunctionDatablock().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->junctionDatablock->getString())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -1615,6 +1643,10 @@ namespace NOWA
         this->edgeIndices.clear();
         this->currentEdgeVertexIndex = 0;
 
+        this->junctionVertices.clear();
+        this->junctionIndices.clear();
+        this->currentJunctionVertexIndex = 0;
+
         if (this->roadSegments.empty())
         {
             return;
@@ -1707,7 +1739,6 @@ namespace NOWA
                 jp.armTrimDists.push_back(baseTrimDist);
             }
 
-            // Per-arm trim distance based on adjacent angles
             const size_t nArms = jp.armDirs.size();
             if (nArms >= 2)
             {
@@ -1772,11 +1803,6 @@ namespace NOWA
 
         auto storePatchCorners = [&](size_t ji, const Ogre::Vector3& boundaryPosXZ, const Ogre::Vector3& armDirAtBoundary, Ogre::Real boundaryHeight)
         {
-            // Use the same "up" direction as computeMiterData so junction corners
-            // land at the exact same world XYZ as the road strip edge vertices.
-            // On flat terrain: UNIT_Y (no change).
-            // On a planet: planet surface normal at this boundary point.
-            // boundaryPosXZ is in WORLD space (XZ, y stored separately as boundaryHeight).
             Ogre::Vector3 up = Ogre::Vector3::UNIT_Y;
             if (this->adaptToGround->getBool())
             {
@@ -1798,11 +1824,6 @@ namespace NOWA
             }
             perp.normalise();
 
-            // CRITICAL: use the REAL height of the road arm at this boundary, NOT the single
-            // flat junction height. On sloped terrain each arm meets the junction at a
-            // different height — storing the true per-arm height is what makes it snap.
-            // Also include perp.y * width so the corner Y matches the road strip edge Y
-            // exactly (with planet-normal perp, perp.y ≠ 0 so this matters).
             const Ogre::Real worldY = boundaryHeight;
 
             junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * totalHalfW, worldY + perp.y * totalHalfW, boundaryPosXZ.z + perp.z * totalHalfW));
@@ -1812,22 +1833,6 @@ namespace NOWA
         };
 
         // ── Chain building (undirected graph walk, handles 2-way snap joins) ────
-        // A road endpoint can be touched by 1 segment (dead end), 2 segments
-        // (a plain continuation / snap-closed connection - NOT a junction), or
-        // 3+ segments (a real branching junction, handled separately below via
-        // 'junctions'/'junctionByKey'). The old version of this loop only ever
-        // looked FORWARD from a segment's back point to another segment's FRONT
-        // point. Any segment reached by snapping onto an EXISTING segment's
-        // front point (the common case when closing a loop or joining two
-        // roads drawn from opposite directions) could never be merged into
-        // that other segment's chain, because by the time it was visited the
-        // other segment was already marked 'processed'. That produced two
-        // independent quad strips meeting at the same XZ point but with
-        // unrelated, independently-computed cross sections - hence the visible
-        // gap and flipped orientation at snap joints. Now we walk the shared-
-        // endpoint graph in both directions from every seed segment, reversing
-        // a neighbour's control point order when it is only compatible in that
-        // orientation, so all snap-joined segments become ONE continuous chain.
         std::map<QKey, std::vector<std::pair<size_t, bool>>> pointSegs; // bool = touches via FRONT
         for (size_t si = 0; si < this->roadSegments.size(); ++si)
         {
@@ -1866,9 +1871,6 @@ namespace NOWA
                 continue;
             }
 
-            // chainIndices holds (segmentIndex, reversed) pairs in final walk order.
-            // 'reversed' means this segment's control points must be read back-to-front
-            // to continue smoothly in the chain's travel direction.
             std::vector<std::pair<size_t, bool>> chainIndices;
             chainIndices.push_back({i, false});
             processed[i] = true;
@@ -1887,8 +1889,6 @@ namespace NOWA
                     const Ogre::Vector3 tailPos = tailReversed ? tailSeg.controlPoints.front().position : tailSeg.controlPoints.back().position;
                     QKey tailKey{quantise(tailPos.x), quantise(tailPos.z)};
 
-                    // A real junction (3+ distinct segments) stops chain growth here;
-                    // generateJunctionPatch bridges the gap between arms instead.
                     if (distinctCountAt(tailKey) >= 3)
                     {
                         break;
@@ -1919,9 +1919,6 @@ namespace NOWA
                             continue;
                         }
 
-                        // If the neighbour touches this point via its FRONT, keep it
-                        // un-reversed (its back becomes the new tail). If it touches via
-                        // its BACK, traverse it reversed (its front becomes the new tail).
                         const bool nextReversed = !nextTouchesViaFront;
                         chainIndices.push_back({nextIdx, nextReversed});
                         processed[nextIdx] = true;
@@ -1974,9 +1971,6 @@ namespace NOWA
                             continue;
                         }
 
-                        // Prepending: if the neighbour touches via its BACK, keep it
-                        // un-reversed (its front becomes the new head). If it touches via
-                        // its FRONT, traverse it reversed (its back becomes the new head).
                         const bool nextReversed = nextTouchesViaFront;
                         chainIndices.insert(chainIndices.begin(), {nextIdx, nextReversed});
                         processed[nextIdx] = true;
@@ -1987,17 +1981,6 @@ namespace NOWA
             }
 
             // ── Step 2: Collect waypoints (respecting per-segment reversal) ─────
-            // NOTE: the duplicate connecting point between two consecutive chain
-            // elements can sit on either side of a segment depending on whether
-            // that segment was appended while growing the chain's TAIL (forward
-            // extension) or prepended while growing the chain's HEAD (backward
-            // extension, e.g. a multi-segment curved arm that had to be grown
-            // outward from a junction). Assuming "the duplicate is always at
-            // pi==0 / pi==size-1 based only on the reversed flag" is only true
-            // for forward-appended segments; for backward-prepended ones the
-            // duplicate is on the OPPOSITE side. Rather than tracking append vs.
-            // prepend origin, just compare actual positions: skip a point if it
-            // is essentially coincident with the point already pushed before it.
             std::vector<RoadControlPoint> chainWaypoints;
             for (size_t ci = 0; ci < chainIndices.size(); ++ci)
             {
@@ -2030,9 +2013,6 @@ namespace NOWA
                 }
             }
 
-            // Detect closed loop (graph walk already found this; the distance check
-            // below is kept as a safety net for chains built from a single self-closed
-            // segment or any edge case the walk did not explicitly flag).
             const bool isClosed = closedLoop || ((chainWaypoints.size() >= 3) && (chainWaypoints.front().position.squaredDistance(chainWaypoints.back().position) < 0.01f));
 
             // ── Step 3: Build final path ───────────────────────────────────────
@@ -2041,6 +2021,9 @@ namespace NOWA
             if (chainWaypoints.size() >= 3)
             {
                 const int subdivisions = this->curveSubdivisions->getInt();
+                std::vector<RoadControlPoint> densePath;
+                densePath.reserve((chainWaypoints.size() - 1) * static_cast<size_t>(subdivisions) + 1);
+
                 for (size_t pi = 0; pi < chainWaypoints.size() - 1; ++pi)
                 {
                     for (int j = 0; j < subdivisions; ++j)
@@ -2053,38 +2036,35 @@ namespace NOWA
 
                         if (pi == 0 && j == 0)
                         {
-                            // Preserve the exact original height at the true start of the
-                            // path - this point may be a junction/snap boundary that has to
-                            // match neighbouring arms exactly, so it must not be resampled.
                             cp.groundHeight = chainWaypoints.front().smoothedHeight;
                         }
                         else
                         {
-                            // Re-sample the ACTUAL terrain surface at this position instead
-                            // of mathematically interpolating between the sparse heights
-                            // recorded at the points the user actually clicked. The old code
-                            // used evaluateCatmullRomHeight() here, which fits a height spline
-                            // through only those few sampled points and never touches the
-                            // terrain again in between - so on any terrain with real
-                            // undulation between two clicks the road would clip into hills or
-                            // float over dips, and the spline's tangent-based extrapolation
-                            // could keep climbing well past the point where the terrain had
-                            // already flattened out (classic Catmull-Rom overshoot). Sampling
-                            // the real surface here and letting Step 4's Gaussian smoothing +
-                            // gradient clamp do the actual smoothing tracks the terrain
-                            // correctly while still producing a smooth road.
                             cp.groundHeight = this->getGroundHeightCached(cp.position);
                         }
 
                         cp.smoothedHeight = cp.groundHeight;
                         cp.bankingAngle = 0.0f;
                         cp.distFromStart = 0.0f;
-                        finalPath.push_back(cp);
+                        densePath.push_back(cp);
                     }
                 }
                 RoadControlPoint lastCp = chainWaypoints.back();
                 lastCp.position.y = 0.0f;
-                finalPath.push_back(lastCp);
+                densePath.push_back(lastCp);
+
+                // Reparametrize the dense (unevenly-spaced-in-arc-
+                // length) Catmull-Rom samples to UNIFORM arc-length spacing.
+                // This is what fixes the texture stretching/compression on
+                // curves -- confirmed by the [UVDEBUG] log showing
+                // stepFromPrev varying ~2.4 to ~6.8 on a curved chain vs.
+                // perfectly constant ~2.02 on a straight one. The curve's
+                // visual SHAPE is unchanged (still follows the exact same
+                // dense samples); only the point spacing along it is now
+                // even. terrainSampleInterval is reused as the target
+                // spacing -- it already means exactly "meters between
+                // samples along the road" elsewhere in this file.
+                finalPath = this->resamplePathUniformly(densePath, std::max(0.5f, this->terrainSampleInterval->getReal()));
             }
             else
             {
@@ -2122,15 +2102,6 @@ namespace NOWA
             }
 
             // ── Step 7: Trim front at junction ────────────────────────────────
-            // NOTE: previously gated on "!isClosed", which skipped this entirely for
-            // a loop that departs and returns to the SAME point when that point is
-            // ALSO a real 3+ way junction (a valid topology: a spur/loop branching
-            // off a through-road at one junction - see the forward/backward walk's
-            // junction check, which intentionally halts before it can ever set the
-            // closedLoop flag in that case). The junctionByKey lookups below are
-            // themselves the real gate: if the front/back point isn't a real
-            // junction they simply find nothing and do nothing, so running this
-            // unconditionally is safe for plain closed rings too.
             bool trimmedFrontAtJunction = false;
             bool trimmedBackAtJunction = false;
             {
@@ -2141,10 +2112,6 @@ namespace NOWA
                     {
                         const size_t ji = it->second;
                         trimmedFrontAtJunction = true;
-                        // Use the LOCAL direction from the boundary into the chain's
-                        // interior, not the whole-chain front-to-back span: for a loop
-                        // that departs and returns to the same junction, front and back
-                        // are literally the same point, making a whole-span vector zero.
                         Ogre::Vector3 outDir = (chainWaypoints.size() >= 2) ? (chainWaypoints[1].position - chainWaypoints.front().position) : (chainWaypoints.back().position - chainWaypoints.front().position);
                         outDir.y = 0.0f;
                         if (outDir.squaredLength() > 1e-6f)
@@ -2178,9 +2145,6 @@ namespace NOWA
                                 RoadControlPoint bp;
                                 bp.position = bnd;
                                 bp.position.y = 0.0f;
-                                // Sample terrain at the ACTUAL boundary position, not at the
-                                // surviving point several meters away. On a gradient the old
-                                // code stamped a height from the wrong XZ, floating the seam.
                                 bp.groundHeight = this->getGroundHeightCached(bp.position);
                                 bp.smoothedHeight = bp.groundHeight;
                                 bp.bankingAngle = finalPath.front().bankingAngle;
@@ -2205,9 +2169,6 @@ namespace NOWA
                     {
                         const size_t ji = it->second;
                         trimmedBackAtJunction = true;
-                        // Same fix as the front boundary: use the local direction from
-                        // the boundary into the chain's interior instead of the
-                        // whole-chain span (degenerates to zero for a loop-at-junction).
                         const size_t cwSize = chainWaypoints.size();
                         Ogre::Vector3 outDir = (cwSize >= 2) ? (chainWaypoints[cwSize - 2].position - chainWaypoints.back().position) : (chainWaypoints.front().position - chainWaypoints.back().position);
                         outDir.y = 0.0f;
@@ -2242,7 +2203,6 @@ namespace NOWA
                                 RoadControlPoint bp;
                                 bp.position = bnd;
                                 bp.position.y = 0.0f;
-                                // Same fix as the front boundary: sample at bp's true location.
                                 bp.groundHeight = this->getGroundHeightCached(bp.position);
                                 bp.smoothedHeight = bp.groundHeight;
                                 bp.bankingAngle = finalPath.back().bankingAngle;
@@ -2277,12 +2237,6 @@ namespace NOWA
                 continue;
             }
 
-            // If either end got trimmed back from a real junction, the strip is no
-            // longer a seamless closed ring for RENDERING purposes even if it was a
-            // topological loop before trimming - it now has two distinct boundary
-            // points (possibly at the same junction, arriving from different arm
-            // directions) that generateStraightRoad must treat as open ends, not
-            // wrap into a closing quad.
             const bool renderClosed = isClosed && !(trimmedFrontAtJunction || trimmedBackAtJunction);
 
             // ── Step 8: Closed loop — remove duplicate endpoint ───────────────
@@ -2316,7 +2270,7 @@ namespace NOWA
             this->generateJunctionPatch(jp, originToUse);
         }
 
-        if (this->currentCenterVertexIndex > 0 || this->currentEdgeVertexIndex > 0)
+        if (this->currentCenterVertexIndex > 0 || this->currentEdgeVertexIndex > 0 || this->currentJunctionVertexIndex > 0)
         {
             this->createRoadMesh();
         }
@@ -4054,6 +4008,64 @@ namespace NOWA
         this->groundHeightCache.clear();
     }
 
+    std::vector<ProceduralRoadComponent::RoadControlPoint> ProceduralRoadComponent::resamplePathUniformly(const std::vector<RoadControlPoint>& densePath, Ogre::Real stepMeters)
+    {
+        if (densePath.size() < 3)
+        {
+            return densePath;
+        }
+
+        // Cumulative arc length along the dense path, using the SAME
+        // distance metric already used everywhere else for distFromStart
+        // (full 3D distance between consecutive points).
+        std::vector<Ogre::Real> cumDist(densePath.size(), 0.0f);
+        for (size_t i = 1; i < densePath.size(); ++i)
+        {
+            cumDist[i] = cumDist[i - 1] + densePath[i].position.distance(densePath[i - 1].position);
+        }
+        const Ogre::Real totalLength = cumDist.back();
+
+        const Ogre::Real step = std::max(0.1f, stepMeters);
+        const int numSteps = std::max(1, static_cast<int>(std::round(totalLength / step)));
+
+        std::vector<RoadControlPoint> resampled;
+        resampled.reserve(static_cast<size_t>(numSteps) + 1);
+
+        size_t searchStart = 0;
+
+        for (int s = 0; s <= numSteps; ++s)
+        {
+            // Always land EXACTLY on the true start/end -- important so
+            // junction trimming (which compares against the chain's actual
+            // front/back waypoint position) keeps working unchanged.
+            Ogre::Real targetDist = (s == 0) ? 0.0f : (s == numSteps) ? totalLength : (static_cast<Ogre::Real>(s) / static_cast<Ogre::Real>(numSteps)) * totalLength;
+
+            // Find the dense-path segment straddling targetDist. Points
+            // only ever move forward, so continue the search from where the
+            // previous step left off instead of restarting from zero.
+            while (searchStart + 1 < cumDist.size() && cumDist[searchStart + 1] < targetDist)
+            {
+                ++searchStart;
+            }
+
+            const size_t i0 = searchStart;
+            const size_t i1 = std::min(i0 + 1, densePath.size() - 1);
+            const Ogre::Real segLen = cumDist[i1] - cumDist[i0];
+            const Ogre::Real t = (segLen > 1e-6f) ? Ogre::Math::Clamp((targetDist - cumDist[i0]) / segLen, 0.0f, 1.0f) : 0.0f;
+
+            RoadControlPoint cp;
+            cp.position = densePath[i0].position * (1.0f - t) + densePath[i1].position * t;
+            cp.position.y = 0.0f;
+            cp.groundHeight = densePath[i0].groundHeight * (1.0f - t) + densePath[i1].groundHeight * t;
+            cp.smoothedHeight = densePath[i0].smoothedHeight * (1.0f - t) + densePath[i1].smoothedHeight * t;
+            cp.bankingAngle = densePath[i0].bankingAngle * (1.0f - t) + densePath[i1].bankingAngle * t;
+            cp.distFromStart = 0.0f; // recomputed by the caller afterward, as before
+            resampled.push_back(cp);
+        }
+
+        return resampled;
+    }
+
     int ProceduralRoadComponent::findNearestSegment(const Ogre::Vector3& worldPos) const
     {
         if (this->roadSegments.empty())
@@ -4221,28 +4233,16 @@ namespace NOWA
         const Ogre::Real curbH = this->curbHeight->getReal();
         const bool hasCurb = (curbH > 0.001f);
 
-        // NOTE: we no longer force a single flat road height here. Each patch corner
-        // already carries its own true per-arm world height in .y (see storePatchCorners),
-        // so the junction surface follows the sloped arms exactly. roadYApprox is only
-        // used for the outward-direction sign test below.
         const Ogre::Real roadYApprox = jp.worldPos.y - origin.y;
 
-        // Junction centre in local space.
-        // Y: sample actual terrain height at the junction XZ position so the centre
-        // sits exactly on the planet surface — not at the average of arm heights
-        // which can be noticeably wrong on curved terrain.
         Ogre::Real centreLocalY = roadYApprox;
         if (this->adaptToGround->getBool())
         {
-            // jp.worldPos is world-space XZ; look up terrain there.
-            // getGroundHeightCached returns world Y; subtract origin.y for local Y.
             const Ogre::Real terrainY = this->getGroundHeightCached(Ogre::Vector3(jp.worldPos.x, 0.f, jp.worldPos.z));
             centreLocalY = terrainY - origin.y + this->heightOffset->getReal();
         }
         const Ogre::Vector3 localCentre(jp.worldPos.x - origin.x, centreLocalY, jp.worldPos.z - origin.z);
 
-        // Surface normal at the junction (for planet gradient alignment of fill quads).
-        // Uses the same world-pos → normalize approach as roads and buildings.
         Ogre::Vector3 junctionUp = Ogre::Vector3::UNIT_Y;
         if (this->adaptToGround->getBool())
         {
@@ -4266,8 +4266,6 @@ namespace NOWA
             return Ogre::Vector2((pos.z - localCentre.z) / std::max(uvWidth / std::max(cUV.y, 0.001f), 0.001f), (pos.x - localCentre.x) / std::max(uvWidth / std::max(cUV.x, 0.001f), 0.001f));
         };
 
-        // Every corner keeps its true world height (w.y). This is what makes the
-        // junction surface coplanar with the arms and closes the seam crack.
         auto toLocalEdge = [&](const Ogre::Vector3& w) -> Ogre::Vector3
         {
             return Ogre::Vector3(w.x - origin.x, w.y - origin.y, w.z - origin.z);
@@ -4302,7 +4300,6 @@ namespace NOWA
                 return a.angle < b.angle;
             });
 
-        // ── Center patch: fan of inner ring at the arms' true heights ───────────
         struct InnerCorner
         {
             float angle;
@@ -4311,8 +4308,6 @@ namespace NOWA
         std::vector<InnerCorner> innerRing;
         innerRing.reserve(numArms * 2);
 
-        // Accumulate ring heights so the centre vertex interpolates between arms
-        // that arrive at different heights on a gradient.
         Ogre::Real sumY = 0.0f;
 
         for (const ArmData& a : arms)
@@ -4337,8 +4332,6 @@ namespace NOWA
 
         if (innerRing.size() >= 3)
         {
-            // Centre vertex: already correctly set from terrain sample above.
-            // Nudge down 2 cm as z-fight guard against terrain.
             const Ogre::Vector3 centre3(localCentre.x, centreLocalY - 0.02f, localCentre.z);
 
             for (size_t k = 0; k < innerRing.size(); ++k)
@@ -4346,28 +4339,26 @@ namespace NOWA
                 const size_t next = (k + 1) % innerRing.size();
                 const Ogre::Vector3& vA = innerRing[k].pos;
                 const Ogre::Vector3& vB = innerRing[next].pos;
-                this->addJunctionTriangle(vA, centerUVfn(vA), vB, centerUVfn(vB), centre3, centerUVfn(centre3), true);
+                // >>> CHANGED: was addJunctionTriangle(..., true) writing into
+                // the CENTER buffer. Now writes into the dedicated JUNCTION
+                // buffer, rendered with its own Junction Datablock.
+                this->addJunctionTriangle(vA, centerUVfn(vA), vB, centerUVfn(vB), centre3, centerUVfn(centre3), RoadMeshBuffer::JUNCTION);
             }
         }
 
-        // ── Edge / curb strips ─────────────────────────────────────────────────
         for (size_t k = 0; k < arms.size(); ++k)
         {
             const size_t next = (k + 1) % arms.size();
             const ArmData& aK = arms[k];
             const ArmData& aJ = arms[next];
 
-            // Outward normal: perpendicular to boundary segment, pointing away from centre.
-            // Use geometric cross product — NOT centre-to-midpoint (unreliable at acute angles).
             Ogre::Vector3 segDir = aJ.innerL - aK.innerR;
             segDir.y = 0.0f;
             if (segDir.squaredLength() > 1e-6f)
             {
                 segDir.normalise();
             }
-            // Rotate 90° in XZ to get perpendicular
             Ogre::Vector3 outward(-segDir.z, 0.0f, segDir.x);
-            // Ensure it points AWAY from junction centre
             const Ogre::Vector3 midInner = (aK.innerR + aJ.innerL) * 0.5f;
             const Ogre::Vector3 toMid = midInner - Ogre::Vector3(localCentre.x, roadYApprox, localCentre.z);
             if (outward.dotProduct(toMid) < 0.0f)
@@ -4385,33 +4376,23 @@ namespace NOWA
                 const Ogre::Vector3 aK_oR_top = aK.outerR + Ogre::Vector3(0, curbH, 0);
                 const Ogre::Vector3 aJ_oL_top = aJ.outerL + Ogre::Vector3(0, curbH, 0);
 
-                // Inner wall: road surface -> curb top
-                // u spans curbH (physical wall height) — matches generatePavedRoad convention
                 this->addRoadQuad(aK.innerR, aK_iR_top, aJ_iL_top, aJ.innerL, -outward, 0.0f, curbH, 0.0f, ev1, false);
-
-                // Curb top — drawn for both small and large gaps to close seam
                 this->addRoadQuad(aK_iR_top, aK_oR_top, aJ_oL_top, aJ_iL_top, junctionUp, 0.0f, 1.0f, 0.0f, ev1, false);
-
-                // Outer wall: curb top -> ground
                 this->addRoadQuad(aK_oR_top, aK.outerR, aJ.outerL, aJ_oL_top, outward, 0.0f, curbH, 0.0f, ev1, false);
             }
             else
             {
-                // Flat edge strip — use junction surface normal for planet alignment
                 this->addRoadQuad(aK.innerR, aJ.innerL, aJ.outerL, aK.outerR, junctionUp, 0.0f, 1.0f, 0.0f, ev1, false);
             }
         }
-
-        // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Junction patch: " + Ogre::StringConverter::toString(numArms) + " arms");
     }
 
-    void ProceduralRoadComponent::addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, bool isCenter)
+    void ProceduralRoadComponent::addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, RoadMeshBuffer targetBuffer)
     {
-        std::vector<float>& verts = isCenter ? this->centerVertices : this->edgeVertices;
-        std::vector<Ogre::uint32>& inds = isCenter ? this->centerIndices : this->edgeIndices;
-        Ogre::uint32& currentIdx = isCenter ? this->currentCenterVertexIndex : this->currentEdgeVertexIndex;
+        std::vector<float>& verts = (targetBuffer == RoadMeshBuffer::CENTER) ? this->centerVertices : (targetBuffer == RoadMeshBuffer::EDGE) ? this->edgeVertices : this->junctionVertices;
+        std::vector<Ogre::uint32>& inds = (targetBuffer == RoadMeshBuffer::CENTER) ? this->centerIndices : (targetBuffer == RoadMeshBuffer::EDGE) ? this->edgeIndices : this->junctionIndices;
+        Ogre::uint32& currentIdx = (targetBuffer == RoadMeshBuffer::CENTER) ? this->currentCenterVertexIndex : (targetBuffer == RoadMeshBuffer::EDGE) ? this->currentEdgeVertexIndex : this->currentJunctionVertexIndex;
 
-        // Compute face normal — always UP for flat junction surface
         Ogre::Vector3 edge1 = v1 - v0;
         Ogre::Vector3 edge2 = v2 - v0;
         Ogre::Vector3 triNormal = edge1.crossProduct(edge2);
@@ -4419,7 +4400,6 @@ namespace NOWA
         if (triNormal.squaredLength() > 0.0001f)
         {
             triNormal.normalise();
-            // Ensure normal points upward
             if (triNormal.y < 0.0f)
             {
                 triNormal = -triNormal;
@@ -4447,8 +4427,6 @@ namespace NOWA
         pushVert(v1, uv1);
         pushVert(v2, uv2);
 
-        // CCW winding (normal already forced UP above)
-        // Check winding matches normal direction
         if (triNormal.dotProduct(edge1.crossProduct(edge2).normalisedCopy()) > 0.0f)
         {
             inds.push_back(base + 0);
@@ -4932,19 +4910,17 @@ namespace NOWA
     {
         this->destroyRoadMesh();
 
-        if (this->currentCenterVertexIndex == 0 && this->currentEdgeVertexIndex == 0)
+        if (this->currentCenterVertexIndex == 0 && this->currentEdgeVertexIndex == 0 && this->currentJunctionVertexIndex == 0)
         {
             return;
         }
 
-        // Get PhysicsArtifactComponent if exists
         const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
         if (physicsArtifactCompPtr)
         {
             this->physicsArtifactComponent = physicsArtifactCompPtr.get();
         }
 
-        // ---- CACHE CPU DATA HERE (before anything goes to GPU) ----
         this->cachedCenterVertices = this->centerVertices;
         this->cachedCenterIndices = this->centerIndices;
         this->cachedNumCenterVertices = this->currentCenterVertexIndex;
@@ -4953,9 +4929,12 @@ namespace NOWA
         this->cachedEdgeIndices = this->edgeIndices;
         this->cachedNumEdgeVertices = this->currentEdgeVertexIndex;
 
+        this->cachedJunctionVertices = this->junctionVertices;
+        this->cachedJunctionIndices = this->junctionIndices;
+        this->cachedNumJunctionVertices = this->currentJunctionVertexIndex;
+
         this->cachedRoadOrigin = this->roadOrigin;
 
-        // Create Ogre mesh - copy both center and edge data
         std::vector<float> centerVerticesCopy = this->centerVertices;
         std::vector<Ogre::uint32> centerIndicesCopy = this->centerIndices;
         size_t numCenterVertices = this->currentCenterVertexIndex;
@@ -4964,42 +4943,29 @@ namespace NOWA
         std::vector<Ogre::uint32> edgeIndicesCopy = this->edgeIndices;
         size_t numEdgeVertices = this->currentEdgeVertexIndex;
 
+        std::vector<float> junctionVerticesCopy = this->junctionVertices;
+        std::vector<Ogre::uint32> junctionIndicesCopy = this->junctionIndices;
+        size_t numJunctionVertices = this->currentJunctionVertexIndex;
+
         Ogre::Vector3 roadOriginCopy = this->roadOrigin;
 
-        // Execute mesh creation on render thread
-        GraphicsModule::RenderCommand renderCommand = [this, centerVerticesCopy, centerIndicesCopy, numCenterVertices, edgeVerticesCopy, edgeIndicesCopy, numEdgeVertices, roadOriginCopy]()
+        GraphicsModule::RenderCommand renderCommand =
+            [this, centerVerticesCopy, centerIndicesCopy, numCenterVertices, edgeVerticesCopy, edgeIndicesCopy, numEdgeVertices, junctionVerticesCopy, junctionIndicesCopy, numJunctionVertices, roadOriginCopy]()
         {
-            this->createRoadMeshInternal(centerVerticesCopy, centerIndicesCopy, numCenterVertices, edgeVerticesCopy, edgeIndicesCopy, numEdgeVertices, roadOriginCopy);
+            this->createRoadMeshInternal(centerVerticesCopy, centerIndicesCopy, numCenterVertices, edgeVerticesCopy, edgeIndicesCopy, numEdgeVertices, junctionVerticesCopy, junctionIndicesCopy, numJunctionVertices, roadOriginCopy);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::createRoadMesh");
 
-        if (nullptr == this->roadMesh || nullptr == this->roadItem)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] No mesh/item to debug");
-            return;
-        }
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] === MESH DEBUG INFO ===");
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "Mesh name: " + this->roadMesh->getName());
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "Num submeshes: " + Ogre::StringConverter::toString(this->roadMesh->getNumSubMeshes()));
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "Num subitems: " + Ogre::StringConverter::toString(this->roadItem->getNumSubItems()));
-
-        for (size_t i = 0; i < this->roadItem->getNumSubItems(); ++i)
-        {
-            Ogre::SubItem* subItem = this->roadItem->getSubItem(i);
-            Ogre::HlmsDatablock* db = subItem->getDatablock();
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "SubItem " + Ogre::StringConverter::toString(i) + " datablock: " + (db ? db->getName().getFriendlyText() : "NULL"));
-        }
-
-        // Clear temporary data
         this->centerVertices.clear();
         this->centerIndices.clear();
         this->edgeVertices.clear();
         this->edgeIndices.clear();
+        this->junctionVertices.clear();
+        this->junctionIndices.clear();
     }
 
     void ProceduralRoadComponent::createRoadMeshInternal(const std::vector<float>& centerVerts, const std::vector<Ogre::uint32>& centerInds, size_t numCenterVerts, const std::vector<float>& edgeVerts, const std::vector<Ogre::uint32>& edgeInds,
-        size_t numEdgeVerts, const Ogre::Vector3& origin)
+        size_t numEdgeVerts, const std::vector<float>& junctionVerts, const std::vector<Ogre::uint32>& junctionInds, size_t numJunctionVerts, const Ogre::Vector3& origin)
     {
         Ogre::Root* root = Ogre::Root::getSingletonPtr();
         Ogre::RenderSystem* renderSystem = root->getRenderSystem();
@@ -5008,7 +4974,6 @@ namespace NOWA
         Ogre::String meshName = this->gameObjectPtr->getName() + "_Road_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
         const Ogre::String groupName = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME;
 
-        // Remove existing mesh
         {
             Ogre::MeshManager& meshMgr = Ogre::MeshManager::getSingleton();
             Ogre::MeshPtr existing = meshMgr.getByName(meshName, groupName);
@@ -5020,299 +4985,157 @@ namespace NOWA
 
         this->roadMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName, &NOWA::gDummyMeshLoader);
 
-        // Vertex elements with tangents for normal mapping
         Ogre::VertexElement2Vec vertexElements;
         vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
         vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
         vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));
         vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
 
-        // Current vertex data has: pos(3) + normal(3) + uv(2) = 8 floats
-        // We need to add tangent(4), so 12 floats per vertex
         const size_t srcFloatsPerVertex = 8;
         const size_t dstFloatsPerVertex = 12;
 
         Ogre::Vector3 minBounds(std::numeric_limits<float>::max());
         Ogre::Vector3 maxBounds(std::numeric_limits<float>::lowest());
 
+        // Small local helper so the same VAO-building logic (previously
+        // triplicated verbatim for center/edge, now needed a THIRD time for
+        // junction) is written once. Behaviourally IDENTICAL to your
+        // existing center/edge blocks -- same 8->12 float expansion, same
+        // empty-dummy-VAO fallback, same bounds tracking.
+        auto buildSubMesh = [&](const std::vector<float>& verts, const std::vector<Ogre::uint32>& inds, size_t numVerts, const char* emptyLogLabel) -> Ogre::SubMesh*
+        {
+            Ogre::SubMesh* subMesh = this->roadMesh->createSubMesh();
+
+            if (numVerts > 0)
+            {
+                const size_t vertexDataSize = numVerts * dstFloatsPerVertex * sizeof(float);
+                float* vertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(vertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+
+                for (size_t i = 0; i < numVerts; ++i)
+                {
+                    size_t srcOffset = i * srcFloatsPerVertex;
+                    size_t dstOffset = i * dstFloatsPerVertex;
+
+                    vertexData[dstOffset + 0] = verts[srcOffset + 0];
+                    vertexData[dstOffset + 1] = verts[srcOffset + 1];
+                    vertexData[dstOffset + 2] = verts[srcOffset + 2];
+
+                    Ogre::Vector3 pos(verts[srcOffset + 0], verts[srcOffset + 1], verts[srcOffset + 2]);
+                    minBounds.makeFloor(pos);
+                    maxBounds.makeCeil(pos);
+
+                    Ogre::Vector3 normal(verts[srcOffset + 3], verts[srcOffset + 4], verts[srcOffset + 5]);
+                    vertexData[dstOffset + 3] = normal.x;
+                    vertexData[dstOffset + 4] = normal.y;
+                    vertexData[dstOffset + 5] = normal.z;
+
+                    Ogre::Vector3 tangent;
+                    if (std::abs(normal.y) < 0.9f)
+                    {
+                        tangent = Ogre::Vector3::UNIT_Y.crossProduct(normal);
+                    }
+                    else
+                    {
+                        tangent = normal.crossProduct(Ogre::Vector3::UNIT_X);
+                    }
+                    tangent.normalise();
+
+                    vertexData[dstOffset + 6] = tangent.x;
+                    vertexData[dstOffset + 7] = tangent.y;
+                    vertexData[dstOffset + 8] = tangent.z;
+                    vertexData[dstOffset + 9] = 1.0f;
+
+                    vertexData[dstOffset + 10] = verts[srcOffset + 6];
+                    vertexData[dstOffset + 11] = verts[srcOffset + 7];
+                }
+
+                Ogre::VertexBufferPacked* vertexBuffer = nullptr;
+                try
+                {
+                    vertexBuffer = vaoManager->createVertexBuffer(vertexElements, numVerts, Ogre::BT_IMMUTABLE, vertexData, true);
+                }
+                catch (Ogre::Exception& e)
+                {
+                    OGRE_FREE_SIMD(vertexData, Ogre::MEMCATEGORY_GEOMETRY);
+                    throw e;
+                }
+
+                const size_t indexDataSize = inds.size() * sizeof(Ogre::uint32);
+                Ogre::uint32* indexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(indexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+                memcpy(indexData, inds.data(), indexDataSize);
+
+                Ogre::IndexBufferPacked* indexBuffer = nullptr;
+                try
+                {
+                    indexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, inds.size(), Ogre::BT_IMMUTABLE, indexData, true);
+                }
+                catch (Ogre::Exception& e)
+                {
+                    OGRE_FREE_SIMD(indexData, Ogre::MEMCATEGORY_GEOMETRY);
+                    throw e;
+                }
+
+                Ogre::VertexBufferPackedVec vertexBuffers;
+                vertexBuffers.push_back(vertexBuffer);
+
+                Ogre::VertexArrayObject* vao = vaoManager->createVertexArrayObject(vertexBuffers, indexBuffer, Ogre::OT_TRIANGLE_LIST);
+
+                subMesh->mVao[Ogre::VpNormal].push_back(vao);
+                subMesh->mVao[Ogre::VpShadow].push_back(vao);
+            }
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, Ogre::String("[ProceduralRoadComponent] Creating empty ") + emptyLogLabel + " submesh");
+
+                const size_t dummyVertexDataSize = 1 * dstFloatsPerVertex * sizeof(float);
+                float* dummyVertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(dummyVertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+
+                dummyVertexData[0] = 0.0f;
+                dummyVertexData[1] = 0.0f;
+                dummyVertexData[2] = 0.0f;
+
+                dummyVertexData[3] = 0.0f;
+                dummyVertexData[4] = 1.0f;
+                dummyVertexData[5] = 0.0f;
+
+                dummyVertexData[6] = 1.0f;
+                dummyVertexData[7] = 0.0f;
+                dummyVertexData[8] = 0.0f;
+                dummyVertexData[9] = 1.0f;
+
+                dummyVertexData[10] = 0.0f;
+                dummyVertexData[11] = 0.0f;
+
+                Ogre::VertexBufferPacked* dummyVertexBuffer = vaoManager->createVertexBuffer(vertexElements, 1, Ogre::BT_IMMUTABLE, dummyVertexData, true);
+
+                Ogre::uint32* dummyIndexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+                dummyIndexData[0] = 0;
+
+                Ogre::IndexBufferPacked* dummyIndexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, 0, Ogre::BT_IMMUTABLE, dummyIndexData, true);
+
+                Ogre::VertexBufferPackedVec dummyVertexBuffers;
+                dummyVertexBuffers.push_back(dummyVertexBuffer);
+
+                Ogre::VertexArrayObject* dummyVao = vaoManager->createVertexArrayObject(dummyVertexBuffers, dummyIndexBuffer, Ogre::OT_TRIANGLE_LIST);
+
+                subMesh->mVao[Ogre::VpNormal].push_back(dummyVao);
+                subMesh->mVao[Ogre::VpShadow].push_back(dummyVao);
+            }
+
+            return subMesh;
+        };
+
         // ==================== SUBMESH 0: CENTER ====================
-        // ALWAYS create center submesh, even if empty
-        Ogre::SubMesh* centerSubMesh = this->roadMesh->createSubMesh();
-
-        if (numCenterVerts > 0)
-        {
-            // Allocate and convert vertex data
-            const size_t centerVertexDataSize = numCenterVerts * dstFloatsPerVertex * sizeof(float);
-            float* centerVertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(centerVertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
-
-            for (size_t i = 0; i < numCenterVerts; ++i)
-            {
-                size_t srcOffset = i * srcFloatsPerVertex;
-                size_t dstOffset = i * dstFloatsPerVertex;
-
-                // Position
-                centerVertexData[dstOffset + 0] = centerVerts[srcOffset + 0];
-                centerVertexData[dstOffset + 1] = centerVerts[srcOffset + 1];
-                centerVertexData[dstOffset + 2] = centerVerts[srcOffset + 2];
-
-                // Update bounds
-                Ogre::Vector3 pos(centerVerts[srcOffset + 0], centerVerts[srcOffset + 1], centerVerts[srcOffset + 2]);
-                minBounds.makeFloor(pos);
-                maxBounds.makeCeil(pos);
-
-                // Normal
-                Ogre::Vector3 normal(centerVerts[srcOffset + 3], centerVerts[srcOffset + 4], centerVerts[srcOffset + 5]);
-                centerVertexData[dstOffset + 3] = normal.x;
-                centerVertexData[dstOffset + 4] = normal.y;
-                centerVertexData[dstOffset + 5] = normal.z;
-
-                // Calculate tangent
-                Ogre::Vector3 tangent;
-                if (std::abs(normal.y) < 0.9f)
-                {
-                    tangent = Ogre::Vector3::UNIT_Y.crossProduct(normal);
-                }
-                else
-                {
-                    tangent = normal.crossProduct(Ogre::Vector3::UNIT_X);
-                }
-                tangent.normalise();
-
-                centerVertexData[dstOffset + 6] = tangent.x;
-                centerVertexData[dstOffset + 7] = tangent.y;
-                centerVertexData[dstOffset + 8] = tangent.z;
-                centerVertexData[dstOffset + 9] = 1.0f;
-
-                // UV
-                centerVertexData[dstOffset + 10] = centerVerts[srcOffset + 6];
-                centerVertexData[dstOffset + 11] = centerVerts[srcOffset + 7];
-            }
-
-            // Create vertex buffer
-            Ogre::VertexBufferPacked* centerVertexBuffer = nullptr;
-            try
-            {
-                centerVertexBuffer = vaoManager->createVertexBuffer(vertexElements, numCenterVerts, Ogre::BT_IMMUTABLE, centerVertexData, true);
-            }
-            catch (Ogre::Exception& e)
-            {
-                OGRE_FREE_SIMD(centerVertexData, Ogre::MEMCATEGORY_GEOMETRY);
-                throw e;
-            }
-
-            // Allocate index data
-            const size_t centerIndexDataSize = centerInds.size() * sizeof(Ogre::uint32);
-            Ogre::uint32* centerIndexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(centerIndexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
-            memcpy(centerIndexData, centerInds.data(), centerIndexDataSize);
-
-            // Create index buffer
-            Ogre::IndexBufferPacked* centerIndexBuffer = nullptr;
-            try
-            {
-                centerIndexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, centerInds.size(), Ogre::BT_IMMUTABLE, centerIndexData, true);
-            }
-            catch (Ogre::Exception& e)
-            {
-                OGRE_FREE_SIMD(centerIndexData, Ogre::MEMCATEGORY_GEOMETRY);
-                throw e;
-            }
-
-            // Create VAO
-            Ogre::VertexBufferPackedVec centerVertexBuffers;
-            centerVertexBuffers.push_back(centerVertexBuffer);
-
-            Ogre::VertexArrayObject* centerVao = vaoManager->createVertexArrayObject(centerVertexBuffers, centerIndexBuffer, Ogre::OT_TRIANGLE_LIST);
-
-            centerSubMesh->mVao[Ogre::VpNormal].push_back(centerVao);
-            centerSubMesh->mVao[Ogre::VpShadow].push_back(centerVao);
-        }
-        else
-        {
-            // Create empty dummy VAO for center submesh
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Creating empty center submesh");
-
-            // Create minimal dummy vertex buffer (1 vertex)
-            const size_t dummyVertexDataSize = 1 * dstFloatsPerVertex * sizeof(float);
-            float* dummyVertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(dummyVertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
-
-            // Position (0,0,0)
-            dummyVertexData[0] = 0.0f;
-            dummyVertexData[1] = 0.0f;
-            dummyVertexData[2] = 0.0f;
-
-            // Normal (0,1,0) - pointing up
-            dummyVertexData[3] = 0.0f;
-            dummyVertexData[4] = 1.0f;
-            dummyVertexData[5] = 0.0f;
-
-            // Tangent (1,0,0,1) - pointing along X axis with handedness 1
-            dummyVertexData[6] = 1.0f;
-            dummyVertexData[7] = 0.0f;
-            dummyVertexData[8] = 0.0f;
-            dummyVertexData[9] = 1.0f;
-
-            // UV (0,0)
-            dummyVertexData[10] = 0.0f;
-            dummyVertexData[11] = 0.0f;
-
-            Ogre::VertexBufferPacked* dummyVertexBuffer = vaoManager->createVertexBuffer(vertexElements, 1, Ogre::BT_IMMUTABLE, dummyVertexData, true);
-
-            // Create dummy index buffer (empty - 0 indices)
-            Ogre::uint32* dummyIndexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
-            dummyIndexData[0] = 0;
-
-            Ogre::IndexBufferPacked* dummyIndexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, 0, Ogre::BT_IMMUTABLE, dummyIndexData, true);
-
-            Ogre::VertexBufferPackedVec dummyVertexBuffers;
-            dummyVertexBuffers.push_back(dummyVertexBuffer);
-
-            Ogre::VertexArrayObject* dummyVao = vaoManager->createVertexArrayObject(dummyVertexBuffers, dummyIndexBuffer, Ogre::OT_TRIANGLE_LIST);
-
-            centerSubMesh->mVao[Ogre::VpNormal].push_back(dummyVao);
-            centerSubMesh->mVao[Ogre::VpShadow].push_back(dummyVao);
-        }
+        buildSubMesh(centerVerts, centerInds, numCenterVerts, "center");
 
         // ==================== SUBMESH 1: EDGES ====================
-        // ALWAYS create edge submesh, even if empty
-        Ogre::SubMesh* edgeSubMesh = this->roadMesh->createSubMesh();
+        buildSubMesh(edgeVerts, edgeInds, numEdgeVerts, "edge");
 
-        if (numEdgeVerts > 0)
-        {
-            // Allocate and convert vertex data
-            const size_t edgeVertexDataSize = numEdgeVerts * dstFloatsPerVertex * sizeof(float);
-            float* edgeVertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(edgeVertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+        // ==================== SUBMESH 2: JUNCTIONS (NEW) ============
+        buildSubMesh(junctionVerts, junctionInds, numJunctionVerts, "junction");
 
-            for (size_t i = 0; i < numEdgeVerts; ++i)
-            {
-                size_t srcOffset = i * srcFloatsPerVertex;
-                size_t dstOffset = i * dstFloatsPerVertex;
-
-                // Position
-                edgeVertexData[dstOffset + 0] = edgeVerts[srcOffset + 0];
-                edgeVertexData[dstOffset + 1] = edgeVerts[srcOffset + 1];
-                edgeVertexData[dstOffset + 2] = edgeVerts[srcOffset + 2];
-
-                // Update bounds
-                Ogre::Vector3 pos(edgeVerts[srcOffset + 0], edgeVerts[srcOffset + 1], edgeVerts[srcOffset + 2]);
-                minBounds.makeFloor(pos);
-                maxBounds.makeCeil(pos);
-
-                // Normal
-                Ogre::Vector3 normal(edgeVerts[srcOffset + 3], edgeVerts[srcOffset + 4], edgeVerts[srcOffset + 5]);
-                edgeVertexData[dstOffset + 3] = normal.x;
-                edgeVertexData[dstOffset + 4] = normal.y;
-                edgeVertexData[dstOffset + 5] = normal.z;
-
-                // Calculate tangent
-                Ogre::Vector3 tangent;
-                if (std::abs(normal.y) < 0.9f)
-                {
-                    tangent = Ogre::Vector3::UNIT_Y.crossProduct(normal);
-                }
-                else
-                {
-                    tangent = normal.crossProduct(Ogre::Vector3::UNIT_X);
-                }
-                tangent.normalise();
-
-                edgeVertexData[dstOffset + 6] = tangent.x;
-                edgeVertexData[dstOffset + 7] = tangent.y;
-                edgeVertexData[dstOffset + 8] = tangent.z;
-                edgeVertexData[dstOffset + 9] = 1.0f;
-
-                // UV
-                edgeVertexData[dstOffset + 10] = edgeVerts[srcOffset + 6];
-                edgeVertexData[dstOffset + 11] = edgeVerts[srcOffset + 7];
-            }
-
-            // Create vertex buffer
-            Ogre::VertexBufferPacked* edgeVertexBuffer = nullptr;
-            try
-            {
-                edgeVertexBuffer = vaoManager->createVertexBuffer(vertexElements, numEdgeVerts, Ogre::BT_IMMUTABLE, edgeVertexData, true);
-            }
-            catch (Ogre::Exception& e)
-            {
-                OGRE_FREE_SIMD(edgeVertexData, Ogre::MEMCATEGORY_GEOMETRY);
-                throw e;
-            }
-
-            // Allocate index data
-            const size_t edgeIndexDataSize = edgeInds.size() * sizeof(Ogre::uint32);
-            Ogre::uint32* edgeIndexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(edgeIndexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
-            memcpy(edgeIndexData, edgeInds.data(), edgeIndexDataSize);
-
-            // Create index buffer
-            Ogre::IndexBufferPacked* edgeIndexBuffer = nullptr;
-            try
-            {
-                edgeIndexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, edgeInds.size(), Ogre::BT_IMMUTABLE, edgeIndexData, true);
-            }
-            catch (Ogre::Exception& e)
-            {
-                OGRE_FREE_SIMD(edgeIndexData, Ogre::MEMCATEGORY_GEOMETRY);
-                throw e;
-            }
-
-            // Create VAO
-            Ogre::VertexBufferPackedVec edgeVertexBuffers;
-            edgeVertexBuffers.push_back(edgeVertexBuffer);
-
-            Ogre::VertexArrayObject* edgeVao = vaoManager->createVertexArrayObject(edgeVertexBuffers, edgeIndexBuffer, Ogre::OT_TRIANGLE_LIST);
-
-            edgeSubMesh->mVao[Ogre::VpNormal].push_back(edgeVao);
-            edgeSubMesh->mVao[Ogre::VpShadow].push_back(edgeVao);
-        }
-        else
-        {
-            // Create empty dummy VAO for edge submesh
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Creating empty edge submesh");
-
-            // Create minimal dummy vertex buffer (1 vertex)
-            const size_t dummyVertexDataSize = 1 * dstFloatsPerVertex * sizeof(float);
-            float* dummyVertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(dummyVertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
-
-            // Position (0,0,0)
-            dummyVertexData[0] = 0.0f;
-            dummyVertexData[1] = 0.0f;
-            dummyVertexData[2] = 0.0f;
-
-            // Normal (0,1,0) - pointing up
-            dummyVertexData[3] = 0.0f;
-            dummyVertexData[4] = 1.0f;
-            dummyVertexData[5] = 0.0f;
-
-            // Tangent (1,0,0,1) - pointing along X axis with handedness 1
-            dummyVertexData[6] = 1.0f;
-            dummyVertexData[7] = 0.0f;
-            dummyVertexData[8] = 0.0f;
-            dummyVertexData[9] = 1.0f;
-
-            // UV (0,0)
-            dummyVertexData[10] = 0.0f;
-            dummyVertexData[11] = 0.0f;
-
-            Ogre::VertexBufferPacked* dummyVertexBuffer = vaoManager->createVertexBuffer(vertexElements, 1, Ogre::BT_IMMUTABLE, dummyVertexData, true);
-
-            // Create dummy index buffer (empty - 0 indices)
-            Ogre::uint32* dummyIndexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
-            dummyIndexData[0] = 0;
-
-            Ogre::IndexBufferPacked* dummyIndexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, 0, Ogre::BT_IMMUTABLE, dummyIndexData, true);
-
-            Ogre::VertexBufferPackedVec dummyVertexBuffers;
-            dummyVertexBuffers.push_back(dummyVertexBuffer);
-
-            Ogre::VertexArrayObject* dummyVao = vaoManager->createVertexArrayObject(dummyVertexBuffers, dummyIndexBuffer, Ogre::OT_TRIANGLE_LIST);
-
-            edgeSubMesh->mVao[Ogre::VpNormal].push_back(dummyVao);
-            edgeSubMesh->mVao[Ogre::VpShadow].push_back(dummyVao);
-        }
-
-        // Set bounds (handle case where no vertices exist)
         if (minBounds.x == std::numeric_limits<float>::max())
         {
-            // No vertices at all - set default bounds
             minBounds = Ogre::Vector3(-1, -1, -1);
             maxBounds = Ogre::Vector3(1, 1, 1);
         }
@@ -5324,12 +5147,9 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Mesh bounds: min(" + Ogre::StringConverter::toString(minBounds) + "), max(" + Ogre::StringConverter::toString(maxBounds) + ")");
 
-        // Create item
         this->roadItem = this->gameObjectPtr->getSceneManager()->createItem(this->roadMesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Created road item with " + Ogre::StringConverter::toString(this->roadMesh->getNumSubMeshes()) + " submeshes");
-
-        // Apply datablocks - submesh 0 is ALWAYS center, submesh 1 is ALWAYS edges
 
         // Submesh 0: Center datablock
         Ogre::String centerDbName = this->centerDatablock->getString();
@@ -5356,7 +5176,6 @@ namespace NOWA
         }
         else
         {
-            // Fallback: use center datablock if no edge datablock specified
             if (false == centerDbName.empty())
             {
                 Ogre::HlmsDatablock* centerDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(centerDbName);
@@ -5368,17 +5187,30 @@ namespace NOWA
             }
         }
 
-        // At the end, ONLY set position if this is the first time creating the road
-        // After that, let the scene file manage the GameObject position
+        // Submesh 2: Junction datablock (NEW)
+        Ogre::String junctionDbName = this->junctionDatablock->getString();
+        if (false == junctionDbName.empty())
+        {
+            Ogre::HlmsDatablock* junctionDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(junctionDbName);
+            if (nullptr != junctionDb)
+            {
+                this->roadItem->getSubItem(2)->setDatablock(junctionDb);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Applied junction datablock: " + junctionDbName);
+            }
+        }
+        else if (false == centerDbName.empty())
+        {
+            Ogre::HlmsDatablock* centerDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(centerDbName);
+            if (nullptr != centerDb)
+            {
+                this->roadItem->getSubItem(2)->setDatablock(centerDb);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Applied center datablock to junctions (fallback)");
+            }
+        }
+
         if (false == this->originPositionSet)
         {
             this->originPositionSet = true;
-            // 'origin' (= roadOrigin) is ROAD-LOCAL now.
-            // World position of the node = roadFrame * origin, and the node also
-            // carries the frame as its orientation — this is the single place where
-            // the whole (local-built) road mesh gets rotated onto the planet.
-            // With roadFrame == IDENTITY both lines behave exactly like before
-            // (setPosition(origin) + implicit identity orientation).
             this->gameObjectPtr->getSceneNode()->setPosition(this->roadFrame * origin);
             this->gameObjectPtr->getSceneNode()->setOrientation(this->roadFrame);
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Set initial road position: " + Ogre::StringConverter::toString(this->roadFrame * origin));
@@ -5397,8 +5229,8 @@ namespace NOWA
             this->physicsArtifactComponent->reCreateCollision();
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-            "[ProceduralRoadComponent] Road mesh created with " + Ogre::StringConverter::toString(numCenterVerts) + " center vertices and " + Ogre::StringConverter::toString(numEdgeVerts) + " edge vertices, attached to scene");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Road mesh created with " + Ogre::StringConverter::toString(numCenterVerts) + " center vertices, " + Ogre::StringConverter::toString(numEdgeVerts) +
+                                                                               " edge vertices, " + Ogre::StringConverter::toString(numJunctionVerts) + " junction vertices, attached to scene");
     }
 
     void ProceduralRoadComponent::destroyRoadMesh(void)
@@ -5687,7 +5519,6 @@ namespace NOWA
 
     bool ProceduralRoadComponent::saveRoadDataToFile(void)
     {
-        // Need either segments or cached vertex data
         if (this->roadSegments.empty() && this->cachedCenterVertices.empty())
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] saveRoadDataToFile: nothing to save, deleting file");
@@ -5704,35 +5535,42 @@ namespace NOWA
             uint32_t numCenterIdx = static_cast<uint32_t>(this->cachedCenterIndices.size());
             uint32_t numEdgeVerts = static_cast<uint32_t>(this->cachedNumEdgeVertices);
             uint32_t numEdgeIdx = static_cast<uint32_t>(this->cachedEdgeIndices.size());
+            // >>> NEW
+            uint32_t numJunctionVerts = static_cast<uint32_t>(this->cachedNumJunctionVertices);
+            uint32_t numJunctionIdx = static_cast<uint32_t>(this->cachedJunctionIndices.size());
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] saveRoadDataToFile: " + Ogre::StringConverter::toString(numSegments) + " segments, " + Ogre::StringConverter::toString(numCenterVerts) +
                                                                                    " center verts, " + Ogre::StringConverter::toString(numCenterIdx) + " center indices, " + Ogre::StringConverter::toString(numEdgeVerts) + " edge verts, " +
-                                                                                   Ogre::StringConverter::toString(numEdgeIdx) + " edge indices");
+                                                                                   Ogre::StringConverter::toString(numEdgeIdx) + " edge indices, " + Ogre::StringConverter::toString(numJunctionVerts) + " junction verts, " +
+                                                                                   Ogre::StringConverter::toString(numJunctionIdx) + " junction indices");
 
-            const size_t floatsPerVertex = 8; // pos(3) + normal(3) + uv(2)
+            const size_t floatsPerVertex = 8;
 
-            // Calculate segment data size (variable because each segment has variable control points)
             size_t segmentDataSize = 0;
             for (const auto& seg : this->roadSegments)
             {
-                segmentDataSize += 1;                             // isCurved (uint8)
-                segmentDataSize += 4;                             // curvature (float)
-                segmentDataSize += 4;                             // numControlPoints (uint32)
-                segmentDataSize += seg.controlPoints.size() * 20; // 5 floats * 4 bytes each
+                segmentDataSize += 1;
+                segmentDataSize += 4;
+                segmentDataSize += 4;
+                segmentDataSize += seg.controlPoints.size() * 20;
             }
 
-            size_t headerSize = 41; // 40 bytes + 1 byte for originPositionSet
+            // >>> CHANGED: 41 -> 49 (two new uint32 fields: numJunctionVerts, numJunctionIdx)
+            size_t headerSize = 49;
             size_t centerVertBytes = numCenterVerts * floatsPerVertex * sizeof(float);
             size_t centerIdxBytes = numCenterIdx * sizeof(uint32_t);
             size_t edgeVertBytes = numEdgeVerts * floatsPerVertex * sizeof(float);
             size_t edgeIdxBytes = numEdgeIdx * sizeof(uint32_t);
+            // >>> NEW
+            size_t junctionVertBytes = numJunctionVerts * floatsPerVertex * sizeof(float);
+            size_t junctionIdxBytes = numJunctionIdx * sizeof(uint32_t);
 
-            size_t totalSize = headerSize + segmentDataSize + centerVertBytes + centerIdxBytes + edgeVertBytes + edgeIdxBytes;
+            size_t totalSize = headerSize + segmentDataSize + centerVertBytes + centerIdxBytes + edgeVertBytes + edgeIdxBytes + junctionVertBytes + junctionIdxBytes;
 
             std::vector<unsigned char> buffer(totalSize);
             size_t off = 0;
 
-            // --- Header (41 bytes) ---
+            // --- Header (49 bytes) ---
             uint32_t magic = ROADDATA_MAGIC;
             uint32_t version = ROADDATA_VERSION;
             memcpy(&buffer[off], &magic, 4);
@@ -5754,6 +5592,11 @@ namespace NOWA
             memcpy(&buffer[off], &numEdgeVerts, 4);
             off += 4;
             memcpy(&buffer[off], &numEdgeIdx, 4);
+            off += 4;
+            // >>> NEW: right after edge's pair, same relative position rule.
+            memcpy(&buffer[off], &numJunctionVerts, 4);
+            off += 4;
+            memcpy(&buffer[off], &numJunctionIdx, 4);
             off += 4;
             uint8_t posSet = this->originPositionSet ? 1 : 0;
             buffer[off++] = posSet;
@@ -5786,7 +5629,7 @@ namespace NOWA
                 }
             }
 
-            // --- Center vertex / index data (from CPU cache) ---
+            // --- Center vertex / index data ---
             if (centerVertBytes > 0)
             {
                 memcpy(&buffer[off], this->cachedCenterVertices.data(), centerVertBytes);
@@ -5799,7 +5642,7 @@ namespace NOWA
             }
             off += centerIdxBytes;
 
-            // --- Edge vertex / index data (from CPU cache) ---
+            // --- Edge vertex / index data ---
             if (edgeVertBytes > 0)
             {
                 memcpy(&buffer[off], this->cachedEdgeVertices.data(), edgeVertBytes);
@@ -5812,7 +5655,19 @@ namespace NOWA
             }
             off += edgeIdxBytes;
 
-            // --- Write file ---
+            // --- Junction vertex / index data (NEW) ---
+            if (junctionVertBytes > 0)
+            {
+                memcpy(&buffer[off], this->cachedJunctionVertices.data(), junctionVertBytes);
+            }
+            off += junctionVertBytes;
+
+            if (junctionIdxBytes > 0)
+            {
+                memcpy(&buffer[off], this->cachedJunctionIndices.data(), junctionIdxBytes);
+            }
+            off += junctionIdxBytes;
+
             std::ofstream outFile(filePath.c_str(), std::ios::binary);
             if (false == outFile.is_open())
             {
@@ -5856,7 +5711,8 @@ namespace NOWA
             size_t fileSize = static_cast<size_t>(inFile.tellg());
             inFile.seekg(0, std::ios::beg);
 
-            if (fileSize < 41)
+            // >>> CHANGED: 41 -> 49
+            if (fileSize < 49)
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] File too small: " + filePath);
                 inFile.close();
@@ -5875,7 +5731,6 @@ namespace NOWA
 
             size_t off = 0;
 
-            // --- Header ---
             uint32_t magic, version;
             memcpy(&magic, &buffer[off], 4);
             off += 4;
@@ -5913,16 +5768,21 @@ namespace NOWA
             off += 4;
             memcpy(&numEdgeIdx, &buffer[off], 4);
             off += 4;
+            // >>> NEW
+            uint32_t numJunctionVerts, numJunctionIdx;
+            memcpy(&numJunctionVerts, &buffer[off], 4);
+            off += 4;
+            memcpy(&numJunctionIdx, &buffer[off], 4);
+            off += 4;
 
-            // Read originPositionSet flag
             uint8_t posSet = buffer[off++];
             this->originPositionSet = (posSet != 0);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Loading: " + Ogre::StringConverter::toString(numSegments) + " segments, " + Ogre::StringConverter::toString(numCenterVerts) +
                                                                                    " center verts, " + Ogre::StringConverter::toString(numCenterIdx) + " center idx, " + Ogre::StringConverter::toString(numEdgeVerts) + " edge verts, " +
-                                                                                   Ogre::StringConverter::toString(numEdgeIdx) + " edge idx");
+                                                                                   Ogre::StringConverter::toString(numEdgeIdx) + " edge idx, " + Ogre::StringConverter::toString(numJunctionVerts) + " junction verts, " +
+                                                                                   Ogre::StringConverter::toString(numJunctionIdx) + " junction idx");
 
-            // --- Restore segments ---
             this->roadSegments.clear();
             for (uint32_t i = 0; i < numSegments; ++i)
             {
@@ -5964,19 +5824,20 @@ namespace NOWA
                 this->roadSegments.push_back(seg);
             }
 
-            // Restore road origin
             this->cachedRoadOrigin = origin;
             this->roadOrigin = origin;
             this->hasRoadOrigin = true;
 
-            // --- Restore vertex/index cache ---
             const size_t floatsPerVertex = 8;
             size_t centerVertBytes = numCenterVerts * floatsPerVertex * sizeof(float);
             size_t centerIdxBytes = numCenterIdx * sizeof(uint32_t);
             size_t edgeVertBytes = numEdgeVerts * floatsPerVertex * sizeof(float);
             size_t edgeIdxBytes = numEdgeIdx * sizeof(uint32_t);
+            // >>> NEW
+            size_t junctionVertBytes = numJunctionVerts * floatsPerVertex * sizeof(float);
+            size_t junctionIdxBytes = numJunctionIdx * sizeof(uint32_t);
 
-            size_t expectedRemaining = centerVertBytes + centerIdxBytes + edgeVertBytes + edgeIdxBytes;
+            size_t expectedRemaining = centerVertBytes + centerIdxBytes + edgeVertBytes + edgeIdxBytes + junctionVertBytes + junctionIdxBytes;
             size_t resultBytes = off + expectedRemaining;
             if (resultBytes > fileSize)
             {
@@ -5989,6 +5850,9 @@ namespace NOWA
             this->cachedCenterIndices.resize(numCenterIdx);
             this->cachedEdgeVertices.resize(numEdgeVerts * floatsPerVertex);
             this->cachedEdgeIndices.resize(numEdgeIdx);
+            // >>> NEW
+            this->cachedJunctionVertices.resize(numJunctionVerts * floatsPerVertex);
+            this->cachedJunctionIndices.resize(numJunctionIdx);
 
             if (centerVertBytes > 0)
             {
@@ -6014,24 +5878,39 @@ namespace NOWA
             }
             off += edgeIdxBytes;
 
+            // >>> NEW: junction vertex / index data
+            if (junctionVertBytes > 0)
+            {
+                memcpy(this->cachedJunctionVertices.data(), &buffer[off], junctionVertBytes);
+            }
+            off += junctionVertBytes;
+
+            if (junctionIdxBytes > 0)
+            {
+                memcpy(this->cachedJunctionIndices.data(), &buffer[off], junctionIdxBytes);
+            }
+            off += junctionIdxBytes;
+
             this->cachedNumCenterVertices = numCenterVerts;
             this->cachedNumEdgeVertices = numEdgeVerts;
+            this->cachedNumJunctionVertices = numJunctionVerts;
 
-            // --- Recreate mesh via existing pipeline (fast path: uses cache directly) ---
             std::vector<float> cv = this->cachedCenterVertices;
             std::vector<Ogre::uint32> ci = this->cachedCenterIndices;
             std::vector<float> ev = this->cachedEdgeVertices;
             std::vector<Ogre::uint32> ei = this->cachedEdgeIndices;
+            std::vector<float> jv = this->cachedJunctionVertices;
+            std::vector<Ogre::uint32> ji = this->cachedJunctionIndices;
             size_t ncv = this->cachedNumCenterVertices;
             size_t nev = this->cachedNumEdgeVertices;
+            size_t njv = this->cachedNumJunctionVertices;
 
-            GraphicsModule::RenderCommand renderCommand = [this, cv, ci, ncv, ev, ei, nev, origin]()
+            GraphicsModule::RenderCommand renderCommand = [this, cv, ci, ncv, ev, ei, nev, jv, ji, njv, origin]()
             {
-                this->createRoadMeshInternal(cv, ci, ncv, ev, ei, nev, origin);
+                this->createRoadMeshInternal(cv, ci, ncv, ev, ei, nev, jv, ji, njv, origin);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::loadRoadDataFromFile");
 
-            // After mesh creation, store the endpoint for continuation
             if (!this->roadSegments.empty())
             {
                 const RoadSegment& lastSegment = this->roadSegments.back();
@@ -6039,9 +5918,8 @@ namespace NOWA
                 {
                     const RoadControlPoint& lastCP = lastSegment.controlPoints.back();
 
-                    // Segments are already in WORLD space, don't add origin!
-                    this->loadedRoadEndpoint = lastCP.position;             // Already world XZ
-                    this->loadedRoadEndpointHeight = lastCP.smoothedHeight; // Already world height
+                    this->loadedRoadEndpoint = lastCP.position;
+                    this->loadedRoadEndpointHeight = lastCP.smoothedHeight;
                     this->hasLoadedRoadEndpoint = true;
 
                     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
@@ -6063,7 +5941,6 @@ namespace NOWA
     {
         std::vector<unsigned char> result;
 
-        // If nothing to serialize, return empty
         if (this->roadSegments.empty() && this->cachedCenterVertices.empty())
         {
             return result;
@@ -6074,31 +5951,36 @@ namespace NOWA
         uint32_t numCenterIdx = static_cast<uint32_t>(this->cachedCenterIndices.size());
         uint32_t numEdgeVerts = static_cast<uint32_t>(this->cachedNumEdgeVertices);
         uint32_t numEdgeIdx = static_cast<uint32_t>(this->cachedEdgeIndices.size());
+        // >>> NEW
+        uint32_t numJunctionVerts = static_cast<uint32_t>(this->cachedNumJunctionVertices);
+        uint32_t numJunctionIdx = static_cast<uint32_t>(this->cachedJunctionIndices.size());
 
         const size_t floatsPerVertex = 8;
 
-        // Calculate segment data size
         size_t segmentDataSize = 0;
         for (const auto& seg : this->roadSegments)
         {
-            segmentDataSize += 1;                             // isCurved
-            segmentDataSize += 4;                             // curvature
-            segmentDataSize += 4;                             // numControlPoints
-            segmentDataSize += seg.controlPoints.size() * 20; // 5 floats per CP
+            segmentDataSize += 1;
+            segmentDataSize += 4;
+            segmentDataSize += 4;
+            segmentDataSize += seg.controlPoints.size() * 20;
         }
 
-        size_t headerSize = 41;
+        // >>> CHANGED: 41 -> 49
+        size_t headerSize = 49;
         size_t centerVertBytes = numCenterVerts * floatsPerVertex * sizeof(float);
         size_t centerIdxBytes = numCenterIdx * sizeof(uint32_t);
         size_t edgeVertBytes = numEdgeVerts * floatsPerVertex * sizeof(float);
         size_t edgeIdxBytes = numEdgeIdx * sizeof(uint32_t);
+        // >>> NEW
+        size_t junctionVertBytes = numJunctionVerts * floatsPerVertex * sizeof(float);
+        size_t junctionIdxBytes = numJunctionIdx * sizeof(uint32_t);
 
-        size_t totalSize = headerSize + segmentDataSize + centerVertBytes + centerIdxBytes + edgeVertBytes + edgeIdxBytes;
+        size_t totalSize = headerSize + segmentDataSize + centerVertBytes + centerIdxBytes + edgeVertBytes + edgeIdxBytes + junctionVertBytes + junctionIdxBytes;
 
         result.resize(totalSize);
         size_t off = 0;
 
-        // --- Header (41 bytes) ---
         uint32_t magic = ROADDATA_MAGIC;
         uint32_t version = ROADDATA_VERSION;
         memcpy(&result[off], &magic, 4);
@@ -6121,11 +6003,15 @@ namespace NOWA
         off += 4;
         memcpy(&result[off], &numEdgeIdx, 4);
         off += 4;
+        // >>> NEW
+        memcpy(&result[off], &numJunctionVerts, 4);
+        off += 4;
+        memcpy(&result[off], &numJunctionIdx, 4);
+        off += 4;
 
         uint8_t posSet = this->originPositionSet ? 1 : 0;
         result[off++] = posSet;
 
-        // --- Segments ---
         for (const auto& seg : this->roadSegments)
         {
             uint8_t curved = seg.isCurved ? 1 : 0;
@@ -6153,7 +6039,6 @@ namespace NOWA
             }
         }
 
-        // --- Cached vertex/index data ---
         if (centerVertBytes > 0)
         {
             memcpy(&result[off], this->cachedCenterVertices.data(), centerVertBytes);
@@ -6177,6 +6062,19 @@ namespace NOWA
             memcpy(&result[off], this->cachedEdgeIndices.data(), edgeIdxBytes);
         }
         off += edgeIdxBytes;
+
+        // >>> NEW: junction vertex / index data
+        if (junctionVertBytes > 0)
+        {
+            memcpy(&result[off], this->cachedJunctionVertices.data(), junctionVertBytes);
+        }
+        off += junctionVertBytes;
+
+        if (junctionIdxBytes > 0)
+        {
+            memcpy(&result[off], this->cachedJunctionIndices.data(), junctionIdxBytes);
+        }
+        off += junctionIdxBytes;
 
         return result;
     }
@@ -6407,10 +6305,8 @@ namespace NOWA
 
     void ProceduralRoadComponent::setRoadData(const std::vector<unsigned char>& data)
     {
-        // Destroy current mesh first
         this->destroyRoadMesh();
 
-        // Empty data = clear everything
         if (data.empty())
         {
             this->roadSegments.clear();
@@ -6418,13 +6314,18 @@ namespace NOWA
             this->cachedCenterIndices.clear();
             this->cachedEdgeVertices.clear();
             this->cachedEdgeIndices.clear();
+            // >>> NEW
+            this->cachedJunctionVertices.clear();
+            this->cachedJunctionIndices.clear();
             this->cachedNumCenterVertices = 0;
             this->cachedNumEdgeVertices = 0;
+            this->cachedNumJunctionVertices = 0;
             this->hasRoadOrigin = false;
             return;
         }
 
-        if (data.size() < 41)
+        // >>> CHANGED: 41 -> 49
+        if (data.size() < 49)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] setRoadData: buffer too small");
             return;
@@ -6432,7 +6333,6 @@ namespace NOWA
 
         size_t off = 0;
 
-        // --- Header ---
         uint32_t magic, version;
         memcpy(&magic, &data[off], 4);
         off += 4;
@@ -6464,12 +6364,16 @@ namespace NOWA
         off += 4;
         memcpy(&numEdgeIdx, &data[off], 4);
         off += 4;
+        // >>> NEW
+        uint32_t numJunctionVerts, numJunctionIdx;
+        memcpy(&numJunctionVerts, &data[off], 4);
+        off += 4;
+        memcpy(&numJunctionIdx, &data[off], 4);
+        off += 4;
 
-        // Read originPositionSet flag
         uint8_t posSet = data[off++];
         this->originPositionSet = (posSet != 0);
 
-        // --- Restore segments ---
         this->roadSegments.clear();
         for (uint32_t i = 0; i < numSegments; ++i)
         {
@@ -6510,19 +6414,20 @@ namespace NOWA
             this->roadSegments.push_back(seg);
         }
 
-        // Restore origin
         this->cachedRoadOrigin = origin;
         this->roadOrigin = origin;
         this->hasRoadOrigin = (numSegments > 0);
 
-        // --- Restore vertex/index cache ---
         const size_t floatsPerVertex = 8;
         size_t centerVertBytes = numCenterVerts * floatsPerVertex * sizeof(float);
         size_t centerIdxBytes = numCenterIdx * sizeof(uint32_t);
         size_t edgeVertBytes = numEdgeVerts * floatsPerVertex * sizeof(float);
         size_t edgeIdxBytes = numEdgeIdx * sizeof(uint32_t);
+        // >>> NEW
+        size_t junctionVertBytes = numJunctionVerts * floatsPerVertex * sizeof(float);
+        size_t junctionIdxBytes = numJunctionIdx * sizeof(uint32_t);
 
-        if (off + centerVertBytes + centerIdxBytes + edgeVertBytes + edgeIdxBytes > data.size())
+        if (off + centerVertBytes + centerIdxBytes + edgeVertBytes + edgeIdxBytes + junctionVertBytes + junctionIdxBytes > data.size())
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] setRoadData: buffer too small for vertex data");
             return;
@@ -6532,6 +6437,9 @@ namespace NOWA
         this->cachedCenterIndices.resize(numCenterIdx);
         this->cachedEdgeVertices.resize(numEdgeVerts * floatsPerVertex);
         this->cachedEdgeIndices.resize(numEdgeIdx);
+        // >>> NEW
+        this->cachedJunctionVertices.resize(numJunctionVerts * floatsPerVertex);
+        this->cachedJunctionIndices.resize(numJunctionIdx);
 
         if (centerVertBytes > 0)
         {
@@ -6557,28 +6465,44 @@ namespace NOWA
         }
         off += edgeIdxBytes;
 
+        // >>> NEW: junction vertex / index data
+        if (junctionVertBytes > 0)
+        {
+            memcpy(this->cachedJunctionVertices.data(), &data[off], junctionVertBytes);
+        }
+        off += junctionVertBytes;
+
+        if (junctionIdxBytes > 0)
+        {
+            memcpy(this->cachedJunctionIndices.data(), &data[off], junctionIdxBytes);
+        }
+        off += junctionIdxBytes;
+
         this->cachedNumCenterVertices = numCenterVerts;
         this->cachedNumEdgeVertices = numEdgeVerts;
+        this->cachedNumJunctionVertices = numJunctionVerts;
 
-        // --- Recreate mesh on render thread ---
-        if (numCenterVerts > 0 || numEdgeVerts > 0)
+        if (numCenterVerts > 0 || numEdgeVerts > 0 || numJunctionVerts > 0)
         {
             std::vector<float> cv = this->cachedCenterVertices;
             std::vector<Ogre::uint32> ci = this->cachedCenterIndices;
             std::vector<float> ev = this->cachedEdgeVertices;
             std::vector<Ogre::uint32> ei = this->cachedEdgeIndices;
+            std::vector<float> jv = this->cachedJunctionVertices;
+            std::vector<Ogre::uint32> ji = this->cachedJunctionIndices;
             size_t ncv = this->cachedNumCenterVertices;
             size_t nev = this->cachedNumEdgeVertices;
+            size_t njv = this->cachedNumJunctionVertices;
 
-            GraphicsModule::RenderCommand renderCommand = [this, cv, ci, ncv, ev, ei, nev, origin]()
+            GraphicsModule::RenderCommand renderCommand = [this, cv, ci, ncv, ev, ei, nev, jv, ji, njv, origin]()
             {
-                this->createRoadMeshInternal(cv, ci, ncv, ev, ei, nev, origin);
+                this->createRoadMeshInternal(cv, ci, ncv, ev, ei, nev, jv, ji, njv, origin);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::setRoadData");
         }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] setRoadData: restored " + Ogre::StringConverter::toString(numSegments) + " segments, " + Ogre::StringConverter::toString(numCenterVerts) +
-                                                                               " center verts, " + Ogre::StringConverter::toString(numEdgeVerts) + " edge verts");
+                                                                               " center verts, " + Ogre::StringConverter::toString(numEdgeVerts) + " edge verts, " + Ogre::StringConverter::toString(numJunctionVerts) + " junction verts");
     }
 
     void ProceduralRoadComponent::deleteRoadDataFile(void)
@@ -8119,6 +8043,33 @@ namespace NOWA
         return this->edgeDatablock->getString();
     }
 
+    void ProceduralRoadComponent::setJunctionDatablock(const Ogre::String& datablock)
+    {
+        this->junctionDatablock->setValue(datablock);
+
+        if (this->roadItem && !datablock.empty())
+        {
+            GraphicsModule::RenderCommand renderCommand = [this, datablock]()
+            {
+                if (nullptr == this->roadItem || this->roadItem->getNumSubItems() < 3)
+                {
+                    return;
+                }
+                Ogre::HlmsDatablock* db = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(datablock);
+                if (nullptr != db)
+                {
+                    this->roadItem->getSubItem(2)->setDatablock(db);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::setJunctionDatablock");
+        }
+    }
+
+    Ogre::String ProceduralRoadComponent::getJunctionDatablock(void) const
+    {
+        return this->junctionDatablock->getString();
+    }
+
     void ProceduralRoadComponent::setCenterUVTiling(const Ogre::Vector2& tiling)
     {
         this->centerUVTiling->setValue(tiling);
@@ -8678,6 +8629,8 @@ namespace NOWA
                 .def("getCenterDatablock", &ProceduralRoadComponent::getCenterDatablock)
                 .def("setEdgeDatablock", &ProceduralRoadComponent::setEdgeDatablock)
                 .def("getEdgeDatablock", &ProceduralRoadComponent::getEdgeDatablock)
+                .def("setJunctionDatablock", &ProceduralRoadComponent::setJunctionDatablock)
+                .def("getJunctionDatablock", &ProceduralRoadComponent::getJunctionDatablock)
 
                 // ── UV tiling ─────────────────────────────────────────────────
                 .def("setCenterUVTiling", &ProceduralRoadComponent::setCenterUVTiling)
@@ -8703,6 +8656,7 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setAdaptToGround(bool adapt)", "If true, road surface follows terrain height.");
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setCenterDatablock(string name)", "Sets the PBS datablock for the road center surface.");
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setEdgeDatablock(string name)", "Sets the PBS datablock for the road edge / curb.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setJunctionDatablock(string name)", "Sets the PBS datablock for the junction.");
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "int getSegmentCount()", "Returns the number of road segments currently placed.");
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void addRoadSegment(Vector3 start, Vector3 end)", "Adds a single road segment from start to end world position and rebuilds.");
 

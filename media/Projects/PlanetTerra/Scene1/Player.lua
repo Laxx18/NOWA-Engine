@@ -7,6 +7,7 @@ playerGo = nil;
 areaOfInterestComp = nil;
 planetMinimapGo = nil;
 mainGo = nil;
+questerGameObject = nil;
 
 PLANET_MINIMAP_GO_ID = "1527832358";
 
@@ -56,6 +57,10 @@ Player["connect"] = function(gameObject)
                 fadeWindowComponent:setActivated(true);
             end
             landStartButton:setCaption("Take Off");
+        elseif (otherGameObject:getCategory() == "Quester") then
+            questerGameObject = otherGameObject;
+            log("->hier in quester");
+            questerGameObject:getAiWanderComponent():setActivated(false);
         end
     end);
     
@@ -64,6 +69,9 @@ Player["connect"] = function(gameObject)
         if (otherGameObject:getCategory() == "Spaceship") then
             fadeWindowComponent:setAlpha(0);
             fadeWindowComponent:setActivated(true);
+        elseif (otherGameObject:getCategory() == "Quester") then
+            questerGameObject:getAiWanderComponent():setActivated(true);
+            questerGameObject = nil;
         end
     end);
     
@@ -71,4 +79,11 @@ end
 
 Player["disconnect"] = function()
     
+end
+
+Player["update"] = function()
+    if (questerGameObject) then
+        local resultOrientation = MathHelper:faceTarget(questerGameObject:getSceneNode(), playerGo:getSceneNode(), questerGameObject:getDefaultDirection());
+        questerGameObject:getPhysicsComponent():setOmegaVelocityRotateTo(resultOrientation, Vector3.UNIT_Y, 0.1);
+    end
 end

@@ -474,6 +474,8 @@ namespace NOWA
                     // Forward datablock settings from city attributes to the PRC
                     prcRaw->getAttribute(ProceduralRoadComponent::AttrCenterDatablock())->setValue(this->roadDatablockAttr->getString());
                     prcRaw->getAttribute(ProceduralRoadComponent::AttrEdgeDatablock())->setValue(this->curbDatablockAttr->getString());
+                    // Adapt uv tiling!
+                    prcRaw->getAttribute(ProceduralRoadComponent::AttrCenterUVTiling())->setValue(Ogre::Vector2(2.0f, 5.0f));
                     prcRaw->postInit();
                     // Road would go to mesh modify mode automatically after post init, but for city generation, that is bad, because the designer then has to click 2x escape to go back to place mode
                     boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_PLACE_MODE));
@@ -1891,20 +1893,24 @@ namespace NOWA
         }
 
         // ---- Door — slot 4 ---------------------------------------------------
-        // One door per building, centred on the front face (-wallDir side) at ground level.
-        // FIX height: doorH was min(2.2, trimH*0.95) → for wh=4m that gives only 0.76m
-        // (knee height!). Now: doorH = min(2.2, wh*0.45) so a 4m building gets 1.8m, 9m→2.2m.
+        // One door per building, centred on the front face (-wallDir side).
+        // Door sits on TOP of the stairs (raised by the total stair height),
+        // now flush against the wall (doorOff reduced to a pure anti-z-fight
+        // gap instead of a visible offset).
         {
-            const Ogre::Real doorH = std::min(2.2f, wh * 0.45f); // always a reasonable door height
-            const Ogre::Real doorW = std::min(1.2f, fW * 0.25f);
-            const Ogre::Real doorOff = 0.05f;
+            // Must match stairH/nSteps in the Stairs block below.
+            const Ogre::Real stairStepHeight = 0.15f;
+            const int stairStepCount = 3;
+            const Ogre::Real stairsTotalHeight = stairStepHeight * static_cast<Ogre::Real>(stairStepCount);
+
+            const Ogre::Real doorH = std::min(2.6f, wh * 0.5f);
+            const Ogre::Real doorW = std::min(1.4f, fW * 0.28f);
+            const Ogre::Real doorOff = 0.03f; // was 0.15 -- that was a visible gap, not a fit; door should lie flush against the wall (same order as winOff=0.04 for windows)
             const Ogre::Vector3 pushOut = (-wallDir) * doorOff;
 
-            // Door base in local space: never lower than the actual front-face terrain.
-            // extraSinkDepth subtracted here too, so the door threshold sinks
-            // together with the building instead of being clamped back up to
-            // the un-adjusted terrain level.
-            const Ogre::Real doorBaseLocal = std::max(base.y, frontTerrainY - CITY_SINK_DEPTH - building.extraSinkDepth);
+            // Door base in local space: never lower than the actual front-face terrain,
+            // then lifted by the stair height so the threshold sits on the top step.
+            const Ogre::Real doorBaseLocal = std::max(base.y, frontTerrainY - CITY_SINK_DEPTH - building.extraSinkDepth) + stairsTotalHeight;
 
             const Ogre::Vector3 frontBaseCentre = Ogre::Vector3(base.x + (-wallDir.x) * hd, doorBaseLocal, base.z + (-wallDir.z) * hd);
 
@@ -2167,7 +2173,7 @@ namespace NOWA
         // invalidated when the user changes this value.  Without that, Generate Now
         // after changing variance hits the cache and NEVER reaches this code.
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-            "[ProceduralCityComponent] buildCityRoadNetwork: variance=" + Ogre::StringConverter::toString(variance) + (variance > 0.1f ? "  → ORGANIC road graph mode" : "  → GRID road mode"));
+            "[ProceduralCityComponent] buildCityRoadNetwork: variance=" + Ogre::StringConverter::toString(variance) + (variance > 0.1f ? "  -> ORGANIC road graph mode" : "  -> GRID road mode"));
 
         // Collect ALL road segments (grid + diagonals) into one list,
         // then run CityFaceExtractor::buildPlanarGraph to split all segments
@@ -2352,9 +2358,20 @@ namespace NOWA
 
         const int nX = static_cast<int>(gX.size());
         const int nZ = static_cast<int>(gZ.size());
-        // Cap at 3 arteries — more causes junction clusters that are hard to avoid.
-        // Designer can remove specific roads manually anyway.
-        const int numArts = 1 + static_cast<int>(variance * 2.0f); // 1–3
+
+        // Previously "const int numArts = 1 + static_cast<int>(variance * 2.0f); // 1-3",
+        // completely ignoring how many blocks the grid actually has. A city
+        // with 3x the blocks in each direction has ~9x the area but got the
+        // exact same 1-3 diagonals, so they visually thinned out at scale.
+        // Scale with sqrt(nX * nZ) -- proportional to the grid's "linear"
+        // size rather than raw block count, so artery density (diagonals per
+        // visible city extent) stays roughly constant instead of the ABSOLUTE
+        // count staying constant. Still gated by variance (0 variance = 0
+        // diagonals, matches existing "Road Variance" semantics), and still
+        // capped so an enormous city doesn't get an unreadable diagonal mess.
+        const Ogre::Real gridScaleFactor = std::sqrt(static_cast<Ogre::Real>(nX * nZ));
+        const int scaledArts = static_cast<int>(std::round(variance * gridScaleFactor * 0.6f));
+        const int numArts = Ogre::Math::Clamp(scaledArts, (variance > 0.01f) ? 1 : 0, 24);
 
         std::uniform_int_distribution<int> dSide(0, 3);
         std::uniform_int_distribution<int> dX(1, nX - 2);
@@ -2365,13 +2382,11 @@ namespace NOWA
         const Ogre::Real minSep = std::min(gX.back() - gX.front(), gZ.back() - gZ.front()) * 0.28f;
         std::vector<Ogre::Vector2> usedPts;
 
-        // Diagonal arteries: straight lines between boundary points.
-        // buildPlanarGraph will split them at every grid crossing later.
         int placed = 0;
         for (int attempt = 0; attempt < numArts * 6 && placed < numArts; ++attempt)
         {
             int sideA = dSide(rng);
-            int sideB = (sideA + 2) % 4; // always pick the OPPOSITE side → long cross-city arteries
+            int sideB = (sideA + 2) % 4; // always pick the OPPOSITE side -> long cross-city arteries
 
             auto boundaryPt = [&](int side) -> Ogre::Vector2
             {
@@ -2397,7 +2412,6 @@ namespace NOWA
                 continue;
             }
 
-            // Reject if too close to an already-placed artery endpoint
             bool tooClose = false;
             for (const auto& p : usedPts)
             {
@@ -2417,6 +2431,9 @@ namespace NOWA
             allRoadSegs.push_back({ptA, ptB});
             ++placed;
         }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralCityComponent] buildOrganicRoadNetwork: placed " + Ogre::StringConverter::toString(placed) + "/" + Ogre::StringConverter::toString(numArts) +
+                                                                               " diagonal arteries (grid " + Ogre::StringConverter::toString(nX) + "x" + Ogre::StringConverter::toString(nZ) + ").");
     }
 
     // =========================================================================
@@ -2700,7 +2717,7 @@ namespace NOWA
 
             for (unsigned int vi = 0u; vi < NUM_BUILDING_VARIANTS; ++vi)
             {
-                const Ogre::String doorDb = (vi % 2u == 0u) ? this->doorDatablockAttr->getString() : Ogre::String("WoodenDoor");
+                const Ogre::String doorDb = (vi % 2u == 0u) ? this->doorDatablockAttr->getString() : Ogre::String("city_door_02");
                 const Ogre::String garageDb = this->garageDatablockAttr->getString();
 
                 // Submesh order per variant: face(0), roof(1), window(2), trim(3), door(4), garage(5)

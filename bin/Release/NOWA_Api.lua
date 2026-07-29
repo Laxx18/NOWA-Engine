@@ -29319,6 +29319,14 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			setJunctionDatablock =
+			{
+				type = "method",
+				description = "Sets the PBS datablock for the junction.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			getSegmentCount =
 			{
 				type = "function",

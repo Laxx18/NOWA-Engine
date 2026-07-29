@@ -124,7 +124,8 @@ Universum_0["connect"] = function(gameObject)
         planetGameObject  = AppStateManager:getGameObjectController():castGameObject(planetGameObject);
         enteredGameObject = AppStateManager:getGameObjectController():castGameObject(enteredGameObject);
         
-        log("[Universum] " .. enteredGameObject:getName() .. " left planet " .. planetGameObject:getName());
+        log("[Universum] " .. enteredGameObject:getName() .. " entered planet " .. planetGameObject:getName());
+        window:setWindowCaption("Planet: " .. planetGameObject:getName());
         
         local attrib = enteredGameObject:getAttributesComponent();
         if attrib ~= nil then
@@ -173,10 +174,14 @@ Universum_0["connect"] = function(gameObject)
         
         planetMinimapGo:getPlanetMinimapComponent():setCompassToolTipText(0, "Spaceship");
         
-        if (planetGameObject:getName() == "Eri") then
+         if (planetGameObject:getName() == "Corba") then
+            -- Quester
+            planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(1, "1033683321");
+            planetMinimapGo:getPlanetMinimapComponent():setCompassToolTipText(1, "Quest: Go to Alfred, he needs help.");
+        elseif (planetGameObject:getName() == "Eri") then
             -- Dungeon
             planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(1, "3288953531");
-            planetMinimapGo:getPlanetMinimapComponent():setCompassToolTipText(1, "Quest: Find relict")
+            planetMinimapGo:getPlanetMinimapComponent():setCompassToolTipText(1, "Quest: Find relict");
         end
         
         planetMinimapGo:getPlanetMinimapComponent():setActivated(true);

@@ -1,7 +1,6 @@
 //-------------------------------
 // Stargate Travel — Wormhole Tunnel Effect (HLSL)
-// Time computed in shader from elapsedTime auto-param + startTimeSeconds.
-// No per-frame C++ push needed.
+// rawT < 0 → effect not started → passthrough scene.
 //-------------------------------
 
 Texture2D<float4> RT          : register(t0);
@@ -16,8 +15,7 @@ static float ringLayer( float r, float travelProgress,
 {
     float phase = r * ringFrequency * freqScale * TWO_PI
                 - travelProgress * ringSpeed * TWO_PI;
-    float wave  = sin( phase ) * 0.5f + 0.5f;
-    return pow( wave, 6.0f );
+    return pow( sin( phase ) * 0.5f + 0.5f, 6.0f );
 }
 
 float4 main(
@@ -33,8 +31,14 @@ float4 main(
     uniform float  brightness
 ) : SV_Target
 {
-    // Time computed on GPU
-    float t = saturate( (elapsedTime - startTimeSeconds) / max(durationSeconds, 0.001f) );
+    float3 sceneColor = RT.Sample( samplerState, inPs.uv0 ).rgb;
+
+    // Negative rawT means effect not started → passthrough
+    float rawT = (elapsedTime - startTimeSeconds) / max( durationSeconds, 0.001f );
+    if ( rawT < 0.0f )
+        return float4( sceneColor, 1.0f );
+
+    float t = saturate( rawT );
 
     float2 uv   = inPs.uv0 * 2.0f - 1.0f;
     uv.x       *= aspectRatio;
@@ -70,9 +74,8 @@ float4 main(
     float  rim  = smoothstep( 0.85f, 0.95f, r ) * smoothstep( 1.05f, 0.95f, r );
     float3 edge = tunnelColor * rim * 1.5f;
 
-    float3 tunnel     = (rings + lines + centre + edge) * brightness;
-    float3 sceneColor = RT.Sample( samplerState, inPs.uv0 ).rgb;
-    float3 result     = lerp( sceneColor, tunnel, tunnelFade ) + float3( flash, flash, flash );
+    float3 tunnel = (rings + lines + centre + edge) * brightness;
+    float3 result = lerp( sceneColor, tunnel, tunnelFade ) + float3( flash, flash, flash );
 
     return float4( min( result, float3(2.5f, 2.5f, 2.5f) ), 1.0f );
 }
