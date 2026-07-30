@@ -152,6 +152,7 @@ namespace NOWA
         farClipTransitionSpeed(new Variant(UniversumComponent::AttrFarClipTransitionSpeed(), 0.5f, this->attributes)),
         scale(new Variant(UniversumComponent::AttrScale(), 2.0f, this->attributes)),
         autoPauseOrbit(new Variant(UniversumComponent::AttrAutoPauseOrbit(), true, this->attributes)),
+        landingCategories(new Variant(UniversumComponent::AttrLandingCategories(), Ogre::String("ALL"), this->attributes)),
         generate(new Variant(UniversumComponent::AttrGenerate(), Ogre::String("Generate"), this->attributes)),
         elapsedTime(0.0f),
         currentFarClip(1000000.0f),
@@ -166,6 +167,7 @@ namespace NOWA
         landingState(LandingState::NONE),
         landingBodyCentre(Ogre::Vector3::ZERO),
         landingBodyRadius(0.0f),
+        landingCategoriesId(NOWA::GameObjectController::ALL_CATEGORIES_ID),
         landedOnBodyId(0ul),
         landingAltitudeThreshold(60.0f),
         takeoffClearanceAltitude(90.0f),
@@ -232,6 +234,10 @@ namespace NOWA
                                              "This freezes the surface geometry so buildings and props with TreeCollision "
                                              "remain physically valid while the player is on the surface. "
                                              "Day/night is faked via directional light rotation during the pause.");
+        this->landingCategories->setDescription("Which GameObject categories count as a valid landing surface. Default \"ALL\" allows "
+                                                "landing anywhere the terrain gradient permits. Combine categories with '+', e.g. "
+                                                "\"Platform+Terrain\", to restrict landing to specific surfaces such as landing pads. "
+                                                "If no object of an allowed category is found directly below the ship, landing is denied.");
     }
 
     UniversumComponent::~UniversumComponent()
@@ -441,6 +447,11 @@ namespace NOWA
             this->autoPauseOrbit->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrLandingCategories())
+        {
+            this->landingCategories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
         // ---- Restore solar systems from saved scene -------------------------
         // If saved system count > 0, rebuild solarSystems so orbital motion and
@@ -619,6 +630,7 @@ namespace NOWA
 
         this->landingRayQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), NOWA::GameObjectController::ALL_CATEGORIES_ID);
         this->landingRayQuery->setSortByDistance(true);
+        this->landingRayQuery->setQueryMask(this->landingCategoriesId);
 
         // If the universe was loaded from a saved scene, planet GOs already exist in the
         // scene. Re-attach PlanetOrbitObserver to each planet's AreaOfInterestComponent
@@ -1869,7 +1881,20 @@ namespace NOWA
         }
         else
         {
-            // Raycast missed — fall back to Terra radial height
+            // Raycast missed under the current landingRayQuery mask. If landing
+            // categories are restricted (not ALL), a miss means there is no object of
+            // an allowed category directly below the ship - e.g. it's hovering over
+            // open terrain while only "Platform" is permitted. Deny landing instead
+            // of silently falling back to raw Terra height, which would otherwise let
+            // the ship land anywhere regardless of the category restriction.
+            if (NOWA::GameObjectController::ALL_CATEGORIES_ID != this->landingCategoriesId)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] RAYCAST missed within landing categories '" + this->landingCategories->getString() + "', denying land");
+                outCanLand = false;
+                return;
+            }
+
+            // ALL categories (default): fall back to Terra radial height as before.
             outSurfaceHeight = radialHeights[0];
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] RAYCAST missed, fallback Terra height=" + Ogre::StringConverter::toString(outSurfaceHeight));
         }
@@ -2744,6 +2769,10 @@ namespace NOWA
         {
             this->setAutoPauseOrbit(attribute->getBool());
         }
+        else if (UniversumComponent::AttrLandingCategories() == attribute->getName())
+        {
+            this->setLandingCategories(attribute->getString());
+        }
     }
 
     // =========================================================================
@@ -2960,6 +2989,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "Auto Pause Orbit On Surface"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->autoPauseOrbit->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Landing Categories"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->landingCategories->getString())));
         propertiesXML->append_node(propertyXML);
 
         // ---- Save solar systems so scene reload restores orbital motion --------
@@ -4856,6 +4891,24 @@ namespace NOWA
     //  Lua delegation -- react callbacks + call dispatchers
     // =========================================================================
 
+    void UniversumComponent::setLandingCategories(const Ogre::String& categories)
+    {
+        this->landingCategories->setValue(categories);
+        this->landingCategoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
+
+        // Re-apply immediately if the query already exists (runtime change via Lua/Editor),
+        // not just at postInit() time.
+        if (nullptr != this->landingRayQuery)
+        {
+            this->landingRayQuery->setQueryMask(this->landingCategoriesId);
+        }
+    }
+
+    Ogre::String UniversumComponent::getLandingCategories(void) const
+    {
+        return this->landingCategories->getString();
+    }
+
     void UniversumComponent::reactOnPlanetEntered(luabind::object closureFunction)
     {
         this->planetEnteredClosureFunction = closureFunction;
@@ -5113,6 +5166,8 @@ namespace NOWA
                 .def("computeGravity", &UniversumComponent::computeGravity)
                 .def("setAutoPauseOrbit", &UniversumComponent::setAutoPauseOrbit)
                 .def("getAutoPauseOrbit", &UniversumComponent::getAutoPauseOrbit)
+                .def("setLandingCategories", &UniversumComponent::setLandingCategories)
+                .def("getLandingCategories", &UniversumComponent::getLandingCategories)
                 .def("getCurrentLandingPlanetGradient", &UniversumComponent::getCurrentLandingPlanetGradient)
                 .def("reactOnPlanetEntered", &UniversumComponent::reactOnPlanetEntered)
                 .def("reactOnPlanetLeft", &UniversumComponent::reactOnPlanetLeft)
@@ -5142,6 +5197,12 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void setAutoPauseOrbit(bool enable)",
             "When enabled, orbital motion pauses automatically when any object enters a planet AreaOfInterest zone, and resumes when it leaves. Day/night is faked via directional light rotation during the pause.");
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "bool getAutoPauseOrbit()", "Gets whether automatic orbital pause on surface is enabled.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void setLandingCategories(String categories)",
+            "Sets which GameObject categories count as a valid landing surface. Default \"ALL\" allows landing anywhere "
+            "the terrain gradient permits. Combine categories with '+' to restrict landing, e.g. \"Platform+Terrain\" "
+            "for landing pads only. If nothing of an allowed category is found directly below the ship, landing is denied.");
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "String getLandingCategories()", "Gets the currently configured landing category string.");
 
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "number getCurrentLandingPlanetGradient()", "Gets the current gradient on planet for landing. If its to steep, landing is not possible. This can be use to show the current gradient for the spaceship armature for example.");
 

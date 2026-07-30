@@ -172,6 +172,10 @@ namespace NOWA
         {
             return "Auto Pause Orbit On Surface";
         }
+        static const Ogre::String AttrLandingCategories(void)
+        {
+            return "Landing Categories";
+        }
         static Ogre::String ActionGenerate()
         {
             return "UniversumComponent.Generate";
@@ -381,13 +385,37 @@ namespace NOWA
 
     public:
         void setFarClipTransitionSpeed(Ogre::Real speed);
+
         Ogre::Real getFarClipTransitionSpeed(void) const;
 
         void setScale(Ogre::Real scale);
         Ogre::Real getScale(void) const;
 
         void setAutoPauseOrbit(bool autoPause);
+
         bool getAutoPauseOrbit(void) const;
+
+        // Setter/Getter (bei den anderen public Set/Get-Methoden)
+        /**
+         * @brief Sets which GameObject categories count as valid landing surfaces, e.g.
+         *        "ALL" (default) or a combined category like "Platform+Terrain". Backed by
+         *        the same category system as GameObjectController::ALL_CATEGORIES_ID -
+         *        internally resolved to a bitmask via generateCategoryId() and applied as
+         *        the query mask on landingRayQuery, so both the per-frame surface-distance
+         *        raycast and findFlatLandingSpot()'s raycast only ever "see" objects of
+         *        the allowed categories. If nothing of an allowed category is hit directly
+         *        below the ship, landing is denied (see findFlatLandingSpot()) instead of
+         *        silently falling back to raw Terra height - so a restricted category
+         *        actually enforces where a ship may set down, e.g. landing pads only.
+         * @param[in] categories The category string, e.g. "ALL" or "Platform+Terrain".
+         */
+        void setLandingCategories(const Ogre::String& categories);
+
+        /**
+         * @brief Gets the currently configured landing category string.
+         * @return The category string as set via setLandingCategories().
+         */
+        Ogre::String getLandingCategories(void) const;
 
         /**
          * @brief Registers a Lua closure called when the player enters a planet's atmosphere.
@@ -633,6 +661,7 @@ namespace NOWA
         Variant* farClipTransitionSpeed;
         Variant* scale;
         Variant* autoPauseOrbit;
+        Variant* landingCategories;
 
         // ---- Runtime state ---------------------------------------------------
         std::vector<SolarSystem> solarSystems;
@@ -697,6 +726,7 @@ namespace NOWA
         Ogre::Vector3 resolvedLandingTarget;
         bool resolvedLandingTargetValid;
         Ogre::Real currentLandingPlanetGradient;
+        unsigned int landingCategoriesId;
 
                  // Tuning
         static constexpr float LANDING_MAX_GRADIENT_DEG = 15.0f; // max acceptable slope

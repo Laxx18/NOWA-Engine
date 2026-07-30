@@ -4090,6 +4090,9 @@ namespace NOWA
     void EditorManager::startSimulation(void)
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Simulation started");
+
+        this->selectionManager->clearSelection();
+
         // Physics simulation will be corrupt!
         if (nullptr != AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt())
         {

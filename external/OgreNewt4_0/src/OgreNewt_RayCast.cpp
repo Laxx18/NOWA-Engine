@@ -6,7 +6,12 @@ namespace OgreNewt
 {
     //============================= Raycast =============================
 
-    Raycast::Raycast() : mLastBody(nullptr), mBodyAdded(false), mStart(Ogre::Vector3::ZERO), mEnd(Ogre::Vector3::ZERO), mCallback(this)
+    Raycast::Raycast()
+        : mLastBody(nullptr),
+        mBodyAdded(false),
+        mStart(Ogre::Vector3::ZERO),
+        mEnd(Ogre::Vector3::ZERO),
+        mCallback(this)
     {
     }
 
@@ -75,9 +80,6 @@ namespace OgreNewt
     {
         if (intersetParam < m_param)
         {
-            m_contact = contact;
-            m_param = intersetParam;
-
             const ndBodyKinematic* const kBody = contact.m_body0;
             if (kBody)
             {
@@ -86,7 +88,26 @@ namespace OgreNewt
                 {
                     if (auto* ogreNotify = dynamic_cast<BodyNotify*>(*notifyPtr))
                     {
-                        mOwner->mLastBody = ogreNotify->GetOgreNewtBody();
+                        Body* ogreBody = ogreNotify->GetOgreNewtBody();
+
+                        // Apply the SAME filter here as in OnRayPrecastAction. A real
+                        // contact can still reference a body that userPreFilterCallback
+                        // would reject (e.g. the player's own body, or Terra) -- the
+                        // precast filter alone does not guarantee this callback only
+                        // ever sees accepted bodies. Without this check, an excluded
+                        // body can still overwrite mLastBody here, silently undoing
+                        // the OnRayPrecastAction fix and causing the camera distance
+                        // to flicker between "clear" and "hit the excluded body".
+                        if (nullptr != ogreBody && false == mOwner->userPreFilterCallback(ogreBody))
+                        {
+                            // Rejected -- do not accept this contact, do not update
+                            // m_param/m_contact, do not touch mLastBody.
+                            return m_param;
+                        }
+
+                        m_contact = contact;
+                        m_param = intersetParam;
+                        mOwner->mLastBody = ogreBody;
                     }
                 }
             }

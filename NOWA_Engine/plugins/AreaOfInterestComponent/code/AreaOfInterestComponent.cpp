@@ -333,6 +333,7 @@ namespace NOWA
             {
                 return;
             }
+            bool debugThis = true;
 
             // Step 1: Compute absolute max radius and the globally combined broad-phase bitmask
             Ogre::Real maxRadius = 0.0f;
@@ -345,6 +346,16 @@ namespace NOWA
                     maxRadius = r;
                 }
                 combinedMask |= this->categoriesId[i];
+            }
+
+            if (true == this->bShowDebugData)
+            {
+                for (unsigned int i = 0; i < count; i++)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AreaOfInterestComponent] layer " + Ogre::StringConverter::toString(i) + " radius=" + Ogre::StringConverter::toString(this->getRadius(i)) +
+                                                                                            " categoriesId=" + Ogre::StringConverter::toString(this->categoriesId[i]) + " categoriesStr=" + this->getCategories(i) + " tag=" + this->getTagName(i));
+                }
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AreaOfInterestComponent] combinedMask=" + Ogre::StringConverter::toString(combinedMask) + " maxRadius=" + Ogre::StringConverter::toString(maxRadius));
             }
 
             // Configure the scene query bounds using the largest possible outer boundary.
@@ -366,6 +377,12 @@ namespace NOWA
 
             // Step 2: Broad Phase Execution via Ogre
             Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
+
+            if (true == this->bShowDebugData)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AreaOfInterestComponent] broad-phase result count=" + Ogre::StringConverter::toString(result.size()));
+            }
+
             for (auto it = result.cbegin(); it != result.cend(); ++it)
             {
                 Ogre::MovableObject* movableObject = *it;
@@ -391,9 +408,24 @@ namespace NOWA
                     unsigned int objQueryFlags = movableObject->getQueryFlags();
                     Ogre::String objTagName = gameObject->getTagName();
 
+                    if (true == this->bShowDebugData)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                            "[AreaOfInterestComponent] candidate=" + gameObject->getName() + " queryFlags=" + Ogre::StringConverter::toString(objQueryFlags) + " dist=" + Ogre::StringConverter::toString(distance) + " tag=" + objTagName);
+                    }
+
                     // Step 3: Evaluate each layout layer 100% independently
                     for (unsigned int i = 0; i < count; i++)
                     {
+                        bool ruleA = (objQueryFlags & this->categoriesId[i]) != 0;
+                        bool ruleB = ruleA ? (distance <= this->getRadius(i)) : false;
+
+                        if (true == this->bShowDebugData)
+                        {
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                                "[AreaOfInterestComponent]   layer" + Ogre::StringConverter::toString(i) + " ruleA(mask)=" + Ogre::StringConverter::toString(ruleA) + " ruleB(radius)=" + Ogre::StringConverter::toString(ruleB));
+                        }
+
                         // Rule A: Does it match this specific layer's category bitmask?
                         if ((objQueryFlags & this->categoriesId[i]) != 0)
                         {
@@ -415,6 +447,12 @@ namespace NOWA
                                     {
                                         tagMatches = true;
                                     }
+                                }
+
+                                if (true == this->bShowDebugData)
+                                {
+                                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                                        "[AreaOfInterestComponent]   layer" + Ogre::StringConverter::toString(i) + " ruleC(tag)=" + Ogre::StringConverter::toString(tagMatches) + " configuredTag=" + configuredTag);
                                 }
 
                                 if (tagMatches)

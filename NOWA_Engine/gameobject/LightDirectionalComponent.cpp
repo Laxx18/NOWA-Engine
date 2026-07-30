@@ -131,11 +131,12 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightDirectionalComponent] Destructor light directional component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("LightDirectionalComponent::~LightDirectionalComponent",
-				{
-					this->gameObjectPtr->getSceneNode()->detachObject(this->light);
-					this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
-				});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            {
+                this->gameObjectPtr->getSceneNode()->detachObject(this->light);
+                this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::LightDirectionalComponent");
 			this->light = nullptr;
 			this->dummyItem = nullptr;
 		}
@@ -146,10 +147,11 @@ namespace NOWA
 		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::connect setVisible", _1(visible),
-			{
-				this->dummyItem->setVisible(visible);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]
+            {
+                this->dummyItem->setVisible(visible);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightPointComponent::connect setVisible");
 		}
 
 		return true;
@@ -160,11 +162,12 @@ namespace NOWA
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		if (nullptr != this->dummyItem)
-		{
-			bool visible = this->gameObjectPtr->isVisible();
-			this->dummyItem->setVisible(visible);
-		}
+		bool visible = this->gameObjectPtr->isVisible();
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]
+        {
+            this->dummyItem->setVisible(visible);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightPointComponent::disconnect setVisible");
 
 		return true;
 	}
@@ -223,7 +226,9 @@ namespace NOWA
                 this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
                 if (this->dummyItem != nullptr)
                 {
+                    this->dummyItem->setName("DummyItem");
                     this->dummyItem->setCastShadows(false);
+                    this->dummyItem->setVisible(false);
                 }
                 this->setDirection(this->direction->getVector3());
             };
@@ -339,10 +344,16 @@ namespace NOWA
 	{
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setActivated", _1(activated),
-			{
-				this->light->setVisible(activated);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]
+            {
+                this->light->setVisible(activated);
+                this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+                if (this->dummyItem != nullptr)
+                {
+                    this->dummyItem->setVisible(this->showDummyEntity->getBool());
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setActivated");
 		}
 	}
 
@@ -370,10 +381,11 @@ namespace NOWA
 		this->diffuseColor->setValue(diffuseColor);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setDiffuseColor", _1(diffuseColor),
-			{
-				this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, diffuseColor]
+            {
+                this->light->setDiffuseColour(diffuseColor.x, diffuseColor.y, diffuseColor.z);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setDiffuseColor");
 		}
 	}
 
@@ -387,10 +399,11 @@ namespace NOWA
 		this->specularColor->setValue(specularColor);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setSpecularColor", _1(specularColor),
-			{
-				this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, specularColor]
+            {
+                this->light->setDiffuseColour(specularColor.x, specularColor.y, specularColor.z);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setSpecularColor");
 		}
 	}
 
@@ -404,10 +417,11 @@ namespace NOWA
 		this->powerScale->setValue(powerScale);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setPowerScale", _1(powerScale),
-			{
-				this->light->setPowerScale(powerScale);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, powerScale]
+            {
+                this->light->setPowerScale(powerScale);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setPowerScale");
 		}
 	}
 
@@ -421,13 +435,14 @@ namespace NOWA
 		this->direction->setValue(direction);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setDirection", _1(direction),
-			{
-				this->light->setDirection(this->direction->getVector3());
-				// Actualize the ambient light, when the direction changed
-				this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(),
-					this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere(), -this->light->getDirection()/* * Ogre::Vector3::UNIT_Y * 0.2f*/);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, direction]
+            {
+                this->light->setDirection(this->direction->getVector3());
+                // Actualize the ambient light, when the direction changed
+                this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(), this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere(),
+                    -this->light->getDirection() /* * Ogre::Vector3::UNIT_Y * 0.2f*/);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setDirection");
 		}
 	}
 
@@ -441,10 +456,11 @@ namespace NOWA
 		this->affectParentNode->setValue(affectParentNode);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setAffectParentNode", _1(affectParentNode),
-			{
-				this->light->setAffectParentNode(this->affectParentNode->getBool());
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, affectParentNode]
+            {
+                this->light->setAffectParentNode(this->affectParentNode->getBool());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setAffectParentNode");
 		}
 	}
 
@@ -458,10 +474,11 @@ namespace NOWA
 		this->attenuationRadius->setValue(attenuationRadius);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setAttenuationRadius", _1(attenuationRadius),
-			{
-				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, attenuationRadius]
+            {
+                this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setAttenuationRadius");
 		}
 	}
 
@@ -475,10 +492,11 @@ namespace NOWA
 		this->attenuationLumThreshold->setValue(attenuationLumThreshold);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setAttenuationLumThreshold", _1(attenuationLumThreshold),
-			{
-				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            {
+                this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setAttenuationLumThreshold");
 		}
 	}
 
@@ -492,10 +510,11 @@ namespace NOWA
 		this->castShadows->setValue(castShadows);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setCastShadows", _1(castShadows),
-			{
-				this->light->setCastShadows(castShadows);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, castShadows]
+            {
+                this->light->setCastShadows(castShadows);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setCastShadows");
 		}
 	}
 

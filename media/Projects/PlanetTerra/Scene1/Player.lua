@@ -3,11 +3,13 @@ module("Player", package.seeall);
 
 require("init");
 
-playerGo = nil;
-areaOfInterestComp = nil;
-planetMinimapGo = nil;
-mainGo = nil;
-questerGameObject = nil;
+local playerGo = nil;
+local areaOfInterestComp = nil;
+local planetMinimapGo = nil;
+local mainGo = nil;
+local inputDeviceComp = nil;
+local flashLightComp = nil;
+local toggleFlashLight = true;
 
 PLANET_MINIMAP_GO_ID = "1527832358";
 
@@ -15,6 +17,10 @@ Player = {}
 
 Player["connect"] = function(gameObject)
     playerGo = AppStateManager:getGameObjectController():castGameObject(gameObject);
+    inputDeviceComp = playerGo:getInputDeviceComponent();
+    local flashLightGo = AppStateManager:getGameObjectController():getGameObjectFromId("2467979983");
+    flashLightComp = flashLightGo:getLightSpotComponent();
+    flashLightComp:setActivated(false);
     
     local universumGameObject = AppStateManager:getGameObjectController():getGameObjectFromId("1061997306");
     local universumComponent = universumGameObject:getUniversumComponent();
@@ -58,9 +64,11 @@ Player["connect"] = function(gameObject)
             end
             landStartButton:setCaption("Take Off");
         elseif (otherGameObject:getCategory() == "Quester") then
-            questerGameObject = otherGameObject;
             log("->hier in quester");
-            questerGameObject:getAiWanderComponent():setActivated(false);
+            local eventData = {};
+            eventData["inArea"] = true;
+            eventData["playerId"] = playerGo:getId();
+            AppStateManager:getScriptEventManager():queueEvent(EventType.QuesterFoundEvent, eventData);
         end
     end);
     
@@ -70,20 +78,22 @@ Player["connect"] = function(gameObject)
             fadeWindowComponent:setAlpha(0);
             fadeWindowComponent:setActivated(true);
         elseif (otherGameObject:getCategory() == "Quester") then
-            questerGameObject:getAiWanderComponent():setActivated(true);
-            questerGameObject = nil;
+            local eventData = {};
+            eventData["inArea"] = false;
+            eventData["playerId"] = "0";
+            AppStateManager:getScriptEventManager():queueEvent(EventType.QuesterFoundEvent, eventData);
+            log("->quester raus");
         end
     end);
     
 end
 
-Player["disconnect"] = function()
-    
-end
+Player["update"] = function(dt)
 
-Player["update"] = function()
-    if (questerGameObject) then
-        local resultOrientation = MathHelper:faceTarget(questerGameObject:getSceneNode(), playerGo:getSceneNode(), questerGameObject:getDefaultDirection());
-        questerGameObject:getPhysicsComponent():setOmegaVelocityRotateTo(resultOrientation, Vector3.UNIT_Y, 0.1);
+    if (inputDeviceComp:isDeviceLocked() == false) then
+        if inputDeviceComp:isActionDownPressed(NOWA_A_FLASH_LIGHT, dt, 0.2) then
+           toggleFlashLight = not toggleFlashLight;
+           flashLightComp:setActivated(toggleFlashLight);
+        end
     end
 end

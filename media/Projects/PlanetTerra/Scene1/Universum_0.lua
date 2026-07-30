@@ -17,14 +17,14 @@ FIGHTER_GO_ID = "2599276278";
 PLAYER_GO_ID       = "1959649159";
 PLANET_MINIMAP_GO_ID = "1527832358";
 
-universumGameObject    = nil;
-universumComp  = nil;
-window = nil;
-landDegreeText = nil;
-playerGo = nil;
-fighterGo = nil;
-planetMinimapGo = nil;
-mainGo = nil;
+local universumGameObject    = nil;
+local universumComp  = nil;
+local window = nil;
+local landDegreeText = nil;
+local playerGo = nil;
+local fighterGo = nil;
+local planetMinimapGo = nil;
+local mainGo = nil;
 
 Universum_0 = {}
 

@@ -5220,66 +5220,7 @@ namespace NOWA
 
 		module(lua)
 		[
-			class_<IAnimationBlender>("IAnimationBlender")
-			.def("init1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, bool)) & IAnimationBlender::init)
-			.def("init2", (void (IAnimationBlender::*)(const Ogre::String&, bool)) & IAnimationBlender::init)
-			.def("getAllAvailableAnimationNames", &getAllAvailableAnimationNames)
-			.def("blend1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
-			.def("blend2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
-			.def("blend3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
-			.def("blend4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
-			.def("blend5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
-			.def("blend6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
-			.def("blendExclusive1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendAndContinue1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::blendAndContinue)
-			.def("blendAndContinue2", (void (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::blendAndContinue)
-			.def("blendAndContinue3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real)) & IAnimationBlender::blendAndContinue)
-			.def("blendAndContinue4", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real)) & IAnimationBlender::blendAndContinue)
-			.def("getProgress", &IAnimationBlender::getProgress)
-			
-			.def("isComplete", &IAnimationBlender::isComplete)
-			.def("registerAnimation", &IAnimationBlender::registerAnimation)
-			.def("getAnimationIdFromString", &IAnimationBlender::getAnimationIdFromString)
-			.def("hasAnimation", (bool (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::hasAnimation)
-			.def("hasAnimation", (bool (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::hasAnimation)
-			.def("isAnimationActive", &IAnimationBlender::isAnimationActive)
-			.def("isAnimationActive", &IAnimationBlender::isAnyAnimationActive)
-			.def("addTime", &IAnimationBlender::addTime)
-			.def("setTimePosition", &IAnimationBlender::setTimePosition)
-			.def("getTimePosition", &IAnimationBlender::getTimePosition)
-			.def("getLength", &IAnimationBlender::getLength)
-			.def("setWeight", &IAnimationBlender::setWeight)
-			.def("getWeight", &IAnimationBlender::getWeight)
-			.def("resetBones", &IAnimationBlender::resetBones)
-			.def("setDebugLog", &IAnimationBlender::setDebugLog)
-            .def("setOverlayAnimation1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
-            .def("setOverlayAnimation2", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
-            .def("clearOverlayAnimation", &IAnimationBlender::clearOverlayAnimation)
-            .def("isOverlayAnimationActive", &IAnimationBlender::isOverlayAnimationActive)
-            .def("setAnimationSpeed", &IAnimationBlender::setAnimationSpeed)
-            .def("getAnimationSpeed", &IAnimationBlender::getAnimationSpeed)
-            .def("driveBlendSpace", &IAnimationBlender::driveBlendSpace)
-		];
-
-		module(lua)
-		[
-			class_<IAnimationBlender::BlendingTransition>("BlendingTransition")
-			.enum_("BlendingTransition")
-			[
-				value("BLEND_SWITCH", IAnimationBlender::BlendSwitch),
-				value("BLEND_WHILE_ANIMATING", IAnimationBlender::BlendWhileAnimating),
-				value("BLEND_THEN_ANIMATE", IAnimationBlender::BlendThenAnimate)
-			]
-		];
-
-		module(lua)
-		[
-			class_<IAnimationBlender::AnimID>("AnimID")
+			class_<IAnimationBlender>("AnimationBlender")
 			.enum_("AnimID")
 			[
 				value("ANIM_IDLE_1", IAnimationBlender::ANIM_IDLE_1),
@@ -5339,6 +5280,8 @@ namespace NOWA
 				value("ANIM_PUSH", IAnimationBlender::ANIM_PUSH),
 				value("ANIM_KNOCK_DOWN", IAnimationBlender::ANIM_KNOCK_DOWN),
 				value("ANIM_STAND_UP", IAnimationBlender::ANIM_STAND_UP),
+				value("ANIM_TALK_1", IAnimationBlender::ANIM_TALK_1),
+				value("ANIM_TALK_2", IAnimationBlender::ANIM_TALK_2),
 				value("ANIM_POINT", IAnimationBlender::ANIM_POINT),
 				value("ANIM_LAUGH", IAnimationBlender::ANIM_LAUGH),
 				value("ANIM_LAND_1", IAnimationBlender::ANIM_LAND_1),
@@ -5353,6 +5296,60 @@ namespace NOWA
 				value("ANIM_CAST_SPELL_1", IAnimationBlender::ANIM_CAST_SPELL_1),
 				value("ANIM_CAST_SPELL_2", IAnimationBlender::ANIM_CAST_SPELL_2),
 				value("ANIM_CAST_SPELL_3", IAnimationBlender::ANIM_CAST_SPELL_3)
+			]
+			.def("init1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, bool)) & IAnimationBlender::init)
+			.def("init2", (void (IAnimationBlender::*)(const Ogre::String&, bool)) & IAnimationBlender::init)
+			.def("getAllAvailableAnimationNames", &getAllAvailableAnimationNames)
+			.def("blend1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
+			.def("blend2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
+			.def("blend3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
+			.def("blend4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
+			.def("blend5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
+			.def("blend6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
+			.def("blendExclusive1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendAndContinue1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::blendAndContinue)
+			.def("blendAndContinue2", (void (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::blendAndContinue)
+			.def("blendAndContinue3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real)) & IAnimationBlender::blendAndContinue)
+			.def("blendAndContinue4", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real)) & IAnimationBlender::blendAndContinue)
+			.def("getProgress", &IAnimationBlender::getProgress)
+			
+			.def("isComplete", &IAnimationBlender::isComplete)
+			.def("registerAnimation", &IAnimationBlender::registerAnimation)
+			.def("getAnimationIdFromString", &IAnimationBlender::getAnimationIdFromString)
+			.def("hasAnimation", (bool (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::hasAnimation)
+			.def("hasAnimation", (bool (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::hasAnimation)
+			.def("isAnimationActive", &IAnimationBlender::isAnimationActive)
+			.def("isAnimationActive", &IAnimationBlender::isAnyAnimationActive)
+			.def("addTime", &IAnimationBlender::addTime)
+			.def("setTimePosition", &IAnimationBlender::setTimePosition)
+			.def("getTimePosition", &IAnimationBlender::getTimePosition)
+			.def("getLength", &IAnimationBlender::getLength)
+			.def("setWeight", &IAnimationBlender::setWeight)
+			.def("getWeight", &IAnimationBlender::getWeight)
+			.def("resetBones", &IAnimationBlender::resetBones)
+			.def("setDebugLog", &IAnimationBlender::setDebugLog)
+            .def("setOverlayAnimation1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
+            .def("setOverlayAnimation2", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
+            .def("clearOverlayAnimation", &IAnimationBlender::clearOverlayAnimation)
+            .def("isOverlayAnimationActive", &IAnimationBlender::isOverlayAnimationActive)
+            .def("setAnimationSpeed", &IAnimationBlender::setAnimationSpeed)
+            .def("getAnimationSpeed", &IAnimationBlender::getAnimationSpeed)
+            .def("driveBlendSpace", &IAnimationBlender::driveBlendSpace)
+		];
+
+		module(lua)
+		[
+			class_<IAnimationBlender::BlendingTransition>("BlendingTransition")
+			.enum_("BlendingTransition")
+			[
+				value("BLEND_SWITCH", IAnimationBlender::BlendSwitch),
+				value("BLEND_WHILE_ANIMATING", IAnimationBlender::BlendWhileAnimating),
+				value("BLEND_THEN_ANIMATE", IAnimationBlender::BlendThenAnimate)
 			]
 		];
 
@@ -5371,79 +5368,80 @@ namespace NOWA
 		AddClassToCollection("AnimationBlender", "BLEND_WHILE_ANIMATING", "Fades from current animation to a new one.");
 		AddClassToCollection("AnimationBlender", "BLEND_THEN_ANIMATE", "Fades the current animation to the first frame of the new one, after that execute the new animation.");
 
-		AddClassToCollection("AnimID", "ANIM_IDLE_1", "Idle 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_IDLE_2", "Idle 2 animation.");
-		AddClassToCollection("AnimID", "ANIM_IDLE_3", "Idle 3 animation.");
-		AddClassToCollection("AnimID", "ANIM_IDLE_4", "Idle 4 animation.");
-		AddClassToCollection("AnimID", "ANIM_IDLE_5", "Idle 5 animation.");
-		AddClassToCollection("AnimID", "ANIM_WALK_NORTH", "Walk north animation.");
-		AddClassToCollection("AnimID", "ANIM_WALK_SOUTH", "Walk south animation.");
-		AddClassToCollection("AnimID", "ANIM_WALK_WEST", "Walk west animation.");
-		AddClassToCollection("AnimID", "ANIM_WALK_EAST", "Walk east animation.");
-		AddClassToCollection("AnimID", "ANIM_RUN", "Run animation.");
-		AddClassToCollection("AnimID", "ANIM_CLIMB", "Climb animation.");
-		AddClassToCollection("AnimID", "ANIM_SNEAK", "Sneak animation.");
-		AddClassToCollection("AnimID", "ANIM_HANDS_CLOSED", "Hands closed animation.");
-		AddClassToCollection("AnimID", "ANIM_HANDS_RELAXED", "Hands relaxed animation.");
-		AddClassToCollection("AnimID", "ANIM_DRAW_WEAPON", "Draw weapon animation.");
-		AddClassToCollection("AnimID", "ANIM_SLICE_VERTICAL", "Slice vertical animation.");
-		AddClassToCollection("AnimID", "ANIM_SLICE_HORIZONTAL", "Slice horizontal animation.");
-		AddClassToCollection("AnimID", "ANIM_JUMP_START", "Jump start animation.");
-		AddClassToCollection("AnimID", "ANIM_JUMP_LOOP", "Jump loop (in air) animation.");
-		AddClassToCollection("AnimID", "ANIM_JUMP_END", "Jump end animation.");
-		AddClassToCollection("AnimID", "ANIM_HIGH_JUMP_END", "High jump end animation.");
-		AddClassToCollection("AnimID", "ANIM_JUMP_WALK", "Jump walk animation.");
-		AddClassToCollection("AnimID", "ANIM_FALL", "Fall animation.");
-		AddClassToCollection("AnimID", "ANIM_EAT_1", "Eat 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_EAT_2", "Eat 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_PICKUP_1", "Pickup 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_PICKUP_2", "Pickup 2 animation.");
-		AddClassToCollection("AnimID", "ANIM_ATTACK_1", "Attack 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_ATTACK_2", "Attack 2 animation.");
-		AddClassToCollection("AnimID", "ANIM_ATTACK_3", "Attack 3 animation.");
-		AddClassToCollection("AnimID", "ANIM_ATTACK_4", "Attack 4 animation.");
-		AddClassToCollection("AnimID", "ANIM_SWIM", "Swim  animation.");
-		AddClassToCollection("AnimID", "ANIM_THROW_1", "Throw 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_THROW_2", "Throw 2 animation.");
-		AddClassToCollection("AnimID", "ANIM_DEAD_1", "Dead 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_DEAD_2", "Dead 2 animation.");
-		AddClassToCollection("AnimID", "ANIM_DEAD_3", "Dead 3 animation.");
-		AddClassToCollection("AnimID", "ANIM_SPEAK_1", "Speak 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_SPEAK_2", "Speak 2 animation.");
-		AddClassToCollection("AnimID", "ANIM_SLEEP", "Sleep animation.");
-		AddClassToCollection("AnimID", "ANIM_DANCE", "Dance animation.");
-		AddClassToCollection("AnimID", "ANIM_DUCK", "Duck animation.");
-		AddClassToCollection("AnimID", "ANIM_CROUCH", "Crouch animation.");
-		AddClassToCollection("AnimID", "ANIM_HALT", "Halt animation.");
-		AddClassToCollection("AnimID", "ANIM_ROAR", "Roar animation.");
-		AddClassToCollection("AnimID", "ANIM_SIGH", "Sigh animation.");
-		AddClassToCollection("AnimID", "ANIM_GREETINGS", "Greetings animation.");
-		AddClassToCollection("AnimID", "ANIM_NO_IDEA", "No idea animation.");
-		AddClassToCollection("AnimID", "ANIM_ACTION_1", "Action 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_ACTION_2", "Action 2 animation.");
-		AddClassToCollection("AnimID", "ANIM_ACTION_3", "Action 3 animation.");
-		AddClassToCollection("AnimID", "ANIM_ACTION_4", "Action 4 animation.");
-		AddClassToCollection("AnimID", "ANIM_PULL", "Pull animation.");
-		AddClassToCollection("AnimID", "ANIM_PUSH", "Push animation.");
-		AddClassToCollection("AnimID", "ANIM_KNOCK_DOWN", "Knock down animation.");
-		AddClassToCollection("AnimID", "ANIM_STAND_UP", "Stand up animation.");
-		AddClassToCollection("AnimID", "ANIM_TALK", "Talk animation.");
-		AddClassToCollection("AnimID", "ANIM_POINT", "Point on something animation.");
-		AddClassToCollection("AnimID", "ANIM_LAUGH", "Laugh animation.");
-		AddClassToCollection("AnimID", "ANIM_LAND_1", "After fall or jump land 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_LAND_2", "After fall or jump land 2 animation.");
-		AddClassToCollection("AnimID", "ANIM_SHOOT", "Shoot something animation.");
-		AddClassToCollection("AnimID", "ANIM_START_CLIMB", "Start climb animation.");
-		AddClassToCollection("AnimID", "ANIM_TAKE_DAMAGE", "Take damage animation.");
-		AddClassToCollection("AnimID", "ANIM_SHRUG", "Shrug animation.");
-		AddClassToCollection("AnimID", "ANIM_SALTO", "Salto animation.");
-		AddClassToCollection("AnimID", "ANIM_CRY", "Cry animation.");
-		AddClassToCollection("AnimID", "ANIM_CHEER", "Cheer animation.");
-		AddClassToCollection("AnimID", "ANIM_CAST_SPELL_1", "Cast spell 1 animation.");
-		AddClassToCollection("AnimID", "ANIM_CAST_SPELL_2", "Cast spell 2 animation.");
-		AddClassToCollection("AnimID", "ANIM_CAST_SPELL_3", "Cast spell 3 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_IDLE_1", "Idle 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_IDLE_2", "Idle 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_IDLE_3", "Idle 3 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_IDLE_4", "Idle 4 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_IDLE_5", "Idle 5 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_WALK_NORTH", "Walk north animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_WALK_SOUTH", "Walk south animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_WALK_WEST", "Walk west animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_WALK_EAST", "Walk east animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_RUN", "Run animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_CLIMB", "Climb animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SNEAK", "Sneak animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_HANDS_CLOSED", "Hands closed animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_HANDS_RELAXED", "Hands relaxed animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_DRAW_WEAPON", "Draw weapon animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SLICE_VERTICAL", "Slice vertical animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SLICE_HORIZONTAL", "Slice horizontal animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_JUMP_START", "Jump start animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_JUMP_LOOP", "Jump loop (in air) animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_JUMP_END", "Jump end animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_HIGH_JUMP_END", "High jump end animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_JUMP_WALK", "Jump walk animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_FALL", "Fall animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_EAT_1", "Eat 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_EAT_2", "Eat 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_PICKUP_1", "Pickup 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_PICKUP_2", "Pickup 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_ATTACK_1", "Attack 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_ATTACK_2", "Attack 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_ATTACK_3", "Attack 3 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_ATTACK_4", "Attack 4 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SWIM", "Swim  animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_THROW_1", "Throw 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_THROW_2", "Throw 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_DEAD_1", "Dead 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_DEAD_2", "Dead 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_DEAD_3", "Dead 3 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SPEAK_1", "Speak 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SPEAK_2", "Speak 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SLEEP", "Sleep animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_DANCE", "Dance animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_DUCK", "Duck animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_CROUCH", "Crouch animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_HALT", "Halt animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_ROAR", "Roar animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SIGH", "Sigh animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_GREETINGS", "Greetings animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_NO_IDEA", "No idea animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_ACTION_1", "Action 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_ACTION_2", "Action 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_ACTION_3", "Action 3 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_ACTION_4", "Action 4 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_PULL", "Pull animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_PUSH", "Push animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_KNOCK_DOWN", "Knock down animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_STAND_UP", "Stand up animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_TALK_1", "Talk 1 animation.");
+        AddClassToCollection("AnimationBlender", "ANIM_TALK_2", "Talk 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_POINT", "Point on something animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_LAUGH", "Laugh animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_LAND_1", "After fall or jump land 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_LAND_2", "After fall or jump land 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SHOOT", "Shoot something animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_START_CLIMB", "Start climb animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_TAKE_DAMAGE", "Take damage animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SHRUG", "Shrug animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_SALTO", "Salto animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_CRY", "Cry animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_CHEER", "Cheer animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_CAST_SPELL_1", "Cast spell 1 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_CAST_SPELL_2", "Cast spell 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_CAST_SPELL_3", "Cast spell 3 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_NONE", "None animation (default).");
 
-		AddClassToCollection("AnimID", "ANIM_NONE", "None animation (default).");
 		AddClassToCollection("AnimationBlender", "void init1(AnimID animationId, bool loop)", "Inits the animation blender, also sets and start the first current animation id.");
 		AddClassToCollection("AnimationBlender", "void init2(String animationName, bool loop)", "Inits the animation blender, also sets and start the first current animation name.");
 		AddClassToCollection("AnimationBlender", "Table[string] getAllAvailableAnimationNames(bool skipLogging)", "Gets all available animation names. A string list with all animation names. If none found, empty list will be delivered.");

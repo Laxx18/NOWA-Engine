@@ -445,6 +445,7 @@ namespace NOWA
 					this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 					if (nullptr != this->dummyItem)
 					{
+                        this->dummyItem->setName("DummyItem");
 						this->dummyItem->setCastShadows(false);
 					}
 
@@ -627,6 +628,16 @@ namespace NOWA
 		}
 
  		this->active->setValue(activated);
+
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]
+        {
+            this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+            if (this->dummyItem != nullptr)
+            {
+                this->dummyItem->setVisible(this->showDummyEntity->getBool());
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setActivated");
 
 		if (true == this->active->getBool())
 		{

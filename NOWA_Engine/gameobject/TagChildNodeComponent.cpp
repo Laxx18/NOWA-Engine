@@ -19,7 +19,7 @@ namespace NOWA
 		oldSourceChildPosition(Ogre::Vector3::ZERO),
 		oldSourceChildOrientation(Ogre::Quaternion::IDENTITY),
 		alreadyConnected(false),
-        activated(new Variant(TagChildNodeComponent::AttrActivated(), true, this->attributes, true)),
+        activated(new Variant(TagChildNodeComponent::AttrActivated(), true, this->attributes, false)),
 		sourceId(new Variant(TagChildNodeComponent::AttrSourceId(), static_cast<unsigned long>(0), this->attributes, true))
 	{
 		

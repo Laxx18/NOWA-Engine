@@ -3105,6 +3105,8 @@ namespace NOWA
                 Ogre::Vector3 moveForce = velocityError * mass / timeStep;
 
                 body->setForce(moveForce);
+
+                this->requiredVelocityForForceCommand.pending.store(false);
                 this->requiredVelocityForForceCommand.inProgress.store(false);
             }
         }
@@ -3131,9 +3133,10 @@ namespace NOWA
             if (this->omegaForceCommand.inProgress.compare_exchange_strong(expected, true))
             {
                 Ogre::Vector3 desiredOmega = this->omegaForceCommand.vectorValue;
+                // body->setTorqueFromOmega(desiredOmega, timeStep);
+                body->setBodyAngularVelocity(desiredOmega, timeStep);
 
-                body->setTorqueFromOmega(desiredOmega, timeStep);
-
+                this->omegaForceCommand.pending.store(false);
                 this->omegaForceCommand.inProgress.store(false);
             }
         }

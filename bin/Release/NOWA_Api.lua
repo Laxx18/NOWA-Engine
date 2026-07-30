@@ -1171,12 +1171,24 @@ return {
 			}
 		}
 	},
-	AnimID =
+	AnimationBlender =
 	{
 		type = "class",
-		description = "AnimID class",
+		description = "This class can be used for more complex animations and transitions between them.",
 		childs = 
 		{
+			BLEND_SWITCH =
+			{
+				type = "value"
+			},
+			BLEND_WHILE_ANIMATING =
+			{
+				type = "value"
+			},
+			BLEND_THEN_ANIMATE =
+			{
+				type = "value"
+			},
 			ANIM_IDLE_1 =
 			{
 				type = "value"
@@ -1401,7 +1413,11 @@ return {
 			{
 				type = "value"
 			},
-			ANIM_TALK =
+			ANIM_TALK_1 =
+			{
+				type = "value"
+			},
+			ANIM_TALK_2 =
 			{
 				type = "value"
 			},
@@ -1462,26 +1478,6 @@ return {
 				type = "value"
 			},
 			ANIM_NONE =
-			{
-				type = "value"
-			}
-		}
-	},
-	AnimationBlender =
-	{
-		type = "class",
-		description = "This class can be used for more complex animations and transitions between them.",
-		childs = 
-		{
-			BLEND_SWITCH =
-			{
-				type = "value"
-			},
-			BLEND_WHILE_ANIMATING =
-			{
-				type = "value"
-			},
-			BLEND_THEN_ANIMATE =
 			{
 				type = "value"
 			},
@@ -3677,7 +3673,7 @@ return {
 			setOffsetPosition =
 			{
 				type = "method",
-				description = "Sets the camera offset position, it should be away from the game object.",
+				description = "Sets the offset of the camera relative to the target, in the camera's local right/up/forward axes (x/y/z).",
 				args = "(Vector3 offsetPosition)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -3685,7 +3681,7 @@ return {
 			getOffsetPosition =
 			{
 				type = "function",
-				description = "Gets the offset position, the camera is away from the game object.",
+				description = "Gets the offset of the camera relative to the target.",
 				args = "()",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
@@ -3693,7 +3689,7 @@ return {
 			setLookAtOffset =
 			{
 				type = "method",
-				description = "Sets the camera look at game object offset.",
+				description = "Sets the offset added to the target's position before the camera looks at it, e.g. to aim at head height instead of the pivot.",
 				args = "(Vector3 lookAtOffset)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -3701,7 +3697,7 @@ return {
 			getLookAtOffset =
 			{
 				type = "function",
-				description = "Gets the camera look at game object offset.",
+				description = "Gets the look-at offset applied to the target's position.",
 				args = "()",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
@@ -3709,7 +3705,7 @@ return {
 			setSpringForce =
 			{
 				type = "method",
-				description = "Sets the camera spring force, that is, when the game object is rotated the camera is moved to the same direction but with a spring effect.",
+				description = "Sets the strength of the spring pulling the camera toward its ideal position. Higher values react faster but can overshoot.",
 				args = "(number springForce)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -3717,7 +3713,7 @@ return {
 			getSpringForce =
 			{
 				type = "function",
-				description = "Gets the camera spring force.",
+				description = "Gets the spring force pulling the camera toward its ideal position.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -3725,7 +3721,7 @@ return {
 			setFriction =
 			{
 				type = "method",
-				description = "Sets the camera friction during movement.",
+				description = "Sets the damping applied to the spring's motion. Higher values settle faster with less oscillation; too high feels sluggish.",
 				args = "(number friction)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -3733,7 +3729,7 @@ return {
 			getFriction =
 			{
 				type = "function",
-				description = "Gets the camera friction during movement.",
+				description = "Gets the damping applied to the spring's motion.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -3741,7 +3737,7 @@ return {
 			setSpringLength =
 			{
 				type = "method",
-				description = "Sets the camera spring length during movement.",
+				description = "Sets the desired distance between the camera and the target when nothing is occluding the view.",
 				args = "(number springLength)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -3749,7 +3745,23 @@ return {
 			getSpringLength =
 			{
 				type = "function",
-				description = "Gets the camera spring length during movement.",
+				description = "Gets the desired distance between the camera and the target.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOcclusionMaxSpeed =
+			{
+				type = "method",
+				description = "Sets the speed threshold (world units/second) above which occlusion probing is skipped for the frame. At very high speeds (e.g. hyperdrive) a single-instant probe result has no continuity with the previous frame and can cause visible camera jitter; above this threshold the view is treated as unoccluded. Set above normal flight speed and below boost/hyperdrive speed.",
+				args = "(number occlusionMaxSpeed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOcclusionMaxSpeed =
+			{
+				type = "function",
+				description = "Gets the speed threshold above which occlusion probing is skipped.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -33906,6 +33918,22 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			setLandingCategories =
+			{
+				type = "method",
+				description = "Sets which GameObject categories count as a valid landing surface. Default "ALL" allows landing anywhere the terrain gradient permits. Combine categories with '+' to restrict landing, e.g. "Platform+Terrain" for landing pads only. If nothing of an allowed category is found directly below the ship, landing is denied.",
+				args = "(string categories)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLandingCategories =
+			{
+				type = "function",
+				description = "Gets the currently configured landing category string.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			},
 			getCurrentLandingPlanetGradient =
 			{

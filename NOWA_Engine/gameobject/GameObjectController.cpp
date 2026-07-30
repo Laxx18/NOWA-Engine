@@ -2006,7 +2006,6 @@ namespace NOWA
 
             this->jointComponentMap.clear();
             this->physicsCompoundConnectionComponentMap.clear();
-            ;
         };
 
         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));

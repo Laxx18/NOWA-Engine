@@ -245,177 +245,177 @@ namespace NOWA
 
 	void LightAreaComponent::createLight(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("LightAreaComponent::createLight",
-		{
-			Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
-			Ogre::Hlms* hlmsPbs = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
-			Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-		
-			///////////////////////////////////////Create Area Light//////////////////////////////////////////////////////////////
-			if (nullptr == this->light)
-			{
-				this->light = this->gameObjectPtr->getSceneManager()->createLight();
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+        {
+            Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+            Ogre::Hlms* hlmsPbs = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
+            Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
 
-				this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
-				this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
-				this->light->setPowerScale(this->powerScale->getReal());
-				// this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
-				this->light->setCastShadows(this->castShadows->getBool());
-				this->setAttenuationRadius(this->attenuationRadius->getVector2());
-				this->gameObjectPtr->getSceneNode()->attachObject(light);
-			}
+            ///////////////////////////////////////Create Area Light//////////////////////////////////////////////////////////////
+            if (nullptr == this->light)
+            {
+                this->light = this->gameObjectPtr->getSceneManager()->createLight();
 
-			///////////////////////////////////////Setup Datablock//////////////////////////////////////////////////////////////
-			if (nullptr == this->datablock)
-			{
-				//Set the texture mask to PBS.
-	// Attention: Look out for strange effects!
+                this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
+                this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
+                this->light->setPowerScale(this->powerScale->getReal());
+                // this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+                this->light->setCastShadows(this->castShadows->getBool());
+                this->setAttenuationRadius(this->attenuationRadius->getVector2());
+                this->gameObjectPtr->getSceneNode()->attachObject(light);
+            }
 
-				assert(dynamic_cast<Ogre::HlmsPbs*>(hlmsPbs));
-				Ogre::HlmsPbs* pbs = static_cast<Ogre::HlmsPbs*>(hlmsPbs);
+            ///////////////////////////////////////Setup Datablock//////////////////////////////////////////////////////////////
+            if (nullptr == this->datablock)
+            {
+                // Set the texture mask to PBS.
+                // Attention: Look out for strange effects!
 
-				Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+                assert(dynamic_cast<Ogre::HlmsPbs*>(hlmsPbs));
+                Ogre::HlmsPbs* pbs = static_cast<Ogre::HlmsPbs*>(hlmsPbs);
 
-				Ogre::TextureGpu* areaTexture = textureManager->findTextureNoThrow(this->textureName->getString());
-				if (nullptr != areaTexture)
-				{
-					textureManager->destroyTexture(areaTexture);
-					areaTexture = nullptr;
-				}
+                Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
-				//Set the array index of the light mask in mAreaMaskTex
-				this->light->mTextureLightMaskIdx = 1u;
+                Ogre::TextureGpu* areaTexture = textureManager->findTextureNoThrow(this->textureName->getString());
+                if (nullptr != areaTexture)
+                {
+                    textureManager->destroyTexture(areaTexture);
+                    areaTexture = nullptr;
+                }
 
-				//We know beforehand that floor_bump.PNG & co are 512x512. This is important!!!
-				//(because it must match the resolution of the texture created via reservePoolId)
-				/*const char *textureNames[4] = { "floor_bump.PNG", "grassWalpha.tga",
-				"MtlPlat2.jpg", "Panels_Normal_Obj.png" };*/
-				// Attention: How does it work with the pools (c_areaLightsPoolId) ??
-				if (false == this->textureName->getString().empty())
-				{
-					areaTexture = textureManager->createOrRetrieveTexture(this->textureName->getString(), this->textureName->getString(),
-						Ogre::GpuPageOutStrategy::Discard, Ogre::CommonTextureTypes::Diffuse, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-						this->light->mTextureLightMaskIdx);
-				}
+                // Set the array index of the light mask in mAreaMaskTex
+                this->light->mTextureLightMaskIdx = 1u;
 
-				//Set the texture for this area light. The parameters to createOrRetrieveTexture
-				//do not matter much, as the texture has already been created.
-				/*areaTexture = textureManager->createOrRetrieveTexture(
-					this->textureName->getString(), Ogre::GpuPageOutStrategy::AlwaysKeepSystemRamCopy,
-						Ogre::TextureFlags::AutomaticBatching,
-						Ogre::TextureTypes::Type2D, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);*/
+                // We know beforehand that floor_bump.PNG & co are 512x512. This is important!!!
+                //(because it must match the resolution of the texture created via reservePoolId)
+                /*const char *textureNames[4] = { "floor_bump.PNG", "grassWalpha.tga",
+                "MtlPlat2.jpg", "Panels_Normal_Obj.png" };*/
+                // Attention: How does it work with the pools (c_areaLightsPoolId) ??
+                if (false == this->textureName->getString().empty())
+                {
+                    areaTexture = textureManager->createOrRetrieveTexture(this->textureName->getString(), this->textureName->getString(), Ogre::GpuPageOutStrategy::Discard, Ogre::CommonTextureTypes::Diffuse,
+                        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, this->light->mTextureLightMaskIdx);
+                }
 
-				if (nullptr == areaTexture)
-				{
-					return;
-				}
+                // Set the texture for this area light. The parameters to createOrRetrieveTexture
+                // do not matter much, as the texture has already been created.
+                /*areaTexture = textureManager->createOrRetrieveTexture(
+                    this->textureName->getString(), Ogre::GpuPageOutStrategy::AlwaysKeepSystemRamCopy,
+                        Ogre::TextureFlags::AutomaticBatching,
+                        Ogre::TextureTypes::Type2D, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);*/
 
-				// areaTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-				// areaTexture->waitForData();
-				textureManager->waitForStreamingCompletion();
+                if (nullptr == areaTexture)
+                {
+                    return;
+                }
 
-				this->light->setTexture(areaTexture);
-				// Attention: How to control this?
-				pbs->setAreaLightMasks(areaTexture);
-				pbs->setAreaLightForwardSettings(2u, 2u);
+                // areaTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+                // areaTexture->waitForData();
+                textureManager->waitForStreamingCompletion();
 
-				//Setup an unlit material, double-sided, with textures
-				//(if it has one) and same color as the light.
-				//IMPORTANT: these materials are never destroyed once they're not needed (they will
-				//be destroyed by Ogre on shutdown). Watchout for this to prevent memory leaks in
-				//a real implementation
-				const Ogre::String materialName = "LightPlaneMaterial" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+                this->light->setTexture(areaTexture);
+                // Attention: How to control this?
+                pbs->setAreaLightMasks(areaTexture);
+                pbs->setAreaLightForwardSettings(2u, 2u);
 
-				Ogre::HlmsMacroblock macroblock;
-				macroblock.mCullMode = Ogre::CULL_NONE;
-				Ogre::HlmsDatablock* datablockBase = hlmsUnlit->createDatablock(materialName, materialName, macroblock, Ogre::HlmsBlendblock(), Ogre::HlmsParamVec());
+                // Setup an unlit material, double-sided, with textures
+                //(if it has one) and same color as the light.
+                // IMPORTANT: these materials are never destroyed once they're not needed (they will
+                // be destroyed by Ogre on shutdown). Watchout for this to prevent memory leaks in
+                // a real implementation
+                const Ogre::String materialName = "LightPlaneMaterial" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
-				assert(dynamic_cast<Ogre::HlmsUnlitDatablock*>(datablockBase));
-				this->datablock = static_cast<Ogre::HlmsUnlitDatablock*>(datablockBase);
+                Ogre::HlmsMacroblock macroblock;
+                macroblock.mCullMode = Ogre::CULL_NONE;
+                Ogre::HlmsDatablock* datablockBase = hlmsUnlit->createDatablock(materialName, materialName, macroblock, Ogre::HlmsBlendblock(), Ogre::HlmsParamVec());
 
-				if (light->mTextureLightMaskIdx != std::numeric_limits<Ogre::uint16>::max())
-				{
-					Ogre::HlmsSamplerblock samplerblock;
-					samplerblock.mMaxAnisotropy = 8.0f;
-					samplerblock.setFiltering(Ogre::TFO_ANISOTROPIC);
+                assert(dynamic_cast<Ogre::HlmsUnlitDatablock*>(datablockBase));
+                this->datablock = static_cast<Ogre::HlmsUnlitDatablock*>(datablockBase);
 
-					datablock->setTexture(0, areaTexture, &samplerblock);
-				}
+                if (light->mTextureLightMaskIdx != std::numeric_limits<Ogre::uint16>::max())
+                {
+                    Ogre::HlmsSamplerblock samplerblock;
+                    samplerblock.mMaxAnisotropy = 8.0f;
+                    samplerblock.setFiltering(Ogre::TFO_ANISOTROPIC);
 
-				datablock->setUseColour(true);
-				datablock->setColour(light->getDiffuseColour());
-				// Attention: Is this necessary?
-							// datablock->setTextureSwizzle(0, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK);
+                    datablock->setTexture(0, areaTexture, &samplerblock);
+                }
 
-							//Control the diffuse mip (this is the default value)
-				this->light->mTexLightMaskDiffuseMipStart = (Ogre::uint16)(this->diffuseMipStart->getReal() * 65535); // (Ogre::uint16)(0.95f * 65535);
-				this->light->setDoubleSided(this->doubleSided->getBool());
-			}
-			/*else
-			{
-				this->light->mTextureLightMaskIdx = std::numeric_limits<Ogre::uint16>::max();
-			}*/
+                datablock->setUseColour(true);
+                datablock->setColour(light->getDiffuseColour());
+                // Attention: Is this necessary?
+                // datablock->setTextureSwizzle(0, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK, Ogre::HlmsUnlitDatablock::R_MASK);
 
-			///////////////////////////////////////Create Areaplane//////////////////////////////////////////////////////////////
-			// Here predefined PlaneComponent? with area texture?
-			Ogre::String meshName = this->gameObjectPtr->getName()/* + "mesh"*/;
-			Ogre::ResourcePtr resourceV1 = Ogre::v1::MeshManager::getSingletonPtr()->getResourceByName(meshName);
-			// Destroy a potential plane v1, because an error occurs (plane with name ... already exists)
-			if (nullptr != resourceV1)
-			{
-				Ogre::v1::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
-				Ogre::v1::MeshManager::getSingletonPtr()->remove(resourceV1->getHandle());
-			}
+                // Control the diffuse mip (this is the default value)
+                this->light->mTexLightMaskDiffuseMipStart = (Ogre::uint16)(this->diffuseMipStart->getReal() * 65535); // (Ogre::uint16)(0.95f * 65535);
+                this->light->setDoubleSided(this->doubleSided->getBool());
+            }
+            /*else
+            {
+                this->light->mTextureLightMaskIdx = std::numeric_limits<Ogre::uint16>::max();
+            }*/
 
-			// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
-			Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName);
-			if (nullptr != resourceV2)
-			{
-				Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
-				Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
-			}
-			Ogre::v1::MeshPtr lightPlaneMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-				Ogre::Plane(Ogre::Vector3::UNIT_Z, 0.0f), 1.0f, 1.0f, 1, 1, true, 1, 1.0f, 1.0f, Ogre::Vector3::UNIT_Y, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+            ///////////////////////////////////////Create Areaplane//////////////////////////////////////////////////////////////
+            // Here predefined PlaneComponent? with area texture?
+            Ogre::String meshName = this->gameObjectPtr->getName() /* + "mesh"*/;
+            Ogre::ResourcePtr resourceV1 = Ogre::v1::MeshManager::getSingletonPtr()->getResourceByName(meshName);
+            // Destroy a potential plane v1, because an error occurs (plane with name ... already exists)
+            if (nullptr != resourceV1)
+            {
+                Ogre::v1::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
+                Ogre::v1::MeshManager::getSingletonPtr()->remove(resourceV1->getHandle());
+            }
 
-			Ogre::MeshPtr lightPlaneMesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, lightPlaneMeshV1.get(), true, true, true);
-			lightPlaneMeshV1->unload();
-			lightPlaneMeshV1.setNull();
+            // Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
+            Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName);
+            if (nullptr != resourceV2)
+            {
+                Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
+                Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+            }
+            Ogre::v1::MeshPtr lightPlaneMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::Plane(Ogre::Vector3::UNIT_Z, 0.0f), 1.0f, 1.0f, 1, 1, true, 1, 1.0f, 1.0f,
+                Ogre::Vector3::UNIT_Y, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
 
-			const Ogre::Vector2 rectSize = light->getRectSize();
+            Ogre::MeshPtr lightPlaneMesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, lightPlaneMeshV1.get(), true, true, true);
+            lightPlaneMeshV1->unload();
+            lightPlaneMeshV1.setNull();
 
-			// Later: Make scene node and entity static!
-			Ogre::Item* item = this->gameObjectPtr->getSceneManager()->createItem(lightPlaneMesh, Ogre::SCENE_DYNAMIC);
+            const Ogre::Vector2 rectSize = light->getRectSize();
 
-			this->gameObjectPtr->getSceneNode()->setScale(rectSize.x, rectSize.y, 1.0f);
-			this->gameObjectPtr->getSceneNode()->attachObject(item);
-			// this->gameObjectPtr->getSceneNode()->_setDerivedOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
+            // Later: Make scene node and entity static!
+            Ogre::Item* item = this->gameObjectPtr->getSceneManager()->createItem(lightPlaneMesh, Ogre::SCENE_DYNAMIC);
 
-			// Set the here newly created entity for this game object
-			this->gameObjectPtr->init(item);
-			this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_MESH);
+            this->gameObjectPtr->getSceneNode()->setScale(rectSize.x, rectSize.y, 1.0f);
+            this->gameObjectPtr->getSceneNode()->attachObject(item);
+            // this->gameObjectPtr->getSceneNode()->_setDerivedOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
 
-			// Attention:
-			// entity->setCastShadows(false);
-			// Register after the component has been created
-			AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+            // Set the here newly created entity for this game object
+            this->gameObjectPtr->init(item);
+            this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_MESH);
 
-			item->setDatablock(this->datablock);
-			this->datablock->setUseColour(true);
-			this->datablock->setColour(this->light->getDiffuseColour());
+            // Attention:
+            // entity->setCastShadows(false);
+            // Register after the component has been created
+            AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 
-			// Math the plane size to that of the area light
-			this->setRectSize(this->rectSize->getVector2());
+            item->setDatablock(this->datablock);
+            this->datablock->setUseColour(true);
+            this->datablock->setColour(this->light->getDiffuseColour());
 
-			this->light->setAffectParentNode(this->affectParentNode->getBool());
+            // Math the plane size to that of the area light
+            this->setRectSize(this->rectSize->getVector2());
 
-			this->setDirection(this->direction->getVector3());
+            this->light->setAffectParentNode(this->affectParentNode->getBool());
 
-			this->setAreaLightType(this->areaLightType->getListSelectedValue());
+            this->setDirection(this->direction->getVector3());
 
-			/* For debugging ranges & AABBs
-			Ogre::WireAabb *wireAabb = sceneManager->createWireAabb();
-			wireAabb->track( light );*/
-		});
+            this->setAreaLightType(this->areaLightType->getListSelectedValue());
+
+            /* For debugging ranges & AABBs
+            Ogre::WireAabb *wireAabb = sceneManager->createWireAabb();
+            wireAabb->track( light );*/
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightAreaComponent::createLight");
 	}
 
 	void LightAreaComponent::actualizeValue(Variant* attribute)

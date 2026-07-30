@@ -565,6 +565,40 @@ namespace NOWA
         void setSpringLength(Ogre::Real springLength);
         Ogre::Real getSpringLength(void) const;
 
+		/**
+         * @brief Sets the speed threshold above which occlusion probing (sweep + raycasts
+         *        against the world) is skipped for the current frame.
+         * @param[in] occlusionMaxSpeed The maximum camera-target speed, in world units per
+         *        second, at which occlusion probing still runs. Above this value the probe
+         *        is bypassed entirely and the occlusion distance is treated as unoccluded
+         *        (desiredDistance), letting the existing release-smoothing ease the camera
+         *        back out instead of reacting to a probe result.
+         * @note Why this exists: at very high closing speeds (e.g. a hyperdrive jump) the
+         *       sweep/raycast origin and target differ enormously from one frame to the
+         *       next. Each individual probe is still geometrically correct for that one
+         *       instant, but its result has no continuity with the previous frame's result
+         *       - it can flip between "clear" and "something very close" every frame as the
+         *       ship blows past geometry, distant render detail, or its own trailing
+         *       effects. That flip-flop is exactly what triggers the hard snap branch in
+         *       moveCamera() (targetDistance < currentCollisionDistance - skinMargin * 2),
+         *       which bypasses the smoothing lerp entirely - producing the visible jitter.
+         *       Since a single-instant probe cannot be trusted at these speeds, this
+         *       threshold disables it rather than trying to filter/average unreliable
+         *       results.
+         * @note Speed is measured from physicsBody->getVelocity() when a physics body is
+         *       set (exact, independent of dt), or falls back to a finite difference of
+         *       castOrigin over dt otherwise - see moveCamera().
+         * @note Default: 50.0f. Tune this above your normal flight speed and below your
+         *       hyperdrive/boost speed so normal occlusion behavior is unaffected.
+         */
+        void setOcclusionMaxSpeed(Ogre::Real occlusionMaxSpeed);
+
+        /**
+         * @brief Gets the currently configured occlusion probing speed threshold.
+         * @return The threshold in world units per second.
+         */
+        Ogre::Real getOcclusionMaxSpeed(void) const;
+
         void setProbeRadius(Ogre::Real probeRadius);
         Ogre::Real getProbeRadius(void) const;
 
@@ -600,7 +634,11 @@ namespace NOWA
         {
             return "Spring Length";
         }
-        static const Ogre::String AttrProbeRadius(void)
+        static const Ogre::String AttrOcclusionMaxSpeed(void)
+        {
+            return "Occlusion Max Speed";
+        }
+		static const Ogre::String AttrProbeRadius(void)
         {
             return "Probe Radius";
         }
@@ -625,6 +663,7 @@ namespace NOWA
         Variant* springForce;
         Variant* friction;
         Variant* springLength;
+        Variant* occlusionMaxSpeed;
         Variant* lookAtOffset;
         Variant* probeRadius;
         Variant* skinMargin;

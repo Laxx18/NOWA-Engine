@@ -217,10 +217,12 @@ namespace NOWA
             {
                 if (nullptr != this->baseCamera)
                 {
-                    ENQUEUE_RENDER_COMMAND_WAIT("CameraBehaviorComponent::setActivated", {
+                    NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this]
+                    {
                         this->baseCamera->getCamera()->setPosition(this->baseCamera->getCamera()->getParentSceneNode()->convertWorldToLocalPositionUpdated(this->oldPosition));
                         this->baseCamera->getCamera()->setOrientation(this->baseCamera->getCamera()->getParentSceneNode()->convertWorldToLocalOrientationUpdated(this->oldOrientation));
-                    });
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "CameraBehaviorComponent::setActivated");
 
                     AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getBehaviorType());
                     this->baseCamera = nullptr;
@@ -1058,12 +1060,26 @@ namespace NOWA
         springForce(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSpringForce(), 0.8f, this->attributes)),
         friction(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrFriction(), 0.6f, this->attributes)),
         springLength(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSpringLength(), 6.0f, this->attributes)),
+        occlusionMaxSpeed(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrOcclusionMaxSpeed(), 100.0f, this->attributes)),
         probeRadius(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrProbeRadius(), 0.25f, this->attributes)),
         skinMargin(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSkinMargin(), 0.15f, this->attributes)),
         minDistance(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrMinDistance(), 0.5f, this->attributes)),
-        releaseSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrReleaseSmoothValue(), 0.85f, this->attributes)),
-        pullInSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrPullInSmoothValue(), 20.0f, this->attributes))
+        releaseSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrReleaseSmoothValue(), 1.5f, this->attributes)),
+        pullInSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrPullInSmoothValue(), 10.0f, this->attributes))
     {
+        this->offsetPosition->setDescription("Offset of the camera relative to the target, in the camera's local right/up/forward axes (x/y/z).");
+        this->lookAtOffset->setDescription("Offset added to the target's position before the camera looks at it, e.g. to aim at head height instead of the pivot.");
+        this->springForce->setDescription("Strength of the spring pulling the camera toward its ideal position. Higher values react faster but can overshoot.");
+        this->friction->setDescription("Damping applied to the spring's motion. Higher values settle faster with less oscillation; too high feels sluggish.");
+        this->springLength->setDescription("Desired distance between the camera and the target when nothing is occluding the view.");
+        this->occlusionMaxSpeed->setDescription("Speed threshold (world units/second) above which occlusion probing is skipped for the frame. At very high speeds (e.g. hyperdrive) a single-instant sweep/raycast result has no continuity with the "
+                                                "previous frame and can flip between clear and blocked every frame, causing visible camera jitter. Above this threshold the probe is bypassed and the view is treated as unoccluded. Set above normal "
+                                                "flight speed and below boost/hyperdrive speed.");
+        this->probeRadius->setDescription("Radius of the sphere swept from the target toward the camera to detect occlusion, and of the small ray cluster used against terrain/tree collision.");
+        this->skinMargin->setDescription("Extra clearance kept between the camera and an occluding surface, preventing the camera from clipping into geometry it just detected.");
+        this->minDistance->setDescription("Hard minimum distance the camera is ever allowed to be from the target, regardless of occlusion.");
+        this->releaseSmoothValue->setDescription("How quickly the camera moves back out to its ideal distance once an obstruction is no longer detected. Higher values release faster.");
+        this->pullInSmoothValue->setDescription("How quickly the camera pulls in toward a newly detected obstruction. Higher values react faster to prevent clipping, but can feel abrupt.");
     }
 
     CameraBehaviorThirdPersonOcclusionComponent::~CameraBehaviorThirdPersonOcclusionComponent()
@@ -1098,6 +1114,11 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpringLength")
         {
             this->springLength->setValue(XMLConverter::getAttribReal(propertyElement, "data", 6.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OcclusionMaxSpeed")
+        {
+            this->occlusionMaxSpeed->setValue(XMLConverter::getAttribReal(propertyElement, "data", 100.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ProbeRadius")
@@ -1137,6 +1158,7 @@ namespace NOWA
         clonedCompPtr->setSpringForce(this->springForce->getReal());
         clonedCompPtr->setFriction(this->friction->getReal());
         clonedCompPtr->setSpringLength(this->springLength->getReal());
+        clonedCompPtr->setOcclusionMaxSpeed(this->occlusionMaxSpeed->getReal());
         clonedCompPtr->setProbeRadius(this->probeRadius->getReal());
         clonedCompPtr->setSkinMargin(this->skinMargin->getReal());
         clonedCompPtr->setMinDistance(this->minDistance->getReal());
@@ -1209,6 +1231,10 @@ namespace NOWA
         {
             this->setSpringLength(attribute->getReal());
         }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrOcclusionMaxSpeed() == attribute->getName())
+        {
+            this->setOcclusionMaxSpeed(attribute->getReal());
+        }
         else if (CameraBehaviorThirdPersonOcclusionComponent::AttrProbeRadius() == attribute->getName())
         {
             this->setProbeRadius(attribute->getReal());
@@ -1265,6 +1291,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->springLength->getReal())));
         propertiesXML->append_node(propertyXML);
 
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "OcclusionMaxSpeed"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->occlusionMaxSpeed->getReal())));
+        propertiesXML->append_node(propertyXML);
+        
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "ProbeRadius"));
@@ -1380,6 +1412,16 @@ namespace NOWA
         return this->springLength->getReal();
     }
 
+    void CameraBehaviorThirdPersonOcclusionComponent::setOcclusionMaxSpeed(Ogre::Real occlusionMaxSpeed)
+    {
+        this->occlusionMaxSpeed->setValue(occlusionMaxSpeed);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getOcclusionMaxSpeed(void) const
+    {
+        return this->occlusionMaxSpeed->getReal();
+    }
+
     void CameraBehaviorThirdPersonOcclusionComponent::setProbeRadius(Ogre::Real probeRadius)
     {
         this->probeRadius->setValue(probeRadius);
@@ -1472,19 +1514,28 @@ namespace NOWA
             .def("getFriction", &CameraBehaviorThirdPersonOcclusionComponent::getFriction)
             .def("setSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::setSpringLength)
             .def("getSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::getSpringLength)
+            .def("setOcclusionMaxSpeed", &CameraBehaviorThirdPersonOcclusionComponent::setOcclusionMaxSpeed)
+            .def("getOcclusionMaxSpeed", &CameraBehaviorThirdPersonOcclusionComponent::getOcclusionMaxSpeed)
         ];
 
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the camera offset position, it should be away from the game object.");
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "Vector3 getOffsetPosition()", "Gets the offset position, the camera is away from the game object.");
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setLookAtOffset(Vector3 lookAtOffset)", "Sets the camera look at game object offset.");
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "Vector3 getLookAtOffset()", "Gets the camera look at game object offset.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setOffsetPosition(Vector3 offsetPosition)",
+            "Sets the offset of the camera relative to the target, in the camera's local right/up/forward axes (x/y/z).");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "Vector3 getOffsetPosition()", "Gets the offset of the camera relative to the target.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setLookAtOffset(Vector3 lookAtOffset)",
+            "Sets the offset added to the target's position before the camera looks at it, e.g. to aim at head height instead of the pivot.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "Vector3 getLookAtOffset()", "Gets the look-at offset applied to the target's position.");
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setSpringForce(float springForce)",
-            "Sets the camera spring force, that is, when the game object is rotated the camera is moved to the same direction but with a spring effect.");
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getSpringForce()", "Gets the camera spring force.");
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setFriction(float friction)", "Sets the camera friction during movement.");
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getFriction()", "Gets the camera friction during movement.");
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setSpringLength(float springLength)", "Sets the camera spring length during movement.");
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getSpringLength()", "Gets the camera spring length during movement.");
+            "Sets the strength of the spring pulling the camera toward its ideal position. Higher values react faster but can overshoot.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getSpringForce()", "Gets the spring force pulling the camera toward its ideal position.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setFriction(float friction)",
+            "Sets the damping applied to the spring's motion. Higher values settle faster with less oscillation; too high feels sluggish.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getFriction()", "Gets the damping applied to the spring's motion.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setSpringLength(float springLength)", "Sets the desired distance between the camera and the target when nothing is occluding the view.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getSpringLength()", "Gets the desired distance between the camera and the target.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setOcclusionMaxSpeed(float occlusionMaxSpeed)",
+            "Sets the speed threshold (world units/second) above which occlusion probing is skipped for the frame. At very high speeds (e.g. hyperdrive) a single-instant probe result has no continuity with the previous frame and can cause visible "
+            "camera jitter; above this threshold the view is treated as unoccluded. Set above normal flight speed and below boost/hyperdrive speed.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getOcclusionMaxSpeed()", "Gets the speed threshold above which occlusion probing is skipped.");
 
         gameObjectClass.def("getCameraBehaviorThirdPersonOcclusionComponentFromName", &getCameraBehaviorThirdPersonOcclusionComponentFromName);
         gameObjectClass.def("getCameraBehaviorThirdPersonOcclusionComponent", (CameraBehaviorThirdPersonOcclusionComponent * (*)(GameObject*)) & getCameraBehaviorThirdPersonOcclusionComponent);

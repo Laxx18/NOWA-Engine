@@ -183,7 +183,7 @@ namespace
             // Lexy_0 and it STILL ends up as the final hitBody, the bug is not in this
             // comparison logic at all, it is in whether the underlying Newton/OgreNewt
             // raycast actually honors userPreFilterCallback's return value.
-            if (true == this->bDebugLog)
+             if (true == this->bDebugLog)
             {
                 Ogre::String nodeName = "<no node>";
                 if (nullptr != body && nullptr != body->getOgreNode())
@@ -242,6 +242,9 @@ namespace NOWA
         lastProbeResultDistance(cameraSpringLength),
         hasProbedOnce(false),
         probeCacheEpsilon(0.01f),
+        occlusionMaxSpeed(100.0f),
+        lastFrameOrigin(Ogre::Vector3::ZERO),
+        hasFrameOrigin(false),
         bShowDebugData(false)
     {
     }
@@ -258,10 +261,6 @@ namespace NOWA
             return;
         }
 
-        // Pure analytic primitive (sphere via uniform-radius Ellipsoid) - no mesh data
-        // read, so unlike ConvexHull/ConcaveHull this needs no enqueueAndWait. Mirrors
-        // BasePhysicsCamera::onSetData constructing its Ellipsoid the same way, directly,
-        // with no render-thread dispatch.
         OgreNewt::CollisionPrimitives::Ellipsoid* col = new OgreNewt::CollisionPrimitives::Ellipsoid(this->ogreNewt, Ogre::Vector3(this->probeRadius, this->probeRadius, this->probeRadius), 0);
         this->probeShape = OgreNewt::CollisionPtr(col);
     }
@@ -275,6 +274,7 @@ namespace NOWA
         this->firstSpringSample = true;
         this->currentCollisionDistance = this->cameraSpringLength;
         this->hasProbedOnce = false;
+        this->hasFrameOrigin = false;
 
         if (nullptr != this->sceneNode)
         {
@@ -333,8 +333,6 @@ namespace NOWA
     void ThirdPersonOcclusionCamera::setProbeRadius(Ogre::Real probeRadius)
     {
         this->probeRadius = probeRadius;
-        // Rebuild immediately if the shape already exists, so tuning this live works -
-        // cheap, analytic, no render-thread dispatch, see rebuildProbeShape().
         if (nullptr != this->probeShape)
         {
             this->rebuildProbeShape();
@@ -364,6 +362,11 @@ namespace NOWA
     void ThirdPersonOcclusionCamera::setProbeCacheEpsilon(Ogre::Real probeCacheEpsilon)
     {
         this->probeCacheEpsilon = probeCacheEpsilon;
+    }
+
+    void ThirdPersonOcclusionCamera::setOcclusionMaxSpeed(Ogre::Real occlusionMaxSpeed)
+    {
+        this->occlusionMaxSpeed = occlusionMaxSpeed;
     }
 
     void ThirdPersonOcclusionCamera::setShowDebugData(bool showDebugData)
@@ -399,14 +402,14 @@ namespace NOWA
             playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
         }
 
-        if (true == this->firstSpringSample)
+        /*if (true == this->firstSpringSample)
         {
             this->internalSpringPosition = this->camera->getPosition();
             this->firstSpringSample = false;
         }
-        Ogre::Vector3 cameraPosition = this->internalSpringPosition;
+        Ogre::Vector3 cameraPosition = this->internalSpringPosition;*/
 
-        // Ogre::Vector3 cameraPosition = this->camera->getPosition();
+        Ogre::Vector3 cameraPosition = this->camera->getPosition();
 
         playerPosition += this->lookAtOffset;
 
@@ -436,7 +439,7 @@ namespace NOWA
 
         Ogre::Vector3 targetPosition = playerPosition + offsetXZ * this->cameraSpringLength + localOffset;
 
-        Ogre::Vector3 velocityVector = (targetPosition - cameraPosition) * this->cameraSpring /** dt*/;
+        Ogre::Vector3 velocityVector = (targetPosition - cameraPosition) * this->cameraSpring;
         velocityVector *= this->cameraFriction;
 
         Ogre::Vector3 tVector = -camForward * this->cameraSpringLength;
@@ -462,10 +465,47 @@ namespace NOWA
         {
             Ogre::Vector3 castDir = castVector / desiredDistance;
 
+            Ogre::Real cameraSpeed = 0.0f;
+            if (nullptr != this->physicsBody)
+            {
+                cameraSpeed = this->physicsBody->getVelocity().length();
+            }
+            else if (true == this->hasFrameOrigin && dt > 1e-6f)
+            {
+                cameraSpeed = (castOrigin - this->lastFrameOrigin).length() / dt;
+            }
+            this->lastFrameOrigin = castOrigin;
+            this->hasFrameOrigin = true;
+
+            bool speedExceeded = cameraSpeed > this->occlusionMaxSpeed;
+
             Ogre::Real targetDistance = desiredDistance;
             bool shouldRecast = true;
+            Ogre::String recastReason = "recast";
 
-            if (true == this->hasProbedOnce)
+            // --- DIAGNOSTIC ONLY: what the cache currently holds, and how far the
+            // cache-vs-current origin/target actually are, BEFORE we decide anything.
+            // This does not change behavior - it only logs.
+            if (true == this->bShowDebugData && true == this->hasProbedOnce)
+            {
+                const Ogre::Real diagOriginDeltaSq = (castOrigin - this->lastProbedOrigin).squaredLength();
+                const Ogre::Real diagTargetDeltaSq = (idealPositionVector - this->lastProbedTarget).squaredLength();
+                const Ogre::Real diagEpsilonSq = this->probeCacheEpsilon * this->probeCacheEpsilon;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ThirdPersonOcclusionCamera] CACHECHECK originDeltaSq=" + Ogre::StringConverter::toString(diagOriginDeltaSq) +
+                                                                                        " targetDeltaSq=" + Ogre::StringConverter::toString(diagTargetDeltaSq) + " epsilonSq=" + Ogre::StringConverter::toString(diagEpsilonSq) +
+                                                                                        " wouldSkip=" + Ogre::StringConverter::toString(diagOriginDeltaSq < diagEpsilonSq && diagTargetDeltaSq < diagEpsilonSq) +
+                                                                                        " cachedResult=" + Ogre::StringConverter::toString(this->lastProbeResultDistance) + " desiredDistanceNow=" + Ogre::StringConverter::toString(desiredDistance) +
+                                                                                        " cacheVsDesiredDelta=" + Ogre::StringConverter::toString(this->lastProbeResultDistance - desiredDistance));
+            }
+
+            if (true == speedExceeded)
+            {
+                shouldRecast = false;
+                targetDistance = desiredDistance;
+                this->hasProbedOnce = false;
+                recastReason = "speedExceeded";
+            }
+            else if (true == this->hasProbedOnce)
             {
                 const Ogre::Real originDeltaSq = (castOrigin - this->lastProbedOrigin).squaredLength();
                 const Ogre::Real targetDeltaSq = (idealPositionVector - this->lastProbedTarget).squaredLength();
@@ -475,12 +515,30 @@ namespace NOWA
                 {
                     shouldRecast = false;
                     targetDistance = this->lastProbeResultDistance;
+                    recastReason = "cached";
                 }
             }
+
+            if (true == this->bShowDebugData)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ThirdPersonOcclusionCamera] FRAME speed=" + Ogre::StringConverter::toString(cameraSpeed) + " occlusionMaxSpeed=" + Ogre::StringConverter::toString(this->occlusionMaxSpeed) +
+                        " speedExceeded=" + Ogre::StringConverter::toString(speedExceeded) + " shouldRecast=" + Ogre::StringConverter::toString(shouldRecast) + " reason=" + recastReason +
+                        " desiredDistance=" + Ogre::StringConverter::toString(desiredDistance) + " currentCollisionDistance(before)=" + Ogre::StringConverter::toString(this->currentCollisionDistance));
+            }
+
+            Ogre::Real targetDistanceBeforeProbe = targetDistance; // diagnostic: what we'd use if we skipped the probe
 
             if (true == shouldRecast)
             {
                 targetDistance = this->performOcclusionProbe(castOrigin, idealPositionVector, desiredDistance);
+
+                // --- DIAGNOSTIC ONLY: how big was the step this recast just caused?
+                if (true == this->bShowDebugData)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ThirdPersonOcclusionCamera] RECASTSTEP oldCachedValue=" + Ogre::StringConverter::toString(this->lastProbeResultDistance) + " newProbedValue=" +
+                                                                                            Ogre::StringConverter::toString(targetDistance) + " stepSize=" + Ogre::StringConverter::toString(targetDistance - targetDistanceBeforeProbe));
+                }
 
                 this->lastProbedOrigin = castOrigin;
                 this->lastProbedTarget = idealPositionVector;
@@ -488,50 +546,56 @@ namespace NOWA
                 this->hasProbedOnce = true;
             }
 
+            Ogre::String smoothBranch = "none";
+
             if (true == this->firstOcclusionSample)
             {
                 this->currentCollisionDistance = targetDistance;
                 this->firstOcclusionSample = false;
+                smoothBranch = "firstSample";
             }
             else if (targetDistance < this->currentCollisionDistance)
             {
-                // Pulling in toward obstacle: use dt-scaled lerp so speed is
-                // frame-rate independent. pullInSmoothValue is now a "fraction of
-                // the error to close per second" -- typical good value: 15-25.
-                // Without dt here: at 600 FPS, old 0.5 factor closed 0.5^600 per
-                // second = instant snap. At 30 FPS it closed 0.5^30 = too slow.
-                // Now: error *= (1 - pullInSmoothValue * dt) each frame, so at
-                // any framerate the camera takes ~1/pullInSmoothValue seconds to
-                // reach the obstacle.
                 Ogre::Real pullFactor = 1.0f - std::exp(-this->pullInSmoothValue * dt);
 
-                // Also: snap immediately if the obstacle is VERY close -- prevents
-                // the camera ever clipping through something that appeared suddenly
-                // (e.g. entering a tunnel). Threshold: less than half the skin margin
-                // of headroom means we're already clipping.
                 const bool snapRequired = (targetDistance < this->currentCollisionDistance - this->skinMargin * 2.0f);
                 if (snapRequired)
                 {
                     this->currentCollisionDistance = targetDistance;
+                    smoothBranch = "SNAP";
                 }
                 else
                 {
                     this->currentCollisionDistance = this->currentCollisionDistance + (targetDistance - this->currentCollisionDistance) * pullFactor;
+                    smoothBranch = "pullIn";
                 }
             }
             else
             {
-                // Releasing back out: also dt-scaled, but intentionally slower
-                // than pull-in. releaseSmoothValue is "fraction of error per second",
-                // typical good value: 3-6.
                 Ogre::Real releaseFactor = 1.0f - std::exp(-this->releaseSmoothValue * dt);
                 this->currentCollisionDistance = this->currentCollisionDistance + (targetDistance - this->currentCollisionDistance) * releaseFactor;
+                smoothBranch = "release";
             }
 
-            // Hard clamp: never let the camera go closer than minDistance from the player.
             this->currentCollisionDistance = std::max(this->currentCollisionDistance, this->minDistance);
 
+            if (true == this->bShowDebugData)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ThirdPersonOcclusionCamera] SMOOTH targetDistance=" + Ogre::StringConverter::toString(targetDistance) + " branch=" + smoothBranch +
+                                                                                        " currentCollisionDistance(after)=" + Ogre::StringConverter::toString(this->currentCollisionDistance));
+            }
+
             finalPositionVector = castOrigin + castDir * this->currentCollisionDistance;
+
+            // --- DIAGNOSTIC ONLY: log the actual world-space camera position every
+            // frame so we can see frame-to-frame position jumps directly, in absolute
+            // world coordinates - this is what actually determines whether it LOOKS
+            // like it flickers, independent of all the distance math above.
+            if (true == this->bShowDebugData)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ThirdPersonOcclusionCamera] FINALPOS x=" + Ogre::StringConverter::toString(finalPositionVector.x) + " y=" + Ogre::StringConverter::toString(finalPositionVector.y) +
+                                                                                        " z=" + Ogre::StringConverter::toString(finalPositionVector.z));
+            }
         }
 
         Ogre::Quaternion resultOrientation = MathHelper::getInstance()->computeLookAtQuaternion(finalPositionVector, playerPosition, localUp);

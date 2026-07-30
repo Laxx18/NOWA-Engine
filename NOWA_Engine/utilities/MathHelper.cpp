@@ -40,7 +40,14 @@ namespace
             return nullptr;
         }
 
-        return NOWA::GameObjectComponent::makeStrongPtr(gameObject->getComponent<NOWA::PlanetTerraComponentBase>());
+        auto planetTerraComp = NOWA::GameObjectComponent::makeStrongPtr(gameObject->getComponent<NOWA::PlanetTerraComponentBase>());
+
+        if (nullptr != planetTerraComp && planetTerraComp->getOwner().get() != gameObject)
+        {
+            return nullptr;
+        }
+
+        return planetTerraComp;
     }
 }
 

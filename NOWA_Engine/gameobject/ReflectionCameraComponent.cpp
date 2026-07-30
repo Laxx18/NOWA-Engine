@@ -199,6 +199,7 @@ namespace NOWA
 				this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 				if (nullptr != this->dummyItem)
 				{
+                    this->dummyItem->setName("DummyItem");
 					this->dummyItem->setCastShadows(false);
 				}
 			});
