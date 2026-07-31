@@ -5200,9 +5200,9 @@ namespace NOWA
 		module(lua)
 		[
 			class_<Ogre::SkeletonAnimation>("SkeletonAnimation")
-            .def("getCurrentTime", &Ogre::SkeletonAnimation::getCurrentTime)
-            .def("getDuration", &Ogre::SkeletonAnimation::getDuration)
-            .def("setTime", &Ogre::SkeletonAnimation::setTime)
+			.def("getCurrentTime", &Ogre::SkeletonAnimation::getCurrentTime)
+			.def("getDuration", &Ogre::SkeletonAnimation::getDuration)
+			.def("setTime", &Ogre::SkeletonAnimation::setTime)
 		];
 		AddClassToCollection("SkeletonAnimation", "class", "The animation state.");
 		AddClassToCollection("SkeletonAnimation", "float getCurrentTime()", "Gets the current time position of this animation state.");
@@ -5212,10 +5212,10 @@ namespace NOWA
 		module(lua)
 		[
 			class_<IAnimationBlender::BlendSpaceEntryList>("BlendSpaceEntryList")
-            .def(constructor<>())
-            .def("add", &IAnimationBlender::BlendSpaceEntryList::add)
-            .def("clear", &IAnimationBlender::BlendSpaceEntryList::clear)
-            .def("size", &IAnimationBlender::BlendSpaceEntryList::size)
+			.def(constructor<>())
+			.def("add", &IAnimationBlender::BlendSpaceEntryList::add)
+			.def("clear", &IAnimationBlender::BlendSpaceEntryList::clear)
+			.def("size", &IAnimationBlender::BlendSpaceEntryList::size)
 		];
 
 		module(lua)
@@ -5297,6 +5297,12 @@ namespace NOWA
 				value("ANIM_CAST_SPELL_2", IAnimationBlender::ANIM_CAST_SPELL_2),
 				value("ANIM_CAST_SPELL_3", IAnimationBlender::ANIM_CAST_SPELL_3)
 			]
+			.enum_("BlendingTransition")
+			[
+				value("BLEND_SWITCH", IAnimationBlender::BlendSwitch),
+				value("BLEND_WHILE_ANIMATING", IAnimationBlender::BlendWhileAnimating),
+				value("BLEND_THEN_ANIMATE", IAnimationBlender::BlendThenAnimate)
+			]
 			.def("init1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, bool)) & IAnimationBlender::init)
 			.def("init2", (void (IAnimationBlender::*)(const Ogre::String&, bool)) & IAnimationBlender::init)
 			.def("getAllAvailableAnimationNames", &getAllAvailableAnimationNames)
@@ -5317,7 +5323,7 @@ namespace NOWA
 			.def("blendAndContinue3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real)) & IAnimationBlender::blendAndContinue)
 			.def("blendAndContinue4", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real)) & IAnimationBlender::blendAndContinue)
 			.def("getProgress", &IAnimationBlender::getProgress)
-			
+		
 			.def("isComplete", &IAnimationBlender::isComplete)
 			.def("registerAnimation", &IAnimationBlender::registerAnimation)
 			.def("getAnimationIdFromString", &IAnimationBlender::getAnimationIdFromString)
@@ -5333,34 +5339,28 @@ namespace NOWA
 			.def("getWeight", &IAnimationBlender::getWeight)
 			.def("resetBones", &IAnimationBlender::resetBones)
 			.def("setDebugLog", &IAnimationBlender::setDebugLog)
-            .def("setOverlayAnimation1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
-            .def("setOverlayAnimation2", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
-            .def("clearOverlayAnimation", &IAnimationBlender::clearOverlayAnimation)
-            .def("isOverlayAnimationActive", &IAnimationBlender::isOverlayAnimationActive)
-            .def("setAnimationSpeed", &IAnimationBlender::setAnimationSpeed)
-            .def("getAnimationSpeed", &IAnimationBlender::getAnimationSpeed)
-            .def("driveBlendSpace", &IAnimationBlender::driveBlendSpace)
+			.def("setOverlayAnimation1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
+			.def("setOverlayAnimation2", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
+			.def("clearOverlayAnimation", &IAnimationBlender::clearOverlayAnimation)
+			.def("isOverlayAnimationActive", &IAnimationBlender::isOverlayAnimationActive)
+			.def("setAnimationSpeed", &IAnimationBlender::setAnimationSpeed)
+			.def("getAnimationSpeed", &IAnimationBlender::getAnimationSpeed)
+			.def("driveBlendSpace", &IAnimationBlender::driveBlendSpace)
 		];
 
-		module(lua)
-		[
-			class_<IAnimationBlender::BlendingTransition>("BlendingTransition")
-			.enum_("BlendingTransition")
-			[
-				value("BLEND_SWITCH", IAnimationBlender::BlendSwitch),
-				value("BLEND_WHILE_ANIMATING", IAnimationBlender::BlendWhileAnimating),
-				value("BLEND_THEN_ANIMATE", IAnimationBlender::BlendThenAnimate)
-			]
-		];
+		// NOTE: the separate "BlendingTransition" class_<> module that used to sit
+		// here (between AnimationBlender and AnimationBlenderV2) has been removed -
+		// its enum now lives inside the AnimationBlender registration above, where
+		// AnimationBlender.BLEND_WHILE_ANIMATING etc. actually resolve from Lua.
 
 		module(lua)
 		[
 			class_<AnimationBlenderV2, IAnimationBlender>("AnimationBlender")
 			.def("getSource", &AnimationBlenderV2::getSource)
-            .def("getTarget", &AnimationBlenderV2::getTarget)
-            .def("getBone", &AnimationBlenderV2::getBone)
-            .def("getLocalToWorldPosition", &AnimationBlenderV2::getLocalToWorldPosition)
-            .def("getLocalToWorldOrientation", &AnimationBlenderV2::getLocalToWorldOrientation)
+			.def("getTarget", &AnimationBlenderV2::getTarget)
+			.def("getBone", &AnimationBlenderV2::getBone)
+			.def("getLocalToWorldPosition", &AnimationBlenderV2::getLocalToWorldPosition)
+			.def("getLocalToWorldOrientation", &AnimationBlenderV2::getLocalToWorldOrientation)
 		];
 
 		AddClassToCollection("AnimationBlender", "class", "This class can be used for more complex animations and transitions between them.");
@@ -5425,7 +5425,7 @@ namespace NOWA
 		AddClassToCollection("AnimationBlender", "ANIM_KNOCK_DOWN", "Knock down animation.");
 		AddClassToCollection("AnimationBlender", "ANIM_STAND_UP", "Stand up animation.");
 		AddClassToCollection("AnimationBlender", "ANIM_TALK_1", "Talk 1 animation.");
-        AddClassToCollection("AnimationBlender", "ANIM_TALK_2", "Talk 2 animation.");
+		AddClassToCollection("AnimationBlender", "ANIM_TALK_2", "Talk 2 animation.");
 		AddClassToCollection("AnimationBlender", "ANIM_POINT", "Point on something animation.");
 		AddClassToCollection("AnimationBlender", "ANIM_LAUGH", "Laugh animation.");
 		AddClassToCollection("AnimationBlender", "ANIM_LAND_1", "After fall or jump land 1 animation.");
@@ -5475,46 +5475,46 @@ namespace NOWA
 		AddClassToCollection("AnimationBlender", "float getWeight()", "Gets the current animation weight.");
 
 		AddClassToCollection("AnimationBlender", "void setOverlayAnimation1(AnimID animationId, float blendInTime)",
-            "Starts an overlay animation on top of the current one using per-bone weights. "
-            "Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. "
-            "Non-looping overlays auto-clear when they finish.");
+			"Starts an overlay animation on top of the current one using per-bone weights. "
+			"Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. "
+			"Non-looping overlays auto-clear when they finish.");
 
-        AddClassToCollection("AnimationBlender", "void setOverlayAnimation2(String animationName, float blendInTime)",
-            "Starts an overlay animation by name on top of the current one using per-bone weights. "
-            "Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. "
-            "Non-looping overlays auto-clear when they finish.");
+		AddClassToCollection("AnimationBlender", "void setOverlayAnimation2(String animationName, float blendInTime)",
+			"Starts an overlay animation by name on top of the current one using per-bone weights. "
+			"Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. "
+			"Non-looping overlays auto-clear when they finish.");
 
-        AddClassToCollection("AnimationBlender", "void clearOverlayAnimation(float blendOutTime)",
-            "Fades out and removes the current overlay animation over the given blend-out time in seconds. "
-            "Required for looping overlays. Non-looping overlays clear themselves automatically.");
+		AddClassToCollection("AnimationBlender", "void clearOverlayAnimation(float blendOutTime)",
+			"Fades out and removes the current overlay animation over the given blend-out time in seconds. "
+			"Required for looping overlays. Non-looping overlays clear themselves automatically.");
 
-        AddClassToCollection("AnimationBlender", "bool isOverlayAnimationActive()", "Returns true if an overlay animation is currently active (blending in, playing, or blending out).");
+		AddClassToCollection("AnimationBlender", "bool isOverlayAnimationActive()", "Returns true if an overlay animation is currently active (blending in, playing, or blending out).");
 
-        AddClassToCollection("AnimationBlender", "void setAnimationSpeed(float speed)",
-            "Sets the playback speed multiplier for the current source and target animations. "
-            "1.0 = normal speed, 2.0 = double speed, 0.5 = half speed. "
-            "The base frame rate per animation is preserved internally so calling this multiple times is safe. "
-            "When using this, pass raw dt to addTime() instead of scaling it manually.");
+		AddClassToCollection("AnimationBlender", "void setAnimationSpeed(float speed)",
+			"Sets the playback speed multiplier for the current source and target animations. "
+			"1.0 = normal speed, 2.0 = double speed, 0.5 = half speed. "
+			"The base frame rate per animation is preserved internally so calling this multiple times is safe. "
+			"When using this, pass raw dt to addTime() instead of scaling it manually.");
 
-        AddClassToCollection("AnimationBlender", "float getAnimationSpeed()", "Gets the currently active playback speed multiplier. Default is 1.0.");
+		AddClassToCollection("AnimationBlender", "float getAnimationSpeed()", "Gets the currently active playback speed multiplier. Default is 1.0.");
 
 		AddClassToCollection("BlendSpaceEntryList", "class",
-            "A sorted list of animation/parameter pairs used to drive a 1D blend space. "
-            "Build it once in connect() and reuse it every frame in execute().");
-        AddClassToCollection("BlendSpaceEntryList", "void add(AnimID animationId, float parameter)",
-            "Adds an entry to the blend space. Entries must be added in ascending parameter order. "
-            "animationId is the animation clip, parameter is the value at which this clip is fully active "
-            "(e.g. 0.0 for idle, 3.0 for walk, 8.0 for run).");
-        AddClassToCollection("BlendSpaceEntryList", "void clear()", "Removes all entries from the list.");
-        AddClassToCollection("BlendSpaceEntryList", "int size()", "Returns the number of entries currently in the list.");
+			"A sorted list of animation/parameter pairs used to drive a 1D blend space. "
+			"Build it once in connect() and reuse it every frame in execute().");
+		AddClassToCollection("BlendSpaceEntryList", "void add(AnimID animationId, float parameter)",
+			"Adds an entry to the blend space. Entries must be added in ascending parameter order. "
+			"animationId is the animation clip, parameter is the value at which this clip is fully active "
+			"(e.g. 0.0 for idle, 3.0 for walk, 8.0 for run).");
+		AddClassToCollection("BlendSpaceEntryList", "void clear()", "Removes all entries from the list.");
+		AddClassToCollection("BlendSpaceEntryList", "int size()", "Returns the number of entries currently in the list.");
 
-        AddClassToCollection("AnimationBlender", "void driveBlendSpace(float parameter, BlendSpaceEntryList entries)",
-            "Drives a 1D blend space every frame. Finds the two clips whose parameter values bracket "
-            "the given parameter and blends between them using a smoothstep curve. "
-            "Replaces manual idle/walk/run branching logic with a single call. "
-            "The source pointer is kept on the dominant clip so getLength() and getTimePosition() remain valid. "
-            "Call addTime(dt) as normal after this.");
-	}
+		AddClassToCollection("AnimationBlender", "void driveBlendSpace(float parameter, BlendSpaceEntryList entries)",
+			"Drives a 1D blend space every frame. Finds the two clips whose parameter values bracket "
+			"the given parameter and blends between them using a smoothstep curve. "
+			"Replaces manual idle/walk/run branching logic with a single call. "
+			"The source pointer is kept on the dominant clip so getLength() and getTimePosition() remain valid. "
+			"Call addTime(dt) as normal after this.");
+    }
 
 	// TODO: No documentation and no inner type declared for luabind
 	luabind::object getAttributes(DistributedComponent* instance)

@@ -11,6 +11,54 @@
 namespace
 {
     std::chrono::milliseconds g_defaultTimeout(5000); // 5 seconds
+
+    // --- TEMPORARY closure-flood diagnostics (render thread only, no locking needed) ---
+    struct ClosureCommandDiag
+    {
+        size_t count;
+        size_t adds;
+        size_t updates;
+        size_t fireAndForget;
+        size_t removals;
+
+        ClosureCommandDiag() : count(0), adds(0), updates(0), fireAndForget(0), removals(0)
+        {
+        }
+    };
+
+    std::unordered_map<Ogre::String, ClosureCommandDiag> g_closureCommandDiagnostics;
+
+    void logClosureFloodDiagnostics(Ogre::Real renderDt)
+    {
+        std::vector<std::pair<Ogre::String, ClosureCommandDiag>> sorted(g_closureCommandDiagnostics.begin(), g_closureCommandDiagnostics.end());
+
+        std::sort(sorted.begin(), sorted.end(),
+            [](const std::pair<Ogre::String, ClosureCommandDiag>& a, const std::pair<Ogre::String, ClosureCommandDiag>& b)
+            {
+                return a.second.count > b.second.count;
+            });
+
+        Ogre::LogManager::getSingletonPtr()->logMessage("[GraphicsModule] Closure flood diagnostics - distinct names this frame: " + Ogre::StringConverter::toString(sorted.size()) +
+                                                            ", renderDt: " + Ogre::StringConverter::toString(renderDt),
+            Ogre::LML_NORMAL);
+
+        const size_t maxNamesToLog = 10;
+        size_t namesLogged = 0;
+        for (const auto& entry : sorted)
+        {
+            if (namesLogged >= maxNamesToLog)
+            {
+                break;
+            }
+
+            std::stringstream ss;
+            ss << "[GraphicsModule]   '" << entry.first << "' count=" << entry.second.count << " (add=" << entry.second.adds << " update=" << entry.second.updates << " fireAndForget=" << entry.second.fireAndForget
+               << " removal=" << entry.second.removals << ")";
+            Ogre::LogManager::getSingletonPtr()->logMessage(ss.str(), Ogre::LML_NORMAL);
+
+            ++namesLogged;
+        }
+    }
 }
 
 namespace NOWA
@@ -186,6 +234,14 @@ namespace NOWA
             const bool isStalled = appStateManager->bStall.load();
             const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : false;
 
+            // TEMPORARY: per-stage timing to find which stage causes the alternating
+            // slow renderDt seen when arriving at a planet. Remove once diagnosed.
+            Ogre::Timer stageTimer;
+            Ogre::uint64 tCommands = 0;
+            Ogre::uint64 tTransforms = 0;
+            Ogre::uint64 tRenderOneFrame = 0;
+            Ogre::uint64 tClosures = 0;
+
             if (false == isStalled && false == isSceneLoading)
             {
                 WorkspaceModule::getInstance()->updateAdaptiveQuality(deltaTime);
@@ -193,10 +249,12 @@ namespace NOWA
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
                 this->advanceFrameAndDestroyOld();
                 this->processAllCommands();
+                tCommands = stageTimer.getMicroseconds();
 
                 const float alpha = this->consumeInterpolationAlpha();
                 this->setInterpolationWeight(alpha);
                 this->updateAllTransforms();
+                tTransforms = stageTimer.getMicroseconds();
 
                 if (++frameCount % 300 == 0)
                 {
@@ -217,12 +275,25 @@ namespace NOWA
             if (false == isStalled && false == this->isWorkspaceTransitioning() && false == isSceneLoading)
             {
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
+                tRenderOneFrame = stageTimer.getMicroseconds();
 
                 // Execute closures AFTER renderOneFrame so RenderingMetrics are
                 // populated when closures read them (e.g. DesignState::updateInfo).
                 // Node/bone/datablock interpolation already ran in updateAllTransforms
                 // above before renderOneFrame, so visual correctness is preserved.
                 this->updateAndExecuteClosures();
+                tClosures = stageTimer.getMicroseconds();
+            }
+
+            // TEMPORARY: log a stage breakdown whenever the whole iteration took
+            // more than 100ms, to find which stage causes the alternating slow
+            // renderDt seen when arriving at a planet. Remove once diagnosed.
+            if (tClosures > 100000)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage("[GraphicsModule] Slow render iteration - processAllCommands: " + Ogre::StringConverter::toString(tCommands / 1000.0) + "ms, updateAllTransforms: " +
+                                                                    Ogre::StringConverter::toString((tTransforms - tCommands) / 1000.0) + "ms, renderOneFrame: " + Ogre::StringConverter::toString((tRenderOneFrame - tTransforms) / 1000.0) +
+                                                                    "ms, updateAndExecuteClosures: " + Ogre::StringConverter::toString((tClosures - tRenderOneFrame) / 1000.0) + "ms",
+                    Ogre::LML_NORMAL);
             }
         }
 
@@ -2268,6 +2339,25 @@ namespace NOWA
 
         while (processedCount < maxCommandsPerFrame && this->closureQueue.try_dequeue(consumerToken, command))
         {
+            ClosureCommandDiag& diag = g_closureCommandDiagnostics[command.uniqueName];
+            ++diag.count;
+            if (true == command.isRemoval)
+            {
+                ++diag.removals;
+            }
+            else if (true == command.fireAndForget)
+            {
+                ++diag.fireAndForget;
+            }
+            else if (true == command.isUpdate)
+            {
+                ++diag.updates;
+            }
+            else
+            {
+                ++diag.adds;
+            }
+
             this->processSingleCommand(command, this->currentRenderDt);
             ++processedCount;
         }
@@ -2276,7 +2366,16 @@ namespace NOWA
         if (processedCount >= maxCommandsPerFrame)
         {
             Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Warning: Processed maximum closure commands per frame (" + Ogre::StringConverter::toString(maxCommandsPerFrame) + ")", Ogre::LML_NORMAL);
+            logClosureFloodDiagnostics(this->currentRenderDt);
         }
+
+        g_closureCommandDiagnostics.clear();
+
+        //// Log if we hit the limit (might indicate a problem)
+        //if (processedCount >= maxCommandsPerFrame)
+        //{
+        //    Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Warning: Processed maximum closure commands per frame (" + Ogre::StringConverter::toString(maxCommandsPerFrame) + ")", Ogre::LML_NORMAL);
+        //}
     }
 
     void GraphicsModule::executeActiveClosures(void)

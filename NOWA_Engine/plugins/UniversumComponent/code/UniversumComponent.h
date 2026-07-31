@@ -463,6 +463,17 @@ namespace NOWA
             Ogre::Quaternion localOrientation = Ogre::Quaternion::IDENTITY; // Orientation relative to planet
             Ogre::Vector3 savedWorldPosition = Ogre::Vector3::ZERO;         // World position at connect() for disconnect() restore
             Ogre::Quaternion savedWorldOrientation = Ogre::Quaternion::IDENTITY;
+            bool bWasVisible = true;
+
+            // Per-component activation snapshot, taken at hideSurfaceObjects() time
+            // and consumed at showSurfaceObjects()/restoreAllSurfaceObjects() time via
+            // GameObject::captureComponentActivationStates() / restoreComponentActivationStates().
+            // Kept as (className, wasActivated) pairs rather than raw component pointers
+            // or array indices, since a component (or the whole GameObject) may have
+            // been destroyed in the meantime - a name-based, order-tolerant match lets
+            // that case simply be skipped instead of crashing or restoring the wrong
+            // component's state.
+            std::vector<std::pair<Ogre::String, bool>> componentActivationStates;
         };
 
         struct OrbitalBody

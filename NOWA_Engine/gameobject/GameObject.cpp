@@ -2121,23 +2121,23 @@ namespace NOWA
                     auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
                     if (nullptr != showDummyItemAttr)
                     {
-                        NOWA::GraphicsModule::RenderCommand cmd = [this, visible, showDummyItemAttr]()
-                        {
+                        /*NOWA::GraphicsModule::RenderCommand cmd = [this, visible, showDummyItemAttr]()
+                        {*/
                             this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
-                        };
-                        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                        /*};
+                        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");*/
                     }
                 }
             }
 
-            NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
-            {
+           /* NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
+            {*/
                 if (nullptr != this->movableObject)
                 {
                     this->sceneNode->setVisible(visible);
                 }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+            /*};
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");*/
         }
     }
 
@@ -2575,6 +2575,55 @@ namespace NOWA
                 this->movableObject->setShadowRenderingDistance(static_cast<Ogre::Real>(shadowRenderingDistance));
             };
             GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setShadowRenderingDistance");
+        }
+    }
+
+    std::vector<std::pair<Ogre::String, bool>> GameObject::captureComponentActivationStates(void) const
+    {
+        std::vector<std::pair<Ogre::String, bool>> result;
+        result.reserve(this->gameObjectComponents.size());
+
+        for (const auto& component : this->gameObjectComponents)
+        {
+            auto compPtr = std::get<COMPONENT>(component);
+            if (nullptr != compPtr)
+            {
+                result.push_back(std::make_pair(compPtr->getClassName(), compPtr->isActivated()));
+            }
+        }
+
+        return result;
+    }
+
+    void GameObject::restoreComponentActivationStates(const std::vector<std::pair<Ogre::String, bool>>& states)
+    {
+        // Group recorded states by class name, preserving the order they were
+        // recorded in, so repeats of the same class get matched to each other in
+        // that same relative order rather than arbitrarily.
+        std::unordered_map<Ogre::String, std::deque<bool>> recordedByClass;
+        for (const auto& state : states)
+        {
+            recordedByClass[state.first].push_back(state.second);
+        }
+
+        for (const auto& component : this->gameObjectComponents)
+        {
+            auto compPtr = std::get<COMPONENT>(component);
+            if (nullptr == compPtr)
+            {
+                continue;
+            }
+
+            auto it = recordedByClass.find(compPtr->getClassName());
+            if (it != recordedByClass.end() && false == it->second.empty())
+            {
+                const bool wasActivated = it->second.front();
+                it->second.pop_front();
+                compPtr->setActivated(wasActivated);
+            }
+            // else: no recorded state for this component (added since the
+            // snapshot was taken, or more instances of this class exist now
+            // than were recorded) - leave its current activation untouched.
         }
     }
 

@@ -23,6 +23,7 @@ namespace NOWA
 			targetAgent2(nullptr),
 			pathGoalObserver(nullptr),
 			agentStuckObserver(nullptr),
+            animationComponentV2(nullptr),
 			autoOrientation(true),
 			autoAnimation(false),
 			animationBlender(nullptr),
@@ -2476,8 +2477,6 @@ namespace NOWA
 			// Apply animation speed
 			if (nullptr != this->animationBlender)
 			{
-                this->animationBlender->beginFrame();
-
 				this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange /* / this->animationBlender->getLength()*/, "MovingBehavior");
 			}
 
@@ -2687,10 +2686,10 @@ namespace NOWA
 						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] Start stuck: " + Ogre::StringConverter::toString(this->stuckCount) + " is stuck: "
 						//  + Ogre::StringConverter::toString(this->isStuck));
 
-						if (/*this->stuckCount >= 3 && */false == this->isStuck)
+						if (this->stuckCount >= 3 && false == this->isStuck)
 						{
 							this->isStuck = true;
-							// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] Stuck!");
+							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] Stuck!");
 							
 							this->setBehavior(NONE);
 							this->stuckCount = 0;
@@ -2722,41 +2721,54 @@ namespace NOWA
 		}
 
 		void MovingBehavior::setAutoAnimation(bool autoAnimation)
-		{
-			if (nullptr == this->agent && true == autoAnimation)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use auto animation, because the agent is null.");
-				return;
-			}
+        {
+            if (nullptr == this->agent && true == autoAnimation)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use auto animation, because the agent is null.");
+                return;
+            }
 
-			if (true == autoAnimation)
-			{
-				bool hasAnimation = false;
-				IAnimationBlender* animationBlender;
-				auto animationCompPtrV2 = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<AnimationComponentV2>());
-				if (nullptr != animationCompPtrV2)
-				{
-					animationBlender = animationCompPtrV2->getAnimationBlender();
-					this->autoAnimation = autoAnimation;
-					this->animationBlender = animationBlender;
-					this->oldAnimationSpeed = animationCompPtrV2->getSpeed();
-					hasAnimation = true;
-				}
+            if (true == autoAnimation)
+            {
+                bool hasAnimation = false;
+                IAnimationBlender* animationBlender;
+                auto animationCompPtrV2 = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<AnimationComponentV2>());
+                if (nullptr != animationCompPtrV2)
+                {
+                    animationBlender = animationCompPtrV2->getAnimationBlender();
+                    this->autoAnimation = autoAnimation;
+                    this->animationBlender = animationBlender;
+                    this->oldAnimationSpeed = animationCompPtrV2->getSpeed();
+                    hasAnimation = true;
 
-				if (false == hasAnimation)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use auto animation, because the agent has no component which includes animation (AnimationComponentV2, PlayerControllerComponent) for game object: " 
-						+ this->agent->getOwner()->getName());
-				}
-			}
-			else
-			{
-				if (nullptr != this->animationBlender)
-				{
-					this->animationBlender = nullptr;
-				}
-			}
-		}
+                    // This behavior now drives addTime() itself with movement-derived
+                    // speed. Tell AnimationComponentV2 to stop self-driving with its
+                    // default constant speed while this behavior is active, and cache
+                    // the component so the false-branch below can release the claim.
+                    animationCompPtrV2->setExternallyDriven(true);
+                    this->animationComponentV2 = animationCompPtrV2.get();
+                }
+
+                if (false == hasAnimation)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                        "[MovingBehavior] Warning: Cannot use auto animation, because the agent has no component which includes animation (AnimationComponentV2, PlayerControllerComponent) for game object: " + this->agent->getOwner()->getName());
+                }
+            }
+            else
+            {
+                if (nullptr != this->animationBlender)
+                {
+                    this->animationBlender = nullptr;
+                }
+
+                if (nullptr != this->animationComponentV2)
+                {
+                    this->animationComponentV2->setExternallyDriven(false);
+                    this->animationComponentV2 = nullptr;
+                }
+            }
+        }
 
 		bool MovingBehavior::getIsAutoAnimated(void) const
 		{

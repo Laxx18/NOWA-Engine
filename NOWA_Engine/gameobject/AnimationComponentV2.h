@@ -297,6 +297,13 @@ namespace NOWA
 
 		void reactOnAnimationFinished(luabind::object closureFunction, bool oneTime);
 
+		// When true, some other system (a PlayerController state machine, a
+        // MovingBehavior with auto-animation, etc.) is calling addTime() on this
+        // blender itself, driven by real movement speed. AnimationComponentV2
+        // still calls beginFrame() once per tick (it is the only guaranteed
+        // once-per-tick call site for this blender), but skips its own default
+        // constant-speed addTime() call so it does not contend for the claim.
+        void setExternallyDriven(bool externallyDriven);
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -346,6 +353,7 @@ namespace NOWA
 		Variant* animationSpeed;
 		Variant* animationRepeat;
 		AnimationBlenderV2* animationBlender;
+        bool externallyDriven;
 	};
 
 }; // namespace end

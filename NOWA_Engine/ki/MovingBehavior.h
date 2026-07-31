@@ -11,6 +11,7 @@ namespace NOWA
 	class PhysicsActiveComponent;
 	class IAnimationBlender;
 	class CrowdComponent;
+    class AnimationComponentV2;
 
 	typedef boost::shared_ptr<GameObject> GameObjectPtr;
 
@@ -303,10 +304,6 @@ namespace NOWA
 			void setWeightInterpose(Ogre::Real weightInterpose);
 
 			Ogre::Real getWeightInterpose(void) const;
-			
-			void setJumpAtObstacle(bool jumpAtObstacle);
-			
-			bool getJumpAtObstacle(void) const;
 
 			bool getIsStuck(void) const;
 
@@ -420,6 +417,7 @@ namespace NOWA
 			// Target object
 			PhysicsActiveComponent* targetAgent;
 			PhysicsActiveComponent* targetAgent2;
+            AnimationComponentV2* animationComponentV2;
 			unsigned int targetAgentId;
 			unsigned int targetAgentId2;
 			unsigned int mask;

@@ -752,6 +752,41 @@ namespace NOWA
 		void setPerformanceRenderDistance(unsigned int renderDistance);
 
         void setPerformanceShadowRenderingDistance(unsigned int shadowRenderingDistance);
+
+		/**
+         * @brief Captures the current activated state of every component on this
+         *        GameObject, keyed by class name in iteration order.
+         *
+         * Used by systems that need to temporarily deactivate a whole GameObject
+         * (e.g. UniversumComponent hiding surface objects on an inactive planet)
+         * and later restore each component to whatever activation state it
+         * individually had before - not just a single blanket flag for the whole
+         * object, since the designer can activate/deactivate components
+         * independently.
+         *
+         * @return A list of (component class name, was activated) pairs, in the
+         *         same order components are stored internally. Pass this to
+         *         restoreComponentActivationStates() later to restore it.
+         */
+        std::vector<std::pair<Ogre::String, bool>> captureComponentActivationStates(void) const;
+
+        /**
+         * @brief Restores per-component activation state captured earlier via
+         *        captureComponentActivationStates().
+         *
+         * Matches recorded states back to CURRENT components by class name, in
+         * the same relative order they were recorded (so multiple components of
+         * the same class are matched to each other in original order, not
+         * cross-matched). This is deliberately tolerant of the component list
+         * having changed since the snapshot was taken:
+         *   - A recorded state whose component no longer exists (e.g. destroyed
+         *     during gameplay) is simply not applied - no error, no crash.
+         *   - A component that exists now but wasn't in the snapshot (e.g. added
+         *     since) is left at whatever activation state it currently has.
+         *
+         * @param states Snapshot previously returned by captureComponentActivationStates().
+         */
+        void restoreComponentActivationStates(const std::vector<std::pair<Ogre::String, bool>>& states);
 	public:
 
 		/**

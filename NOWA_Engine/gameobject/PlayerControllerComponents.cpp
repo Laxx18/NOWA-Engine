@@ -25,6 +25,7 @@
 #include "modules/OgreRecastModule.h"
 #include "modules/LuaScriptApi.h"
 #include "AiComponents.h"
+#include "AnimationComponentV2.h"
 
 #include "utilities/AnimationBlenderV2.h"
 
@@ -1129,18 +1130,27 @@ namespace NOWA
 	}
 
 	bool PlayerControllerJumpNRunComponent::connect(void)
-	{
-		bool success = PlayerControllerComponent::connect();
+    {
+        bool success = PlayerControllerComponent::connect();
 
-		PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->physicsActiveComponent);
-		if (nullptr != physicsPlayerControllerComponent)
-		{
-			// Deactivates the movement, because internally newtons player body update would run and let the player fall, even he is not active yet via the walking state on a planet
-			physicsPlayerControllerComponent->setActivated(false);
-		}
+        PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->physicsActiveComponent);
+        if (nullptr != physicsPlayerControllerComponent)
+        {
+            // Deactivates the movement, because internally newtons player body update would run and let the player fall, even he is not active yet via the walking state on a planet
+            physicsPlayerControllerComponent->setActivated(false);
+        }
 
-		return success;
-	}
+        // WalkingStateJumpNRun now drives addTime() itself with movement-derived
+        // speed. Tell AnimationComponentV2 to stop self-driving with its default
+        // constant speed while this state machine is active.
+        auto animationCompPtrV2 = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponentV2>());
+        if (nullptr != animationCompPtrV2)
+        {
+            animationCompPtrV2->setExternallyDriven(true);
+        }
+
+        return success;
+    }
 
 	bool PlayerControllerJumpNRunComponent::disconnect(void)
 	{
@@ -1153,6 +1163,13 @@ namespace NOWA
 			// Reset animation to T-Pose
 			this->animationBlender->setSourceEnabled(false);
 		}
+
+		// Hand control of addTime() back to AnimationComponentV2's default drive.
+        auto animationCompPtrV2 = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponentV2>());
+        if (nullptr != animationCompPtrV2)
+        {
+            animationCompPtrV2->setExternallyDriven(false);
+        }
 
 		if (nullptr != this->stateMachine->getCurrentState())
 		{
@@ -1826,6 +1843,15 @@ namespace NOWA
         }
 
 		this->stateMachine->setCurrentState(PathFollowState3D::getName());
+
+		// WalkingStateJumpNRun now drives addTime() itself with movement-derived
+        // speed. Tell AnimationComponentV2 to stop self-driving with its default
+        // constant speed while this state machine is active.
+        auto animationCompPtrV2 = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponentV2>());
+        if (nullptr != animationCompPtrV2)
+        {
+            animationCompPtrV2->setExternallyDriven(true);
+        }
 		
 		return success;
 	}
@@ -1838,6 +1864,13 @@ namespace NOWA
 		{
 			this->movingBehaviorPtr->getPath()->clear();
 		}
+
+		// Hand control of addTime() back to AnimationComponentV2's default drive.
+        auto animationCompPtrV2 = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponentV2>());
+        if (nullptr != animationCompPtrV2)
+        {
+            animationCompPtrV2->setExternallyDriven(false);
+        }
 
 		if (nullptr != this->stateMachine && nullptr != this->stateMachine->getCurrentState())
 		{
@@ -2234,9 +2267,6 @@ namespace NOWA
         {
             return;
         }
-
-        // beginFrame is now after all early returns -- it is always paired with addTime below.
-        this->playerController->getAnimationBlender()->beginFrame();
 
         // -------------------------------------------------------------------------
         // Physics state -- gravity direction computed early because it is needed
@@ -2869,8 +2899,6 @@ namespace NOWA
         {
             return;
         }
-
-        this->playerController->getAnimationBlender()->beginFrame();
 
         Ogre::Real tempSpeed = this->playerController->getPhysicsComponent()->getSpeed();
         Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();

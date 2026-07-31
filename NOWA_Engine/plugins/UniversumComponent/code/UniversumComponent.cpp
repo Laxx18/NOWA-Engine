@@ -9,6 +9,7 @@
 #include "../../PlanetTerraComponent/code/PlanetTerraComponent.h"
 #include "../../ProceduralPlanetComponent/code/ProceduralPlanetComponent.h"
 #include "Compositor/OgreCompositorShadowNodeDef.h"
+#include "gameobject/CameraComponent.h"
 #include "gameobject/DatablockPbsComponent.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/InputDeviceComponent.h"
@@ -17,7 +18,6 @@
 #include "gameobject/PhysicsActiveKinematicComponent.h"
 #include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/PhysicsComponent.h"
-#include "gameobject/CameraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
 #include "modules/LuaScriptApi.h"
@@ -759,9 +759,7 @@ namespace NOWA
             {
                 unsigned long playerGoId = this->playerGameObjectId->getULong();
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "[UniversumComponent] Restoring landing state: planet id=" +
-                    Ogre::StringConverter::toString(this->landedOnBodyId) +
-                    " playerGoId=" + Ogre::StringConverter::toString(playerGoId));
+                    "[UniversumComponent] Restoring landing state: planet id=" + Ogre::StringConverter::toString(this->landedOnBodyId) + " playerGoId=" + Ogre::StringConverter::toString(playerGoId));
                 this->pausePlanetOrbit(this->landedOnBodyId, playerGoId);
             }
         }
@@ -932,8 +930,7 @@ namespace NOWA
                 // Recompute currentPosition at t=0 so the first update() delta is near zero.
                 // This must match what generateSolarSystem computed at spawn.
                 const float angle = planet.phaseOffset;
-                planet.currentPosition =
-                    Ogre::Vector3(system.position.x + std::cos(angle) * planet.orbitalRadius, system.position.y, system.position.z + std::sin(angle) * planet.orbitalRadius);
+                planet.currentPosition = Ogre::Vector3(system.position.x + std::cos(angle) * planet.orbitalRadius, system.position.y, system.position.z + std::sin(angle) * planet.orbitalRadius);
             }
 
             for (auto& moonPair : system.moons)
@@ -949,8 +946,7 @@ namespace NOWA
                 {
                     const Ogre::Vector3& parentSpawnPos = system.planets[parentIdx].currentPosition;
                     const float angle = moon.phaseOffset;
-                    moon.currentPosition =
-                        Ogre::Vector3(parentSpawnPos.x + std::cos(angle) * moon.orbitalRadius, parentSpawnPos.y, parentSpawnPos.z + std::sin(angle) * moon.orbitalRadius);
+                    moon.currentPosition = Ogre::Vector3(parentSpawnPos.x + std::cos(angle) * moon.orbitalRadius, parentSpawnPos.y, parentSpawnPos.z + std::sin(angle) * moon.orbitalRadius);
                 }
             }
         }
@@ -1527,8 +1523,7 @@ namespace NOWA
         }
 
         float angle = moon.orbitalElapsed * moon.orbitalSpeed + moon.phaseOffset;
-        moon.currentPosition = Ogre::Vector3(parentPlanet.currentPosition.x + std::cos(angle) * moon.orbitalRadius, parentPlanet.currentPosition.y,
-            parentPlanet.currentPosition.z + std::sin(angle) * moon.orbitalRadius);
+        moon.currentPosition = Ogre::Vector3(parentPlanet.currentPosition.x + std::cos(angle) * moon.orbitalRadius, parentPlanet.currentPosition.y, parentPlanet.currentPosition.z + std::sin(angle) * moon.orbitalRadius);
     }
 
     void UniversumComponent::snapPlanetToOrbit(OrbitalBody& planet, const Ogre::Vector3& sunPos)
@@ -2334,10 +2329,10 @@ namespace NOWA
                     planet.axialElapsed += dt;
                     float angle = planet.orbitalElapsed * planet.orbitalSpeed + planet.phaseOffset;
                     // Orbits are in the XZ plane only -- Y stays at sun level.
-            // The tilt term (sin * 0.1) was wrong: it caused a Y jump on the first
-            // update frame because the saved scene node Y=0 differed from the
-            // formula Y. Solar system ecliptic is XZ; inclination is not modelled.
-            Ogre::Vector3 newPos(sunPos.x + std::cos(angle) * planet.orbitalRadius, sunPos.y, sunPos.z + std::sin(angle) * planet.orbitalRadius);
+                    // The tilt term (sin * 0.1) was wrong: it caused a Y jump on the first
+                    // update frame because the saved scene node Y=0 differed from the
+                    // formula Y. Solar system ecliptic is XZ; inclination is not modelled.
+                    Ogre::Vector3 newPos(sunPos.x + std::cos(angle) * planet.orbitalRadius, sunPos.y, sunPos.z + std::sin(angle) * planet.orbitalRadius);
                     planet.currentPosition = newPos;
                     Ogre::Radian axialAngle(planet.axialElapsed * planet.axialSpeed);
                     Ogre::Quaternion axialRot(axialAngle, Ogre::Vector3::UNIT_Y);
@@ -2359,7 +2354,7 @@ namespace NOWA
                     Ogre::Vector3 parentPos = system.planets[parentIdx].currentPosition;
                     float angle = moon.orbitalElapsed * moon.orbitalSpeed + moon.phaseOffset;
                     // Orbits are in the XZ plane only -- Y stays at parent planet level.
-            Ogre::Vector3 newPos(parentPos.x + std::cos(angle) * moon.orbitalRadius, parentPos.y, parentPos.z + std::sin(angle) * moon.orbitalRadius);
+                    Ogre::Vector3 newPos(parentPos.x + std::cos(angle) * moon.orbitalRadius, parentPos.y, parentPos.z + std::sin(angle) * moon.orbitalRadius);
                     moon.currentPosition = newPos;
 
                     GameObjectPtr moonGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moon.gameObjectId);
@@ -3431,9 +3426,6 @@ namespace NOWA
 
                             planet.surfaceObjects.push_back(so);
                             registered = true;
-
-                            // Hide and disable physics.
-                            this->hideSurfaceObjects(planet);
                         }
                         break;
                     }
@@ -3462,12 +3454,34 @@ namespace NOWA
 
                             moonPair.second.surfaceObjects.push_back(so);
                             registered = true;
-
-                            // Hide and disable physics.
-                            this->hideSurfaceObjects(moonPair.second);
                         }
                         break;
                     }
+                }
+            }
+        }
+
+        // Hide and disable physics for every body's now-COMPLETE surfaceObjects
+        // list, exactly once per body - not once per object registered onto it.
+        // Calling hideSurfaceObjects(body) once per object (as before) re-ran it
+        // over every already-registered object each time, re-capturing
+        // bWasVisible from whatever the PREVIOUS call had already set it to
+        // (false), silently corrupting it for every object except the last one
+        // registered on that body.
+        for (SolarSystem& system : this->solarSystems)
+        {
+            for (OrbitalBody& planet : system.planets)
+            {
+                if (false == planet.surfaceObjects.empty())
+                {
+                    this->hideSurfaceObjects(planet);
+                }
+            }
+            for (auto& moonPair : system.moons)
+            {
+                if (false == moonPair.second.surfaceObjects.empty())
+                {
+                    this->hideSurfaceObjects(moonPair.second);
                 }
             }
         }
@@ -3490,13 +3504,13 @@ namespace NOWA
         }
     }
 
-    //void UniversumComponent::showSurfaceObjects(OrbitalBody& body)
+    // void UniversumComponent::showSurfaceObjects(OrbitalBody& body)
     //{
-    //    GameObjectPtr hostGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(body.gameObjectId);
-    //    if (nullptr == hostGo)
-    //    {
-    //        return;
-    //    }
+    //     GameObjectPtr hostGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(body.gameObjectId);
+    //     if (nullptr == hostGo)
+    //     {
+    //         return;
+    //     }
 
     //    Ogre::SceneNode* hostNode = hostGo->getSceneNode();
     //    const Ogre::Vector3 hostPos = hostNode->_getDerivedPositionUpdated();
@@ -3637,7 +3651,12 @@ namespace NOWA
                                                                                         Ogre::StringConverter::toString(worldRot));
             }
 
-            go->setVisible(true);
+            go->setVisible(so.bWasVisible);
+            // Restore each component's individually-recorded activation state.
+            // Tolerant of components (or the GameObject itself, already handled
+            // above) having been removed since hideSurfaceObjects() ran - e.g. the
+            // player destroyed an enemy or one of its components on the surface.
+            go->restoreComponentActivationStates(so.componentActivationStates);
 
             // Use physics component setter if available, else move SceneNode directly.
             auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
@@ -3649,7 +3668,7 @@ namespace NOWA
                 physComp->setOrientation(worldRot);
                 if (nullptr != physComp->getBody())
                 {
-                    physComp->setActivated(true);
+                    // physComp->setActivated(true);
 
                     physComp->setPosition(worldPos);
                     physComp->setOrientation(worldRot);
@@ -3665,21 +3684,31 @@ namespace NOWA
 
     void UniversumComponent::hideSurfaceObjects(OrbitalBody& body)
     {
-        for (const SurfaceObject& so : body.surfaceObjects)
+        for (SurfaceObject& so : body.surfaceObjects)
         {
             GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(so.gameObjectId);
             if (nullptr == go)
             {
                 continue;
             }
+
+            so.bWasVisible = go->isVisible();
+
+            // Snapshot per-component activation state BEFORE deactivating anything,
+            // so showSurfaceObjects()/restoreAllSurfaceObjects() can restore each
+            // component to whatever activation state it individually had, not just
+            // a single blanket flag for the whole GameObject.
+            so.componentActivationStates = go->captureComponentActivationStates();
+
             go->setVisible(false);
+            go->setActivated(false);
 
             // Force physics to sleep so it doesn't affect the world while hidden.
-            auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
+            /*auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
             if (nullptr != physComp && nullptr != physComp->getBody())
             {
                 physComp->setActivated(false);
-            }
+            }*/
         }
     }
 
@@ -3696,7 +3725,8 @@ namespace NOWA
                     {
                         continue;
                     }
-                    go->setVisible(true);
+                    go->setVisible(so.bWasVisible);
+                    go->restoreComponentActivationStates(so.componentActivationStates);
                     auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
                     if (nullptr != physComp)
                     {
@@ -3704,7 +3734,7 @@ namespace NOWA
                         physComp->setOrientation(so.savedWorldOrientation);
                         if (nullptr != physComp->getBody())
                         {
-                            physComp->setActivated(true);
+                            // physComp->setActivated(true);
                         }
                     }
                     else
@@ -3724,16 +3754,17 @@ namespace NOWA
                     {
                         continue;
                     }
-                    go->setVisible(true);
+                    go->setVisible(so.bWasVisible);
+                    go->restoreComponentActivationStates(so.componentActivationStates);
                     auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
                     if (nullptr != physComp)
                     {
                         physComp->setPosition(so.savedWorldPosition);
                         physComp->setOrientation(so.savedWorldOrientation);
-                        if (nullptr != physComp->getBody())
+                        /*if (nullptr != physComp->getBody())
                         {
                             physComp->setActivated(true);
-                        }
+                        }*/
                     }
                     else
                     {
@@ -3917,20 +3948,20 @@ namespace NOWA
         // Create planets.
         const int planetCount = this->randInt(rng, static_cast<int>(this->planetsPerSystemMin->getUInt()), static_cast<int>(this->planetsPerSystemMax->getUInt()));
 
-        //const float sunScaledRadius = this->sunRadius->getReal() * scaleFactor;
-        //const float planetMaxRadius = this->planetRadiusMax->getReal() * scaleFactor;
+        // const float sunScaledRadius = this->sunRadius->getReal() * scaleFactor;
+        // const float planetMaxRadius = this->planetRadiusMax->getReal() * scaleFactor;
 
         //// Planet orbits must start outside the sun: enforce hard clearance.
-        //const float minPlanetOrbit = sunScaledRadius + planetMaxRadius + sunScaledRadius * 0.5f;
-        //const float configOrbMin = this->orbitalDistanceMin->getReal() * scaleFactor;
-        //const float configOrbMax = this->orbitalDistanceMax->getReal() * scaleFactor;
-        //const float safeOrbMin = std::max(configOrbMin, minPlanetOrbit);
-        //const float safeOrbMax = std::max(configOrbMax, safeOrbMin + planetMaxRadius * 2.0f * static_cast<float>(planetCount));
-        //const float orbitalStep = (safeOrbMax - safeOrbMin) / static_cast<float>(std::max(1, planetCount));
+        // const float minPlanetOrbit = sunScaledRadius + planetMaxRadius + sunScaledRadius * 0.5f;
+        // const float configOrbMin = this->orbitalDistanceMin->getReal() * scaleFactor;
+        // const float configOrbMax = this->orbitalDistanceMax->getReal() * scaleFactor;
+        // const float safeOrbMin = std::max(configOrbMin, minPlanetOrbit);
+        // const float safeOrbMax = std::max(configOrbMax, safeOrbMin + planetMaxRadius * 2.0f * static_cast<float>(planetCount));
+        // const float orbitalStep = (safeOrbMax - safeOrbMin) / static_cast<float>(std::max(1, planetCount));
 
-        //float currentOrbitalRadius = safeOrbMin;
+        // float currentOrbitalRadius = safeOrbMin;
 
-            const float sunScaledRadius = this->sunRadius->getReal() * scaleFactor;
+        const float sunScaledRadius = this->sunRadius->getReal() * scaleFactor;
         const float planetMaxRadius = this->planetRadiusMax->getReal() * scaleFactor;
 
         // --- Worst-case moon system extent -------------------------------------
@@ -5204,7 +5235,8 @@ namespace NOWA
             "for landing pads only. If nothing of an allowed category is found directly below the ship, landing is denied.");
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "String getLandingCategories()", "Gets the currently configured landing category string.");
 
-        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "number getCurrentLandingPlanetGradient()", "Gets the current gradient on planet for landing. If its to steep, landing is not possible. This can be use to show the current gradient for the spaceship armature for example.");
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "number getCurrentLandingPlanetGradient()",
+            "Gets the current gradient on planet for landing. If its to steep, landing is not possible. This can be use to show the current gradient for the spaceship armature for example.");
 
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnPlanetEntered(func closure(planetGameObject, enteredGameObject))",
             "Registers a Lua closure called when any object enters a planet or moon atmosphere zone. "
@@ -5214,8 +5246,7 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnPlanetLeft(func closure(planetGameObject, enteredGameObject))",
             "Registers a Lua closure called when any object leaves a planet or moon atmosphere zone. "
             "Receives the planet GameObject.");
-        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnCannotLand(func closure(planetGameObject, shipGameObject))",
-            "Registers a closure called once when the cannot land because gradient is to steep etc.");
+        LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnCannotLand(func closure(planetGameObject, shipGameObject))", "Registers a closure called once when the cannot land because gradient is to steep etc.");
         LuaScriptApi::getInstance()->addClassToCollection("UniversumComponent", "void reactOnLanding(func closure(planetGameObject, shipGameObject))",
             "Registers a closure called once when the ship is close enough to land "
             "(within landingThreshold, default 30 units above the surface). "

@@ -69,6 +69,7 @@ namespace NOWA
 		: GameObjectComponent(),
 		skeleton(nullptr),
 		animationBlender(nullptr),
+        externallyDriven(false),
 		activated(new Variant(AnimationComponentV2::AttrActivated(), true, this->attributes)),
 		animationName(new Variant(AnimationComponentV2::AttrName(), std::vector<Ogre::String>(), this->attributes)),
 		animationSpeed(new Variant(AnimationComponentV2::AttrSpeed(), 1.0f, this->attributes)),
@@ -226,32 +227,44 @@ namespace NOWA
 	{
 		
 	}
-	
-	void AnimationComponentV2::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (true == this->activated->getBool() && false == notSimulating)
-		{
-			if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
-			{
+
+    void AnimationComponentV2::update(Ogre::Real dt, bool notSimulating)
+    {
+        if (true == this->activated->getBool() && false == notSimulating)
+        {
+            if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
+            {
+                // Single authoritative beginFrame() call for this blender, once per
+                // logic tick. This must be the ONLY beginFrame() call site in the
+                // whole engine now - PlayerController state machines, MovingBehavior,
+                // etc. must call addTime() only and rely on this reset. Calling
+                // beginFrame() from more than one place per tick was the root cause
+                // of the closure-queue flood (the claim got wiped and re-taken twice
+                // per tick, enqueueing the closure twice).
                 this->animationBlender->beginFrame();
 
-				// BUG FIX: the old formula was:
-				//   addTime(dt * speed / getDuration())
-				//
-				// This is wrong because addTime() expects real seconds. Dividing by
-				// getDuration() made the animation take getDuration()^2 / speed seconds
-				// to complete instead of getDuration() / speed seconds. At speed=1 a
-				// 1.2s animation took 1.44s. The error is invisible at speed=1.0 but
-				// compounds visually at slow speeds (speed=0.1 -> 14.4s instead of 12s).
-				//
-				// Correct formula: addTime(dt * speed)
-				//   speed=1.0  -> animation plays at natural speed (getDuration() seconds)
-				//   speed=0.1  -> animation plays 10x slower (getDuration() * 10 seconds)
-				//   speed=2.0  -> animation plays 2x faster (getDuration() / 2 seconds)
-				this->animationBlender->addTime(dt * this->animationSpeed->getReal(), this->getClassName());
-			}
-		}
-	}
+                // Only self-drive with the default constant speed if nothing else
+                // has taken over responsibility for this blender this tick.
+                if (false == this->externallyDriven)
+                {
+                    // BUG FIX: the old formula was:
+                    //   addTime(dt * speed / getDuration())
+                    //
+                    // This is wrong because addTime() expects real seconds. Dividing by
+                    // getDuration() made the animation take getDuration()^2 / speed seconds
+                    // to complete instead of getDuration() / speed seconds. At speed=1 a
+                    // 1.2s animation took 1.44s. The error is invisible at speed=1.0 but
+                    // compounds visually at slow speeds (speed=0.1 -> 14.4s instead of 12s).
+                    //
+                    // Correct formula: addTime(dt * speed)
+                    //   speed=1.0  -> animation plays at natural speed (getDuration() seconds)
+                    //   speed=0.1  -> animation plays 10x slower (getDuration() * 10 seconds)
+                    //   speed=2.0  -> animation plays 2x faster (getDuration() / 2 seconds)
+                    this->animationBlender->addTime(dt * this->animationSpeed->getReal(), this->getClassName());
+                }
+            }
+        }
+    }
 
 	void AnimationComponentV2::resetAnimation(void)
     {
@@ -613,6 +626,11 @@ namespace NOWA
 
 		AnimationBlenderObserver* newObserver = new AnimationBlenderObserver(closureFunction, oneTime);
 		this->animationBlender->addAnimationBlenderObserver(newObserver);
-	}
+    }
+
+    void AnimationComponentV2::setExternallyDriven(bool externallyDriven)
+    {
+        this->externallyDriven = externallyDriven;
+    }
 
 }; //namespace end

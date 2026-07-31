@@ -369,6 +369,11 @@ namespace NOWA
         this->occlusionMaxSpeed = occlusionMaxSpeed;
     }
 
+    Ogre::Real ThirdPersonOcclusionCamera::getOcclusionMaxSpeed(void) const
+    {
+        return this->occlusionMaxSpeed;
+    }
+
     void ThirdPersonOcclusionCamera::setShowDebugData(bool showDebugData)
     {
         this->bShowDebugData = showDebugData;
@@ -402,14 +407,14 @@ namespace NOWA
             playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
         }
 
-        /*if (true == this->firstSpringSample)
+        if (true == this->firstSpringSample)
         {
             this->internalSpringPosition = this->camera->getPosition();
             this->firstSpringSample = false;
         }
-        Ogre::Vector3 cameraPosition = this->internalSpringPosition;*/
+        Ogre::Vector3 cameraPosition = this->internalSpringPosition;
 
-        Ogre::Vector3 cameraPosition = this->camera->getPosition();
+        // Ogre::Vector3 cameraPosition = this->camera->getPosition();
 
         playerPosition += this->lookAtOffset;
 
@@ -612,7 +617,7 @@ namespace NOWA
             return desiredDistance;
         }
 
-        Ogre::Timer probeTimer;
+        // Ogre::Timer probeTimer;
 
         Ogre::Real resultDistance = desiredDistance;
         Ogre::String hitName = "none";
@@ -700,7 +705,7 @@ namespace NOWA
             }
         }
 
-        if (true == this->bShowDebugData)
+        /*if (true == this->bShowDebugData)
         {
             unsigned long elapsedMicroseconds = probeTimer.getMicroseconds();
 
@@ -708,7 +713,7 @@ namespace NOWA
                                                                                     " desiredDistance=" + Ogre::StringConverter::toString(desiredDistance) + " probeRadius=" + Ogre::StringConverter::toString(this->probeRadius) +
                                                                                     " elapsedMicroseconds=" + Ogre::StringConverter::toString((unsigned int)elapsedMicroseconds) + " hitBody='" + hitName + "'" +
                                                                                     " resultDistance=" + Ogre::StringConverter::toString(resultDistance));
-        }
+        }*/
 
         return resultDistance;
     }
