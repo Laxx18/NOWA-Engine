@@ -978,7 +978,7 @@ namespace NOWA
     {
         NOWA::GameObjectTypeDescriptor desc;
         desc.type = eType::CUSTOM;
-        desc.displayName = "Procedural City";
+        desc.displayName = "City";
         desc.meshToDisplay = "Node.mesh";
         desc.needsMeshItem = true;
         desc.forceZeroTransform = false;

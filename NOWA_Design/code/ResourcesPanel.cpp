@@ -376,11 +376,18 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
         {
             if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralCityComponent"))
             {
-                child = new MyGUI::TreeControl::Node("Procedural City", "Data");
+                child = new MyGUI::TreeControl::Node("City", "Data");
                 parent->add(child);
             }
         }
-
+        // Add Platform
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralPlatformComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Platform", "Data");
+                parent->add(child);
+            }
+        }
 		// Add Geometry
 		{
 			if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralGeometryComponent"))

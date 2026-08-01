@@ -62,6 +62,7 @@ namespace NOWA
         mGlobalTranslation(Ogre::Vector3::ZERO),
         mLocalTranslation(Ogre::Vector3::ZERO),
         yOffset(0.0f),
+        mWantVisible(false),
         mVaoManager(nullptr)
     {
         if (params)
@@ -199,6 +200,24 @@ namespace NOWA
     //  Geometry rebuild
     // ============================================================================
 
+    void MovableText::setVisibleRequested(bool visible)
+    {
+        mWantVisible = visible;
+
+        // Only actually apply "visible" if there is real geometry/datablock right
+        // now (getDatablock() comes from the base Renderable, set only at the end
+        // of a successful _setupGeometry() run). Otherwise stay hidden - once
+        // _setupGeometry() succeeds later (real caption arrives), it re-applies
+        // mWantVisible itself, see below. This means callers never again need to
+        // remember "don't call setVisible(true) before geometry exists" - it's
+        // enforced here, once, for everyone.
+        if (true == visible && nullptr == this->getDatablock())
+        {
+            return;
+        }
+        this->setVisible(visible);
+    }
+
     void MovableText::_setupGeometry()
     {
         assert(mpFont);
@@ -334,6 +353,14 @@ namespace NOWA
         if (actualVerts == 0)
         {
             mNeedUpdate = false;
+            // Nothing to render (e.g. empty/whitespace-only caption). Previously this
+            // just returned here, leaving the object attached and visible but with
+            // mHlmsDatablock (the base Renderable's datablock, set only further down
+            // via setDatablock()) still null — RenderQueue::addRenderable() then
+            // crashes on a null datablock the moment this object gets queued for
+            // rendering. Since there's genuinely no geometry to show, take it out of
+            // the render queue entirely instead.
+            this->setVisible(false);
             return;
         }
 
@@ -384,6 +411,10 @@ namespace NOWA
         mObjectData.mWorldAabb->setFromAabb(aabb, mObjectData.mIndex);
         mObjectData.mLocalRadius[mObjectData.mIndex] = radius;
         mObjectData.mWorldRadius[mObjectData.mIndex] = radius;
+
+        // Apply whatever visibility was actually requested (via setVisibleRequested())
+        // now that real geometry/datablock exists - not just an unconditional true.
+        this->setVisible(mWantVisible);
 
         // ── mVaoPerLod is now populated — safe to call _updateHlmsMacroblock()
         //    and setDatablock(). calculateHashFor() will take the V2 path because

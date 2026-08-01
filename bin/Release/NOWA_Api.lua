@@ -11010,6 +11010,22 @@ return {
 				returns = "(ProceduralPlanetComponent)",
 				valuetype = "ProceduralPlanetComponent"
 			},
+			getProceduralPlatformComponent =
+			{
+				type = "function",
+				description = "Gets the ProceduralPlatformComponent from this GameObject.",
+				args = "()",
+				returns = "(ProceduralPlatformComponent)",
+				valuetype = "ProceduralPlatformComponent"
+			},
+			getProceduralPlatformComponentFromName =
+			{
+				type = "function",
+				description = "Gets a named ProceduralPlatformComponent from this GameObject.",
+				args = "(string name)",
+				returns = "(ProceduralPlatformComponent)",
+				valuetype = "ProceduralPlatformComponent"
+			},
 			getProceduralRoadComponent =
 			{
 				type = "function",
@@ -13177,6 +13193,14 @@ return {
 				args = "(ProceduralMazeComponent other)",
 				returns = "(ProceduralMazeComponent)",
 				valuetype = "ProceduralMazeComponent"
+			},
+			castProceduralPlatformComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto-completion support.",
+				args = "(ProceduralPlatformComponent other)",
+				returns = "(ProceduralPlatformComponent)",
+				valuetype = "ProceduralPlatformComponent"
 			},
 			castProceduralRoadComponent =
 			{
@@ -29255,6 +29279,87 @@ return {
 				type = "method",
 				description = "Runs the full generation pipeline and applies the result to the sibling PlanetTerraComponent.",
 				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
+	ProceduralPlatformComponent =
+	{
+		type = "class",
+		description = "Usage: Creates procedural 2.5D platform chains on a fixed depth plane, for Metroidvania-style levels.  PLATFORM BUILDING (Object Mode): - Left-click anywhere to start a new platform segment. The first click of the whole   chain fixes the local Z (depth) plane every further segment will be drawn on. - Move the mouse to preview the segment, then left-click again to confirm it. - Hold SHIFT while confirming to automatically chain the next segment from the endpoint. - Hold CTRL to constrain the segment direction to horizontal or vertical. - Right-click or press ESC to cancel the current segment. - Press CTRL+Z to undo the last confirmed segment.  SEGMENT MODE: - Set the 'Edit Mode' property to 'Segment' to enter segment editing. - Left-click near any platform segment to select it. The selected segment is highlighted. - Press X to delete the selected segment. The remaining platform rebuilds automatically. - Press E to extend a new segment from the tail endpoint of the selected segment.   Drag the mouse to preview the extension, then left-click to confirm.   Press ESC to cancel the extension. - Press ESC (without extending) to deselect the current segment. - When building or extending near an existing segment endpoint, a green snap circle   appears. Release at that point to snap exactly to the endpoint, closing the chain   or connecting to an existing junction.  JUNCTIONS: - When three or more segments share an endpoint, a junction patch is generated   automatically to fill the gap between the converging platform arms - this is how   segments combine into more complex, branching platform shapes. - The junction patch uses its own datablock (Junction Datablock), separate from   Surface/Ground, since a fan patch has no single consistent surface direction.  PLATFORM STYLES: - Grass: grass surface top, striped dirt/earth body. - Wood: bamboo/wood plank surface and body. - Stone: carved stone block. - Ice: slippery ice block. - Metal: riveted metal platform.  DEPTH / HEIGHT: - 'Platform Depth' is the Z-thickness of the block (how far it extends front-to-back   on the fixed depth plane) - the same role roadWidth plays for roads, just on the   third axis instead of sideways, since the path itself already IS the width. - 'Platform Height' is how far the solid slab extends downward from the top surface. - 'Smoothing Factor' and 'Max Gradient' control how height changes between connected   segments are blended, so chained platforms don't have a jarring vertical snap. - 'Curve Subdivisions' controls how many interpolated points are used per segment.  CONVERT TO MESH: - 'Convert To Mesh' exports the current platform geometry as a static .mesh file   and replaces this component with a standard mesh item for optimal performance. - This operation is permanent and cannot be undone procedurally.  LUA API: - getProceduralPlatformComponent() on a GameObject returns this component. - addPlatformSegment(start, end) adds a segment between two local positions. - getSegmentCount() returns the current number of segments. - setPlatformDepth(d), setPlatformHeight(h) adjust geometry dimensions. - setPlatformStyle(s) sets the style string: Grass, Wood, Stone, Ice, Metal. ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the platform component.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setPlatformDepth =
+			{
+				type = "method",
+				description = "Sets the platform's Z-thickness (fixed depth axis) in world units.",
+				args = "(number depth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setPlatformHeight =
+			{
+				type = "method",
+				description = "Sets how far the platform body extends downward from its top surface.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setPlatformStyle =
+			{
+				type = "method",
+				description = "Sets platform style. Values: 'Grass', 'Wood', 'Stone', 'Ice', 'Metal'.",
+				args = "(string style)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setSurfaceDatablock =
+			{
+				type = "method",
+				description = "Sets the PBS datablock for the platform's top walkable surface.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setGroundDatablock =
+			{
+				type = "method",
+				description = "Sets the PBS datablock for the platform body (sides/bottom).",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setJunctionDatablock =
+			{
+				type = "method",
+				description = "Sets the PBS datablock for junction fan patches.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSegmentCount =
+			{
+				type = "function",
+				description = "Returns the number of platform segments currently placed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			addPlatformSegment =
+			{
+				type = "method",
+				description = "Adds a single platform segment from start to end world position and rebuilds.",
+				args = "(Vector3 start, Vector3 end)",
 				returns = "(nil)",
 				valuetype = "nil"
 			}

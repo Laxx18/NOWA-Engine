@@ -91,6 +91,7 @@ namespace NOWA
             return mOnTop;
         }
 
+        void setVisibleRequested(bool visible);
     protected:
         void _setupGeometry();
         void _destroyGeometry();
@@ -132,6 +133,7 @@ namespace NOWA
         bool mNeedUpdate;
         bool mOnTop;
         Ogre::Real yOffset;
+        bool mWantVisible;
 
         Ogre::Vector3 mGlobalTranslation;
         Ogre::Vector3 mLocalTranslation;

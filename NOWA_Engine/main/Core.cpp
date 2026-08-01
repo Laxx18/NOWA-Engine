@@ -365,6 +365,11 @@ namespace NOWA
 
         if (nullptr != this->root)
         {
+            if (nullptr != Ogre::FontManager::getSingletonPtr())
+            {
+                OGRE_DELETE Ogre::FontManager::getSingletonPtr();
+            }
+
             auto factoryMovableText = this->root->getMovableObjectFactory("MovableText");
             if (nullptr != factoryMovableText)
             {
@@ -877,6 +882,10 @@ namespace NOWA
         // this->resourceLoadingListener = new ResourceLoadingListenerImpl();
         // Ogre::ResourceGroupManager::getSingletonPtr()->setLoadingListener(this->resourceLoadingListener);
 
+        if (nullptr == Ogre::FontManager::getSingletonPtr())
+        {
+            OGRE_NEW Ogre::FontManager();
+        }
         // Adds factories
         this->root->addMovableObjectFactory(OGRE_NEW MovableTextFactory());
         this->root->addMovableObjectFactory(OGRE_NEW Ogre::OceanFactory());

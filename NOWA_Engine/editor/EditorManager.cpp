@@ -26,6 +26,7 @@
 #include "gameobject/ReflectionCameraComponent.h"
 #include "gameobject/TerraComponent.h"
 #include "gameobject/RoadComponentBase.h"
+#include "gameobject/PlatformComponentBase.h"
 #include "gameobject/WallComponentBase.h"
 #include "gameobject/MeshEditComponentBase.h"
 #include "gameobject/PlanetTerraComponentBase.h"
@@ -1322,7 +1323,73 @@ namespace NOWA
     private:
         std::vector<unsigned char> oldRoadData;
         std::vector<unsigned char> newRoadData;
-        unsigned long gameObjectId; // <- Store ID instead of pointer
+        unsigned long gameObjectId;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    class PlatformModifyUndoCommand : public ICommand
+    {
+    public:
+        PlatformModifyUndoCommand(const std::vector<unsigned char>& oldPlatformData, const std::vector<unsigned char>& newPlatformData, unsigned long gameObjectId, bool isAdditional = false) :
+            oldPlatformData(oldPlatformData),
+            newPlatformData(newPlatformData),
+            gameObjectId(gameObjectId)
+        {
+            this->isAdditional = isAdditional;
+        }
+
+        virtual void undo(void) override
+        {
+            GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+            if (nullptr == gameObjectPtr)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlatformModifyUndoCommand] undo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+                return;
+            }
+
+            auto PlatformComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PlatformComponentBase>());
+
+            if (nullptr == PlatformComponentBase)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlatformModifyUndoCommand] undo: PlatformComponentBase not found");
+                return;
+            }
+
+            PlatformComponentBase->setPlatformData(this->oldPlatformData);
+
+            boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
+        }
+
+        virtual void redo(void) override
+        {
+            GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+            if (nullptr == gameObjectPtr)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlatformModifyUndoCommand] redo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+                return;
+            }
+
+            auto PlatformComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PlatformComponentBase>());
+
+            if (nullptr == PlatformComponentBase)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlatformModifyUndoCommand] redo: PlatformComponentBase not found");
+                return;
+            }
+
+            PlatformComponentBase->setPlatformData(this->newPlatformData);
+
+            boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
+        }
+
+    private:
+        std::vector<unsigned char> oldPlatformData;
+        std::vector<unsigned char> newPlatformData;
+        unsigned long gameObjectId;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1391,7 +1458,7 @@ namespace NOWA
     private:
         std::vector<unsigned char> oldWallData;
         std::vector<unsigned char> newWallData;
-        unsigned long gameObjectId; // <- Store ID instead of pointer
+        unsigned long gameObjectId;
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1546,6 +1613,7 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraModifyEnd), EventDataTerraModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraPaintEnd), EventDataTerraPaintEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleRoadModifyEnd), EventDataRoadModifyEnd::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handlePlatformModifyEnd), EventDataPlatformModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleWallModifyEnd), EventDataWallModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleMeshEditModifyEnd), EventDataMeshEditModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handlePlanetTerraModifyEnd), EventDataPlanetTerraModifyEnd::getStaticEventType());
@@ -1687,6 +1755,7 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraModifyEnd), EventDataTerraModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraPaintEnd), EventDataTerraPaintEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleRoadModifyEnd), EventDataRoadModifyEnd::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handlePlatformModifyEnd), EventDataPlatformModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleWallModifyEnd), EventDataWallModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleMeshEditModifyEnd), EventDataMeshEditModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handlePlanetTerraModifyEnd), EventDataPlanetTerraModifyEnd::getStaticEventType());
@@ -4289,6 +4358,11 @@ namespace NOWA
         this->sceneManipulationCommandModule.pushCommand(std::make_shared<RoadModifyUndoCommand>(oldRoadData, newRoadData, gameObjectId, isAdditionalUndo));
     }
 
+    void EditorManager::snapshotPlatformData(const std::vector<unsigned char>& oldPlatformData, const std::vector<unsigned char>& newPlatformData, unsigned long gameObjectId, bool isAdditionalUndo)
+    {
+        this->sceneManipulationCommandModule.pushCommand(std::make_shared<PlatformModifyUndoCommand>(oldPlatformData, newPlatformData, gameObjectId, isAdditionalUndo));
+    }
+
     void EditorManager::snapshotWallData(const std::vector<unsigned char>& oldWallData, const std::vector<unsigned char>& newWallData, unsigned long gameObjectId, bool isAdditionalUndo)
     {
         this->sceneManipulationCommandModule.pushCommand(std::make_shared<WallModifyUndoCommand>(oldWallData, newWallData, gameObjectId, isAdditionalUndo));
@@ -4338,6 +4412,22 @@ namespace NOWA
             if (nullptr != roadComponentBase)
             {
                 this->snapshotRoadData(castEventData->getOldRoadData(), castEventData->getNewRoadData(), castEventData->getGameObjectId(), false);
+            }
+        }
+    }
+
+    void EditorManager::handlePlatformModifyEnd(EventDataPtr eventData)
+    {
+        boost::shared_ptr<EventDataPlatformModifyEnd> castEventData = boost::static_pointer_cast<NOWA::EventDataPlatformModifyEnd>(eventData);
+
+        GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(castEventData->getGameObjectId());
+
+        if (nullptr != gameObjectPtr)
+        {
+            auto roadComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::RoadComponentBase>());
+            if (nullptr != roadComponentBase)
+            {
+                this->snapshotRoadData(castEventData->getOldPlatformData(), castEventData->getNewPlatformData(), castEventData->getGameObjectId(), false);
             }
         }
     }

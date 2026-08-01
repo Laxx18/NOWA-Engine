@@ -350,7 +350,8 @@ namespace NOWA
                 this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
                 if (this->dummyItem != nullptr)
                 {
-                    this->dummyItem->setVisible(this->showDummyEntity->getBool());
+                    bool dummyVisible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
+                    this->dummyItem->setVisible(dummyVisible);
                 }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::setActivated");

@@ -443,19 +443,28 @@ namespace NOWA
 	}
 
 	void GameObjectTitleComponent::setCaption(const Ogre::String& caption)
-	{
-		Ogre::String tempCaption = replaceAll(caption, "\\n", "\n");
-		this->caption->setValue(tempCaption);
-		if (true == tempCaption.empty())
-		{
-			// Empty string causes crash with vertices in movabletext^^
-			tempCaption = " ";
-		}
-		if (this->movableText)
-		{
-			this->movableText->setCaption(tempCaption);
-		}
-	}
+    {
+        Ogre::String tempCaption = replaceAll(caption, "\\n", "\n");
+        this->caption->setValue(tempCaption);
+        if (true == tempCaption.empty())
+        {
+            // Empty string causes crash with vertices in movabletext^^
+            tempCaption = " ";
+        }
+        if (this->movableText)
+        {
+            this->movableText->setCaption(tempCaption);
+            // Rebuild geometry immediately, every time the caption changes - not just
+            // on the first call. Callers used to have to remember to invoke
+            // getMovableText()->forceUpdate() themselves after setCaption() (the
+            // typewriter effect in SpeechBubbleComponent forgot to for every
+            // subsequent character, and for the runSpeech "" reset), which left
+            // mNeedUpdate dangling with no guaranteed re-check afterwards. Doing it
+            // here means every caller - present and future - gets a consistent,
+            // immediately-rendered result with no extra step to remember.
+            this->movableText->forceUpdate();
+        }
+    }
 
 	Ogre::String GameObjectTitleComponent::getCaption(void) const
 	{

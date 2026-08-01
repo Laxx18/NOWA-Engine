@@ -36,7 +36,41 @@ namespace
 		}
 
 		return temp;
-	}
+    }
+
+    // Simple greedy word-wrap: breaks the caption into lines of at most
+    // maxCharsPerLine characters, breaking on the last space before the limit
+    // (never mid-word) so the bubble geometry (sized from the wrapped text's
+    // AABB) and the visible text actually match up.
+    Ogre::String wrapCaptionText(const Ogre::String& text, size_t maxCharsPerLine)
+    {
+        Ogre::String result;
+        size_t lineStart = 0;
+        size_t lastSpace = Ogre::String::npos;
+        size_t lineLen = 0;
+
+        for (size_t i = 0; i < text.size(); ++i)
+        {
+            char c = text[i];
+            if (c == ' ')
+            {
+                lastSpace = i;
+            }
+
+            result += c;
+            ++lineLen;
+
+            if (lineLen >= maxCharsPerLine && lastSpace != Ogre::String::npos && lastSpace >= lineStart)
+            {
+                // Replace the space we broke on with a newline
+                result[lastSpace] = '\n';
+                lineLen = i - lastSpace;
+                lineStart = lastSpace + 1;
+                lastSpace = Ogre::String::npos;
+            }
+        }
+        return result;
+    }
 }
 
 namespace NOWA
@@ -185,20 +219,15 @@ namespace NOWA
 	{
 		GameObjectComponent::connect();
 
-		bool success = GameObjectComponent::connect();
-		if (false == success)
-		{
-			return success;
-		}
-
 		auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GameObjectTitleComponent>());
 		if (nullptr != gameObjectTitleCompPtr)
 		{
 			this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
-			ENQUEUE_RENDER_COMMAND("SpeechBubbleComponent::connect movable text visible true",
-			{
-				this->gameObjectTitleComponent->getMovableText()->setVisible(true);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            {
+                this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(true);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::connect movable text visible true");
 		}
 		else
 		{
@@ -219,7 +248,7 @@ namespace NOWA
 		this->timeSinceLastRun = 0.0f;
 		this->speechDone = false;
 
-		return success;
+		return true;
 	}
 
 	bool SpeechBubbleComponent::disconnect(void)
@@ -406,29 +435,30 @@ namespace NOWA
 	void SpeechBubbleComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		// TODO: Wait?
-		ENQUEUE_RENDER_COMMAND_MULTI("SpeechBubbleComponent::setActivated", _1(activated),
-		{
-			if (true == this->bConnected)
-			{
-				if (false == activated)
-				{
+		
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]
+        {
+            if (true == this->bConnected)
+            {
+                if (false == activated)
+                {
 
-					if (nullptr != this->gameObjectTitleComponent)
-					{
-						this->gameObjectTitleComponent->getMovableText()->setVisible(false);
-					}
-				}
-				else
-				{
-					if (nullptr != this->gameObjectTitleComponent)
-					{
-						this->gameObjectTitleComponent->getMovableText()->setVisible(true);
-					}
-					this->createSpeechBubble();
-				}
-			}
-		});
+                    if (nullptr != this->gameObjectTitleComponent)
+                    {
+                        this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(false);
+                    }
+                }
+                else
+                {
+                    if (nullptr != this->gameObjectTitleComponent)
+                    {
+                        this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(true);
+                    }
+                    this->createSpeechBubble();
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::setActivated");
 	}
 
 	bool SpeechBubbleComponent::isActivated(void) const
@@ -437,45 +467,55 @@ namespace NOWA
 	}
 
 	void SpeechBubbleComponent::setCaption(const Ogre::String& caption)
-	{
-		ENQUEUE_RENDER_COMMAND_MULTI("SpeechBubbleComponent::setCaption", _1(caption),
-		{
-			auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GameObjectTitleComponent>());
-			if (nullptr != gameObjectTitleCompPtr)
-			{
-				this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
-				this->gameObjectTitleComponent->getMovableText()->setVisible(true);
-			}
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, caption]
+        {
+            auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GameObjectTitleComponent>());
+            if (nullptr != gameObjectTitleCompPtr)
+            {
+                this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
+                this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(true);
+            }
 
-			Ogre::String tempCaption = replaceAll(caption, "\\n", "\n");
-			this->caption->setValue(tempCaption);
-			if (nullptr != this->gameObjectTitleComponent)
-			{
-				this->gameObjectTitleComponent->setCaption(tempCaption);
-				// Must be called, in order to calculate bounding box for currentCaptionWidth, currentCaptionHeight
-				this->gameObjectTitleComponent->getMovableText()->forceUpdate();
+            Ogre::String tempCaption = replaceAll(caption, "\\n", "\n");
+            this->caption->setValue(tempCaption);
 
-				this->gameObjectTitleComponent->getMovableText()->setVisible(true);
+            // Word-wrap BEFORE anything measures width - both the bubble sizing
+            // below (getLocalAabb() on the full wrapped text) and the typewriter
+            // effect in drawSpeechBubble() must use this SAME wrapped string, or
+            // the bubble and the visible text drift apart again exactly like this
+            // bug did with the single unwrapped line.
+            this->wrappedCaption = wrapCaptionText(tempCaption, 40); // tune 40 to taste
 
-				this->currentCharIndex = 0;
-				this->timeSinceLastRun = 0.0f;
+            if (nullptr != this->gameObjectTitleComponent)
+            {
+                this->gameObjectTitleComponent->setCaption(this->wrappedCaption);
+                // Must be called, in order to calculate bounding box for currentCaptionWidth, currentCaptionHeight
+                this->gameObjectTitleComponent->getMovableText()->forceUpdate();
 
-				this->currentCaptionWidth = this->gameObjectTitleComponent->getMovableText()->getLocalAabb().getMaximum().x * 0.5f + 0.1f;
-				this->currentCaptionHeight = this->gameObjectTitleComponent->getMovableText()->getLocalAabb().getMaximum().y * 0.5f;
+                this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(true);
 
-				// Only set directly the whole caption to be rendered, if run speech is set to false. Else set caption char by char
-				if (true == this->runSpeech->getBool())
-				{
-					this->gameObjectTitleComponent->setCaption("");
-				}
-			}
+                this->currentCharIndex = 0;
+                this->timeSinceLastRun = 0.0f;
 
-			if (nullptr != this->lineNode)
-			{
-				this->lineNode->setVisible(true);
-			}
-		});
-	}
+				// Calculate speech bubble size
+                Ogre::Aabb textAabb = this->gameObjectTitleComponent->getMovableText()->getLocalAabb();
+                this->currentCaptionWidth = textAabb.getMaximum().x * 0.5f + 0.1f;
+                this->currentCaptionHeight = (textAabb.getMaximum().y - textAabb.getMinimum().y) * 0.5f + 0.1f;
+
+                if (true == this->runSpeech->getBool())
+                {
+                    this->gameObjectTitleComponent->setCaption("");
+                }
+            }
+
+            if (nullptr != this->lineNode)
+            {
+                this->lineNode->setVisible(true);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::setCaption");
+    }
 
 	Ogre::String SpeechBubbleComponent::getCaption(void) const
 	{
@@ -558,7 +598,7 @@ namespace NOWA
 
 			if (true == this->runSpeech->getBool())
 			{
-				size_t totalCharacters = this->caption->getString().length();
+                size_t totalCharacters = this->wrappedCaption.length();
 				if (totalCharacters > 0)
 				{
 					Ogre::Real timePerCharacter = this->speechDuration->getReal() / static_cast<Ogre::Real>(totalCharacters);
@@ -568,7 +608,7 @@ namespace NOWA
 						this->timeSinceLastChar = 0.0f;
 						this->currentCharIndex++;
 
-						Ogre::String captionSoFar = mid(this->caption->getString(), 0, this->currentCharIndex);
+						Ogre::String captionSoFar = mid(this->wrappedCaption, 0, this->currentCharIndex);
 						this->gameObjectTitleComponent->setCaption(captionSoFar);
 
 						if (this->runSpeechSound->getBool() && this->simpleSoundComponent)
@@ -580,7 +620,7 @@ namespace NOWA
 					}
 				}
 
-				if (this->gameObjectTitleComponent->getCaption() == this->caption->getString() &&
+				if (this->gameObjectTitleComponent->getCaption() == this->wrappedCaption &&
 					this->timeSinceLastRun >= this->speechDuration->getReal() + 0.2f)
 				{
 					this->speechDone = true;
@@ -596,7 +636,7 @@ namespace NOWA
 					this->timeSinceLastRun = 0.0f;
 					if (false == this->keepCaption->getBool())
 					{
-						this->gameObjectTitleComponent->getMovableText()->setVisible(false);
+                        this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(false);
 						this->lineNode->setVisible(false);
 					}
 					this->speechDone = false;
@@ -632,8 +672,12 @@ namespace NOWA
 				return;
 			}
 
-			Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
-			Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
+			// Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
+			// Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
+
+			Ogre::Quaternion o = this->gameObjectPtr->getSceneNode()->_getDerivedOrientation();
+            Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
+
 			Ogre::Vector3 sp = Ogre::Vector3::ZERO;
 			Ogre::Quaternion so = Ogre::Quaternion::IDENTITY;
 
@@ -684,20 +728,23 @@ namespace NOWA
 	{
 		if (nullptr == this->manualObject)
 		{
-			ENQUEUE_RENDER_COMMAND("SpeechBubbleComponent::createSpeechBubble",
-			{
-				if (nullptr == this->lineNode)
-				{
-					this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				}
-				this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-				this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-				this->manualObject->setName("SpeechBubble_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
-				this->manualObject->setQueryFlags(0 << 0);
-				this->lineNode->attachObject(this->manualObject);
-				this->manualObject->setCastShadows(false);
-				this->lineNode->setVisible(true);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            {
+                if (nullptr == this->lineNode)
+                {
+                    this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+                }
+                this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+                // this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+                this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_TRANSPARENT);
+
+                this->manualObject->setName("SpeechBubble_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
+                this->manualObject->setQueryFlags(0 << 0);
+                this->lineNode->attachObject(this->manualObject);
+                this->manualObject->setCastShadows(false);
+                this->lineNode->setVisible(true);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::createSpeechBubble");
 		}
 	}
 
@@ -705,14 +752,15 @@ namespace NOWA
 	{
 		if (this->lineNode != nullptr)
 		{
-			ENQUEUE_RENDER_COMMAND("SpeechBubbleComponent::destroySpeechBubble",
-			{
-				this->lineNode->detachAllObjects();
-				this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
-				this->manualObject = nullptr;
-				this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
-				this->lineNode = nullptr;
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            {
+                this->lineNode->detachAllObjects();
+                this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
+                this->manualObject = nullptr;
+                this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
+                this->lineNode = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::destroySpeechBubble");
 		}
 	}
 

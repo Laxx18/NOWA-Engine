@@ -3133,11 +3133,17 @@ namespace NOWA
             if (this->omegaForceCommand.inProgress.compare_exchange_strong(expected, true))
             {
                 Ogre::Vector3 desiredOmega = this->omegaForceCommand.vectorValue;
-                body->setTorqueFromOmega(desiredOmega, timeStep);
-                // body->setBodyAngularVelocity(desiredOmega, timeStep);
+                // body->setTorqueFromOmega(desiredOmega, timeStep);
+                body->setBodyAngularVelocity(desiredOmega, timeStep);
 
                 this->omegaForceCommand.pending.store(false);
                 this->omegaForceCommand.inProgress.store(false);
+
+                /*ndVector omegaAfterSet = body->getNewtonBody()->GetOmega();
+                bool isSleeping = 0 != body->getNewtonBody()->GetSleepState();
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Omega-DEBUG] GO: " + this->gameObjectPtr->getName() + " desired=" + Ogre::StringConverter::toString(desiredOmega) + " afterSet=(" + Ogre::StringConverter::toString((float)omegaAfterSet.m_x) + "," +
+                                                                                        Ogre::StringConverter::toString((float)omegaAfterSet.m_y) + "," + Ogre::StringConverter::toString((float)omegaAfterSet.m_z) + ")" +
+                                                                                        " sleeping=" + Ogre::StringConverter::toString(isSleeping));*/
             }
         }
 

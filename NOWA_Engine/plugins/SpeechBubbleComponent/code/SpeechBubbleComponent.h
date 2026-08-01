@@ -258,6 +258,7 @@ namespace NOWA
 		Ogre::Real timeSinceLastChar;
 		bool couldDraw;
 		bool speechDone;
+        Ogre::String wrappedCaption;
 
 		luabind::object closureFunction;
 		Variant* activated;

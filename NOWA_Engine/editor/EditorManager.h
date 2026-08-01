@@ -234,6 +234,8 @@ namespace NOWA
 
 		void snapshotRoadData(const std::vector<unsigned char>& oldRoadData, const std::vector<unsigned char>& newRoadData, unsigned long gameObjectId, bool isAdditionalUndo = false);
 
+		void snapshotPlatformData(const std::vector<unsigned char>& oldPlatformData, const std::vector<unsigned char>& newPlatformData, unsigned long gameObjectId, bool isAdditionalUndo = false);
+
 		void snapshotWallData(const std::vector<unsigned char>& oldWallData, const std::vector<unsigned char>& newWallData, unsigned long gameObjectId, bool isAdditionalUndo = false);
 
 		void deleteGameObjects(const std::vector<unsigned long> gameObjectIds);
@@ -313,6 +315,8 @@ namespace NOWA
 		void handleTerraPaintEnd(EventDataPtr eventData);
 
 		void handleRoadModifyEnd(EventDataPtr eventData);
+
+		void handlePlatformModifyEnd(EventDataPtr eventData);
 
 		void handleWallModifyEnd(EventDataPtr eventData);
 

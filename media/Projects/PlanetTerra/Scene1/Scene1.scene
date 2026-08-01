@@ -33,7 +33,7 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268246 5043.49 264684"/>
+		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268247 5044.44 264685"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="301.887" y="-183.225" z="27848.4"/>
-			<rotation qw="0.826423" qx="-0.208633" qy="-0.510875" qz="-0.111823"/>
+			<position x="298.426" y="-181.569" z="27852"/>
+			<rotation qw="0.896872" qx="-0.230488" qy="-0.369243" qz="-0.0784619"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -71,8 +71,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="298.426 -181.569 27852"/>
-					<property type="9" name="CameraOrientation" data="-28.1239 -45.2337 1.91503"/>
+					<property type="9" name="CameraPosition" data="300.42 -181.864 27849.7"/>
+					<property type="9" name="CameraOrientation" data="-29.8531 -42.4606 1.84494"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -109,7 +109,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="268246" y="5043.02" z="264683"/>
+			<position x="268247" y="5043.97" z="264684"/>
 			<rotation qw="-0.237327" qx="0.400103" qy="0.226368" qz="0.855775"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="false">
@@ -282,7 +282,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="9" name="YOffset" data="0 5 7"/>
+					<property type="9" name="YOffset" data="0 4 5"/>
 					<property type="9" name="LookAtOffset" data="0 0 0"/>
 					<property type="6" name="SpringForce" data="0.1"/>
 					<property type="6" name="Friction" data="0.5"/>
@@ -467,7 +467,7 @@
 			<position x="-9397.26" y="-485.984" z="11449.1"/>
 			<rotation qw="-0.984789" qx="-0.00895518" qy="-0.173511" qz="0.00211516"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="false">
+			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -517,7 +517,7 @@
 			</item>
 		</node>
 		<node name="Alfred" id="1034834529">
-			<position x="7664.34" y="484.918" z="24547.7"/>
+			<position x="7664.27" y="485.217" z="24547.7"/>
 			<rotation qw="0.975828" qx="0.0602494" qy="0.172065" qz="0.120513"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Alfred" meshFile="Mage1.mesh" castShadows="true" visible="true">
@@ -594,6 +594,29 @@
 					<property type="6" name="RotationSpeed" data="10"/>
 					<property type="12" name="FlyMode" data="false"/>
 					<property type="7" name="StartStateName" data="WanderState"/>
+					<property type="7" name="ComponentGameObjectTitleComponent" data="GameObjectTitleComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="FontName" data="BlueHighway"/>
+					<property type="7" name="Caption" data=""/>
+					<property type="6" name="CharHeight" data="0.2"/>
+					<property type="12" name="AlwaysPresent" data="false"/>
+					<property type="9" name="OffsetPosition" data="-0.8 0 0.5"/>
+					<property type="9" name="OffsetOrientation" data="0 -45 0"/>
+					<property type="2" name="OrientationTargetId" data="0"/>
+					<property type="10" name="Color" data="0 0 0 1"/>
+					<property type="8" name="Alignment" data="1 2"/>
+					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="Caption" data="Hello Stranger, please fly to planet Eri and bring me the lost stonetable. There is important information on it how to save our local solar system."/>
+					<property type="12" name="RunSpeech" data="true"/>
+					<property type="6" name="SpeechDuration" data="10"/>
+					<property type="12" name="RunSpeechSound" data="false"/>
+					<property type="12" name="KeepCaption" data="true"/>
 				</userData>
 			</item>
 		</node>
@@ -3907,7 +3930,7 @@
 			</item>
 		</node>
 		<node name="Dungeon_0" id="2358939090">
-			<position x="9658.45" y="525.081" z="41306.5"/>
+			<position x="9658.45" y="525.131" z="41306.5"/>
 			<rotation qw="0.736576" qx="-0.0294688" qy="-0.0321596" qz="0.674947"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
