@@ -4424,10 +4424,10 @@ namespace NOWA
 
         if (nullptr != gameObjectPtr)
         {
-            auto roadComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::RoadComponentBase>());
-            if (nullptr != roadComponentBase)
+            auto platformComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PlatformComponentBase>());
+            if (nullptr != platformComponentBase)
             {
-                this->snapshotRoadData(castEventData->getOldPlatformData(), castEventData->getNewPlatformData(), castEventData->getGameObjectId(), false);
+                this->snapshotPlatformData(castEventData->getOldPlatformData(), castEventData->getNewPlatformData(), castEventData->getGameObjectId(), false);
             }
         }
     }

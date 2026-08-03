@@ -228,7 +228,6 @@ namespace NOWA
                 {
                     this->dummyItem->setName("DummyItem");
                     this->dummyItem->setCastShadows(false);
-                    this->dummyItem->setVisible(false);
                 }
                 this->setDirection(this->direction->getVector3());
             };
@@ -346,6 +345,7 @@ namespace NOWA
 		{
 			NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]
             {
+                this->gameObjectPtr->setVisible(activated);
                 this->light->setVisible(activated);
                 this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
                 if (this->dummyItem != nullptr)

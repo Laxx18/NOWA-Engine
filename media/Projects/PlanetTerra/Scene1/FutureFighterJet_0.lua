@@ -63,7 +63,7 @@ FutureFighterJet_0["connect"] = function(gameObject)
     physComp     = go:getPhysicsActiveComponent()
     particleComp = go:getParticleFxComponentFromIndex(0)
     soundComp    = go:getSimpleSoundComponent()
-    attribComp   = go:getAttributesComponent()
+    attribComp   = go:getAttributesComponent();
 
     physComp:setGravitySourceCategory("")
 

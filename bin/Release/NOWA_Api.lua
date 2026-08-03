@@ -29334,15 +29334,7 @@ return {
 			setGroundDatablock =
 			{
 				type = "method",
-				description = "Sets the PBS datablock for the platform body (sides/bottom).",
-				args = "(string name)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			setJunctionDatablock =
-			{
-				type = "method",
-				description = "Sets the PBS datablock for junction fan patches.",
+				description = "Sets the PBS datablock for the platform body (sides/bottom); junction fan patches always reuse it too.",
 				args = "(string name)",
 				returns = "(nil)",
 				valuetype = "nil"

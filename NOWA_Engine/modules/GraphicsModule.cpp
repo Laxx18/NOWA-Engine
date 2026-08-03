@@ -2268,25 +2268,6 @@ namespace NOWA
 
         while (processedCount < maxCommandsPerFrame && this->closureQueue.try_dequeue(consumerToken, command))
         {
-            ClosureCommandDiag& diag = g_closureCommandDiagnostics[command.uniqueName];
-            ++diag.count;
-            if (true == command.isRemoval)
-            {
-                ++diag.removals;
-            }
-            else if (true == command.fireAndForget)
-            {
-                ++diag.fireAndForget;
-            }
-            else if (true == command.isUpdate)
-            {
-                ++diag.updates;
-            }
-            else
-            {
-                ++diag.adds;
-            }
-
             this->processSingleCommand(command, this->currentRenderDt);
             ++processedCount;
         }
@@ -2295,16 +2276,7 @@ namespace NOWA
         if (processedCount >= maxCommandsPerFrame)
         {
             Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Warning: Processed maximum closure commands per frame (" + Ogre::StringConverter::toString(maxCommandsPerFrame) + ")", Ogre::LML_NORMAL);
-            logClosureFloodDiagnostics(this->currentRenderDt);
         }
-
-        g_closureCommandDiagnostics.clear();
-
-        //// Log if we hit the limit (might indicate a problem)
-        //if (processedCount >= maxCommandsPerFrame)
-        //{
-        //    Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Warning: Processed maximum closure commands per frame (" + Ogre::StringConverter::toString(maxCommandsPerFrame) + ")", Ogre::LML_NORMAL);
-        //}
     }
 
     void GraphicsModule::executeActiveClosures(void)

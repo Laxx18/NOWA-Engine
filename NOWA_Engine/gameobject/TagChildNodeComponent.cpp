@@ -87,6 +87,24 @@ namespace NOWA
     bool TagChildNodeComponent::disconnect(void)
     {
         GameObjectComponent::disconnect();
+
+		if (nullptr != this->sourceChildNode && nullptr != this->sourceParentOfChildNode)
+        {
+            GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                // Detach this node from the spaceship
+                this->sourceChildNode->getParent()->removeChild(this->sourceChildNode);
+                // Re-attach to original parent (e.g. root scene node)
+                this->sourceParentOfChildNode->addChild(this->sourceChildNode);
+                // Restore original world-space transform
+                this->sourceChildNode->setPosition(this->oldSourceChildPosition);
+                this->sourceChildNode->setOrientation(this->oldSourceChildOrientation);
+                this->sourceChildNode->setInheritScale(true);
+
+				this->alreadyConnected = false;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagChildNodeComponent::disconnect");
+        }
         
         return true;
     }

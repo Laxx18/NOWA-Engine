@@ -9,7 +9,7 @@ local planetMinimapGo = nil;
 local mainGo = nil;
 local inputDeviceComp = nil;
 local flashLightComp = nil;
-local toggleFlashLight = true;
+local toggleFlashLight = false;
 
 PLANET_MINIMAP_GO_ID = "1527832358";
 

@@ -3504,101 +3504,6 @@ namespace NOWA
         }
     }
 
-    // void UniversumComponent::showSurfaceObjects(OrbitalBody& body)
-    //{
-    //     GameObjectPtr hostGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(body.gameObjectId);
-    //     if (nullptr == hostGo)
-    //     {
-    //         return;
-    //     }
-
-    //    Ogre::SceneNode* hostNode = hostGo->getSceneNode();
-    //    const Ogre::Vector3 hostPos = hostNode->_getDerivedPositionUpdated();
-    //    const Ogre::Quaternion hostRot = hostNode->_getDerivedOrientationUpdated();
-
-    //    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] showSurfaceObjects\n"
-    //                                                                        "  hostGameObjectId: " +
-    //                                                                            Ogre::StringConverter::toString(body.gameObjectId) +
-    //                                                                            "\n"
-    //                                                                            "  hostPosition: " +
-    //                                                                            Ogre::StringConverter::toString(hostPos) +
-    //                                                                            "\n"
-    //                                                                            "  hostRotation: " +
-    //                                                                            Ogre::StringConverter::toString(hostRot) +
-    //                                                                            "\n"
-    //                                                                            "  surfaceObjectCount: " +
-    //                                                                            Ogre::StringConverter::toString(static_cast<unsigned int>(body.surfaceObjects.size())));
-
-    //    for (const SurfaceObject& so : body.surfaceObjects)
-    //    {
-    //        GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(so.gameObjectId);
-    //        if (nullptr == go)
-    //        {
-    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] showSurfaceObjects: GameObject not found id=" + Ogre::StringConverter::toString(so.gameObjectId));
-
-    //            continue;
-    //        }
-
-    //        // Place at correct world position relative to frozen planet.
-    //        // Ogre::Vector3 worldPos = hostPos + hostRot * so.localPosition;
-    //        // Ogre::Quaternion worldRot = hostRot * so.localOrientation;
-
-    //        // 1. Position remains relative to the moving planetary center point
-    //        Ogre::Vector3 worldPos = hostPos + (hostRot * so.localPosition);
-
-    //        // 2. Isolate the base orientation so it doesn't multiply environmental tilt fields destructively
-    //        Ogre::Quaternion worldRot = hostRot * so.localOrientation;
-    //        if (true == this->bShowDebugData)
-    //        {
-    //            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] Restoring SurfaceObject\n"
-    //                                                                                "  gameObjectId: " +
-    //                                                                                    Ogre::StringConverter::toString(so.gameObjectId) +
-    //                                                                                    "\n"
-    //                                                                                    "  storedLocalPosition: " +
-    //                                                                                    Ogre::StringConverter::toString(so.localPosition) +
-    //                                                                                    "\n"
-    //                                                                                    "  storedLocalOrientation: " +
-    //                                                                                    Ogre::StringConverter::toString(so.localOrientation) +
-    //                                                                                    "\n"
-    //                                                                                    "  hostPosition: " +
-    //                                                                                    Ogre::StringConverter::toString(hostPos) +
-    //                                                                                    "\n"
-    //                                                                                    "  hostRotation: " +
-    //                                                                                    Ogre::StringConverter::toString(hostRot) +
-    //                                                                                    "\n"
-    //                                                                                    "  calculatedWorldPosition: " +
-    //                                                                                    Ogre::StringConverter::toString(worldPos) +
-    //                                                                                    "\n"
-    //                                                                                    "  calculatedWorldOrientation: " +
-    //                                                                                    Ogre::StringConverter::toString(worldRot));
-    //        }
-
-    //        go->setVisible(true);
-
-    //        // Use physics component setter if available, else move SceneNode directly.
-    //        auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
-    //        if (nullptr != physComp)
-    //        {
-    //            NOWA::GraphicsModule::getInstance()->setNodeTransform(go->getSceneNode(), worldPos, worldRot, Ogre::Vector3::UNIT_SCALE, true);
-
-    //            physComp->setPosition(worldPos);
-    //            physComp->setOrientation(worldRot);
-    //            if (nullptr != physComp->getBody())
-    //            {
-    //                physComp->setActivated(true);
-
-    //                physComp->setPosition(worldPos);
-    //                physComp->setOrientation(worldRot);
-    //            }
-    //        }
-    //        else
-    //        {
-    //            go->setAttributePosition(worldPos);
-    //            go->setAttributeOrientation(worldRot);
-    //        }
-    //    }
-    //}
-
     void UniversumComponent::showSurfaceObjects(OrbitalBody& body)
     {
         GameObjectPtr hostGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(body.gameObjectId);
@@ -3668,7 +3573,7 @@ namespace NOWA
                 physComp->setOrientation(worldRot);
                 if (nullptr != physComp->getBody())
                 {
-                    // physComp->setActivated(true);
+                    physComp->setActivated(true);
 
                     physComp->setPosition(worldPos);
                     physComp->setOrientation(worldRot);
@@ -3704,11 +3609,11 @@ namespace NOWA
             go->setActivated(false);
 
             // Force physics to sleep so it doesn't affect the world while hidden.
-            /*auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
+            auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
             if (nullptr != physComp && nullptr != physComp->getBody())
             {
                 physComp->setActivated(false);
-            }*/
+            }
         }
     }
 
@@ -3761,10 +3666,10 @@ namespace NOWA
                     {
                         physComp->setPosition(so.savedWorldPosition);
                         physComp->setOrientation(so.savedWorldOrientation);
-                        /*if (nullptr != physComp->getBody())
+                        if (nullptr != physComp->getBody())
                         {
                             physComp->setActivated(true);
-                        }*/
+                        }
                     }
                     else
                     {

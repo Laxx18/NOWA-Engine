@@ -181,7 +181,10 @@ Universum_0["connect"] = function(gameObject)
         elseif (planetGameObject:getName() == "Eri") then
             -- Dungeon
             planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(1, "3288953531");
-            planetMinimapGo:getPlanetMinimapComponent():setCompassToolTipText(1, "Quest: Find relict");
+            local hasQuest = mainGo:getAttributesComponentFromName("Quest1"):getAttributeValueBool2("BringStoneTable");
+            if (hasQuest) then
+               planetMinimapGo:getPlanetMinimapComponent():setCompassToolTipText(1, "Quest: Find relict");
+            end
         end
         
         planetMinimapGo:getPlanetMinimapComponent():setActivated(true);

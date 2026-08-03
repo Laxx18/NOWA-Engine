@@ -4,8 +4,8 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.0449887" g="0.0449887" b="0.0506043"/>
-			<ambientLightLowerHemisphere r="0.0187028" g="0.0187028" b="0.0221466" a="1"/>
+			<ambientLightUpperHemisphere r="0.0245891" g="0.0245891" b="0.0333686"/>
+			<ambientLightLowerHemisphere r="0.0148763" g="0.0148763" b="0.0206555" a="1"/>
 			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
@@ -33,7 +33,7 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268247 5044.44 264685"/>
+		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268259 5052.08 264689"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="298.426" y="-181.569" z="27852"/>
-			<rotation qw="0.896872" qx="-0.230488" qy="-0.369243" qz="-0.0784619"/>
+			<position x="304.328" y="-184.225" z="27838.4"/>
+			<rotation qw="-0.492033" qx="0.15143" qy="0.827304" qz="0.224811"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -71,8 +71,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="300.42 -181.864 27849.7"/>
-					<property type="9" name="CameraOrientation" data="-29.8531 -42.4606 1.84494"/>
+					<property type="9" name="CameraPosition" data="304.328 -184.225 27838.4"/>
+					<property type="9" name="CameraOrientation" data="-31.3988 -119.07 1.96907"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -109,10 +109,10 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="268247" y="5043.97" z="264684"/>
+			<position x="268259" y="5051.61" z="264688"/>
 			<rotation qw="-0.237327" qx="0.400103" qy="0.226368" qz="0.855775"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="false">
+			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -189,6 +189,14 @@
 					<property type="12" name="RelativeToListener" data="false"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="Name" data="Quest1"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="AttributesCount" data="1"/>
+					<property type="7" name="AttributeName0" data="BringStoneTable"/>
+					<property type="7" name="AttributeType0" data="Bool"/>
+					<property type="7" name="AttributeValue0" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -247,7 +255,7 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="RotationSpeed" data="10"/>
 					<property type="6" name="GoalRadius" data="0.5"/>
-					<property type="6" name="AnimationSpeed" data="2"/>
+					<property type="6" name="AnimationSpeed" data="4"/>
 					<property type="6" name="Acceleration" data="0"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="UseStandUp" data="false"/>
@@ -320,6 +328,59 @@
 					<property type="6" name="Radius2" data="10"/>
 					<property type="7" name="Categories2" data="Spaceship"/>
 					<property type="7" name="TagName2" data=""/>
+				</userData>
+			</item>
+		</node>
+		<node name="PlayerLight" id="3368290548">
+			<position x="306.235" y="-187.99" z="27844.4"/>
+			<rotation qw="0.950842" qx="0.00309509" qy="-0.293325" qz="-0.0992445"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2467979983"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="500"/>
+					<property type="6" name="LodDistance" data="500"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentLightSpotComponent" data="LightSpotComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="Diffuse" data="1 1 1"/>
+					<property type="9" name="Specular" data="1 1 1"/>
+					<property type="6" name="PowerScale" data="3.14159"/>
+					<property type="7" name="AttenuationMode" data="Radius"/>
+					<property type="6" name="AttenuationRange" data="23"/>
+					<property type="6" name="AttenuationConstant" data="0.5"/>
+					<property type="6" name="AttenuationLinear" data="0"/>
+					<property type="6" name="AttenuationQuadratic" data="0.5"/>
+					<property type="6" name="AttenuationRadius" data="10"/>
+					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
+					<property type="12" name="CastShadows" data="true"/>
+					<property type="9" name="Size" data="30 40 1"/>
+					<property type="6" name="NearClipDistance" data="0.1"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ComponentTagChildNodeComponent" data="TagChildNodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="SourceId" data="1959649159"/>
 				</userData>
 			</item>
 		</node>
@@ -460,14 +521,39 @@
 					<property type="7" name="AttributeName0" data="isOnPlanet"/>
 					<property type="7" name="AttributeType0" data="Bool"/>
 					<property type="7" name="AttributeValue0" data="true"/>
+					<property type="7" name="ComponentGameObjectTitleComponent" data="GameObjectTitleComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="FontName" data="BlueHighway"/>
+					<property type="7" name="Caption" data="I need to fly to planet Corba
+Alfred has important information!"/>
+					<property type="6" name="CharHeight" data="0.5"/>
+					<property type="12" name="AlwaysPresent" data="false"/>
+					<property type="9" name="OffsetPosition" data="0 2 0"/>
+					<property type="9" name="OffsetOrientation" data="0 180 0"/>
+					<property type="2" name="OrientationTargetId" data="0"/>
+					<property type="10" name="Color" data="1 1 1 1"/>
+					<property type="8" name="Alignment" data="1 3"/>
+					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Caption" data="I need to fly to planet Corba
+Alfred has important information!"/>
+					<property type="12" name="RunSpeech" data="true"/>
+					<property type="6" name="SpeechDuration" data="7"/>
+					<property type="12" name="RunSpeechSound" data="false"/>
+					<property type="12" name="KeepCaption" data="false"/>
 				</userData>
 			</item>
 		</node>
 		<node name="SpaceshipLight" id="2455145113">
-			<position x="-9397.26" y="-485.984" z="11449.1"/>
-			<rotation qw="-0.984789" qx="-0.00895518" qy="-0.173511" qz="0.00211516"/>
+			<position x="309.451" y="-187.783" z="27839.5"/>
+			<rotation qw="0.57352" qx="0.00271509" qy="0.819084" qz="0.0130029"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -601,12 +687,12 @@
 					<property type="7" name="FontName" data="BlueHighway"/>
 					<property type="7" name="Caption" data=""/>
 					<property type="6" name="CharHeight" data="0.2"/>
-					<property type="12" name="AlwaysPresent" data="false"/>
-					<property type="9" name="OffsetPosition" data="-0.8 0 0.5"/>
-					<property type="9" name="OffsetOrientation" data="0 -45 0"/>
+					<property type="12" name="AlwaysPresent" data="true"/>
+					<property type="9" name="OffsetPosition" data="2 2 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
 					<property type="2" name="OrientationTargetId" data="0"/>
 					<property type="10" name="Color" data="0 0 0 1"/>
-					<property type="8" name="Alignment" data="1 2"/>
+					<property type="8" name="Alignment" data="1 1"/>
 					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1233,7 +1319,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1458,7 +1544,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1571,7 +1657,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1717,7 +1803,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1830,7 +1916,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1943,7 +2029,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2056,7 +2142,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2250,7 +2336,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2363,7 +2449,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2476,7 +2562,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2589,7 +2675,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2766,7 +2852,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2960,7 +3046,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3073,7 +3159,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3250,7 +3336,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3396,7 +3482,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3509,7 +3595,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3686,7 +3772,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3799,7 +3885,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3912,7 +3998,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
+					<property type="12" name="Serialize" data="true"/>
 					<property type="7" name="Collidable" data="true"/>
 					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3930,7 +4016,7 @@
 			</item>
 		</node>
 		<node name="Dungeon_0" id="2358939090">
-			<position x="9658.45" y="525.131" z="41306.5"/>
+			<position x="9658.45" y="525.581" z="41306.5"/>
 			<rotation qw="0.736576" qx="-0.0294688" qy="-0.0321596" qz="0.674947"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -4527,7 +4613,7 @@
 			<position x="7635.33" y="524.94" z="24554.5"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightPoint.mesh" castShadows="false" visible="false">
+			<item name="DummyItem" meshFile="LightPoint.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -4570,59 +4656,6 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="2" name="Target Planet Id" data="3104165348"/>
-				</userData>
-			</item>
-		</node>
-		<node name="PlayerLight" id="3368290548">
-			<position x="306.831" y="-186.842" z="27844.3"/>
-			<rotation qw="0.606919" qx="-0.0502633" qy="-0.789411" qz="-0.0771596"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="false">
-				<subitem index="0" datablockName="WhiteLine"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="2467979983"/>
-					<property type="7" name="Category" data="Default"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="false"/>
-					<property type="9" name="DefaultDirection" data="0 0 -1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="500"/>
-					<property type="6" name="LodDistance" data="500"/>
-					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
-					<property type="7" name="DataBlock0" data="WhiteLine"/>
-					<property type="7" name="ComponentLightSpotComponent" data="LightSpotComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="9" name="Diffuse" data="1 1 1"/>
-					<property type="9" name="Specular" data="1 1 1"/>
-					<property type="6" name="PowerScale" data="3.14159"/>
-					<property type="7" name="AttenuationMode" data="Radius"/>
-					<property type="6" name="AttenuationRange" data="23"/>
-					<property type="6" name="AttenuationConstant" data="0.5"/>
-					<property type="6" name="AttenuationLinear" data="0"/>
-					<property type="6" name="AttenuationQuadratic" data="0.5"/>
-					<property type="6" name="AttenuationRadius" data="10"/>
-					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
-					<property type="12" name="CastShadows" data="true"/>
-					<property type="9" name="Size" data="30 40 1"/>
-					<property type="6" name="NearClipDistance" data="0.1"/>
-					<property type="12" name="ShowDummyEntity" data="false"/>
-					<property type="7" name="ComponentTagChildNodeComponent" data="TagChildNodeComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="SourceId" data="1959649159"/>
 				</userData>
 			</item>
 		</node>

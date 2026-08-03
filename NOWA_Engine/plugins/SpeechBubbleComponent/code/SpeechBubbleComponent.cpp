@@ -1,41 +1,41 @@
 #include "NOWAPrecompiled.h"
 #include "SpeechBubbleComponent.h"
-#include "utilities/XMLConverter.h"
-#include "modules/LuaScriptApi.h"
-#include "main/EventManager.h"
-#include "main/AppStateManager.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/GameObjectTitleComponent.h"
 #include "gameobject/SimpleSoundComponent.h"
+#include "main/AppStateManager.h"
+#include "main/EventManager.h"
+#include "modules/LuaScriptApi.h"
+#include "utilities/XMLConverter.h"
 
 #include "RenderQueueEnums.h"
 
-#include "OgreSimpleSpline.h"
 #include "OgreAbiUtils.h"
+#include "OgreSimpleSpline.h"
 
 namespace
 {
-	Ogre::String replaceAll(Ogre::String str, const Ogre::String& from, const Ogre::String& to)
-	{
-		size_t startPos = 0;
-		while ((startPos = str.find(from, startPos)) != Ogre::String::npos)
-		{
-			str.replace(startPos, from.length(), to);
-			startPos += to.length(); // Handles case where 'to' is a substring of 'from'
-		}
-		return str;
-	}
+    Ogre::String replaceAll(Ogre::String str, const Ogre::String& from, const Ogre::String& to)
+    {
+        size_t startPos = 0;
+        while ((startPos = str.find(from, startPos)) != Ogre::String::npos)
+        {
+            str.replace(startPos, from.length(), to);
+            startPos += to.length(); // Handles case where 'to' is a substring of 'from'
+        }
+        return str;
+    }
 
-	Ogre::String mid(const Ogre::String& str, unsigned short pos1, unsigned short pos2)
-	{
-		unsigned short i;
-		Ogre::String temp;
-		for (i = pos1; i < pos2; i++)
-		{
-			temp += str[i];
-		}
+    Ogre::String mid(const Ogre::String& str, unsigned short pos1, unsigned short pos2)
+    {
+        unsigned short i;
+        Ogre::String temp;
+        for (i = pos1; i < pos2; i++)
+        {
+            temp += str[i];
+        }
 
-		return temp;
+        return temp;
     }
 
     // Simple greedy word-wrap: breaks the caption into lines of at most
@@ -75,368 +75,364 @@ namespace
 
 namespace NOWA
 {
-	using namespace rapidxml;
-	using namespace luabind;
+    using namespace rapidxml;
+    using namespace luabind;
 
-	SpeechBubbleComponent::SpeechBubbleComponent()
-		: GameObjectComponent(),
-		name("SpeechBubbleComponent"),
-		lineNode(nullptr),
-		manualObject(nullptr),
-		gameObjectTitleComponent(nullptr),
-		simpleSoundComponent(nullptr),
-		indices(0),
-		currentCaptionWidth(0.0f),
-		currentCaptionHeight(0.0f),
-		currentCharIndex(0),
-		timeSinceLastRun(0.0f),
-		couldDraw(false),
-		speechDone(false),
-		activated(new Variant(SpeechBubbleComponent::AttrActivated(), true, this->attributes)),
-		caption(new Variant(SpeechBubbleComponent::AttrCaption(), "MyCaption", this->attributes)),
-		runSpeech(new Variant(SpeechBubbleComponent::AttrRunSpeech(), false, this->attributes)),
-		speechDuration(new Variant(SpeechBubbleComponent::AttrSpeechDuration(), 10.0f, this->attributes)),
-		runSpeechSound(new Variant(SpeechBubbleComponent::AttrRunSpeechSound(), false, this->attributes)),
-		keepCaption(new Variant(SpeechBubbleComponent::AttrKeepCaption(), false, this->attributes))
-	{
-		this->runSpeech->setDescription("Sets whether the caption should remain after the speech run.");
-		this->speechDuration->setDescription("Sets the speed duration. That is how long the bubble shall remain in seconds.");
-		this->runSpeechSound->setDescription("Sets whether to use a sound if the speech is running char by char.");
-		this->keepCaption->setDescription("Sets whether to use a sound if the speech is running char by char.");
-	}
+    SpeechBubbleComponent::SpeechBubbleComponent() :
+        GameObjectComponent(),
+        name("SpeechBubbleComponent"),
+        lineNode(nullptr),
+        manualObject(nullptr),
+        gameObjectTitleComponent(nullptr),
+        simpleSoundComponent(nullptr),
+        indices(0),
+        currentCaptionWidth(0.0f),
+        currentCaptionHeight(0.0f),
+        currentCharIndex(0),
+        timeSinceLastRun(0.0f),
+        couldDraw(false),
+        speechDone(false),
+        activated(new Variant(SpeechBubbleComponent::AttrActivated(), true, this->attributes)),
+        caption(new Variant(SpeechBubbleComponent::AttrCaption(), "MyCaption", this->attributes)),
+        runSpeech(new Variant(SpeechBubbleComponent::AttrRunSpeech(), false, this->attributes)),
+        speechDuration(new Variant(SpeechBubbleComponent::AttrSpeechDuration(), 10.0f, this->attributes)),
+        runSpeechSound(new Variant(SpeechBubbleComponent::AttrRunSpeechSound(), false, this->attributes)),
+        keepCaption(new Variant(SpeechBubbleComponent::AttrKeepCaption(), false, this->attributes))
+    {
+        this->runSpeech->setDescription("Sets whether the caption should remain after the speech run.");
+        this->speechDuration->setDescription("Sets the speed duration. That is how long the bubble shall remain in seconds.");
+        this->runSpeechSound->setDescription("Sets whether to use a sound if the speech is running char by char.");
+        this->keepCaption->setDescription("Sets whether to use a sound if the speech is running char by char.");
+    }
 
-	SpeechBubbleComponent::~SpeechBubbleComponent(void)
-	{
+    SpeechBubbleComponent::~SpeechBubbleComponent(void)
+    {
+    }
 
-	}
+    void SpeechBubbleComponent::initialise()
+    {
+    }
 
-	void SpeechBubbleComponent::initialise()
-	{
+    const Ogre::String& SpeechBubbleComponent::getName() const
+    {
+        return this->name;
+    }
 
-	}
+    void SpeechBubbleComponent::install(const Ogre::NameValuePairList* options)
+    {
+        GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<SpeechBubbleComponent>(SpeechBubbleComponent::getStaticClassId(), SpeechBubbleComponent::getStaticClassName());
+    }
 
-	const Ogre::String& SpeechBubbleComponent::getName() const
-	{
-		return this->name;
-	}
+    void SpeechBubbleComponent::shutdown()
+    {
+    }
 
-	void SpeechBubbleComponent::install(const Ogre::NameValuePairList* options)
-	{
-		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<SpeechBubbleComponent>(SpeechBubbleComponent::getStaticClassId(), SpeechBubbleComponent::getStaticClassName());
-	}
+    void SpeechBubbleComponent::uninstall()
+    {
+    }
 
-	void SpeechBubbleComponent::shutdown()
-	{
+    void SpeechBubbleComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+    {
+        outAbiCookie = Ogre::generateAbiCookie();
+    }
 
-	}
+    bool SpeechBubbleComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        GameObjectComponent::init(propertyElement);
 
-	void SpeechBubbleComponent::uninstall()
-	{
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
+        {
+            this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Caption")
+        {
+            this->caption->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RunSpeech")
+        {
+            this->runSpeech->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpeechDuration")
+        {
+            this->speechDuration->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RunSpeechSound")
+        {
+            this->runSpeechSound->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "KeepCaption")
+        {
+            this->keepCaption->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
-	}
+        return true;
+    }
 
-	void SpeechBubbleComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
-	{
-		outAbiCookie = Ogre::generateAbiCookie();
-	}
+    GameObjectCompPtr SpeechBubbleComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        SpeechBubbleComponentPtr clonedCompPtr(boost::make_shared<SpeechBubbleComponent>());
 
-	bool SpeechBubbleComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		GameObjectComponent::init(propertyElement);
+        clonedCompPtr->setCaption(this->caption->getString());
+        clonedCompPtr->setRunSpeech(this->runSpeech->getBool());
+        clonedCompPtr->setSpeechDuration(this->speechDuration->getReal());
+        clonedCompPtr->setRunSpeechSound(this->runSpeechSound->getBool());
+        clonedCompPtr->setKeepCaption(this->keepCaption->getBool());
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
-		{
-			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Caption")
-		{
-			this->caption->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RunSpeech")
-		{
-			this->runSpeech->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpeechDuration")
-		{
-			this->speechDuration->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RunSpeechSound")
-		{
-			this->runSpeechSound->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "KeepCaption")
-		{
-			this->keepCaption->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
+        clonedCompPtr->setActivated(this->activated->getBool());
 
-		return true;
-	}
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-	GameObjectCompPtr SpeechBubbleComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		SpeechBubbleComponentPtr clonedCompPtr(boost::make_shared<SpeechBubbleComponent>());
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
 
-		clonedCompPtr->setCaption(this->caption->getString());
-		clonedCompPtr->setRunSpeech(this->runSpeech->getBool());
-		clonedCompPtr->setSpeechDuration(this->speechDuration->getReal());
-		clonedCompPtr->setRunSpeechSound(this->runSpeechSound->getBool());
-		clonedCompPtr->setKeepCaption(this->keepCaption->getBool());
+    bool SpeechBubbleComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SpeechBubbleComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-		clonedCompPtr->setActivated(this->activated->getBool());
+        auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GameObjectTitleComponent>());
+        if (nullptr != gameObjectTitleCompPtr)
+        {
+            this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
+            auto captionAttribute = this->gameObjectTitleComponent->getAttribute(SpeechBubbleComponent::AttrCaption());
+            if (nullptr != captionAttribute)
+            {
+                captionAttribute->setVisible(false);
+            }
+        }
 
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
+        return true;
+    }
 
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
+    bool SpeechBubbleComponent::connect(void)
+    {
+        GameObjectComponent::connect();
 
-	bool SpeechBubbleComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SpeechBubbleComponent] Init component for game object: " + this->gameObjectPtr->getName());
-
-		auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GameObjectTitleComponent>());
-		if (nullptr != gameObjectTitleCompPtr)
-		{
-			this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
-			auto captionAttribute = this->gameObjectTitleComponent->getAttribute(SpeechBubbleComponent::AttrCaption());
-			if (nullptr != captionAttribute)
-			{
-				captionAttribute->setVisible(false);
-			}
-		}
-
-		return true;
-	}
-
-	bool SpeechBubbleComponent::connect(void)
-	{
-		GameObjectComponent::connect();
-
-		auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GameObjectTitleComponent>());
-		if (nullptr != gameObjectTitleCompPtr)
-		{
-			this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+        auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GameObjectTitleComponent>());
+        if (nullptr != gameObjectTitleCompPtr)
+        {
+            this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]
             {
                 this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(true);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::connect movable text visible true");
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] This component will not work, as a prior GameObjectTitleComponent is missing for game object: " + this->gameObjectPtr->getName());
-		}
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] This component will not work, as a prior GameObjectTitleComponent is missing for game object: " + this->gameObjectPtr->getName());
+        }
 
-		auto simpleSoundCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<SimpleSoundComponent>());
-		if (nullptr != simpleSoundCompPtr)
-		{
-			this->simpleSoundComponent = simpleSoundCompPtr.get();
-		}
+        auto simpleSoundCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<SimpleSoundComponent>());
+        if (nullptr != simpleSoundCompPtr)
+        {
+            this->simpleSoundComponent = simpleSoundCompPtr.get();
+        }
 
-		this->setCaption(this->caption->getString());
+        this->setCaption(this->caption->getString());
 
-		this->createSpeechBubble();
+        this->createSpeechBubble();
 
-		this->timeSinceLastChar = 0.0f;
-		this->timeSinceLastRun = 0.0f;
-		this->speechDone = false;
+        this->timeSinceLastChar = 0.0f;
+        this->timeSinceLastRun = 0.0f;
+        this->speechDone = false;
 
-		return true;
-	}
+        return true;
+    }
 
-	bool SpeechBubbleComponent::disconnect(void)
-	{
-		GameObjectComponent::disconnect();
+    bool SpeechBubbleComponent::disconnect(void)
+    {
+        GameObjectComponent::disconnect();
 
-		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		this->indices = 0;
-		this->currentCaptionWidth = 0.0f;
-		this->currentCaptionHeight = 0.0f;
-		this->currentCharIndex = 0;
-		this->timeSinceLastChar = 0.0f;
-		this->timeSinceLastRun = 0.0f;
-		this->speechDone = false;
-		this->couldDraw = false;
+        this->indices = 0;
+        this->currentCaptionWidth = 0.0f;
+        this->currentCaptionHeight = 0.0f;
+        this->currentCharIndex = 0;
+        this->timeSinceLastChar = 0.0f;
+        this->timeSinceLastRun = 0.0f;
+        this->speechDone = false;
+        this->couldDraw = false;
 
-		if (nullptr != this->simpleSoundComponent)
-		{
-			this->simpleSoundComponent->setActivated(false);
-		}
+        if (nullptr != this->simpleSoundComponent)
+        {
+            this->simpleSoundComponent->setActivated(false);
+        }
 
-		if (nullptr != this->gameObjectTitleComponent)
-		{
-			this->gameObjectTitleComponent = nullptr;
-			this->simpleSoundComponent = nullptr;
-		}
-		this->destroySpeechBubble();
+        if (nullptr != this->gameObjectTitleComponent)
+        {
+            this->gameObjectTitleComponent = nullptr;
+            this->simpleSoundComponent = nullptr;
+        }
+        this->destroySpeechBubble();
 
-		return true;
-	}
+        return true;
+    }
 
-	void SpeechBubbleComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (false == notSimulating && true == this->activated->getBool())
-		{
-			if (nullptr == this->manualObject)
-			{
-				return;
-			}
+    void SpeechBubbleComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        if (false == notSimulating && true == this->activated->getBool())
+        {
+            if (nullptr == this->manualObject)
+            {
+                return;
+            }
 
-			auto closureFunction = [this, dt](Ogre::Real renderDt)
-			{
-				this->indices = 0;
-				if (this->manualObject->getNumSections() > 0)
-				{
-					// Ogre will crash or throw exceptions if empty manual object is processed
-					if (true == this->couldDraw)
-					{
-						this->manualObject->beginUpdate(0);
-					}
-				}
-				else
-				{
-					this->manualObject->clear();
-					this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
-				}
+            auto closureFunction = [this](Ogre::Real renderDt)
+            {
+                this->indices = 0;
+                if (this->manualObject->getNumSections() > 0)
+                {
+                    // Ogre will crash or throw exceptions if empty manual object is processed
+                    if (true == this->couldDraw)
+                    {
+                        this->manualObject->beginUpdate(0);
+                    }
+                }
+                else
+                {
+                    this->manualObject->clear();
+                    this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
+                }
 
-				this->drawSpeechBubble(dt);
+                this->drawSpeechBubble(renderDt);
 
-				// Ogre will crash or throw exceptions if empty manual object is processed
-				if (true == this->couldDraw)
-				{
-					// Realllllllyyyyy important! Else the rectangle is a whole mess!
-					this->manualObject->index(0);
-					this->manualObject->end();
-				}
-				else
-				{
-					this->manualObject->clear();
-				}
-			};
-			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-		}
-	}
+                // Ogre will crash or throw exceptions if empty manual object is processed
+                if (true == this->couldDraw)
+                {
+                    // Realllllllyyyyy important! Else the rectangle is a whole mess!
+                    this->manualObject->index(0);
+                    this->manualObject->end();
+                }
+                else
+                {
+                    this->manualObject->clear();
+                }
+            };
+            Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+        }
+    }
 
-	void SpeechBubbleComponent::actualizeValue(Variant* attribute)
-	{
-		GameObjectComponent::actualizeValue(attribute);
+    void SpeechBubbleComponent::actualizeValue(Variant* attribute)
+    {
+        GameObjectComponent::actualizeValue(attribute);
 
-		if (SpeechBubbleComponent::AttrActivated() == attribute->getName())
-		{
-			this->setActivated(attribute->getBool());
-		}
-		else if (SpeechBubbleComponent::AttrCaption() == attribute->getName())
-		{
-			this->setCaption(attribute->getString());
-		}
-		else if (SpeechBubbleComponent::AttrRunSpeech() == attribute->getName())
-		{
-			this->setRunSpeech(attribute->getBool());
-		}
-		else if (SpeechBubbleComponent::AttrSpeechDuration() == attribute->getName())
-		{
-			this->setSpeechDuration(attribute->getReal());
-		}
-		else if (SpeechBubbleComponent::AttrRunSpeechSound() == attribute->getName())
-		{
-			this->setRunSpeechSound(attribute->getBool());
-		}
-		else if (SpeechBubbleComponent::AttrKeepCaption() == attribute->getName())
-		{
-			this->setKeepCaption(attribute->getBool());
-		}
-	}
+        if (SpeechBubbleComponent::AttrActivated() == attribute->getName())
+        {
+            this->setActivated(attribute->getBool());
+        }
+        else if (SpeechBubbleComponent::AttrCaption() == attribute->getName())
+        {
+            this->setCaption(attribute->getString());
+        }
+        else if (SpeechBubbleComponent::AttrRunSpeech() == attribute->getName())
+        {
+            this->setRunSpeech(attribute->getBool());
+        }
+        else if (SpeechBubbleComponent::AttrSpeechDuration() == attribute->getName())
+        {
+            this->setSpeechDuration(attribute->getReal());
+        }
+        else if (SpeechBubbleComponent::AttrRunSpeechSound() == attribute->getName())
+        {
+            this->setRunSpeechSound(attribute->getBool());
+        }
+        else if (SpeechBubbleComponent::AttrKeepCaption() == attribute->getName())
+        {
+            this->setKeepCaption(attribute->getBool());
+        }
+    }
 
-	void SpeechBubbleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc);
+    void SpeechBubbleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        // 2 = int
+        // 6 = real
+        // 7 = string
+        // 8 = vector2
+        // 9 = vector3
+        // 10 = vector4 -> also quaternion
+        // 12 = bool
+        GameObjectComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Caption"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->caption->getString())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Caption"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->caption->getString())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RunSpeech"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->runSpeech->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "RunSpeech"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->runSpeech->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "SpeechDuration"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->speechDuration->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "SpeechDuration"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->speechDuration->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RunSpeechSound"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->runSpeechSound->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "RunSpeechSound"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->runSpeechSound->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "KeepCaption"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->keepCaption->getBool())));
-		propertiesXML->append_node(propertyXML);
-	}
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "KeepCaption"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->keepCaption->getBool())));
+        propertiesXML->append_node(propertyXML);
+    }
 
-	void SpeechBubbleComponent::onRemoveComponent(void)
-	{
-		GameObjectComponent::onRemoveComponent();
+    void SpeechBubbleComponent::onRemoveComponent(void)
+    {
+        GameObjectComponent::onRemoveComponent();
 
-		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		if (nullptr != this->gameObjectTitleComponent)
-		{
-			auto captionAttribute = this->gameObjectTitleComponent->getAttribute(SpeechBubbleComponent::AttrCaption());
-			if (nullptr != captionAttribute)
-			{
-				captionAttribute->setVisible(true);
-			}
-		}
-	}
+        if (nullptr != this->gameObjectTitleComponent)
+        {
+            auto captionAttribute = this->gameObjectTitleComponent->getAttribute(SpeechBubbleComponent::AttrCaption());
+            if (nullptr != captionAttribute)
+            {
+                captionAttribute->setVisible(true);
+            }
+        }
+    }
 
-	Ogre::String SpeechBubbleComponent::getClassName(void) const
-	{
-		return "SpeechBubbleComponent";
-	}
+    Ogre::String SpeechBubbleComponent::getClassName(void) const
+    {
+        return "SpeechBubbleComponent";
+    }
 
-	Ogre::String SpeechBubbleComponent::getParentClassName(void) const
-	{
-		return "GameObjectComponent";
-	}
+    Ogre::String SpeechBubbleComponent::getParentClassName(void) const
+    {
+        return "GameObjectComponent";
+    }
 
-	void SpeechBubbleComponent::setActivated(bool activated)
-	{
-		this->activated->setValue(activated);
-		
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]
+    void SpeechBubbleComponent::setActivated(bool activated)
+    {
+        this->activated->setValue(activated);
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]
         {
             if (true == this->bConnected)
             {
@@ -459,14 +455,14 @@ namespace NOWA
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::setActivated");
-	}
+    }
 
-	bool SpeechBubbleComponent::isActivated(void) const
-	{
-		return this->activated->getBool();
-	}
+    bool SpeechBubbleComponent::isActivated(void) const
+    {
+        return this->activated->getBool();
+    }
 
-	void SpeechBubbleComponent::setCaption(const Ogre::String& caption)
+    void SpeechBubbleComponent::setCaption(const Ogre::String& caption)
     {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, caption]
         {
@@ -498,9 +494,19 @@ namespace NOWA
                 this->currentCharIndex = 0;
                 this->timeSinceLastRun = 0.0f;
 
-				// Calculate speech bubble size
+                // Calculate speech bubble size
                 Ogre::Aabb textAabb = this->gameObjectTitleComponent->getMovableText()->getLocalAabb();
-                this->currentCaptionWidth = textAabb.getMaximum().x * 0.5f + 0.1f;
+
+                // GameObjectTitleComponent's text is H_CENTER-aligned (each wrapped
+                // line is centered on local x = 0 individually, see
+                // MovableText::_setupGeometry()), so getMaximum().x is already the
+                // half-width the widest line needs. Halving it again here shrank the
+                // bubble to roughly a quarter of the real text width - the "text
+                // pokes out both sides" bug. Take the larger of the two half-extents
+                // so a wider second/third line (different length than the widest
+                // positive side) is still fully enclosed.
+                Ogre::Real halfWidth = std::max(Ogre::Math::Abs(textAabb.getMaximum().x), Ogre::Math::Abs(textAabb.getMinimum().x));
+                this->currentCaptionWidth = halfWidth + 0.1f;
                 this->currentCaptionHeight = (textAabb.getMaximum().y - textAabb.getMinimum().y) * 0.5f + 0.1f;
 
                 if (true == this->runSpeech->getBool())
@@ -517,226 +523,225 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::setCaption");
     }
 
-	Ogre::String SpeechBubbleComponent::getCaption(void) const
-	{
-		return this->caption->getString();
-	}
+    Ogre::String SpeechBubbleComponent::getCaption(void) const
+    {
+        return this->caption->getString();
+    }
 
-	void SpeechBubbleComponent::setRunSpeech(bool runSpeech)
-	{
-		this->runSpeech->setValue(runSpeech);
-		if (false == runSpeech)
-		{
-			this->setCaption(this->caption->getString());
-		}
-	}
+    void SpeechBubbleComponent::setRunSpeech(bool runSpeech)
+    {
+        this->runSpeech->setValue(runSpeech);
+        if (false == runSpeech)
+        {
+            this->setCaption(this->caption->getString());
+        }
+    }
 
-	bool SpeechBubbleComponent::getRunSpeech(void) const
-	{
-		return this->runSpeech->getBool();
-	}
+    bool SpeechBubbleComponent::getRunSpeech(void) const
+    {
+        return this->runSpeech->getBool();
+    }
 
-	void SpeechBubbleComponent::setSpeechDuration(Ogre::Real speechDurationSec)
-	{
-		if (speechDurationSec < 0.0f)
-		{
-			speechDurationSec = 0.0f;
-		}
-		this->speechDuration->setValue(speechDurationSec);
-	}
+    void SpeechBubbleComponent::setSpeechDuration(Ogre::Real speechDurationSec)
+    {
+        if (speechDurationSec < 0.0f)
+        {
+            speechDurationSec = 0.0f;
+        }
+        this->speechDuration->setValue(speechDurationSec);
+    }
 
-	Ogre::Real SpeechBubbleComponent::getSpeechDuration(void) const
-	{
-		return this->speechDuration->getReal();
-	}
+    Ogre::Real SpeechBubbleComponent::getSpeechDuration(void) const
+    {
+        return this->speechDuration->getReal();
+    }
 
-	void SpeechBubbleComponent::setRunSpeechSound(bool runSpeechSound)
-	{
-		if (true == runSpeechSound)
-		{
-			if (nullptr == this->simpleSoundComponent)
-			{
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] Could not set run speech sound, because there is no simple sound component. Add one first! For game object: " + this->gameObjectPtr->getName());
-				return;
-			}
-		}
+    void SpeechBubbleComponent::setRunSpeechSound(bool runSpeechSound)
+    {
+        if (true == runSpeechSound)
+        {
+            if (nullptr == this->simpleSoundComponent)
+            {
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] Could not set run speech sound, because there is no simple sound component. Add one first! For game object: " + this->gameObjectPtr->getName());
+                return;
+            }
+        }
 
-		this->runSpeechSound->setValue(runSpeechSound);
-	}
+        this->runSpeechSound->setValue(runSpeechSound);
+    }
 
-	bool SpeechBubbleComponent::getRunSpeechSound(void) const
-	{
-		return this->runSpeechSound->getBool();
-	}
+    bool SpeechBubbleComponent::getRunSpeechSound(void) const
+    {
+        return this->runSpeechSound->getBool();
+    }
 
-	void SpeechBubbleComponent::setKeepCaption(bool keepCaption)
-	{
-		this->keepCaption->setValue(keepCaption);
-	}
+    void SpeechBubbleComponent::setKeepCaption(bool keepCaption)
+    {
+        this->keepCaption->setValue(keepCaption);
+    }
 
-	bool SpeechBubbleComponent::getKeepCaption(void) const
-	{
-		return this->keepCaption->getBool();
-	}
+    bool SpeechBubbleComponent::getKeepCaption(void) const
+    {
+        return this->keepCaption->getBool();
+    }
 
-	void SpeechBubbleComponent::reactOnSpeechDone(luabind::object closureFunction)
-	{
-		this->closureFunction = closureFunction;
-	}
+    void SpeechBubbleComponent::reactOnSpeechDone(luabind::object closureFunction)
+    {
+        this->closureFunction = closureFunction;
+    }
 
-	void SpeechBubbleComponent::drawSpeechBubble(Ogre::Real dt)
-	{
-		// Threadsafe from the outside
-		this->couldDraw = false;
+    void SpeechBubbleComponent::drawSpeechBubble(Ogre::Real dt)
+    {
+        // Threadsafe from the outside
+        this->couldDraw = false;
 
-		if (nullptr != this->gameObjectTitleComponent)
-		{
-			if (this->caption->getString().empty() || this->currentCaptionWidth == 0.0f)
-			{
-				return;
-			}
+        if (nullptr != this->gameObjectTitleComponent)
+        {
+            if (this->caption->getString().empty() || this->currentCaptionWidth == 0.0f)
+            {
+                return;
+            }
 
-			if (true == this->runSpeech->getBool())
-			{
+            if (true == this->runSpeech->getBool())
+            {
                 size_t totalCharacters = this->wrappedCaption.length();
-				if (totalCharacters > 0)
-				{
-					Ogre::Real timePerCharacter = this->speechDuration->getReal() / static_cast<Ogre::Real>(totalCharacters);
+                if (totalCharacters > 0)
+                {
+                    Ogre::Real timePerCharacter = this->speechDuration->getReal() / static_cast<Ogre::Real>(totalCharacters);
 
-					if (this->timeSinceLastChar >= timePerCharacter && this->currentCharIndex < totalCharacters)
-					{
-						this->timeSinceLastChar = 0.0f;
-						this->currentCharIndex++;
+                    if (this->timeSinceLastChar >= timePerCharacter && this->currentCharIndex < totalCharacters)
+                    {
+                        this->timeSinceLastChar = 0.0f;
+                        this->currentCharIndex++;
 
-						Ogre::String captionSoFar = mid(this->wrappedCaption, 0, this->currentCharIndex);
-						this->gameObjectTitleComponent->setCaption(captionSoFar);
+                        Ogre::String captionSoFar = mid(this->wrappedCaption, 0, this->currentCharIndex);
+                        this->gameObjectTitleComponent->setCaption(captionSoFar);
 
-						if (this->runSpeechSound->getBool() && this->simpleSoundComponent)
-						{
-							Ogre::Real rndPitch = static_cast<Ogre::Real>(MathHelper::getInstance()->getRandomNumber(3, 10)) * 0.1f;
-							this->simpleSoundComponent->setPitch(rndPitch);
-							this->simpleSoundComponent->setActivated(true);
-						}
-					}
-				}
+                        if (this->runSpeechSound->getBool() && this->simpleSoundComponent)
+                        {
+                            Ogre::Real rndPitch = static_cast<Ogre::Real>(MathHelper::getInstance()->getRandomNumber(3, 10)) * 0.1f;
+                            this->simpleSoundComponent->setPitch(rndPitch);
+                            this->simpleSoundComponent->setActivated(true);
+                        }
+                    }
+                }
 
-				if (this->gameObjectTitleComponent->getCaption() == this->wrappedCaption &&
-					this->timeSinceLastRun >= this->speechDuration->getReal() + 0.2f)
-				{
-					this->speechDone = true;
-					if (this->simpleSoundComponent)
-					{
-						this->simpleSoundComponent->setActivated(false);
-					}
-				}
+                if (this->gameObjectTitleComponent->getCaption() == this->wrappedCaption && this->timeSinceLastRun >= this->speechDuration->getReal() + 3.0f)
+                {
+                    this->speechDone = true;
+                    if (this->simpleSoundComponent)
+                    {
+                        this->simpleSoundComponent->setActivated(false);
+                    }
+                }
 
-				if (this->speechDone)
-				{
-					this->timeSinceLastChar = 0.0f;
-					this->timeSinceLastRun = 0.0f;
-					if (false == this->keepCaption->getBool())
-					{
+                if (this->speechDone)
+                {
+                    this->timeSinceLastChar = 0.0f;
+                    this->timeSinceLastRun = 0.0f;
+                    if (false == this->keepCaption->getBool())
+                    {
                         this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(false);
-						this->lineNode->setVisible(false);
-					}
-					this->speechDone = false;
+                        this->lineNode->setVisible(false);
+                    }
+                    this->speechDone = false;
 
-					if (this->closureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->closureFunction);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+                    if (this->closureFunction.is_valid())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+                        {
+                            try
+                            {
+                                luabind::call_function<void>(this->closureFunction);
+                            }
+                            catch (luabind::error& error)
+                            {
+                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                std::stringstream msg;
+                                msg << errorMsg;
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] Caught error in 'reactOnSpeechDone' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
-				}
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] Caught error in 'reactOnSpeechDone' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    }
+                }
 
-				this->timeSinceLastChar += dt;
-				this->timeSinceLastRun += dt;
-			}
+                this->timeSinceLastChar += dt;
+                this->timeSinceLastRun += dt;
+            }
 
-			if (this->gameObjectTitleComponent->getCaption().empty())
-			{
-				return;
-			}
+            if (this->gameObjectTitleComponent->getCaption().empty())
+            {
+                return;
+            }
 
-			// Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
-			// Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
+            // Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
+            // Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
 
-			Ogre::Quaternion o = this->gameObjectPtr->getSceneNode()->_getDerivedOrientation();
+            Ogre::Quaternion o = this->gameObjectPtr->getSceneNode()->_getDerivedOrientation();
             Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
 
-			Ogre::Vector3 sp = Ogre::Vector3::ZERO;
-			Ogre::Quaternion so = Ogre::Quaternion::IDENTITY;
+            Ogre::Vector3 sp = Ogre::Vector3::ZERO;
+            Ogre::Quaternion so = Ogre::Quaternion::IDENTITY;
 
-			// https://stackoverflow.com/questions/3477988/how-can-a-programmatically-draw-a-scalable-aethetically-pleasing-curved-comic
+            // https://stackoverflow.com/questions/3477988/how-can-a-programmatically-draw-a-scalable-aethetically-pleasing-curved-comic
 
-			Ogre::Real accuracy = 17.0f;
+            Ogre::Real accuracy = 17.0f;
 
-			this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth, 0.0f, 0.0f)))));
-			this->manualObject->colour(Ogre::ColourValue::White);
-			this->manualObject->index(this->indices + 0);
+            this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth, 0.0f, 0.0f)))));
+            this->manualObject->colour(Ogre::ColourValue::White);
+            this->manualObject->index(this->indices + 0);
 
-			this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth + 0.4f, 0.0f, 0.0f)))));
-			this->manualObject->colour(Ogre::ColourValue::White);
-			this->manualObject->index(this->indices + 1);
+            this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth + 0.4f, 0.0f, 0.0f)))));
+            this->manualObject->colour(Ogre::ColourValue::White);
+            this->manualObject->index(this->indices + 1);
 
-			// Play with 0.2 y
-			this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth + 0.1f, 0.2f, 0.0f)))));
-			this->manualObject->colour(Ogre::ColourValue::White);
-			this->manualObject->index(this->indices + 2);
-			this->indices += 3;
+            // Play with 0.2 y
+            this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth + 0.1f, 0.2f, 0.0f)))));
+            this->manualObject->colour(Ogre::ColourValue::White);
+            this->manualObject->index(this->indices + 2);
+            this->indices += 3;
 
-			std::vector<Ogre::Vector3> points(3);
-			for (Ogre::Real theta = 0; theta <= 2 * Ogre::Math::PI; theta += Ogre::Math::PI / accuracy)
-			{
-				points[0] = Ogre::Vector3(0.0f, 0.0f, 0.0f);
-				points[1] = Ogre::Vector3(this->currentCaptionWidth * Ogre::Math::Cos(theta - Ogre::Math::PI / accuracy), (this->currentCaptionHeight * 0.5f) + this->currentCaptionHeight * 0.7f * Ogre::Math::Sin(theta - Ogre::Math::PI / accuracy), 0.0f);
-				points[2] = Ogre::Vector3(this->currentCaptionWidth * Ogre::Math::Cos(theta), (this->currentCaptionHeight * 0.5f) + this->currentCaptionHeight * 0.7f * Ogre::Math::Sin(theta), 0.0f);
+            std::vector<Ogre::Vector3> points(3);
+            for (Ogre::Real theta = 0; theta <= 2 * Ogre::Math::PI; theta += Ogre::Math::PI / accuracy)
+            {
+                points[0] = Ogre::Vector3(0.0f, 0.0f, 0.0f);
+                points[1] =
+                    Ogre::Vector3(this->currentCaptionWidth * Ogre::Math::Cos(theta - Ogre::Math::PI / accuracy), (this->currentCaptionHeight * 0.5f) + this->currentCaptionHeight * 0.7f * Ogre::Math::Sin(theta - Ogre::Math::PI / accuracy), 0.0f);
+                points[2] = Ogre::Vector3(this->currentCaptionWidth * Ogre::Math::Cos(theta), (this->currentCaptionHeight * 0.5f) + this->currentCaptionHeight * 0.7f * Ogre::Math::Sin(theta), 0.0f);
 
-				this->manualObject->position(p + (o * (so * (sp + points[0]))));
-				this->manualObject->colour(Ogre::ColourValue::White);
-				this->manualObject->index(this->indices + 0);
+                this->manualObject->position(p + (o * (so * (sp + points[0]))));
+                this->manualObject->colour(Ogre::ColourValue::White);
+                this->manualObject->index(this->indices + 0);
 
-				this->manualObject->position(p + (o * (so * (sp + points[1]))));
-				this->manualObject->colour(Ogre::ColourValue::White);
-				this->manualObject->index(this->indices + 1);
+                this->manualObject->position(p + (o * (so * (sp + points[1]))));
+                this->manualObject->colour(Ogre::ColourValue::White);
+                this->manualObject->index(this->indices + 1);
 
-				this->manualObject->position(p + (o * (so * (sp + points[2]))));
-				this->manualObject->colour(Ogre::ColourValue::White);
-				this->manualObject->index(this->indices + 2);
-				this->indices += 3;
-			}
+                this->manualObject->position(p + (o * (so * (sp + points[2]))));
+                this->manualObject->colour(Ogre::ColourValue::White);
+                this->manualObject->index(this->indices + 2);
+                this->indices += 3;
+            }
 
-			this->couldDraw = true;
-		}
-	}
+            this->couldDraw = true;
+        }
+    }
 
-	void SpeechBubbleComponent::createSpeechBubble(void)
-	{
-		if (nullptr == this->manualObject)
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+    void SpeechBubbleComponent::createSpeechBubble(void)
+    {
+        if (nullptr == this->manualObject)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]
             {
                 if (nullptr == this->lineNode)
                 {
                     this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
                 }
                 this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-                // this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-                this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_TRANSPARENT);
+                this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+                // this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_TRANSPARENT);
 
                 this->manualObject->setName("SpeechBubble_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
                 this->manualObject->setQueryFlags(0 << 0);
@@ -745,14 +750,14 @@ namespace NOWA
                 this->lineNode->setVisible(true);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::createSpeechBubble");
-		}
-	}
+        }
+    }
 
-	void SpeechBubbleComponent::destroySpeechBubble(void)
-	{
-		if (this->lineNode != nullptr)
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+    void SpeechBubbleComponent::destroySpeechBubble(void)
+    {
+        if (this->lineNode != nullptr)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]
             {
                 this->lineNode->detachAllObjects();
                 this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
@@ -761,89 +766,85 @@ namespace NOWA
                 this->lineNode = nullptr;
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::destroySpeechBubble");
-		}
-	}
+        }
+    }
 
-	// Lua registration part
+    // Lua registration part
 
-	SpeechBubbleComponent* getSpeechBubbleComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
-	{
-		return makeStrongPtr<SpeechBubbleComponent>(gameObject->getComponentWithOccurrence<SpeechBubbleComponent>(occurrenceIndex)).get();
-	}
+    SpeechBubbleComponent* getSpeechBubbleComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
+    {
+        return makeStrongPtr<SpeechBubbleComponent>(gameObject->getComponentWithOccurrence<SpeechBubbleComponent>(occurrenceIndex)).get();
+    }
 
-	SpeechBubbleComponent* getSpeechBubbleComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<SpeechBubbleComponent>(gameObject->getComponent<SpeechBubbleComponent>()).get();
-	}
+    SpeechBubbleComponent* getSpeechBubbleComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<SpeechBubbleComponent>(gameObject->getComponent<SpeechBubbleComponent>()).get();
+    }
 
-	SpeechBubbleComponent* getSpeechBubbleComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<SpeechBubbleComponent>(gameObject->getComponentFromName<SpeechBubbleComponent>(name)).get();
-	}
+    SpeechBubbleComponent* getSpeechBubbleComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<SpeechBubbleComponent>(gameObject->getComponentFromName<SpeechBubbleComponent>(name)).get();
+    }
 
-	void SpeechBubbleComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
-	{
-		module(lua)
-		[
-			class_<SpeechBubbleComponent, GameObjectComponent>("SpeechBubbleComponent")
-			.def("setActivated", &SpeechBubbleComponent::setActivated)
-			.def("isActivated", &SpeechBubbleComponent::isActivated)
-			.def("setRunSpeech", &SpeechBubbleComponent::setRunSpeech)
-			.def("getRunSpeech", &SpeechBubbleComponent::getRunSpeech)
-			.def("setCaption", &SpeechBubbleComponent::setCaption)
-			.def("getCaption", &SpeechBubbleComponent::getCaption)
-			.def("setSpeechDuration", &SpeechBubbleComponent::setSpeechDuration)
-			.def("getSpeechDuration", &SpeechBubbleComponent::getSpeechDuration)
-			.def("setRunSpeechSound", &SpeechBubbleComponent::setRunSpeechSound)
-			.def("getRunSpeechSound", &SpeechBubbleComponent::getRunSpeechSound)
-			.def("setKeepCaption", &SpeechBubbleComponent::setKeepCaption)
-			.def("getKeepCaption", &SpeechBubbleComponent::getKeepCaption)
-			.def("reactOnSpeechDone", &SpeechBubbleComponent::reactOnSpeechDone)
-		];
+    void SpeechBubbleComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        module(lua)[class_<SpeechBubbleComponent, GameObjectComponent>("SpeechBubbleComponent")
+                .def("setActivated", &SpeechBubbleComponent::setActivated)
+                .def("isActivated", &SpeechBubbleComponent::isActivated)
+                .def("setRunSpeech", &SpeechBubbleComponent::setRunSpeech)
+                .def("getRunSpeech", &SpeechBubbleComponent::getRunSpeech)
+                .def("setCaption", &SpeechBubbleComponent::setCaption)
+                .def("getCaption", &SpeechBubbleComponent::getCaption)
+                .def("setSpeechDuration", &SpeechBubbleComponent::setSpeechDuration)
+                .def("getSpeechDuration", &SpeechBubbleComponent::getSpeechDuration)
+                .def("setRunSpeechSound", &SpeechBubbleComponent::setRunSpeechSound)
+                .def("getRunSpeechSound", &SpeechBubbleComponent::getRunSpeechSound)
+                .def("setKeepCaption", &SpeechBubbleComponent::setKeepCaption)
+                .def("getKeepCaption", &SpeechBubbleComponent::getKeepCaption)
+                .def("reactOnSpeechDone", &SpeechBubbleComponent::reactOnSpeechDone)];
 
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "class inherits GameObjectComponent", SpeechBubbleComponent::getStaticInfoText());
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool isActivated()", "Gets whether this component is activated.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setTextColor(Vector3 color)", "Sets the color for the text.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "Vector3 getTextColor()", "Gets the text color.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeech(bool runSpeech)", "Sets whether the speech text shall appear char by char running.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getRunSpeech()", "Gets whether the speech text shall appear char by char running.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setCaption(string caption)", "Sets the caption text to be displayed.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "string getCaption()", "Gets the caption text.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setSpeechDuration(float speechDuration)", "Sets the speed duration. That is how long the bubble shall remain in seconds.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "float getSpeechDuration()", "Gets the speed duration. That is how long the bubble shall remain in seconds.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setKeepCaption(bool keepCaption)", "Sets to keep the caption after the run speech is done.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getKeepCaption()", "Gets whether the caption after the run speech is done is kept.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeechSound(bool runSpeechSound)", "Sets whether the caption should remain after the speech run.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getRunSpeechSound()", "Gets whether the caption is remained after the speech run.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void reactOnSpeechDone(func closureFunction)", "Sets whether to react if a speech is done.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "class inherits GameObjectComponent", SpeechBubbleComponent::getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool isActivated()", "Gets whether this component is activated.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setTextColor(Vector3 color)", "Sets the color for the text.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "Vector3 getTextColor()", "Gets the text color.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeech(bool runSpeech)", "Sets whether the speech text shall appear char by char running.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getRunSpeech()", "Gets whether the speech text shall appear char by char running.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setCaption(string caption)", "Sets the caption text to be displayed.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "string getCaption()", "Gets the caption text.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setSpeechDuration(float speechDuration)", "Sets the speed duration. That is how long the bubble shall remain in seconds.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "float getSpeechDuration()", "Gets the speed duration. That is how long the bubble shall remain in seconds.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setKeepCaption(bool keepCaption)", "Sets to keep the caption after the run speech is done.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getKeepCaption()", "Gets whether the caption after the run speech is done is kept.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeechSound(bool runSpeechSound)", "Sets whether the caption should remain after the speech run.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getRunSpeechSound()", "Gets whether the caption is remained after the speech run.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void reactOnSpeechDone(func closureFunction)", "Sets whether to react if a speech is done.");
 
+        gameObjectClass.def("getSpeechBubbleComponentFromName", &getSpeechBubbleComponentFromName);
+        gameObjectClass.def("getSpeechBubbleComponent", (SpeechBubbleComponent * (*)(GameObject*)) & getSpeechBubbleComponent);
 
-		gameObjectClass.def("getSpeechBubbleComponentFromName", &getSpeechBubbleComponentFromName);
-		gameObjectClass.def("getSpeechBubbleComponent", (SpeechBubbleComponent * (*)(GameObject*)) & getSpeechBubbleComponent);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "SpeechBubbleComponent getSpeechBubbleComponent()", "Gets the component. This can be used if the game object this component just once.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "SpeechBubbleComponent getSpeechBubbleComponentFromName(String name)", "Gets the component from name.");
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "SpeechBubbleComponent getSpeechBubbleComponent()", "Gets the component. This can be used if the game object this component just once.");
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "SpeechBubbleComponent getSpeechBubbleComponentFromName(String name)", "Gets the component from name.");
+        gameObjectControllerClass.def("castSpeechBubbleComponent", &GameObjectController::cast<SpeechBubbleComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "SpeechBubbleComponent castSpeechBubbleComponent(SpeechBubbleComponent other)", "Casts an incoming type from function for lua auto completion.");
+    }
 
-		gameObjectControllerClass.def("castSpeechBubbleComponent", &GameObjectController::cast<SpeechBubbleComponent>);
-		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "SpeechBubbleComponent castSpeechBubbleComponent(SpeechBubbleComponent other)", "Casts an incoming type from function for lua auto completion.");
-	}
+    bool SpeechBubbleComponent::canStaticAddComponent(GameObject* gameObject)
+    {
+        // Can only be added once
+        auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<GameObjectTitleComponent>());
+        if (nullptr == gameObjectTitleCompPtr)
+        {
+            return false;
+        }
 
-	bool SpeechBubbleComponent::canStaticAddComponent(GameObject* gameObject)
-	{
-		// Can only be added once
-		auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<GameObjectTitleComponent>());
-		if (nullptr == gameObjectTitleCompPtr)
-		{
-			return false;
-		}
+        if (gameObject->getComponentCount<SpeechBubbleComponent>() < 2)
+        {
+            return true;
+        }
 
-		if (gameObject->getComponentCount<SpeechBubbleComponent>() < 2)
-		{
-			return true;
-		}
+        return true;
+    }
 
-		return true;
-	}
-
-}; //namespace end
+}; // namespace end

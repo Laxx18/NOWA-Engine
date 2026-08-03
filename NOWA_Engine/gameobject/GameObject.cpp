@@ -321,6 +321,8 @@ namespace NOWA
     {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, newMovableObject]()
         {
+            Ogre::String name = this->name->getString();
+
             if (nullptr != newMovableObject)
             {
                 if (nullptr != this->movableObject && !this->doNotDestroyMovableObject)
@@ -339,6 +341,31 @@ namespace NOWA
                 }
 
                 this->movableObject = newMovableObject;
+
+                bool nodeVisible = this->visible->getBool();
+
+                this->movableObject->setVisible(nodeVisible);
+
+                if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
+                {
+                    for (const auto& component : this->gameObjectComponents)
+                    {
+                        auto compPtr = std::get<COMPONENT>(component);
+                        auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
+                        if (true == std::get<COMPONENT>(component)->bConnected)
+                        {
+                            auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
+                            if (nullptr != showDummyItemAttr)
+                            {
+                                NOWA::GraphicsModule::RenderCommand cmd = [this, nodeVisible, showDummyItemAttr]()
+                                {
+                                    this->movableObject->setVisible(nodeVisible && showDummyItemAttr->getBool());
+                                };
+                                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                            }
+                        }
+                    }
+                }
             }
 
             // Terrain e.g. has no entity
@@ -347,6 +374,31 @@ namespace NOWA
                 this->movableObject->getUserObjectBindings().setUserAny(Ogre::Any(this));
                 this->movableObject->setQueryFlags(this->categoryId->getUInt());
                 this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
+
+                bool nodeVisible = this->visible->getBool();
+
+                this->movableObject->setVisible(nodeVisible);
+
+                if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
+                {
+                    for (const auto& component : this->gameObjectComponents)
+                    {
+                        auto compPtr = std::get<COMPONENT>(component);
+                        auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
+                        if (true == std::get<COMPONENT>(component)->bConnected)
+                        {
+                            auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
+                            if (nullptr != showDummyItemAttr)
+                            {
+                                NOWA::GraphicsModule::RenderCommand cmd = [this, nodeVisible, showDummyItemAttr]()
+                                {
+                                    this->movableObject->setVisible(nodeVisible && showDummyItemAttr->getBool());
+                                };
+                                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                            }
+                        }
+                    }
+                }
 
                 // calculate size and offset from center
                 // Ogre::AxisAlignedBox boundingBox = newEntity->getMesh()->getBounds();
@@ -2103,15 +2155,14 @@ namespace NOWA
     {
         Ogre::String name = this->name->getString();
 
-        bool isMovableVisible = true;
-        if (nullptr != this->movableObject)
-        {
-            isMovableVisible = this->movableObject->getVisible();
-        }
+        this->visible->setValue(visible);
 
-        if (isMovableVisible != visible)
+        NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
         {
-            this->visible->setValue(visible);
+            if (nullptr != this->sceneNode)
+            {
+                this->sceneNode->setVisible(visible);
+            }
 
             if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
             {
@@ -2119,50 +2170,8 @@ namespace NOWA
                 {
                     auto compPtr = std::get<COMPONENT>(component);
                     auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
-                    if (nullptr != showDummyItemAttr)
+                    if (true == std::get<COMPONENT>(component)->bConnected)
                     {
-                        /*NOWA::GraphicsModule::RenderCommand cmd = [this, visible, showDummyItemAttr]()
-                        {*/
-                            this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
-                        /*};
-                        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");*/
-                    }
-                }
-            }
-
-           /* NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
-            {*/
-                if (nullptr != this->movableObject)
-                {
-                    this->sceneNode->setVisible(visible);
-                }
-            /*};
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");*/
-        }
-    }
-
-    void GameObject::setLoadedVisible(bool visible)
-    {
-        Ogre::String name = this->name->getString();
-
-        bool isMovableVisible = true;
-        if (nullptr != this->movableObject)
-        {
-            isMovableVisible = this->movableObject->getVisible();
-        }
-
-        const auto cameraCompPtr = NOWA::makeStrongPtr(this->getComponent<CameraComponent>());
-        if (nullptr != cameraCompPtr)
-        {
-            if (this->visible->getBool() != visible)
-            {
-                this->visible->setValue(visible);
-
-                if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
-                {
-                    for (const auto& component : this->gameObjectComponents)
-                    {
-                        auto compPtr = std::get<COMPONENT>(component);
                         auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
                         if (nullptr != showDummyItemAttr)
                         {
@@ -2174,47 +2183,45 @@ namespace NOWA
                         }
                     }
                 }
-
-                NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
-                {
-                    if (nullptr != this->movableObject)
-                    {
-                        this->sceneNode->setVisible(visible);
-                    }
-                };
-                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setLoadedVisible1");
             }
-        }
-        else
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+    }
+
+    void GameObject::setLoadedVisible(bool visible)
+    {
+        Ogre::String name = this->name->getString();
+
+        NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
         {
             this->visible->setValue(visible);
+
+            if (nullptr != this->sceneNode)
+            {
+                this->sceneNode->setVisible(visible);
+            }
 
             if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
             {
                 for (const auto& component : this->gameObjectComponents)
                 {
                     auto compPtr = std::get<COMPONENT>(component);
-                    auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
-                    if (nullptr != showDummyItemAttr)
+                    if (true == std::get<COMPONENT>(component)->bConnected)
                     {
-                        NOWA::GraphicsModule::RenderCommand cmd = [this, visible, showDummyItemAttr]()
+                        auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
+                        if (nullptr != showDummyItemAttr)
                         {
-                            this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
-                        };
-                        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                            NOWA::GraphicsModule::RenderCommand cmd = [this, visible, showDummyItemAttr]()
+                            {
+                                this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
+                            };
+                            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                        }
                     }
                 }
             }
-
-            NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
-            {
-                if (nullptr != this->movableObject)
-                {
-                    this->sceneNode->setVisible(visible);
-                }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setLoadedVisible2");
-        }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setLoadedVisible1");
     }
 
     bool GameObject::isVisible(void) const

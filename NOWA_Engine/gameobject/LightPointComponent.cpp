@@ -1,4 +1,5 @@
 #include "NOWAPrecompiled.h"
+#include "NOWAPrecompiled.h"
 #include "LightPointComponent.h"
 #include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
@@ -216,7 +217,6 @@ namespace NOWA
                 {
                     this->dummyItem->setName("DummyItem");
                     this->dummyItem->setCastShadows(false);
-                    this->dummyItem->setVisible(false);
                 }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightPointComponent::createLight");
@@ -363,8 +363,8 @@ namespace NOWA
 		{
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]
             {
+                this->gameObjectPtr->setVisible(activated);
                 this->light->setVisible(activated);
-
                 this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
                 if (this->dummyItem != nullptr)
                 {
