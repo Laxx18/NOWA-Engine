@@ -1405,6 +1405,21 @@ namespace NOWA
 
     namespace
     {
+        // Per-run depth override for generatePlatformBox. Not a class member - deliberately
+        // file-local so no header change is needed. rebuildMesh sets this to a slightly
+        // smaller-than-platformDepth value for every monotonic run after the first one at a
+        // direction-reversal split (see the loop below), then resets it to the -1 sentinel
+        // (meaning "use this->platformDepth as normal") right after that one generatePlatformSegment
+        // call, so every other call to generatePlatformBox anywhere else is completely
+        // unaffected. See the comment at its use site in rebuildMesh for why: however
+        // precisely the split point is located, two runs meeting at an exact corner still
+        // produce end caps that sit in the exact same plane there and can z-fight/overlap by
+        // even a fraction of a millimetre of leftover geometry on either side. A tiny,
+        // deliberate depth taper on the later run means its whole cross-section (and end cap)
+        // is nested strictly inside the earlier run's at that shared corner instead of being
+        // coincident with it, so there is no plane left to fight over.
+        thread_local Ogre::Real g_platformRunDepthOverride = -1.0f;
+
         // Platform paths live in exactly TWO axes: horizontal (x) and height - unlike
         // ProceduralRoadComponent, where XZ (ground plane) is one independent quantity and Y
         // (terrain height) is a SEPARATE, independently-raycast quantity that Road
@@ -1767,6 +1782,28 @@ namespace NOWA
                 }
             }
 
+            // ── Direction-reversal split points (from the COARSE waypoints) ──────
+            // Used further down to cut the dense path into monotonic-X runs. Computed here,
+            // from chainWaypoints (the actual authored waypoints) rather than from the dense
+            // resampled/curved path, because a dense Catmull-Rom resample can have tiny local
+            // dx wiggles (numerical noise, or a legitimately near-vertical steep stretch)
+            // that flip sign between two adjacent samples without the path actually reversing
+            // direction in any way the user placed - checking pointwise on the dense path
+            // caused spurious splits (visible as an unwanted "Knick" mid-ramp on an otherwise
+            // smooth curve, since it inserted a real end-cap pair there). The coarse waypoints
+            // are unambiguous - they're exactly what the user clicked - so a sign flip there
+            // is always a genuine reversal.
+            std::vector<Ogre::Real> reversalWorldX;
+            for (size_t wi = 1; wi + 1 < chainWaypoints.size(); ++wi)
+            {
+                const Ogre::Real dxIn = chainWaypoints[wi].position.x - chainWaypoints[wi - 1].position.x;
+                const Ogre::Real dxOut = chainWaypoints[wi + 1].position.x - chainWaypoints[wi].position.x;
+                if (dxIn * dxOut < 0.0f)
+                {
+                    reversalWorldX.push_back(chainWaypoints[wi].position.x);
+                }
+            }
+
             // ── Build final path ────────────────────────────────────────────────
             std::vector<PlatformControlPoint> finalPath;
 
@@ -2011,13 +2048,169 @@ namespace NOWA
             }
 
             // ── Generate platform geometry for this chain ───────────────────────
-            PlatformSegment localSegment;
-            localSegment.controlPoints = localPath;
-            localSegment.isCurved = false;
-            localSegment.curvature = 0.0f;
-            localSegment.skipFrontCap = hasFrontJunction;
-            localSegment.skipBackCap = hasBackJunction;
-            this->generatePlatformSegment(localSegment);
+            // BUGFIX: this used to hand the whole chain to generatePlatformSegment in one
+            // piece. generatePlatformBox extrudes straight down (-Y) from a path that lives
+            // directly in world/local X, with no lateral width to miter against a reversal
+            // (unlike a road, which has a perpendicular offset to miter with) - see the
+            // REVERTED note further down in generatePlatformBox for why a mitered extrusion
+            // was tried and reverted (it broke junction alignment). Smoothing the corner
+            // (the earlier Catmull-Rom change) doesn't help either: whether the corner is a
+            // sharp V or a rounded curve, the moment X-progress reverses sign at an interior
+            // waypoint, the swept quads before and after that point cover overlapping
+            // X-ranges and fold through each other - that's the hole plus the overlapping
+            // triangles the user is seeing, caused purely by "linksrum, dann rechtsrum" in
+            // world X, independent of curvature.
+            //
+            // Fix: cut the chain into maximal runs that are monotonic in local X, and mesh
+            // each run separately. A run that never reverses X-direction can never fold
+            // through itself, so this removes the self-intersection at its source instead
+            // of patching the fold afterward. Every cut point is duplicated into both
+            // neighbouring runs and gets a real end cap on each side (skipFrontCap/
+            // skipBackCap = false there) using the profile-aware caps added above, so the
+            // two runs meet as a closed corner joint instead of an open fold. Only the two
+            // true ends of the whole chain keep the junction-driven skip flags.
+            //
+            // BUGFIX 2: cut points come from reversalWorldX (computed earlier from the
+            // COARSE chainWaypoints), not from re-checking dx sign flips on this dense,
+            // resampled localPath. Checking pointwise here was too sensitive on a finely
+            // subdivided curve (curveSubdivisions can pack many samples into one authored
+            // segment) - a steep or near-vertical stretch can have consecutive dx values so
+            // small that ordinary float noise in the centripetal Catmull-Rom evaluation
+            // flips their sign, triggering a split - and therefore an unwanted extra end-cap
+            // seam - in the middle of a perfectly smooth, never-reversing ramp (the "Knick"
+            // seen mid-slope). The coarse waypoints don't have that problem since they're
+            // exactly what the user placed, so each reversalWorldX entry here is a genuine
+            // direction change; we just need to find where along this dense path it falls.
+            std::vector<std::vector<PlatformControlPoint>> monotonicRuns;
+            {
+                // Pass 1: approximate anchor index per reversal, via nearest local-X match
+                // (as before) - this tells us roughly WHICH region of the dense path each
+                // authored reversal falls in.
+                std::vector<size_t> anchorIdx;
+                {
+                    size_t searchStart = 1;
+                    for (Ogre::Real worldX : reversalWorldX)
+                    {
+                        if (searchStart + 1 >= localPath.size())
+                        {
+                            break;
+                        }
+
+                        const Ogre::Real localX = worldX - originToUse.x;
+                        size_t bestIdx = searchStart;
+                        Ogre::Real bestDist = std::abs(localPath[searchStart].position.x - localX);
+                        for (size_t k = searchStart + 1; k + 1 < localPath.size(); ++k)
+                        {
+                            const Ogre::Real d = std::abs(localPath[k].position.x - localX);
+                            if (d < bestDist)
+                            {
+                                bestDist = d;
+                                bestIdx = k;
+                            }
+                        }
+
+                        anchorIdx.push_back(bestIdx);
+                        searchStart = bestIdx + 1;
+                    }
+                }
+
+                // Pass 2: refine each anchor to the TRUE local X-extremum of the dense path
+                // (the actual sample where dx changes sign), searched within a window bounded
+                // by the neighbouring anchors so it can't wander into an unrelated region.
+                //
+                // BUGFIX 3: the anchor alone (nearest sample to the AUTHORED corner's raw
+                // x-position) is only an approximation of where the dense, centripetal
+                // Catmull-Rom curve itself actually turns around. The curve passes through
+                // the authored corner, but a smooth curve threaded through a sharp corner
+                // still swings its true x-turning-point slightly off to one side of that
+                // exact position - close, but frequently not the same sample. Splitting at
+                // the anchor instead of the true turning point leaves a few samples on one
+                // side of the cut that still fold back past the cut internally - a small
+                // residual overlap right at the tip, which is exactly the "Überlappung"
+                // still visible in the corner circle even though the earlier hole/hairpin
+                // case is otherwise fixed. Locating the real sign-flip sample removes that
+                // last sliver: each resulting run is then genuinely monotonic end-to-end.
+                std::vector<size_t> splitIndices;
+                for (size_t ai = 0; ai < anchorIdx.size(); ++ai)
+                {
+                    const size_t windowLo = (0 == ai) ? size_t(1) : (anchorIdx[ai - 1] + 1);
+                    const size_t windowHi = (ai + 1 == anchorIdx.size()) ? (localPath.size() >= 2 ? localPath.size() - 2 : size_t(1)) : (anchorIdx[ai + 1] > 0 ? anchorIdx[ai + 1] - 1 : size_t(0));
+
+                    size_t refined = anchorIdx[ai];
+                    Ogre::Real refinedDist = std::numeric_limits<Ogre::Real>::max();
+                    for (size_t k = windowLo; k <= windowHi && k + 1 < localPath.size() && k >= 1; ++k)
+                    {
+                        const Ogre::Real dxIn = localPath[k].position.x - localPath[k - 1].position.x;
+                        const Ogre::Real dxOut = localPath[k + 1].position.x - localPath[k].position.x;
+                        if (dxIn * dxOut < 0.0f)
+                        {
+                            const Ogre::Real dist = std::abs(static_cast<Ogre::Real>(k) - static_cast<Ogre::Real>(anchorIdx[ai]));
+                            if (dist < refinedDist)
+                            {
+                                refinedDist = dist;
+                                refined = k;
+                            }
+                        }
+                    }
+
+                    splitIndices.push_back(refined);
+                }
+
+                size_t runStart = 0;
+                for (size_t si : splitIndices)
+                {
+                    if (si > runStart)
+                    {
+                        monotonicRuns.emplace_back(localPath.begin() + runStart, localPath.begin() + si + 1);
+                        runStart = si;
+                    }
+                }
+                monotonicRuns.emplace_back(localPath.begin() + runStart, localPath.end());
+            }
+
+            for (size_t ri = 0; ri < monotonicRuns.size(); ++ri)
+            {
+                if (monotonicRuns[ri].size() < 2)
+                {
+                    continue;
+                }
+
+                PlatformSegment localSegment;
+                localSegment.controlPoints = monotonicRuns[ri];
+                localSegment.isCurved = false;
+                localSegment.curvature = 0.0f;
+                // BUGFIX: both neighbours of an internal split joint used to get a real cap
+                // (skipFrontCap/skipBackCap = false on both sides). The cap is always built as
+                // a flat slice at constant local X (see addEndCap's toVec3 above - only the
+                // shading normal is tilted, not the plane itself), and a split joint's two
+                // runs share that exact X - so the two caps were perfectly coincident,
+                // z-fighting against each other every frame (the flicker in the two
+                // screenshots). Only the run ENDING at a joint draws the cap now; the run
+                // STARTING there skips its front cap, since the previous run's back cap
+                // already closes that seam.
+                localSegment.skipFrontCap = (0 == ri) ? hasFrontJunction : true;
+                localSegment.skipBackCap = (ri + 1 == monotonicRuns.size()) ? hasBackJunction : false;
+
+                // BUGFIX 4: even with the refined split point (BUGFIX 3 above), a residual
+                // sliver of overlap can still show up right at a reversal joint - floating
+                // point means "the true turning sample" and "where the two runs visually
+                // meet" are only ever equal to within some epsilon, not exactly. Nudging every
+                // run after the first slightly narrower in depth means its whole
+                // cross-section - including its end cap - sits strictly NESTED inside the
+                // previous run's footprint at the shared corner instead of flush with it, so
+                // there's no shared plane left to z-fight over even if the split location is
+                // imperfect. 1cm per run is small enough not to read as a visible step on the
+                // sides, but enough to be well clear of float noise. g_platformRunDepthOverride
+                // is a file-local (not a class member - see its declaration up top), reset to
+                // the "no override" sentinel right after this one call so nothing else
+                // (including the very next run, or a junction patch) is affected.
+                if (ri > 0)
+                {
+                    g_platformRunDepthOverride = std::max(0.05f, this->platformDepth->getReal() - 0.01f * static_cast<Ogre::Real>(ri));
+                }
+                this->generatePlatformSegment(localSegment);
+                g_platformRunDepthOverride = -1.0f;
+            }
         }
 
         // ── Junction patches ────────────────────────────────────────────────────
@@ -2712,7 +2905,10 @@ namespace NOWA
             return;
         }
 
-        const Ogre::Real depth = this->platformDepth->getReal();
+        // BUGFIX: reads g_platformRunDepthOverride first - see its declaration up in the
+        // anonymous namespace near pathDistance2D for why. -1 (the sentinel) means "no
+        // override", i.e. every normal call behaves exactly as before.
+        const Ogre::Real depth = (g_platformRunDepthOverride > 0.0f) ? g_platformRunDepthOverride : this->platformDepth->getReal();
         const Ogre::Real height = this->platformHeight->getReal();
         const Ogre::Real zFront = -depth * 0.5f;
         const Ogre::Real zBack = depth * 0.5f;
@@ -3026,6 +3222,21 @@ namespace NOWA
         const Ogre::Real zFront = -depth * 0.5f;
         const Ogre::Real zBack = depth * 0.5f;
 
+        // BUGFIX: the fan below used to be a flat, un-beveled prism regardless of style - it
+        // has no other way to know the active style, since generateJunctionPatch is called
+        // generically from rebuildMesh rather than from within one of the per-style
+        // generateXPlatform functions the way generatePlatformBox is. Mirrors
+        // generateGrassPlatform's own bevel formula exactly, so a junction between two Grass
+        // arms chamfers the same amount the arms themselves do instead of meeting them with a
+        // flat rim.
+        Ogre::Real topBevel = 0.0f;
+        if (PlatformStyle::GRASS == this->getPlatformStyleEnum())
+        {
+            topBevel = std::min(0.15f, depth * 0.2f);
+        }
+        const Ogre::Real topZFront = zFront + topBevel;
+        const Ogre::Real topZBack = zBack - topBevel;
+
         const Ogre::Real centreX = jp.worldPos.x - origin.x;
         const Ogre::Real centreH = jp.worldPos.y - origin.y;
 
@@ -3104,13 +3315,26 @@ namespace NOWA
             const ArmCorner& aN = arms[next];
 
             // ── Top fan: front cap, back cap ─────────────────────────────────────
-            logTri("top-front-cap", k, Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aN.x, aN.h, zFront), Ogre::Vector3(centreX, centreH, zFront));
-            this->addJunctionTriangle(Ogre::Vector3(aK.x, aK.h, zFront), uvFor(aK.x, aK.h), Ogre::Vector3(aN.x, aN.h, zFront), uvFor(aN.x, aN.h), Ogre::Vector3(centreX, centreH, zFront), uvFor(centreX, centreH), Ogre::Vector3(0.0f, 0.0f, -1.0f),
-                PlatformMeshBuffer::JUNCTION);
+            // BUGFIX: these used to sit at the full, un-beveled height (aK.h / aN.h /
+            // centreH) regardless of style. At Z=zFront or Z=zBack - exactly the outer
+            // edge - a beveled arm's own true surface height is (h - topBevel), matching
+            // frontFaceTopY0 in generatePlatformBox; leaving these at full height is why
+            // the junction met a chamfered Grass arm with a flat rim. Subtracting topBevel
+            // from all three corners (armK, armN, AND centre) uniformly is correct here,
+            // not just at the rim: unlike a straight box, this cap triangle lies entirely
+            // IN the Z=zFront/zBack plane already - the WHOLE triangle is "at the edge", so
+            // every point on it needs the same height offset, not only its outer corners.
+            const Ogre::Real aKTopBeveled = aK.h - topBevel;
+            const Ogre::Real aNTopBeveled = aN.h - topBevel;
+            const Ogre::Real centreTopBeveled = centreH - topBevel;
 
-            logTri("top-back-cap", k, Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(centreX, centreH, zBack));
-            this->addJunctionTriangle(Ogre::Vector3(aN.x, aN.h, zBack), uvFor(aN.x, aN.h), Ogre::Vector3(aK.x, aK.h, zBack), uvFor(aK.x, aK.h), Ogre::Vector3(centreX, centreH, zBack), uvFor(centreX, centreH), Ogre::Vector3(0.0f, 0.0f, 1.0f),
-                PlatformMeshBuffer::JUNCTION);
+            logTri("top-front-cap", k, Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), Ogre::Vector3(centreX, centreTopBeveled, zFront));
+            this->addJunctionTriangle(Ogre::Vector3(aK.x, aKTopBeveled, zFront), uvFor(aK.x, aK.h), Ogre::Vector3(aN.x, aNTopBeveled, zFront), uvFor(aN.x, aN.h), Ogre::Vector3(centreX, centreTopBeveled, zFront), uvFor(centreX, centreH),
+                Ogre::Vector3(0.0f, 0.0f, -1.0f), PlatformMeshBuffer::JUNCTION);
+
+            logTri("top-back-cap", k, Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(centreX, centreTopBeveled, zBack));
+            this->addJunctionTriangle(Ogre::Vector3(aN.x, aNTopBeveled, zBack), uvFor(aN.x, aN.h), Ogre::Vector3(aK.x, aKTopBeveled, zBack), uvFor(aK.x, aK.h), Ogre::Vector3(centreX, centreTopBeveled, zBack), uvFor(centreX, centreH),
+                Ogre::Vector3(0.0f, 0.0f, 1.0f), PlatformMeshBuffer::JUNCTION);
 
             Ogre::Vector3 outward(aN.h - aK.h, -(aN.x - aK.x), 0.0f);
             if (outward.squaredLength() > 1e-8f)
@@ -3127,8 +3351,32 @@ namespace NOWA
             const Ogre::Real v1 = segLen * groundUV.x;
 
             // ── Top fan outer perimeter wall ──────────────────────────────────────
-            logQuad("top-perimeter", k, Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, aN.h, zFront));
-            this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, aN.h, zFront), outward, 0.0f, v1, 0.0f, 1.0f, PlatformMeshBuffer::JUNCTION);
+            // BUGFIX: used to be one flat quad at full height across the whole zFront..zBack
+            // span. When topBevel > 0, split into the same 3 bands generatePlatformBox uses
+            // for its own top surface: a flat middle band between topZFront/topZBack at full
+            // height, and two sloped bevel bands connecting it down to (height - topBevel) at
+            // the true zFront/zBack edges - so the junction's outer rim now traces the exact
+            // same chamfer profile the arms sweep along their own length, instead of meeting
+            // it with a flat step. Non-beveled styles (topBevel == 0) fall through to the
+            // original single flat quad, completely unchanged.
+            if (topBevel > 0.0f)
+            {
+                logQuad("top-perimeter-bevel-front", k, Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aN.x, aN.h, topZFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront));
+                this->addPlatformQuad(Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aN.x, aN.h, topZFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), outward, 0.0f, v1, 0.0f, topBevel * groundUV.y,
+                    PlatformMeshBuffer::JUNCTION);
+
+                logQuad("top-perimeter-flat", k, Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZFront));
+                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZFront), outward, 0.0f, v1, 0.0f, 1.0f, PlatformMeshBuffer::JUNCTION);
+
+                logQuad("top-perimeter-bevel-back", k, Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, aN.h, topZBack));
+                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, aN.h, topZBack), outward, 0.0f, v1, 0.0f, topBevel * groundUV.y,
+                    PlatformMeshBuffer::JUNCTION);
+            }
+            else
+            {
+                logQuad("top-perimeter", k, Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, aN.h, zFront));
+                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, aN.h, zFront), outward, 0.0f, v1, 0.0f, 1.0f, PlatformMeshBuffer::JUNCTION);
+            }
 
             // ── Bottom fan (mirrored at height-H, reversed winding) ──────────────
             const Ogre::Real bK = aK.h - height;
@@ -3147,11 +3395,14 @@ namespace NOWA
             this->addPlatformQuad(Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, bN, zBack), outward, 0.0f, v1, 0.0f, 1.0f, PlatformMeshBuffer::JUNCTION);
 
             // ── Outer side wall: closes the gap from the top rim down to the bottom rim ──
-            logQuad("side-wall-front", k, Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, aN.h, zFront));
-            this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, aN.h, zFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), 0.0f, v1, 0.0f, groundUV.y,
+            // BUGFIX: top edge now uses the bevel-adjusted height (aKTopBeveled/aNTopBeveled)
+            // instead of the full aK.h/aN.h, so it meets the chamfered rim above flush instead
+            // of leaving either a step or an overlap with the new bevel bands.
+            logQuad("side-wall-front", k, Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront));
+            this->addPlatformQuad(Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), 0.0f, v1, 0.0f, groundUV.y,
                 PlatformMeshBuffer::JUNCTION);
-            logQuad("side-wall-back", k, Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, aK.h, zBack));
-            this->addPlatformQuad(Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), 0.0f, v1, 0.0f, groundUV.y,
+            logQuad("side-wall-back", k, Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack));
+            this->addPlatformQuad(Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), 0.0f, v1, 0.0f, groundUV.y,
                 PlatformMeshBuffer::JUNCTION);
         }
     }

@@ -160,7 +160,8 @@ namespace NOWA
             NOWA::GraphicsModule::getInstance()->addTrackedNode(this->textNode);
 
             Ogre::Vector3 sp = this->offsetPosition->getVector3();
-            Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+            Ogre::Quaternion correction = Ogre::Vector3::UNIT_Z.getRotationTo(this->gameObjectPtr->getDefaultDirection());
+            Ogre::Quaternion so = correction * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
             // Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
 
             NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->textNode, sp, so);
@@ -534,9 +535,9 @@ namespace NOWA
         if (this->movableText)
         {
             Ogre::Vector3 sp = this->offsetPosition->getVector3();
-            Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+            Ogre::Quaternion correction = Ogre::Vector3::UNIT_Z.getRotationTo(this->gameObjectPtr->getDefaultDirection());
+            Ogre::Quaternion so = correction * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
-            // Local position relative to parent — sp only, no world offset.
             NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->movableText->getParentSceneNode(), sp, so);
         }
     }
@@ -553,10 +554,11 @@ namespace NOWA
         if (this->movableText)
         {
             Ogre::Vector3 sp = this->offsetPosition->getVector3();
-            Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+            Ogre::Quaternion correction = Ogre::Vector3::UNIT_Z.getRotationTo(this->gameObjectPtr->getDefaultDirection());
+            Ogre::Quaternion so = correction * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
-            // Local position relative to parent — sp only, no world offset.
-            NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->movableText->getParentSceneNode(), sp, so);
+            NOWA::GraphicsModule::getInstance()->setNodeOrientation(this->movableText->getParentSceneNode(), so);
+            NOWA::GraphicsModule::getInstance()->setNodePosition(this->movableText->getParentSceneNode(), sp);
         }
     }
 

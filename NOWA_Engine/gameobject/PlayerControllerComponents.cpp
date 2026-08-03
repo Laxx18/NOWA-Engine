@@ -234,6 +234,8 @@ namespace NOWA
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
+		this->setAnimationSpeed(this->animationSpeed->getReal());
+
 		return true;
 	}
 
@@ -795,6 +797,15 @@ namespace NOWA
 			animationSpeed = 1.0f;
 		}
 		this->animationSpeed->setValue(animationSpeed);
+
+		if (nullptr != this->gameObjectPtr)
+        {
+            auto animationCompPtrV2 = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponentV2>());
+            if (nullptr != animationCompPtrV2)
+            {
+                animationCompPtrV2->setSpeed(animationSpeed);
+            }
+        }
 	}
 
 	Ogre::Real PlayerControllerComponent::getAnimationSpeed(void) const

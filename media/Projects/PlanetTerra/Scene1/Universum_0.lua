@@ -200,7 +200,7 @@ end
 
 Universum_0["update"] = function(dt)
    if (window:isActivated() == true) then
-       landDegreeText:setCaption("Landing Degree: " .. toString(universumComp:getCurrentLandingPlanetGradient()));
+       landDegreeText:setCaption("Landing Degree: " .. universumComp:getCurrentLandingPlanetGradient());
    end
 end
 

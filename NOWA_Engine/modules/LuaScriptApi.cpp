@@ -234,15 +234,21 @@ namespace NOWA
 		[
 			luabind::def("toString", (Ogre::String(*)(const ColourValue&)) & toString)
 		];
-
+		// Must be called differntly, because else they will concure with double etc. and this error can occur:
+		/*
+		Error: attempt to yield across metamethod/C-call boundary
+		Backtrace:
+		#1 <global> "toString" (called in [C])
+		#2 <global> "toString" (called in [C])
+		*/
 		luabind::module(lua)
 		[
-			luabind::def("toString", (Ogre::String(*)(const Degree&)) & toString)
+			luabind::def("toStringRadian", (Ogre::String(*)(const Radian&)) & toString)
 		];
 
 		luabind::module(lua)
 		[
-			luabind::def("toString", (Ogre::String(*)(const Radian&)) & toString)
+			luabind::def("toStringDegree", (Ogre::String(*)(const Degree&)) & toString)
 		];
 
 		luabind::module(lua)
@@ -256,6 +262,8 @@ namespace NOWA
 		];
 
 		AddClassToCollection("toString", "singleton", "Converts any type to string.");
+        AddClassToCollection("toStringRadian", "singleton", "Converts radian type to string.");
+        AddClassToCollection("toStringDegree", "singleton", "Converts degree type to string.");
 		AddClassToCollection("log", "singleton", "Logs a string for Ogre log file at normal level.");
         AddClassToCollection("logCritital", "singleton", "Logs a string for Ogre log file at critical level.");
 	}

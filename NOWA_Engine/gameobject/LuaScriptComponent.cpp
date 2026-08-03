@@ -423,42 +423,43 @@ namespace NOWA
 
         if (true == activated)
         {
-            this->alreadyDisconnected = false;
-
-            // disconnect() decompiles the script whenever it was active at the time
-            // (see LuaScriptComponent::disconnect). Nothing on the activation path
-            // used to recompile it - fine for the original one-shot lifecycle
-            // (compile once at load, connect once, disconnect once at teardown),
-            // but breaks the moment a component gets deactivated and reactivated
-            // more than once during runtime (e.g. hiding/showing surface objects
-            // as a ship approaches/leaves a planet): the second activation would
-            // try to create a lua environment for a script that was decompiled
-            // and never recompiled, failing with "script is not compiled" and an
-            // empty getScriptContent(). Ensure it's compiled before proceeding.
-            if (nullptr != this->luaScript && false == this->luaScript->isCompiled())
+            // Everything below touches the Lua state (compile, createLuaEnvironmentForTable,
+            // callTableFunction) and MUST run on the main/logic thread - Lua itself is not
+            // thread-safe, and calling into it from another thread (e.g. a worker thread
+            // via AreaOfInterestComponent::update() -> ... -> restoreComponentActivationStates())
+            // corrupts the Lua call stack. This used to run directly on whatever thread called
+            // setActivated(), which worked by accident as long as everyone happened to call it
+            // from the main thread - until AreaOfInterestComponent's worker-thread callback path
+            // called it too, causing sporadic (and only reliably visible in Debug, due to timing)
+            // crashes deep inside Lua's own error handling.
+            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
             {
-                this->luaScript->compile();
-            }
+                this->alreadyDisconnected = false;
 
-            // For performance reasons only call lua table function permanentely if the function does exist in a lua script
-            this->hasUpdateFunction = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaFunctionAvailable(this->luaScript->getName(), "update");
-            this->hasLateUpdateFunction = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaFunctionAvailable(this->luaScript->getName(), "lateUpdate");
-
-            Ogre::String scriptTableName = this->scriptFile->getString();
-            scriptTableName.erase(scriptTableName.find_last_of("."), Ogre::String::npos);
-
-            if (true == this->luaScript->createLuaEnvironmentForTable(scriptTableName))
-            {
-                if (true == this->componentCloned)
+                if (nullptr != this->luaScript && false == this->luaScript->isCompiled())
                 {
-                    this->luaScript->callTableFunction("cloned", this->gameObjectPtr.get());
+                    this->luaScript->compile();
                 }
-                this->luaScript->callTableFunction("connect", this->gameObjectPtr.get());
 
-                // Sends event, that lua script has been connected, so that in a state machine the first state can be entered after that
-                boost::shared_ptr<EventDataLuaScriptConnected> eventDataLuaScriptConnected(new EventDataLuaScriptConnected(this->gameObjectPtr->getId()));
-                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptConnected);
-            }
+                this->hasUpdateFunction = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaFunctionAvailable(this->luaScript->getName(), "update");
+                this->hasLateUpdateFunction = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaFunctionAvailable(this->luaScript->getName(), "lateUpdate");
+
+                Ogre::String scriptTableName = this->scriptFile->getString();
+                scriptTableName.erase(scriptTableName.find_last_of("."), Ogre::String::npos);
+
+                if (true == this->luaScript->createLuaEnvironmentForTable(scriptTableName))
+                {
+                    if (true == this->componentCloned)
+                    {
+                        this->luaScript->callTableFunction("cloned", this->gameObjectPtr.get());
+                    }
+                    this->luaScript->callTableFunction("connect", this->gameObjectPtr.get());
+
+                    boost::shared_ptr<EventDataLuaScriptConnected> eventDataLuaScriptConnected(new EventDataLuaScriptConnected(this->gameObjectPtr->getId()));
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptConnected);
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
         }
     }
 

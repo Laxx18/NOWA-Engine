@@ -505,8 +505,7 @@ namespace NOWA
                 // pokes out both sides" bug. Take the larger of the two half-extents
                 // so a wider second/third line (different length than the widest
                 // positive side) is still fully enclosed.
-                Ogre::Real halfWidth = std::max(Ogre::Math::Abs(textAabb.getMaximum().x), Ogre::Math::Abs(textAabb.getMinimum().x));
-                this->currentCaptionWidth = halfWidth + 0.1f;
+                this->currentCaptionWidth = this->gameObjectTitleComponent->getMovableText()->getLocalAabb().getMaximum().x * 0.5f + 0.3f;
                 this->currentCaptionHeight = (textAabb.getMaximum().y - textAabb.getMinimum().y) * 0.5f + 0.1f;
 
                 if (true == this->runSpeech->getBool())
@@ -590,9 +589,9 @@ namespace NOWA
         this->closureFunction = closureFunction;
     }
 
+#if 1
     void SpeechBubbleComponent::drawSpeechBubble(Ogre::Real dt)
     {
-        // Threadsafe from the outside
         this->couldDraw = false;
 
         if (nullptr != this->gameObjectTitleComponent)
@@ -671,21 +670,16 @@ namespace NOWA
                 this->timeSinceLastRun += dt;
             }
 
-            if (this->gameObjectTitleComponent->getCaption().empty())
+            if (true == this->gameObjectTitleComponent->getCaption().empty())
             {
                 return;
             }
 
-            // Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
-            // Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
-
-            Ogre::Quaternion o = this->gameObjectPtr->getSceneNode()->_getDerivedOrientation();
-            Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
+            Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition();
+            Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
 
             Ogre::Vector3 sp = Ogre::Vector3::ZERO;
             Ogre::Quaternion so = Ogre::Quaternion::IDENTITY;
-
-            // https://stackoverflow.com/questions/3477988/how-can-a-programmatically-draw-a-scalable-aethetically-pleasing-curved-comic
 
             Ogre::Real accuracy = 17.0f;
 
@@ -697,7 +691,6 @@ namespace NOWA
             this->manualObject->colour(Ogre::ColourValue::White);
             this->manualObject->index(this->indices + 1);
 
-            // Play with 0.2 y
             this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth + 0.1f, 0.2f, 0.0f)))));
             this->manualObject->colour(Ogre::ColourValue::White);
             this->manualObject->index(this->indices + 2);
@@ -728,7 +721,168 @@ namespace NOWA
             this->couldDraw = true;
         }
     }
+#endif
 
+    #if 0
+    void SpeechBubbleComponent::drawSpeechBubble(Ogre::Real dt)
+    {
+        this->couldDraw = false;
+
+        if (nullptr != this->gameObjectTitleComponent)
+        {
+            if (this->caption->getString().empty() || this->currentCaptionWidth == 0.0f)
+            {
+                return;
+            }
+
+            if (true == this->runSpeech->getBool())
+            {
+                size_t totalCharacters = this->wrappedCaption.length();
+                if (totalCharacters > 0)
+                {
+                    Ogre::Real timePerCharacter = this->speechDuration->getReal() / static_cast<Ogre::Real>(totalCharacters);
+
+                    if (this->timeSinceLastChar >= timePerCharacter && this->currentCharIndex < totalCharacters)
+                    {
+                        this->timeSinceLastChar = 0.0f;
+                        this->currentCharIndex++;
+
+                        Ogre::String captionSoFar = mid(this->wrappedCaption, 0, this->currentCharIndex);
+                        this->gameObjectTitleComponent->setCaption(captionSoFar);
+
+                        if (this->runSpeechSound->getBool() && this->simpleSoundComponent)
+                        {
+                            Ogre::Real rndPitch = static_cast<Ogre::Real>(MathHelper::getInstance()->getRandomNumber(3, 10)) * 0.1f;
+                            this->simpleSoundComponent->setPitch(rndPitch);
+                            this->simpleSoundComponent->setActivated(true);
+                        }
+                    }
+                }
+
+                if (this->gameObjectTitleComponent->getCaption() == this->wrappedCaption && this->timeSinceLastRun >= this->speechDuration->getReal() + 3.0f)
+                {
+                    this->speechDone = true;
+                    if (this->simpleSoundComponent)
+                    {
+                        this->simpleSoundComponent->setActivated(false);
+                    }
+                }
+
+                if (this->speechDone)
+                {
+                    this->timeSinceLastChar = 0.0f;
+                    this->timeSinceLastRun = 0.0f;
+                    if (false == this->keepCaption->getBool())
+                    {
+                        this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(false);
+                        this->lineNode->setVisible(false);
+                    }
+                    this->speechDone = false;
+
+                    if (this->closureFunction.is_valid())
+                    {
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+                        {
+                            try
+                            {
+                                luabind::call_function<void>(this->closureFunction);
+                            }
+                            catch (luabind::error& error)
+                            {
+                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                std::stringstream msg;
+                                msg << errorMsg;
+
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] Caught error in 'reactOnSpeechDone' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    }
+                }
+
+                this->timeSinceLastChar += dt;
+                this->timeSinceLastRun += dt;
+            }
+
+            if (true == this->gameObjectTitleComponent->getCaption().empty())
+            {
+                return;
+            }
+
+            Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition();
+            Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
+
+            Ogre::Vector3 sp = Ogre::Vector3::ZERO;
+            Ogre::Quaternion so = Ogre::Quaternion::IDENTITY;
+
+            Ogre::Real accuracy = 17.0f;
+
+            // Pure local tuning constants - no new properties/header members. Bubble
+            // stays fully dynamic (driven by currentCaptionWidth/currentCaptionHeight,
+            // which come from the actual text's AABB), these just pad it a bit so the
+            // text has margin instead of touching the edge exactly.
+            const Ogre::Real widthPadding = 1.15f;
+            const Ogre::Real heightPadding = 1.3f;
+
+            // Text hangs BELOW the anchor p (V_BELOW alignment: first line at local
+            // y=0, each further line goes more negative), so the bubble must sit
+            // BELOW p too - ellipseCenterY is negative. Only the constant (center)
+            // term is negated, NOT the oscillating radius term - negating both
+            // mirrors the whole ellipse's winding and desyncs the tail from it.
+            Ogre::Real ellipseRadiusX = this->currentCaptionWidth * widthPadding;
+            Ogre::Real ellipseRadiusY = this->currentCaptionHeight * heightPadding;
+            Ogre::Real ellipseCenterY = -ellipseRadiusY;
+
+            // Tail: tip sits exactly at the anchor (local origin = mouth position).
+            // Base vertices sit exactly ON the ellipse boundary, computed with the
+            // SAME parametric formula as the fan loop below - guaranteed to touch,
+            // regardless of text size. Angles near the ellipse's top so the tail
+            // points up toward the anchor, symmetric around it.
+            const Ogre::Real tailAngle1 = 60.0f * Ogre::Math::PI / 180.0f;
+            const Ogre::Real tailAngle2 = 120.0f * Ogre::Math::PI / 180.0f;
+
+            Ogre::Vector3 tailBase1(ellipseRadiusX * Ogre::Math::Cos(tailAngle1), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(tailAngle1), 0.0f);
+            Ogre::Vector3 tailBase2(ellipseRadiusX * Ogre::Math::Cos(tailAngle2), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(tailAngle2), 0.0f);
+            Ogre::Vector3 tailTip = Ogre::Vector3::ZERO;
+
+            this->manualObject->position(p + (o * (so * (sp + tailBase1))));
+            this->manualObject->colour(Ogre::ColourValue::White);
+            this->manualObject->index(this->indices + 0);
+
+            this->manualObject->position(p + (o * (so * (sp + tailBase2))));
+            this->manualObject->colour(Ogre::ColourValue::White);
+            this->manualObject->index(this->indices + 1);
+
+            this->manualObject->position(p + (o * (so * (sp + tailTip))));
+            this->manualObject->colour(Ogre::ColourValue::White);
+            this->manualObject->index(this->indices + 2);
+            this->indices += 3;
+
+            std::vector<Ogre::Vector3> points(3);
+            for (Ogre::Real theta = 0; theta <= 2 * Ogre::Math::PI; theta += Ogre::Math::PI / accuracy)
+            {
+                points[0] = Ogre::Vector3(0.0f, 0.0f, 0.0f);
+                points[1] = Ogre::Vector3(ellipseRadiusX * Ogre::Math::Cos(theta - Ogre::Math::PI / accuracy), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(theta - Ogre::Math::PI / accuracy), 0.0f);
+                points[2] = Ogre::Vector3(ellipseRadiusX * Ogre::Math::Cos(theta), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(theta), 0.0f);
+
+                this->manualObject->position(p + (o * (so * (sp + points[0]))));
+                this->manualObject->colour(Ogre::ColourValue::White);
+                this->manualObject->index(this->indices + 0);
+
+                this->manualObject->position(p + (o * (so * (sp + points[1]))));
+                this->manualObject->colour(Ogre::ColourValue::White);
+                this->manualObject->index(this->indices + 1);
+
+                this->manualObject->position(p + (o * (so * (sp + points[2]))));
+                this->manualObject->colour(Ogre::ColourValue::White);
+                this->manualObject->index(this->indices + 2);
+                this->indices += 3;
+            }
+
+            this->couldDraw = true;
+        }
+    }
+    #endif
     void SpeechBubbleComponent::createSpeechBubble(void)
     {
         if (nullptr == this->manualObject)
@@ -740,7 +894,7 @@ namespace NOWA
                     this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
                 }
                 this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-                this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+                this->manualObject->setRenderQueueGroup(212);
                 // this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_TRANSPARENT);
 
                 this->manualObject->setName("SpeechBubble_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
@@ -748,6 +902,23 @@ namespace NOWA
                 this->lineNode->attachObject(this->manualObject);
                 this->manualObject->setCastShadows(false);
                 this->lineNode->setVisible(true);
+
+                // Depth bias so the bubble sorts BEHIND the text in the depth buffer
+                // WITHOUT any actual world-space offset - a world-space offset
+                // (bubbleDepthOffset) introduced visible parallax/rotation drift at
+                // grazing camera angles, confirmed by testing with the offset at 0.
+                // Modifies the shared "WhiteNoLightingBackground" datablock directly -
+                // fine as long as this material is only used for background/bubble-
+                // style flat quads elsewhere too (a small constant depth push is
+                // harmless for those).
+                Ogre::HlmsDatablock* bubbleBaseDatablock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault("WhiteNoLightingBackground");
+                if (nullptr != bubbleBaseDatablock)
+                {
+                    Ogre::HlmsMacroblock macroblock = *bubbleBaseDatablock->getMacroblock();
+                    macroblock.mDepthBiasConstant = 1.0f;
+                    macroblock.mDepthBiasSlopeScale = 1.0f;
+                    bubbleBaseDatablock->setMacroblock(macroblock);
+                }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::createSpeechBubble");
         }

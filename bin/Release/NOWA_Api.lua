@@ -35865,5 +35865,15 @@ return {
 	{
 		type = "singleton",
 		description = "Converts any type to string."
+	},
+	toStringDegree =
+	{
+		type = "singleton",
+		description = "Converts degree type to string."
+	},
+	toStringRadian =
+	{
+		type = "singleton",
+		description = "Converts radian type to string."
 	}
 }

@@ -85,6 +85,16 @@ namespace NOWA
             Ogre::Real rawHeight = 0.0f; // Vertical position exactly as placed by the user drag (no raycast involved - there is no terrain to sample)
             Ogre::Real smoothedHeight = 0.0f; // Vertical position after gradient smoothing between segments
             Ogre::Real distFromStart = 0.0f;  // Accumulated distance from chain start (for UV)
+            // Small per-point depth reduction (0 = full platformDepth), assigned once per
+            // confirmed raw segment at creation time and carried through Catmull-Rom/
+            // resampling like rawHeight. Purpose: when two segments fold back sharply
+            // enough to physically overlap in 3D (a fixed-depth extrusion cannot avoid
+            // this for a near-180-degree reversal), giving successive segments a
+            // deliberately slightly different depth means the overlapping geometry no
+            // longer sits at the exact same Z, so it resolves visually into one layer in
+            // front of the other instead of an ambiguous self-intersecting jumble. Not a
+            // topological fix, just a practical mitigation the user explicitly asked for.
+            Ogre::Real depthShrink = 0.0f;
         };
 
         struct PlatformSegment
@@ -727,6 +737,11 @@ namespace NOWA
         // design notes on that limitation.
         bool hasIncomingDirection;
         Ogre::Vector3 incomingDirection;
+
+        // Increments once per confirmed raw segment, used to derive that segment's
+        // depthShrink (cycled with modulo so depth never keeps shrinking indefinitely on a
+        // long platform - see PlatformControlPoint::depthShrink for why this exists).
+        unsigned int segmentCreationCounter;
 
         // Mirrors ProceduralRoadComponent's roadFrame/roadOrigin pair exactly, so
         // local<->world conversion (getPlatformConnectionPoint, getNearestPointOnPlatform,

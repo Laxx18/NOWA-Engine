@@ -2161,7 +2161,7 @@ namespace NOWA
         {
             if (nullptr != this->sceneNode)
             {
-                this->sceneNode->setVisible(visible);
+                this->sceneNode->setVisible(visible, false);
             }
 
             if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
@@ -2198,7 +2198,8 @@ namespace NOWA
 
             if (nullptr != this->sceneNode)
             {
-                this->sceneNode->setVisible(visible);
+                // Cascade = false: Else ugly behavior: If TagChildNodeComponent is involved and for example a LightSpotComponent, which has a DummyItem. Then because of cascade, also that dummy item will become visible in simulation, even the useDummyEntity flag is false
+                this->sceneNode->setVisible(visible, false);
             }
 
             if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())

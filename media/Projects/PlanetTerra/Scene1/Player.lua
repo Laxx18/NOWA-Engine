@@ -19,8 +19,9 @@ Player["connect"] = function(gameObject)
     playerGo = AppStateManager:getGameObjectController():castGameObject(gameObject);
     inputDeviceComp = playerGo:getInputDeviceComponent();
     local flashLightGo = AppStateManager:getGameObjectController():getGameObjectFromId("2467979983");
+    flashLightGo:setVisible(toggleFlashLight);
     flashLightComp = flashLightGo:getLightSpotComponent();
-    flashLightComp:setActivated(false);
+    flashLightComp:setActivated(toggleFlashLight);
     
     local universumGameObject = AppStateManager:getGameObjectController():getGameObjectFromId("1061997306");
     local universumComponent = universumGameObject:getUniversumComponent();

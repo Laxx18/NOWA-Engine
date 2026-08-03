@@ -33,7 +33,7 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268259 5052.08 264689"/>
+		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268261 5053.51 264690"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="304.328" y="-184.225" z="27838.4"/>
-			<rotation qw="-0.492033" qx="0.15143" qy="0.827304" qz="0.224811"/>
+			<position x="301.019" y="-180.034" z="27851.9"/>
+			<rotation qw="0.87803" qx="-0.252836" qy="-0.394622" qz="-0.0970084"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -71,8 +71,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="304.328 -184.225 27838.4"/>
-					<property type="9" name="CameraOrientation" data="-31.3988 -119.07 1.96907"/>
+					<property type="9" name="CameraPosition" data="301.019 -180.034 27851.9"/>
+					<property type="9" name="CameraOrientation" data="-31.3697 -48.9524 1.9596"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -109,7 +109,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="268259" y="5051.61" z="264688"/>
+			<position x="268261" y="5053.04" z="264689"/>
 			<rotation qw="-0.237327" qx="0.400103" qy="0.226368" qz="0.855775"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -332,10 +332,10 @@
 			</item>
 		</node>
 		<node name="PlayerLight" id="3368290548">
-			<position x="306.235" y="-187.99" z="27844.4"/>
-			<rotation qw="0.950842" qx="0.00309509" qy="-0.293325" qz="-0.0992445"/>
+			<position x="306.873" y="-186.735" z="27844.5"/>
+			<rotation qw="0.648291" qx="-0.109408" qy="-0.737487" qz="-0.15447"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -346,7 +346,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -533,7 +533,7 @@ Alfred has important information!"/>
 					<property type="9" name="OffsetPosition" data="0 2 0"/>
 					<property type="9" name="OffsetOrientation" data="0 180 0"/>
 					<property type="2" name="OrientationTargetId" data="0"/>
-					<property type="10" name="Color" data="1 1 1 1"/>
+					<property type="10" name="Color" data="0 0 0 1"/>
 					<property type="8" name="Alignment" data="1 3"/>
 					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -550,10 +550,10 @@ Alfred has important information!"/>
 			</item>
 		</node>
 		<node name="SpaceshipLight" id="2455145113">
-			<position x="309.451" y="-187.783" z="27839.5"/>
-			<rotation qw="0.57352" qx="0.00271509" qy="0.819084" qz="0.0130029"/>
+			<position x="309.896" y="-187.792" z="27840.2"/>
+			<rotation qw="0.927518" qx="0.0172794" qy="-0.373371" qz="0.00245089"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="false">
+			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -4016,7 +4016,7 @@ Alfred has important information!"/>
 			</item>
 		</node>
 		<node name="Dungeon_0" id="2358939090">
-			<position x="9658.45" y="525.581" z="41306.5"/>
+			<position x="9658.45" y="525.681" z="41306.5"/>
 			<rotation qw="0.736576" qx="-0.0294688" qy="-0.0321596" qz="0.674947"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
