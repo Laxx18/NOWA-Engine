@@ -4,8 +4,8 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.0245891" g="0.0245891" b="0.0333686"/>
-			<ambientLightLowerHemisphere r="0.0148763" g="0.0148763" b="0.0206555" a="1"/>
+			<ambientLightUpperHemisphere r="0.03" g="0.03" b="0.04"/>
+			<ambientLightLowerHemisphere r="0.03" g="0.03" b="0.04" a="1"/>
 			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
@@ -33,7 +33,7 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268261 5053.51 264690"/>
+		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268265 5055.43 264690"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -109,7 +109,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="268261" y="5053.04" z="264689"/>
+			<position x="268264" y="5054.95" z="264690"/>
 			<rotation qw="-0.237327" qx="0.400103" qy="0.226368" qz="0.855775"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -331,59 +331,6 @@
 				</userData>
 			</item>
 		</node>
-		<node name="PlayerLight" id="3368290548">
-			<position x="306.873" y="-186.735" z="27844.5"/>
-			<rotation qw="0.648291" qx="-0.109408" qy="-0.737487" qz="-0.15447"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="false">
-				<subitem index="0" datablockName="WhiteLine"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="2467979983"/>
-					<property type="7" name="Category" data="Default"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="false"/>
-					<property type="9" name="DefaultDirection" data="0 0 -1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="500"/>
-					<property type="6" name="LodDistance" data="500"/>
-					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
-					<property type="7" name="DataBlock0" data="WhiteLine"/>
-					<property type="7" name="ComponentLightSpotComponent" data="LightSpotComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="9" name="Diffuse" data="1 1 1"/>
-					<property type="9" name="Specular" data="1 1 1"/>
-					<property type="6" name="PowerScale" data="3.14159"/>
-					<property type="7" name="AttenuationMode" data="Radius"/>
-					<property type="6" name="AttenuationRange" data="23"/>
-					<property type="6" name="AttenuationConstant" data="0.5"/>
-					<property type="6" name="AttenuationLinear" data="0"/>
-					<property type="6" name="AttenuationQuadratic" data="0.5"/>
-					<property type="6" name="AttenuationRadius" data="10"/>
-					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
-					<property type="12" name="CastShadows" data="true"/>
-					<property type="9" name="Size" data="30 40 1"/>
-					<property type="6" name="NearClipDistance" data="0.1"/>
-					<property type="12" name="ShowDummyEntity" data="false"/>
-					<property type="7" name="ComponentTagChildNodeComponent" data="TagChildNodeComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="SourceId" data="1959649159"/>
-				</userData>
-			</item>
-		</node>
 		<node name="FutureFighterJet_0" id="1171646049">
 			<position x="306.235" y="-187.99" z="27844.4"/>
 			<rotation qw="0.34208" qx="0.000333648" qy="0.93967" qz="0.000968856"/>
@@ -529,12 +476,12 @@
 					<property type="7" name="Caption" data="I need to fly to planet Corba
 Alfred has important information!"/>
 					<property type="6" name="CharHeight" data="0.5"/>
-					<property type="12" name="AlwaysPresent" data="false"/>
-					<property type="9" name="OffsetPosition" data="0 2 0"/>
+					<property type="12" name="AlwaysPresent" data="true"/>
+					<property type="9" name="OffsetPosition" data="0 2 -1"/>
 					<property type="9" name="OffsetOrientation" data="0 180 0"/>
 					<property type="2" name="OrientationTargetId" data="0"/>
 					<property type="10" name="Color" data="0 0 0 1"/>
-					<property type="8" name="Alignment" data="1 3"/>
+					<property type="8" name="Alignment" data="1 1"/>
 					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -546,34 +493,35 @@ Alfred has important information!"/>
 					<property type="6" name="SpeechDuration" data="7"/>
 					<property type="12" name="RunSpeechSound" data="false"/>
 					<property type="12" name="KeepCaption" data="false"/>
+					<property type="6" name="XOffsetStart" data="-0.5"/>
 				</userData>
 			</item>
 		</node>
-		<node name="SpaceshipLight" id="2455145113">
-			<position x="309.896" y="-187.792" z="27840.2"/>
-			<rotation qw="0.927518" qx="0.0172794" qy="-0.373371" qz="0.00245089"/>
+		<node name="PlayerLight" id="3368290548">
+			<position x="306.873" y="-186.735" z="27844.5"/>
+			<rotation qw="0.647853" qx="-0.113584" qy="-0.73729" qz="-0.154238"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="4152948589"/>
+					<property type="7" name="Id" data="2467979983"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="78"/>
-					<property type="6" name="LodDistance" data="78"/>
+					<property type="2" name="RenderDistance" data="500"/>
+					<property type="6" name="LodDistance" data="500"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="46"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentLightSpotComponent" data="LightSpotComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -581,9 +529,9 @@ Alfred has important information!"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="Diffuse" data="1 1 1"/>
 					<property type="9" name="Specular" data="1 1 1"/>
-					<property type="6" name="PowerScale" data="30"/>
+					<property type="6" name="PowerScale" data="3.14159"/>
 					<property type="7" name="AttenuationMode" data="Radius"/>
-					<property type="6" name="AttenuationRange" data="46"/>
+					<property type="6" name="AttenuationRange" data="23"/>
 					<property type="6" name="AttenuationConstant" data="0.5"/>
 					<property type="6" name="AttenuationLinear" data="0"/>
 					<property type="6" name="AttenuationQuadratic" data="0.5"/>
@@ -598,7 +546,7 @@ Alfred has important information!"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="SourceId" data="2599276278"/>
+					<property type="6" name="SourceId" data="1959649159"/>
 				</userData>
 			</item>
 		</node>
@@ -647,7 +595,7 @@ Alfred has important information!"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
 					<property type="7" name="CollisionType" data="ConvexHull"/>
-					<property type="9" name="ConstraintAxis" data="0 1 0"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
 					<property type="7" name="ComponentPlanetSurfaceComponent" data="PlanetSurfaceComponent"/>
@@ -703,6 +651,7 @@ Alfred has important information!"/>
 					<property type="6" name="SpeechDuration" data="10"/>
 					<property type="12" name="RunSpeechSound" data="false"/>
 					<property type="12" name="KeepCaption" data="true"/>
+					<property type="6" name="XOffsetStart" data="-0.5"/>
 				</userData>
 			</item>
 		</node>
@@ -4016,7 +3965,7 @@ Alfred has important information!"/>
 			</item>
 		</node>
 		<node name="Dungeon_0" id="2358939090">
-			<position x="9658.45" y="525.681" z="41306.5"/>
+			<position x="9658.45" y="525.881" z="41306.5"/>
 			<rotation qw="0.736576" qx="-0.0294688" qy="-0.0321596" qz="0.674947"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -4656,6 +4605,59 @@ Alfred has important information!"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="2" name="Target Planet Id" data="3104165348"/>
+				</userData>
+			</item>
+		</node>
+		<node name="SpaceshipLight" id="2455145113">
+			<position x="309.896" y="-187.792" z="27840.2"/>
+			<rotation qw="0.927043" qx="0.0161816" qy="-0.37455" qz="0.00653779"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4152948589"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="78"/>
+					<property type="6" name="LodDistance" data="78"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="46"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentLightSpotComponent" data="LightSpotComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="Diffuse" data="1 1 1"/>
+					<property type="9" name="Specular" data="1 1 1"/>
+					<property type="6" name="PowerScale" data="30"/>
+					<property type="7" name="AttenuationMode" data="Radius"/>
+					<property type="6" name="AttenuationRange" data="46"/>
+					<property type="6" name="AttenuationConstant" data="0.5"/>
+					<property type="6" name="AttenuationLinear" data="0"/>
+					<property type="6" name="AttenuationQuadratic" data="0.5"/>
+					<property type="6" name="AttenuationRadius" data="10"/>
+					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
+					<property type="12" name="CastShadows" data="true"/>
+					<property type="9" name="Size" data="30 40 1"/>
+					<property type="6" name="NearClipDistance" data="0.1"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ComponentTagChildNodeComponent" data="TagChildNodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="SourceId" data="2599276278"/>
 				</userData>
 			</item>
 		</node>

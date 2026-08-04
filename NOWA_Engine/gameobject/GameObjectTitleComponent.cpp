@@ -534,11 +534,14 @@ namespace NOWA
 
         if (this->movableText)
         {
+            // Position only - do NOT touch orientation here. Orientation is set once
+            // in postInit() and updated via setOffsetOrientation() only; re-applying
+            // it here as well caused it to compound with the node's already-current
+            // orientation on every position change, effectively doubling the
+            // correction/offset rotation each time this was called after the initial
+            // load.
             Ogre::Vector3 sp = this->offsetPosition->getVector3();
-            Ogre::Quaternion correction = Ogre::Vector3::UNIT_Z.getRotationTo(this->gameObjectPtr->getDefaultDirection());
-            Ogre::Quaternion so = correction * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
-
-            NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->movableText->getParentSceneNode(), sp, so);
+            NOWA::GraphicsModule::getInstance()->setNodePosition(this->movableText->getParentSceneNode(), sp);
         }
     }
 

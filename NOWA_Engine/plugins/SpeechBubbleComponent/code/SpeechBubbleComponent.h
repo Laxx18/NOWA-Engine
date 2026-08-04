@@ -230,6 +230,22 @@ namespace NOWA
 		 * @param[in] closureFunction The closure function set.
 		 */
 		void reactOnSpeechDone(luabind::object closureFunction);
+
+		/**
+		 * @brief Sets the horizontal offset of the bubble body (ellipse + tail) relative
+		 *        to the text anchor, in the local +X direction. The text itself stays
+		 *        centered on the anchor - only the bubble shape shifts sideways, so the
+		 *        tail can point at the character's mouth while the bubble body sits off
+		 *        to one side (e.g. so it doesn't cover the character).
+		 * @param[in] xOffsetStart The horizontal offset to set.
+		 */
+		void setXOffsetStart(Ogre::Real xOffsetStart);
+
+		/**
+		 * @brief Gets the horizontal offset of the bubble body relative to the text anchor.
+		 * @return xOffsetStart
+		 */
+		Ogre::Real getXOffsetStart(void) const;
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrCaption(void) { return "Caption"; }
@@ -237,6 +253,7 @@ namespace NOWA
 		static const Ogre::String AttrSpeechDuration(void) { return "Speech Duration"; }
 		static const Ogre::String AttrRunSpeechSound(void) { return "Run Speech Sound"; }
 		static const Ogre::String AttrKeepCaption(void) { return "Keep Caption"; }
+		static const Ogre::String AttrXOffsetStart(void) { return "X Offset Start"; }
 	protected:
 		virtual void drawSpeechBubble(Ogre::Real dt);
 
@@ -266,7 +283,8 @@ namespace NOWA
 		Variant* runSpeech;
 		Variant* speechDuration;
 		Variant* runSpeechSound;
-		Variant* keepCaption;
+        Variant* keepCaption;
+		Variant* xOffsetStart;
 	};
 
 }; // namespace end

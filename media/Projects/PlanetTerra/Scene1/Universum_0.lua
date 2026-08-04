@@ -25,6 +25,7 @@ local playerGo = nil;
 local fighterGo = nil;
 local planetMinimapGo = nil;
 local mainGo = nil;
+local landStartButton = nil;
 
 Universum_0 = {}
 
@@ -97,15 +98,23 @@ Universum_0["connect"] = function(gameObject)
     mainGo = AppStateManager:getGameObjectController():getGameObjectFromId(MAIN_GAMEOBJECT_ID);
     
     local fadeWindowComponent = universumGameObject:getMyGUIFadeAlphaControllerComponent();
-    local landStartButton     = universumGameObject:getMyGUIButtonComponentFromName("LandStartButton");
+    landStartButton     = universumGameObject:getMyGUIButtonComponentFromName("LandStartButton");
     window                         = universumGameObject:getMyGUIWindowComponent();
     landDegreeText             = universumGameObject:getMyGUITextComponentFromName("LandDegreeText");
     local cannotLandText     = universumGameObject:getMyGUITextComponentFromName("CannotLandText");
  
-    -- Button toggles between Land and Start (takeoff).
-    landStartButton:reactOnMouseButtonClick(function()
-        if landStartButton:getCaption() == "Land" then
+    -- The click-time caption is now passed in as a parameter by
+    -- MyGUIButtonComponent::mouseButtonClick, captured ONCE before any
+    -- listener runs - so this and any other script's handler on the same
+    -- button all see the same value regardless of execution order or what
+    -- another handler changes the caption to in response to this same click.
+    landStartButton:reactOnMouseButtonClick(function(caption)
+        log("[Universum_0] button clicked, received caption='" .. tostring(caption) .. "'");
+        if caption == "Land" then
+            log("[Universum_0] caption matches 'Land' -> requestLanding()");
             universumComp:requestLanding();
+        else
+            log("[Universum_0] caption does not match 'Land', ignoring");
         end
     end);
  

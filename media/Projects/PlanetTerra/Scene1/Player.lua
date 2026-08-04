@@ -34,9 +34,15 @@ Player["connect"] = function(gameObject)
     planetMinimapGo = AppStateManager:getGameObjectController():getGameObjectFromId(PLANET_MINIMAP_GO_ID);
     mainGo = AppStateManager:getGameObjectController():getGameObjectFromId(MAIN_GAMEOBJECT_ID);
  
-    -- Button toggles between Land and Start (takeoff).
-    landStartButton:reactOnMouseButtonClick(function()
-        if landStartButton:getCaption() == "Take Off" then
+    -- The click-time caption is now passed in as a parameter by
+    -- MyGUIButtonComponent::mouseButtonClick, captured ONCE before any
+    -- listener runs - so this and Universum_0.lua's handler on the same
+    -- button both see the same value regardless of execution order or what
+    -- the other handler changes the caption to in response to this same click.
+    landStartButton:reactOnMouseButtonClick(function(caption)
+        log("[Player] button clicked, received caption='" .. tostring(caption) .. "'");
+        if caption == "Take Off" then
+            log("[Player] caption matches 'Take Off' -> requestTakeoff()");
             landStartButton:setCaption("Land");
             universumComponent:requestTakeoff();
             fighterGo:getPhysicsActiveComponent():setGravitySourceCategory("");
@@ -52,6 +58,8 @@ Player["connect"] = function(gameObject)
             planetMinimapGo:getPlanetMinimapComponent():setActivated(false);
             
             mainGo:getSimpleSoundComponentFromName("FlyMusic"):setActivated(true);
+        else
+            log("[Player] caption does not match 'Take Off', ignoring");
         end
     end);
     

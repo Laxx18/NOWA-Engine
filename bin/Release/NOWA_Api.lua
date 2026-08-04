@@ -32551,6 +32551,22 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
+			setXOffsetStart =
+			{
+				type = "method",
+				description = "Sets the horizontal offset of the bubble body relative to the text anchor.",
+				args = "(number xOffsetStart)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getXOffsetStart =
+			{
+				type = "function",
+				description = "Gets the horizontal offset of the bubble body relative to the text anchor.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			setRunSpeechSound =
 			{
 				type = "method",

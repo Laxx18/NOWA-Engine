@@ -1584,6 +1584,32 @@ namespace NOWA
                     safeDist = Ogre::Math::Clamp(safeDist * 1.1f, baseTrimDist, this->platformHeight->getReal() * 6.0f);
                     jp.armTrimDists[ai] = safeDist;
                 }
+
+                // BUGFIX: each arm used to keep its OWN trim distance, computed only from its
+                // own tightest neighbour angle. That leaves arms at very different radii from
+                // the centre whenever the angular gaps are uneven (e.g. two arms clustered
+                // ~28 degrees apart alongside a third arm ~140-190 degrees away, confirmed via
+                // [JUNCTION-DEBUG] logs) - the clustered arms get trimmed far out for their
+                // tight mutual angle, while the lone far arm barely gets trimmed at all. With
+                // corners at such different radii, the centre point can end up OUTSIDE the
+                // polygon the corners form (verified directly against a logged case: the
+                // centre sat on the wrong side of the wide arm's own outer edge). Once that
+                // happens, the wedge fan from the centre is no longer a valid non-overlapping
+                // star decomposition - the wide wedge actually overlaps the narrow one, which
+                // is the grass/stone z-fighting reported. Equalizing every arm of a junction to
+                // the SAME (largest-required) trim distance puts every corner at equal radius,
+                // which keeps the centre inside the polygon for any angular gap up to 180
+                // degrees - covering every case except a single, still-extreme >180 degree gap
+                // between just two arms.
+                float maxTrimDist = 0.0f;
+                for (size_t ai = 0; ai < nArms; ++ai)
+                {
+                    maxTrimDist = std::max(maxTrimDist, jp.armTrimDists[ai]);
+                }
+                for (size_t ai = 0; ai < nArms; ++ai)
+                {
+                    jp.armTrimDists[ai] = maxTrimDist;
+                }
             }
 
             junctions.push_back(jp);
@@ -1928,9 +1954,26 @@ namespace NOWA
                 }
             }
 
+            // BUGFIX: this only ever capped the COMBINED front+back trim against the chain's
+            // length - a chain with a junction at only ONE end had no such cap at all. The
+            // angle-based armTrimDists formula can demand a large trim distance when two arms
+            // meet at a narrow angle (e.g. ~3m for a ~22 degree gap) completely independent of
+            // how long the actual arm is; if the arm is shorter than that, the erase-loop below
+            // can only remove points down to a minimum of 2, and if even the remaining point is
+            // still closer to the junction centre than the requested trim, the "if (d >
+            // myTrimDist * 1.001f)" check below is false, so NO lerp happens at all - the
+            // corner is left sitting wherever the arm's own geometry ends, silently closer to
+            // the junction than the fan assumes. The fan then has no way to know the clearance
+            // it was sized for wasn't actually honoured, and the arm's own box overlaps into
+            // the fan's wedge right at that corner - exactly the streaky/z-fighting mess
+            // reported. Capping every individual trim distance to the arm's own chain length
+            // (not only the combined case) means the corner can get AT MOST close to the arm's
+            // true far end - it can still be less than the ideal clearance for a genuinely too-
+            // short arm, but the fan and the arm agree on where the corner actually is instead
+            // of silently disagreeing.
+            const Ogre::Real totalChainLength = finalPath.back().distFromStart;
             if (true == hasFrontJunction && true == hasBackJunction)
             {
-                const Ogre::Real totalChainLength = finalPath.back().distFromStart;
                 const Ogre::Real requested = frontTrimDist + backTrimDist;
                 const Ogre::Real allowed = totalChainLength * 0.9f;
                 if (requested > allowed && requested > 0.001f)
@@ -1938,6 +1981,17 @@ namespace NOWA
                     const Ogre::Real scale = allowed / requested;
                     frontTrimDist *= scale;
                     backTrimDist *= scale;
+                }
+            }
+            else
+            {
+                if (true == hasFrontJunction)
+                {
+                    frontTrimDist = std::min(frontTrimDist, totalChainLength * 0.9f);
+                }
+                if (true == hasBackJunction)
+                {
+                    backTrimDist = std::min(backTrimDist, totalChainLength * 0.9f);
                 }
             }
 
@@ -3217,6 +3271,24 @@ namespace NOWA
             return;
         }
 
+        // BUGFIX: this used to be the exact same platformDepth as every connecting arm, so the
+        // junction fill's outer walls/caps sat in EXACTLY the same Z-plane as the arm's own
+        // open (capless) end at the trim corner - any float-level imprecision in where the
+        // trim point actually lands then z-fights, the same root cause as the direction-
+        // reversal overlap fixed earlier (see g_platformRunDepthOverride and its comment).
+        // Shrinking the junction's own depth by a small fixed margin means its whole
+        // cross-section is nested strictly inside each arm's footprint at the shared corner
+        // instead of flush with it - same fix, applied locally here since this function
+        // already computes depth on its own rather than going through generatePlatformBox.
+        // BUGFIX (reverted): this briefly shrank the junction's own depth a small fixed
+        // amount, borrowing the trick that fixed the direction-reversal overlap. That trick
+        // relied on the later run continuing the SAME ribbon direction, so shrinking it left
+        // it invisibly nested inside the earlier run's footprint. A junction's arms approach
+        // from arbitrary, unrelated angles - there's no "continuation" for a shrunk footprint
+        // to hide inside, so this just opened a visible seam/notch at the boundary instead of
+        // resolving anything (confirmed - didn't fix the overlap, only introduced a new
+        // artifact). Reverted to the real platformDepth; the actual overlap here needs a
+        // proper look at the arm-corner/trim math, not a nested-footprint trick.
         const Ogre::Real depth = this->platformDepth->getReal();
         const Ogre::Real height = this->platformHeight->getReal();
         const Ogre::Real zFront = -depth * 0.5f;
@@ -3330,11 +3402,11 @@ namespace NOWA
 
             logTri("top-front-cap", k, Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), Ogre::Vector3(centreX, centreTopBeveled, zFront));
             this->addJunctionTriangle(Ogre::Vector3(aK.x, aKTopBeveled, zFront), uvFor(aK.x, aK.h), Ogre::Vector3(aN.x, aNTopBeveled, zFront), uvFor(aN.x, aN.h), Ogre::Vector3(centreX, centreTopBeveled, zFront), uvFor(centreX, centreH),
-                Ogre::Vector3(0.0f, 0.0f, -1.0f), PlatformMeshBuffer::JUNCTION);
+                Ogre::Vector3(0.0f, 0.0f, -1.0f), PlatformMeshBuffer::SURFACE);
 
             logTri("top-back-cap", k, Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(centreX, centreTopBeveled, zBack));
             this->addJunctionTriangle(Ogre::Vector3(aN.x, aNTopBeveled, zBack), uvFor(aN.x, aN.h), Ogre::Vector3(aK.x, aKTopBeveled, zBack), uvFor(aK.x, aK.h), Ogre::Vector3(centreX, centreTopBeveled, zBack), uvFor(centreX, centreH),
-                Ogre::Vector3(0.0f, 0.0f, 1.0f), PlatformMeshBuffer::JUNCTION);
+                Ogre::Vector3(0.0f, 0.0f, 1.0f), PlatformMeshBuffer::SURFACE);
 
             Ogre::Vector3 outward(aN.h - aK.h, -(aN.x - aK.x), 0.0f);
             if (outward.squaredLength() > 1e-8f)
@@ -3349,6 +3421,10 @@ namespace NOWA
 
             const Ogre::Real segLen = std::max(0.001f, std::sqrt((aN.x - aK.x) * (aN.x - aK.x) + (aN.h - aK.h) * (aN.h - aK.h)));
             const Ogre::Real v1 = segLen * groundUV.x;
+            // BUGFIX: separate U scale for the top fan (now routed to the SURFACE buffer, see
+            // below) so it tiles using Surface UV Tiling like the arms' own top do, instead of
+            // reusing the ground tiling that only makes sense for the sides/bottom.
+            const Ogre::Real vSurf = segLen * surfUV.x;
 
             // ── Top fan outer perimeter wall ──────────────────────────────────────
             // BUGFIX: used to be one flat quad at full height across the whole zFront..zBack
@@ -3362,20 +3438,21 @@ namespace NOWA
             if (topBevel > 0.0f)
             {
                 logQuad("top-perimeter-bevel-front", k, Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aN.x, aN.h, topZFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront));
-                this->addPlatformQuad(Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aN.x, aN.h, topZFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), outward, 0.0f, v1, 0.0f, topBevel * groundUV.y,
-                    PlatformMeshBuffer::JUNCTION);
+                this->addPlatformQuad(Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aN.x, aN.h, topZFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), outward, 0.0f, vSurf, 0.0f, topBevel * surfUV.y,
+                    PlatformMeshBuffer::SURFACE);
 
                 logQuad("top-perimeter-flat", k, Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZFront));
-                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZFront), outward, 0.0f, v1, 0.0f, 1.0f, PlatformMeshBuffer::JUNCTION);
+                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZFront), outward, 0.0f, vSurf, 0.0f, surfUV.y,
+                    PlatformMeshBuffer::SURFACE);
 
                 logQuad("top-perimeter-bevel-back", k, Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, aN.h, topZBack));
-                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, aN.h, topZBack), outward, 0.0f, v1, 0.0f, topBevel * groundUV.y,
-                    PlatformMeshBuffer::JUNCTION);
+                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, aN.h, topZBack), outward, 0.0f, vSurf, 0.0f, topBevel * surfUV.y,
+                    PlatformMeshBuffer::SURFACE);
             }
             else
             {
                 logQuad("top-perimeter", k, Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, aN.h, zFront));
-                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, aN.h, zFront), outward, 0.0f, v1, 0.0f, 1.0f, PlatformMeshBuffer::JUNCTION);
+                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, aN.h, zFront), outward, 0.0f, vSurf, 0.0f, surfUV.y, PlatformMeshBuffer::SURFACE);
             }
 
             // ── Bottom fan (mirrored at height-H, reversed winding) ──────────────
@@ -3383,16 +3460,22 @@ namespace NOWA
             const Ogre::Real bN = aN.h - height;
             const Ogre::Real bC = centreH - height;
 
+            // BUGFIX: bottom fan + perimeter + side walls now go to GROUND (matching
+            // generatePlatformBox's own bottom surface and front/back faces, see the
+            // reference block above this function) instead of the separate JUNCTION buffer,
+            // which only ever had Ground Datablock mirrored onto it anyway - going through
+            // GROUND directly means Ground UV Tiling is honoured properly instead of a fixed
+            // fallback, and the junction submesh no longer needs its own datablock at all.
             logTri("bottom-front-cap", k, Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(centreX, bC, zFront));
             this->addJunctionTriangle(Ogre::Vector3(aN.x, bN, zFront), uvFor(aN.x, aN.h), Ogre::Vector3(aK.x, bK, zFront), uvFor(aK.x, aK.h), Ogre::Vector3(centreX, bC, zFront), uvFor(centreX, centreH), Ogre::Vector3(0.0f, 0.0f, -1.0f),
-                PlatformMeshBuffer::JUNCTION);
+                PlatformMeshBuffer::GROUND);
 
             logTri("bottom-back-cap", k, Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(centreX, bC, zBack));
             this->addJunctionTriangle(Ogre::Vector3(aK.x, bK, zBack), uvFor(aK.x, aK.h), Ogre::Vector3(aN.x, bN, zBack), uvFor(aN.x, aN.h), Ogre::Vector3(centreX, bC, zBack), uvFor(centreX, centreH), Ogre::Vector3(0.0f, 0.0f, 1.0f),
-                PlatformMeshBuffer::JUNCTION);
+                PlatformMeshBuffer::GROUND);
 
             logQuad("bottom-perimeter", k, Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, bN, zBack));
-            this->addPlatformQuad(Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, bN, zBack), outward, 0.0f, v1, 0.0f, 1.0f, PlatformMeshBuffer::JUNCTION);
+            this->addPlatformQuad(Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, bN, zBack), outward, 0.0f, v1, 0.0f, groundUV.y, PlatformMeshBuffer::GROUND);
 
             // ── Outer side wall: closes the gap from the top rim down to the bottom rim ──
             // BUGFIX: top edge now uses the bevel-adjusted height (aKTopBeveled/aNTopBeveled)
@@ -3400,10 +3483,10 @@ namespace NOWA
             // of leaving either a step or an overlap with the new bevel bands.
             logQuad("side-wall-front", k, Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront));
             this->addPlatformQuad(Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), 0.0f, v1, 0.0f, groundUV.y,
-                PlatformMeshBuffer::JUNCTION);
+                PlatformMeshBuffer::GROUND);
             logQuad("side-wall-back", k, Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack));
             this->addPlatformQuad(Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), 0.0f, v1, 0.0f, groundUV.y,
-                PlatformMeshBuffer::JUNCTION);
+                PlatformMeshBuffer::GROUND);
         }
     }
 

@@ -11324,6 +11324,7 @@ namespace NOWA
 			.def("getOrientationFromHeadingPitch", &MathHelper::getOrientationFromHeadingPitch)
 			.def("faceTarget", (Ogre::Quaternion(MathHelper::*)(Ogre::SceneNode*, Ogre::SceneNode*, const Ogre::Vector3&))& MathHelper::faceTarget)
 			.def("faceTarget", (Ogre::Quaternion(MathHelper::*)(Ogre::SceneNode*, Ogre::SceneNode*)) & MathHelper::faceTarget)
+            .def("faceTargetOnPlanet", &MathHelper::faceTargetOnPlanet)
 			.def("lookAt", &lookAt)
 			.def("faceDirectionSlerp", &MathHelper::faceDirectionSlerp)
 			.def("getAngle", &MathHelper::getAngle)
@@ -11378,6 +11379,10 @@ namespace NOWA
 		
 		AddClassToCollection("MathHelper", "Quaternion faceTarget(SceneNode source, SceneNode dest)", "Gets the orientation in order to face a target, this orientation can be set directly.");
 		AddClassToCollection("MathHelper", "Quaternion faceTarget(SceneNode source, SceneNode dest, Vector3 defaultDirection)", "Gets the orientation in order to face a target, this orientation can be set directly, taking the default direction of the source game object into account.");
+        AddClassToCollection("MathHelper", "Quaternion faceTargetOnPlanet(SceneNode source, SceneNode dest, Vector3 sourceUp, Vector3 sourceDefaultDirection)",
+            "Gets the orientation to face a target while staying aligned to a given up vector (e.g. a planet's surface normal), "
+            "so the source only yaws toward the target instead of tipping sideways on a curved surface. "
+            "sourceUp is typically PhysicsActiveComponent:getUp(), sourceDefaultDirection typically GameObject:getDefaultDirection().");
 		AddClassToCollection("MathHelper", "Radian getAngle(Vector3 dir1, Vector3 dir2, Vector3 normal, bool signedAngle)", "Gets angle between two vectors. "
 			"The normal of the two vectors is used in conjunction with the signed angle parameter, to determine whether the angle between the two vectors is negative or positive. "
 			"This function can be use e.g. when using a gizmo or a grabber to rotate objects via mouse in the correct direction.");

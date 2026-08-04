@@ -312,7 +312,37 @@ namespace NOWA
 		return defaultDirection.getRotationTo(lookAt, Ogre::Vector3::ZERO);
 	}
 
-	Ogre::Quaternion MathHelper::faceDirection(Ogre::SceneNode* source, const Ogre::Vector3& direction)
+	Ogre::Quaternion MathHelper::faceTargetOnPlanet(Ogre::SceneNode* source, Ogre::SceneNode* dest, const Ogre::Vector3& sourceUp, const Ogre::Vector3& sourceDefaultDirection)
+    {
+        Ogre::Vector3 up = sourceUp;
+        if (up.squaredLength() < 1e-8f)
+        {
+            up = Ogre::Vector3::UNIT_Y;
+        }
+        else
+        {
+            up.normalise();
+        }
+
+        Ogre::Vector3 toTarget = dest->getPosition() - source->getPosition();
+
+        Ogre::Vector3 flatToTarget = toTarget - up * toTarget.dotProduct(up);
+
+        if (flatToTarget.squaredLength() < 0.0001f)
+        {
+            return source->getOrientation();
+        }
+        flatToTarget.normalise();
+
+        Ogre::Quaternion alignUp = Ogre::Vector3::UNIT_Y.getRotationTo(up, Ogre::Vector3::ZERO);
+
+        Ogre::Vector3 rotatedForward = alignUp * sourceDefaultDirection;
+        Ogre::Quaternion yawToTarget = rotatedForward.getRotationTo(flatToTarget, up);
+
+        return yawToTarget * alignUp;
+    }
+
+    Ogre::Quaternion MathHelper::faceDirection(Ogre::SceneNode* source, const Ogre::Vector3& direction)
 	{
 		Ogre::Vector3 axes[3];
 

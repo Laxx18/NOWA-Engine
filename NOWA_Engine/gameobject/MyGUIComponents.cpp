@@ -2598,20 +2598,37 @@ namespace NOWA
     }
 
 	void MyGUIButtonComponent::mouseButtonClick(MyGUI::Widget* sender)
-	{
-		if (true == this->isSimulating)
-		{
-			MyGUI::Button* button = sender->castType<MyGUI::Button>();
-			if (nullptr != button)
-			{
-				// Call also function in lua script, if it does exist in the lua script component
-				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-				{
+    {
+        if (true == this->isSimulating)
+        {
+            MyGUI::Button* button = sender->castType<MyGUI::Button>();
+            if (nullptr != button)
+            {
+                // Call also function in lua script, if it does exist in the lua script component
+                if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
+                {
                     auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                        // Capture the caption ONCE, right here, before any closure runs -
+                        // not inside the loop below. Multiple Lua scripts can each
+                        // register their own closure on the same button and each
+                        // independently check the caption to decide whether THIS click
+                        // is "theirs" (e.g. "Land" vs "Take Off"). If every closure
+                        // instead re-queried button->getCaption() live, a closure that
+                        // runs first and changes the caption as a side effect would
+                        // make the NEXT closure - for this SAME click - see the NEW
+                        // caption instead of the one that was actually showing when the
+                        // user clicked, causing it to fire when it shouldn't (or not
+                        // fire when it should). Snapshotting once and handing the same
+                        // value to every closure removes the execution-order dependency
+                        // entirely: every listener for this click agrees on what state
+                        // the button was in when it was clicked, regardless of what any
+                        // other listener does in response.
+                        const Ogre::String clickedCaption = button->getCaption().asUTF8();
+
+                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, clickedCaption]()
                         {
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
@@ -2624,7 +2641,7 @@ namespace NOWA
                                 }
                                 try
                                 {
-                                    luabind::call_function<void>(closure);
+                                    luabind::call_function<void>(closure, clickedCaption);
                                 }
                                 catch (luabind::error& error)
                                 {
@@ -2637,14 +2654,14 @@ namespace NOWA
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
                     }
-				}
-				else
-				{
-					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Could not process 'reactOnMouseButtonClick' because the given game object: " + this->gameObjectPtr->getName() + " has no lua script component!");
-				}
-			}
-		}
-	}
+                }
+                else
+                {
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Could not process 'reactOnMouseButtonClick' because the given game object: " + this->gameObjectPtr->getName() + " has no lua script component!");
+                }
+            }
+        }
+    }
 
 	bool MyGUIButtonComponent::connect(void)
 	{

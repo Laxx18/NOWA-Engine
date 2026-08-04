@@ -377,24 +377,52 @@ namespace NOWA
 
                 bool nodeVisible = this->visible->getBool();
 
-                this->movableObject->setVisible(nodeVisible);
-
-                if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
+                const auto cameraCompPtr = NOWA::makeStrongPtr(this->getComponent<CameraComponent>());
+                if (nullptr != cameraCompPtr)
                 {
-                    for (const auto& component : this->gameObjectComponents)
+                    this->visible->setValue(visible);
+
+                    if (nullptr != this->movableObject)
                     {
-                        auto compPtr = std::get<COMPONENT>(component);
-                        auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
-                        if (true == std::get<COMPONENT>(component)->bConnected)
+                        if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
                         {
-                            auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
+                            auto* showDummyItemAttr = cameraCompPtr->getAttribute("Show Dummy Item");
                             if (nullptr != showDummyItemAttr)
                             {
-                                NOWA::GraphicsModule::RenderCommand cmd = [this, nodeVisible, showDummyItemAttr]()
+                                // Main/Active camera: Do not show dummy item at any situation!
+                                if (cameraCompPtr->getCamera() == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() || cameraCompPtr->getOwner()->getId() == GameObjectController::MAIN_CAMERA_ID)
                                 {
-                                    this->movableObject->setVisible(nodeVisible && showDummyItemAttr->getBool());
-                                };
-                                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                                    this->movableObject->setVisible(false);
+                                }
+                                else
+                                {
+                                    this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    this->movableObject->setVisible(nodeVisible);
+
+                    if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
+                    {
+                        for (const auto& component : this->gameObjectComponents)
+                        {
+                            auto compPtr = std::get<COMPONENT>(component);
+                            auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
+                            if (true == std::get<COMPONENT>(component)->bConnected)
+                            {
+                                auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
+                                if (nullptr != showDummyItemAttr)
+                                {
+                                    NOWA::GraphicsModule::RenderCommand cmd = [this, nodeVisible, showDummyItemAttr]()
+                                    {
+                                        this->movableObject->setVisible(nodeVisible && showDummyItemAttr->getBool());
+                                    };
+                                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                                }
                             }
                         }
                     }
@@ -2194,29 +2222,68 @@ namespace NOWA
 
         NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
         {
-            this->visible->setValue(visible);
-
-            if (nullptr != this->sceneNode)
+            const auto cameraCompPtr = NOWA::makeStrongPtr(this->getComponent<CameraComponent>());
+            if (nullptr != cameraCompPtr)
             {
-                // Cascade = false: Else ugly behavior: If TagChildNodeComponent is involved and for example a LightSpotComponent, which has a DummyItem. Then because of cascade, also that dummy item will become visible in simulation, even the useDummyEntity flag is false
-                this->sceneNode->setVisible(visible, false);
-            }
+                this->visible->setValue(visible);
 
-            if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
-            {
-                for (const auto& component : this->gameObjectComponents)
+                NOWA::GraphicsModule::RenderCommand cmd = [this, cameraCompPtr, visible]()
                 {
-                    auto compPtr = std::get<COMPONENT>(component);
-                    if (true == std::get<COMPONENT>(component)->bConnected)
+                    if (nullptr != this->movableObject)
                     {
-                        auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
-                        if (nullptr != showDummyItemAttr)
+                        // Cascade = false: Else ugly behavior: If TagChildNodeComponent is involved and for example a LightSpotComponent, which has a DummyItem. Then because of cascade, also that dummy item will become visible in simulation, even
+                        // the useDummyEntity flag is false
+                        this->sceneNode->setVisible(visible, false);
+
+                        if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
                         {
-                            NOWA::GraphicsModule::RenderCommand cmd = [this, visible, showDummyItemAttr]()
+                            auto* showDummyItemAttr = cameraCompPtr->getAttribute("Show Dummy Item");
+                            if (nullptr != showDummyItemAttr)
                             {
-                                this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
-                            };
-                            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                                // Main/Active camera: Do not show dummy item at any situation!
+                                if (cameraCompPtr->getCamera() == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() || cameraCompPtr->getOwner()->getId() == GameObjectController::MAIN_CAMERA_ID)
+                                {
+                                    this->movableObject->setVisible(false);
+                                }
+                                else
+                                {
+
+                                    this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
+                                }
+                            }
+                        }
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setLoadedVisible2");
+            }
+            else
+            {
+
+                this->visible->setValue(visible);
+
+                if (nullptr != this->sceneNode)
+                {
+                    // Cascade = false: Else ugly behavior: If TagChildNodeComponent is involved and for example a LightSpotComponent, which has a DummyItem. Then because of cascade, also that dummy item will become visible in simulation,
+                    // even the useDummyEntity flag is false
+                    this->sceneNode->setVisible(visible, false);
+                }
+
+                if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
+                {
+                    for (const auto& component : this->gameObjectComponents)
+                    {
+                        auto compPtr = std::get<COMPONENT>(component);
+                        if (true == std::get<COMPONENT>(component)->bConnected)
+                        {
+                            auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
+                            if (nullptr != showDummyItemAttr)
+                            {
+                                NOWA::GraphicsModule::RenderCommand cmd = [this, visible, showDummyItemAttr]()
+                                {
+                                    this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
+                                };
+                                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                            }
                         }
                     }
                 }

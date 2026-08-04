@@ -126,6 +126,14 @@ namespace NOWA
             // duplicated at the front/back depth faces, plus a perimeter quad between them -
             // see generateJunctionPatch.
             std::vector<Ogre::Vector3> patchCorners;
+            // Per-arm actual depth at that arm's trim corner - normally just platformDepth,
+            // but an arm can be the tail of a reversal-split monotonic run (see
+            // g_platformRunDepthOverride in the .cpp), which uses a slightly SMALLER depth
+            // there to avoid z-fighting with the run before it. If the junction fan used one
+            // uniform depth for every arm, it would mismatch that specific arm's actual
+            // (shrunk) footprint, showing as texture stretching/an overlap right at that one
+            // arm while the others connect fine. Populated alongside patchCorners.
+            std::vector<Ogre::Real> armDepths;
         };
 
     public:

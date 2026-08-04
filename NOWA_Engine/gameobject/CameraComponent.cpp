@@ -244,16 +244,13 @@ namespace NOWA
 
 		if (nullptr != this->dummyItem)
 		{
-			bool visible = this->showDummyEntity->getBool();
-
-			GraphicsModule::RenderCommand renderCommand = [this, visible]()
+            auto item = this->dummyItem;
+			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, visible]
             {
-                if (this->dummyItem)
-                {
-                    this->dummyItem->setVisible(visible);
-                }
+                item->setVisible(visible);
             };
-            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CameraComponent::connect");
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::connect");
 		}
 
 		return true;
@@ -275,18 +272,16 @@ namespace NOWA
                         this->dummyItem->setVisible(false);
                     }
                 };
-                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CameraComponent::disconnect1");
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::disconnect1");
 			}
 			else
 			{
-				GraphicsModule::RenderCommand renderCommand = [this]()
+                bool visible = this->gameObjectPtr->isVisible();
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]
                 {
-                    if (this->dummyItem)
-                    {
-                        this->dummyItem->setVisible(true);
-                    }
+                    this->dummyItem->setVisible(visible);
                 };
-                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CameraComponent::disconnect2");
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::disconnect2");
 			}
 		}
 
@@ -634,7 +629,8 @@ namespace NOWA
             this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
             if (this->dummyItem != nullptr)
             {
-                this->dummyItem->setVisible(this->showDummyEntity->getBool());
+                bool dummyVisible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
+                this->dummyItem->setVisible(dummyVisible);
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setActivated");

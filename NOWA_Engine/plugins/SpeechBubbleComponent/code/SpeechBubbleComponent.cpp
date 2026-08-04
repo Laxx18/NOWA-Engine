@@ -97,12 +97,17 @@ namespace NOWA
         runSpeech(new Variant(SpeechBubbleComponent::AttrRunSpeech(), false, this->attributes)),
         speechDuration(new Variant(SpeechBubbleComponent::AttrSpeechDuration(), 10.0f, this->attributes)),
         runSpeechSound(new Variant(SpeechBubbleComponent::AttrRunSpeechSound(), false, this->attributes)),
-        keepCaption(new Variant(SpeechBubbleComponent::AttrKeepCaption(), false, this->attributes))
+        keepCaption(new Variant(SpeechBubbleComponent::AttrKeepCaption(), false, this->attributes)),
+        xOffsetStart(new Variant(SpeechBubbleComponent::AttrXOffsetStart(), -0.5f, this->attributes))
     {
         this->runSpeech->setDescription("Sets whether the caption should remain after the speech run.");
         this->speechDuration->setDescription("Sets the speed duration. That is how long the bubble shall remain in seconds.");
         this->runSpeechSound->setDescription("Sets whether to use a sound if the speech is running char by char.");
         this->keepCaption->setDescription("Sets whether to use a sound if the speech is running char by char.");
+        this->xOffsetStart->setDescription("Horizontal offset of the bubble body (ellipse and tail) relative to the text anchor, "
+                                            "in the local +X direction. Only the bubble shape shifts - the text stays centered "
+                                            "on the anchor. Useful to keep the bubble from covering the character while the "
+                                            "tail still points at its mouth.");
     }
 
     SpeechBubbleComponent::~SpeechBubbleComponent(void)
@@ -170,6 +175,11 @@ namespace NOWA
             this->keepCaption->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "XOffsetStart")
+        {
+            this->xOffsetStart->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
         return true;
     }
@@ -183,6 +193,7 @@ namespace NOWA
         clonedCompPtr->setSpeechDuration(this->speechDuration->getReal());
         clonedCompPtr->setRunSpeechSound(this->runSpeechSound->getBool());
         clonedCompPtr->setKeepCaption(this->keepCaption->getBool());
+        clonedCompPtr->setXOffsetStart(this->xOffsetStart->getReal());
 
         clonedCompPtr->setActivated(this->activated->getBool());
 
@@ -201,10 +212,16 @@ namespace NOWA
         if (nullptr != gameObjectTitleCompPtr)
         {
             this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
-            auto captionAttribute = this->gameObjectTitleComponent->getAttribute(SpeechBubbleComponent::AttrCaption());
+            auto captionAttribute = this->gameObjectTitleComponent->getAttribute(GameObjectTitleComponent::AttrCaption());
             if (nullptr != captionAttribute)
             {
                 captionAttribute->setVisible(false);
+            }
+
+            auto alwaysPresent = this->gameObjectTitleComponent->getAttribute(GameObjectTitleComponent::AttrAlwaysPresent());
+            if (nullptr != alwaysPresent)
+            {
+                alwaysPresent->setValue(true);
             }
         }
 
@@ -351,6 +368,10 @@ namespace NOWA
         {
             this->setKeepCaption(attribute->getBool());
         }
+        else if (SpeechBubbleComponent::AttrXOffsetStart() == attribute->getName())
+        {
+            this->setXOffsetStart(attribute->getReal());
+        }
     }
 
     void SpeechBubbleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -398,6 +419,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "KeepCaption"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->keepCaption->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "XOffsetStart"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->xOffsetStart->getReal())));
         propertiesXML->append_node(propertyXML);
     }
 
@@ -574,6 +601,16 @@ namespace NOWA
         return this->runSpeechSound->getBool();
     }
 
+    void SpeechBubbleComponent::setXOffsetStart(Ogre::Real xOffsetStart)
+    {
+        this->xOffsetStart->setValue(xOffsetStart);
+    }
+
+    Ogre::Real SpeechBubbleComponent::getXOffsetStart(void) const
+    {
+        return this->xOffsetStart->getReal();
+    }
+
     void SpeechBubbleComponent::setKeepCaption(bool keepCaption)
     {
         this->keepCaption->setValue(keepCaption);
@@ -589,7 +626,6 @@ namespace NOWA
         this->closureFunction = closureFunction;
     }
 
-#if 1
     void SpeechBubbleComponent::drawSpeechBubble(Ogre::Real dt)
     {
         this->couldDraw = false;
@@ -683,166 +719,49 @@ namespace NOWA
 
             Ogre::Real accuracy = 17.0f;
 
-            this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth, 0.0f, 0.0f)))));
-            this->manualObject->colour(Ogre::ColourValue::White);
-            this->manualObject->index(this->indices + 0);
+            // Read the text's ACTUAL local AABB every frame - makes the bubble grow
+            // smoothly as characters are typed, and avoids hardcoding assumptions
+            // about text alignment (debug logging previously confirmed the text sits
+            // ABOVE the anchor, not below).
+            Ogre::Aabb liveTextAabb = this->gameObjectTitleComponent->getMovableText()->getLocalAabb();
 
-            this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth + 0.4f, 0.0f, 0.0f)))));
-            this->manualObject->colour(Ogre::ColourValue::White);
-            this->manualObject->index(this->indices + 1);
+            Ogre::Real textHalfWidth = (liveTextAabb.getMaximum().x - liveTextAabb.getMinimum().x) * 0.5f;
+            Ogre::Real textHalfHeight = (liveTextAabb.getMaximum().y - liveTextAabb.getMinimum().y) * 0.5f;
+            Ogre::Real textCenterY = (liveTextAabb.getMaximum().y + liveTextAabb.getMinimum().y) * 0.5f;
 
-            this->manualObject->position(p + (o * (so * (sp + Ogre::Vector3(-this->currentCaptionWidth + 0.1f, 0.2f, 0.0f)))));
-            this->manualObject->colour(Ogre::ColourValue::White);
-            this->manualObject->index(this->indices + 2);
-            this->indices += 3;
+            // Local tuning constants - no new properties/header members needed for these.
+            const Ogre::Real widthPadding = 1.3f;
+            const Ogre::Real heightPadding = 1.4f;
 
-            std::vector<Ogre::Vector3> points(3);
-            for (Ogre::Real theta = 0; theta <= 2 * Ogre::Math::PI; theta += Ogre::Math::PI / accuracy)
-            {
-                points[0] = Ogre::Vector3(0.0f, 0.0f, 0.0f);
-                points[1] =
-                    Ogre::Vector3(this->currentCaptionWidth * Ogre::Math::Cos(theta - Ogre::Math::PI / accuracy), (this->currentCaptionHeight * 0.5f) + this->currentCaptionHeight * 0.7f * Ogre::Math::Sin(theta - Ogre::Math::PI / accuracy), 0.0f);
-                points[2] = Ogre::Vector3(this->currentCaptionWidth * Ogre::Math::Cos(theta), (this->currentCaptionHeight * 0.5f) + this->currentCaptionHeight * 0.7f * Ogre::Math::Sin(theta), 0.0f);
+            Ogre::Real bubbleHorizontalOffset = this->xOffsetStart->getReal();
 
-                this->manualObject->position(p + (o * (so * (sp + points[0]))));
-                this->manualObject->colour(Ogre::ColourValue::White);
-                this->manualObject->index(this->indices + 0);
+            // The text itself stays centered on p (unshifted) - only the bubble body
+            // (ellipse + tail) shifts by bubbleHorizontalOffset. If the radius were
+            // computed from text width alone, shifting the ellipse would push its
+            // edge past the text on the side opposite the shift direction (text
+            // pokes out) while leaving empty space on the shifted-toward side -
+            // exactly the "lots of space on the left, text sticks out on the right"
+            // bug. Adding abs(bubbleHorizontalOffset) to the required half-width
+            // guarantees the shifted ellipse still fully contains the unshifted
+            // text on both sides, regardless of shift direction or magnitude.
+            Ogre::Real requiredHalfWidth = textHalfWidth * widthPadding + Ogre::Math::Abs(bubbleHorizontalOffset);
 
-                this->manualObject->position(p + (o * (so * (sp + points[1]))));
-                this->manualObject->colour(Ogre::ColourValue::White);
-                this->manualObject->index(this->indices + 1);
+            Ogre::Real ellipseRadiusX = std::max(requiredHalfWidth, 0.1f);
+            Ogre::Real ellipseRadiusY = std::max(textHalfHeight * heightPadding, 0.1f);
+            Ogre::Real ellipseCenterX = bubbleHorizontalOffset;
+            Ogre::Real ellipseCenterY = textCenterY;
 
-                this->manualObject->position(p + (o * (so * (sp + points[2]))));
-                this->manualObject->colour(Ogre::ColourValue::White);
-                this->manualObject->index(this->indices + 2);
-                this->indices += 3;
-            }
+            // Tail: tip sits exactly at the anchor (local origin = mouth position,
+            // NOT shifted by bubbleHorizontalOffset - the tail must still point at
+            // the character's mouth even while the bubble body is shifted sideways).
+            // Base vertices sit exactly ON the (shifted) ellipse boundary, computed
+            // with the SAME parametric formula as the fan loop below - guaranteed to
+            // touch, regardless of text size or offset.
+            const Ogre::Real tailAngle1 = 310.0f * Ogre::Math::PI / 180.0f;
+            const Ogre::Real tailAngle2 = 350.0f * Ogre::Math::PI / 180.0f;
 
-            this->couldDraw = true;
-        }
-    }
-#endif
-
-    #if 0
-    void SpeechBubbleComponent::drawSpeechBubble(Ogre::Real dt)
-    {
-        this->couldDraw = false;
-
-        if (nullptr != this->gameObjectTitleComponent)
-        {
-            if (this->caption->getString().empty() || this->currentCaptionWidth == 0.0f)
-            {
-                return;
-            }
-
-            if (true == this->runSpeech->getBool())
-            {
-                size_t totalCharacters = this->wrappedCaption.length();
-                if (totalCharacters > 0)
-                {
-                    Ogre::Real timePerCharacter = this->speechDuration->getReal() / static_cast<Ogre::Real>(totalCharacters);
-
-                    if (this->timeSinceLastChar >= timePerCharacter && this->currentCharIndex < totalCharacters)
-                    {
-                        this->timeSinceLastChar = 0.0f;
-                        this->currentCharIndex++;
-
-                        Ogre::String captionSoFar = mid(this->wrappedCaption, 0, this->currentCharIndex);
-                        this->gameObjectTitleComponent->setCaption(captionSoFar);
-
-                        if (this->runSpeechSound->getBool() && this->simpleSoundComponent)
-                        {
-                            Ogre::Real rndPitch = static_cast<Ogre::Real>(MathHelper::getInstance()->getRandomNumber(3, 10)) * 0.1f;
-                            this->simpleSoundComponent->setPitch(rndPitch);
-                            this->simpleSoundComponent->setActivated(true);
-                        }
-                    }
-                }
-
-                if (this->gameObjectTitleComponent->getCaption() == this->wrappedCaption && this->timeSinceLastRun >= this->speechDuration->getReal() + 3.0f)
-                {
-                    this->speechDone = true;
-                    if (this->simpleSoundComponent)
-                    {
-                        this->simpleSoundComponent->setActivated(false);
-                    }
-                }
-
-                if (this->speechDone)
-                {
-                    this->timeSinceLastChar = 0.0f;
-                    this->timeSinceLastRun = 0.0f;
-                    if (false == this->keepCaption->getBool())
-                    {
-                        this->gameObjectTitleComponent->getMovableText()->setVisibleRequested(false);
-                        this->lineNode->setVisible(false);
-                    }
-                    this->speechDone = false;
-
-                    if (this->closureFunction.is_valid())
-                    {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                        {
-                            try
-                            {
-                                luabind::call_function<void>(this->closureFunction);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] Caught error in 'reactOnSpeechDone' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
-                }
-
-                this->timeSinceLastChar += dt;
-                this->timeSinceLastRun += dt;
-            }
-
-            if (true == this->gameObjectTitleComponent->getCaption().empty())
-            {
-                return;
-            }
-
-            Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition();
-            Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
-
-            Ogre::Vector3 sp = Ogre::Vector3::ZERO;
-            Ogre::Quaternion so = Ogre::Quaternion::IDENTITY;
-
-            Ogre::Real accuracy = 17.0f;
-
-            // Pure local tuning constants - no new properties/header members. Bubble
-            // stays fully dynamic (driven by currentCaptionWidth/currentCaptionHeight,
-            // which come from the actual text's AABB), these just pad it a bit so the
-            // text has margin instead of touching the edge exactly.
-            const Ogre::Real widthPadding = 1.15f;
-            const Ogre::Real heightPadding = 1.3f;
-
-            // Text hangs BELOW the anchor p (V_BELOW alignment: first line at local
-            // y=0, each further line goes more negative), so the bubble must sit
-            // BELOW p too - ellipseCenterY is negative. Only the constant (center)
-            // term is negated, NOT the oscillating radius term - negating both
-            // mirrors the whole ellipse's winding and desyncs the tail from it.
-            Ogre::Real ellipseRadiusX = this->currentCaptionWidth * widthPadding;
-            Ogre::Real ellipseRadiusY = this->currentCaptionHeight * heightPadding;
-            Ogre::Real ellipseCenterY = -ellipseRadiusY;
-
-            // Tail: tip sits exactly at the anchor (local origin = mouth position).
-            // Base vertices sit exactly ON the ellipse boundary, computed with the
-            // SAME parametric formula as the fan loop below - guaranteed to touch,
-            // regardless of text size. Angles near the ellipse's top so the tail
-            // points up toward the anchor, symmetric around it.
-            const Ogre::Real tailAngle1 = 60.0f * Ogre::Math::PI / 180.0f;
-            const Ogre::Real tailAngle2 = 120.0f * Ogre::Math::PI / 180.0f;
-
-            Ogre::Vector3 tailBase1(ellipseRadiusX * Ogre::Math::Cos(tailAngle1), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(tailAngle1), 0.0f);
-            Ogre::Vector3 tailBase2(ellipseRadiusX * Ogre::Math::Cos(tailAngle2), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(tailAngle2), 0.0f);
+            Ogre::Vector3 tailBase1(ellipseCenterX + ellipseRadiusX * Ogre::Math::Cos(tailAngle1), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(tailAngle1), 0.0f);
+            Ogre::Vector3 tailBase2(ellipseCenterX + ellipseRadiusX * Ogre::Math::Cos(tailAngle2), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(tailAngle2), 0.0f);
             Ogre::Vector3 tailTip = Ogre::Vector3::ZERO;
 
             this->manualObject->position(p + (o * (so * (sp + tailBase1))));
@@ -861,9 +780,9 @@ namespace NOWA
             std::vector<Ogre::Vector3> points(3);
             for (Ogre::Real theta = 0; theta <= 2 * Ogre::Math::PI; theta += Ogre::Math::PI / accuracy)
             {
-                points[0] = Ogre::Vector3(0.0f, 0.0f, 0.0f);
-                points[1] = Ogre::Vector3(ellipseRadiusX * Ogre::Math::Cos(theta - Ogre::Math::PI / accuracy), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(theta - Ogre::Math::PI / accuracy), 0.0f);
-                points[2] = Ogre::Vector3(ellipseRadiusX * Ogre::Math::Cos(theta), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(theta), 0.0f);
+                points[0] = Ogre::Vector3(ellipseCenterX, ellipseCenterY, 0.0f);
+                points[1] = Ogre::Vector3(ellipseCenterX + ellipseRadiusX * Ogre::Math::Cos(theta - Ogre::Math::PI / accuracy), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(theta - Ogre::Math::PI / accuracy), 0.0f);
+                points[2] = Ogre::Vector3(ellipseCenterX + ellipseRadiusX * Ogre::Math::Cos(theta), ellipseCenterY + ellipseRadiusY * Ogre::Math::Sin(theta), 0.0f);
 
                 this->manualObject->position(p + (o * (so * (sp + points[0]))));
                 this->manualObject->colour(Ogre::ColourValue::White);
@@ -882,7 +801,7 @@ namespace NOWA
             this->couldDraw = true;
         }
     }
-    #endif
+
     void SpeechBubbleComponent::createSpeechBubble(void)
     {
         if (nullptr == this->manualObject)
@@ -905,18 +824,20 @@ namespace NOWA
 
                 // Depth bias so the bubble sorts BEHIND the text in the depth buffer
                 // WITHOUT any actual world-space offset - a world-space offset
-                // (bubbleDepthOffset) introduced visible parallax/rotation drift at
-                // grazing camera angles, confirmed by testing with the offset at 0.
+                // previously introduced visible parallax at grazing camera angles.
                 // Modifies the shared "WhiteNoLightingBackground" datablock directly -
                 // fine as long as this material is only used for background/bubble-
-                // style flat quads elsewhere too (a small constant depth push is
-                // harmless for those).
+                // style flat quads elsewhere too (both a small depth push and
+                // disabled culling are harmless for those).
                 Ogre::HlmsDatablock* bubbleBaseDatablock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault("WhiteNoLightingBackground");
                 if (nullptr != bubbleBaseDatablock)
                 {
                     Ogre::HlmsMacroblock macroblock = *bubbleBaseDatablock->getMacroblock();
                     macroblock.mDepthBiasConstant = 1.0f;
                     macroblock.mDepthBiasSlopeScale = 1.0f;
+                    // Render both sides - the bubble is a flat, non-billboarding quad
+                    // that must stay readable when viewed from behind the character.
+                    macroblock.mCullMode = Ogre::CULL_NONE;
                     bubbleBaseDatablock->setMacroblock(macroblock);
                 }
             };
@@ -972,6 +893,8 @@ namespace NOWA
                 .def("getRunSpeechSound", &SpeechBubbleComponent::getRunSpeechSound)
                 .def("setKeepCaption", &SpeechBubbleComponent::setKeepCaption)
                 .def("getKeepCaption", &SpeechBubbleComponent::getKeepCaption)
+                .def("setXOffsetStart", &SpeechBubbleComponent::setXOffsetStart)
+                .def("getXOffsetStart", &SpeechBubbleComponent::getXOffsetStart)
                 .def("reactOnSpeechDone", &SpeechBubbleComponent::reactOnSpeechDone)];
 
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "class inherits GameObjectComponent", SpeechBubbleComponent::getStaticInfoText());
@@ -987,6 +910,8 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "float getSpeechDuration()", "Gets the speed duration. That is how long the bubble shall remain in seconds.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setKeepCaption(bool keepCaption)", "Sets to keep the caption after the run speech is done.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getKeepCaption()", "Gets whether the caption after the run speech is done is kept.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setXOffsetStart(float xOffsetStart)", "Sets the horizontal offset of the bubble body relative to the text anchor.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "float getXOffsetStart()", "Gets the horizontal offset of the bubble body relative to the text anchor.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeechSound(bool runSpeechSound)", "Sets whether the caption should remain after the speech run.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getRunSpeechSound()", "Gets whether the caption is remained after the speech run.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void reactOnSpeechDone(func closureFunction)", "Sets whether to react if a speech is done.");
