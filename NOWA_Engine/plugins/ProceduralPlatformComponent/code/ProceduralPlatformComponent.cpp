@@ -1678,6 +1678,236 @@ namespace NOWA
             return distinctSegs.size();
         };
 
+        // ── Pre-pass: shrink armTrimDists for junctions with a short connecting chain ──
+        // BUGFIX: every arm at a junction gets equalized to the SAME trim distance above
+        // (see "Equalizing every arm" comment) purely from angle - that's what keeps every
+        // corner at the same radius, which is what makes the fan a valid non-overlapping
+        // star around the centre. Further down, each chain ALSO independently caps its own
+        // front/back trim to 90% of its own length (a short chain can't reach a trim
+        // distance further than it is long). That per-chain cap only ever adjusted a LOCAL
+        // copy of the distance for that one chain - it was never written back into the
+        // shared per-junction armTrimDists array. So a short, freshly-drawn connecting
+        // segment (exactly what creating a new junction by dragging a short link produces)
+        // ends up trimmed much closer to the centre than its longer neighbouring arms at
+        // the very same junction, which still use the old, larger equalized value. That
+        // breaks the equal-radius invariant right when it matters most: the corners no
+        // longer form a valid star around the centre, and the fan wedges start overlapping
+        // each other and the arms' own geometry - the streaky/flickering mess reported,
+        // appearing right after a junction is freshly created.
+        //
+        // Fix: walk every chain ONCE up front (raw polyline length only - no smoothing or
+        // subdivision needed just to size a cap), shrink the connected arm(s)' SHARED
+        // armTrimDists down to what that chain can actually support, then take the MIN
+        // across every arm belonging to each affected junction so every corner ends up back
+        // on one consistent (now safe) radius, instead of drifting apart per-chain again.
+        {
+            std::vector<bool> processedForLength(this->platformSegments.size(), false);
+
+            for (size_t i = 0; i < this->platformSegments.size(); ++i)
+            {
+                if (true == processedForLength[i])
+                {
+                    continue;
+                }
+
+                std::vector<std::pair<size_t, bool>> chainIndices;
+                chainIndices.push_back({i, false});
+                processedForLength[i] = true;
+
+                {
+                    bool extending = true;
+                    while (true == extending)
+                    {
+                        extending = false;
+                        const PlatformSegment& tailSeg = this->platformSegments[chainIndices.back().first];
+                        const bool tailReversed = chainIndices.back().second;
+                        const PlatformControlPoint& tailCp = tailReversed ? tailSeg.controlPoints.front() : tailSeg.controlPoints.back();
+                        QKey tailKey{quantise(tailCp.position.x), quantise(tailCp.rawHeight)};
+                        if (distinctCountAt(tailKey) >= 3)
+                        {
+                            break;
+                        }
+                        auto it = pointSegs.find(tailKey);
+                        if (it == pointSegs.end())
+                        {
+                            break;
+                        }
+                        for (const auto& entry : it->second)
+                        {
+                            const size_t nextIdx = entry.first;
+                            const bool nextTouchesViaFront = entry.second;
+                            if (true == processedForLength[nextIdx])
+                            {
+                                continue;
+                            }
+                            const bool nextReversed = !nextTouchesViaFront;
+                            chainIndices.push_back({nextIdx, nextReversed});
+                            processedForLength[nextIdx] = true;
+                            extending = true;
+                            break;
+                        }
+                    }
+                }
+                {
+                    bool extending = true;
+                    while (true == extending)
+                    {
+                        extending = false;
+                        const PlatformSegment& headSeg = this->platformSegments[chainIndices.front().first];
+                        const bool headReversed = chainIndices.front().second;
+                        const PlatformControlPoint& headCp = headReversed ? headSeg.controlPoints.back() : headSeg.controlPoints.front();
+                        QKey headKey{quantise(headCp.position.x), quantise(headCp.rawHeight)};
+                        if (distinctCountAt(headKey) >= 3)
+                        {
+                            break;
+                        }
+                        auto it = pointSegs.find(headKey);
+                        if (it == pointSegs.end())
+                        {
+                            break;
+                        }
+                        for (const auto& entry : it->second)
+                        {
+                            const size_t nextIdx = entry.first;
+                            const bool nextTouchesViaFront = entry.second;
+                            if (true == processedForLength[nextIdx])
+                            {
+                                continue;
+                            }
+                            const bool nextReversed = nextTouchesViaFront;
+                            chainIndices.insert(chainIndices.begin(), {nextIdx, nextReversed});
+                            processedForLength[nextIdx] = true;
+                            extending = true;
+                            break;
+                        }
+                    }
+                }
+
+                std::vector<PlatformControlPoint> rawWaypoints;
+                for (size_t ci = 0; ci < chainIndices.size(); ++ci)
+                {
+                    const PlatformSegment& seg = this->platformSegments[chainIndices[ci].first];
+                    const bool reversed = chainIndices[ci].second;
+                    if (false == reversed)
+                    {
+                        for (const auto& cp : seg.controlPoints)
+                        {
+                            if (false == rawWaypoints.empty() && pathDistance2D(rawWaypoints.back().position.x, rawWaypoints.back().rawHeight, cp.position.x, cp.rawHeight) < 0.01f)
+                            {
+                                continue;
+                            }
+                            rawWaypoints.push_back(cp);
+                        }
+                    }
+                    else
+                    {
+                        for (size_t pi = seg.controlPoints.size(); pi-- > 0;)
+                        {
+                            const auto& cp = seg.controlPoints[pi];
+                            if (false == rawWaypoints.empty() && pathDistance2D(rawWaypoints.back().position.x, rawWaypoints.back().rawHeight, cp.position.x, cp.rawHeight) < 0.01f)
+                            {
+                                continue;
+                            }
+                            rawWaypoints.push_back(cp);
+                        }
+                    }
+                }
+
+                if (rawWaypoints.size() < 2)
+                {
+                    continue;
+                }
+
+                Ogre::Real chainLen = 0.0f;
+                for (size_t pi = 0; pi + 1 < rawWaypoints.size(); ++pi)
+                {
+                    chainLen += pathDistance2D(rawWaypoints[pi].position.x, rawWaypoints[pi].rawHeight, rawWaypoints[pi + 1].position.x, rawWaypoints[pi + 1].rawHeight);
+                }
+
+                bool preHasFront = false;
+                size_t preFrontJi = 0;
+                int preFrontAi = 0;
+                {
+                    QKey frontKey{quantise(rawWaypoints.front().position.x), quantise(rawWaypoints.front().rawHeight)};
+                    auto it = junctionByKey.find(frontKey);
+                    if (it != junctionByKey.end())
+                    {
+                        preHasFront = true;
+                        preFrontJi = it->second;
+                        Ogre::Vector3 outDir = Ogre::Vector3(rawWaypoints[1].position.x - rawWaypoints.front().position.x, rawWaypoints[1].rawHeight - rawWaypoints.front().rawHeight, 0.0f);
+                        if (outDir.squaredLength() > 1e-6f)
+                        {
+                            outDir.normalise();
+                        }
+                        preFrontAi = findArmIdx(preFrontJi, outDir);
+                    }
+                }
+                bool preHasBack = false;
+                size_t preBackJi = 0;
+                int preBackAi = 0;
+                {
+                    QKey backKey{quantise(rawWaypoints.back().position.x), quantise(rawWaypoints.back().rawHeight)};
+                    auto it = junctionByKey.find(backKey);
+                    if (it != junctionByKey.end())
+                    {
+                        preHasBack = true;
+                        preBackJi = it->second;
+                        const size_t n = rawWaypoints.size();
+                        Ogre::Vector3 outDir = Ogre::Vector3(rawWaypoints[n - 2].position.x - rawWaypoints.back().position.x, rawWaypoints[n - 2].rawHeight - rawWaypoints.back().rawHeight, 0.0f);
+                        if (outDir.squaredLength() > 1e-6f)
+                        {
+                            outDir.normalise();
+                        }
+                        preBackAi = findArmIdx(preBackJi, outDir);
+                    }
+                }
+
+                const Ogre::Real allowed = chainLen * 0.9f;
+                if (true == preHasFront && true == preHasBack)
+                {
+                    const Ogre::Real requested = junctions[preFrontJi].armTrimDists[preFrontAi] + junctions[preBackJi].armTrimDists[preBackAi];
+                    if (requested > allowed && requested > 0.001f)
+                    {
+                        const Ogre::Real scale = allowed / requested;
+                        junctions[preFrontJi].armTrimDists[preFrontAi] *= scale;
+                        junctions[preBackJi].armTrimDists[preBackAi] *= scale;
+                    }
+                }
+                else
+                {
+                    if (true == preHasFront)
+                    {
+                        junctions[preFrontJi].armTrimDists[preFrontAi] = std::min(junctions[preFrontJi].armTrimDists[preFrontAi], allowed);
+                    }
+                    if (true == preHasBack)
+                    {
+                        junctions[preBackJi].armTrimDists[preBackAi] = std::min(junctions[preBackJi].armTrimDists[preBackAi], allowed);
+                    }
+                }
+            }
+
+            // Re-establish the equal-radius invariant: any arm that just got shrunk pulls
+            // every other arm at the SAME junction down to match, so every corner stays on
+            // one consistent radius (a valid star around the centre) instead of drifting
+            // apart per-chain again.
+            for (auto& jpEntry : junctions)
+            {
+                if (jpEntry.armTrimDists.empty())
+                {
+                    continue;
+                }
+                Ogre::Real minDist = jpEntry.armTrimDists[0];
+                for (Ogre::Real d : jpEntry.armTrimDists)
+                {
+                    minDist = std::min(minDist, d);
+                }
+                for (Ogre::Real& d : jpEntry.armTrimDists)
+                {
+                    d = minDist;
+                }
+            }
+        }
+
         std::vector<bool> processed(this->platformSegments.size(), false);
 
         for (size_t i = 0; i < this->platformSegments.size(); ++i)
@@ -3329,6 +3559,7 @@ namespace NOWA
         {
             float angle;
             Ogre::Real x, h;
+            bool synthetic = false;
         };
         std::vector<ArmCorner> arms;
         arms.reserve(numArms);
@@ -3337,13 +3568,78 @@ namespace NOWA
             const Ogre::Real x = corner.x - origin.x;
             const Ogre::Real h = corner.y - origin.y;
             const float angle = std::atan2(h - centreH, x - centreX);
-            arms.push_back({angle, x, h});
+            arms.push_back({angle, x, h, false});
         }
         std::sort(arms.begin(), arms.end(),
             [](const ArmCorner& a, const ArmCorner& b)
             {
                 return a.angle < b.angle;
             });
+
+        // BUGFIX: a flat triangle (arm corner, next arm corner, centre) can only ever
+        // represent an angular span of LESS than 180 degrees - the interior angle a
+        // triangle has at any one vertex is by definition the non-reflex angle between its
+        // two edges there, which never exceeds 180. Whenever two arms happen to sit close
+        // together in angle, the THIRD gap around the rest of the circle is forced past 180
+        // degrees (confirmed via [JUNCTION-DEBUG] log: two arms ~32 degrees apart forced a
+        // third gap to ~185 degrees). The triangle built for that "wide" gap doesn't - can't
+        // - cover the intended wide wedge: it silently collapses onto the complementary
+        // angle on the WRONG side, landing almost exactly on top of the other wedges. That
+        // is the overlapping/z-fighting mess reported, independent of trim distance.
+        //
+        // Fix: split any gap wider than a safe margin into multiple narrower wedges by
+        // inserting extra points. Every real arm corner is kept exactly as-is; only the wide
+        // gaps get extra synthetic boundary points.
+        //
+        // BUGFIX v2: the first version placed synthetic points on a literal circle in
+        // (x, height) space - centreX + r*cos(angle), centreH + r*sin(angle). x and height
+        // are NOT interchangeable axes: at an angle near +/-90 degrees in that made-up
+        // circle, the height shifts by nearly the FULL radius away from centreH, regardless
+        // of what height the actual neighbouring arms are at - confirmed via log: two real
+        // arms at height ~3.5/~4.7 got a synthetic point inserted at height 5.56, well above
+        // BOTH neighbours (and another pair got one well below both). That produced the
+        // tent/pyramid spike. Correct fix: place the synthetic point by linearly
+        // interpolating x and height directly between the two flanking REAL arm corners, not
+        // around the centre at all. A point on the straight line between two corners is, as
+        // seen from the centre, always angularly between them too (the centre doesn't sit on
+        // that line for two distinct real arms) - so this still fully resolves the >180
+        // degree problem, while guaranteeing the synthetic point's height never exceeds the
+        // range its real neighbours already span.
+        if (arms.size() >= 2)
+        {
+            const float maxWedgeSpan = Ogre::Math::PI * (150.0f / 180.0f); // stay well clear of the 180 degree ceiling
+
+            std::vector<ArmCorner> expanded;
+            expanded.reserve(arms.size() * 2);
+            for (size_t k = 0; k < arms.size(); ++k)
+            {
+                const size_t next = (k + 1) % arms.size();
+                expanded.push_back(arms[k]);
+
+                float gap = arms[next].angle - arms[k].angle;
+                if (gap <= 0.0f)
+                {
+                    gap += Ogre::Math::TWO_PI;
+                }
+
+                if (gap > maxWedgeSpan)
+                {
+                    const int extraCount = static_cast<int>(std::ceil(gap / maxWedgeSpan)) - 1;
+                    for (int s = 1; s <= extraCount; ++s)
+                    {
+                        const float t = static_cast<float>(s) / static_cast<float>(extraCount + 1);
+
+                        ArmCorner synth;
+                        synth.x = Ogre::Math::lerp(arms[k].x, arms[next].x, t);
+                        synth.h = Ogre::Math::lerp(arms[k].h, arms[next].h, t);
+                        synth.angle = std::atan2(synth.h - centreH, synth.x - centreX);
+                        synth.synthetic = true;
+                        expanded.push_back(synth);
+                    }
+                }
+            }
+            arms = std::move(expanded);
+        }
 
         // [JUNCTION-DEBUG] Sorted arm list - local (x, height) relative to origin, plus the
         // angle used to order them. Two arms with near-identical (x,h) here would mean two

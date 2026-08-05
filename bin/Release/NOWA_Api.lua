@@ -20369,6 +20369,14 @@ return {
 				returns = "(Quaternion)",
 				valuetype = "Quaternion"
 			},
+			faceTargetOnPlanet =
+			{
+				type = "function",
+				description = "Gets the orientation to face a target while staying aligned to a given up vector (e.g. a planet's surface normal), so the source only yaws toward the target instead of tipping sideways on a curved surface. sourceUp is typically PhysicsActiveComponent:getUp(), sourceDefaultDirection typically GameObject:getDefaultDirection().",
+				args = "(SceneNode source, SceneNode dest, Vector3 sourceUp, Vector3 sourceDefaultDirection)",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
+			},
 			getAngle =
 			{
 				type = "function",

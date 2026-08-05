@@ -56,7 +56,31 @@ namespace NOWA
 		return this->isGlobal;
 	}
 
-	void LuaScript::errorHandler()
+	void LuaScript::assertLogicThread(const char* callerContext)
+    {
+        if (false == NOWA::AppStateManager::getSingletonPtr()->isLogicThread())
+        {
+            Ogre::String msg = Ogre::String("[LuaScript] FATAL: '") + (nullptr != callerContext ? callerContext : "<unknown>") +
+                               "' touched Lua/luabind state from a NON-logic thread. Lua/luabind is not "
+                               "thread-safe - this call must be deferred onto the logic thread via "
+                               "AppStateManager::getSingletonPtr()->enqueue(...) instead of running here directly.";
+
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, msg);
+
+#if defined(_DEBUG) || defined(DEBUG)
+            assert(false && "Lua/luabind touched from a non-logic thread - see log for details.");
+#endif
+            // Deliberately NOT gated behind the same #ifdef as the assert() above -
+            // assert() alone would be compiled out in Release, but a corrupted
+            // lua_State is at least as dangerous in Release as in Debug (arguably
+            // more so, since it then fails later, unpredictably, and somewhere
+            // else entirely). Abort immediately instead of letting the corruption
+            // propagate silently.
+            std::abort();
+        }
+    }
+
+    void LuaScript::errorHandler()
 	{
 		this->compileError = true;
 		lua_State* lua = LuaScriptApi::getInstance()->getLua();

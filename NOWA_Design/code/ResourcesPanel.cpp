@@ -3,6 +3,7 @@
 #include "TreeControl/TreeControl.h"
 #include "TreeControl/TreeControlItem.h"
 #include "main/EventManager.h"
+#include "modules/GameProgressModule.h"
 #include "GuiEvents.h"
 #include "MyGUIHelper.h"
 #include "ProjectManager.h"
@@ -1027,8 +1028,6 @@ void ResourcesPanelGameObjects::deleteSelectedGameObjects()
         return;
     }
 
-    // Merken, auf welche Ids wir warten - der Tree wird erst neu aufgebaut,
-    // wenn ALLE tatsächlich über EventDataDeleteGameObject bestätigt wurden.
     for (auto id : gameObjectIds)
     {
         this->pendingDeletionIds.insert(id);
@@ -1042,12 +1041,15 @@ void ResourcesPanelGameObjects::deleteSelectedGameObjects()
 
 void ResourcesPanelGameObjects::handleGameObjectDeleted(NOWA::EventDataPtr eventData)
 {
+    if (false == NOWA::AppStateManager::getSingletonPtr()->isSafeToDispatchEvents())
+    {
+        return;
+    }
+
     boost::shared_ptr<NOWA::EventDataDeleteGameObject> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteGameObject>(eventData);
 
     this->pendingDeletionIds.erase(castEventData->getGameObjectId());
 
-    // Erst refreshen, wenn wirklich alle angeforderten Löschungen durch sind -
-    // verhindert mehrfaches Flackern bei Mehrfach-Löschung.
     if (true == this->pendingDeletionIds.empty())
     {
         boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());

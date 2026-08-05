@@ -312,48 +312,59 @@ namespace NOWA
     {
         this->activated->setValue(activated);
 
-        auto luaScriptComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
-
-        if (true == activated && nullptr != luaScriptComponent)
+        // Same fix as AiLuaComponent::setActivated / LuaScriptComponent::setActivated:
+        // everything below touches the Lua state (isActivated() check aside,
+        // checkLuaStateAvailable, createLuaEnvironmentForStateTable, setRootGoal
+        // -> Lua "enter" call) and MUST run on the main/logic thread - Lua itself
+        // is not thread-safe, and calling into it from another thread corrupts
+        // the shared lua_State. Deferred here so regardless of which thread calls
+        // this, the actual work always runs on the logic thread.
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, activated]()
         {
-            if (false == luaScriptComponent->isActivated())
-            {
-                // If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
-                // luaScriptComponent->setActivated(true);
-                boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
-                    "Cannot start ai lua state + '" + this->rootGoalName->getString() + "', because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
-                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
-                return;
-            }
+            auto luaScriptComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
 
-            // http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
+            if (true == activated && nullptr != luaScriptComponent)
+            {
+                if (false == luaScriptComponent->isActivated())
+                {
+                    // If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
+                    // luaScriptComponent->setActivated(true);
+                    boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
+                        "Cannot start ai lua state + '" + this->rootGoalName->getString() + "', because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
+                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+                    return;
+                }
+
+                // http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
 #if 0
-			this->gameObjectPtr->getLuaScript()->setInterfaceFunctionsTemplate(
-				"\n" + this->rootGoalName->getString() + " = { };\n"
-				"aiLuaComponent = nil;\n\n"
-				+ this->rootGoalName->getString() + "[\"enter\"] = function(gameObject)\n"
-				"\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n"
-				+ this->rootGoalName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n"
-				+ this->rootGoalName->getString() + "[\"exit\"] = function(gameObject)\n\nend");
+                this->gameObjectPtr->getLuaScript()->setInterfaceFunctionsTemplate(
+                    "\n" + this->rootGoalName->getString() + " = { };\n"
+                    "aiLuaComponent = nil;\n\n"
+                    + this->rootGoalName->getString() + "[\"enter\"] = function(gameObject)\n"
+                    "\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n"
+                    + this->rootGoalName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n"
+                    + this->rootGoalName->getString() + "[\"exit\"] = function(gameObject)\n\nend");
 #endif
-            bool rootGoalAvailable = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaStateAvailable(this->gameObjectPtr->getLuaScript()->getName(), this->rootGoalName->getString());
-            if (false == rootGoalAvailable && false == this->componentCloned)
-            {
-                boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
-                    "Cannot start ai lua state, because the start state name: '" + this->rootGoalName->getString() + "' is not defined for game object: " + this->gameObjectPtr->getName()));
-                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
-                return;
+                bool rootGoalAvailable = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaStateAvailable(this->gameObjectPtr->getLuaScript()->getName(), this->rootGoalName->getString());
+                if (false == rootGoalAvailable && false == this->componentCloned)
+                {
+                    boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
+                        "Cannot start ai lua state, because the start state name: '" + this->rootGoalName->getString() + "' is not defined for game object: " + this->gameObjectPtr->getName()));
+                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+                    return;
+                }
+
+                if (false == this->componentCloned && true == this->gameObjectPtr->getLuaScript()->createLuaEnvironmentForStateTable(this->rootGoalName->getString()))
+                {
+                    const luabind::object& compiledStateScriptReference = this->gameObjectPtr->getLuaScript()->getCompiledStateScriptReference();
+
+                    this->ready = true;
+
+                    this->setRootGoal(compiledStateScriptReference);
+                }
             }
-
-            if (false == this->componentCloned && true == this->gameObjectPtr->getLuaScript()->createLuaEnvironmentForStateTable(this->rootGoalName->getString()))
-            {
-                const luabind::object& compiledStateScriptReference = this->gameObjectPtr->getLuaScript()->getCompiledStateScriptReference();
-
-                this->ready = true;
-
-                this->setRootGoal(compiledStateScriptReference);
-            }
-        }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     // Set the root goal, which can be a LuaGoalComposite or other derived goal

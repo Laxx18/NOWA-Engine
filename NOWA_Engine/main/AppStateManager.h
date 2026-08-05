@@ -174,6 +174,34 @@ namespace NOWA
 
 		// Checks if we are on the render thread
 		bool isLogicThread(void) const;
+
+		/**
+         * @brief		Returns whether it is currently safe to process GameObject-
+         *				lifecycle-dependent events (e.g. GameObjectDeleted/Added,
+         *				anything that touches GameObjects, their scene nodes, or
+         *				GUI panels that reflect them).
+         *
+         *				During an AppState transition (bStall) or a scene reload
+         *				within the current AppState (GameProgressModule::bSceneLoading),
+         *				events that were queued for the PREVIOUS scene/state can still
+         *				be sitting in the EventManager's queue and get dispatched
+         *				while the new scene/state is still being built - at which
+         *				point listeners that touch GameObjects or GUI trees tied to
+         *				the old scene can crash, because what they're referencing is
+         *				already being torn down or not yet rebuilt.
+         *
+         *				This does NOT change EventManager's dispatch loop itself
+         *				(deliberately - blanket-suppressing ALL events while
+         *				bSceneLoading is true would risk deadlocking the very
+         *				events that are meant to clear that flag). It's a per-
+         *				listener opt-in guard instead: call it at the top of any
+         *				handler whose logic only makes sense for a fully-loaded,
+         *				stable scene, and return early if it's false.
+         *
+         * @return		true if no AppState transition or scene load is currently
+         *				in progress, false otherwise.
+         */
+        bool isSafeToDispatchEvents(void) const;
 	public:
 		/*
 		* @brief	Gets whether this application has been shut down

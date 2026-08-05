@@ -287,6 +287,28 @@ namespace NOWA
 		void registerLuaApiTableReturnFunction(const Ogre::String& className, const Ogre::String& description, const Ogre::String& functionName, const Ogre::String& returnType, const Ogre::String& param1 = Ogre::String(), 
 			const Ogre::String& param2 = Ogre::String(), const Ogre::String& param3 = Ogre::String());
 
+    public:
+
+		/**
+         * @brief		Hard runtime check that the CURRENT thread is the engine's
+         *				logic/main thread - the only thread allowed to touch Lua/
+         *				luabind state. Unlike assert(), this is NEVER compiled out,
+         *				not even in Release builds: a cross-thread touch does not
+         *				crash at the violation site, it silently corrupts the
+         *				shared lua_State, and the resulting symptoms then show up
+         *				much later, in completely unrelated code (a crash deep
+         *				inside luabind::push_new_instance for one GameObject;
+         *				luabind reporting the wrong overload "candidates" for a
+         *				totally different function - both actually observed from
+         *				this exact bug class). Failing loudly and immediately at
+         *				the real violation is far cheaper than debugging the
+         *				aftermath.
+         * @param[in]	callerContext	A short string identifying the call site,
+         *								normally just pass __FUNCTION__ via the
+         *								NOWA_ASSERT_LOGIC_THREAD() macro below
+         *								rather than calling this directly.
+         */
+        static void assertLogicThread(const char* callerContext);
 	private:
 		void errorHandler();
 
@@ -311,6 +333,17 @@ namespace NOWA
 	};
 
 }; // namespace end
+
+// Convenience macro: single line at the top of any function that touches
+// luabind::object / calls into Lua. Captures the calling function's name
+// automatically for the log message. Usage:
+//
+//     void SomeClass::someMethod(void)
+//     {
+//         NOWA_ASSERT_LOGIC_THREAD();
+//         ... luabind/Lua calls ...
+//     }
+#define NOWA_ASSERT_LOGIC_THREAD() NOWA::LuaScript::assertLogicThread(__FUNCTION__)
 
 #endif
 

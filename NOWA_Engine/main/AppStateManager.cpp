@@ -148,7 +148,26 @@ namespace NOWA
 		return msSingleton;
 	}
 
-	GameProgressModule* AppStateManager::getActiveGameProgressModuleSafe(void) const
+	bool AppStateManager::isSafeToDispatchEvents(void) const
+    {
+        if (true == this->bStall.load())
+        {
+            return false;
+        }
+
+        GameProgressModule* gameProgressModule = this->getActiveGameProgressModuleSafe();
+        if (nullptr == gameProgressModule)
+        {
+            // No active game progress module - treat as "not safe" rather than
+            // "safe", matching the existing handler's own default
+            // (isSceneLoading defaults to true when gameProgressModule is null).
+            return false;
+        }
+
+        return false == gameProgressModule->bSceneLoading.load();
+    }
+
+    GameProgressModule* AppStateManager::getActiveGameProgressModuleSafe(void) const
 	{
 		return this->activeGameProgressModule.load();
 	}

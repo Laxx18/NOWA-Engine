@@ -111,7 +111,6 @@ namespace NOWA
         // CRITICAL: triggerEvent must only be called from the main/logic thread
         // because listeners execute on the calling thread
         assert(AppStateManager::getSingletonPtr()->isLogicThread() && "triggerEvent() must be called from the main/logic thread! Use queueEvent() from other threads.");
-        
 
         if (nullptr == event)
         {

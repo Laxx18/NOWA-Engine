@@ -4,7 +4,6 @@
 #include "LuaScriptComponent.h"
 #include "PhysicsActiveComponent.h"
 #include "main/AppStateManager.h"
-#include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
 
 namespace NOWA
@@ -328,78 +327,96 @@ namespace NOWA
     {
         this->activated->setValue(activated);
 
-        auto luaScriptComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
-
-        if (true == activated && nullptr != luaScriptComponent)
+        // Everything below touches the Lua state (isActivated() checks aside,
+        // setInterfaceFunctionsTemplate, checkLuaStateAvailable,
+        // createLuaEnvironmentForStateTable, and setCurrentState -> Lua "enter"
+        // call) and MUST run on the main/logic thread - Lua itself is not
+        // thread-safe, and calling into it from another thread corrupts the
+        // shared lua_State. This used to run directly on whatever thread
+        // called setActivated(), which worked by accident as long as everyone
+        // happened to call it from the logic thread - until
+        // UniversumComponent's surface-object show/hide (restoring component
+        // activation states from the render thread) called it too, corrupting
+        // Lua state and surfacing as unrelated-looking crashes elsewhere.
+        // Deferred here exactly like LuaScriptComponent::setActivated already
+        // does, so regardless of which thread calls this, the actual work
+        // always runs on the logic thread.
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, activated]()
         {
-            // Re-entrancy guard: LuaScriptComponent fires EventDataLuaScriptConnected
-            // every time IT (re)activates, and this component can ALSO be activated
-            // directly in the very same pass (e.g. GameObject::restoreComponentActivationStates
-            // activating every component of a GameObject when a hidden surface object
-            // is shown again). Without this guard, setActivated(true) can run twice
-            // for one logical activation - once directly, once via the delayed
-            // EventDataLuaScriptConnected event - re-entering the Lua start state a
-            // second time while the first invocation's environment/state is still
-            // being set up, which corrupts the shared lua_State (observed as a
-            // crash deep inside luabind::push_new_instance). 'ready' is reset to
-            // false on every deactivation below, so a GENUINE reactivation after a
-            // real hide/show cycle is never blocked - only a true duplicate call
-            // within the same activation is.
-            if (true == this->ready)
+            auto luaScriptComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
+
+            if (true == activated && nullptr != luaScriptComponent)
             {
-                return;
+                // Re-entrancy guard: LuaScriptComponent fires EventDataLuaScriptConnected
+                // every time IT (re)activates, and this component can ALSO be activated
+                // directly in the very same pass (e.g. GameObject::restoreComponentActivationStates
+                // activating every component of a GameObject when a hidden surface object
+                // is shown again). Without this guard, setActivated(true) can run twice
+                // for one logical activation - once directly, once via the delayed
+                // EventDataLuaScriptConnected event - re-entering the Lua start state a
+                // second time while the first invocation's environment/state is still
+                // being set up, which corrupts the shared lua_State (observed as a
+                // crash deep inside luabind::push_new_instance). 'ready' is reset to
+                // false on every deactivation below, so a GENUINE reactivation after a
+                // real hide/show cycle is never blocked - only a true duplicate call
+                // within the same activation is.
+                if (true == this->ready)
+                {
+                    return;
+                }
+
+                this->alreadyDisconnected = false;
+
+                if (false == luaScriptComponent->isActivated())
+                {
+                    // If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
+                    // luaScriptComponent->setActivated(true);
+                    boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
+                        "Cannot start ai lua state + '" + this->startStateName->getString() + "', because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
+                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+                    return;
+                }
+
+                // http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
+
+                this->gameObjectPtr->getLuaScript()->setInterfaceFunctionsTemplate("\n" + this->startStateName->getString() +
+                                                                                   " = { };\n"
+                                                                                   "aiLuaComponent = nil;\n\n" +
+                                                                                   this->startStateName->getString() +
+                                                                                   "[\"enter\"] = function(gameObject)\n"
+                                                                                   "\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n" +
+                                                                                   this->startStateName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n" + this->startStateName->getString() +
+                                                                                   "[\"exit\"] = function(gameObject)\n\nend");
+
+                bool startStateAvailable = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaStateAvailable(this->gameObjectPtr->getLuaScript()->getName(), this->startStateName->getString());
+                if (false == startStateAvailable && false == this->componentCloned)
+                {
+                    boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
+                        "Cannot start ai lua state, because the start state name: '" + this->startStateName->getString() + "' is not defined for game object: " + this->gameObjectPtr->getName()));
+                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+                    return;
+                }
+
+                if (false == this->componentCloned && true == this->gameObjectPtr->getLuaScript()->createLuaEnvironmentForStateTable(this->startStateName->getString()))
+                {
+                    const luabind::object& compiledStateScriptReference = this->gameObjectPtr->getLuaScript()->getCompiledStateScriptReference();
+
+                    this->ready = true;
+                    // Call the start state name to start the lua file with that state
+                    this->luaStateMachine->setCurrentState(compiledStateScriptReference);
+                }
             }
-
-            this->alreadyDisconnected = false;
-
-            if (false == luaScriptComponent->isActivated())
+            else
             {
-                // If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
-                // luaScriptComponent->setActivated(true);
-                boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
-                    "Cannot start ai lua state + '" + this->startStateName->getString() + "', because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
-                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
-                return;
+                // Mirrors disconnect()'s reset, so 'ready' always reflects "currently
+                // active and fully set up" rather than "was ever activated" - this is
+                // what makes the re-entrancy guard above safe to use across repeated
+                // hide/show (deactivate/reactivate) cycles instead of only a one-shot
+                // component lifetime.
+                this->ready = false;
             }
-
-            // http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
-
-            this->gameObjectPtr->getLuaScript()->setInterfaceFunctionsTemplate("\n" + this->startStateName->getString() +
-                                                                               " = { };\n"
-                                                                               "aiLuaComponent = nil;\n\n" +
-                                                                               this->startStateName->getString() +
-                                                                               "[\"enter\"] = function(gameObject)\n"
-                                                                               "\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n" +
-                                                                               this->startStateName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n" + this->startStateName->getString() +
-                                                                               "[\"exit\"] = function(gameObject)\n\nend");
-
-            bool startStateAvailable = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaStateAvailable(this->gameObjectPtr->getLuaScript()->getName(), this->startStateName->getString());
-            if (false == startStateAvailable && false == this->componentCloned)
-            {
-                boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
-                    "Cannot start ai lua state, because the start state name: '" + this->startStateName->getString() + "' is not defined for game object: " + this->gameObjectPtr->getName()));
-                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
-                return;
-            }
-
-            if (false == this->componentCloned && true == this->gameObjectPtr->getLuaScript()->createLuaEnvironmentForStateTable(this->startStateName->getString()))
-            {
-                const luabind::object& compiledStateScriptReference = this->gameObjectPtr->getLuaScript()->getCompiledStateScriptReference();
-
-                this->ready = true;
-                // Call the start state name to start the lua file with that state
-                this->luaStateMachine->setCurrentState(compiledStateScriptReference);
-            }
-        }
-        else
-        {
-            // Mirrors disconnect()'s reset, so 'ready' always reflects "currently
-            // active and fully set up" rather than "was ever activated" - this is
-            // what makes the re-entrancy guard above safe to use across repeated
-            // hide/show (deactivate/reactivate) cycles instead of only a one-shot
-            // component lifetime.
-            this->ready = false;
-        }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     bool AiLuaComponent::isActivated(void) const

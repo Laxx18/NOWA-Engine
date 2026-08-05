@@ -100,17 +100,15 @@ namespace NOWA
 	{
 		boost::shared_ptr<EventDataDeleteWorkspaceComponent> castEventData = boost::static_pointer_cast<EventDataDeleteWorkspaceComponent>(eventData);
 
-		GameProgressModule* gameProgressModule = AppStateManager::getSingletonPtr()->getActiveGameProgressModuleSafe();
-        const bool isStalled = AppStateManager::getSingletonPtr()->bStall.load();
-        const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : true;
-
-        if (false == isStalled && false == isSceneLoading)
+        if (false == NOWA::AppStateManager::getSingletonPtr()->isSafeToDispatchEvents())
         {
-            // Found the game object
-            if (this->workspaceGameObjectId->getULong() == castEventData->getGameObjectId())
-            {
-                this->workspaceBaseComponent = nullptr;
-            }
+            return;
+        }
+
+        // Found the game object
+        if (this->workspaceGameObjectId->getULong() == castEventData->getGameObjectId())
+        {
+            this->workspaceBaseComponent = nullptr;
         }
 	}
 

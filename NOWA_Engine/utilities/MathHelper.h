@@ -224,6 +224,31 @@ namespace NOWA
 		Ogre::Quaternion faceTarget(Ogre::SceneNode* source, Ogre::SceneNode* dest, const Ogre::Vector3& defaultDirection);
 
 		/**
+         * @brief      Computes the orientation required to face a target while keeping
+         *             the source aligned with a given "up" vector (e.g. the surface
+         *             normal of a planet at the source position), instead of the fixed
+         *             world-up vector assumed by faceTarget(). This prevents the source
+         *             from tilting sideways on curved surfaces by rotating only around
+         *             its own local up axis (yaw), without pitching or rolling toward
+         *             the target.
+         * @param[in]  source                  The source SceneNode.
+         * @param[in]  dest                    The target SceneNode.
+         * @param[in]  sourceUp                The current "up" direction of the source
+         *                                     (e.g. obtained from
+         *                                     PhysicsActiveComponent::getUp(), which
+         *                                     is typically the surface normal at the
+         *                                     source position on a planet).
+         * @param[in]  sourceDefaultDirection  The source's default forward direction
+         *                                     in model space (e.g.
+         *                                     GameObject::getDefaultDirection()).
+         * @return     orientation             The quaternion representing the
+         *                                     orientation that faces the target while
+         *                                     keeping the source upright relative to
+         *                                     sourceUp.
+         */
+        Ogre::Quaternion faceTargetOnPlanet(Ogre::SceneNode* source, Ogre::SceneNode* dest, const Ogre::Vector3& sourceUp, const Ogre::Vector3& sourceDefaultDirection);
+
+		/**
 		* @brief		Gets the orientation in order to face a direction vector.
 		* @param[in]	source			The source scene node
 		* @param[in]	direction		The direction vector face
