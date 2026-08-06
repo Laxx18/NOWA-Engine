@@ -138,6 +138,11 @@ namespace NOWA
          */
         virtual Ogre::Quaternion getOrientation(void) override;
 
+        /**
+         * @see		BaseCamera::snapToTarget
+         */
+        virtual void snapToTarget(void) override;
+
         void setOffsetPosition(const Ogre::Vector3& offsetPosition);
 
         void setCameraSpring(Ogre::Real cameraSpring);

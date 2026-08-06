@@ -140,11 +140,10 @@ namespace NOWA
 		/**
 		 * @brief		Updates all game objects and its components
 		 * @param[in]	dt		The delta time in seconds between two frames (update cycles).
-		 * @param[in]	notSimulating	If set to true all data is updated, if set to false only necessary data is updated.
 		 * @note		This can be used e.g. for a level editor, in which there is a play mode. If the play mode is on, everything is updated. If off, only necessary data like
 		 *				game object bounding box is updated.
 		 */
-		void update(Ogre::Real dt, bool notSimulating = false);
+		void update(Ogre::Real dt);
 
 		/**
 		* @brief		Deletes the given game object ptr immediately.

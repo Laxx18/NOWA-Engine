@@ -295,6 +295,29 @@ namespace NOWA
         this->probeShape.reset();
     }
 
+    void ThirdPersonOcclusionCamera::snapToTarget(void)
+    {
+        if (nullptr == this->sceneNode)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ThirdPersonOcclusionCamera]: Warning cannot snap camera to target, sceneNode is NULL.");
+            return;
+        }
+
+        // One-time hard snap: camera transform = target's current transform, exactly
+        // like onSetData() does at initial setup. Needed after takeoff because the
+        // ship's orientation is set instantly (requestTakeoff), but the camera's
+        // internalSpringPosition/currentCollisionDistance/occlusion cache are all
+        // persistent members that otherwise keep easing from their stale pre-takeoff
+        // values -- which is what reads as "camera stays tilted" for a few frames.
+        GraphicsModule::getInstance()->setCameraTransform(this->camera, this->sceneNode->_getDerivedPositionUpdated(), this->sceneNode->_getDerivedOrientationUpdated());
+
+        this->firstSpringSample = true;    // moveCamera() will re-read internalSpringPosition from the just-snapped camera->getPosition()
+        this->firstOcclusionSample = true; // don't ease currentCollisionDistance in from the old value
+        this->currentCollisionDistance = this->cameraSpringLength;
+        this->hasProbedOnce = false; // discard the stale occlusion-probe cache (lastProbedOrigin/Target)
+        this->hasFrameOrigin = false;
+    }
+
     void ThirdPersonOcclusionCamera::setOffsetPosition(const Ogre::Vector3& offsetPosition)
     {
         this->offsetPosition = offsetPosition;

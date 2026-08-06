@@ -64,7 +64,6 @@ void DesignState::enter(void)
 
 	this->projectManager = nullptr;
 	this->editorManager = nullptr;
-	this->simulating = false;
 	this->propertiesPanel = nullptr;
 	this->componentsPanel = nullptr;
 	this->resourcesPanel = nullptr;
@@ -144,7 +143,8 @@ void DesignState::exit(void)
 
     NOWA::Core::getSingletonPtr()->switchFullscreen(false, 0, 0, 0);
 
-    if (nullptr != this->editorManager && true == this->simulating)
+	bool isSimulating = this->gameObjectController->getIsSimulating();
+    if (nullptr != this->editorManager && true == isSimulating)
     {
         // Stop simulation, since there can be tag-point components involved which changed the scene node owner ship, so a crash may occur if a movable object is detached from its
         // origin node, but the object is attached to another one
@@ -640,13 +640,7 @@ void DesignState::simulate(bool pause, bool withUndo)
 		if (false == NOWA::Core::getSingletonPtr()->getIsGame())
 		{
 			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->snapshotGameObjects();
-		}		
-
-		NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-		{
-			this->simulating = true;
-		};
-		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
+		}
 
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause]()
 		{
@@ -670,13 +664,6 @@ void DesignState::simulate(bool pause, bool withUndo)
 	}
 	else
 	{
-		// Must be called first, so that in case of lua error, no update is called
-		NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-		{
-			this->simulating = false;
-		};
-		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
-
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause, withUndo]()
 		{
 			this->mainMenuBar->enableFileMenu(pause);
@@ -1026,7 +1013,7 @@ void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData]()
         {
             MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
-            if (nullptr != widget && false == this->simulating)
+            if (nullptr != widget && false == this->gameObjectController->getIsSimulating())
             {
                 // Prevents reseleciton of the same game object
                 const auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
@@ -1749,7 +1736,9 @@ void DesignState::updateInfo(Ogre::Real dt)
 			// info += " Threadcount: " + Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount());
 
 			this->manipulationWindow->setCaption(info);
-			if (false == this->simulating)
+
+			bool isSimulating = this->gameObjectController->getIsSimulating();
+            if (false == isSimulating)
 			{
 				this->undoButton->setEnabled(this->editorManager->canUndo());
 				this->redoButton->setEnabled(this->editorManager->canRedo());
@@ -1771,7 +1760,7 @@ void DesignState::updateInfo(Ogre::Real dt)
 
 void DesignState::removeGameObjects(void)
 {
-	if (true == this->simulating)
+	if (true == this->gameObjectController->getIsSimulating())
 	{
 		return;
 	}
@@ -1802,7 +1791,7 @@ void DesignState::removeGameObjects(void)
 
 void DesignState::cloneGameObjects(void)
 {
-	if (true == this->simulating)
+	if (true == this->gameObjectController->getIsSimulating())
 	{
 		return;
 	}
@@ -1831,7 +1820,9 @@ void DesignState::update(Ogre::Real dt)
 {
     if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->bSceneLoading)
     {
-        if (true == this->simulating)
+        bool isSimulating = this->gameObjectController->getIsSimulating();
+
+        if (true == isSimulating)
         {
             NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->update(dt);
             NOWA::AppStateManager::getSingletonPtr()->getParticleFxModule()->update(dt);
@@ -1848,9 +1839,9 @@ void DesignState::update(Ogre::Real dt)
         // Lua reads m_curRotation via physComp:getOrientation() here.
         // At this point m_curRotation reflects the result of the PREVIOUS
         // Newton step — one frame behind, but consistent.
-        NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->update(dt, false == this->simulating);
+        NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->update(dt);
 
-        if (true == this->simulating)
+        if (true == isSimulating)
         {
             // Run Newton AFTER Lua so that the force/velocity commands written
             // by Lua this frame are consumed by Newton in the same frame.
@@ -1920,16 +1911,20 @@ void DesignState::renderUpdate(Ogre::Real dt)
 	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
 	MyGUI::Widget* focusWidget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
+
+	auto* cameraManager = NOWA::AppStateManager::getSingletonPtr()->getCameraManager();
+
+	bool isSimulating = this->gameObjectController->getIsSimulating();
    
-	if (false == this->simulating && nullptr != focusWidget && false == ms.buttonDown(OIS::MB_Right) &&
+	if (false == isSimulating && nullptr != focusWidget && false == ms.buttonDown(OIS::MB_Right) &&
         nullptr == NOWA::InputDeviceCore::getSingletonPtr()->getJoystick())
 	{
 		return;
 	}
-    if (false == this->simulating)
+    if (false == isSimulating)
     {
         // So if not simulating (no physics object is involved for tracking, so it can stay in max fps render update function).
-        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
+        cameraManager->moveCamera(dt);
     }
 
 	// Prevent rotation, when user does something in GUI, or control is pressed
@@ -2156,7 +2151,8 @@ void DesignState::toggleGuiVisibility(bool visible)
 
 bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 {
-	if (false == this->simulating)
+    bool isSimulating = this->gameObjectController->getIsSimulating();;
+    if (false == isSimulating)
 	{
 		if (GetAsyncKeyState(VK_LCONTROL) && keyEventRef.key == MyGUI::KeyCode::C)
 		{
@@ -2227,7 +2223,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 			case OIS::KC_ESCAPE:
 			{
 				// Stop simulation if simulating
-				if (true == this->simulating)
+                if (true == isSimulating)
 				{
 					if (GetAsyncKeyState(VK_LCONTROL))
 					{
@@ -2419,7 +2415,6 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 			{
 				if (GetAsyncKeyState(VK_LCONTROL))
 				{
-					this->simulating = !this->simulating;
 					this->buttonHit(this->playButton);
 					return true;
 				}
@@ -2555,7 +2550,8 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 		}
 	}
 
-	if (false == this->simulating)
+	bool isSimulating = this->gameObjectController->getIsSimulating();
+    if (false == isSimulating)
 	{
 		if (evt.state.buttonDown(OIS::MB_Middle))
 		{
@@ -2576,7 +2572,7 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 		}
 	}
 
-	if (nullptr != widget && false == this->simulating)
+	if (nullptr != widget && false == isSimulating)
 	{
 		// If mouse wheel has been pressed, search for the scroll view in panel view parenting and simulate scrolling manually, because it does not work in MyGUI :(
 		if (evt.state.Z.rel != 0)
@@ -2671,15 +2667,18 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 		}
 	}
 
+    bool isSimulating = this->gameObjectController->getIsSimulating();
+
 	// Prevent scene manipulation, when user does something in GUI
-    if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget() /* && false == this->simulating*/)
+    if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget() /* && false == this->gameObjectController->getIsSimulating()*/)
 	{
 		if (true == MyGUIHelper::getInstance()->getCanMousePress())
 		{
+
 			// Gets the selected mygui widget and checks if it has some user data (with game object id and component index)
 			const auto gameObjectData = MyGUIHelper::getInstance()->findWidgetGameObject(evt.state.X.abs, evt.state.Y.abs);
 
-			if (false == this->simulating && OIS::MB_Left == id && true == std::get<0>(gameObjectData))
+			if (false == isSimulating && OIS::MB_Left == id && true == std::get<0>(gameObjectData))
 			{
 				const auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
 				const auto found = selectedGameObjects.find(std::get<1>(gameObjectData));
@@ -2733,7 +2732,7 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 			this->selectedGameObject = nullptr;
 		}
 
-		if (false == this->simulating)
+		if (false == isSimulating)
 		{
 			if (id == OIS::MB_Middle)
 			{
@@ -2754,7 +2753,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
 
 	// Prevent scene manipulation, when user does something in GUI
     MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
-	if (nullptr != widget/* && true == this->simulating*/) // causes ugly gui behavior
+	if (nullptr != widget/* && true == this->gameObjectController->getIsSimulating()*/) // causes ugly gui behavior
 	{
 		return true;
 	}
@@ -2767,7 +2766,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
 		this->editorManager->handleMouseRelease(evt, id);
 	}
 
-	if (false == this->simulating && false == this->bQuit && true == validScene)
+	if (false == this->gameObjectController->getIsSimulating() && false == this->bQuit && true == validScene)
 	{
 		if (id == OIS::MB_Left && nullptr != editorManager 
 			&& this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE 

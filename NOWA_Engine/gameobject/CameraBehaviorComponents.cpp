@@ -231,6 +231,11 @@ namespace NOWA
         }
     }
 
+    void CameraBehaviorComponent::snapToTarget(void) const
+    {
+    }
+
+
     bool CameraBehaviorComponent::isActivated(void) const
     {
         return this->activated->getBool();
@@ -489,13 +494,18 @@ namespace NOWA
 
     void CameraBehaviorBaseComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<CameraBehaviorBaseComponent, GameObjectComponent>("CameraBehaviorBaseComponent")
-                .def("setMoveSpeed", &CameraBehaviorBaseComponent::setMoveSpeed)
-                .def("getMoveSpeed", &CameraBehaviorBaseComponent::getMoveSpeed)
-                .def("setRotationSpeed", &CameraBehaviorBaseComponent::setRotationSpeed)
-                .def("getRotationSpeed", &CameraBehaviorBaseComponent::getRotationSpeed)
-                .def("setSmoothValue", &CameraBehaviorBaseComponent::setSmoothValue)
-                .def("getSmoothValue", &CameraBehaviorBaseComponent::getSmoothValue)];
+        module(lua)
+        [
+            class_<CameraBehaviorBaseComponent, GameObjectComponent>("CameraBehaviorBaseComponent")
+            .def("setMoveSpeed", &CameraBehaviorBaseComponent::setMoveSpeed)
+            .def("getMoveSpeed", &CameraBehaviorBaseComponent::getMoveSpeed)
+            .def("setRotationSpeed", &CameraBehaviorBaseComponent::setRotationSpeed)
+            .def("getRotationSpeed", &CameraBehaviorBaseComponent::getRotationSpeed)
+            .def("setSmoothValue", &CameraBehaviorBaseComponent::setSmoothValue)
+            .def("getSmoothValue", &CameraBehaviorBaseComponent::getSmoothValue)
+            // Issue: CameraBehavioromponent has no lua section, but then that is required because of snapToTarget and other components must lua technically then derive from CameraBehaviorComponent instead of GameObjectComponent. I'm to lazy. if required, adapt that all!
+            // .def("snapToTarget", &CameraBehaviorBaseComponent::snapToTarget)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "class inherits CameraBehaviorBaseComponent", CameraBehaviorBaseComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void setMoveSpeed(float moveSpeed)", "Sets the camera move speed.");
@@ -505,6 +515,10 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void setSmoothValue(float smoothValue)",
             "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
+        /*LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void snapToTarget()",
+            "Immediately snaps the camera's transform, spring state, and occlusion cache to the target's current transform, discarding all smoothing history. "
+            "Call this after the target's transform has just been changed instantaneously by other code (e.g. after a scripted takeoff or teleport), so the camera "
+            "reflects the new transform immediately instead of spring-easing toward it over several frames.");*/
 
         gameObjectClass.def("getCameraBehaviorBaseComponentFromName", &getCameraBehaviorBaseComponentFromName);
         gameObjectClass.def("getCameraBehaviorBaseComponent", (CameraBehaviorBaseComponent * (*)(GameObject*)) & getCameraBehaviorBaseComponent);
@@ -1359,6 +1373,19 @@ namespace NOWA
         if (true == activated && nullptr != this->physicsActiveComponent)
         {
             this->baseCamera->setPhysicsBody(this->physicsActiveComponent->getBody());
+        }
+    }
+
+    void CameraBehaviorThirdPersonOcclusionComponent::snapToTarget(void) const
+    {
+        if (nullptr != this->baseCamera)
+        {
+            this->baseCamera->snapToTarget();
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraBehaviorThirdPersonOcclusionComponent] Cannot snap to target, because the base camera is null at that point. Maybe activatePlayerController for this for game object: " 
+                + this->gameObjectPtr->getName() + " has not been called.");
         }
     }
 

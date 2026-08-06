@@ -66,6 +66,10 @@ namespace NOWA
         this->physicsBody = nullptr;
     }
 
+    void BaseCamera::snapToTarget(void)
+    {
+    }
+
     void BaseCamera::setDefaultDirection(const Ogre::Vector3& defaultDirection)
     {
         this->defaultDirection = defaultDirection;

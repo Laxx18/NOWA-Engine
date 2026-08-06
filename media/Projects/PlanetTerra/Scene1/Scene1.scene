@@ -33,7 +33,7 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268265 5055.43 264690"/>
+		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268266 5055.91 264690"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -109,7 +109,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="268264" y="5054.95" z="264690"/>
+			<position x="268265" y="5055.43" z="264690"/>
 			<rotation qw="-0.237327" qx="0.400103" qy="0.226368" qz="0.855775"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -253,7 +253,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
-					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="6" name="RotationSpeed" data="5"/>
 					<property type="6" name="GoalRadius" data="0.5"/>
 					<property type="6" name="AnimationSpeed" data="4"/>
 					<property type="6" name="Acceleration" data="0"/>
@@ -1289,7 +1289,7 @@ Alfred has important information!"/>
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_0_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Sun_0_PlanetSun" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3277932005"/>
@@ -2112,7 +2112,7 @@ Alfred has important information!"/>
 			<position x="-131733" y="3.1653" z="120912"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_7_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Sun_7_PlanetSun" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1934544053"/>
@@ -2822,7 +2822,7 @@ Alfred has important information!"/>
 			<position x="26586.9" y="26.7088" z="-309796"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_13_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Universum_Sun_13_PlanetSun" meshFile="Procedural.mesh" castShadows="false" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4182463336"/>
@@ -3965,7 +3965,7 @@ Alfred has important information!"/>
 			</item>
 		</node>
 		<node name="Dungeon_0" id="2358939090">
-			<position x="9658.45" y="525.881" z="41306.5"/>
+			<position x="9658.45" y="525.931" z="41306.5"/>
 			<rotation qw="0.736576" qx="-0.0294688" qy="-0.0321596" qz="0.674947"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">

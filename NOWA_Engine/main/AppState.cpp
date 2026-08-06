@@ -165,26 +165,28 @@ namespace NOWA
 		this->gameObjectController->resume();
 	}
 
-	void AppState::renderUpdate(Ogre::Real dt)
-	{
-
-	}
-
 	void AppState::update(Ogre::Real dt)
 	{
 		if (true == this->canUpdate)
 		{
 			if (false == AppStateManager::getSingletonPtr()->bStall && false == this->gameProgressModule->bSceneLoading)
 			{
-				this->ogreNewtModule->update(dt);
+                bool isSimulating = this->gameObjectController->getIsSimulating();
+
+                if (true == isSimulating)
+                {
+                    this->ogreRecastModule->update(dt);
+                    this->particleFxModule->update(dt);
+                }
+
 				// Update the GameObjects
-				this->gameObjectController->update(dt);
+                this->gameObjectController->update(dt);
 
-				this->ogreRecastModule->update(dt);
-				// PlayerControllerComponents are using this directly for smoke effect etc.
-				this->particleFxModule->update(dt);
-
-				this->cameraManager->moveCamera(dt);
+				if (true == isSimulating)
+                {
+                    this->ogreNewtModule->update(dt);
+                    this->cameraManager->moveCamera(dt);
+                }
 			}
 		}
 
@@ -193,6 +195,15 @@ namespace NOWA
 			this->shutdown();
 		}
 	}
+
+	void AppState::renderUpdate(Ogre::Real dt)
+    {
+        bool isSimulating = this->gameObjectController->getIsSimulating();
+        if (true == isSimulating)
+        {
+            this->cameraManager->rotateCamera(dt, false);
+        }
+    }
 
 	AppState* AppState::findByName(Ogre::String stateName)
 	{

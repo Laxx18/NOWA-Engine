@@ -813,16 +813,16 @@ namespace NOWA
         return clonedGameObjectPtr;
     }
 
-    void GameObjectController::update(Ogre::Real dt, bool notSimulating)
+    void GameObjectController::update(Ogre::Real dt)
     {
         this->isUpdating = true;
 
         for (const auto& gameObjectPtr : this->gameObjectsList)
         {
-            gameObjectPtr->update(dt, notSimulating);
+            gameObjectPtr->update(dt, false == this->isSimulating);
         }
 
-        if (false == notSimulating)
+        if (true == this->isSimulating)
         {
             for (auto it = this->movingBehaviors.cbegin(); it != this->movingBehaviors.cend(); ++it)
             {
@@ -1862,7 +1862,6 @@ namespace NOWA
             // Clears lua errors etc.
             LuaScriptApi::getInstance()->clear();
 
-            this->isSimulating = true;
             AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->start();
 
             LuaScriptApi::getInstance()->runInitScript("init.lua");
@@ -1937,6 +1936,8 @@ namespace NOWA
             }
 
             // done->set_value();
+
+            this->isSimulating = true;
         };
 
         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
@@ -1950,6 +1951,8 @@ namespace NOWA
         // Must be called on logic thread, because lua operations must be on logic thread!
         NOWA::AppStateManager::LogicCommand logicCommand = [this]()
         {
+            this->isSimulating = false;
+
             // Resets the command, so that deletion of game object can be processed again.
             // See @deleteGameObjectWithUndo for more information
             if (nullptr != this->deleteGameObjectsUndoCommand)
@@ -1959,8 +1962,6 @@ namespace NOWA
             this->nextGameObjectIndex = 0;
 
             this->deactivateAllPlayerController();
-
-            this->isSimulating = false;
 
             for (auto it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
             {

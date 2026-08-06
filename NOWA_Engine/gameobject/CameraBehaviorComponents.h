@@ -104,6 +104,40 @@ namespace NOWA
 		virtual void setActivated(bool activated) override;
 
 		virtual bool isActivated(void) const override;
+
+		/**
+         * @brief Immediately snaps the camera's transform, spring state, and occlusion
+         *        cache to the target scene node's current transform, discarding all
+         *        smoothing/interpolation history.
+         *
+         * Performs the same one-shot hard snap that onSetData() applies at initial
+         * camera activation (GraphicsModule::setCameraTransform() to the target node's
+         * derived position/orientation), without onSetData()'s other setup-only side
+         * effects (it does not call removeTrackedCamera() and does not rebuild the
+         * occlusion probe shape).
+         *
+         * Call this whenever the target's transform has just changed instantaneously
+         * by external code -- rather than gradually through normal movement -- and
+         * the camera should reflect that change immediately rather than spring-easing
+         * toward it over subsequent frames. Without this, moveCamera() eases
+         * internalSpringPosition and currentCollisionDistance from their prior
+         * (now-stale) values toward the target's new transform, which is visible as
+         * the camera lagging or appearing tilted for several frames.
+         *
+         * Example: UniversumComponent::requestTakeoff() sets the spaceship's
+         * orientation directly via actComp->setOrientation(uprightOrient) to snap it
+         * upright on liftoff. Calling snapToTarget() right after that keeps the
+         * camera's spring/occlusion state consistent with the ship's new orientation
+         * instead of visibly catching up to it.
+         *
+         * @note Resets firstSpringSample, firstOcclusionSample, hasProbedOnce, and
+         *       hasFrameOrigin, and restores currentCollisionDistance to
+         *       cameraSpringLength. The next moveCamera() call re-reads
+         *       internalSpringPosition from the camera's just-snapped position, so no
+         *       manual reset of that member is needed by the caller.
+         * @warning Does nothing (and logs a warning) if sceneNode is nullptr.
+         */
+        virtual void snapToTarget(void) const;
 		
 		BaseCamera* getBaseCamera(void) const;
 
@@ -549,6 +583,8 @@ namespace NOWA
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
         virtual void setActivated(bool activated) override;
+
+		virtual void snapToTarget(void) const override;
 
         void setOffsetPosition(const Ogre::Vector3& offsetPosition);
         Ogre::Vector3 getOffsetPosition(void) const;

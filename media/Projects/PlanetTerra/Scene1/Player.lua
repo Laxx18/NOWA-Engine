@@ -44,13 +44,13 @@ Player["connect"] = function(gameObject)
         if caption == "Take Off" then
             log("[Player] caption matches 'Take Off' -> requestTakeoff()");
             landStartButton:setCaption("Land");
+            AppStateManager:getGameObjectController():activatePlayerController(true, fighterGo:getId(), true);
             universumComponent:requestTakeoff();
             fighterGo:getPhysicsActiveComponent():setGravitySourceCategory("");
             fighterGo:getInputDeviceComponent():setActivated(true);
             fighterGo:getPhysicsActiveComponent():setActivated(true);
             fighterGo:getParticleFxComponent():setActivated(true);
             playerGo:setVisible(false);
-            AppStateManager:getGameObjectController():activatePlayerController(true, fighterGo:getId(), true);
             playerGo:getPhysicsActiveComponent():setActivated(false);
             
             planetMinimapGo:getPlanetMinimapComponent():setCompassGameObjectId(0, "0");

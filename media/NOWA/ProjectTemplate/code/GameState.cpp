@@ -76,7 +76,7 @@ bool GameState::keyPressed(const OIS::KeyEvent &keyEventRef)
 	{
 		case OIS::KC_ESCAPE:
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("GameState::exit",
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 			{
 				MyGUI::PointerManager::getInstancePtr()->setVisible(true);
 				this->canUpdate = false;
@@ -86,7 +86,8 @@ bool GameState::keyPressed(const OIS::KeyEvent &keyEventRef)
 					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
 				messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &GameState::notifyMessageBoxEnd);
-			});
+			};
+			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameState::exit");
 			return true;
 		}
 		case OIS::KC_TAB:

@@ -109,7 +109,7 @@ end
 TalkState["execute"] = function(gameObject, dt)
     if (playerGo ~= nil) then
         local resultOrientation = MathHelper:faceTargetOnPlanet(alfred:getSceneNode(), playerGo:getSceneNode(), alfredPhysics:getUp(), alfred:getDefaultDirection());
-        alfredPhys:applyOmegaForceRotateTo(resultOrientation, Vector3.UNIT_SCALE, 1);
+        alfredPhysics:applyOmegaForceRotateTo(resultOrientation, Vector3.UNIT_SCALE, 1);
     end
 end
 

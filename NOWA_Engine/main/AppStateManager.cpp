@@ -596,7 +596,6 @@ namespace NOWA
                 if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
                 {
                     this->activeStateStack.back()->update(static_cast<Ogre::Real>(fixedDt));
-
                 }
 
                 accumulator -= fixedDt;

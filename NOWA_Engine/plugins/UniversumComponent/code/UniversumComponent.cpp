@@ -18,6 +18,7 @@
 #include "gameobject/PhysicsActiveKinematicComponent.h"
 #include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/PhysicsComponent.h"
+#include "gameobject/CameraBehaviorComponents.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
 #include "modules/LuaScriptApi.h"
@@ -750,6 +751,38 @@ namespace NOWA
             }
         }
 
+#if 0
+        // --- DEBUG: log Eri's full transform state right before the test-pause call ---
+        {
+            GameObjectPtr debugPlanetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(2490287205);
+            if (nullptr != debugPlanetGo)
+            {
+                Ogre::SceneNode* n = debugPlanetGo->getSceneNode();
+                Ogre::Vector3 nodePos = n->_getDerivedPositionUpdated();
+                Ogre::Quaternion nodeRot = n->_getDerivedOrientationUpdated();
+
+                Ogre::Vector3 physPos = Ogre::Vector3::ZERO;
+                Ogre::Quaternion physRot = Ogre::Quaternion::IDENTITY;
+                auto debugPhysComp = NOWA::makeStrongPtr(debugPlanetGo->getComponent<PhysicsArtifactComponent>());
+                if (nullptr != debugPhysComp)
+                {
+                    physPos = debugPhysComp->getPosition();
+                    physRot = debugPhysComp->getOrientation();
+                }
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent][DEBUG connect] Eri BEFORE pausePlanetOrbit -- "
+                                                                                    "nodePos=" +
+                                                                                        Ogre::StringConverter::toString(nodePos) + " nodeRot=" + Ogre::StringConverter::toString(nodeRot) + " physPos=" + Ogre::StringConverter::toString(physPos) +
+                                                                                        " physRot=" + Ogre::StringConverter::toString(physRot));
+            }
+        }
+
+        // Test to pause a specific planet:
+        unsigned long playerGoId = this->playerGameObjectId->getULong();
+        this->pausePlanetOrbit(2490287205, playerGoId);
+#endif
+
+
         // If the player was already landed on a planet when the scene was saved,
         // restore the paused orbit immediately. The spaceship starts inside the AOI
         // sphere on load so onEnter never fires -- trigger pausePlanetOrbit manually.
@@ -1205,6 +1238,73 @@ namespace NOWA
             {
                 this->landingState = LandingState::APPROACHING;
                 this->landingFired = false;
+
+                // Autopilot has stopped driving the ship's orientation as of this
+                // frame -- applyShipMovement() above ran for the last time under
+                // TAKING_OFF. Snap roll/pitch to zero (preserve yaw) exactly once,
+                // then snap the camera to match, so neither one has to visibly
+                // ease out of the tilted landing/ascent orientation.
+                auto actComp = NOWA::makeStrongPtr(shipGo->getComponent<PhysicsActiveComponent>());
+                if (nullptr != actComp)
+                {
+                    Ogre::Quaternion currentOrient = actComp->getOrientation();
+                    Ogre::Vector3 defaultDir = shipGo->getDefaultDirection();
+                    const Ogre::Vector3 worldUp = Ogre::Vector3::UNIT_Y;
+
+                    Ogre::Vector3 forward = currentOrient * defaultDir;
+                    forward.y = 0.0f;
+                    if (forward.squaredLength() < 1e-4f)
+                    {
+                        forward = defaultDir;
+                        forward.y = 0.0f;
+                        if (forward.squaredLength() < 1e-4f)
+                        {
+                            forward = Ogre::Vector3::UNIT_Z;
+                        }
+                    }
+                    forward.normalise();
+
+                    Ogre::Vector3 right = forward.crossProduct(worldUp);
+                    right.normalise();
+                    Ogre::Vector3 cleanUp = right.crossProduct(forward);
+                    cleanUp.normalise();
+
+                    Ogre::Vector3 axisX, axisY, axisZ;
+                    if (Ogre::Math::Abs(defaultDir.dotProduct(Ogre::Vector3::UNIT_Z)) > 0.9f)
+                    {
+                        axisX = right;
+                        axisY = cleanUp;
+                        axisZ = forward * defaultDir.dotProduct(Ogre::Vector3::UNIT_Z);
+                    }
+                    else if (Ogre::Math::Abs(defaultDir.dotProduct(Ogre::Vector3::UNIT_X)) > 0.9f)
+                    {
+                        axisZ = right;
+                        axisY = cleanUp;
+                        axisX = forward * defaultDir.dotProduct(Ogre::Vector3::UNIT_X);
+                    }
+                    else
+                    {
+                        axisX = right;
+                        axisY = cleanUp;
+                        axisZ = forward;
+                    }
+
+                    Ogre::Matrix3 mat;
+                    mat.SetColumn(0, axisX);
+                    mat.SetColumn(1, axisY);
+                    mat.SetColumn(2, axisZ);
+                    Ogre::Quaternion uprightOrient;
+                    uprightOrient.FromRotationMatrix(mat);
+
+                    actComp->setOrientation(uprightOrient);
+                }
+
+                auto cameraComp = NOWA::makeStrongPtr(shipGo->getComponent<CameraBehaviorComponent>());
+                if (nullptr != cameraComp)
+                {
+                    cameraComp->snapToTarget();
+                }
+
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent] Takeoff clearance reached, state=APPROACHING");
             }
         }
@@ -1235,67 +1335,6 @@ namespace NOWA
 
                         // Snap the ship upright on takeoff: preserve only yaw,
                         // zero out roll and pitch that may have accumulated during landing.
-#if 0
-                        Ogre::Quaternion currentOrient = actComp->getOrientation();
-
-                        // Extract forward from current orientation and flatten onto world XZ plane
-                        Ogre::Vector3 defaultDir = shipGo->getDefaultDirection();
-                        Ogre::Vector3 forward = currentOrient * defaultDir;
-                        forward.y = 0.0f;
-
-                        if (forward.squaredLength() < 1e-4f)
-                        {
-                            forward = defaultDir;
-                            forward.y = 0.0f;
-                            if (forward.squaredLength() < 1e-4f)
-                            {
-                                forward = Ogre::Vector3::UNIT_Z;
-                            }
-                        }
-                        forward.normalise();
-
-                        const Ogre::Vector3 worldUp = Ogre::Vector3::UNIT_Y;
-                        Ogre::Vector3 right = forward.crossProduct(worldUp);
-                        right.normalise();
-                        Ogre::Vector3 cleanUp = right.crossProduct(forward);
-                        cleanUp.normalise();
-
-                        // Map the three axes back to X/Y/Z columns based on the ship's default direction.
-                        // Column 0 = X axis (right), Column 1 = Y axis (up), Column 2 = Z axis (forward in Ogre).
-                        // We need to place our computed axes into the slots that match the default direction.
-                        Ogre::Vector3 axisX, axisY, axisZ;
-
-                        if (Ogre::Math::Abs(defaultDir.dotProduct(Ogre::Vector3::UNIT_Z)) > 0.9f)
-                        {
-                            // Default direction is +Z or -Z
-                            axisX = right;
-                            axisY = cleanUp;
-                            axisZ = forward * defaultDir.dotProduct(Ogre::Vector3::UNIT_Z); // preserve sign
-                        }
-                        else if (Ogre::Math::Abs(defaultDir.dotProduct(Ogre::Vector3::UNIT_X)) > 0.9f)
-                        {
-                            // Default direction is +X or -X
-                            axisZ = right;
-                            axisY = cleanUp;
-                            axisX = forward * defaultDir.dotProduct(Ogre::Vector3::UNIT_X); // preserve sign
-                        }
-                        else
-                        {
-                            // Fallback: treat as Z
-                            axisX = right;
-                            axisY = cleanUp;
-                            axisZ = forward;
-                        }
-
-                        Ogre::Matrix3 mat;
-                        mat.SetColumn(0, axisX);
-                        mat.SetColumn(1, axisY);
-                        mat.SetColumn(2, axisZ);
-                        Ogre::Quaternion uprightOrient;
-                        uprightOrient.FromRotationMatrix(mat);
-
-                        actComp->setOrientation(uprightOrient);
-#else
 
                         Ogre::Quaternion currentOrient = actComp->getOrientation();
                         Ogre::Vector3 defaultDir = shipGo->getDefaultDirection();
@@ -1366,7 +1405,6 @@ namespace NOWA
                         Ogre::Quaternion uprightOrient;
                         uprightOrient.FromRotationMatrix(mat);
                         actComp->setOrientation(uprightOrient);
-#endif
                     }
                 }
             }
@@ -2293,8 +2331,6 @@ namespace NOWA
             return;
         }
 
-        // Ogre::Timer diagTimer;
-
         this->elapsedTime += dt;
 
         // ---- Orbital motion ----
@@ -2325,6 +2361,7 @@ namespace NOWA
                     {
                         continue;
                     }
+
                     planet.orbitalElapsed += dt;
                     planet.axialElapsed += dt;
                     float angle = planet.orbitalElapsed * planet.orbitalSpeed + planet.phaseOffset;
@@ -2336,8 +2373,25 @@ namespace NOWA
                     planet.currentPosition = newPos;
                     Ogre::Radian axialAngle(planet.axialElapsed * planet.axialSpeed);
                     Ogre::Quaternion axialRot(axialAngle, Ogre::Vector3::UNIT_Y);
+                    planet.currentOrientation = axialRot;
                     // Do set lots of positions without enqueue and wait, but use lock free queue without interpolation
                     physComp->setKinematicPositionOrientation(newPos, axialRot);
+
+#if 0
+                    // --- DEBUG: track Eri every frame ---
+                    if (planet.gameObjectId == 2490287205)
+                    {
+                        Ogre::SceneNode* n = planetGo->getSceneNode();
+                        Ogre::Vector3 nodePos = n->_getDerivedPositionUpdated();
+                        Ogre::Quaternion nodeRot = n->_getDerivedOrientationUpdated();
+                        Ogre::Vector3 physPos = physComp->getPosition();
+                        Ogre::Quaternion physRot = physComp->getOrientation();
+
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UniversumComponent][DEBUG update] Eri -- cachedPos=" + Ogre::StringConverter::toString(newPos) + " cachedRot=" + Ogre::StringConverter::toString(axialRot) +
+                                                                                               " nodePos=" + Ogre::StringConverter::toString(nodePos) + " nodeRot=" + Ogre::StringConverter::toString(nodeRot) +
+                                                                                               " physPos=" + Ogre::StringConverter::toString(physPos) + " physRot=" + Ogre::StringConverter::toString(physRot));
+                    }
+#endif
                 }
 
                 for (auto& moonPair : system.moons)
@@ -2369,6 +2423,7 @@ namespace NOWA
                     }
                     Ogre::Radian axialAngle(moon.axialElapsed * moon.axialSpeed);
                     Ogre::Quaternion axialRot(axialAngle, Ogre::Vector3::UNIT_Y);
+                    moon.currentOrientation = axialRot;
                     // Do set lots of positions without enqueue and wait, but use lock free queue without interpolation
                     physComp->setKinematicPositionOrientation(newPos, axialRot);
                 }
@@ -2578,7 +2633,7 @@ namespace NOWA
         surfacePower = nearestSystem->sunLightPower * dayFactor;
 
         // ------------------------------
-        // BLEND SPACE ↔ SURFACE (THIS IS THE FIX)
+        // BLEND SPACE <-> SURFACE 
         // ------------------------------
 
         // direction blend (important: prevents lighting snap)
@@ -3512,9 +3567,16 @@ namespace NOWA
             return;
         }
 
-        Ogre::SceneNode* hostNode = hostGo->getSceneNode();
-        const Ogre::Vector3 hostPos = hostNode->_getDerivedPositionUpdated();
-        const Ogre::Quaternion hostRot = hostNode->_getDerivedOrientationUpdated();
+        // Use the authoritative CPU-side transform that update() last sent to physics,
+        // not the SceneNode's derived transform -- setKinematicPositionOrientation()
+        // goes through a lock-free queue without interpolation, so the SceneNode can
+        // still be a frame (or a fraction of a degree of axial rotation) behind
+        // body.currentOrientation at the exact moment pausePlanetOrbit() fires mid-flight.
+        // Reading the stale node caused surface objects (e.g. the dungeon) to be placed
+        // using an orientation slightly older than the planet's true current spin,
+        // clipping them into the terrain.
+        const Ogre::Vector3 hostPos = body.currentPosition;
+        const Ogre::Quaternion hostRot = body.currentOrientation;
 
         for (const SurfaceObject& so : body.surfaceObjects)
         {
@@ -3557,13 +3619,8 @@ namespace NOWA
             }
 
             go->setVisible(so.bWasVisible);
-            // Restore each component's individually-recorded activation state.
-            // Tolerant of components (or the GameObject itself, already handled
-            // above) having been removed since hideSurfaceObjects() ran - e.g. the
-            // player destroyed an enemy or one of its components on the surface.
             go->restoreComponentActivationStates(so.componentActivationStates);
 
-            // Use physics component setter if available, else move SceneNode directly.
             auto physComp = NOWA::makeStrongPtr(go->getComponent<PhysicsComponent>());
             if (nullptr != physComp)
             {

@@ -489,6 +489,7 @@ namespace NOWA
             bool orbitalPaused = false;   // Set by AreaOfInterest enter/leave
             float gravityStrength = 0.0f; // Computed from radius: larger = stronger
             Ogre::Vector3 currentPosition = Ogre::Vector3::ZERO;
+            Ogre::Quaternion currentOrientation = Ogre::Quaternion::IDENTITY;
             std::vector<SurfaceObject> surfaceObjects; // GOs placed on this body's surface
         };
 

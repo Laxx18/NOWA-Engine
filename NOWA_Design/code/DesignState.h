@@ -134,7 +134,6 @@ private:
 	MyGUI::EditBox* findObjectEdit;
 	MyGUI::Button* cameraResetButton;
 	MyGUI::EditBox* constraintAxisEdit;
-	bool simulating;
 	Ogre::String activeCategory;
 
 	PropertiesPanel* propertiesPanel;
