@@ -70,7 +70,7 @@ namespace NOWA
 		// But do not update rotation (false) physically because it would mess up a lot of things
 		this->cameraBody->attachNode(this->cameraNode, false);
 
-		this->cameraBody->setPositionOrientation(resultPosition, resultOrientation);
+		this->cameraBody->setKinematicPositionOrientation(resultPosition, resultOrientation);
 
 		this->upVector = new OgreNewt::UpVector(this->cameraBody, Ogre::Vector3(0.0f, 1.0f, 0.0f));
 	}

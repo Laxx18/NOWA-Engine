@@ -346,6 +346,34 @@ namespace NOWA
 	{
 		if (false == notSimulating && this->activated->getBool() && this->functionCount->getUInt() > 0)
 		{
+            // rotationAxes[...] is authored as a literal world axis (UNIT_X/Y/Z). On a
+            // planet surface "UNIT_Y" is meant to say "spin about this object's
+            // vertical" -- but the object's actual vertical is the local up derived
+            // from gravityDirection, not necessarily world Y. Compute it once here and
+            // re-orient the configured axis onto it wherever rotationAxes is used below,
+            // same pattern as TransformComponent::update().
+            Ogre::Vector3 localUp = Ogre::Vector3::UNIT_Y;
+            {
+                NOWA::PhysicsComponent* gravitySource = nullptr;
+                if (nullptr != this->physicsActiveComponent)
+                {
+                    gravitySource = this->physicsActiveComponent;
+                }
+                else if (nullptr != this->physicsActiveKinematicComponent)
+                {
+                    gravitySource = this->physicsActiveKinematicComponent;
+                }
+                if (nullptr != gravitySource)
+                {
+                    Ogre::Vector3 gravityDir = gravitySource->getGravityDirection();
+                    if (false == gravityDir.isZeroLength())
+                    {
+                        localUp = -gravityDir.normalisedCopy();
+                    }
+                }
+            }
+            const Ogre::Quaternion upAlign = Ogre::Vector3::UNIT_Y.getRotationTo(localUp);
+
 			if (false == this->firstTime)
 			{
 				this->oldPosition = this->gameObjectPtr->getPosition(); // this->originPosition + this->mathFunction;
@@ -500,64 +528,81 @@ namespace NOWA
 				}
 				// PhysicsActiveComponent: Apply force and torque, but no velocity!
 				// Scenario: Move along a math function, but it can be disturbed by other physics game objects!
-				else if (nullptr != this->physicsActiveComponent)
-				{
-					Ogre::Vector3 desiredVelocity = (this->originPosition + this->mathFunction) - this->oldPosition;
-					// desiredVelocity.normalise();
-					// desiredVelocity *= this->speeds[this->totalIndex]->getReal();
-					this->physicsActiveComponent->applyRequiredForceForVelocity(desiredVelocity);
+                else if (nullptr != this->physicsActiveComponent)
+                {
+                    Ogre::Vector3 desiredVelocity = (this->originPosition + this->mathFunction) - this->oldPosition;
+                    this->physicsActiveComponent->applyRequiredForceForVelocity(desiredVelocity);
 
-					if (true == this->autoOrientate->getBool())
-					{
-						Ogre::Quaternion newOrientation = (this->physicsActiveComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection()).getRotationTo(desiredVelocity);
+                    if (true == this->autoOrientate->getBool())
+                    {
+                        Ogre::Quaternion newOrientation = (this->physicsActiveComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection()).getRotationTo(desiredVelocity);
 
-						Ogre::Vector3 axis = Ogre::Vector3::ZERO;
-						if (Ogre::Vector3::UNIT_X == this->rotationAxes[this->totalIndex]->getVector3())
-							axis.x = newOrientation.getPitch().valueDegrees() * 0.1f;
-						if (Ogre::Vector3::UNIT_Y == this->rotationAxes[this->totalIndex]->getVector3())
-							axis.y = newOrientation.getYaw().valueDegrees() * 0.1f;
-						if (Ogre::Vector3::UNIT_Z == this->rotationAxes[this->totalIndex]->getVector3())
-							axis.z = newOrientation.getRoll().valueDegrees() * 0.1f;
+                        // Re-oriented onto local up -- see comment at the top of update().
+                        // Which Euler component to read (pitch/yaw/roll) still depends on
+                        // the CONFIGURED axis (that's a level-design choice, not a spatial
+                        // direction), but the resulting angular-velocity vector now points
+                        // along the gravity-corrected direction instead of a hardcoded
+                        // world x/y/z, so the object actually spins about the correct axis
+                        // on a curved planet surface instead of fighting the physics
+                        // constraint and flying off.
+                        const Ogre::Vector3 configuredAxis = this->rotationAxes[this->totalIndex]->getVector3();
+                        const Ogre::Vector3 effectiveAxis = upAlign * configuredAxis;
 
-						this->physicsActiveComponent->applyOmegaForce(axis);
-						// Here: this->physicsActiveComponent->applyOmegaForceRotateTo()? Like in dancing scenario?
-					}
-					else
-					{
-						this->physicsActiveComponent->applyOmegaForceRotateTo(this->originOrientation, this->rotationAxes[this->totalIndex]->getVector3());
-					}
-				}
-				// PhysicsActiveKinematicComponent: Apply velocity but no forces
-				// Scenario: Move along a math function, but it cannot be disturbed by other physics game objects!
-				else if (nullptr != this->physicsActiveKinematicComponent)
-				{
-					Ogre::Vector3 desiredVelocity = (this->originPosition + this->mathFunction) - this->oldPosition;
-					// desiredVelocity.normalise();
-					// desiredVelocity *= this->speeds[this->totalIndex]->getReal();
-					this->physicsActiveKinematicComponent->setVelocity(desiredVelocity);
+                        Ogre::Vector3 axis = Ogre::Vector3::ZERO;
+                        if (Ogre::Vector3::UNIT_X == configuredAxis)
+                        {
+                            axis = effectiveAxis * (newOrientation.getPitch().valueDegrees() * 0.1f);
+                        }
+                        if (Ogre::Vector3::UNIT_Y == configuredAxis)
+                        {
+                            axis = effectiveAxis * (newOrientation.getYaw().valueDegrees() * 0.1f);
+                        }
+                        if (Ogre::Vector3::UNIT_Z == configuredAxis)
+                        {
+                            axis = effectiveAxis * (newOrientation.getRoll().valueDegrees() * 0.1f);
+                        }
 
-					if (true == this->autoOrientate->getBool())
-					{
-						Ogre::Quaternion newOrientation = (this->physicsActiveKinematicComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection()).getRotationTo(desiredVelocity);
-							
-						Ogre::Vector3 axis = Ogre::Vector3::ZERO;
-						if (Ogre::Vector3::UNIT_X == this->rotationAxes[this->totalIndex]->getVector3())
-							axis.x = newOrientation.getPitch().valueDegrees() * 0.1f;
-						if (Ogre::Vector3::UNIT_Y == this->rotationAxes[this->totalIndex]->getVector3())
-							axis.y = newOrientation.getYaw().valueDegrees() * 0.1f;
-						if (Ogre::Vector3::UNIT_Z == this->rotationAxes[this->totalIndex]->getVector3())
-							axis.z = newOrientation.getRoll().valueDegrees() * 0.1f;
-								
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Velocity: " + Ogre::StringConverter::toString(desiredVelocity) +  " Axis: " + Ogre::StringConverter::toString(axis));
+                        this->physicsActiveComponent->applyOmegaForce(axis);
+                    }
+                    else
+                    {
+                        this->physicsActiveComponent->applyOmegaForceRotateTo(this->originOrientation, upAlign * this->rotationAxes[this->totalIndex]->getVector3());
+                    }
+                }
+                else if (nullptr != this->physicsActiveKinematicComponent)
+                {
+                    Ogre::Vector3 desiredVelocity = (this->originPosition + this->mathFunction) - this->oldPosition;
+                    this->physicsActiveKinematicComponent->setVelocity(desiredVelocity);
 
-						this->physicsActiveKinematicComponent->setOmegaVelocity(axis);
-							// Here: this->physicsActiveKinematicComponent->setOmegaVelocityRotateTo()? Like in dancing scenario?
-					}
-					else
-					{
-						this->physicsActiveComponent->applyOmegaForceRotateTo(this->originOrientation, this->rotationAxes[this->totalIndex]->getVector3());
-					}
-				}
+                    if (true == this->autoOrientate->getBool())
+                    {
+                        Ogre::Quaternion newOrientation = (this->physicsActiveKinematicComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection()).getRotationTo(desiredVelocity);
+
+                        // Same re-orientation as the physicsActiveComponent branch above.
+                        const Ogre::Vector3 configuredAxis = this->rotationAxes[this->totalIndex]->getVector3();
+                        const Ogre::Vector3 effectiveAxis = upAlign * configuredAxis;
+
+                        Ogre::Vector3 axis = Ogre::Vector3::ZERO;
+                        if (Ogre::Vector3::UNIT_X == configuredAxis)
+                        {
+                            axis = effectiveAxis * (newOrientation.getPitch().valueDegrees() * 0.1f);
+                        }
+                        if (Ogre::Vector3::UNIT_Y == configuredAxis)
+                        {
+                            axis = effectiveAxis * (newOrientation.getYaw().valueDegrees() * 0.1f);
+                        }
+                        if (Ogre::Vector3::UNIT_Z == configuredAxis)
+                        {
+                            axis = effectiveAxis * (newOrientation.getRoll().valueDegrees() * 0.1f);
+                        }
+
+                        this->physicsActiveKinematicComponent->setOmegaVelocity(axis);
+                    }
+                    else
+                    {
+                        this->physicsActiveComponent->applyOmegaForceRotateTo(this->originOrientation, upAlign * this->rotationAxes[this->totalIndex]->getVector3());
+                    }
+                }
 			}
 			/*else
 			{

@@ -2902,7 +2902,7 @@ namespace NOWA
         Ogre::Vector3 center = this->physicsRagDollComponentV2->ragDataList.cbegin()->ragBone->getBody()->getPosition();
         Ogre::Vector3 offsetPos = (localPos - center);
 
-        this->body->setPositionOrientation(center + rotation * offsetPos, rotation * localOrient);
+        this->body->setKinematicPositionOrientation(center + rotation * offsetPos, rotation * localOrient);
     }
 
     void PhysicsRagDollComponentV2::RagBone::setInitialState(void)

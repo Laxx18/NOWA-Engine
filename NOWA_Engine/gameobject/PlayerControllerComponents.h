@@ -205,6 +205,8 @@ namespace NOWA
 
 		GameObject* getHitGameObjectUp(void) const;
 
+		Ogre::Vector3 getFrontNormal(void) const;
+
 		bool getIsFallen(void) const;
 
 		void standUp(void);
@@ -253,6 +255,7 @@ namespace NOWA
 		GameObject* hitGameObjectBelow;
 		GameObject* hitGameObjectFront;
 		GameObject* hitGameObjectUp;
+        Ogre::Vector3 frontNormal;  
 
 		Ogre::Real timeFallen;
 		bool isFallen;

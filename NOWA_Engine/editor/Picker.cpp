@@ -44,7 +44,7 @@ namespace NOWA
 
 		if (Ogre::Math::RealEqual(picker->getPickForce(), 50.0f))
 		{
-			body->setPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
+			body->setKinematicPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
 			// Annulate gravity
 			body->addForce(body->getGravity() * mass);
 			picker->destroyLine();
@@ -477,7 +477,7 @@ namespace NOWA
 
 		if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
 		{
-			body->setPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
+            body->setKinematicPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
 			body->addForce(body->getGravity() * mass);
 			this->destroyLine();
 		}
@@ -532,7 +532,7 @@ namespace NOWA
 
 		if (Ogre::Math::RealEqual(picker->getPickForce(), 50.0f))
 		{
-			body->setPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
+            body->setKinematicPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
 			// Annulate gravity
 			body->addForce(body->getGravity() * mass);
 			picker->destroyLine();
@@ -999,7 +999,7 @@ namespace NOWA
 
 		if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
 		{
-			body->setPositionOrientation(this->cursorPos, Ogre::Quaternion::IDENTITY);
+            body->setKinematicPositionOrientation(this->cursorPos, Ogre::Quaternion::IDENTITY);
 			body->addForce(body->getGravity() * mass);
 			this->destroyLine();
 		}

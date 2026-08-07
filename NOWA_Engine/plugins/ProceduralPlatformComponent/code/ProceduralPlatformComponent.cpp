@@ -76,8 +76,6 @@ namespace NOWA
         snapToGrid(new Variant(ProceduralPlatformComponent::AttrSnapToGrid(), false, this->attributes)),
         gridSize(new Variant(ProceduralPlatformComponent::AttrGridSize(), 1.0f, this->attributes)),
         smoothingFactor(new Variant(ProceduralPlatformComponent::AttrSmoothingFactor(), 0.5f, this->attributes)),
-        maxGradient(new Variant(ProceduralPlatformComponent::AttrMaxGradient(), 45.0f, this->attributes)),
-        maxTurnAngle(new Variant(ProceduralPlatformComponent::AttrMaxTurnAngle(), 150.0f, this->attributes)),
         curveSubdivisions(new Variant(ProceduralPlatformComponent::AttrCurveSubdivisions(), 10, this->attributes)),
         surfaceDatablock(new Variant(ProceduralPlatformComponent::AttrSurfaceDatablock(), "grass_clean", this->attributes)),
         groundDatablock(new Variant(ProceduralPlatformComponent::AttrGroundDatablock(), "rockClif_D", this->attributes)),
@@ -96,9 +94,7 @@ namespace NOWA
         previewNode(nullptr),
         isShiftPressed(true),
         isCtrlPressed(false),
-        continuousMode(false),
         hasPlatformOrigin(false),
-        hasIncomingDirection(false),
         platformFrame(Ogre::Quaternion::IDENTITY),
         otherPlatformQuery(nullptr),
         pendingCrossNetworkSnap(false),
@@ -110,13 +106,11 @@ namespace NOWA
         hasLoadedPlatformEndpoint(false),
         loadedPlatformEndpointHeight(0.0f),
         selectedSegmentIndex(-1),
-        isSegmentDragging(false),
         segOverlayNode(nullptr),
         segOverlayObject(nullptr),
         isExtendingFromSegment(false),
         isSnapToOwnPlatform(false),
         snapToPlatformSegmentIdx(-1),
-        snapToPlatformT(0.0f),
         snapRadius(0.0f),
         bBatchMode(false),
         platformLoadedFromScene(false),
@@ -128,12 +122,6 @@ namespace NOWA
                                             "sideways, since the drawn path already IS the platform's walkable shape.");
         this->platformHeight->setDescription("How far the solid platform body extends downward from the top walkable surface (meters).");
         this->smoothingFactor->setDescription("Amount of height smoothing between connected segments (0-1, higher = smoother gradients).");
-        this->maxGradient->setDescription("Maximum allowed slope angle between connected segments (degrees).");
-        this->maxTurnAngle->setDescription("Maximum direction change allowed when dragging a new segment that continues from an "
-                                           "existing endpoint (degrees, 180 = no limit). Keeps sharp back-and-forth reversals "
-                                           "(an \"S\", \"<\", or \">\" shape doubling back on itself) from being drawn in the first "
-                                           "place, since the platform's fixed depth axis cannot represent a true self-crossing "
-                                           "without visibly overlapping geometry.");
         this->curveSubdivisions->setDescription("Number of segments for curved platform paths (higher = smoother).");
 
         this->surfaceDatablock->setDescription("The top walkable surface datablock to set (e.g. grass, wood plank top).");
@@ -232,14 +220,19 @@ namespace NOWA
             this->smoothingFactor->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
             propertyElement = propertyElement->next_sibling("property");
         }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrMaxGradient())
+        // Backward compatibility: scenes saved before Max Gradient and Max Turn Angle were
+        // removed still carry both properties, in this position, in their XML. init() walks
+        // the property list strictly in order, so an unconsumed property would leave the
+        // reader stuck on it and silently drop EVERY attribute after it. Skip over them
+        // without reading their values. Note both are gone for good, not merely defaulted -
+        // see smoothHeightTransitions and updatePlatformPreview for why neither has a
+        // meaning any more.
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Max Gradient")
         {
-            this->maxGradient->setValue(Ogre::Math::Clamp(XMLConverter::getAttribReal(propertyElement, "data", 45.0f), 0.1f, 89.5f));
             propertyElement = propertyElement->next_sibling("property");
         }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrMaxTurnAngle())
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Max Turn Angle")
         {
-            this->maxTurnAngle->setValue(Ogre::Math::Clamp(XMLConverter::getAttribReal(propertyElement, "data", 150.0f), 10.0f, 180.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrCurveSubdivisions())
@@ -494,14 +487,6 @@ namespace NOWA
         {
             this->setSmoothingFactor(attribute->getReal());
         }
-        else if (ProceduralPlatformComponent::AttrMaxGradient() == attribute->getName())
-        {
-            this->setMaxGradient(attribute->getReal());
-        }
-        else if (ProceduralPlatformComponent::AttrMaxTurnAngle() == attribute->getName())
-        {
-            this->setMaxTurnAngle(attribute->getReal());
-        }
         else if (ProceduralPlatformComponent::AttrCurveSubdivisions() == attribute->getName())
         {
             this->setCurveSubdivisions(attribute->getInt());
@@ -572,18 +557,6 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrSmoothingFactor().c_str())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->smoothingFactor->getReal())));
-        propertiesXML->append_node(propertyXML);
-
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrMaxGradient().c_str())));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxGradient->getReal())));
-        propertiesXML->append_node(propertyXML);
-
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrMaxTurnAngle().c_str())));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxTurnAngle->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -744,32 +717,6 @@ namespace NOWA
 
                     this->buildState = BuildState::DRAGGING;
                     this->lastValidPosition = startPoint.position;
-
-                    // Direction of the last edge of whichever segment this continues from -
-                    // updatePlatformPreview caps the new drag's turn angle against this, to
-                    // prevent a sharp reversal that would self-intersect the fixed-depth
-                    // extrusion.
-                    const auto& lastSeg = this->platformSegments.back();
-                    if (lastSeg.controlPoints.size() >= 2)
-                    {
-                        const auto& cpA = lastSeg.controlPoints[lastSeg.controlPoints.size() - 2];
-                        const auto& cpB = lastSeg.controlPoints.back();
-                        Ogre::Vector3 dir(cpB.position.x - cpA.position.x, cpB.smoothedHeight - cpA.smoothedHeight, 0.0f);
-                        if (dir.squaredLength() > 1e-8f)
-                        {
-                            dir.normalise();
-                            this->incomingDirection = dir;
-                            this->hasIncomingDirection = true;
-                        }
-                        else
-                        {
-                            this->hasIncomingDirection = false;
-                        }
-                    }
-                    else
-                    {
-                        this->hasIncomingDirection = false;
-                    }
                 }
                 else
                 {
@@ -928,26 +875,6 @@ namespace NOWA
                 this->isShiftPressed = true;         // auto-chain on confirm
                 this->isExtendingFromSegment = true; // allow preview in segment mode
 
-                if (sel.controlPoints.size() >= 2)
-                {
-                    const PlatformControlPoint& cpA = sel.controlPoints[sel.controlPoints.size() - 2];
-                    Ogre::Vector3 dir(tail.position.x - cpA.position.x, tail.smoothedHeight - cpA.smoothedHeight, 0.0f);
-                    if (dir.squaredLength() > 1e-8f)
-                    {
-                        dir.normalise();
-                        this->incomingDirection = dir;
-                        this->hasIncomingDirection = true;
-                    }
-                    else
-                    {
-                        this->hasIncomingDirection = false;
-                    }
-                }
-                else
-                {
-                    this->hasIncomingDirection = false;
-                }
-
                 return false;
             }
 
@@ -1073,7 +1000,6 @@ namespace NOWA
 
         this->buildState = BuildState::DRAGGING;
         this->lastValidPosition = startPoint.position;
-        this->hasIncomingDirection = false; // fresh start, no prior direction to constrain against
     }
 
     void ProceduralPlatformComponent::updatePlatformPreview(const Ogre::Vector3& worldPosition)
@@ -1107,51 +1033,21 @@ namespace NOWA
             }
         }
 
-        // Cap the turn angle relative to whatever segment this drag continues from, so a
-        // sharp reversal (which would self-intersect the fixed-depth extrusion - see the
-        // class design notes) can't be drawn in the first place. Applied last, after
-        // grid-snap/axis-constrain, so it is always the final authority on where the
-        // preview endpoint can land.
-        if (true == this->hasIncomingDirection)
-        {
-            const Ogre::Vector3& startPos3 = this->currentSegment.controlPoints.front().position;
-            const Ogre::Real startHeight = this->currentSegment.controlPoints.front().rawHeight;
-
-            const Ogre::Real candDx = currentPos.x - startPos3.x;
-            const Ogre::Real candDh = currentPos.y - startHeight;
-            const Ogre::Real candDist = std::sqrt(candDx * candDx + candDh * candDh);
-
-            if (candDist > 1e-5f)
-            {
-                const Ogre::Real maxAngleRad = Ogre::Math::DegreesToRadians(this->maxTurnAngle->getReal());
-
-                // Signed angle from incomingDirection to the (unnormalised) candidate
-                // direction, in the (x, height) plane - atan2(cross, dot) gives both the
-                // magnitude and which rotational side the candidate is on; scaling the
-                // second vector by a positive amount doesn't change the angle, so candDx/
-                // candDh don't need to be normalised first.
-                const Ogre::Real cross = this->incomingDirection.x * candDh - this->incomingDirection.y * candDx;
-                const Ogre::Real dot = this->incomingDirection.x * candDx + this->incomingDirection.y * candDh;
-                const Ogre::Real signedAngle = std::atan2(cross, dot);
-
-                if (std::abs(signedAngle) > maxAngleRad)
-                {
-                    const Ogre::Real clampedAngle = (signedAngle < 0.0f) ? -maxAngleRad : maxAngleRad;
-                    const Ogre::Real cosA = std::cos(clampedAngle);
-                    const Ogre::Real sinA = std::sin(clampedAngle);
-
-                    // Rotate incomingDirection by the clamped angle (same rotational side as
-                    // the candidate, just capped), then scale to the candidate's own
-                    // distance from the start point - keeps the drag's "reach" the same,
-                    // only the direction gets pulled back to the allowed boundary.
-                    const Ogre::Real newDx = this->incomingDirection.x * cosA - this->incomingDirection.y * sinA;
-                    const Ogre::Real newDh = this->incomingDirection.x * sinA + this->incomingDirection.y * cosA;
-
-                    currentPos.x = startPos3.x + newDx * candDist;
-                    currentPos.y = startHeight + newDh * candDist;
-                }
-            }
-        }
+        // REMOVED: the Max Turn Angle drag clamp.
+        //
+        // It used to rotate the dragged endpoint back onto an allowed cone around the
+        // previous segment's direction whenever the turn exceeded Max Turn Angle. That is
+        // exactly the "strange offset once some angle is exceeded" seen while drawing a
+        // loop: the preview endpoint silently stops following the mouse and swings to the
+        // cone boundary instead, so each segment of the loop lands somewhere the user did
+        // not point at.
+        //
+        // Its original justification was that a sharp reversal would self-intersect the
+        // fixed-depth extrusion, so it had to be made undrawable. That is no longer true:
+        // generatePlatformBox miters along the path normal now, and rebuildMesh classifies
+        // each waypoint by its real turn angle - a bend is swept as one continuous run, and
+        // only a near-180 degree hairpin is cut into two capped runs. The geometry copes
+        // with any turn the user can draw, so nothing needs to be forbidden at drag time.
 
         PlatformControlPoint endPoint;
         endPoint.position = currentPos;
@@ -1265,38 +1161,12 @@ namespace NOWA
 
             this->buildState = BuildState::DRAGGING;
             this->lastValidPosition = startPoint.position;
-
-            // Same chain-continuation case as mousePressed's Shift-click branch - the
-            // segment just pushed above is now the "incoming" one to cap the turn angle
-            // against.
-            const auto& justConfirmed = this->platformSegments.back();
-            if (justConfirmed.controlPoints.size() >= 2)
-            {
-                const auto& cpA = justConfirmed.controlPoints[justConfirmed.controlPoints.size() - 2];
-                const auto& cpB = justConfirmed.controlPoints.back();
-                Ogre::Vector3 dir(cpB.position.x - cpA.position.x, cpB.smoothedHeight - cpA.smoothedHeight, 0.0f);
-                if (dir.squaredLength() > 1e-8f)
-                {
-                    dir.normalise();
-                    this->incomingDirection = dir;
-                    this->hasIncomingDirection = true;
-                }
-                else
-                {
-                    this->hasIncomingDirection = false;
-                }
-            }
-            else
-            {
-                this->hasIncomingDirection = false;
-            }
         }
         else
         {
             this->buildState = BuildState::IDLE;
             this->currentSegment.controlPoints.clear();
             this->isExtendingFromSegment = false;
-            this->hasIncomingDirection = false;
             this->removeInputListener();
         }
 
@@ -1338,7 +1208,6 @@ namespace NOWA
         this->destroyPreviewMesh();
         this->buildState = BuildState::IDLE;
         this->currentSegment.controlPoints.clear();
-        this->hasIncomingDirection = false;
 
         // Reset modifier key flags when canceling
         this->isShiftPressed = false;
@@ -1460,16 +1329,6 @@ namespace NOWA
         }
 
         Ogre::Vector3 originToUse = this->platformOrigin;
-        // See the JunctionPoint::patchCorners comment in the header: depth is orthogonal to
-        // the whole (x, height) path plane and uniform everywhere, so it never needs a
-        // miter/trim adjustment the way road WIDTH does (computeMiterData has no equivalent
-        // here at all). The dimension that CAN make a junction fan look degenerate at a sharp
-        // angle is platformHeight (the slab's vertical extent), so that plays the role
-        // ProceduralRoadComponent's totalHalfW (roadWidth+edgeWidth) plays in the identical
-        // formula below.
-        const Ogre::Real halfH = this->platformHeight->getReal() * 0.5f;
-        const Ogre::Real baseTrimDist = this->platformHeight->getReal() * 1.6f;
-
         struct QKey
         {
             int ix, ih;
@@ -1546,70 +1405,11 @@ namespace NOWA
                 {
                     dir.normalise();
                 }
+                // Kept purely so the [JUNCTION-DEBUG] log can report which way each arm
+                // leaves the junction. The angle-driven armTrimDists that used to be
+                // computed here are gone with the trimming itself - arms are no longer cut
+                // back at a junction at all (see generateJunctionPatch).
                 jp.armDirs.push_back(dir);
-                jp.armTrimDists.push_back(baseTrimDist);
-            }
-
-            const size_t nArms = jp.armDirs.size();
-            if (nArms >= 2)
-            {
-                std::vector<std::pair<float, size_t>> angleIdx;
-                angleIdx.reserve(nArms);
-                for (size_t ai = 0; ai < nArms; ++ai)
-                {
-                    float ang = std::atan2(jp.armDirs[ai].y, jp.armDirs[ai].x);
-                    angleIdx.push_back({ang, ai});
-                }
-                std::sort(angleIdx.begin(), angleIdx.end());
-
-                for (size_t k = 0; k < nArms; ++k)
-                {
-                    const size_t ai = angleIdx[k].second;
-                    const size_t kPrev = (k + nArms - 1) % nArms;
-                    const size_t kNext = (k + 1) % nArms;
-
-                    float gapPrev = angleIdx[k].first - angleIdx[kPrev].first;
-                    if (gapPrev <= 0.0f)
-                    {
-                        gapPrev += Ogre::Math::TWO_PI;
-                    }
-                    float gapNext = angleIdx[kNext].first - angleIdx[k].first;
-                    if (gapNext <= 0.0f)
-                    {
-                        gapNext += Ogre::Math::TWO_PI;
-                    }
-
-                    const float minGap = std::min(gapPrev, gapNext);
-                    float safeDist = halfH / std::max(0.01f, std::tan(minGap * 0.5f));
-                    safeDist = Ogre::Math::Clamp(safeDist * 1.1f, baseTrimDist, this->platformHeight->getReal() * 6.0f);
-                    jp.armTrimDists[ai] = safeDist;
-                }
-
-                // BUGFIX: each arm used to keep its OWN trim distance, computed only from its
-                // own tightest neighbour angle. That leaves arms at very different radii from
-                // the centre whenever the angular gaps are uneven (e.g. two arms clustered
-                // ~28 degrees apart alongside a third arm ~140-190 degrees away, confirmed via
-                // [JUNCTION-DEBUG] logs) - the clustered arms get trimmed far out for their
-                // tight mutual angle, while the lone far arm barely gets trimmed at all. With
-                // corners at such different radii, the centre point can end up OUTSIDE the
-                // polygon the corners form (verified directly against a logged case: the
-                // centre sat on the wrong side of the wide arm's own outer edge). Once that
-                // happens, the wedge fan from the centre is no longer a valid non-overlapping
-                // star decomposition - the wide wedge actually overlaps the narrow one, which
-                // is the grass/stone z-fighting reported. Equalizing every arm of a junction to
-                // the SAME (largest-required) trim distance puts every corner at equal radius,
-                // which keeps the centre inside the polygon for any angular gap up to 180
-                // degrees - covering every case except a single, still-extreme >180 degree gap
-                // between just two arms.
-                float maxTrimDist = 0.0f;
-                for (size_t ai = 0; ai < nArms; ++ai)
-                {
-                    maxTrimDist = std::max(maxTrimDist, jp.armTrimDists[ai]);
-                }
-                for (size_t ai = 0; ai < nArms; ++ai)
-                {
-                    jp.armTrimDists[ai] = maxTrimDist;
-                }
             }
 
             junctions.push_back(jp);
@@ -1622,28 +1422,16 @@ namespace NOWA
             junctionByKey[k] = ji;
         }
 
-        auto findArmIdx = [&](size_t ji, const Ogre::Vector3& outwardDir) -> int
-        {
-            float bestDot = -2.0f;
-            int bestIdx = 0;
-            for (size_t ai = 0; ai < junctions[ji].armDirs.size(); ++ai)
-            {
-                float dot = outwardDir.dotProduct(junctions[ji].armDirs[ai]);
-                if (dot > bestDot)
-                {
-                    bestDot = dot;
-                    bestIdx = static_cast<int>(ai);
-                }
-            }
-            return bestIdx;
-        };
-
         // Records the trimmed-boundary point for one arm, as (x, height, 0) - one point per
         // arm, unlike ProceduralRoadComponent's two (left/right width-offset corners) per
-        // arm - see the header comment on JunctionPoint::patchCorners for why.
-        auto storePatchCorner = [&](size_t ji, Ogre::Real x, Ogre::Real height)
+        // arm - see the header comment on JunctionPoint::patchCorners for why. depthAtArm is
+        // whatever depth THIS arm's own connecting geometry actually uses there (see
+        // JunctionPoint::armDepths) - lets the junction fan match each arm's real footprint
+        // instead of assuming one uniform depth for the whole fan.
+        auto storePatchCorner = [&](size_t ji, Ogre::Real x, Ogre::Real height, Ogre::Real depthAtArm)
         {
             junctions[ji].patchCorners.push_back(Ogre::Vector3(x, height, 0.0f));
+            junctions[ji].armDepths.push_back(depthAtArm);
         };
 
         // ── Chain building (undirected graph walk, handles 2-way snap joins) ────
@@ -1678,237 +1466,16 @@ namespace NOWA
             return distinctSegs.size();
         };
 
-        // ── Pre-pass: shrink armTrimDists for junctions with a short connecting chain ──
-        // BUGFIX: every arm at a junction gets equalized to the SAME trim distance above
-        // (see "Equalizing every arm" comment) purely from angle - that's what keeps every
-        // corner at the same radius, which is what makes the fan a valid non-overlapping
-        // star around the centre. Further down, each chain ALSO independently caps its own
-        // front/back trim to 90% of its own length (a short chain can't reach a trim
-        // distance further than it is long). That per-chain cap only ever adjusted a LOCAL
-        // copy of the distance for that one chain - it was never written back into the
-        // shared per-junction armTrimDists array. So a short, freshly-drawn connecting
-        // segment (exactly what creating a new junction by dragging a short link produces)
-        // ends up trimmed much closer to the centre than its longer neighbouring arms at
-        // the very same junction, which still use the old, larger equalized value. That
-        // breaks the equal-radius invariant right when it matters most: the corners no
-        // longer form a valid star around the centre, and the fan wedges start overlapping
-        // each other and the arms' own geometry - the streaky/flickering mess reported,
-        // appearing right after a junction is freshly created.
-        //
-        // Fix: walk every chain ONCE up front (raw polyline length only - no smoothing or
-        // subdivision needed just to size a cap), shrink the connected arm(s)' SHARED
-        // armTrimDists down to what that chain can actually support, then take the MIN
-        // across every arm belonging to each affected junction so every corner ends up back
-        // on one consistent (now safe) radius, instead of drifting apart per-chain again.
-        {
-            std::vector<bool> processedForLength(this->platformSegments.size(), false);
-
-            for (size_t i = 0; i < this->platformSegments.size(); ++i)
-            {
-                if (true == processedForLength[i])
-                {
-                    continue;
-                }
-
-                std::vector<std::pair<size_t, bool>> chainIndices;
-                chainIndices.push_back({i, false});
-                processedForLength[i] = true;
-
-                {
-                    bool extending = true;
-                    while (true == extending)
-                    {
-                        extending = false;
-                        const PlatformSegment& tailSeg = this->platformSegments[chainIndices.back().first];
-                        const bool tailReversed = chainIndices.back().second;
-                        const PlatformControlPoint& tailCp = tailReversed ? tailSeg.controlPoints.front() : tailSeg.controlPoints.back();
-                        QKey tailKey{quantise(tailCp.position.x), quantise(tailCp.rawHeight)};
-                        if (distinctCountAt(tailKey) >= 3)
-                        {
-                            break;
-                        }
-                        auto it = pointSegs.find(tailKey);
-                        if (it == pointSegs.end())
-                        {
-                            break;
-                        }
-                        for (const auto& entry : it->second)
-                        {
-                            const size_t nextIdx = entry.first;
-                            const bool nextTouchesViaFront = entry.second;
-                            if (true == processedForLength[nextIdx])
-                            {
-                                continue;
-                            }
-                            const bool nextReversed = !nextTouchesViaFront;
-                            chainIndices.push_back({nextIdx, nextReversed});
-                            processedForLength[nextIdx] = true;
-                            extending = true;
-                            break;
-                        }
-                    }
-                }
-                {
-                    bool extending = true;
-                    while (true == extending)
-                    {
-                        extending = false;
-                        const PlatformSegment& headSeg = this->platformSegments[chainIndices.front().first];
-                        const bool headReversed = chainIndices.front().second;
-                        const PlatformControlPoint& headCp = headReversed ? headSeg.controlPoints.back() : headSeg.controlPoints.front();
-                        QKey headKey{quantise(headCp.position.x), quantise(headCp.rawHeight)};
-                        if (distinctCountAt(headKey) >= 3)
-                        {
-                            break;
-                        }
-                        auto it = pointSegs.find(headKey);
-                        if (it == pointSegs.end())
-                        {
-                            break;
-                        }
-                        for (const auto& entry : it->second)
-                        {
-                            const size_t nextIdx = entry.first;
-                            const bool nextTouchesViaFront = entry.second;
-                            if (true == processedForLength[nextIdx])
-                            {
-                                continue;
-                            }
-                            const bool nextReversed = nextTouchesViaFront;
-                            chainIndices.insert(chainIndices.begin(), {nextIdx, nextReversed});
-                            processedForLength[nextIdx] = true;
-                            extending = true;
-                            break;
-                        }
-                    }
-                }
-
-                std::vector<PlatformControlPoint> rawWaypoints;
-                for (size_t ci = 0; ci < chainIndices.size(); ++ci)
-                {
-                    const PlatformSegment& seg = this->platformSegments[chainIndices[ci].first];
-                    const bool reversed = chainIndices[ci].second;
-                    if (false == reversed)
-                    {
-                        for (const auto& cp : seg.controlPoints)
-                        {
-                            if (false == rawWaypoints.empty() && pathDistance2D(rawWaypoints.back().position.x, rawWaypoints.back().rawHeight, cp.position.x, cp.rawHeight) < 0.01f)
-                            {
-                                continue;
-                            }
-                            rawWaypoints.push_back(cp);
-                        }
-                    }
-                    else
-                    {
-                        for (size_t pi = seg.controlPoints.size(); pi-- > 0;)
-                        {
-                            const auto& cp = seg.controlPoints[pi];
-                            if (false == rawWaypoints.empty() && pathDistance2D(rawWaypoints.back().position.x, rawWaypoints.back().rawHeight, cp.position.x, cp.rawHeight) < 0.01f)
-                            {
-                                continue;
-                            }
-                            rawWaypoints.push_back(cp);
-                        }
-                    }
-                }
-
-                if (rawWaypoints.size() < 2)
-                {
-                    continue;
-                }
-
-                Ogre::Real chainLen = 0.0f;
-                for (size_t pi = 0; pi + 1 < rawWaypoints.size(); ++pi)
-                {
-                    chainLen += pathDistance2D(rawWaypoints[pi].position.x, rawWaypoints[pi].rawHeight, rawWaypoints[pi + 1].position.x, rawWaypoints[pi + 1].rawHeight);
-                }
-
-                bool preHasFront = false;
-                size_t preFrontJi = 0;
-                int preFrontAi = 0;
-                {
-                    QKey frontKey{quantise(rawWaypoints.front().position.x), quantise(rawWaypoints.front().rawHeight)};
-                    auto it = junctionByKey.find(frontKey);
-                    if (it != junctionByKey.end())
-                    {
-                        preHasFront = true;
-                        preFrontJi = it->second;
-                        Ogre::Vector3 outDir = Ogre::Vector3(rawWaypoints[1].position.x - rawWaypoints.front().position.x, rawWaypoints[1].rawHeight - rawWaypoints.front().rawHeight, 0.0f);
-                        if (outDir.squaredLength() > 1e-6f)
-                        {
-                            outDir.normalise();
-                        }
-                        preFrontAi = findArmIdx(preFrontJi, outDir);
-                    }
-                }
-                bool preHasBack = false;
-                size_t preBackJi = 0;
-                int preBackAi = 0;
-                {
-                    QKey backKey{quantise(rawWaypoints.back().position.x), quantise(rawWaypoints.back().rawHeight)};
-                    auto it = junctionByKey.find(backKey);
-                    if (it != junctionByKey.end())
-                    {
-                        preHasBack = true;
-                        preBackJi = it->second;
-                        const size_t n = rawWaypoints.size();
-                        Ogre::Vector3 outDir = Ogre::Vector3(rawWaypoints[n - 2].position.x - rawWaypoints.back().position.x, rawWaypoints[n - 2].rawHeight - rawWaypoints.back().rawHeight, 0.0f);
-                        if (outDir.squaredLength() > 1e-6f)
-                        {
-                            outDir.normalise();
-                        }
-                        preBackAi = findArmIdx(preBackJi, outDir);
-                    }
-                }
-
-                const Ogre::Real allowed = chainLen * 0.9f;
-                if (true == preHasFront && true == preHasBack)
-                {
-                    const Ogre::Real requested = junctions[preFrontJi].armTrimDists[preFrontAi] + junctions[preBackJi].armTrimDists[preBackAi];
-                    if (requested > allowed && requested > 0.001f)
-                    {
-                        const Ogre::Real scale = allowed / requested;
-                        junctions[preFrontJi].armTrimDists[preFrontAi] *= scale;
-                        junctions[preBackJi].armTrimDists[preBackAi] *= scale;
-                    }
-                }
-                else
-                {
-                    if (true == preHasFront)
-                    {
-                        junctions[preFrontJi].armTrimDists[preFrontAi] = std::min(junctions[preFrontJi].armTrimDists[preFrontAi], allowed);
-                    }
-                    if (true == preHasBack)
-                    {
-                        junctions[preBackJi].armTrimDists[preBackAi] = std::min(junctions[preBackJi].armTrimDists[preBackAi], allowed);
-                    }
-                }
-            }
-
-            // Re-establish the equal-radius invariant: any arm that just got shrunk pulls
-            // every other arm at the SAME junction down to match, so every corner stays on
-            // one consistent radius (a valid star around the centre) instead of drifting
-            // apart per-chain again.
-            for (auto& jpEntry : junctions)
-            {
-                if (jpEntry.armTrimDists.empty())
-                {
-                    continue;
-                }
-                Ogre::Real minDist = jpEntry.armTrimDists[0];
-                for (Ogre::Real d : jpEntry.armTrimDists)
-                {
-                    minDist = std::min(minDist, d);
-                }
-                for (Ogre::Real& d : jpEntry.armTrimDists)
-                {
-                    d = minDist;
-                }
-            }
-        }
-
         std::vector<bool> processed(this->platformSegments.size(), false);
+
+        // Per-junction arm counter, used to nest each arm's depth slightly (see the
+        // g_platformRunDepthOverride assignment further down). The first arm registered at a
+        // junction keeps the full platform depth, every following one is inset by 1 cm, so no
+        // two arms of the same junction share the z = +/- depth/2 planes their front and back
+        // faces live on. Without this, two arms whose footprints overlap in XY - which is now
+        // the normal case, since arms are no longer trimmed back - would z-fight on exactly
+        // those two planes.
+        std::map<size_t, int> junctionArmCounter;
 
         for (size_t i = 0; i < this->platformSegments.size(); ++i)
         {
@@ -2038,87 +1605,201 @@ namespace NOWA
                 }
             }
 
-            // ── Direction-reversal split points (from the COARSE waypoints) ──────
-            // Used further down to cut the dense path into monotonic-X runs. Computed here,
-            // from chainWaypoints (the actual authored waypoints) rather than from the dense
-            // resampled/curved path, because a dense Catmull-Rom resample can have tiny local
-            // dx wiggles (numerical noise, or a legitimately near-vertical steep stretch)
-            // that flip sign between two adjacent samples without the path actually reversing
-            // direction in any way the user placed - checking pointwise on the dense path
-            // caused spurious splits (visible as an unwanted "Knick" mid-ramp on an otherwise
-            // smooth curve, since it inserted a real end-cap pair there). The coarse waypoints
-            // are unambiguous - they're exactly what the user clicked - so a sign flip there
-            // is always a genuine reversal.
-            std::vector<Ogre::Real> reversalWorldX;
+            if (chainWaypoints.size() < 2)
+            {
+                continue;
+            }
+
+            // ── Classify every interior waypoint by its TURN ANGLE ───────────────
+            // REPLACES the old X-sign-flip reversal detection. That test was the last
+            // leftover of the road model, where the path is a height function over a 1D
+            // horizontal axis: "the path reversed" was taken to mean "dx changed sign".
+            // Now that generatePlatformBox extrudes along the path normal (see the miter
+            // rework there), the path is genuinely 2D and dx tells us nothing useful - a
+            // vertical wall has dx = 0 throughout, so noise decided whether it counted as a
+            // reversal, and a real 90 degree corner between a vertical and a horizontal leg
+            // registered as no turn at all.
+            //
+            // The angle between the incoming and outgoing tangent is the correct measure,
+            // and it splits into three cases:
+            //   SMOOTH  (turn <  cornerTurnThresholdDeg) - Catmull-Rom curves through it.
+            //   CORNER  (turn >= cornerTurnThresholdDeg) - kept as an exact vertex. The
+            //           curve is cut here so it does not round the corner off, but the path
+            //           stays CONTINUOUS: the mitered extrusion joins the two legs by
+            //           itself, which is exactly what an L-shaped wall-into-ceiling needs.
+            //   REVERSAL(turn >= reversalTurnThresholdDeg) - a genuine hairpin. The miter
+            //           cannot resolve a near-180 degree fold, so the chain is cut into two
+            //           separately meshed runs here, each with its own end cap and a 1 cm
+            //           depth nesting offset (unchanged from before).
+            //
+            // TUNING: cornerTurnThresholdDeg decides what still counts as "a curve the user
+            // drew" versus "a corner the user drew". It has to sit above the per-waypoint
+            // turn of a deliberately smooth arc (a hand-placed loop turns roughly 30-45
+            // degrees per waypoint) and below a structural corner (90 degrees). 60 is the
+            // midpoint of that gap.
+            const Ogre::Real cornerTurnThresholdDeg = 60.0f;
+            const Ogre::Real reversalTurnThresholdDeg = 160.0f;
+
+            std::vector<size_t> cornerWaypoints;   // indices into chainWaypoints - curve is cut, path stays continuous
+            std::vector<size_t> reversalWaypoints; // indices into chainWaypoints - mesh is cut into separate runs
             for (size_t wi = 1; wi + 1 < chainWaypoints.size(); ++wi)
             {
-                const Ogre::Real dxIn = chainWaypoints[wi].position.x - chainWaypoints[wi - 1].position.x;
-                const Ogre::Real dxOut = chainWaypoints[wi + 1].position.x - chainWaypoints[wi].position.x;
-                if (dxIn * dxOut < 0.0f)
+                Ogre::Vector2 tangentIn(chainWaypoints[wi].position.x - chainWaypoints[wi - 1].position.x, chainWaypoints[wi].smoothedHeight - chainWaypoints[wi - 1].smoothedHeight);
+                Ogre::Vector2 tangentOut(chainWaypoints[wi + 1].position.x - chainWaypoints[wi].position.x, chainWaypoints[wi + 1].smoothedHeight - chainWaypoints[wi].smoothedHeight);
+
+                if (tangentIn.squaredLength() < 1e-8f || tangentOut.squaredLength() < 1e-8f)
                 {
-                    reversalWorldX.push_back(chainWaypoints[wi].position.x);
+                    continue;
+                }
+
+                tangentIn.normalise();
+                tangentOut.normalise();
+
+                const Ogre::Real cosTurn = Ogre::Math::Clamp(tangentIn.dotProduct(tangentOut), -1.0f, 1.0f);
+                const Ogre::Real turnDeg = Ogre::Math::RadiansToDegrees(std::acos(cosTurn));
+
+                if (turnDeg >= reversalTurnThresholdDeg)
+                {
+                    reversalWaypoints.push_back(wi);
+                    cornerWaypoints.push_back(wi);
+                }
+                else if (turnDeg >= cornerTurnThresholdDeg)
+                {
+                    cornerWaypoints.push_back(wi);
                 }
             }
 
-            // ── Build final path ────────────────────────────────────────────────
+            // ── Build final path, one smooth group at a time ─────────────────────
+            // A "group" is a maximal stretch of waypoints containing no corner in its
+            // interior. Curving, uniform resampling and height smoothing all run PER GROUP,
+            // so a corner waypoint is always the first or last point of its group - and all
+            // three of those steps leave first and last points exactly where they are. That
+            // is what keeps an authored corner sharp: previously the whole chain went
+            // through one Catmull-Rom pass, which threaded a smooth curve through the corner
+            // and turned a vertical-plus-horizontal L into a single banana-shaped bend.
+            //
+            // The groups are concatenated into ONE finalPath (the shared corner point is not
+            // duplicated), so the result is still a single continuous path. Only a REVERSAL
+            // additionally cuts the mesh, and its index in finalPath is recorded directly
+            // here - which replaces the old two-pass "find the authored corner's nearest
+            // dense sample, then refine to the true local X extremum" search entirely. That
+            // search existed only because the split points were expressed as world X values;
+            // knowing the index at construction time is both exact and far simpler.
             std::vector<PlatformControlPoint> finalPath;
+            std::vector<size_t> reversalPathIndices;
 
-            if (chainWaypoints.size() >= 3)
             {
-                const int subdivisions = this->curveSubdivisions->getInt();
-                std::vector<PlatformControlPoint> densePath;
-                densePath.reserve((chainWaypoints.size() - 1) * static_cast<size_t>(subdivisions) + 1);
-
-                for (size_t pi = 0; pi < chainWaypoints.size() - 1; ++pi)
+                std::vector<size_t> groupBounds;
+                groupBounds.push_back(0);
+                for (size_t ci : cornerWaypoints)
                 {
-                    for (int j = 0; j < subdivisions; ++j)
+                    groupBounds.push_back(ci);
+                }
+                groupBounds.push_back(chainWaypoints.size() - 1);
+
+                const int subdivisions = this->curveSubdivisions->getInt();
+
+                for (size_t gi = 0; gi + 1 < groupBounds.size(); ++gi)
+                {
+                    const size_t lo = groupBounds[gi];
+                    const size_t hi = groupBounds[gi + 1];
+                    if (hi <= lo)
                     {
-                        Ogre::Real t = static_cast<Ogre::Real>(j) / subdivisions;
-                        Ogre::Real globalT = static_cast<Ogre::Real>(pi) + t;
+                        continue;
+                    }
 
-                        // Interpolates x AND height TOGETHER - see evaluateCatmullRom's own
-                        // comment for why there is no independent oracle to consult
-                        // afterward the way ProceduralRoadComponent consults terrain.
-                        Ogre::Vector2 xh = this->evaluateCatmullRom(chainWaypoints, globalT);
+                    std::vector<PlatformControlPoint> groupWaypoints(chainWaypoints.begin() + lo, chainWaypoints.begin() + hi + 1);
 
-                        PlatformControlPoint cp;
-                        cp.position = Ogre::Vector3(xh.x, 0.0f, 0.0f);
-                        cp.rawHeight = (pi == 0 && j == 0) ? chainWaypoints.front().smoothedHeight : xh.y;
-                        cp.smoothedHeight = cp.rawHeight;
-                        cp.distFromStart = 0.0f;
-                        densePath.push_back(cp);
+                    std::vector<PlatformControlPoint> groupPath;
+                    if (groupWaypoints.size() >= 3)
+                    {
+                        std::vector<PlatformControlPoint> densePath;
+                        densePath.reserve((groupWaypoints.size() - 1) * static_cast<size_t>(subdivisions) + 1);
+
+                        for (size_t pi = 0; pi + 1 < groupWaypoints.size(); ++pi)
+                        {
+                            for (int j = 0; j < subdivisions; ++j)
+                            {
+                                Ogre::Real t = static_cast<Ogre::Real>(j) / subdivisions;
+                                Ogre::Real globalT = static_cast<Ogre::Real>(pi) + t;
+
+                                // Interpolates x AND height TOGETHER - see evaluateCatmullRom's
+                                // own comment for why there is no independent oracle to consult
+                                // afterward the way ProceduralRoadComponent consults terrain.
+                                Ogre::Vector2 xh = this->evaluateCatmullRom(groupWaypoints, globalT);
+
+                                PlatformControlPoint cp;
+                                cp.position = Ogre::Vector3(xh.x, 0.0f, 0.0f);
+                                cp.rawHeight = xh.y;
+                                if (0 == pi && 0 == j)
+                                {
+                                    cp.rawHeight = groupWaypoints.front().smoothedHeight;
+                                }
+                                cp.smoothedHeight = cp.rawHeight;
+                                cp.distFromStart = 0.0f;
+                                densePath.push_back(cp);
+                            }
+                        }
+                        PlatformControlPoint lastCp = groupWaypoints.back();
+                        lastCp.position.y = 0.0f;
+                        densePath.push_back(lastCp);
+
+                        // Reparametrize to uniform arc-length spacing - fixes the same
+                        // texture-stretching-on-curves issue ProceduralRoadComponent's
+                        // resamplePathUniformly was written for. BUGFIX: the step must scale
+                        // with curveSubdivisions, not be a hardcoded meter value - a fixed step
+                        // (e.g. 1m) silently caps the final mesh resolution at ~1 vertex/meter
+                        // regardless of how high Curve Subdivisions is set, which is exactly the
+                        // faceted/angular look on tight curves even at Curve Subdivisions=50.
+                        Ogre::Real totalWaypointLength = 0.0f;
+                        for (size_t pi = 0; pi + 1 < groupWaypoints.size(); ++pi)
+                        {
+                            totalWaypointLength += pathDistance2D(groupWaypoints[pi].position.x, groupWaypoints[pi].rawHeight, groupWaypoints[pi + 1].position.x, groupWaypoints[pi + 1].rawHeight);
+                        }
+                        const int totalSamples = std::max(1, static_cast<int>(groupWaypoints.size() - 1) * subdivisions);
+                        const Ogre::Real resampleStep = std::max(0.02f, totalWaypointLength / static_cast<Ogre::Real>(totalSamples));
+                        groupPath = this->resamplePathUniformly(densePath, resampleStep);
+                    }
+                    else
+                    {
+                        groupPath = this->subdivideWithHeightInterpolation(groupWaypoints);
+                    }
+
+                    // ── Height smoothing (per group - corners are its pinned endpoints) ──
+                    this->smoothHeightTransitions(groupPath);
+
+                    if (true == finalPath.empty())
+                    {
+                        finalPath = groupPath;
+                    }
+                    else
+                    {
+                        // The shared corner point is already the last entry of finalPath.
+                        // Record it as a mesh cut only if this boundary was classified as a
+                        // genuine reversal, not merely a corner.
+                        const size_t joinIndex = finalPath.size() - 1;
+                        bool isReversal = false;
+                        for (size_t rw : reversalWaypoints)
+                        {
+                            if (rw == lo)
+                            {
+                                isReversal = true;
+                                break;
+                            }
+                        }
+                        if (true == isReversal)
+                        {
+                            reversalPathIndices.push_back(joinIndex);
+                        }
+                        finalPath.insert(finalPath.end(), groupPath.begin() + 1, groupPath.end());
                     }
                 }
-                PlatformControlPoint lastCp = chainWaypoints.back();
-                lastCp.position.y = 0.0f;
-                densePath.push_back(lastCp);
-
-                // Reparametrize to uniform arc-length spacing - fixes the same
-                // texture-stretching-on-curves issue ProceduralRoadComponent's
-                // resamplePathUniformly was written for. BUGFIX: the step must scale with
-                // curveSubdivisions, not be a hardcoded meter value - a fixed step (e.g. 1m)
-                // silently caps the final mesh resolution at ~1 vertex/meter regardless of
-                // how high Curve Subdivisions is set, which is exactly the faceted/angular
-                // look on tight curves even at Curve Subdivisions=50. Deriving the step from
-                // the average waypoint-span length divided by subdivisions keeps the final
-                // vertex density matching what the dense Catmull-Rom sampling above already
-                // computed, so the setting actually controls final smoothness.
-                Ogre::Real totalWaypointLength = 0.0f;
-                for (size_t pi = 0; pi + 1 < chainWaypoints.size(); ++pi)
-                {
-                    totalWaypointLength += pathDistance2D(chainWaypoints[pi].position.x, chainWaypoints[pi].rawHeight, chainWaypoints[pi + 1].position.x, chainWaypoints[pi + 1].rawHeight);
-                }
-                const int totalSamples = std::max(1, static_cast<int>(chainWaypoints.size() - 1) * subdivisions);
-                const Ogre::Real resampleStep = std::max(0.02f, totalWaypointLength / static_cast<Ogre::Real>(totalSamples));
-                finalPath = this->resamplePathUniformly(densePath, resampleStep);
             }
-            else
+
+            if (finalPath.size() < 2)
             {
-                finalPath = this->subdivideWithHeightInterpolation(chainWaypoints);
+                continue;
             }
-
-            // ── Height smoothing ────────────────────────────────────────────────
-            this->smoothHeightTransitions(finalPath);
 
             // ── UV distance ─────────────────────────────────────────────────────
             Ogre::Real accumDist = 0.0f;
@@ -2131,22 +1812,18 @@ namespace NOWA
                 finalPath[pi].distFromStart = accumDist;
             }
 
-            // ── Determine front/back junction trim distances up front ───────────
-            // BUGFIX: previously each trim block ran independently with no knowledge of
-            // the other. On a SHORT chain connecting two junctions close together (or a
-            // junction whose arms are near-parallel, which pushes armTrimDists toward its
-            // max clamp), the front and back trims could individually be reasonable but
-            // together exceed the chain's own length - trimming past each other and
-            // producing inverted/self-intersecting geometry right at the junction (the
-            // "overlapping triangles" / "inner side flipping" seen there). Both distances
-            // are now computed first and scaled down together if they would cross over.
+            // ── Junction membership of this chain's two ends ─────────────────────
+            // Only WHETHER each end sits on a junction (and which one) matters now. The
+            // trim-distance machinery that used to live here - a per-arm distance derived
+            // from the angular gap to the neighbouring arms, then capped against the chain's
+            // own length so the two ends could not trim past each other - is gone with the
+            // trimming itself. Arms run all the way into the junction and simply overlap
+            // (see generateJunctionPatch for why that is correct here).
             bool hasFrontJunction = false;
             size_t frontJi = 0;
-            Ogre::Real frontTrimDist = 0.0f;
 
             bool hasBackJunction = false;
             size_t backJi = 0;
-            Ogre::Real backTrimDist = 0.0f;
 
             {
                 QKey frontKey{quantise(chainWaypoints.front().position.x), quantise(chainWaypoints.front().rawHeight)};
@@ -2155,14 +1832,6 @@ namespace NOWA
                 {
                     hasFrontJunction = true;
                     frontJi = it->second;
-                    Ogre::Vector3 outDir = (chainWaypoints.size() >= 2) ? Ogre::Vector3(chainWaypoints[1].position.x - chainWaypoints.front().position.x, chainWaypoints[1].smoothedHeight - chainWaypoints.front().smoothedHeight, 0.0f)
-                                                                        : Ogre::Vector3(chainWaypoints.back().position.x - chainWaypoints.front().position.x, chainWaypoints.back().smoothedHeight - chainWaypoints.front().smoothedHeight, 0.0f);
-                    if (outDir.squaredLength() > 1e-6f)
-                    {
-                        outDir.normalise();
-                    }
-                    const int ai = findArmIdx(frontJi, outDir);
-                    frontTrimDist = junctions[frontJi].armTrimDists[ai];
                 }
             }
             {
@@ -2172,133 +1841,88 @@ namespace NOWA
                 {
                     hasBackJunction = true;
                     backJi = it->second;
-                    const size_t cwSize = chainWaypoints.size();
-                    Ogre::Vector3 outDir = (cwSize >= 2) ? Ogre::Vector3(chainWaypoints[cwSize - 2].position.x - chainWaypoints.back().position.x, chainWaypoints[cwSize - 2].smoothedHeight - chainWaypoints.back().smoothedHeight, 0.0f)
-                                                         : Ogre::Vector3(chainWaypoints.front().position.x - chainWaypoints.back().position.x, chainWaypoints.front().smoothedHeight - chainWaypoints.back().smoothedHeight, 0.0f);
-                    if (outDir.squaredLength() > 1e-6f)
-                    {
-                        outDir.normalise();
-                    }
-                    const int ai = findArmIdx(backJi, outDir);
-                    backTrimDist = junctions[backJi].armTrimDists[ai];
                 }
             }
 
-            // BUGFIX: this only ever capped the COMBINED front+back trim against the chain's
-            // length - a chain with a junction at only ONE end had no such cap at all. The
-            // angle-based armTrimDists formula can demand a large trim distance when two arms
-            // meet at a narrow angle (e.g. ~3m for a ~22 degree gap) completely independent of
-            // how long the actual arm is; if the arm is shorter than that, the erase-loop below
-            // can only remove points down to a minimum of 2, and if even the remaining point is
-            // still closer to the junction centre than the requested trim, the "if (d >
-            // myTrimDist * 1.001f)" check below is false, so NO lerp happens at all - the
-            // corner is left sitting wherever the arm's own geometry ends, silently closer to
-            // the junction than the fan assumes. The fan then has no way to know the clearance
-            // it was sized for wasn't actually honoured, and the arm's own box overlaps into
-            // the fan's wedge right at that corner - exactly the streaky/z-fighting mess
-            // reported. Capping every individual trim distance to the arm's own chain length
-            // (not only the combined case) means the corner can get AT MOST close to the arm's
-            // true far end - it can still be less than the ideal clearance for a genuinely too-
-            // short arm, but the fan and the arm agree on where the corner actually is instead
-            // of silently disagreeing.
-            const Ogre::Real totalChainLength = finalPath.back().distFromStart;
-            if (true == hasFrontJunction && true == hasBackJunction)
-            {
-                const Ogre::Real requested = frontTrimDist + backTrimDist;
-                const Ogre::Real allowed = totalChainLength * 0.9f;
-                if (requested > allowed && requested > 0.001f)
-                {
-                    const Ogre::Real scale = allowed / requested;
-                    frontTrimDist *= scale;
-                    backTrimDist *= scale;
-                }
-            }
-            else
-            {
-                if (true == hasFrontJunction)
-                {
-                    frontTrimDist = std::min(frontTrimDist, totalChainLength * 0.9f);
-                }
-                if (true == hasBackJunction)
-                {
-                    backTrimDist = std::min(backTrimDist, totalChainLength * 0.9f);
-                }
-            }
+            const Ogre::Real junctionOvershoot = std::min(0.05f, this->platformHeight->getReal() * 0.1f);
 
-            // ── Trim front at junction ───────────────────────────────────────────
+            int nestLevel = 0;
             if (true == hasFrontJunction)
             {
-                {
-                    const size_t ji = frontJi;
-                    const Ogre::Real myTrimDist = frontTrimDist;
-                    const Ogre::Real jX = junctions[ji].worldPos.x;
-                    const Ogre::Real jH = junctions[ji].worldPos.y;
+                nestLevel = std::max(nestLevel, junctionArmCounter[frontJi]++);
+            }
+            if (true == hasBackJunction)
+            {
+                nestLevel = std::max(nestLevel, junctionArmCounter[backJi]++);
+            }
 
-                    while (finalPath.size() > 2)
+            // ── Snap front endpoint onto the junction and overshoot slightly ─────
+            if (true == hasFrontJunction)
+            {
+                const size_t ji = frontJi;
+                const Ogre::Real jX = junctions[ji].worldPos.x;
+                const Ogre::Real jH = junctions[ji].worldPos.y;
+
+                if (finalPath.size() >= 2)
+                {
+                    // Snap exactly onto the junction centre first. Endpoint detection
+                    // quantises to 0.1, so two arms of the same junction can otherwise sit
+                    // up to that far apart and leave a hairline crack between their slabs.
+                    PlatformControlPoint bp = finalPath.front();
+                    bp.position.x = jX;
+                    bp.smoothedHeight = jH;
+                    bp.rawHeight = jH;
+                    bp.distFromStart = 0.0f;
+                    finalPath.front() = bp;
+
+                    // Then push the endpoint a little PAST the centre, along this arm's own
+                    // outward direction. That direction always points into the interior of the
+                    // union of all arms, so the extra sliver is guaranteed to be buried inside
+                    // solid geometry. This is what keeps this arm's end cap from landing
+                    // coplanar with another arm's end cap on the shared junction plane - the
+                    // one pair the depth nesting cannot separate, since nesting offsets Z
+                    // while the caps are X planes.
+                    Ogre::Vector3 outward(finalPath.front().position.x - finalPath[1].position.x, finalPath.front().smoothedHeight - finalPath[1].smoothedHeight, 0.0f);
+                    if (outward.squaredLength() > 1e-8f)
                     {
-                        const Ogre::Real d = pathDistance2D(finalPath.front().position.x, finalPath.front().smoothedHeight, jX, jH);
-                        if (d < myTrimDist)
-                        {
-                            finalPath.erase(finalPath.begin());
-                        }
-                        else
-                        {
-                            break;
-                        }
+                        outward.normalise();
+                        finalPath.front().position.x += outward.x * junctionOvershoot;
+                        finalPath.front().smoothedHeight += outward.y * junctionOvershoot;
+                        finalPath.front().rawHeight = finalPath.front().smoothedHeight;
                     }
-                    if (finalPath.size() >= 2)
-                    {
-                        const Ogre::Real d = pathDistance2D(finalPath.front().position.x, finalPath.front().smoothedHeight, jX, jH);
-                        if (d > myTrimDist * 1.001f)
-                        {
-                            const Ogre::Real t = (d - myTrimDist) / d;
-                            PlatformControlPoint bp = finalPath.front();
-                            bp.position.x = Ogre::Math::lerp(finalPath.front().position.x, jX, t);
-                            bp.smoothedHeight = Ogre::Math::lerp(finalPath.front().smoothedHeight, jH, t);
-                            bp.rawHeight = bp.smoothedHeight;
-                            bp.distFromStart = 0.0f;
-                            finalPath.front() = bp;
-                        }
-                        storePatchCorner(ji, finalPath.front().position.x, finalPath.front().smoothedHeight);
-                    }
+
+                    storePatchCorner(ji, finalPath.front().position.x, finalPath.front().smoothedHeight, this->platformDepth->getReal());
                 }
             }
 
-            // ── Trim back at junction ───────────────────────────────────────────
+            // ── Snap back endpoint onto the junction and overshoot slightly ──────
             if (true == hasBackJunction)
             {
-                {
-                    const size_t ji = backJi;
-                    const Ogre::Real myTrimDist = backTrimDist;
-                    const Ogre::Real jX = junctions[ji].worldPos.x;
-                    const Ogre::Real jH = junctions[ji].worldPos.y;
+                const size_t ji = backJi;
+                const Ogre::Real jX = junctions[ji].worldPos.x;
+                const Ogre::Real jH = junctions[ji].worldPos.y;
 
-                    while (finalPath.size() > 2)
+                if (finalPath.size() >= 2)
+                {
+                    PlatformControlPoint bp = finalPath.back();
+                    bp.position.x = jX;
+                    bp.smoothedHeight = jH;
+                    bp.rawHeight = jH;
+                    finalPath.back() = bp;
+
+                    const size_t lastIdx = finalPath.size() - 1;
+                    Ogre::Vector3 outward(finalPath[lastIdx].position.x - finalPath[lastIdx - 1].position.x, finalPath[lastIdx].smoothedHeight - finalPath[lastIdx - 1].smoothedHeight, 0.0f);
+                    if (outward.squaredLength() > 1e-8f)
                     {
-                        const Ogre::Real d = pathDistance2D(finalPath.back().position.x, finalPath.back().smoothedHeight, jX, jH);
-                        if (d < myTrimDist)
-                        {
-                            finalPath.pop_back();
-                        }
-                        else
-                        {
-                            break;
-                        }
+                        outward.normalise();
+                        finalPath[lastIdx].position.x += outward.x * junctionOvershoot;
+                        finalPath[lastIdx].smoothedHeight += outward.y * junctionOvershoot;
+                        finalPath[lastIdx].rawHeight = finalPath[lastIdx].smoothedHeight;
                     }
-                    if (finalPath.size() >= 2)
-                    {
-                        const Ogre::Real d = pathDistance2D(finalPath.back().position.x, finalPath.back().smoothedHeight, jX, jH);
-                        if (d > myTrimDist * 1.001f)
-                        {
-                            const Ogre::Real t = (d - myTrimDist) / d;
-                            PlatformControlPoint bp = finalPath.back();
-                            bp.position.x = Ogre::Math::lerp(finalPath.back().position.x, jX, t);
-                            bp.smoothedHeight = Ogre::Math::lerp(finalPath.back().smoothedHeight, jH, t);
-                            bp.rawHeight = bp.smoothedHeight;
-                            finalPath.back() = bp;
-                        }
-                        storePatchCorner(ji, finalPath.back().position.x, finalPath.back().smoothedHeight);
-                    }
+
+                    // Recorded for the [JUNCTION-DEBUG] arm list only - no junction geometry
+                    // is built from these corners any more.
+                    storePatchCorner(ji, finalPath.back().position.x, finalPath.back().smoothedHeight, this->platformDepth->getReal());
                 }
             }
 
@@ -2332,135 +1956,48 @@ namespace NOWA
             }
 
             // ── Generate platform geometry for this chain ───────────────────────
-            // BUGFIX: this used to hand the whole chain to generatePlatformSegment in one
-            // piece. generatePlatformBox extrudes straight down (-Y) from a path that lives
-            // directly in world/local X, with no lateral width to miter against a reversal
-            // (unlike a road, which has a perpendicular offset to miter with) - see the
-            // REVERTED note further down in generatePlatformBox for why a mitered extrusion
-            // was tried and reverted (it broke junction alignment). Smoothing the corner
-            // (the earlier Catmull-Rom change) doesn't help either: whether the corner is a
-            // sharp V or a rounded curve, the moment X-progress reverses sign at an interior
-            // waypoint, the swept quads before and after that point cover overlapping
-            // X-ranges and fold through each other - that's the hole plus the overlapping
-            // triangles the user is seeing, caused purely by "linksrum, dann rechtsrum" in
-            // world X, independent of curvature.
+            // The chain is meshed as ONE piece unless it contains a genuine hairpin
+            // reversal. reversalPathIndices was recorded while the path was built (see the
+            // turn-angle classification above), so the cut points are exact indices into
+            // this path - no searching needed.
             //
-            // Fix: cut the chain into maximal runs that are monotonic in local X, and mesh
-            // each run separately. A run that never reverses X-direction can never fold
-            // through itself, so this removes the self-intersection at its source instead
-            // of patching the fold afterward. Every cut point is duplicated into both
-            // neighbouring runs and gets a real end cap on each side (skipFrontCap/
-            // skipBackCap = false there) using the profile-aware caps added above, so the
-            // two runs meet as a closed corner joint instead of an open fold. Only the two
-            // true ends of the whole chain keep the junction-driven skip flags.
+            // REPLACES: the old "cut into runs monotonic in local X" machinery, plus its two
+            // helper passes (nearest-sample anchor per authored corner, then refinement to
+            // the true local X extremum within a window). All of that existed to compensate
+            // for a straight-down extrusion, which folds through itself the moment X-progress
+            // reverses regardless of how gentle the actual turn is. The mitered extrusion in
+            // generatePlatformBox has no such constraint: it follows the path normal, so an
+            // ordinary bend of any steepness - including a vertical wall, where X does not
+            // progress at all - sweeps cleanly as one continuous run. Only a near-180 degree
+            // fold is genuinely unresolvable by a miter, and that is precisely what the
+            // reversal threshold now selects.
             //
-            // BUGFIX 2: cut points come from reversalWorldX (computed earlier from the
-            // COARSE chainWaypoints), not from re-checking dx sign flips on this dense,
-            // resampled localPath. Checking pointwise here was too sensitive on a finely
-            // subdivided curve (curveSubdivisions can pack many samples into one authored
-            // segment) - a steep or near-vertical stretch can have consecutive dx values so
-            // small that ordinary float noise in the centripetal Catmull-Rom evaluation
-            // flips their sign, triggering a split - and therefore an unwanted extra end-cap
-            // seam - in the middle of a perfectly smooth, never-reversing ramp (the "Knick"
-            // seen mid-slope). The coarse waypoints don't have that problem since they're
-            // exactly what the user placed, so each reversalWorldX entry here is a genuine
-            // direction change; we just need to find where along this dense path it falls.
-            std::vector<std::vector<PlatformControlPoint>> monotonicRuns;
+            // Every cut point is duplicated into both neighbouring runs and gets a real end
+            // cap on each side, so the two runs meet as a closed corner joint instead of an
+            // open fold.
+            std::vector<std::vector<PlatformControlPoint>> meshRuns;
             {
-                // Pass 1: approximate anchor index per reversal, via nearest local-X match
-                // (as before) - this tells us roughly WHICH region of the dense path each
-                // authored reversal falls in.
-                std::vector<size_t> anchorIdx;
-                {
-                    size_t searchStart = 1;
-                    for (Ogre::Real worldX : reversalWorldX)
-                    {
-                        if (searchStart + 1 >= localPath.size())
-                        {
-                            break;
-                        }
-
-                        const Ogre::Real localX = worldX - originToUse.x;
-                        size_t bestIdx = searchStart;
-                        Ogre::Real bestDist = std::abs(localPath[searchStart].position.x - localX);
-                        for (size_t k = searchStart + 1; k + 1 < localPath.size(); ++k)
-                        {
-                            const Ogre::Real d = std::abs(localPath[k].position.x - localX);
-                            if (d < bestDist)
-                            {
-                                bestDist = d;
-                                bestIdx = k;
-                            }
-                        }
-
-                        anchorIdx.push_back(bestIdx);
-                        searchStart = bestIdx + 1;
-                    }
-                }
-
-                // Pass 2: refine each anchor to the TRUE local X-extremum of the dense path
-                // (the actual sample where dx changes sign), searched within a window bounded
-                // by the neighbouring anchors so it can't wander into an unrelated region.
-                //
-                // BUGFIX 3: the anchor alone (nearest sample to the AUTHORED corner's raw
-                // x-position) is only an approximation of where the dense, centripetal
-                // Catmull-Rom curve itself actually turns around. The curve passes through
-                // the authored corner, but a smooth curve threaded through a sharp corner
-                // still swings its true x-turning-point slightly off to one side of that
-                // exact position - close, but frequently not the same sample. Splitting at
-                // the anchor instead of the true turning point leaves a few samples on one
-                // side of the cut that still fold back past the cut internally - a small
-                // residual overlap right at the tip, which is exactly the "Überlappung"
-                // still visible in the corner circle even though the earlier hole/hairpin
-                // case is otherwise fixed. Locating the real sign-flip sample removes that
-                // last sliver: each resulting run is then genuinely monotonic end-to-end.
-                std::vector<size_t> splitIndices;
-                for (size_t ai = 0; ai < anchorIdx.size(); ++ai)
-                {
-                    const size_t windowLo = (0 == ai) ? size_t(1) : (anchorIdx[ai - 1] + 1);
-                    const size_t windowHi = (ai + 1 == anchorIdx.size()) ? (localPath.size() >= 2 ? localPath.size() - 2 : size_t(1)) : (anchorIdx[ai + 1] > 0 ? anchorIdx[ai + 1] - 1 : size_t(0));
-
-                    size_t refined = anchorIdx[ai];
-                    Ogre::Real refinedDist = std::numeric_limits<Ogre::Real>::max();
-                    for (size_t k = windowLo; k <= windowHi && k + 1 < localPath.size() && k >= 1; ++k)
-                    {
-                        const Ogre::Real dxIn = localPath[k].position.x - localPath[k - 1].position.x;
-                        const Ogre::Real dxOut = localPath[k + 1].position.x - localPath[k].position.x;
-                        if (dxIn * dxOut < 0.0f)
-                        {
-                            const Ogre::Real dist = std::abs(static_cast<Ogre::Real>(k) - static_cast<Ogre::Real>(anchorIdx[ai]));
-                            if (dist < refinedDist)
-                            {
-                                refinedDist = dist;
-                                refined = k;
-                            }
-                        }
-                    }
-
-                    splitIndices.push_back(refined);
-                }
-
                 size_t runStart = 0;
-                for (size_t si : splitIndices)
+                for (size_t si : reversalPathIndices)
                 {
-                    if (si > runStart)
+                    if (si > runStart && si + 1 < localPath.size())
                     {
-                        monotonicRuns.emplace_back(localPath.begin() + runStart, localPath.begin() + si + 1);
+                        meshRuns.emplace_back(localPath.begin() + runStart, localPath.begin() + si + 1);
                         runStart = si;
                     }
                 }
-                monotonicRuns.emplace_back(localPath.begin() + runStart, localPath.end());
+                meshRuns.emplace_back(localPath.begin() + runStart, localPath.end());
             }
 
-            for (size_t ri = 0; ri < monotonicRuns.size(); ++ri)
+            for (size_t ri = 0; ri < meshRuns.size(); ++ri)
             {
-                if (monotonicRuns[ri].size() < 2)
+                if (meshRuns[ri].size() < 2)
                 {
                     continue;
                 }
 
                 PlatformSegment localSegment;
-                localSegment.controlPoints = monotonicRuns[ri];
+                localSegment.controlPoints = meshRuns[ri];
                 localSegment.isCurved = false;
                 localSegment.curvature = 0.0f;
                 // BUGFIX: both neighbours of an internal split joint used to get a real cap
@@ -2472,8 +2009,18 @@ namespace NOWA
                 // screenshots). Only the run ENDING at a joint draws the cap now; the run
                 // STARTING there skips its front cap, since the previous run's back cap
                 // already closes that seam.
-                localSegment.skipFrontCap = (0 == ri) ? hasFrontJunction : true;
-                localSegment.skipBackCap = (ri + 1 == monotonicRuns.size()) ? hasBackJunction : false;
+                //
+                // ARCHITECTURE CHANGE: a junction end now gets a REAL cap. Previously it was
+                // skipped because the junction patch closed that opening; with no patch left,
+                // skipping would leave the slab's hollow interior open at the junction. The
+                // cap ends up buried inside the other arms' solid volume thanks to the
+                // overshoot applied above, so it is never actually visible.
+                localSegment.skipBackCap = false;
+                localSegment.skipFrontCap = true;
+                if (0 == ri)
+                {
+                    localSegment.skipFrontCap = false;
+                }
 
                 // BUGFIX 4: even with the refined split point (BUGFIX 3 above), a residual
                 // sliver of overlap can still show up right at a reversal joint - floating
@@ -2488,16 +2035,28 @@ namespace NOWA
                 // is a file-local (not a class member - see its declaration up top), reset to
                 // the "no override" sentinel right after this one call so nothing else
                 // (including the very next run, or a junction patch) is affected.
-                if (ri > 0)
-                {
-                    g_platformRunDepthOverride = std::max(0.05f, this->platformDepth->getReal() - 0.01f * static_cast<Ogre::Real>(ri));
-                }
+                //
+                // ARCHITECTURE CHANGE: nestLevel (computed per junction further up) is added
+                // to the run index here, so the exact same nesting now also separates the
+                // arms of a junction from each other. Since arms are no longer trimmed back,
+                // two arms meeting at a junction genuinely overlap in XY, and their front and
+                // back faces would otherwise be coplanar at z = +/- depth/2 and z-fight. 1 cm
+                // per level is far too small to read as a step on the sides, but well clear
+                // of float noise.
+                g_platformRunDepthOverride = std::max(0.05f, this->platformDepth->getReal() - 0.01f * (static_cast<Ogre::Real>(nestLevel) + static_cast<Ogre::Real>(ri)));
                 this->generatePlatformSegment(localSegment);
                 g_platformRunDepthOverride = -1.0f;
             }
         }
 
         // ── Junction patches ────────────────────────────────────────────────────
+        // ARCHITECTURE CHANGE: this no longer builds anything - generateJunctionPatch is
+        // logging only now. The arms above are untrimmed and overlap each other at every
+        // junction, and their union is already the correct solid. The call is kept solely so
+        // the [JUNCTION-DEBUG] arm list still gets emitted once per rebuild.
+        // The ARM/JUNCTION-WEDGE labelling the diagnostics used to do is gone with it: every
+        // triangle now comes from regular per-chain box generation, so there is nothing left
+        // to distinguish.
         for (const JunctionPoint& jp : junctions)
         {
             this->generateJunctionPatch(jp, originToUse);
@@ -2567,27 +2126,6 @@ namespace NOWA
         const Ogre::Vector2 B2 = A2 * ((k3 - kt) / (k3 - k1)) + A3 * ((kt - k1) / (k3 - k1));
 
         return B1 * ((k2 - kt) / (k2 - k1)) + B2 * ((kt - k1) / (k2 - k1));
-    }
-
-    Ogre::Real ProceduralPlatformComponent::evaluateCatmullRomHeight(const std::vector<PlatformControlPoint>& points, Ogre::Real t)
-    {
-        int segment = static_cast<int>(t);
-        Ogre::Real localT = t - segment;
-
-        int p0 = Ogre::Math::Clamp(segment - 1, 0, static_cast<int>(points.size()) - 1);
-        int p1 = Ogre::Math::Clamp(segment, 0, static_cast<int>(points.size()) - 1);
-        int p2 = Ogre::Math::Clamp(segment + 1, 0, static_cast<int>(points.size()) - 1);
-        int p3 = Ogre::Math::Clamp(segment + 2, 0, static_cast<int>(points.size()) - 1);
-
-        Ogre::Real h0 = points[p0].smoothedHeight;
-        Ogre::Real h1 = points[p1].smoothedHeight;
-        Ogre::Real h2 = points[p2].smoothedHeight;
-        Ogre::Real h3 = points[p3].smoothedHeight;
-
-        Ogre::Real t2 = localT * localT;
-        Ogre::Real t3 = t2 * localT;
-
-        return 0.5f * ((2.0f * h1) + (-h0 + h2) * localT + (2.0f * h0 - 5.0f * h1 + 4.0f * h2 - h3) * t2 + (-h0 + 3.0f * h1 - 3.0f * h2 + h3) * t3);
     }
 
     std::vector<Ogre::Vector2> ProceduralPlatformComponent::generateCurvePoints(const std::vector<PlatformControlPoint>& controlPoints, int subdivisions)
@@ -2728,11 +2266,10 @@ namespace NOWA
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // smoothHeightTransitions - Wider kernel, bidirectional gradient clamping.
-    // Direct port of ProceduralRoadComponent's version: horizontalDist becomes
-    // std::abs(dx) here (platform's path is 1D in the horizontal axis, unlike Road's XZ
-    // ground plane), everything else - the bridge-mode chord fallback, the 5-tap Gaussian
-    // passes, the forward+backward gradient clamp - is unchanged.
+    // smoothHeightTransitions - 5-tap Gaussian passes over the interior points, with the
+    // first and last point pinned. Called once per smooth GROUP by rebuildMesh, never over
+    // a whole chain, so its two pinned points are always either a chain end or an authored
+    // corner.
     ///////////////////////////////////////////////////////////////////////////
 
     void ProceduralPlatformComponent::smoothHeightTransitions(std::vector<PlatformControlPoint>& points)
@@ -2742,46 +2279,37 @@ namespace NOWA
             return;
         }
 
-        Ogre::Real smoothing = this->smoothingFactor->getReal();
-        // BUGFIX: tan(90 degrees) is a floating-point pole - depending on which side of
-        // exactly pi/2 the rounded radian value lands on, Ogre::Math::Tan can return a huge
-        // NEGATIVE number instead of a huge positive one. Since maxGrad gets multiplied by
-        // horizontalDist below and added directly to a height ("clamp" to at most this much
-        // change), a negative maxGrad turns the clamp into "subtract an astronomical number
-        // from the height" instead of limiting it - corrupting every height in the chain and
-        // making the whole platform mesh degenerate/invisible. Confirmed by user testing:
-        // stable at Max Gradient=89, breaks completely at 90+. Clamping the angle safely
-        // below the pole avoids the sign flip entirely while still allowing effectively
-        // "no limit" behavior (tan(89.5 degrees) is already ~114, larger than any real
-        // height/distance ratio a platform would need).
-        const Ogre::Real safeGradientDeg = Ogre::Math::Clamp(this->maxGradient->getReal(), 0.1f, 89.5f);
-        Ogre::Real maxGrad = Ogre::Math::Tan(Ogre::Math::DegreesToRadians(safeGradientDeg));
+        // ── REMOVED: the whole Max Gradient machinery ────────────────────────────────────
+        // This function was a direct port of ProceduralRoadComponent's version and carried
+        // that component's core assumption with it: that height is a FUNCTION of horizontal
+        // distance, so a slope can be measured as heightDiff / horizontalDist and clamped.
+        // A road can never be vertical; a platform can, and must - that is what a
+        // Metroidvania wall is. For a vertical stretch horizontalDist goes to zero, so the
+        // clamp demanded a height change of ~0 and flattened exactly the geometry the user
+        // had deliberately drawn. Two symptoms came from it, both reported: a vertical leg
+        // followed by a horizontal one collapsed into a single diagonal beam on confirm
+        // (the "bridge mode" chord fallback re-lerped every interior height along CUMULATIVE
+        // HORIZONTAL distance, and the corner's was 0), and every following drag preview
+        // appeared offset from the chain end, because the bidirectional clamp loops moved
+        // points.front() and points.back() as well as interior points.
+        //
+        // An intermediate fix kept the clamp but floored the allowed height difference at
+        // whatever the path already had on entry, so it could never make a pair shallower
+        // than the user drew it. That made the clamp a no-op in practice, and this is why it
+        // is now gone entirely rather than merely defanged: the smoothing below is a
+        // weighted average of neighbouring heights, and an average always lands inside the
+        // convex hull of its inputs - it cannot produce a slope steeper than the steepest
+        // one already present. There was never anything left for a gradient clamp to catch.
+        //
+        // The Max Gradient attribute is removed along with it. It no longer had a meaning
+        // that could be stated honestly in a tooltip, and a slider reading 45 while the user
+        // builds a 90 degree wall is worse than no slider.
+        const Ogre::Real smoothing = this->smoothingFactor->getReal();
 
-        {
-            const Ogre::Real startH = points.front().rawHeight;
-            const Ogre::Real endH = points.back().rawHeight;
+        const Ogre::Real startHeight = points.front().smoothedHeight;
+        const Ogre::Real endHeight = points.back().smoothedHeight;
 
-            std::vector<Ogre::Real> cumDist(points.size(), 0.f);
-            for (size_t i = 1; i < points.size(); ++i)
-            {
-                cumDist[i] = cumDist[i - 1] + std::abs(points[i].position.x - points[i - 1].position.x);
-            }
-            const Ogre::Real totalHoriz = cumDist.back();
-            const Ogre::Real heightDiff = std::abs(endH - startH);
-
-            if (totalHoriz > 0.001f && maxGrad > 0.001f && heightDiff / totalHoriz > maxGrad)
-            {
-                for (size_t i = 1; i + 1 < points.size(); ++i)
-                {
-                    const Ogre::Real t = cumDist[i] / totalHoriz;
-                    points[i].smoothedHeight = Ogre::Math::lerp(startH, endH, t);
-                    points[i].rawHeight = points[i].smoothedHeight;
-                }
-                return;
-            }
-        }
-
-        int smoothPasses = static_cast<int>(smoothing * 8.0f) + 1;
+        const int smoothPasses = static_cast<int>(smoothing * 8.0f) + 1;
 
         for (int pass = 0; pass < smoothPasses; ++pass)
         {
@@ -2816,113 +2344,14 @@ namespace NOWA
             }
         }
 
-        for (size_t i = 1; i < points.size(); ++i)
-        {
-            Ogre::Real horizontalDist = std::abs(points[i].position.x - points[i - 1].position.x);
-            if (horizontalDist < 0.001f)
-            {
-                continue;
-            }
-
-            Ogre::Real heightDiff = points[i].smoothedHeight - points[i - 1].smoothedHeight;
-            Ogre::Real maxHeightDiff = horizontalDist * maxGrad;
-
-            if (heightDiff > maxHeightDiff)
-            {
-                points[i].smoothedHeight = points[i - 1].smoothedHeight + maxHeightDiff;
-            }
-            else if (heightDiff < -maxHeightDiff)
-            {
-                points[i].smoothedHeight = points[i - 1].smoothedHeight - maxHeightDiff;
-            }
-        }
-
-        for (int i = static_cast<int>(points.size()) - 2; i >= 0; --i)
-        {
-            Ogre::Real horizontalDist = std::abs(points[i + 1].position.x - points[i].position.x);
-            if (horizontalDist < 0.001f)
-            {
-                continue;
-            }
-
-            Ogre::Real heightDiff = points[i].smoothedHeight - points[i + 1].smoothedHeight;
-            Ogre::Real maxHeightDiff = horizontalDist * maxGrad;
-
-            if (heightDiff > maxHeightDiff)
-            {
-                points[i].smoothedHeight = points[i + 1].smoothedHeight + maxHeightDiff;
-            }
-            else if (heightDiff < -maxHeightDiff)
-            {
-                points[i].smoothedHeight = points[i + 1].smoothedHeight - maxHeightDiff;
-            }
-        }
-
-        for (size_t i = 1; i < points.size(); ++i)
-        {
-            Ogre::Real horizontalDist = std::abs(points[i].position.x - points[i - 1].position.x);
-            if (horizontalDist < 0.001f)
-            {
-                continue;
-            }
-
-            Ogre::Real heightDiff = points[i].smoothedHeight - points[i - 1].smoothedHeight;
-            Ogre::Real maxHeightDiff = horizontalDist * maxGrad;
-
-            if (heightDiff > maxHeightDiff)
-            {
-                points[i].smoothedHeight = points[i - 1].smoothedHeight + maxHeightDiff;
-            }
-            else if (heightDiff < -maxHeightDiff)
-            {
-                points[i].smoothedHeight = points[i - 1].smoothedHeight - maxHeightDiff;
-            }
-        }
-
-        for (int i = static_cast<int>(points.size()) - 2; i >= 0; --i)
-        {
-            Ogre::Real horizontalDist = std::abs(points[i + 1].position.x - points[i].position.x);
-            if (horizontalDist < 0.001f)
-            {
-                continue;
-            }
-
-            Ogre::Real heightDiff = points[i].smoothedHeight - points[i + 1].smoothedHeight;
-            Ogre::Real maxHeightDiff = horizontalDist * maxGrad;
-
-            if (heightDiff > maxHeightDiff)
-            {
-                points[i].smoothedHeight = points[i + 1].smoothedHeight + maxHeightDiff;
-            }
-            else if (heightDiff < -maxHeightDiff)
-            {
-                points[i].smoothedHeight = points[i + 1].smoothedHeight - maxHeightDiff;
-            }
-        }
-    }
-
-    Ogre::Real ProceduralPlatformComponent::calculateSmoothedHeight(const std::vector<PlatformControlPoint>& points, int index)
-    {
-        if (index == 0 || index == static_cast<int>(points.size()) - 1)
-        {
-            return points[index].rawHeight;
-        }
-
-        Ogre::Real sum = points[index].rawHeight;
-        int count = 1;
-
-        if (index > 0)
-        {
-            sum += points[index - 1].rawHeight;
-            count++;
-        }
-        if (index < static_cast<int>(points.size()) - 1)
-        {
-            sum += points[index + 1].rawHeight;
-            count++;
-        }
-
-        return sum / count;
+        // The first and last point are pinned. rebuildMesh calls this once per smooth GROUP
+        // (a stretch of the chain with no authored corner inside it), so these two are always
+        // either a chain end or an authored corner - both of which have to stay exactly where
+        // the user put them. That is what keeps a drag preview starting flush with the built
+        // chain instead of offset from it, and what keeps a 90 degree corner from being
+        // rounded away.
+        points.front().smoothedHeight = startHeight;
+        points.back().smoothedHeight = endHeight;
     }
 
     Ogre::Vector3 ProceduralPlatformComponent::snapToGridFunc(const Ogre::Vector3& position)
@@ -2966,40 +2395,6 @@ namespace NOWA
         }
 
         return PlatformStyle::GRASS;
-    }
-
-    int ProceduralPlatformComponent::findNearestSegment(const Ogre::Vector3& worldPos) const
-    {
-        if (this->platformSegments.empty())
-        {
-            return -1;
-        }
-
-        int bestSeg = -1;
-        float bestDist = std::numeric_limits<float>::max();
-
-        for (size_t si = 0; si < this->platformSegments.size(); ++si)
-        {
-            const auto& seg = this->platformSegments[si];
-            for (size_t pi = 1; pi < seg.controlPoints.size(); ++pi)
-            {
-                Ogre::Vector2 a(seg.controlPoints[pi - 1].position.x, seg.controlPoints[pi - 1].smoothedHeight);
-                Ogre::Vector2 b(seg.controlPoints[pi].position.x, seg.controlPoints[pi].smoothedHeight);
-                Ogre::Vector2 p(worldPos.x, worldPos.y);
-
-                Ogre::Vector2 ab = b - a;
-                float abLen2 = ab.dotProduct(ab);
-                float t = (abLen2 > 1e-6f) ? Ogre::Math::Clamp((p - a).dotProduct(ab) / abLen2, 0.0f, 1.0f) : 0.0f;
-                float dist = (a + ab * t - p).length();
-
-                if (dist < bestDist)
-                {
-                    bestDist = dist;
-                    bestSeg = static_cast<int>(si);
-                }
-            }
-        }
-        return bestSeg;
     }
 
     void ProceduralPlatformComponent::generatePlatformSegment(const PlatformSegment& segment)
@@ -3207,74 +2602,155 @@ namespace NOWA
         const Ogre::Real topZFront = zFront + bevel;
         const Ogre::Real topZBack = zBack - bevel;
 
-        // REVERTED: a mitered (perpendicular-to-path) extrusion was tried here to fix
-        // self-intersection at sharp direction reversals (S/</> shapes), but it broke
-        // consistency at junction boundaries - generateJunctionPatch's bottom fan still
-        // assumes straight-down extrusion, so an arm's mitered bottom edge no longer lined
-        // up with the junction's own bottom geometry, producing new gaps exactly where
-        // arms meet a junction (worse than the original problem). Back to straight-down
-        // (-Y) extrusion, which is confirmed correct for normal curves, bends, and
-        // junctions. KNOWN LIMITATION: a sufficiently sharp direction reversal within a
-        // single platform (or the same reversal happening right at a junction arm) can
-        // still self-intersect, since depth is a fixed axis with no width to miter against
-        // reversal in the way road width does - see the class-level design notes for the
-        // discussion with the user and the options considered (splitting into two
-        // depth-offset platform objects at the reversal point, etc.).
-        Ogre::Vector3 previousUpNormal = Ogre::Vector3::ZERO;
+        // ── BUGFIX: mitered (perpendicular-to-path) extrusion instead of straight down ────
+        // The slab used to be extruded straight down (-Y) by platformHeight: the bottom of a
+        // point at (x, h) was simply (x, h - height). That is exact for a horizontal platform,
+        // but the PERPENDICULAR thickness it produces is height * |upNormal.y| - so it shrinks
+        // as the path steepens and collapses to ZERO for a vertical segment. Top and bottom
+        // face then land on the same plane x = const and the whole segment renders as a
+        // paper-thin blade with no thickness at all (the "completely flat" vertical pull the
+        // user reported, and the same in the drag preview, which goes through this function
+        // via generateStraightPlatform).
+        //
+        // The slab is now offset along the path NORMAL instead, so its thickness is
+        // platformHeight measured perpendicular to the path at every angle - a vertical pull
+        // becomes a proper wall of thickness platformHeight in X. For a horizontal platform
+        // the normal IS -Y, so that case is bit-for-bit what it was before.
+        //
+        // NOTE on the older REVERTED note that used to sit here: a mitered extrusion was tried
+        // once before and reverted, because generateJunctionPatch's bottom fan still assumed
+        // straight-down extrusion and an arm's mitered bottom edge no longer lined up with the
+        // junction's own bottom geometry. That reason is gone - junctions build no geometry at
+        // all any more (see generateJunctionPatch), arms simply interpenetrate, so there is
+        // nothing left for the bottom edge to line up WITH.
+        //
+        // Two passes: per-segment normals first (with the existing orientation-continuity
+        // rules), then per-VERTEX normals as the average of the two adjacent segment normals.
+        // Using a shared per-vertex normal is what keeps the bottom edges of two neighbouring
+        // segments meeting exactly at their common point instead of tearing open at every
+        // bend. The 1/cos(halfAngle) miter extension keeps the thickness uniform through a
+        // bend; it is clamped so a sharp corner cannot blow the bottom edge out to infinity
+        // (genuine reversals never reach here anyway - rebuildMesh already splits the chain
+        // into monotonic runs before calling this).
+        const size_t numPoints = points.size();
+        const size_t numSegments = numPoints - 1;
 
-        for (size_t i = 0; i + 1 < points.size(); ++i)
+        std::vector<Ogre::Vector2> segmentNormals(numSegments, Ogre::Vector2(0.0f, 1.0f));
         {
-            const Ogre::Real x0 = points[i].position.x;
-            const Ogre::Real h0 = points[i].smoothedHeight;
-            const Ogre::Real x1 = points[i + 1].position.x;
-            const Ogre::Real h1 = points[i + 1].smoothedHeight;
+            Ogre::Vector2 previousUpNormal(0.0f, 0.0f);
+            for (size_t i = 0; i < numSegments; ++i)
+            {
+                const Ogre::Real dx = points[i + 1].position.x - points[i].position.x;
+                const Ogre::Real dh = points[i + 1].smoothedHeight - points[i].smoothedHeight;
 
+                Ogre::Vector2 upNormal(-dh, dx); // raw 90-degree rotation of the tangent
+                if (upNormal.squaredLength() > 1e-8f)
+                {
+                    upNormal.normalise();
+
+                    const Ogre::Real confidence = std::abs(upNormal.y); // how meaningful "prefer true up" is here
+                    if (confidence > 0.3f)
+                    {
+                        if (upNormal.y < 0.0f)
+                        {
+                            upNormal = -upNormal;
+                        }
+                    }
+                    else if (previousUpNormal.squaredLength() > 1e-8f)
+                    {
+                        // Near-vertical segment: true up is an unreliable tie-breaker here, so
+                        // stay smooth with whatever the path was already doing instead.
+                        if (upNormal.dotProduct(previousUpNormal) < 0.0f)
+                        {
+                            upNormal = -upNormal;
+                        }
+                    }
+                    else if (upNormal.x < 0.0f)
+                    {
+                        // First segment in the chain, also near-vertical: no history yet either.
+                        // True up is useless as a tie-breaker at this angle, so pick a stable
+                        // starting side by X instead - a wall pulled straight up then always
+                        // gets its thickness on the same side rather than flipping between
+                        // rebuilds depending on float noise in a near-zero .y.
+                        upNormal = -upNormal;
+                    }
+                }
+                else
+                {
+                    // Degenerate zero-length segment.
+                    upNormal = Ogre::Vector2(0.0f, 1.0f);
+                    if (previousUpNormal.squaredLength() > 1e-8f)
+                    {
+                        upNormal = previousUpNormal;
+                    }
+                }
+
+                segmentNormals[i] = upNormal;
+                previousUpNormal = upNormal;
+            }
+        }
+
+        // Per-vertex geometry: the top point as authored, plus the down direction, the mitered
+        // bottom point, the chamfer point and the raised-rim point derived from it. Everything
+        // in the sweep below is expressed through these, so no piece of the cross-section can
+        // disagree with another about where "down" is.
+        std::vector<Ogre::Vector2> topPoints(numPoints);
+        std::vector<Ogre::Vector2> downDirs(numPoints);
+        std::vector<Ogre::Vector2> bottomPoints(numPoints);
+        std::vector<Ogre::Vector2> bevelPoints(numPoints);
+        std::vector<Ogre::Vector2> rimPoints(numPoints);
+        for (size_t i = 0; i < numPoints; ++i)
+        {
+            Ogre::Vector2 vertexNormal;
+            if (0 == i)
+            {
+                vertexNormal = segmentNormals.front();
+            }
+            else if (i + 1 == numPoints)
+            {
+                vertexNormal = segmentNormals.back();
+            }
+            else
+            {
+                vertexNormal = segmentNormals[i - 1] + segmentNormals[i];
+                if (vertexNormal.squaredLength() > 1e-8f)
+                {
+                    vertexNormal.normalise();
+                }
+                else
+                {
+                    vertexNormal = segmentNormals[i];
+                }
+            }
+
+            size_t adjacentSegment = i;
+            if (i + 1 == numPoints)
+            {
+                adjacentSegment = numSegments - 1;
+            }
+            const Ogre::Real cosHalfAngle = std::max(0.35f, vertexNormal.dotProduct(segmentNormals[adjacentSegment]));
+            const Ogre::Real thickness = height / cosHalfAngle;
+
+            topPoints[i] = Ogre::Vector2(points[i].position.x, points[i].smoothedHeight);
+            downDirs[i] = -vertexNormal;
+            bottomPoints[i] = topPoints[i] + downDirs[i] * thickness;
+            bevelPoints[i] = topPoints[i] + downDirs[i] * bevel;
+            rimPoints[i] = topPoints[i] - downDirs[i] * rim;
+        }
+
+        auto toWorld = [](const Ogre::Vector2& xy, Ogre::Real z)
+        {
+            return Ogre::Vector3(xy.x, xy.y, z);
+        };
+
+        for (size_t i = 0; i + 1 < numPoints; ++i)
+        {
             const Ogre::Real u0s = points[i].distFromStart * surfUV.x;
             const Ogre::Real u1s = points[i + 1].distFromStart * surfUV.x;
             const Ogre::Real u0g = points[i].distFromStart * groundUV.x;
             const Ogre::Real u1g = points[i + 1].distFromStart * groundUV.x;
 
-            const Ogre::Real dx = x1 - x0;
-            const Ogre::Real dh = h1 - h0;
-
-            Ogre::Vector3 upNormal(-dh, dx, 0.0f); // raw 90-degree rotation of the tangent
-            if (upNormal.squaredLength() > 1e-8f)
-            {
-                upNormal.normalise();
-
-                const Ogre::Real confidence = std::abs(upNormal.y); // how meaningful "prefer true up" is here
-                if (confidence > 0.3f)
-                {
-                    if (upNormal.y < 0.0f)
-                    {
-                        upNormal = -upNormal;
-                    }
-                }
-                else if (previousUpNormal.squaredLength() > 1e-8f)
-                {
-                    // Near-vertical segment: true up is an unreliable tie-breaker here, so
-                    // stay smooth with whatever the path was already doing instead.
-                    if (upNormal.dotProduct(previousUpNormal) < 0.0f)
-                    {
-                        upNormal = -upNormal;
-                    }
-                }
-                else if (upNormal.y < 0.0f)
-                {
-                    // First segment in the chain, also near-vertical: no history yet either,
-                    // just fall back to true-up preference to pick a starting orientation.
-                    upNormal = -upNormal;
-                }
-            }
-            else
-            {
-                upNormal = (previousUpNormal.squaredLength() > 1e-8f) ? previousUpNormal : Ogre::Vector3::UNIT_Y; // degenerate zero-length segment
-            }
-
-            previousUpNormal = upNormal;
-
-            const Ogre::Real frontFaceTopY0 = h0 - bevel;
-            const Ogre::Real frontFaceTopY1 = h1 - bevel;
+            const Ogre::Vector3 upNormal(segmentNormals[i].x, segmentNormals[i].y, 0.0f);
 
             if (rim > 0.0f && depth > rimBand * 2.5f)
             {
@@ -3282,39 +2758,36 @@ namespace NOWA
                 const Ogre::Real midZFront = topZFront + rimBand;
                 const Ogre::Real midZBack = topZBack - rimBand;
 
-                this->addPlatformQuad(Ogre::Vector3(x0, h0, midZFront), Ogre::Vector3(x1, h1, midZFront), Ogre::Vector3(x1, h1, midZBack), Ogre::Vector3(x0, h0, midZBack), upNormal, u0s, u1s, 0.0f, surfUV.y, PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(topPoints[i], midZFront), toWorld(topPoints[i + 1], midZFront), toWorld(topPoints[i + 1], midZBack), toWorld(topPoints[i], midZBack), upNormal, u0s, u1s, 0.0f, surfUV.y, PlatformMeshBuffer::SURFACE);
 
-                this->addPlatformQuad(Ogre::Vector3(x0, h0, topZFront), Ogre::Vector3(x1, h1, topZFront), Ogre::Vector3(x1, h1 + rim, topZFront), Ogre::Vector3(x0, h0 + rim, topZFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0s, u1s, 0.0f, 1.0f,
+                this->addPlatformQuad(toWorld(topPoints[i], topZFront), toWorld(topPoints[i + 1], topZFront), toWorld(rimPoints[i + 1], topZFront), toWorld(rimPoints[i], topZFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0s, u1s, 0.0f, 1.0f,
                     PlatformMeshBuffer::SURFACE);
-                this->addPlatformQuad(Ogre::Vector3(x0, h0 + rim, topZFront), Ogre::Vector3(x1, h1 + rim, topZFront), Ogre::Vector3(x1, h1 + rim, midZFront), Ogre::Vector3(x0, h0 + rim, midZFront), upNormal, u0s, u1s, 0.0f, 1.0f,
-                    PlatformMeshBuffer::SURFACE);
-                this->addPlatformQuad(Ogre::Vector3(x1, h1 + rim, midZFront), Ogre::Vector3(x0, h0 + rim, midZFront), Ogre::Vector3(x0, h0, midZFront), Ogre::Vector3(x1, h1, midZFront), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0s, u1s, 0.0f, 1.0f,
+                this->addPlatformQuad(toWorld(rimPoints[i], topZFront), toWorld(rimPoints[i + 1], topZFront), toWorld(rimPoints[i + 1], midZFront), toWorld(rimPoints[i], midZFront), upNormal, u0s, u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(rimPoints[i + 1], midZFront), toWorld(rimPoints[i], midZFront), toWorld(topPoints[i], midZFront), toWorld(topPoints[i + 1], midZFront), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0s, u1s, 0.0f, 1.0f,
                     PlatformMeshBuffer::SURFACE);
 
-                this->addPlatformQuad(Ogre::Vector3(x1, h1, topZBack), Ogre::Vector3(x0, h0, topZBack), Ogre::Vector3(x0, h0 + rim, topZBack), Ogre::Vector3(x1, h1 + rim, topZBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0s, u1s, 0.0f, 1.0f,
+                this->addPlatformQuad(toWorld(topPoints[i + 1], topZBack), toWorld(topPoints[i], topZBack), toWorld(rimPoints[i], topZBack), toWorld(rimPoints[i + 1], topZBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0s, u1s, 0.0f, 1.0f,
                     PlatformMeshBuffer::SURFACE);
-                this->addPlatformQuad(Ogre::Vector3(x1, h1 + rim, topZBack), Ogre::Vector3(x0, h0 + rim, topZBack), Ogre::Vector3(x0, h0 + rim, midZBack), Ogre::Vector3(x1, h1 + rim, midZBack), upNormal, u0s, u1s, 0.0f, 1.0f,
-                    PlatformMeshBuffer::SURFACE);
-                this->addPlatformQuad(Ogre::Vector3(x0, h0 + rim, midZBack), Ogre::Vector3(x1, h1 + rim, midZBack), Ogre::Vector3(x1, h1, midZBack), Ogre::Vector3(x0, h0, midZBack), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0s, u1s, 0.0f, 1.0f,
+                this->addPlatformQuad(toWorld(rimPoints[i + 1], topZBack), toWorld(rimPoints[i], topZBack), toWorld(rimPoints[i], midZBack), toWorld(rimPoints[i + 1], midZBack), upNormal, u0s, u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(rimPoints[i], midZBack), toWorld(rimPoints[i + 1], midZBack), toWorld(topPoints[i + 1], midZBack), toWorld(topPoints[i], midZBack), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0s, u1s, 0.0f, 1.0f,
                     PlatformMeshBuffer::SURFACE);
             }
             else
             {
                 // ── Plain flat top surface ───────────────────────────────────────────
-                this->addPlatformQuad(Ogre::Vector3(x0, h0, topZFront), Ogre::Vector3(x1, h1, topZFront), Ogre::Vector3(x1, h1, topZBack), Ogre::Vector3(x0, h0, topZBack), upNormal, u0s, u1s, 0.0f, surfUV.y, PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(topPoints[i], topZFront), toWorld(topPoints[i + 1], topZFront), toWorld(topPoints[i + 1], topZBack), toWorld(topPoints[i], topZBack), upNormal, u0s, u1s, 0.0f, surfUV.y, PlatformMeshBuffer::SURFACE);
             }
 
             // ── Bottom surface ───────────────────────────────────────────────────────
-            this->addPlatformQuad(Ogre::Vector3(x0, h0 - height, zBack), Ogre::Vector3(x1, h1 - height, zBack), Ogre::Vector3(x1, h1 - height, zFront), Ogre::Vector3(x0, h0 - height, zFront), -upNormal, u0g, u1g, 0.0f, groundUV.y,
-                PlatformMeshBuffer::GROUND);
+            this->addPlatformQuad(toWorld(bottomPoints[i], zBack), toWorld(bottomPoints[i + 1], zBack), toWorld(bottomPoints[i + 1], zFront), toWorld(bottomPoints[i], zFront), -upNormal, u0g, u1g, 0.0f, groundUV.y, PlatformMeshBuffer::GROUND);
 
             // ── Front face (z = zFront) ───────────────────────────────────────────────
-            this->addPlatformQuad(Ogre::Vector3(x0, frontFaceTopY0, zFront), Ogre::Vector3(x0, h0 - height, zFront), Ogre::Vector3(x1, h1 - height, zFront), Ogre::Vector3(x1, frontFaceTopY1, zFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0g, u1g, 0.0f,
-                groundUV.y, PlatformMeshBuffer::GROUND);
+            this->addPlatformQuad(toWorld(bevelPoints[i], zFront), toWorld(bottomPoints[i], zFront), toWorld(bottomPoints[i + 1], zFront), toWorld(bevelPoints[i + 1], zFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0g, u1g, 0.0f, groundUV.y,
+                PlatformMeshBuffer::GROUND);
 
             // ── Back face (z = zBack) ─────────────────────────────────────────────────
-            this->addPlatformQuad(Ogre::Vector3(x1, frontFaceTopY1, zBack), Ogre::Vector3(x1, h1 - height, zBack), Ogre::Vector3(x0, h0 - height, zBack), Ogre::Vector3(x0, frontFaceTopY0, zBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0g, u1g, 0.0f,
-                groundUV.y, PlatformMeshBuffer::GROUND);
+            this->addPlatformQuad(toWorld(bevelPoints[i + 1], zBack), toWorld(bottomPoints[i + 1], zBack), toWorld(bottomPoints[i], zBack), toWorld(bevelPoints[i], zBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0g, u1g, 0.0f, groundUV.y,
+                PlatformMeshBuffer::GROUND);
 
             // ── Chamfer bevel (Grass) ─────────────────────────────────────────────────
             if (bevel > 0.0f)
@@ -3339,20 +2812,18 @@ namespace NOWA
                     bevelBackNormal = Ogre::Vector3(0.0f, 0.0f, 1.0f);
                 }
 
-                this->addPlatformQuad(Ogre::Vector3(x0, h0, topZFront), Ogre::Vector3(x1, h1, topZFront), Ogre::Vector3(x1, frontFaceTopY1, zFront), Ogre::Vector3(x0, frontFaceTopY0, zFront), bevelFrontNormal, u0s, u1s, 0.0f, 1.0f,
-                    PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(topPoints[i], topZFront), toWorld(topPoints[i + 1], topZFront), toWorld(bevelPoints[i + 1], zFront), toWorld(bevelPoints[i], zFront), bevelFrontNormal, u0s, u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
 
-                this->addPlatformQuad(Ogre::Vector3(x1, h1, topZBack), Ogre::Vector3(x0, h0, topZBack), Ogre::Vector3(x0, frontFaceTopY0, zBack), Ogre::Vector3(x1, frontFaceTopY1, zBack), bevelBackNormal, u0s, u1s, 0.0f, 1.0f,
-                    PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(topPoints[i + 1], topZBack), toWorld(topPoints[i], topZBack), toWorld(bevelPoints[i], zBack), toWorld(bevelPoints[i + 1], zBack), bevelBackNormal, u0s, u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
             }
         }
 
         // ── End caps ─────────────────────────────────────────────────────────
-        // Only draw a cap at an end that does NOT connect to a junction - generateJunctionPatch
-        // already fills that exact spot with its own wedge geometry for a junction-connected
-        // end, and a chained-to end (skipFrontCap/skipBackCap) has no gap to begin with, so
-        // this only ever runs on a genuinely open end of the platform - exactly the "only if
-        // no further segment follows" case.
+        // Drawn at every end that is not chained to a following run. Since the junction
+        // architecture change (see generateJunctionPatch) this now also includes ends that
+        // connect to a junction: nothing fills that opening any more, so the cap has to. The
+        // overshoot applied in rebuildMesh buries such a cap inside the neighbouring arms'
+        // solid volume, so it is never actually visible there.
         //
         // BUGFIX: this used to close the end with one flat rectangle spanning the full depth
         // at the un-beveled height (h), regardless of style. That is correct for the plain-box
@@ -3364,11 +2835,15 @@ namespace NOWA
         // sweep above uses at any x - plain rectangle / bevel hexagon / rim profile - just closed
         // off with a triangle fan instead of extruded, so it always sits flush with the real top
         // surface whichever style is active.
-        auto addEndCap = [this, depth, height, bevel, rim, rimBand, zFront, zBack, groundUV](Ogre::Real x, Ogre::Real h, const Ogre::Vector3& outDir)
+        //
+        // BUGFIX (miter): the profile is no longer expressed in absolute Y. Each entry is now
+        // (z, offsetAlongDown) - a distance measured from the top point along that end's own
+        // down direction - so the cap follows the mitered cross-section instead of a flat slice
+        // at constant X. For a horizontal platform down is -Y and this is identical to before;
+        // for a vertical pull the cap correctly becomes a horizontal lid rather than collapsing
+        // into the wall's own plane.
+        auto addEndCap = [this, depth, bevel, rim, rimBand, zFront, zBack, groundUV](const Ogre::Vector2& capTop, const Ogre::Vector2& capDown, Ogre::Real capThickness, const Ogre::Vector3& outDir)
         {
-            const Ogre::Real bottomY = h - height;
-            const Ogre::Real wallTopY = h - bevel;
-
             std::vector<Ogre::Vector2> profile;
             if (rim > 0.0f && depth > rimBand * 2.5f)
             {
@@ -3377,19 +2852,19 @@ namespace NOWA
                 const Ogre::Real midZFront = topZFront + rimBand;
                 const Ogre::Real midZBack = topZBack - rimBand;
 
-                profile = {Ogre::Vector2(zFront, bottomY), Ogre::Vector2(zFront, wallTopY), Ogre::Vector2(topZFront, h), Ogre::Vector2(topZFront, h + rim), Ogre::Vector2(midZFront, h + rim), Ogre::Vector2(midZFront, h), Ogre::Vector2(midZBack, h),
-                    Ogre::Vector2(midZBack, h + rim), Ogre::Vector2(topZBack, h + rim), Ogre::Vector2(topZBack, h), Ogre::Vector2(zBack, wallTopY), Ogre::Vector2(zBack, bottomY)};
+                profile = {Ogre::Vector2(zFront, capThickness), Ogre::Vector2(zFront, bevel), Ogre::Vector2(topZFront, 0.0f), Ogre::Vector2(topZFront, -rim), Ogre::Vector2(midZFront, -rim), Ogre::Vector2(midZFront, 0.0f),
+                    Ogre::Vector2(midZBack, 0.0f), Ogre::Vector2(midZBack, -rim), Ogre::Vector2(topZBack, -rim), Ogre::Vector2(topZBack, 0.0f), Ogre::Vector2(zBack, bevel), Ogre::Vector2(zBack, capThickness)};
             }
             else if (bevel > 0.0f)
             {
                 const Ogre::Real topZFront = zFront + bevel;
                 const Ogre::Real topZBack = zBack - bevel;
 
-                profile = {Ogre::Vector2(zFront, bottomY), Ogre::Vector2(zFront, wallTopY), Ogre::Vector2(topZFront, h), Ogre::Vector2(topZBack, h), Ogre::Vector2(zBack, wallTopY), Ogre::Vector2(zBack, bottomY)};
+                profile = {Ogre::Vector2(zFront, capThickness), Ogre::Vector2(zFront, bevel), Ogre::Vector2(topZFront, 0.0f), Ogre::Vector2(topZBack, 0.0f), Ogre::Vector2(zBack, bevel), Ogre::Vector2(zBack, capThickness)};
             }
             else
             {
-                profile = {Ogre::Vector2(zFront, bottomY), Ogre::Vector2(zFront, h), Ogre::Vector2(zBack, h), Ogre::Vector2(zBack, bottomY)};
+                profile = {Ogre::Vector2(zFront, capThickness), Ogre::Vector2(zFront, 0.0f), Ogre::Vector2(zBack, 0.0f), Ogre::Vector2(zBack, capThickness)};
             }
 
             // Fan-triangulate from the first perimeter point. addPlatformQuad recomputes each
@@ -3404,9 +2879,9 @@ namespace NOWA
                 param[i] = perim;
             }
 
-            auto toVec3 = [x](const Ogre::Vector2& zy)
+            auto toVec3 = [capTop, capDown](const Ogre::Vector2& zd)
             {
-                return Ogre::Vector3(x, zy.y, zy.x);
+                return Ogre::Vector3(capTop.x + capDown.x * zd.y, capTop.y + capDown.y * zd.y, zd.x);
             };
 
             for (size_t i = 1; i + 1 < profile.size(); ++i)
@@ -3429,11 +2904,11 @@ namespace NOWA
                 outDir = Ogre::Vector3(-1.0f, 0.0f, 0.0f);
             }
 
-            addEndCap(p0.position.x, p0.smoothedHeight, outDir);
+            addEndCap(topPoints.front(), downDirs.front(), (bottomPoints.front() - topPoints.front()).length(), outDir);
         }
         if (false == skipBackCap)
         {
-            const size_t n = points.size();
+            const size_t n = numPoints;
             const PlatformControlPoint& p0 = points[n - 1];
             const PlatformControlPoint& p1 = points[n - 2];
             Ogre::Vector3 outDir(p0.position.x - p1.position.x, p0.smoothedHeight - p1.smoothedHeight, 0.0f);
@@ -3446,7 +2921,7 @@ namespace NOWA
                 outDir = Ogre::Vector3(1.0f, 0.0f, 0.0f);
             }
 
-            addEndCap(p0.position.x, p0.smoothedHeight, outDir);
+            addEndCap(topPoints.back(), downDirs.back(), (bottomPoints.back() - topPoints.back()).length(), outDir);
         }
     }
 
@@ -3480,17 +2955,46 @@ namespace NOWA
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Junctions
     //
-    // Unlike ProceduralRoadComponent's fan (a flat 2D patch in the horizontal ground plane,
-    // needing an inner/outer ring pair because road WIDTH creates two rings to bridge),
-    // platform's cross-section has no in-plane width to create a second ring - see
-    // JunctionPoint::patchCorners in the header. Each arm contributes exactly ONE trimmed
-    // boundary point (x, height). The junction fill is a genuine solid: for every pair of
-    // ANGULARLY-ADJACENT arms, a full wedge is built out of a front cap triangle, a back cap
-    // triangle (both at platform-depth's zFront/zBack), and an outer perimeter quad
-    // connecting them - done ONCE at the top (walkable) height and ONCE mirrored at the
-    // bottom (top height minus platformHeight), plus one side wall quad per depth face
-    // closing the gap between top and bottom. Spoke edges (center-to-corner) are internal
-    // between adjacent wedges and are intentionally not walled off.
+    // ARCHITECTURE CHANGE: a junction generates NO geometry at all any more.
+    //
+    // Every previous attempt built something to fill the space between the arms: a fan through
+    // a shared centre, ear-clipped arm corners, an ear-clipped combined top+bottom ring,
+    // separate top/bottom caps plus a per-arm connector, N boundary-edge bands with no cap, and
+    // most recently a simple hub box. All of them carried over the assumption that holds for
+    // ProceduralRoadComponent - that arms are flat ribbons whose overlapping top surfaces are
+    // directly visible and therefore have to be trimmed away and replaced by a patch.
+    //
+    // A platform arm is not a ribbon. It is a vertical slab in the XY plane, and every arm
+    // occupies the exact same Z range [-depth/2, +depth/2]. Two slabs crossing in XY simply
+    // share solid volume. Take a horizontal arm along y = 0 covering y in [-h, 0] and a 45
+    // degree arm rising from the same point covering y in [x-h, x]: their union at x > 0 is
+    // y in [-h, x] - continuous, no gap, and the wedge between the two arms correctly empty.
+    // That union IS the shape the user asked for. There is nothing for a patch to fill, and
+    // the trimming that made a patch seem necessary was itself what blew the hub box up: the
+    // angle-driven armTrimDists (clamped up to platformHeight * 6) can cut a steep arm back
+    // several metres, whose corner then sits metres above the horizontal arms, which forced
+    // the hub to span that whole height range.
+    //
+    // The two artifacts that DO remain from letting the arms interpenetrate are both handled
+    // in rebuildMesh, without any polygon math:
+    //   - Coplanar front/back faces of two overlapping arms. Solved by per-junction depth
+    //     nesting through g_platformRunDepthOverride (nestLevel), the same 1 cm trick that
+    //     already separates consecutive monotonic runs at a reversal corner.
+    //   - Coplanar end caps at the shared junction plane. Depth nesting cannot help there,
+    //     since it offsets Z while the caps are X planes. Solved instead by pushing each arm's
+    //     endpoint slightly PAST the junction centre (junctionOvershoot): the overshoot
+    //     direction always points into the interior of the union, so each cap ends up buried
+    //     inside the other arms' solid volume and on its own distinct plane.
+    //
+    // Known limitation: nestLevel takes the max over a chain's two junctions, so a chain that
+    // is arm 0 of one junction and arm 2 of another takes level 2 and could in principle
+    // collide with another level-2 arm at the first junction. The consequence is a small
+    // z-fighting triangle at that one junction, not broken geometry. The proper fix would be a
+    // pre-pass greedy colouring over the chain adjacency graph; deliberately not built until
+    // the case is actually observed.
+    //
+    // The arm-list logging below is kept: it is still the fastest way to see what actually
+    // converges at a junction when something looks wrong.
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     void ProceduralPlatformComponent::generateJunctionPatch(const JunctionPoint& jp, const Ogre::Vector3& origin)
@@ -3501,358 +3005,26 @@ namespace NOWA
             return;
         }
 
-        // BUGFIX: this used to be the exact same platformDepth as every connecting arm, so the
-        // junction fill's outer walls/caps sat in EXACTLY the same Z-plane as the arm's own
-        // open (capless) end at the trim corner - any float-level imprecision in where the
-        // trim point actually lands then z-fights, the same root cause as the direction-
-        // reversal overlap fixed earlier (see g_platformRunDepthOverride and its comment).
-        // Shrinking the junction's own depth by a small fixed margin means its whole
-        // cross-section is nested strictly inside each arm's footprint at the shared corner
-        // instead of flush with it - same fix, applied locally here since this function
-        // already computes depth on its own rather than going through generatePlatformBox.
-        // BUGFIX (reverted): this briefly shrank the junction's own depth a small fixed
-        // amount, borrowing the trick that fixed the direction-reversal overlap. That trick
-        // relied on the later run continuing the SAME ribbon direction, so shrinking it left
-        // it invisibly nested inside the earlier run's footprint. A junction's arms approach
-        // from arbitrary, unrelated angles - there's no "continuation" for a shrunk footprint
-        // to hide inside, so this just opened a visible seam/notch at the boundary instead of
-        // resolving anything (confirmed - didn't fix the overlap, only introduced a new
-        // artifact). Reverted to the real platformDepth; the actual overlap here needs a
-        // proper look at the arm-corner/trim math, not a nested-footprint trick.
-        const Ogre::Real depth = this->platformDepth->getReal();
-        const Ogre::Real height = this->platformHeight->getReal();
-        const Ogre::Real zFront = -depth * 0.5f;
-        const Ogre::Real zBack = depth * 0.5f;
+        // [JUNCTION-DEBUG] arm list - positions are relative to the mesh origin, matching what
+        // [VERTEXDUMP] prints, so a suspicious arm can be cross-referenced directly against the
+        // vertices actually generated for it.
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JUNCTION-DEBUG] junction at world(" + Ogre::StringConverter::toString(jp.worldPos.x) + "," + Ogre::StringConverter::toString(jp.worldPos.y) +
+                                                                                ") numArms=" + Ogre::StringConverter::toString(static_cast<int>(numArms)) + " segIndices=" + Ogre::StringConverter::toString(static_cast<int>(jp.segIndices.size())));
 
-        // BUGFIX: the fan below used to be a flat, un-beveled prism regardless of style - it
-        // has no other way to know the active style, since generateJunctionPatch is called
-        // generically from rebuildMesh rather than from within one of the per-style
-        // generateXPlatform functions the way generatePlatformBox is. Mirrors
-        // generateGrassPlatform's own bevel formula exactly, so a junction between two Grass
-        // arms chamfers the same amount the arms themselves do instead of meeting them with a
-        // flat rim.
-        Ogre::Real topBevel = 0.0f;
-        if (PlatformStyle::GRASS == this->getPlatformStyleEnum())
+        for (size_t ci = 0; ci < numArms; ++ci)
         {
-            topBevel = std::min(0.15f, depth * 0.2f);
-        }
-        const Ogre::Real topZFront = zFront + topBevel;
-        const Ogre::Real topZBack = zBack - topBevel;
+            const Ogre::Real x = jp.patchCorners[ci].x - origin.x;
+            const Ogre::Real h = jp.patchCorners[ci].y - origin.y;
 
-        const Ogre::Real centreX = jp.worldPos.x - origin.x;
-        const Ogre::Real centreH = jp.worldPos.y - origin.y;
-
-        const Ogre::Vector2 surfUV = this->surfaceUVTiling->getVector2();
-        const Ogre::Vector2 groundUV = this->groundUVTiling->getVector2();
-
-        // [JUNCTION-DEBUG] jp.segIndices.size() is how many raw segments were detected
-        // sharing this junction point; jp.patchCorners.size() is how many actually got
-        // stored during trimming (should be exactly the same). A mismatch here means one or
-        // more arms never called storePatchCorner - the fan then wraps around fewer corners
-        // than it should, producing a wedge covering the wrong angular span (overlap on one
-        // side, gap on the other) rather than one wedge per real arm gap.
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JUNCTION-DEBUG] junction at world(" + Ogre::StringConverter::toString(jp.worldPos.x) + ", " + Ogre::StringConverter::toString(jp.worldPos.y) +
-                                                                                ") detectedSegs=" + Ogre::StringConverter::toString(jp.segIndices.size()) + " storedCorners=" + Ogre::StringConverter::toString(numArms) +
-                                                                                (jp.segIndices.size() != numArms ? " *** MISMATCH ***" : " (match)"));
-
-        struct ArmCorner
-        {
-            float angle;
-            Ogre::Real x, h;
-            bool synthetic = false;
-        };
-        std::vector<ArmCorner> arms;
-        arms.reserve(numArms);
-        for (const auto& corner : jp.patchCorners)
-        {
-            const Ogre::Real x = corner.x - origin.x;
-            const Ogre::Real h = corner.y - origin.y;
-            const float angle = std::atan2(h - centreH, x - centreX);
-            arms.push_back({angle, x, h, false});
-        }
-        std::sort(arms.begin(), arms.end(),
-            [](const ArmCorner& a, const ArmCorner& b)
+            Ogre::Real armDepth = this->platformDepth->getReal();
+            if (ci < jp.armDepths.size())
             {
-                return a.angle < b.angle;
-            });
-
-        // BUGFIX: a flat triangle (arm corner, next arm corner, centre) can only ever
-        // represent an angular span of LESS than 180 degrees - the interior angle a
-        // triangle has at any one vertex is by definition the non-reflex angle between its
-        // two edges there, which never exceeds 180. Whenever two arms happen to sit close
-        // together in angle, the THIRD gap around the rest of the circle is forced past 180
-        // degrees (confirmed via [JUNCTION-DEBUG] log: two arms ~32 degrees apart forced a
-        // third gap to ~185 degrees). The triangle built for that "wide" gap doesn't - can't
-        // - cover the intended wide wedge: it silently collapses onto the complementary
-        // angle on the WRONG side, landing almost exactly on top of the other wedges. That
-        // is the overlapping/z-fighting mess reported, independent of trim distance.
-        //
-        // Fix: split any gap wider than a safe margin into multiple narrower wedges by
-        // inserting extra points. Every real arm corner is kept exactly as-is; only the wide
-        // gaps get extra synthetic boundary points.
-        //
-        // BUGFIX v2: the first version placed synthetic points on a literal circle in
-        // (x, height) space - centreX + r*cos(angle), centreH + r*sin(angle). x and height
-        // are NOT interchangeable axes: at an angle near +/-90 degrees in that made-up
-        // circle, the height shifts by nearly the FULL radius away from centreH, regardless
-        // of what height the actual neighbouring arms are at - confirmed via log: two real
-        // arms at height ~3.5/~4.7 got a synthetic point inserted at height 5.56, well above
-        // BOTH neighbours (and another pair got one well below both). That produced the
-        // tent/pyramid spike. Correct fix: place the synthetic point by linearly
-        // interpolating x and height directly between the two flanking REAL arm corners, not
-        // around the centre at all. A point on the straight line between two corners is, as
-        // seen from the centre, always angularly between them too (the centre doesn't sit on
-        // that line for two distinct real arms) - so this still fully resolves the >180
-        // degree problem, while guaranteeing the synthetic point's height never exceeds the
-        // range its real neighbours already span.
-        if (arms.size() >= 2)
-        {
-            const float maxWedgeSpan = Ogre::Math::PI * (150.0f / 180.0f); // stay well clear of the 180 degree ceiling
-
-            std::vector<ArmCorner> expanded;
-            expanded.reserve(arms.size() * 2);
-            for (size_t k = 0; k < arms.size(); ++k)
-            {
-                const size_t next = (k + 1) % arms.size();
-                expanded.push_back(arms[k]);
-
-                float gap = arms[next].angle - arms[k].angle;
-                if (gap <= 0.0f)
-                {
-                    gap += Ogre::Math::TWO_PI;
-                }
-
-                if (gap > maxWedgeSpan)
-                {
-                    const int extraCount = static_cast<int>(std::ceil(gap / maxWedgeSpan)) - 1;
-                    for (int s = 1; s <= extraCount; ++s)
-                    {
-                        const float t = static_cast<float>(s) / static_cast<float>(extraCount + 1);
-
-                        ArmCorner synth;
-                        synth.x = Ogre::Math::lerp(arms[k].x, arms[next].x, t);
-                        synth.h = Ogre::Math::lerp(arms[k].h, arms[next].h, t);
-                        synth.angle = std::atan2(synth.h - centreH, synth.x - centreX);
-                        synth.synthetic = true;
-                        expanded.push_back(synth);
-                    }
-                }
+                armDepth = jp.armDepths[ci];
             }
-            arms = std::move(expanded);
-        }
 
-        // [JUNCTION-DEBUG] Sorted arm list - local (x, height) relative to origin, plus the
-        // angle used to order them. Two arms with near-identical (x,h) here would mean two
-        // chain-ends collapsed onto the same point instead of representing distinct arm
-        // directions (e.g. a chain that loops back to touch the same junction at both ends).
-        for (size_t ai = 0; ai < arms.size(); ++ai)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JUNCTION-DEBUG]   arm[" + Ogre::StringConverter::toString(ai) + "] local=(" + Ogre::StringConverter::toString(arms[ai].x) + ", " +
-                                                                                    Ogre::StringConverter::toString(arms[ai].h) + ") angle=" + Ogre::StringConverter::toString(arms[ai].angle));
-        }
-
-        auto uvFor = [&](Ogre::Real x, Ogre::Real h) -> Ogre::Vector2
-        {
-            return Ogre::Vector2((x - centreX) * surfUV.x, (h - centreH) * surfUV.x);
-        };
-
-        // [JUNCTION-DEBUG] logs every triangle/quad's exact corner positions (local space,
-        // relative to origin) as they're generated, tagged with which wedge (arm pair) and
-        // which piece (top cap front/back, bottom cap front/back, perimeter, side wall) they
-        // belong to - paste this alongside a screenshot of the same junction to check for
-        // actual 3D overlap or a missing wedge by hand.
-        auto logTri = [&](const char* label, size_t k, const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JUNCTION-DEBUG]   wedge[" + Ogre::StringConverter::toString(k) + "] " + label + ": (" + Ogre::StringConverter::toString(v0.x) + "," +
-                                                                                    Ogre::StringConverter::toString(v0.y) + "," + Ogre::StringConverter::toString(v0.z) + ") (" + Ogre::StringConverter::toString(v1.x) + "," +
-                                                                                    Ogre::StringConverter::toString(v1.y) + "," + Ogre::StringConverter::toString(v1.z) + ") (" + Ogre::StringConverter::toString(v2.x) + "," +
-                                                                                    Ogre::StringConverter::toString(v2.y) + "," + Ogre::StringConverter::toString(v2.z) + ")");
-        };
-        auto logQuad = [&](const char* label, size_t k, const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3)
-        {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[JUNCTION-DEBUG]   wedge[" + Ogre::StringConverter::toString(k) + "] " + label + ": (" + Ogre::StringConverter::toString(v0.x) + "," + Ogre::StringConverter::toString(v0.y) + "," + Ogre::StringConverter::toString(v0.z) + ") (" +
-                    Ogre::StringConverter::toString(v1.x) + "," + Ogre::StringConverter::toString(v1.y) + "," + Ogre::StringConverter::toString(v1.z) + ") (" + Ogre::StringConverter::toString(v2.x) + "," + Ogre::StringConverter::toString(v2.y) +
-                    "," + Ogre::StringConverter::toString(v2.z) + ") (" + Ogre::StringConverter::toString(v3.x) + "," + Ogre::StringConverter::toString(v3.y) + "," + Ogre::StringConverter::toString(v3.z) + ")");
-        };
-
-        for (size_t k = 0; k < arms.size(); ++k)
-        {
-            const size_t next = (k + 1) % arms.size();
-            const ArmCorner& aK = arms[k];
-            const ArmCorner& aN = arms[next];
-
-            // ── Top fan: front cap, back cap ─────────────────────────────────────
-            // BUGFIX: these used to sit at the full, un-beveled height (aK.h / aN.h /
-            // centreH) regardless of style. At Z=zFront or Z=zBack - exactly the outer
-            // edge - a beveled arm's own true surface height is (h - topBevel), matching
-            // frontFaceTopY0 in generatePlatformBox; leaving these at full height is why
-            // the junction met a chamfered Grass arm with a flat rim. Subtracting topBevel
-            // from all three corners (armK, armN, AND centre) uniformly is correct here,
-            // not just at the rim: unlike a straight box, this cap triangle lies entirely
-            // IN the Z=zFront/zBack plane already - the WHOLE triangle is "at the edge", so
-            // every point on it needs the same height offset, not only its outer corners.
-            const Ogre::Real aKTopBeveled = aK.h - topBevel;
-            const Ogre::Real aNTopBeveled = aN.h - topBevel;
-            const Ogre::Real centreTopBeveled = centreH - topBevel;
-
-            logTri("top-front-cap", k, Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), Ogre::Vector3(centreX, centreTopBeveled, zFront));
-            this->addJunctionTriangle(Ogre::Vector3(aK.x, aKTopBeveled, zFront), uvFor(aK.x, aK.h), Ogre::Vector3(aN.x, aNTopBeveled, zFront), uvFor(aN.x, aN.h), Ogre::Vector3(centreX, centreTopBeveled, zFront), uvFor(centreX, centreH),
-                Ogre::Vector3(0.0f, 0.0f, -1.0f), PlatformMeshBuffer::SURFACE);
-
-            logTri("top-back-cap", k, Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(centreX, centreTopBeveled, zBack));
-            this->addJunctionTriangle(Ogre::Vector3(aN.x, aNTopBeveled, zBack), uvFor(aN.x, aN.h), Ogre::Vector3(aK.x, aKTopBeveled, zBack), uvFor(aK.x, aK.h), Ogre::Vector3(centreX, centreTopBeveled, zBack), uvFor(centreX, centreH),
-                Ogre::Vector3(0.0f, 0.0f, 1.0f), PlatformMeshBuffer::SURFACE);
-
-            Ogre::Vector3 outward(aN.h - aK.h, -(aN.x - aK.x), 0.0f);
-            if (outward.squaredLength() > 1e-8f)
-            {
-                outward.normalise();
-            }
-            const Ogre::Vector3 toMid((aK.x + aN.x) * 0.5f - centreX, (aK.h + aN.h) * 0.5f - centreH, 0.0f);
-            if (outward.dotProduct(toMid) < 0.0f)
-            {
-                outward = -outward;
-            }
-
-            const Ogre::Real segLen = std::max(0.001f, std::sqrt((aN.x - aK.x) * (aN.x - aK.x) + (aN.h - aK.h) * (aN.h - aK.h)));
-            const Ogre::Real v1 = segLen * groundUV.x;
-            // BUGFIX: separate U scale for the top fan (now routed to the SURFACE buffer, see
-            // below) so it tiles using Surface UV Tiling like the arms' own top do, instead of
-            // reusing the ground tiling that only makes sense for the sides/bottom.
-            const Ogre::Real vSurf = segLen * surfUV.x;
-
-            // ── Top fan outer perimeter wall ──────────────────────────────────────
-            // BUGFIX: used to be one flat quad at full height across the whole zFront..zBack
-            // span. When topBevel > 0, split into the same 3 bands generatePlatformBox uses
-            // for its own top surface: a flat middle band between topZFront/topZBack at full
-            // height, and two sloped bevel bands connecting it down to (height - topBevel) at
-            // the true zFront/zBack edges - so the junction's outer rim now traces the exact
-            // same chamfer profile the arms sweep along their own length, instead of meeting
-            // it with a flat step. Non-beveled styles (topBevel == 0) fall through to the
-            // original single flat quad, completely unchanged.
-            if (topBevel > 0.0f)
-            {
-                logQuad("top-perimeter-bevel-front", k, Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aN.x, aN.h, topZFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront));
-                this->addPlatformQuad(Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aN.x, aN.h, topZFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), outward, 0.0f, vSurf, 0.0f, topBevel * surfUV.y,
-                    PlatformMeshBuffer::SURFACE);
-
-                logQuad("top-perimeter-flat", k, Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZFront));
-                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, topZFront), Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZBack), Ogre::Vector3(aN.x, aN.h, topZFront), outward, 0.0f, vSurf, 0.0f, surfUV.y,
-                    PlatformMeshBuffer::SURFACE);
-
-                logQuad("top-perimeter-bevel-back", k, Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, aN.h, topZBack));
-                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, topZBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, aN.h, topZBack), outward, 0.0f, vSurf, 0.0f, topBevel * surfUV.y,
-                    PlatformMeshBuffer::SURFACE);
-            }
-            else
-            {
-                logQuad("top-perimeter", k, Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, aN.h, zFront));
-                this->addPlatformQuad(Ogre::Vector3(aK.x, aK.h, zFront), Ogre::Vector3(aK.x, aK.h, zBack), Ogre::Vector3(aN.x, aN.h, zBack), Ogre::Vector3(aN.x, aN.h, zFront), outward, 0.0f, vSurf, 0.0f, surfUV.y, PlatformMeshBuffer::SURFACE);
-            }
-
-            // ── Bottom fan (mirrored at height-H, reversed winding) ──────────────
-            const Ogre::Real bK = aK.h - height;
-            const Ogre::Real bN = aN.h - height;
-            const Ogre::Real bC = centreH - height;
-
-            // BUGFIX: bottom fan + perimeter + side walls now go to GROUND (matching
-            // generatePlatformBox's own bottom surface and front/back faces, see the
-            // reference block above this function) instead of the separate JUNCTION buffer,
-            // which only ever had Ground Datablock mirrored onto it anyway - going through
-            // GROUND directly means Ground UV Tiling is honoured properly instead of a fixed
-            // fallback, and the junction submesh no longer needs its own datablock at all.
-            logTri("bottom-front-cap", k, Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(centreX, bC, zFront));
-            this->addJunctionTriangle(Ogre::Vector3(aN.x, bN, zFront), uvFor(aN.x, aN.h), Ogre::Vector3(aK.x, bK, zFront), uvFor(aK.x, aK.h), Ogre::Vector3(centreX, bC, zFront), uvFor(centreX, centreH), Ogre::Vector3(0.0f, 0.0f, -1.0f),
-                PlatformMeshBuffer::GROUND);
-
-            logTri("bottom-back-cap", k, Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(centreX, bC, zBack));
-            this->addJunctionTriangle(Ogre::Vector3(aK.x, bK, zBack), uvFor(aK.x, aK.h), Ogre::Vector3(aN.x, bN, zBack), uvFor(aN.x, aN.h), Ogre::Vector3(centreX, bC, zBack), uvFor(centreX, centreH), Ogre::Vector3(0.0f, 0.0f, 1.0f),
-                PlatformMeshBuffer::GROUND);
-
-            logQuad("bottom-perimeter", k, Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, bN, zBack));
-            this->addPlatformQuad(Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, bN, zBack), outward, 0.0f, v1, 0.0f, groundUV.y, PlatformMeshBuffer::GROUND);
-
-            // ── Outer side wall: closes the gap from the top rim down to the bottom rim ──
-            // BUGFIX: top edge now uses the bevel-adjusted height (aKTopBeveled/aNTopBeveled)
-            // instead of the full aK.h/aN.h, so it meets the chamfered rim above flush instead
-            // of leaving either a step or an overlap with the new bevel bands.
-            logQuad("side-wall-front", k, Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront));
-            this->addPlatformQuad(Ogre::Vector3(aK.x, aKTopBeveled, zFront), Ogre::Vector3(aK.x, bK, zFront), Ogre::Vector3(aN.x, bN, zFront), Ogre::Vector3(aN.x, aNTopBeveled, zFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), 0.0f, v1, 0.0f, groundUV.y,
-                PlatformMeshBuffer::GROUND);
-            logQuad("side-wall-back", k, Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack));
-            this->addPlatformQuad(Ogre::Vector3(aN.x, aNTopBeveled, zBack), Ogre::Vector3(aN.x, bN, zBack), Ogre::Vector3(aK.x, bK, zBack), Ogre::Vector3(aK.x, aKTopBeveled, zBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), 0.0f, v1, 0.0f, groundUV.y,
-                PlatformMeshBuffer::GROUND);
+                "[JUNCTION-DEBUG]   arm[" + Ogre::StringConverter::toString(static_cast<int>(ci)) + "] x=" + Ogre::StringConverter::toString(x) + " h=" + Ogre::StringConverter::toString(h) + " depth=" + Ogre::StringConverter::toString(armDepth));
         }
-    }
-
-    void ProceduralPlatformComponent::addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, const Ogre::Vector3& normalHint,
-        PlatformMeshBuffer targetBuffer)
-    {
-        std::vector<float>& verts = (targetBuffer == PlatformMeshBuffer::SURFACE) ? this->surfaceVertices : (targetBuffer == PlatformMeshBuffer::GROUND) ? this->groundVertices : this->junctionVertices;
-        std::vector<Ogre::uint32>& inds = (targetBuffer == PlatformMeshBuffer::SURFACE) ? this->surfaceIndices : (targetBuffer == PlatformMeshBuffer::GROUND) ? this->groundIndices : this->junctionIndices;
-        Ogre::uint32& currentIdx = (targetBuffer == PlatformMeshBuffer::SURFACE) ? this->currentSurfaceVertexIndex : (targetBuffer == PlatformMeshBuffer::GROUND) ? this->currentGroundVertexIndex : this->currentJunctionVertexIndex;
-
-        // BUGFIX: relying on vertex winding order alone (the previous "no hint needed"
-        // assumption) turned out wrong - for the top fan's front/back cap triangles, given
-        // the fixed vertex order generateJunctionPatch calls this with, the raw cross
-        // product consistently points INTO the solid rather than outward, regardless of the
-        // arms' angles or heights (it's a fixed sign flaw, not an ambiguous per-case one -
-        // all these triangles lie in a constant-Z plane, so the correct normal is always
-        // exactly (0,0,-1) or (0,0,1), nothing in between). Passing that as an explicit hint
-        // and correcting winding against it - exactly like addPlatformQuad already does -
-        // fixes it without needing to special-case which caller is "the wrong one".
-        Ogre::Vector3 edge1 = v1 - v0;
-        Ogre::Vector3 edge2 = v2 - v0;
-        Ogre::Vector3 triNormal = edge1.crossProduct(edge2);
-
-        bool flipWinding = false;
-        if (triNormal.squaredLength() > 0.0001f)
-        {
-            triNormal.normalise();
-            if (triNormal.dotProduct(normalHint) < 0.0f)
-            {
-                flipWinding = true;
-                triNormal = -triNormal;
-            }
-        }
-        else
-        {
-            triNormal = normalHint;
-        }
-
-        auto pushVert = [&](const Ogre::Vector3& pos, const Ogre::Vector2& uv)
-        {
-            verts.push_back(pos.x);
-            verts.push_back(pos.y);
-            verts.push_back(pos.z);
-            verts.push_back(triNormal.x);
-            verts.push_back(triNormal.y);
-            verts.push_back(triNormal.z);
-            verts.push_back(uv.x);
-            verts.push_back(uv.y);
-        };
-
-        const Ogre::uint32 base = currentIdx;
-
-        if (false == flipWinding)
-        {
-            pushVert(v0, uv0);
-            pushVert(v1, uv1);
-            pushVert(v2, uv2);
-        }
-        else
-        {
-            pushVert(v0, uv0);
-            pushVert(v2, uv2);
-            pushVert(v1, uv1);
-        }
-
-        inds.push_back(base + 0);
-        inds.push_back(base + 1);
-        inds.push_back(base + 2);
-
-        currentIdx += 3;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -3888,6 +3060,10 @@ namespace NOWA
 
         this->cachedPlatformOrigin = this->platformOrigin;
 
+        this->logSuspectedZFightingPairs();
+        this->logSuspectedCoplanarOverlaps();
+        this->logAllVertexPositions();
+
         std::vector<float> surfaceVerticesCopy = this->surfaceVertices;
         std::vector<Ogre::uint32> surfaceIndicesCopy = this->surfaceIndices;
         size_t numSurfaceVertices = this->currentSurfaceVertexIndex;
@@ -3915,6 +3091,286 @@ namespace NOWA
         this->groundIndices.clear();
         this->junctionVertices.clear();
         this->junctionIndices.clear();
+    }
+
+    void ProceduralPlatformComponent::logSuspectedZFightingPairs(void)
+    {
+        struct TriInfo
+        {
+            Ogre::Vector3 centroid;
+            Ogre::Vector3 normal;
+            Ogre::Vector3 v0, v1, v2;
+            const char* buffer;
+            size_t triIndex;
+        };
+        std::vector<TriInfo> tris;
+
+        const size_t floatsPerVert = 8; // pos.xyz, normal.xyz, uv.xy - matches every addPlatformQuad push
+
+        auto extract = [&](const std::vector<float>& verts, const std::vector<Ogre::uint32>& inds, const char* bufferName)
+        {
+            auto getPos = [&](Ogre::uint32 idx) -> Ogre::Vector3
+            {
+                const size_t base = static_cast<size_t>(idx) * floatsPerVert;
+                if (base + 2 >= verts.size())
+                {
+                    return Ogre::Vector3::ZERO;
+                }
+                return Ogre::Vector3(verts[base + 0], verts[base + 1], verts[base + 2]);
+            };
+            for (size_t i = 0; i + 2 < inds.size(); i += 3)
+            {
+                const Ogre::Vector3 v0 = getPos(inds[i]);
+                const Ogre::Vector3 v1 = getPos(inds[i + 1]);
+                const Ogre::Vector3 v2 = getPos(inds[i + 2]);
+                const Ogre::Vector3 centroid = (v0 + v1 + v2) / 3.0f;
+                Ogre::Vector3 normal = (v1 - v0).crossProduct(v2 - v0);
+                if (normal.squaredLength() > 1e-10f)
+                {
+                    normal.normalise();
+                }
+                tris.push_back({centroid, normal, v0, v1, v2, bufferName, i / 3});
+            }
+        };
+
+        extract(this->surfaceVertices, this->surfaceIndices, "SURFACE");
+        extract(this->groundVertices, this->groundIndices, "GROUND");
+        extract(this->junctionVertices, this->junctionIndices, "JUNCTION");
+
+        // 2cm centroid tolerance (generous enough to catch near-but-not-exactly coincident
+        // triangles - the kind that flickers depending on viewing angle/float rounding -
+        // without also matching unrelated nearby geometry) and ~11 degrees of normal
+        // parallelism (abs() so opposite-facing coincident pairs - e.g. a front face and a
+        // back face sitting at the same spot - count too, since those z-fight just as badly).
+        // Widened after an initial pass at 2cm/0.98 found nothing despite a clear visual
+        // z-fighting pattern reported by the user - casting a wider net to catch pairs that
+        // are close but not exactly coincident (which can still flicker depending on
+        // viewing angle and depth-buffer precision at a distance).
+        const Ogre::Real centroidEpsilon = 0.15f;
+        const Ogre::Real normalDotThreshold = 0.85f;
+
+        int foundCount = 0;
+        for (size_t a = 0; a < tris.size(); ++a)
+        {
+            for (size_t b = a + 1; b < tris.size(); ++b)
+            {
+                if (tris[a].buffer == tris[b].buffer && tris[a].triIndex == tris[b].triIndex)
+                {
+                    continue;
+                }
+                const Ogre::Real centroidDist = tris[a].centroid.distance(tris[b].centroid);
+                if (centroidDist > centroidEpsilon)
+                {
+                    continue;
+                }
+                const Ogre::Real normalDot = std::abs(tris[a].normal.dotProduct(tris[b].normal));
+                if (normalDot < normalDotThreshold)
+                {
+                    continue;
+                }
+
+                ++foundCount;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, Ogre::String("[ZFIGHT-DEBUG] suspected pair: ") + tris[a].buffer + "#" + Ogre::StringConverter::toString((int)tris[a].triIndex) + " vs " + tris[b].buffer + "#" +
+                                                                                        Ogre::StringConverter::toString((int)tris[b].triIndex) + " centroidDist=" + Ogre::StringConverter::toString(centroidDist) +
+                                                                                        " normalDot=" + Ogre::StringConverter::toString(normalDot));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    Ogre::String("[ZFIGHT-DEBUG]   A(") + tris[a].buffer + "): (" + Ogre::StringConverter::toString(tris[a].v0.x) + "," + Ogre::StringConverter::toString(tris[a].v0.y) + "," + Ogre::StringConverter::toString(tris[a].v0.z) + ") (" +
+                        Ogre::StringConverter::toString(tris[a].v1.x) + "," + Ogre::StringConverter::toString(tris[a].v1.y) + "," + Ogre::StringConverter::toString(tris[a].v1.z) + ") (" + Ogre::StringConverter::toString(tris[a].v2.x) + "," +
+                        Ogre::StringConverter::toString(tris[a].v2.y) + "," + Ogre::StringConverter::toString(tris[a].v2.z) + ") normal=(" + Ogre::StringConverter::toString(tris[a].normal.x) + "," + Ogre::StringConverter::toString(tris[a].normal.y) +
+                        "," + Ogre::StringConverter::toString(tris[a].normal.z) + ")");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    Ogre::String("[ZFIGHT-DEBUG]   B(") + tris[b].buffer + "): (" + Ogre::StringConverter::toString(tris[b].v0.x) + "," + Ogre::StringConverter::toString(tris[b].v0.y) + "," + Ogre::StringConverter::toString(tris[b].v0.z) + ") (" +
+                        Ogre::StringConverter::toString(tris[b].v1.x) + "," + Ogre::StringConverter::toString(tris[b].v1.y) + "," + Ogre::StringConverter::toString(tris[b].v1.z) + ") (" + Ogre::StringConverter::toString(tris[b].v2.x) + "," +
+                        Ogre::StringConverter::toString(tris[b].v2.y) + "," + Ogre::StringConverter::toString(tris[b].v2.z) + ") normal=(" + Ogre::StringConverter::toString(tris[b].normal.x) + "," + Ogre::StringConverter::toString(tris[b].normal.y) +
+                        "," + Ogre::StringConverter::toString(tris[b].normal.z) + ")");
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ZFIGHT-DEBUG] scan complete: " + Ogre::StringConverter::toString((int)tris.size()) + " triangles checked, " + Ogre::StringConverter::toString(foundCount) + " suspected z-fighting pairs found");
+    }
+
+    void ProceduralPlatformComponent::logSuspectedCoplanarOverlaps(void)
+    {
+        struct TriInfo
+        {
+            Ogre::Vector3 v0, v1, v2;
+            Ogre::Vector3 normal;
+            const char* buffer;
+            size_t triIndex;
+        };
+        std::vector<TriInfo> tris;
+
+        const size_t floatsPerVert = 8;
+
+        auto extract = [&](const std::vector<float>& verts, const std::vector<Ogre::uint32>& inds, const char* bufferName)
+        {
+            auto getPos = [&](Ogre::uint32 idx) -> Ogre::Vector3
+            {
+                const size_t base = static_cast<size_t>(idx) * floatsPerVert;
+                if (base + 2 >= verts.size())
+                {
+                    return Ogre::Vector3::ZERO;
+                }
+                return Ogre::Vector3(verts[base + 0], verts[base + 1], verts[base + 2]);
+            };
+            for (size_t i = 0; i + 2 < inds.size(); i += 3)
+            {
+                const Ogre::Vector3 v0 = getPos(inds[i]);
+                const Ogre::Vector3 v1 = getPos(inds[i + 1]);
+                const Ogre::Vector3 v2 = getPos(inds[i + 2]);
+                Ogre::Vector3 normal = (v1 - v0).crossProduct(v2 - v0);
+                if (normal.squaredLength() > 1e-10f)
+                {
+                    normal.normalise();
+                }
+                tris.push_back({v0, v1, v2, normal, bufferName, i / 3});
+            }
+        };
+
+        extract(this->surfaceVertices, this->surfaceIndices, "SURFACE");
+        extract(this->groundVertices, this->groundIndices, "GROUND");
+        extract(this->junctionVertices, this->junctionIndices, "JUNCTION");
+
+        // Barycentric point-in-triangle test, done in the triangle's own plane.
+        auto pointInTriangle2D = [](const Ogre::Vector3& p, const Ogre::Vector3& a, const Ogre::Vector3& b, const Ogre::Vector3& c) -> bool
+        {
+            const Ogre::Vector3 v0v = c - a;
+            const Ogre::Vector3 v1v = b - a;
+            const Ogre::Vector3 v2v = p - a;
+            const Ogre::Real dot00 = v0v.dotProduct(v0v);
+            const Ogre::Real dot01 = v0v.dotProduct(v1v);
+            const Ogre::Real dot02 = v0v.dotProduct(v2v);
+            const Ogre::Real dot11 = v1v.dotProduct(v1v);
+            const Ogre::Real dot12 = v1v.dotProduct(v2v);
+            const Ogre::Real denom = dot00 * dot11 - dot01 * dot01;
+            if (std::abs(denom) < 1e-12f)
+            {
+                return false;
+            }
+            const Ogre::Real invDenom = 1.0f / denom;
+            const Ogre::Real u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+            const Ogre::Real v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+            return (u >= 0.05f) && (v >= 0.05f) && (u + v <= 0.95f);
+        };
+
+        const Ogre::Real planeEpsilon = 0.01f; // 1cm - how far off-plane a vertex can be and still count as "coplanar"
+        int foundCount = 0;
+
+        auto sharedVertexCount = [](const TriInfo& t1, const TriInfo& t2) -> int
+        {
+            const Ogre::Vector3 aVerts[3] = {t1.v0, t1.v1, t1.v2};
+            const Ogre::Vector3 bVerts[3] = {t2.v0, t2.v1, t2.v2};
+            int shared = 0;
+            for (int i = 0; i < 3; ++i)
+            {
+                for (int j = 0; j < 3; ++j)
+                {
+                    if (aVerts[i].squaredDistance(bVerts[j]) < 1e-6f)
+                    {
+                        ++shared;
+                        break;
+                    }
+                }
+            }
+            return shared;
+        };
+
+        for (size_t a = 0; a < tris.size(); ++a)
+        {
+            for (size_t b = a + 1; b < tris.size(); ++b)
+            {
+                if (tris[a].buffer == tris[b].buffer && tris[a].triIndex == tris[b].triIndex)
+                {
+                    continue;
+                }
+                const Ogre::Real normalDot = std::abs(tris[a].normal.dotProduct(tris[b].normal));
+                if (normalDot < 0.98f)
+                {
+                    continue; // not near-parallel, can't be a meaningful coplanar overlap
+                }
+
+                // Coplanarity: every vertex of B must sit close to A's plane, and vice versa.
+                const Ogre::Real dB0 = std::abs((tris[b].v0 - tris[a].v0).dotProduct(tris[a].normal));
+                const Ogre::Real dB1 = std::abs((tris[b].v1 - tris[a].v0).dotProduct(tris[a].normal));
+                const Ogre::Real dB2 = std::abs((tris[b].v2 - tris[a].v0).dotProduct(tris[a].normal));
+                if (dB0 > planeEpsilon || dB1 > planeEpsilon || dB2 > planeEpsilon)
+                {
+                    continue;
+                }
+
+                // BUGFIX: sharing 2+ vertices is completely normal for adjacent coplanar
+                // quads (e.g. a flat run's bottom face is many quads in the same plane,
+                // each pair of neighbors sharing an edge) - that is not an overlap, it's
+                // ordinary mesh connectivity. Only triangles that DON'T already share most
+                // of their boundary are worth checking for genuine area overlap.
+                if (sharedVertexCount(tris[a], tris[b]) >= 2)
+                {
+                    continue;
+                }
+
+                // Coplanar, near-parallel, not just edge-adjacent - now check for GENUINE
+                // area overlap using only the centroid test (vertex-in-triangle tests are
+                // inherently boundary-prone for adjacent shapes and were the main source of
+                // false positives at the previous, looser tolerance).
+                const Ogre::Vector3 centroidA = (tris[a].v0 + tris[a].v1 + tris[a].v2) / 3.0f;
+                const Ogre::Vector3 centroidB = (tris[b].v0 + tris[b].v1 + tris[b].v2) / 3.0f;
+
+                bool overlaps = pointInTriangle2D(centroidB, tris[a].v0, tris[a].v1, tris[a].v2) || pointInTriangle2D(centroidA, tris[b].v0, tris[b].v1, tris[b].v2);
+
+                if (false == overlaps)
+                {
+                    continue;
+                }
+
+                ++foundCount;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, Ogre::String("[COPLANAR-DEBUG] suspected area overlap: ") + tris[a].buffer + "#" + Ogre::StringConverter::toString((int)tris[a].triIndex) + " vs " + tris[b].buffer +
+                                                                                        "#" + Ogre::StringConverter::toString((int)tris[b].triIndex) + " normalDot=" + Ogre::StringConverter::toString(normalDot));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, Ogre::String("[COPLANAR-DEBUG]   A(") + tris[a].buffer + "): (" + Ogre::StringConverter::toString(tris[a].v0.x) + "," +
+                                                                                        Ogre::StringConverter::toString(tris[a].v0.y) + "," + Ogre::StringConverter::toString(tris[a].v0.z) + ") (" + Ogre::StringConverter::toString(tris[a].v1.x) +
+                                                                                        "," + Ogre::StringConverter::toString(tris[a].v1.y) + "," + Ogre::StringConverter::toString(tris[a].v1.z) + ") (" +
+                                                                                        Ogre::StringConverter::toString(tris[a].v2.x) + "," + Ogre::StringConverter::toString(tris[a].v2.y) + "," + Ogre::StringConverter::toString(tris[a].v2.z) + ")");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, Ogre::String("[COPLANAR-DEBUG]   B(") + tris[b].buffer + "): (" + Ogre::StringConverter::toString(tris[b].v0.x) + "," +
+                                                                                        Ogre::StringConverter::toString(tris[b].v0.y) + "," + Ogre::StringConverter::toString(tris[b].v0.z) + ") (" + Ogre::StringConverter::toString(tris[b].v1.x) +
+                                                                                        "," + Ogre::StringConverter::toString(tris[b].v1.y) + "," + Ogre::StringConverter::toString(tris[b].v1.z) + ") (" +
+                                                                                        Ogre::StringConverter::toString(tris[b].v2.x) + "," + Ogre::StringConverter::toString(tris[b].v2.y) + "," + Ogre::StringConverter::toString(tris[b].v2.z) + ")");
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[COPLANAR-DEBUG] scan complete: " + Ogre::StringConverter::toString((int)tris.size()) + " triangles checked, " + Ogre::StringConverter::toString(foundCount) + " suspected coplanar area overlaps found");
+    }
+
+    void ProceduralPlatformComponent::logAllVertexPositions(void)
+    {
+        const size_t floatsPerVert = 8; // pos.xyz, normal.xyz, uv.xy
+
+        auto dumpBuffer = [&](const std::vector<float>& verts, const std::vector<Ogre::uint32>& inds, const char* bufferName)
+        {
+            const size_t numVerts = verts.size() / floatsPerVert;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                Ogre::String("[VERTEXDUMP] ") + bufferName + ": " + Ogre::StringConverter::toString((int)numVerts) + " vertices, " + Ogre::StringConverter::toString((int)(inds.size() / 3)) + " triangles");
+
+            for (size_t v = 0; v < numVerts; ++v)
+            {
+                const size_t base = v * floatsPerVert;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    Ogre::String("[VERTEXDUMP]   ") + bufferName + "[" + Ogre::StringConverter::toString((int)v) + "] pos=(" + Ogre::StringConverter::toString(verts[base + 0]) + "," + Ogre::StringConverter::toString(verts[base + 1]) + "," +
+                        Ogre::StringConverter::toString(verts[base + 2]) + ") normal=(" + Ogre::StringConverter::toString(verts[base + 3]) + "," + Ogre::StringConverter::toString(verts[base + 4]) + "," +
+                        Ogre::StringConverter::toString(verts[base + 5]) + ") uv=(" + Ogre::StringConverter::toString(verts[base + 6]) + "," + Ogre::StringConverter::toString(verts[base + 7]) + ")");
+            }
+
+            for (size_t i = 0; i + 2 < inds.size(); i += 3)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, Ogre::String("[VERTEXDUMP]   ") + bufferName + " tri#" + Ogre::StringConverter::toString((int)(i / 3)) + " uses indices (" +
+                                                                                        Ogre::StringConverter::toString((int)inds[i]) + "," + Ogre::StringConverter::toString((int)inds[i + 1]) + "," +
+                                                                                        Ogre::StringConverter::toString((int)inds[i + 2]) + ")");
+            }
+        };
+
+        dumpBuffer(this->surfaceVertices, this->surfaceIndices, "SURFACE");
+        dumpBuffer(this->groundVertices, this->groundIndices, "GROUND");
+        dumpBuffer(this->junctionVertices, this->junctionIndices, "JUNCTION");
     }
 
     void ProceduralPlatformComponent::createPlatformMeshInternal(const std::vector<float>& surfaceVerts, const std::vector<Ogre::uint32>& surfaceInds, size_t numSurfaceVerts, const std::vector<float>& groundVerts,
@@ -4512,35 +3968,6 @@ namespace NOWA
     Ogre::Real ProceduralPlatformComponent::getSmoothingFactor(void) const
     {
         return this->smoothingFactor->getReal();
-    }
-
-    void ProceduralPlatformComponent::setMaxGradient(Ogre::Real gradient)
-    {
-        // Upper-bounded at 89.5 as well as lower-bounded - see the pole-safety comment in
-        // smoothHeightTransitions for why 90 degrees itself is unsafe.
-        this->maxGradient->setValue(Ogre::Math::Clamp(gradient, 0.1f, 89.5f));
-        if (false == this->platformSegments.empty())
-        {
-            this->rebuildMesh();
-        }
-    }
-
-    Ogre::Real ProceduralPlatformComponent::getMaxGradient(void) const
-    {
-        return this->maxGradient->getReal();
-    }
-
-    void ProceduralPlatformComponent::setMaxTurnAngle(Ogre::Real angleDeg)
-    {
-        // 180 = no limit at all (a true reversal is still representable, just not
-        // recommended); clamped at 10 minimum so the property can't be set so tight that
-        // basically no continuation would ever be allowed.
-        this->maxTurnAngle->setValue(Ogre::Math::Clamp(angleDeg, 10.0f, 180.0f));
-    }
-
-    Ogre::Real ProceduralPlatformComponent::getMaxTurnAngle(void) const
-    {
-        return this->maxTurnAngle->getReal();
     }
 
     void ProceduralPlatformComponent::setCurveSubdivisions(int subdivisions)
@@ -5938,7 +5365,6 @@ namespace NOWA
 
         float bestDist = radius;
         int bestSeg = -1;
-        float bestT = 0.0f;
         Ogre::Vector3 bestPt;
 
         for (int si = 0; si < static_cast<int>(this->platformSegments.size()); ++si)
@@ -5957,7 +5383,6 @@ namespace NOWA
                 {
                     bestDist = dist;
                     bestSeg = si;
-                    bestT = 0.0f;
                     // BUGFIX: keep the stored point's real z (the fixed plane's constant),
                     // not a hardcoded 0 - this feeds updatePlatformPreview/confirmPlatform,
                     // and ultimately the snap-indicator circle, which need the true depth.
@@ -5973,7 +5398,6 @@ namespace NOWA
                 {
                     bestDist = dist;
                     bestSeg = si;
-                    bestT = 1.0f;
                     bestPt = Ogre::Vector3(seg.controlPoints.back().position.x, seg.controlPoints.back().smoothedHeight, seg.controlPoints.back().position.z);
                 }
             }
@@ -5981,7 +5405,6 @@ namespace NOWA
 
         this->isSnapToOwnPlatform = (bestSeg >= 0);
         this->snapToPlatformSegmentIdx = bestSeg;
-        this->snapToPlatformT = bestT;
         this->snapToPlatformPoint = bestPt;
         return this->isSnapToOwnPlatform;
     }
@@ -6649,10 +6072,6 @@ namespace NOWA
                 .def("getPlatformStyle", &ProceduralPlatformComponent::getPlatformStyle)
 
                 // ── Height smoothing ──────────────────────────────────────────
-                .def("setMaxGradient", &ProceduralPlatformComponent::setMaxGradient)
-                .def("getMaxGradient", &ProceduralPlatformComponent::getMaxGradient)
-                .def("setMaxTurnAngle", &ProceduralPlatformComponent::setMaxTurnAngle)
-                .def("getMaxTurnAngle", &ProceduralPlatformComponent::getMaxTurnAngle)
                 .def("setSmoothingFactor", &ProceduralPlatformComponent::setSmoothingFactor)
                 .def("getSmoothingFactor", &ProceduralPlatformComponent::getSmoothingFactor)
 

@@ -54,22 +54,18 @@ namespace OgreNewt
 
                 mOwner->mBodyAdded = false;
 
-                // Only set mLastBody AFTER the filter passes.
-                // Previously mLastBody was set before calling userPreFilterCallback,
-                // so a rejected body (e.g. the player's own body) left mLastBody
-                // pointing to the rejected body. If no subsequent body was hit,
-                // BasicRaycast::go() then recorded the rejected body as a valid hit.
-                // This caused OcclusionRaycast to return the player's own body as
-                // an occlusion hit every time the ray passed through it first,
-                // making currentCollisionDistance flicker between desiredDistance
-                // and a slightly reduced value -- visible as camera flicker.
+                // NOTE: This is only the broad-phase filter -- it does NOT mean
+                // the ray geometrically hit the shape. Do NOT set mLastBody here;
+                // that must only happen in OnRayCastAction, once Newton confirms
+                // an actual contact point (with a real normal). Setting it here
+                // caused BasicRaycast to report "hits" with a default-constructed
+                // (zero) contact whenever a body passed the AABB filter but the
+                // narrow-phase ray test found no real intersection.
                 if (false == mOwner->userPreFilterCallback(ogreBody))
                 {
-                    // Rejected -- do NOT store in mLastBody.
                     return 0u;
                 }
 
-                mOwner->mLastBody = ogreBody;
                 return 1u;
             }
         }

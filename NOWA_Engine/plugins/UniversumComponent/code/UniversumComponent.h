@@ -633,6 +633,8 @@ namespace NOWA
 
         void findFlatLandingSpot(const Ogre::Vector3& shipPos, const Ogre::Vector3& bodyCentre, Ogre::Real bodyRadius, bool& outCanLand, float& outSurfaceHeight);
 
+        void setLandingState(LandingState newState, const Ogre::String& reason);
+
         void reset(void);
     private:
         void handleSceneParsed(EventDataPtr eventData);

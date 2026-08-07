@@ -23,16 +23,17 @@ namespace NOWA
      * Features:
      * - Click and drag to draw platforms in real-time, on a fixed local Z plane
      * - Support for straight and curved (Catmull-Rom) platform paths
-     * - Dual material system (surface top + ground body), plus a separate junction datablock
-     * - Interpolated height/gradient smoothing between connected segments
+     * - Dual material system (surface top + ground body)
+     * - Height smoothing between connected segments, with authored corners kept sharp
      * - Configurable platform depth (Z thickness) and height (downward slab thickness)
      * - Support for different platform styles (grass, wood, stone, ice, metal)
-     * - Platform junctions where 3+ segments meet, so chains can branch/combine
+     * - Platform junctions where 3+ segments meet, so chains can branch/combine (the arms
+     *   simply interpenetrate - no patch geometry is generated, see generateJunctionPatch)
      * - Export generated mesh to file
      * - Undo/Redo support for platform segments
      * - Segment mode to select, extend and remove individual segments
      * - Snap-to-existing-endpoint indicator while dragging, both within this component's own
-     *   network (junction fan patches) and across to a SEPARATE ProceduralPlatformComponent
+     *   network and across to a SEPARATE ProceduralPlatformComponent
      *   GameObject, which gets merged into this one and removed - mirrors
      *   ProceduralRoadComponent's findOtherRoadNearby/mergeOtherRoadIntoThis exactly.
      *
@@ -85,16 +86,6 @@ namespace NOWA
             Ogre::Real rawHeight = 0.0f; // Vertical position exactly as placed by the user drag (no raycast involved - there is no terrain to sample)
             Ogre::Real smoothedHeight = 0.0f; // Vertical position after gradient smoothing between segments
             Ogre::Real distFromStart = 0.0f;  // Accumulated distance from chain start (for UV)
-            // Small per-point depth reduction (0 = full platformDepth), assigned once per
-            // confirmed raw segment at creation time and carried through Catmull-Rom/
-            // resampling like rawHeight. Purpose: when two segments fold back sharply
-            // enough to physically overlap in 3D (a fixed-depth extrusion cannot avoid
-            // this for a near-180-degree reversal), giving successive segments a
-            // deliberately slightly different depth means the overlapping geometry no
-            // longer sits at the exact same Z, so it resolves visually into one layer in
-            // front of the other instead of an ambiguous self-intersecting jumble. Not a
-            // topological fix, just a practical mitigation the user explicitly asked for.
-            Ogre::Real depthShrink = 0.0f;
         };
 
         struct PlatformSegment
@@ -102,30 +93,30 @@ namespace NOWA
             std::vector<PlatformControlPoint> controlPoints;
             bool isCurved;
             Ogre::Real curvature; // 0.0 = straight, 1.0 = maximum curve
-            // Set by rebuildMesh when this chain's front/back end is trimmed against a
-            // junction - generatePlatformBox skips the end-cap quad there, since
-            // generateJunctionPatch already fills that exact spot; drawing both caused
-            // overlapping/z-fighting geometry right at the junction. Default false so
-            // direct callers (e.g. the live preview segment) keep both caps as before.
+            // Set by rebuildMesh when this run continues into the next one at a hairpin
+            // reversal cut - generatePlatformBox then skips the end-cap there, because the
+            // previous run's own back cap already closes that seam and two coincident caps
+            // z-fight. A junction end is NOT a skip case any more: nothing fills that
+            // opening since junctions build no geometry, so the cap has to be drawn.
             bool skipFrontCap = false;
             bool skipBackCap = false;
         };
 
+        // A junction generates NO geometry - see generateJunctionPatch in the .cpp for the
+        // full reasoning. All that survives here is enough to (a) know that a chain end sits
+        // on a junction, so its endpoint can be snapped onto the junction centre and pushed
+        // slightly past it, and (b) emit a useful [JUNCTION-DEBUG] line. The per-arm trim
+        // distances that used to drive a fan/hub patch are gone with the trimming itself.
         struct JunctionPoint
         {
             Ogre::Vector3 worldPos;
             std::vector<size_t> segIndices;
-            std::vector<Ogre::Vector3> armDirs;   // Per-arm outward direction, in the platform plane (x/height), z always 0
-            std::vector<Ogre::Real> armTrimDists; // Per-arm, computed from adjacent angles - how far back each arm gets trimmed to make room for the fan patch
-            // Per-arm trimmed boundary point (x, height), z always 0 - ONE point per arm,
-            // unlike ProceduralRoadComponent's patchCorners/patchCornersInner PAIR per arm.
-            // Road needs a pair because road width creates an inner/outer ring to bridge;
-            // platform's path has no in-plane width (only Depth, which is orthogonal to this
-            // whole plane and uniform everywhere), so there is only one ring here. The fan
-            // fill is a solid wedge: 2D fan triangle (center + two adjacent ring points),
-            // duplicated at the front/back depth faces, plus a perimeter quad between them -
-            // see generateJunctionPatch.
+            std::vector<Ogre::Vector3> armDirs; // Per-arm outward direction, in the platform plane (x/height), z always 0 - logging only
+            // Per-arm connection point (x, height), z always 0 - one point per arm. Recorded
+            // by rebuildMesh after each arm's endpoint has been snapped and overshot, and
+            // read only by the [JUNCTION-DEBUG] log.
             std::vector<Ogre::Vector3> patchCorners;
+            std::vector<Ogre::Real> armDepths;
         };
 
     public:
@@ -262,11 +253,12 @@ namespace NOWA
                    "  appears. Release at that point to snap exactly to the endpoint, closing the chain\n"
                    "  or connecting to an existing junction.\n\n"
                    "JUNCTIONS:\n"
-                   "- When three or more segments share an endpoint, a junction patch is generated\n"
-                   "  automatically to fill the gap between the converging platform arms - this is how\n"
+                   "- When three or more segments share an endpoint they form a junction - this is how\n"
                    "  segments combine into more complex, branching platform shapes.\n"
-                   "- The junction patch uses its own datablock (Junction Datablock), separate from\n"
-                   "  Surface/Ground, since a fan patch has no single consistent surface direction.\n\n"
+                   "- No extra junction geometry is built. Each arm runs all the way into the junction\n"
+                   "  and the arms simply share solid volume, which for a slab extruded through a fixed\n"
+                   "  depth is already the correct shape - the player can walk through it in any\n"
+                   "  direction, and the wedge between two arms stays correctly empty.\n\n"
                    "PLATFORM STYLES:\n"
                    "- Grass: grass surface top, striped dirt/earth body.\n"
                    "- Wood: bamboo/wood plank surface and body.\n"
@@ -277,9 +269,12 @@ namespace NOWA
                    "- 'Platform Depth' is the Z-thickness of the block (how far it extends front-to-back\n"
                    "  on the fixed depth plane) - the same role roadWidth plays for roads, just on the\n"
                    "  third axis instead of sideways, since the path itself already IS the width.\n"
-                   "- 'Platform Height' is how far the solid slab extends downward from the top surface.\n"
-                   "- 'Smoothing Factor' and 'Max Gradient' control how height changes between connected\n"
-                   "  segments are blended, so chained platforms don't have a jarring vertical snap.\n"
+                   "- 'Platform Height' is the slab's thickness, measured PERPENDICULAR to the path -\n"
+                   "  so it is the downward thickness of a flat platform and the sideways thickness of\n"
+                   "  a vertical wall. Segments can be drawn at any angle, vertical included.\n"
+                   "- 'Smoothing Factor' controls how much height changes between connected segments are\n"
+                   "  blended. Waypoints turning by more than ~60 degrees are treated as deliberate\n"
+                   "  corners and stay sharp; gentler turns are curved through.\n"
                    "- 'Curve Subdivisions' controls how many interpolated points are used per segment.\n\n"
                    "CONVERT TO MESH:\n"
                    "- 'Convert To Mesh' exports the current platform geometry as a static .mesh file\n"
@@ -380,14 +375,6 @@ namespace NOWA
 
         Ogre::Real getSmoothingFactor(void) const;
 
-        void setMaxGradient(Ogre::Real gradient);
-
-        Ogre::Real getMaxGradient(void) const;
-
-        void setMaxTurnAngle(Ogre::Real angleDeg);
-
-        Ogre::Real getMaxTurnAngle(void) const;
-
         void setCurveSubdivisions(int subdivisions);
 
         int getCurveSubdivisions(void) const;
@@ -474,14 +461,6 @@ namespace NOWA
         {
             return "Smoothing Factor";
         }
-        static Ogre::String AttrMaxGradient(void)
-        {
-            return "Max Gradient";
-        }
-        static Ogre::String AttrMaxTurnAngle(void)
-        {
-            return "Max Turn Angle";
-        }
         static Ogre::String AttrCurveSubdivisions(void)
         {
             return "Curve Subdivisions";
@@ -528,6 +507,29 @@ namespace NOWA
     private:
         void createPlatformMesh(void);
 
+        // Diagnostic-only: scans every generated triangle across all three mesh buffers
+        // (surface, ground, junction) for pairs whose centroid is nearly identical AND
+        // whose normal is nearly parallel (same or opposite direction) - the actual
+        // geometric signature of z-fighting, rather than guessing from screenshots or
+        // hand-checking a handful of coordinates. Logs full details only for suspected
+        // pairs, tagged "[ZFIGHT-DEBUG]". O(n^2) over triangle count - fine for the size of
+        // meshes involved in testing, not meant to run outside debugging.
+        void logSuspectedZFightingPairs(void);
+
+        // Diagnostic-only: catches area overlap between DIFFERENTLY-shaped coplanar
+        // triangles (which the centroid-distance heuristic in logSuspectedZFightingPairs
+        // can miss - e.g. a small triangle sitting entirely inside a larger coplanar one,
+        // where the centroids don't coincide but the surfaces still genuinely z-fight).
+        // Tagged "[COPLANAR-DEBUG]".
+        void logSuspectedCoplanarOverlaps(void);
+
+        // Diagnostic-only: dumps every single vertex position (and which triangle/buffer it
+        // belongs to) from all three buffers after a rebuild, tagged "[VERTEXDUMP]" - for
+        // hand-inspection when the automated z-fight/overlap heuristics come back clean but
+        // the user still sees a viewing-angle-dependent flicker (the classic signature of
+        // true z-fighting), to rule out anything the heuristics might be missing.
+        void logAllVertexPositions(void);
+
         void createPlatformMeshInternal(const std::vector<float>& surfaceVerts, const std::vector<Ogre::uint32>& surfaceInds, size_t numSurfaceVerts, const std::vector<float>& groundVerts, const std::vector<Ogre::uint32>& groundInds,
             size_t numGroundVerts, const std::vector<float>& junctionVerts, const std::vector<Ogre::uint32>& junctionInds, size_t numJunctionVerts, const Ogre::Vector3& origin);
 
@@ -551,8 +553,6 @@ namespace NOWA
         // part of the path itself.
         Ogre::Vector2 evaluateCatmullRom(const std::vector<PlatformControlPoint>& points, Ogre::Real t);
 
-        Ogre::Real evaluateCatmullRomHeight(const std::vector<PlatformControlPoint>& points, Ogre::Real t);
-
         std::vector<Ogre::Vector2> generateCurvePoints(const std::vector<PlatformControlPoint>& controlPoints, int subdivisions);
 
         std::vector<PlatformControlPoint> subdivideWithHeightInterpolation(const std::vector<PlatformControlPoint>& points);
@@ -562,12 +562,7 @@ namespace NOWA
         // Height smoothing for realistic gradients between connected segments
         void smoothHeightTransitions(std::vector<PlatformControlPoint>& points);
 
-        Ogre::Real calculateSmoothedHeight(const std::vector<PlatformControlPoint>& points, int index);
-
         void addPlatformQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0, Ogre::Real u1, Ogre::Real v0Val, Ogre::Real v1Val,
-            PlatformMeshBuffer targetBuffer);
-
-        void addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, const Ogre::Vector3& normalHint,
             PlatformMeshBuffer targetBuffer);
 
         Ogre::Vector3 snapToGridFunc(const Ogre::Vector3& position);
@@ -598,8 +593,6 @@ namespace NOWA
         void generateMetalPlatform(const std::vector<PlatformControlPoint>& points, bool skipFrontCap = false, bool skipBackCap = false);
 
         void generateJunctionPatch(const JunctionPoint& jp, const Ogre::Vector3& origin);
-
-        int findNearestSegment(const Ogre::Vector3& worldPos) const;
 
         /**
          * @brief Cross-network lookup - is there a SEPARATE ProceduralPlatformComponent
@@ -680,8 +673,6 @@ namespace NOWA
         Variant* snapToGrid;
         Variant* gridSize;
         Variant* smoothingFactor;
-        Variant* maxGradient;
-        Variant* maxTurnAngle;
         Variant* curveSubdivisions;
         Variant* surfaceDatablock;
         Variant* groundDatablock;
@@ -723,25 +714,8 @@ namespace NOWA
         Ogre::Vector3 lastValidPosition;
 
         // For continuous platform building
-        bool continuousMode;
         Ogre::Vector3 platformOrigin;
         bool hasPlatformOrigin;
-
-        // Set whenever a new drag continues from an existing endpoint (Shift-click chain
-        // continuation, or Segment mode's 'E' extend) - the direction of the last edge of
-        // whichever segment is being continued, in local (x, height) space, z always 0. Not
-        // set for a genuinely fresh drag (startPlatformPlacement), since there is nothing to
-        // stay consistent with there. updatePlatformPreview uses this to cap how sharply the
-        // new drag can turn relative to it (maxTurnAngle), preventing the kind of tight
-        // reversal that makes the fixed-depth extrusion self-intersect - see the class
-        // design notes on that limitation.
-        bool hasIncomingDirection;
-        Ogre::Vector3 incomingDirection;
-
-        // Increments once per confirmed raw segment, used to derive that segment's
-        // depthShrink (cycled with modulo so depth never keeps shrinking indefinitely on a
-        // long platform - see PlatformControlPoint::depthShrink for why this exists).
-        unsigned int segmentCreationCounter;
 
         // Mirrors ProceduralRoadComponent's roadFrame/roadOrigin pair exactly, so
         // local<->world conversion (getPlatformConnectionPoint, getNearestPointOnPlatform,
@@ -786,7 +760,6 @@ namespace NOWA
 
         // Segment selection state
         int selectedSegmentIndex; // -1 = nothing selected
-        bool isSegmentDragging;   // true while extending from selected endpoint
 
         Ogre::SceneNode* segOverlayNode;
         Ogre::ManualObject* segOverlayObject;
@@ -796,7 +769,6 @@ namespace NOWA
         bool isSnapToOwnPlatform;
         Ogre::Vector3 snapToPlatformPoint;
         int snapToPlatformSegmentIdx;
-        float snapToPlatformT;
         Ogre::Real snapRadius; // = platformDepth * 1.5f, set in postInit
 
         bool bBatchMode;

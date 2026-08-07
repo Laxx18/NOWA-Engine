@@ -1079,7 +1079,8 @@ namespace NOWA
         skinMargin(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrSkinMargin(), 0.15f, this->attributes)),
         minDistance(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrMinDistance(), 0.5f, this->attributes)),
         releaseSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrReleaseSmoothValue(), 1.5f, this->attributes)),
-        pullInSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrPullInSmoothValue(), 10.0f, this->attributes))
+        pullInSmoothValue(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrPullInSmoothValue(), 10.0f, this->attributes)),
+        probeOriginLift(new Variant(CameraBehaviorThirdPersonOcclusionComponent::AttrProbeOriginLift(), 0.0f, this->attributes))
     {
         this->offsetPosition->setDescription("Offset of the camera relative to the target, in the camera's local right/up/forward axes (x/y/z).");
         this->lookAtOffset->setDescription("Offset added to the target's position before the camera looks at it, e.g. to aim at head height instead of the pivot.");
@@ -1094,6 +1095,9 @@ namespace NOWA
         this->minDistance->setDescription("Hard minimum distance the camera is ever allowed to be from the target, regardless of occlusion.");
         this->releaseSmoothValue->setDescription("How quickly the camera moves back out to its ideal distance once an obstruction is no longer detected. Higher values release faster.");
         this->pullInSmoothValue->setDescription("How quickly the camera pulls in toward a newly detected obstruction. Higher values react faster to prevent clipping, but can feel abrupt.");
+        this->probeOriginLift->setDescription("Vertical offset raising the occlusion probe's cast origin above the target, keeping the probe sphere clear of a floor directly underfoot (e.g. inside a building, where the floor is normal "
+                                              "geometry and not excluded from the sweep the way outdoor terrain is). 0.0 (default) auto-derives the lift from the target's standing height (GetSize().y * 0.281) when the camera activates; "
+                                              "set explicitly to override for targets where the auto value doesn't fit.");
     }
 
     CameraBehaviorThirdPersonOcclusionComponent::~CameraBehaviorThirdPersonOcclusionComponent()
@@ -1160,6 +1164,11 @@ namespace NOWA
             this->pullInSmoothValue->setValue(XMLConverter::getAttribReal(propertyElement, "data", 20.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ProbeOriginLift")
+        {
+            this->probeOriginLift->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         return success;
     }
 
@@ -1178,6 +1187,7 @@ namespace NOWA
         clonedCompPtr->setMinDistance(this->minDistance->getReal());
         clonedCompPtr->setReleaseSmoothValue(this->releaseSmoothValue->getReal());
         clonedCompPtr->setPullInSmoothValue(this->pullInSmoothValue->getReal());
+        clonedCompPtr->setProbeOriginLift(this->probeOriginLift->getReal());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -1269,6 +1279,10 @@ namespace NOWA
         {
             this->setPullInSmoothValue(attribute->getReal());
         }
+        else if (CameraBehaviorThirdPersonOcclusionComponent::AttrProbeOriginLift() == attribute->getName())
+        {
+            this->setProbeOriginLift(attribute->getReal());
+        }
     }
 
     void CameraBehaviorThirdPersonOcclusionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -1340,6 +1354,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("name", "PullInSmoothValue"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pullInSmoothValue->getReal())));
         propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ProbeOriginLift"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->probeOriginLift->getReal())));
+        propertiesXML->append_node(propertyXML);
     }
 
     void CameraBehaviorThirdPersonOcclusionComponent::setActivated(bool activated)
@@ -1367,6 +1387,18 @@ namespace NOWA
             // setPullInSmoothValue() and setProbeCacheEpsilon() use their built-in defaults
             // unless you want to expose them as additional Variants too, same pattern as
             // the others - say so and I'll add them.
+            // probeOriginLift == 0.0f means "auto": derive from the target's standing
+            // height instead of requiring per-target manual tuning. 0.281 was measured
+            // empirically (0.5 world units worked well for a target with size.y = 1.78032;
+            // 0.5 / 1.78032 ~= 0.281) and keeps the probe sphere clear of an interior
+            // floor directly underfoot for characters of different scale.
+            Ogre::Real resolvedProbeOriginLift = this->probeOriginLift->getReal();
+            if (resolvedProbeOriginLift <= 0.0f)
+            {
+                resolvedProbeOriginLift = this->gameObjectPtr->getSize().y * 0.281f;
+            }
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setProbeOriginLift(resolvedProbeOriginLift);
+            static_cast<ThirdPersonOcclusionCamera*>(this->baseCamera)->setIgnoreGameObjectId(this->gameObjectPtr->getId());
         }
         CameraBehaviorComponent::setActivated(activated);
 
@@ -1499,6 +1531,16 @@ namespace NOWA
         return this->pullInSmoothValue->getReal();
     }
 
+    void CameraBehaviorThirdPersonOcclusionComponent::setProbeOriginLift(Ogre::Real probeOriginLift)
+    {
+        this->probeOriginLift->setValue(probeOriginLift);
+    }
+
+    Ogre::Real CameraBehaviorThirdPersonOcclusionComponent::getProbeOriginLift(void) const
+    {
+        return this->probeOriginLift->getReal();
+    }
+
     Ogre::String CameraBehaviorThirdPersonOcclusionComponent::getClassName(void) const
     {
         return "CameraBehaviorThirdPersonOcclusionComponent";
@@ -1543,6 +1585,8 @@ namespace NOWA
             .def("getSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::getSpringLength)
             .def("setOcclusionMaxSpeed", &CameraBehaviorThirdPersonOcclusionComponent::setOcclusionMaxSpeed)
             .def("getOcclusionMaxSpeed", &CameraBehaviorThirdPersonOcclusionComponent::getOcclusionMaxSpeed)
+            .def("setProbeOriginLift", &CameraBehaviorThirdPersonOcclusionComponent::setProbeOriginLift)
+            .def("getProbeOriginLift", &CameraBehaviorThirdPersonOcclusionComponent::getProbeOriginLift)
         ];
 
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setOffsetPosition(Vector3 offsetPosition)",
@@ -1563,6 +1607,10 @@ namespace NOWA
             "Sets the speed threshold (world units/second) above which occlusion probing is skipped for the frame. At very high speeds (e.g. hyperdrive) a single-instant probe result has no continuity with the previous frame and can cause visible "
             "camera jitter; above this threshold the view is treated as unoccluded. Set above normal flight speed and below boost/hyperdrive speed.");
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getOcclusionMaxSpeed()", "Gets the speed threshold above which occlusion probing is skipped.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setProbeOriginLift(float probeOriginLift)",
+            "Sets the vertical lift added to the occlusion probe's cast origin, keeping the probe clear of a floor directly underfoot (e.g. inside a building). "
+            "0.0 (default) auto-derives the lift from the target's standing height instead of requiring manual tuning per target.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "float getProbeOriginLift()", "Gets the configured probe origin lift. 0.0 means auto-derive from target size, not that no lift is applied.");
 
         gameObjectClass.def("getCameraBehaviorThirdPersonOcclusionComponentFromName", &getCameraBehaviorThirdPersonOcclusionComponentFromName);
         gameObjectClass.def("getCameraBehaviorThirdPersonOcclusionComponent", (CameraBehaviorThirdPersonOcclusionComponent * (*)(GameObject*)) & getCameraBehaviorThirdPersonOcclusionComponent);

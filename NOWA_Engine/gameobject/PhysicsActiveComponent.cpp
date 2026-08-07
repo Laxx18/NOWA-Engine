@@ -454,7 +454,7 @@ namespace NOWA
                 newPosition.z = this->maxBounds.z - dt;
             }
 
-            this->physicsBody->setPositionOrientation(newPosition, this->physicsBody->getOrientation());
+            this->physicsBody->setKinematicPositionOrientation(newPosition, this->physicsBody->getOrientation());
         }
     }
 
@@ -1061,9 +1061,9 @@ namespace NOWA
     Ogre::Vector3 PhysicsActiveComponent::getGravityDirection(void)
     {
         // Ensures the latest updated gravity value is read
-        while (false == gravityUpdated.test_and_set())
+        while (false == this->gravityUpdated.test_and_set())
             ; // Waits until a new update is available
-        return gravityDirection;
+        return this->gravityDirection;
     }
 
     void PhysicsActiveComponent::setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength)
@@ -2966,73 +2966,7 @@ namespace NOWA
             wholeForce *= mass;
         }
 
-        // bigger planet take the game objects instead the moon, need to debug what the radius is
-#if 0
-        if (false == this->gravitySourceGameObjects.empty())
-        {
-            // Sphere of influence: the body "owns" anything within SOI_FACTOR * radius
-            static constexpr float SOI_FACTOR = 1.5f; // tune this — 1.5 = 50% above surface
 
-            GameObjectPtr nearestGravitySourceObject;
-            Ogre::Real smallestSurfaceDist = std::numeric_limits<Ogre::Real>::max();
-
-            for (size_t i = 0; i < this->gravitySourceGameObjects.size(); i++)
-            {
-                Ogre::Vector3 toBody = this->getPosition() - this->gravitySourceGameObjects[i]->getPosition();
-                Ogre::Real distToCenter = toBody.length();
-
-                // Get body radius from size
-                Ogre::Vector3 bodySize = this->gravitySourceGameObjects[i]->getSize();
-                Ogre::Real bodyRadius = (bodySize.x + bodySize.y + bodySize.z) / 3.0f * 0.5f;
-
-                Ogre::Real distToSurface = distToCenter - bodyRadius;
-
-                // Hard SOI check: if inside this body's sphere of influence, pick it immediately
-                // This prevents a larger distant body from stealing gravity while on the surface
-                if (distToCenter < bodyRadius * SOI_FACTOR)
-                {
-                    nearestGravitySourceObject = this->gravitySourceGameObjects[i];
-                    break; // closest surface wins, no need to check further
-                }
-
-                // Outside all SOIs — fall back to nearest surface distance
-                if (distToSurface < smallestSurfaceDist)
-                {
-                    smallestSurfaceDist = distToSurface;
-                    nearestGravitySourceObject = this->gravitySourceGameObjects[i];
-                }
-            }
-
-            if (nullptr != nearestGravitySourceObject)
-            {
-                auto gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
-                if (nullptr != gravitySourcePhysicsComponentPtr)
-                {
-                    Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
-                    directionToPlanet.normalise();
-
-                    Ogre::Real gravityAcceleration = -this->gravity->getVector3().length();
-
-                    this->gravityDirection = -directionToPlanet;
-                    wholeForce = directionToPlanet * (mass * gravityAcceleration);
-                    this->currentGravityStrength = gravityAcceleration;
-                    this->gravityUpdated.test_and_set();
-                }
-            }
-            else
-            {
-                this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
-                this->currentGravityStrength = 0.0f;
-                this->gravityUpdated.clear();
-            }
-        }
-        else
-        {
-            this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
-            this->currentGravityStrength = 0.0f;
-            this->gravityUpdated.clear();
-        }
-#else
         if (false == this->gravitySourceGameObjects.empty())
         {
             for (size_t i = 0; i < this->gravitySourceGameObjects.size(); i++)
@@ -3076,7 +3010,6 @@ namespace NOWA
             this->currentGravityStrength = 0.0f;
             this->gravityUpdated.clear();
         }
-#endif
 
         // Checks if a force command is pending.
         if (this->forceCommand.pending.load())

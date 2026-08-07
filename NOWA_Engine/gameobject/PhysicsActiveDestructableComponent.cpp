@@ -837,7 +837,7 @@ namespace NOWA
 	{
 		for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
-			it->second->getBody()->setPositionOrientation(it->second->getBody()->getPosition() + relativePosition, this->parts[0]->getBody()->getOrientation());
+            it->second->getBody()->setKinematicPositionOrientation(it->second->getBody()->getPosition() + relativePosition, this->parts[0]->getBody()->getOrientation());
 		}
 	}
 

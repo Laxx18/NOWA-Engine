@@ -631,7 +631,7 @@ namespace NOWA
 		//NOWA::Core::getSingletonPtr()->pMyDebugLog->logMessage("bekommt id: " + Ogre::StringConverter::toString(this->playerID) + " Pos: " + Ogre::StringConverter::toString(this->networkPosition));
 
 		//Physikalischen Koerper an die uebermittelten Lokationsdaten setzen
-		// this->pPhysicsBody->setPositionOrientation(this->networkPosition, this->networkOrientation);
+		// this->pPhysicsBody->setKinematicPositionOrientation(this->networkPosition, this->networkOrientation);
 
 		/*if (!AppStateManager::getSingletonPtr()->getRakNetModule()->isServer())
 		{

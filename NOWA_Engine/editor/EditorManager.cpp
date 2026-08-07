@@ -3593,7 +3593,7 @@ namespace NOWA
             {
                 if (true == success)
                 {
-                    physicsComponent->getBody()->setPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition().x, height, selectedGameObject.second.gameObject->getPosition().z), physicsComponent->getBody()->getOrientation());
+                    physicsComponent->getBody()->setKinematicPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition().x, height, selectedGameObject.second.gameObject->getPosition().z), physicsComponent->getBody()->getOrientation());
                 }
 
                 if (GetAsyncKeyState(VK_LMENU))
@@ -3619,7 +3619,7 @@ namespace NOWA
                 else
                 {
                     // physicsComponent->setPosition(selectedGameObject.second.gameObject->getPosition() + offset);
-                    physicsComponent->getBody()->setPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition() + offset), physicsComponent->getBody()->getOrientation());
+                    physicsComponent->getBody()->setKinematicPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition() + offset), physicsComponent->getBody()->getOrientation());
                 }
                 if (Ogre::Vector3::ZERO != normal)
                 {

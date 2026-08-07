@@ -161,7 +161,7 @@ namespace NOWA
             // No active game progress module - treat as "not safe" rather than
             // "safe", matching the existing handler's own default
             // (isSceneLoading defaults to true when gameProgressModule is null).
-            return false;
+            return true;
         }
 
         return false == gameProgressModule->bSceneLoading.load();

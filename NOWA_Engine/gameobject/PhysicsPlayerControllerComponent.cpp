@@ -675,7 +675,7 @@ namespace NOWA
 			OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
 			if (nullptr != playerControllerBody)
 			{
-				playerControllerBody->setPositionOrientation(this->physicsBody->getPosition(), castEventData->getNewOrientation());
+                playerControllerBody->setKinematicPositionOrientation(this->physicsBody->getPosition(), castEventData->getNewOrientation());
 				this->setOrientation(castEventData->getNewOrientation());
 
 				playerControllerBody->setStartOrientation(castEventData->getNewOrientation());

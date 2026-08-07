@@ -114,6 +114,7 @@ namespace NOWA
 		hitGameObjectBelow(nullptr),
 		hitGameObjectFront(nullptr),
 		hitGameObjectUp(nullptr),
+        frontNormal(Ogre::Vector3::ZERO),
 		timeFallen(0.0f),
 		isFallen(false),
 		fallThreshold(0.7f),
@@ -267,6 +268,7 @@ namespace NOWA
 
 		this->height = 0.0f;
 		this->normal = Ogre::Vector3::ZERO;
+        this->frontNormal = Ogre::Vector3::ZERO;
 		this->priorValidHeight = 0.0f;
 		this->priorValidNormal = Ogre::Vector3::ZERO;
 		this->timeFallen = 0.0f;
@@ -398,23 +400,31 @@ namespace NOWA
 			//	Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * 0.5f), -0.05f, playerSize.y + 0.05f, showDebugData, this->categoriesId); // 0.2 is to much, and player would stuck in certain ground
 
 			this->hitGameObjectFront = nullptr;
+            this->frontNormal = Ogre::Vector3::ZERO;
 
-			if (nullptr != contactDataFront[0].getHitGameObject())
-			{
-				this->hitGameObjectFront = contactDataFront[0].getHitGameObject();
-			}
-			else if (nullptr != contactDataFront[1].getHitGameObject())
-			{
-				this->hitGameObjectFront = contactDataFront[1].getHitGameObject();
-			}
-			else if (nullptr != contactDataFront[2].getHitGameObject())
-			{
-				this->hitGameObjectFront = contactDataFront[2].getHitGameObject();
-			}
-			/*if (nullptr != contactDataFront[3].getHitGameObject())
-			{
-				this->hitGameObjectFront = contactDataFront[3].getHitGameObject();
-			}*/
+            if (nullptr != contactDataFront[0].getHitGameObject())
+            {
+                this->hitGameObjectFront = contactDataFront[0].getHitGameObject();
+                this->frontNormal = contactDataFront[0].getNormal();
+            }
+            else if (nullptr != contactDataFront[1].getHitGameObject())
+            {
+                this->hitGameObjectFront = contactDataFront[1].getHitGameObject();
+                this->frontNormal = contactDataFront[1].getNormal();
+            }
+            else if (nullptr != contactDataFront[2].getHitGameObject())
+            {
+                this->hitGameObjectFront = contactDataFront[2].getHitGameObject();
+                this->frontNormal = contactDataFront[2].getNormal();
+            }
+
+			if (true == this->bShowDebugData)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerController-DEBUG] front hit: " + (nullptr != this->hitGameObjectFront ? this->hitGameObjectFront->getName() : Ogre::String("NONE")) +
+                                                                                        " normal: " + Ogre::StringConverter::toString(this->frontNormal) + " rayDir: " + Ogre::StringConverter::toString(direction) +
+                                                                                        " f0: " + (nullptr != contactDataFront[0].getHitGameObject() ? "HIT" : "miss") + " f1: " + (nullptr != contactDataFront[1].getHitGameObject() ? "HIT" : "miss") +
+                                                                                        " f2: " + (nullptr != contactDataFront[2].getHitGameObject() ? "HIT" : "miss"));
+            }
 
 			this->hitGameObjectUp = nullptr;
 			this->hitGameObjectUp = this->physicsActiveComponent->getContactAbove(5, Ogre::Vector3(0.0f, playerSize.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true).getHitGameObject();
@@ -904,7 +914,12 @@ namespace NOWA
 	GameObject* PlayerControllerComponent::getHitGameObjectUp(void) const
 	{
 		return this->hitGameObjectUp;
-	}
+    }
+
+    Ogre::Vector3 PlayerControllerComponent::getFrontNormal(void) const
+    {
+        return this->frontNormal;
+    }
 
 	bool PlayerControllerComponent::getIsFallen(void) const
 	{
@@ -2759,9 +2774,36 @@ namespace NOWA
         }
 
         // -------------------------------------------------------------------------
-        // Velocity decomposition -- preserve vertical (gravity) component, apply
-        // horizontal movement in the key direction.
+        // Wall-slide: strip only the into-wall component of desired movement.
+        // This prevents the controller from continuously driving normal force
+        // into the wall, which is what feeds the friction cone and causes the
+        // player to hang/stick when jumping into or walking into a wall.
         // -------------------------------------------------------------------------
+        if (nullptr != this->playerController->getHitGameObjectFront() && Ogre::Vector3::ZERO != this->keyDirection)
+        {
+            const Ogre::Vector3 wallNormal = this->playerController->getFrontNormal();
+            if (Ogre::Vector3::ZERO != wallNormal)
+            {
+                const Ogre::Real intoWall = this->keyDirection.dotProduct(wallNormal);
+
+                if (true == this->playerController->getShowDebugData())
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                        "[WallSlide-DEBUG] keyDir(before): " + Ogre::StringConverter::toString(this->keyDirection) + " wallNormal: " + Ogre::StringConverter::toString(wallNormal) + " intoWall: " + Ogre::StringConverter::toString(intoWall));
+                }
+
+                if (intoWall < 0.0f)
+                {
+                    this->keyDirection += wallNormal * intoWall;
+
+                    if (true == this->playerController->getShowDebugData())
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallSlide-DEBUG] keyDir(after): " + Ogre::StringConverter::toString(this->keyDirection));
+                    }
+                }
+            }
+        }
+
         Ogre::Vector3 verticalVelocity = gravityDir * currentVelocity.dotProduct(gravityDir);
         Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
         Ogre::Vector3 newVelocity = verticalVelocity + directionMove;

@@ -245,6 +245,7 @@ namespace NOWA
         occlusionMaxSpeed(100.0f),
         lastFrameOrigin(Ogre::Vector3::ZERO),
         hasFrameOrigin(false),
+        probeOriginLift(0.5f),
         bShowDebugData(false)
     {
     }
@@ -309,7 +310,7 @@ namespace NOWA
         // internalSpringPosition/currentCollisionDistance/occlusion cache are all
         // persistent members that otherwise keep easing from their stale pre-takeoff
         // values -- which is what reads as "camera stays tilted" for a few frames.
-        GraphicsModule::getInstance()->setCameraTransform(this->camera, this->sceneNode->_getDerivedPositionUpdated(), this->sceneNode->_getDerivedOrientationUpdated());
+        GraphicsModule::getInstance()->updateCameraTransform(this->camera, this->sceneNode->_getDerivedPositionUpdated(), this->sceneNode->_getDerivedOrientationUpdated());
 
         this->firstSpringSample = true;    // moveCamera() will re-read internalSpringPosition from the just-snapped camera->getPosition()
         this->firstOcclusionSample = true; // don't ease currentCollisionDistance in from the old value
@@ -395,6 +396,16 @@ namespace NOWA
     Ogre::Real ThirdPersonOcclusionCamera::getOcclusionMaxSpeed(void) const
     {
         return this->occlusionMaxSpeed;
+    }
+
+    void ThirdPersonOcclusionCamera::setProbeOriginLift(Ogre::Real probeOriginLift)
+    {
+        this->probeOriginLift = probeOriginLift;
+    }
+
+    Ogre::Real ThirdPersonOcclusionCamera::getProbeOriginLift(void) const
+    {
+        return this->probeOriginLift;
     }
 
     void ThirdPersonOcclusionCamera::setShowDebugData(bool showDebugData)
@@ -484,7 +495,12 @@ namespace NOWA
         // ---------------------------------------------------------------
         // Occlusion
         // ---------------------------------------------------------------
-        Ogre::Vector3 castOrigin = playerPosition;
+        // Lifted so the probe sphere (radius = probeRadius) doesn't start already
+        // overlapping an interior floor mesh directly under the player's feet --
+        // unlike Terra, Dungeon_0's floor is a normal mesh and IS tested by the
+        // sweep, so an unlifted origin standing at ground level reported t≈0 on
+        // every frame, collapsing the camera to minDistance (the player's feet).
+        Ogre::Vector3 castOrigin = playerPosition + localUp * this->probeOriginLift;
         Ogre::Vector3 castVector = idealPositionVector - castOrigin;
         Ogre::Real desiredDistance = castVector.length();
         Ogre::Vector3 finalPositionVector = idealPositionVector;
@@ -665,6 +681,7 @@ namespace NOWA
             if (t >= 0.0f)
             {
                 Ogre::Real hitDistance = t * desiredDistance;
+                //  Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ThirdPersonOcclusionCamera] RAW hitDistance=" + Ogre::StringConverter::toString(hitDistance) + " t=" + Ogre::StringConverter::toString(t));
                 Ogre::Real candidate = std::max(this->minDistance, hitDistance - this->skinMargin);
                 if (candidate < resultDistance)
                 {

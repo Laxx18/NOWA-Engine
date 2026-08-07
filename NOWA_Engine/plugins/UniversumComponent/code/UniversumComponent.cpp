@@ -172,7 +172,7 @@ namespace NOWA
         landedOnBodyId(0ul),
         landingAltitudeThreshold(60.0f),
         takeoffClearanceAltitude(90.0f),
-        takeoffSpeed(15.0f),
+        takeoffSpeed(45.0f),
         landingInputLocked(false),
         landingFired(false),
         landingDebugTimer(0.0f),
@@ -751,7 +751,7 @@ namespace NOWA
             }
         }
 
-#if 0
+#if 1
         // --- DEBUG: log Eri's full transform state right before the test-pause call ---
         {
             GameObjectPtr debugPlanetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(2490287205);
@@ -1188,7 +1188,23 @@ namespace NOWA
                                                                                        " distFromCenter=" + Ogre::StringConverter::toString(distFromCenter) + " contactActive=" + Ogre::StringConverter::toString(this->landingContactActive));
             }
 
-            const bool contactLanded = this->landingContactActive;
+            // Never trust a raw physics contact alone as "landed" -- if the coarse
+            // collision body Eri's contactCallback fired against has a larger radius
+            // than the Terra-based landingBodyRadius/computedMaxRadius used for
+            // altitude math, contactLanded can go true while the ship is still
+            // hundreds of meters above the actual terrain (as measured by
+            // actualDistToSurface). Require contact-based landing to also be
+            // plausibly close to the resolved target before trusting it.
+            if (true == this->landingContactActive)
+            {
+                this->landingContactTimer += dt;
+            }
+            else
+            {
+                this->landingContactTimer = 0.0f;
+            }
+            const bool contactLanded = this->landingContactActive && this->landingContactTimer >= 0.3f // sustained contact, not a single-frame graze
+                                       && (distToTarget <= settleHeight + 1.0f) && (actualDistToSurface <= settleHeight + 1.0f);
             const bool distTargetLanded = (distToTarget <= 0.5f);
             // Raycast distance from ship centre to terrain <= ship half-height + small margin.
             const bool raycastLanded = (actualDistToSurface <= settleHeight + 0.5f);
@@ -1418,10 +1434,10 @@ namespace NOWA
 
     void UniversumComponent::requestLanding(void)
     {
-        /*if (this->landingState != LandingState::APPROACHING)
+        if (this->landingState != LandingState::APPROACHING)
         {
             return;
-        }*/
+        }
         this->landingState = LandingState::LANDING;
         this->setPlayerInputLock(true);
         this->landingInputLocked = true;
@@ -1456,14 +1472,25 @@ namespace NOWA
                         {
                             if (nullptr != otherGo && otherGo->getId() == bodyId)
                             {
-                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                                    "[UniversumComponent] contactCallback fired for body id=" + Ogre::StringConverter::toString(bodyId) + " landingState=" + Ogre::StringConverter::toString(static_cast<unsigned int>(this->landingState)));
+                                Ogre::Vector3 shipPosNow = Ogre::Vector3::ZERO;
+                                float distToSurfaceNow = -1.0f;
+                                GameObjectPtr shipGoNow = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->playerGameObjectId->getULong());
+                                if (nullptr != shipGoNow)
+                                {
+                                    shipPosNow = shipGoNow->getPosition();
+                                    distToSurfaceNow = (shipPosNow - this->landingBodyCentre).length() - this->landingBodyRadius;
+                                }
+                                /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[UniversumComponent] contactCallback fired for body id=" + Ogre::StringConverter::toString(bodyId) +
+                                                                                                        " landingState=" + Ogre::StringConverter::toString(static_cast<unsigned int>(this->landingState)) +
+                                                                                                        " shipPos=" + Ogre::StringConverter::toString(shipPosNow) + " distToSurfaceNow=" + Ogre::StringConverter::toString(distToSurfaceNow));*/
                                 this->landingContactActive = true;
                             }
                         });
                 }
             }
         }
+
+        this->setLandingState(LandingState::LANDING, "requestLanding");
     }
 
     void UniversumComponent::callLandedFunction(unsigned long bodyId, unsigned long shipId)
@@ -1934,6 +1961,13 @@ namespace NOWA
 
         outCanLand = true;
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[findFlatLandingSpot] Flat enough: " + Ogre::StringConverter::toString(slopeAngleDeg) + " deg, outSurfaceHeight=" + Ogre::StringConverter::toString(outSurfaceHeight));
+    }
+
+    void UniversumComponent::setLandingState(LandingState newState, const Ogre::String& reason)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[UniversumComponent] landingState " + Ogre::StringConverter::toString(static_cast<unsigned int>(this->landingState)) + " -> " + Ogre::StringConverter::toString(static_cast<unsigned int>(newState)) + " (" + reason + ")");
+        this->landingState = newState;
     }
 
     void UniversumComponent::pausePlanetOrbit(unsigned long planetGameObjectId, unsigned long gameObjectId)

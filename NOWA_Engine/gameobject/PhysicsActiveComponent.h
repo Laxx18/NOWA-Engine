@@ -313,7 +313,7 @@ namespace NOWA
 		 * @brief		Gets the normalized gravity direction vector, if a gravity source game objects are (like planets) are involved.
 		 * @return		The gravity direction, or Ogre::VECTOR3_ZERO if no gravity source game objects are involved.
 		 */
-		Ogre::Vector3 getGravityDirection(void);
+		virtual Ogre::Vector3 getGravityDirection(void) override;
 
 		/**
 		 * @brief		Gets the current gravity direction strength for e.g. player jumps on a planet, if a gravity source game objects are (like planets) are involved.

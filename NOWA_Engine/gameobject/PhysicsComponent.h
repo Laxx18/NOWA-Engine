@@ -184,6 +184,12 @@ namespace NOWA
 
 		Ogre::Vector3 getScale(void) const;
 
+		/**
+         * @brief		Gets the normalized gravity direction vector, if a gravity source game objects are (like planets) are involved.
+         * @return		The gravity direction, or Ogre::VECTOR3_ZERO if no gravity source game objects are involved.
+         */
+        virtual Ogre::Vector3 getGravityDirection(void);
+
 		virtual OgreNewt::Body* getBody(void) const;
 
 		virtual void reCreateCollision(bool overwrite = false) = 0;

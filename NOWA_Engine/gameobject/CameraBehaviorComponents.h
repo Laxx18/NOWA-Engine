@@ -649,6 +649,23 @@ namespace NOWA
 
 		void setPullInSmoothValue(Ogre::Real pullInSmoothValue);
         Ogre::Real getPullInSmoothValue(void) const;
+
+		/**
+         * @brief Sets the vertical lift added to the occlusion probe's cast origin.
+         * @param probeOriginLift Vertical offset in world units. If 0.0f (default),
+         *        the lift is auto-derived from the target's standing height
+         *        (GameObject::getSize().y * 0.281f) each time the camera activates,
+         *        instead of requiring per-target manual tuning.
+         */
+        void setProbeOriginLift(Ogre::Real probeOriginLift);
+
+        /**
+         * @brief Gets the configured vertical probe origin lift.
+         * @return The raw configured value -- 0.0f means "auto-derive from target
+         *         size," not that no lift is applied; query the underlying
+         *         ThirdPersonOcclusionCamera for the actually-resolved lift in use.
+         */
+        Ogre::Real getProbeOriginLift(void) const;
     public:
         static const Ogre::String AttrOffsetPosition(void)
         {
@@ -694,6 +711,10 @@ namespace NOWA
         {
             return "Pull In Smooth Value";
         }
+        static Ogre::String AttrProbeOriginLift(void)
+        {
+            return "ProbeOriginLift";
+        }
     private:
         Variant* offsetPosition;
         Variant* springForce;
@@ -706,6 +727,7 @@ namespace NOWA
         Variant* minDistance;
         Variant* releaseSmoothValue;
         Variant* pullInSmoothValue;
+        Variant* probeOriginLift;
     };
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////

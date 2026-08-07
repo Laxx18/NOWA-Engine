@@ -253,6 +253,32 @@ namespace NOWA
          */
         Ogre::Real getOcclusionMaxSpeed(void) const;
 
+        /**
+         * @brief Sets the vertical lift added to the occlusion probe's cast origin.
+         *
+         * The probe origin is playerPosition + lookAtOffset, raised further along
+         * the local up vector by this amount before the occlusion sweep/raycast
+         * cluster runs. Without sufficient lift, the probe sphere (radius =
+         * probeRadius) can start already overlapping a floor mesh directly beneath
+         * the player -- e.g. an interior floor, which unlike Terra is not excluded
+         * from the convex sweep -- causing the sweep to report a near-zero hit
+         * distance on every frame and collapsing the camera to minDistance
+         * regardless of actual line of sight.
+         *
+         * @param probeOriginLift Vertical offset in world units. As a starting
+         *        point, roughly 0.28x the target's standing height (GameObject::getSize().y)
+         *        keeps the probe clear of a typical interior floor; tune per scene
+         *        if characters of very different scale share this camera type.
+         */
+        void setProbeOriginLift(Ogre::Real probeOriginLift);
+
+        /**
+         * @brief Gets the vertical lift added to the occlusion probe's cast origin.
+         * @return The current probe origin lift, in world units.
+         * @see setProbeOriginLift
+         */
+        Ogre::Real getProbeOriginLift(void) const;
+
     private:
         /**
          * @brief Builds (or rebuilds) the swept sphere shape from the current
@@ -308,6 +334,7 @@ namespace NOWA
         Ogre::Real occlusionMaxSpeed;
         Ogre::Vector3 lastFrameOrigin;
         bool hasFrameOrigin;
+        Ogre::Real probeOriginLift; // vertical offset added to the probe's cast origin, to keep it clear of a floor directly underfoot
 
         bool bShowDebugData;
     };

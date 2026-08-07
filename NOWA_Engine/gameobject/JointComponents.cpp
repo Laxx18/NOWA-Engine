@@ -7964,8 +7964,8 @@ namespace NOWA
 				// Ogre::LogManager::getSingletonPtr()->logMessage("f(x): " + Ogre::StringConverter::toString(this->jointProperties.pin));
 
 				this->body->setVelocity(mathFunction);
-				this->body->setPositionOrientation(this->body->getPosition(), Ogre::Quaternion::IDENTITY);
-				// this->physicsBody->setPositionOrientation(this->startPosition + this->jointProperties.pin, Ogre::Quaternion::IDENTITY);
+                this->body->setKinematicPositionOrientation(this->body->getPosition(), Ogre::Quaternion::IDENTITY);
+				// this->physicsBody->setKinematicPositionOrientation(this->startPosition + this->jointProperties.pin, Ogre::Quaternion::IDENTITY);
 
 				// Ogre::LogManager::getSingletonPtr()->logMessage("vel: " + Ogre::StringConverter::toString(this->getVelocity()));
 				// Ogre::LogManager::getSingletonPtr()->logMessage("ve0: " + Ogre::StringConverter::toString(this->getPosition() - this->lastPosition));

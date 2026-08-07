@@ -1380,6 +1380,11 @@ namespace NOWA
         this->physicsBody = body;
     }
 
+    Ogre::Vector3 PhysicsComponent::getGravityDirection(void)
+    {
+        return Ogre::Vector3::NEGATIVE_UNIT_Y;
+    }
+
     OgreNewt::Body* PhysicsComponent::getBody(void) const
     {
         return this->physicsBody;
@@ -1404,7 +1409,7 @@ namespace NOWA
         this->gameObjectPtr->setAttributePosition(this->gameObjectPtr->getSceneNode()->_getDerivedPosition() + relativePosition);
         if (nullptr != this->physicsBody)
         {
-            this->physicsBody->setPositionOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedPosition() + relativePosition, this->getOrientation());
+            this->physicsBody->setKinematicPositionOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedPosition() + relativePosition, this->getOrientation());
         }
     }
 
@@ -1413,7 +1418,7 @@ namespace NOWA
         this->gameObjectPtr->setAttributeOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedOrientation() * relativeRotation);
         if (nullptr != this->physicsBody)
         {
-            this->physicsBody->setPositionOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedPosition(), this->gameObjectPtr->getSceneNode()->_getDerivedOrientation() * relativeRotation);
+            this->physicsBody->setKinematicPositionOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedPosition(), this->gameObjectPtr->getSceneNode()->_getDerivedOrientation() * relativeRotation);
         }
     }
 
