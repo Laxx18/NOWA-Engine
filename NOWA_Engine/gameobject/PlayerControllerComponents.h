@@ -211,6 +211,10 @@ namespace NOWA
 
 		void standUp(void);
 
+		void setUseWallSeparation(bool useWallSeparation);
+
+        bool getUseWallSeparation(void) const;
+
 		void reactOnAnimationFinished(luabind::object closureFunction, bool oneTime);
 	protected:
 		virtual void internalShowDebugData(void);
@@ -224,6 +228,7 @@ namespace NOWA
 		static const Ogre::String AttrAcceleration(void) { return "Acceleration"; }
 		static const Ogre::String AttrCategories(void) { return "Categories"; }
 		static const Ogre::String AttrUseStandUp(void) { return "Use Standup"; }
+        static const Ogre::String AttrUseWallSeparation(void) { return "Use Wall Separation"; }
 	protected:
 		Variant* activated;
 		Variant* rotationSpeed;
@@ -232,6 +237,7 @@ namespace NOWA
 		Variant* acceleration;
 		Variant* categories;
 		Variant* useStandUp;
+        Variant* useWallSeparation;
 		std::vector<Variant*> animations;
 
 		PhysicsActiveComponent* physicsActiveComponent;
@@ -255,7 +261,9 @@ namespace NOWA
 		GameObject* hitGameObjectBelow;
 		GameObject* hitGameObjectFront;
 		GameObject* hitGameObjectUp;
-        Ogre::Vector3 frontNormal;  
+        Ogre::Vector3 frontNormal;
+        Ogre::Vector3 lastWallPushForces[8];
+        Ogre::Vector3 lastWallPushForce;
 
 		Ogre::Real timeFallen;
 		bool isFallen;

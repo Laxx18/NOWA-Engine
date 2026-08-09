@@ -82,10 +82,29 @@ namespace NOWA
 
         struct PlatformControlPoint
         {
-            Ogre::Vector3 position;      // x = horizontal position along the platform plane, y = 0 (placeholder, real height kept separately below), z = 0 (placeholder, depth is a uniform extrusion applied at mesh-gen time, not stored per point)
-            Ogre::Real rawHeight = 0.0f; // Vertical position exactly as placed by the user drag (no raycast involved - there is no terrain to sample)
+            // x = horizontal position along the platform plane.
+            // y = 0 (placeholder, the real height is kept separately below).
+            // z = this point's offset along the DEPTH axis. Normally the platform's own base
+            //     plane constant for every point, i.e. a single flat layer. Segment mode's
+            //     U / SHIFT+U nudge shifts a whole segment's points off it, so a loop's
+            //     entry and exit lanes can pass in front of / behind each other instead of
+            //     intersecting (the Sonic crossover). Only the values at a CHAIN'S TWO ENDS
+            //     are read: rebuildMesh ramps linearly by arc length between them and gives
+            //     every path point its own offset, which generatePlatformBox sweeps per point.
+            //     The surface therefore drifts across in depth over the whole chain and stays
+            //     continuous - no step, nothing to fall through. Both save paths already wrote
+            //     and read this field before it meant anything, so old files load unchanged.
+            Ogre::Vector3 position;
+            Ogre::Real rawHeight = 0.0f;      // Vertical position exactly as placed by the user drag (no raycast involved - there is no terrain to sample)
             Ogre::Real smoothedHeight = 0.0f; // Vertical position after gradient smoothing between segments
             Ogre::Real distFromStart = 0.0f;  // Accumulated distance from chain start (for UV)
+            // DERIVED, never serialized: the depth offset this point is actually DRAWN at,
+            // recomputed by every rebuildMesh. position.z above is the authored value the
+            // U / SHIFT+U nudge writes; what gets drawn is the ramp between a chain's two
+            // ends, so the two differ everywhere in between. Anything that has to line up
+            // with the visible geometry - the segment overlay, Segment-mode picking, the
+            // snap indicator - must read renderZ, not position.z.
+            Ogre::Real renderZ = 0.0f;
         };
 
         struct PlatformSegment
@@ -232,7 +251,8 @@ namespace NOWA
 
         static Ogre::String getStaticInfoText(void)
         {
-            return "Usage: Creates procedural 2.5D platform chains on a fixed depth plane, for Metroidvania-style levels.\n\n"
+            return "Usage: Creates procedural 2.5D platform chains on a fixed depth plane, for Metroidvania-style levels.\n"
+                   "A chain can also be ramped across depth in Segment Mode (see U / SHIFT+U below).\n\n"
                    "PLATFORM BUILDING (Object Mode):\n"
                    "- Left-click anywhere to start a new platform segment. The first click of the whole\n"
                    "  chain fixes the local Z (depth) plane every further segment will be drawn on.\n"
@@ -245,6 +265,18 @@ namespace NOWA
                    "- Set the 'Edit Mode' property to 'Segment' to enter segment editing.\n"
                    "- Left-click near any platform segment to select it. The selected segment is highlighted.\n"
                    "- Press X to delete the selected segment. The remaining platform rebuilds automatically.\n"
+                   "- Press U to shift the selected segment one Platform Depth along the depth axis,\n"
+                   "  SHIFT+U to shift it back. Repeat for a larger offset. Use this where a loop\n"
+                   "  crosses itself, so the two lanes pass in front of / behind each other instead\n"
+                   "  of intersecting.\n"
+                   "- The whole chain then ramps smoothly from the offset at its first endpoint to the\n"
+                   "  one at its last, so the surface stays continuous all the way round - a loop\n"
+                   "  becomes a gentle helix rather than gaining a step to fall through.\n"
+                   "- Because only the two chain ENDS are read, select the FIRST or LAST segment of a\n"
+                   "  chain. Nudging a segment in the middle changes nothing visible.\n"
+                   "- Extending a chain with E after nudging makes the ramp span the new, longer\n"
+                   "  chain, so earlier parts drift back toward the start offset. Nudge once the\n"
+                   "  chain is complete if you want the depths to stay put.\n"
                    "- Press E to extend a new segment from the tail endpoint of the selected segment.\n"
                    "  Drag the mouse to preview the extension, then left-click to confirm.\n"
                    "  Press ESC to cancel the extension.\n"
@@ -258,7 +290,10 @@ namespace NOWA
                    "- No extra junction geometry is built. Each arm runs all the way into the junction\n"
                    "  and the arms simply share solid volume, which for a slab extruded through a fixed\n"
                    "  depth is already the correct shape - the player can walk through it in any\n"
-                   "  direction, and the wedge between two arms stays correctly empty.\n\n"
+                   "  direction, and the wedge between two arms stays correctly empty.\n"
+                   "- Junction matching only looks at where a chain ends in (x, height) - it does not\n"
+                   "  take a segment's depth-nudge offset into account, so two arms nudged to different\n"
+                   "  depths still register as one junction if their (x, height) endpoint coincides.\n\n"
                    "PLATFORM STYLES:\n"
                    "- Grass: grass surface top, striped dirt/earth body.\n"
                    "- Wood: bamboo/wood plank surface and body.\n"
@@ -267,8 +302,9 @@ namespace NOWA
                    "- Metal: riveted metal platform.\n\n"
                    "DEPTH / HEIGHT:\n"
                    "- 'Platform Depth' is the Z-thickness of the block (how far it extends front-to-back\n"
-                   "  on the fixed depth plane) - the same role roadWidth plays for roads, just on the\n"
-                   "  third axis instead of sideways, since the path itself already IS the width.\n"
+                   "  at whatever depth the segment sits at) - the same role roadWidth plays for roads,\n"
+                   "  just on the third axis instead of sideways, since the path itself already IS the\n"
+                   "  width. It also sets the step size for the U / SHIFT+U depth nudge.\n"
                    "- 'Platform Height' is the slab's thickness, measured PERPENDICULAR to the path -\n"
                    "  so it is the downward thickness of a flat platform and the sideways thickness of\n"
                    "  a vertical wall. Segments can be drawn at any angle, vertical included.\n"
@@ -276,6 +312,20 @@ namespace NOWA
                    "  blended. Waypoints turning by more than ~60 degrees are treated as deliberate\n"
                    "  corners and stay sharp; gentler turns are curved through.\n"
                    "- 'Curve Subdivisions' controls how many interpolated points are used per segment.\n\n"
+
+                   "GRASS:\n"
+                   "- 'Use Grass' scatters procedural cross-quad blades over the walkable surface,\n"
+                   "  everywhere the platform goes - up walls and around the inside of loops included.\n"
+                   "- Blades are built in the SURFACE's own frame, so they stand off the platform at\n"
+                   "  whatever angle that piece of platform faces, rather than always pointing up.\n"
+                   "- 'Grass Material' is a Wind HLMS datablock (HLMS_USER0); blades sway when a\n"
+                   "  WindComponent exists in the scene. A PBS datablock of the same name is used as a\n"
+                   "  fallback, in which case the grass is static.\n"
+                   "- 'Grass Density' is blades per square meter, so it stays stable when Curve\n"
+                   "  Subdivisions changes. 'Grass Blade Width' is a blade's half-width; 'Grass Blade\n"
+                   "  Height' is measured along the surface normal.\n"
+                   "- Blades are never saved with the platform data - they are regenerated from the\n"
+                   "  path, and only the settings above are stored.\n\n"
                    "CONVERT TO MESH:\n"
                    "- 'Convert To Mesh' exports the current platform geometry as a static .mesh file\n"
                    "  and replaces this component with a standard mesh item for optimal performance.\n"
@@ -344,7 +394,15 @@ namespace NOWA
          *        Cross-network lookup of an existing, separate platform GameObject still
          *        uses a scene query - see findOtherPlatformNearby() / otherPlatformQuery.
          */
-        bool raycastFixedPlane(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPosition);
+        // localZOffset slides the working plane along its own normal, so a caller can
+        // intersect the plane a particular segment is actually DRAWN on rather than the
+        // platform's base plane. Defaults to the base plane.
+        bool raycastFixedPlane(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPosition, Ogre::Real localZOffset = 0.0f);
+
+        // Parallax-correct segment picking: tests every segment against a plane at that
+        // segment's own drawn depth (renderZ), instead of comparing everything in one shared
+        // plane. Needed once a chain can ramp along the depth axis - see the call site.
+        int findNearestSegmentOnScreen(Ogre::Real screenX, Ogre::Real screenY, Ogre::Real radius);
 
         // Attribute access
         void setActivated(bool activated);
@@ -375,6 +433,26 @@ namespace NOWA
 
         Ogre::Real getSmoothingFactor(void) const;
 
+        void setUseGrass(bool useGrass);
+
+        bool getUseGrass(void) const;
+
+        void setGrassMaterialName(const Ogre::String& materialName);
+
+        Ogre::String getGrassMaterialName(void) const;
+
+        void setGrassDensity(Ogre::Real density);
+
+        Ogre::Real getGrassDensity(void) const;
+
+        void setGrassBladeWidth(Ogre::Real width);
+
+        Ogre::Real getGrassBladeWidth(void) const;
+
+        void setGrassBladeHeight(Ogre::Real height);
+
+        Ogre::Real getGrassBladeHeight(void) const;
+
         void setCurveSubdivisions(int subdivisions);
 
         int getCurveSubdivisions(void) const;
@@ -398,8 +476,6 @@ namespace NOWA
         void setEditMode(const Ogre::String& editMode);
 
         EditMode getEditModeEnum(void) const;
-
-        int findNearestSegmentWithinRadius(const Ogre::Vector3& worldPos, Ogre::Real radius) const;
 
         void deleteSelectedSegment(void);
 
@@ -460,6 +536,26 @@ namespace NOWA
         static Ogre::String AttrSmoothingFactor(void)
         {
             return "Smoothing Factor";
+        }
+        static Ogre::String AttrUseGrass(void)
+        {
+            return "Use Grass";
+        }
+        static Ogre::String AttrGrassMaterialName(void)
+        {
+            return "Grass Material";
+        }
+        static Ogre::String AttrGrassDensity(void)
+        {
+            return "Grass Density";
+        }
+        static Ogre::String AttrGrassBladeWidth(void)
+        {
+            return "Grass Blade Width";
+        }
+        static Ogre::String AttrGrassBladeHeight(void)
+        {
+            return "Grass Blade Height";
         }
         static Ogre::String AttrCurveSubdivisions(void)
         {
@@ -673,6 +769,11 @@ namespace NOWA
         Variant* snapToGrid;
         Variant* gridSize;
         Variant* smoothingFactor;
+        Variant* useGrass;
+        Variant* grassMaterialName;
+        Variant* grassDensity;
+        Variant* grassBladeWidth;
+        Variant* grassBladeHeight;
         Variant* curveSubdivisions;
         Variant* surfaceDatablock;
         Variant* groundDatablock;
@@ -708,8 +809,59 @@ namespace NOWA
         Ogre::Item* previewItem;
         Ogre::SceneNode* previewNode;
 
+        // ── Procedural swaying grass ─────────────────────────────────────────────────
+        // Cross-quad blades generated on the CPU and scattered over the platform's walkable
+        // surface, adapted from ProceduralFoliageVolumeComponent::createGrassItems. Two
+        // things differ from that component and both matter:
+        //
+        //   - Orientation. Foliage builds every blade around world Y. A platform surface can
+        //     face any direction (that is the whole point of the mitered extrusion), so a
+        //     blade is built in the SURFACE's own frame instead: up = the per-point mitered
+        //     normal, tangent = path direction, binormal = depth axis. Grass on a ramp leans
+        //     with the ramp and grass inside a loop points inward, for free.
+        //   - Ownership. Foliage cells hang off the static root node in world space. These
+        //     hang off the GameObject's own node in mesh-local space, so grass travels with
+        //     the platform when it is moved or reoriented in the editor.
+        //
+        // Nothing here is serialized: the blades are a pure function of the path (already
+        // stored as control points) plus the attributes above, so they are regenerated
+        // rather than saved.
+        struct GrassSurfaceFrame
+        {
+            Ogre::Vector3 position;       // Surface point, mesh-local
+            Ogre::Vector3 normal;         // Outward surface normal, mesh-local (blade "up")
+            Ogre::Vector3 tangent;        // Along the path, mesh-local
+            Ogre::Real spanAlong = 0.0f;  // Length of surface this frame represents, along the path
+            Ogre::Real spanAcross = 0.0f; // Width of surface across the depth axis
+        };
+
+        std::vector<GrassSurfaceFrame> grassFrames;
+        std::vector<Ogre::Item*> grassItems;
+        std::vector<Ogre::SceneNode*> grassNodes;
+
+        // No WindComponent pointer is kept here, deliberately. Your own note in
+        // ProceduralFoliageVolumeComponent::createGrassItems says it: the Wind HLMS datablock
+        // is searched first regardless of whether a WindComponent exists, and the component's
+        // presence only determines whether the sway animation actually runs. So the blades
+        // need the datablock, not the component - and not depending on it keeps this file
+        // free of an include it would otherwise need only to write a log line.
+
+        void collectGrassFrames(const std::vector<PlatformControlPoint>& points, const std::vector<Ogre::Vector2>& topPoints, const std::vector<Ogre::Vector2>& downDirs, Ogre::Real depth);
+
+        void createGrassItems(void);
+
+        void destroyGrassItems(void);
+
+        void regenerateGrass(void);
+
         // Input state
+        // NOTE isShiftPressed is a misnomer kept for compatibility: it is the AUTO-CHAIN
+        // flag, initialised true and force-set by the E-extend handler and confirmPlatform,
+        // so it does not reliably reflect the physical key. isShiftKeyDown does - it is
+        // touched only by keyPressed/keyReleased - and is what the Z depth nudge uses to pick
+        // a direction.
         bool isShiftPressed;
+        bool isShiftKeyDown;
         bool isCtrlPressed;
         Ogre::Vector3 lastValidPosition;
 

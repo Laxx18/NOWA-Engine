@@ -76,6 +76,11 @@ namespace NOWA
         snapToGrid(new Variant(ProceduralPlatformComponent::AttrSnapToGrid(), false, this->attributes)),
         gridSize(new Variant(ProceduralPlatformComponent::AttrGridSize(), 1.0f, this->attributes)),
         smoothingFactor(new Variant(ProceduralPlatformComponent::AttrSmoothingFactor(), 0.5f, this->attributes)),
+        useGrass(new Variant(ProceduralPlatformComponent::AttrUseGrass(), false, this->attributes)),
+        grassMaterialName(new Variant(ProceduralPlatformComponent::AttrGrassMaterialName(), Ogre::String("SwayingGrass1Material"), this->attributes)),
+        grassDensity(new Variant(ProceduralPlatformComponent::AttrGrassDensity(), 8.0f, this->attributes)),
+        grassBladeWidth(new Variant(ProceduralPlatformComponent::AttrGrassBladeWidth(), 0.15f, this->attributes)),
+        grassBladeHeight(new Variant(ProceduralPlatformComponent::AttrGrassBladeHeight(), 0.5f, this->attributes)),
         curveSubdivisions(new Variant(ProceduralPlatformComponent::AttrCurveSubdivisions(), 10, this->attributes)),
         surfaceDatablock(new Variant(ProceduralPlatformComponent::AttrSurfaceDatablock(), "grass_clean", this->attributes)),
         groundDatablock(new Variant(ProceduralPlatformComponent::AttrGroundDatablock(), "rockClif_D", this->attributes)),
@@ -93,6 +98,7 @@ namespace NOWA
         previewItem(nullptr),
         previewNode(nullptr),
         isShiftPressed(true),
+        isShiftKeyDown(false),
         isCtrlPressed(false),
         hasPlatformOrigin(false),
         platformFrame(Ogre::Quaternion::IDENTITY),
@@ -122,6 +128,18 @@ namespace NOWA
                                             "sideways, since the drawn path already IS the platform's walkable shape.");
         this->platformHeight->setDescription("How far the solid platform body extends downward from the top walkable surface (meters).");
         this->smoothingFactor->setDescription("Amount of height smoothing between connected segments (0-1, higher = smoother gradients).");
+        this->useGrass->setDescription("If true, scatters procedural cross-quad grass blades over the platform's walkable surface. "
+                                       "Blades use the Wind HLMS datablock below and sway when a WindComponent exists in the scene. "
+                                       "Blades are regenerated from the path, never saved with the platform data.");
+        this->grassMaterialName->setDescription("Wind HLMS datablock name for grass blades (must be registered as HLMS_USER0). "
+                                                "Falls back to a PBS datablock of the same name if the Wind HLMS does not have it.");
+        this->grassDensity->setDescription("Grass blades per square meter of walkable surface.");
+        this->grassDensity->setConstraints(0.1f, 200.0f);
+        this->grassBladeWidth->setDescription("Half-width of one grass blade in meters. Wider = lush, narrower = fine grass.");
+        this->grassBladeWidth->setConstraints(0.01f, 2.0f);
+        this->grassBladeHeight->setDescription("Height of one grass blade in meters, measured along the surface normal - so blades stand "
+                                               "up from a flat platform and stick out sideways from a vertical wall.");
+        this->grassBladeHeight->setConstraints(0.05f, 5.0f);
         this->curveSubdivisions->setDescription("Number of segments for curved platform paths (higher = smoother).");
 
         this->surfaceDatablock->setDescription("The top walkable surface datablock to set (e.g. grass, wood plank top).");
@@ -218,6 +236,34 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrSmoothingFactor())
         {
             this->smoothingFactor->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        // Each of these is guarded individually rather than as a block: a scene saved before
+        // the grass attributes existed has none of them, and init() walks the property list
+        // strictly in order, so every read must be skippable on its own.
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrUseGrass())
+        {
+            this->useGrass->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrGrassMaterialName())
+        {
+            this->grassMaterialName->setValue(XMLConverter::getAttrib(propertyElement, "data", "SwayingGrass1Material"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrGrassDensity())
+        {
+            this->grassDensity->setValue(Ogre::Math::Clamp(XMLConverter::getAttribReal(propertyElement, "data", 8.0f), 0.1f, 200.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrGrassBladeWidth())
+        {
+            this->grassBladeWidth->setValue(Ogre::Math::Clamp(XMLConverter::getAttribReal(propertyElement, "data", 0.15f), 0.01f, 2.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrGrassBladeHeight())
+        {
+            this->grassBladeHeight->setValue(Ogre::Math::Clamp(XMLConverter::getAttribReal(propertyElement, "data", 0.5f), 0.05f, 5.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
         // Backward compatibility: scenes saved before Max Gradient and Max Turn Angle were
@@ -342,6 +388,10 @@ namespace NOWA
         // Load platform data from file
         if (true == this->loadPlatformDataFromFile())
         {
+            // loadPlatformDataFromFile rebuilds the mesh, which refills grassFrames; turn
+            // them into Items now that the scene is fully parsed.
+            this->regenerateGrass();
+
             // Get PhysicsArtifactComponent if exists
             const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
             if (physicsArtifactCompPtr)
@@ -425,6 +475,19 @@ namespace NOWA
         InputDeviceCore::getSingletonPtr()->removeKeyListener(ProceduralPlatformComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
         InputDeviceCore::getSingletonPtr()->removeMouseListener(ProceduralPlatformComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
 
+        // Grass first: its nodes are CHILDREN of the GameObject's own scene node, so they
+        // have to be detached and destroyed before anything upstream tears that node down.
+        // Routed through regenerateGrass with Use Grass irrelevant would recreate them, so
+        // the destroy is enqueued directly.
+        {
+            GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->destroyGrassItems();
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralPlatformComponent::onRemoveComponent::destroyGrass");
+        }
+        this->grassFrames.clear();
+
         this->destroyPlatformMesh();
         this->destroyPreviewMesh();
         this->destroySegmentOverlay();
@@ -482,6 +545,26 @@ namespace NOWA
         else if (ProceduralPlatformComponent::AttrGridSize() == attribute->getName())
         {
             this->setGridSize(attribute->getReal());
+        }
+        else if (ProceduralPlatformComponent::AttrUseGrass() == attribute->getName())
+        {
+            this->setUseGrass(attribute->getBool());
+        }
+        else if (ProceduralPlatformComponent::AttrGrassMaterialName() == attribute->getName())
+        {
+            this->setGrassMaterialName(attribute->getString());
+        }
+        else if (ProceduralPlatformComponent::AttrGrassDensity() == attribute->getName())
+        {
+            this->setGrassDensity(attribute->getReal());
+        }
+        else if (ProceduralPlatformComponent::AttrGrassBladeWidth() == attribute->getName())
+        {
+            this->setGrassBladeWidth(attribute->getReal());
+        }
+        else if (ProceduralPlatformComponent::AttrGrassBladeHeight() == attribute->getName())
+        {
+            this->setGrassBladeHeight(attribute->getReal());
         }
         else if (ProceduralPlatformComponent::AttrSmoothingFactor() == attribute->getName())
         {
@@ -560,6 +643,36 @@ namespace NOWA
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrUseGrass().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useGrass->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrGrassMaterialName().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->grassMaterialName->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrGrassDensity().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->grassDensity->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrGrassBladeWidth().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->grassBladeWidth->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrGrassBladeHeight().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->grassBladeHeight->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
         propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrCurveSubdivisions().c_str())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->curveSubdivisions->getInt())));
@@ -606,7 +719,7 @@ namespace NOWA
     // ------------------------------------------------------------------------
     // Convert WORLD raycast hits to PLATFORM-LOCAL right after the raycast.
     // Everything downstream (snapToGridFunc, detectSnapToOwnPlatform,
-    // findNearestSegmentWithinRadius, startPlatformPlacement, updatePlatformPreview,
+    // findNearestSegmentOnScreen, startPlatformPlacement, updatePlatformPreview,
     // confirmPlatform, loadedPlatformEndpoint) then runs uniformly in LOCAL space, exactly
     // like ProceduralRoadComponent. platformFrame is ALREADY known by the time any of this
     // runs (captured in postInit - see the comment there), so there is no first-click
@@ -646,16 +759,18 @@ namespace NOWA
                 return false;
             }
 
-            Ogre::Vector3 hitPos = Ogre::Vector3::ZERO;
-            const bool hit = this->raycastFixedPlane(screenX, screenY, hitPos);
-
-            if (hit)
-            {
-                hitPos = this->platformFrame.Inverse() * hitPos;
-
-                const Ogre::Real radius = this->platformDepth->getReal() * 1.5f;
-                this->selectedSegmentIndex = this->findNearestSegmentWithinRadius(hitPos, radius);
-            }
+            // BUGFIX: this used to raycast ONE plane - the platform's base plane - and hand
+            // the resulting point to the picker for every segment alike. Once a chain is
+            // ramped along the depth axis, a segment drawn at a different depth appears at a
+            // different place on screen, so the ray through the pixel the user clicked
+            // crosses the BASE plane somewhere else entirely. Pure parallax: the miss grows
+            // with the offset and with how oblique the camera is, and it made the last
+            // segments of a nudged loop simply unselectable.
+            //
+            // Each segment is now tested against a plane at its OWN drawn depth, so the
+            // comparison happens in the plane the user is actually looking at.
+            const Ogre::Real radius = this->platformDepth->getReal() * 1.5f;
+            this->selectedSegmentIndex = this->findNearestSegmentOnScreen(screenX, screenY, radius);
 
             this->scheduleSegmentOverlayUpdate();
             return false;
@@ -836,6 +951,7 @@ namespace NOWA
         if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
         {
             this->isShiftPressed = true;
+            this->isShiftKeyDown = true;
             return false;
         }
         else if (evt.key == OIS::KC_LCONTROL || evt.key == OIS::KC_RCONTROL)
@@ -861,6 +977,13 @@ namespace NOWA
                 PlatformControlPoint startPoint;
                 startPoint.position = tail.position;
                 startPoint.position.y = 0.0f;
+                // Start the extension at the depth the tail is actually DRAWN at, not the
+                // authored offset. For a chain end the two agree, but extending from a
+                // segment further in means the ramp has carried the surface away from its
+                // authored value, and the new segment would otherwise begin at a depth the
+                // old one no longer occupies.
+                startPoint.position.z = tail.renderZ;
+                startPoint.renderZ = tail.renderZ;
                 startPoint.rawHeight = tail.smoothedHeight;
                 startPoint.smoothedHeight = tail.smoothedHeight;
                 startPoint.distFromStart = 0.0f;
@@ -874,6 +997,71 @@ namespace NOWA
                 this->lastValidPosition = startPoint.position;
                 this->isShiftPressed = true;         // auto-chain on confirm
                 this->isExtendingFromSegment = true; // allow preview in segment mode
+
+                return false;
+            }
+
+            // ── Depth nudge (Sonic-style crossover): U / SHIFT+U ─────────────
+            // Shifts the whole selected segment along the platform's depth axis, so a loop's
+            // entry and exit lanes can be made to pass in front of / behind each other
+            // instead of intersecting. The offset lives in each control point's position.z,
+            // which is a field that already existed and is already written and read by BOTH
+            // save paths - so this needs no PLATFORMDATA_VERSION bump and old files keep
+            // loading unchanged (every point in them simply carries the same base-plane
+            // value, which is exactly "no offset").
+            //
+            // One press moves by a full Platform Depth. That is the smallest offset that
+            // makes two crossing lanes stop overlapping at all.
+            //
+            // The nudge writes into the SELECTED segment's own control points, but what gets
+            // rendered is a ramp between the offsets stored at the chain's two ENDS (see
+            // rebuildMesh). So nudging the last segment of a loop tilts the whole loop into a
+            // gentle helix, which is the intended use. The corollary is that nudging a
+            // segment in the MIDDLE of a chain has no visible effect - it does not own either
+            // chain end, so it does not move either end of the ramp. Documented in
+            // getStaticInfoText rather than silently prevented, because "select an end
+            // segment" is the natural thing to do anyway.
+            //
+            // U because the two obvious candidates are taken: PageUp/PageDown collides with
+            // the editor camera's own up/down, and Z is already occupied.
+            //
+            // Note the modifier is isShiftKeyDown, NOT isShiftPressed: despite its name the
+            // latter is the auto-chain flag, initialised to true and force-set in several
+            // places (the E-extend handler, confirmPlatform), so it does not track the
+            // physical key and cannot decide a direction. isShiftKeyDown is touched only by
+            // keyPressed and keyReleased.
+            if (evt.key == OIS::KC_U && this->selectedSegmentIndex >= 0)
+            {
+                Ogre::Real step = this->platformDepth->getReal();
+                if (true == this->isShiftKeyDown)
+                {
+                    step = -step;
+                }
+
+                std::vector<unsigned char> oldData = this->getPlatformData();
+
+                PlatformSegment& sel = this->platformSegments[this->selectedSegmentIndex];
+                for (PlatformControlPoint& cp : sel.controlPoints)
+                {
+                    cp.position.z += step;
+                }
+
+                this->rebuildMesh();
+                this->regenerateGrass();
+                this->scheduleSegmentOverlayUpdate();
+
+                // Same old-data/new-data transaction deleteSelectedSegment uses, so a depth
+                // nudge is a normal undo step rather than a silent edit.
+                std::vector<unsigned char> newData = this->getPlatformData();
+
+                boost::shared_ptr<EventDataCommandTransactionBegin> evtBegin(new EventDataCommandTransactionBegin("Move Platform Segment Depth"));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evtBegin);
+
+                boost::shared_ptr<EventDataPlatformModifyEnd> evtMod(new EventDataPlatformModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evtMod);
+
+                boost::shared_ptr<EventDataCommandTransactionEnd> evtEnd(new EventDataCommandTransactionEnd());
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evtEnd);
 
                 return false;
             }
@@ -923,6 +1111,7 @@ namespace NOWA
         if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
         {
             this->isShiftPressed = false;
+            this->isShiftKeyDown = false;
         }
         else if (evt.key == OIS::KC_LCONTROL || evt.key == OIS::KC_RCONTROL)
         {
@@ -943,7 +1132,7 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool ProceduralPlatformComponent::raycastFixedPlane(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPosition)
+    bool ProceduralPlatformComponent::raycastFixedPlane(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPosition, Ogre::Real localZOffset)
     {
         Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
         if (nullptr == camera)
@@ -957,8 +1146,15 @@ namespace NOWA
         // (normal, d) constructor confirmed by ProceduralRoadComponent's own fallback plane
         // usage (Ogre::Plane(normal, constant) where normal.dotProduct(p) == constant for
         // any point p on the plane), rather than assuming a (normal, point) overload exists.
+        //
+        // localZOffset slides that plane along its own normal. platformFrame is a Quaternion,
+        // so planeNormal is a pure rotated UNIT_Z and therefore already unit length - adding
+        // the offset straight onto the plane constant moves the plane by exactly that much,
+        // no renormalising needed. Callers pass 0 for the platform's own base plane; Segment
+        // mode passes a segment's drawn depth so the pick lands where the geometry LOOKS, not
+        // where the base plane happens to be.
         const Ogre::Vector3 planeNormal = this->platformFrame * Ogre::Vector3::UNIT_Z;
-        const Ogre::Real planeD = planeNormal.dotProduct(this->platformPlaneAnchor);
+        const Ogre::Real planeD = planeNormal.dotProduct(this->platformPlaneAnchor) + localZOffset;
         Ogre::Plane workingPlane(planeNormal, planeD);
 
         std::pair<bool, Ogre::Real> result = ray.intersects(workingPlane);
@@ -1052,6 +1248,12 @@ namespace NOWA
         PlatformControlPoint endPoint;
         endPoint.position = currentPos;
         endPoint.position.y = 0.0f;
+        // Inherit the depth offset from the point this drag started at, rather than taking
+        // the one raycastFixedPlane just returned (which is always the platform's own base
+        // plane). Otherwise a segment extended from a lane that has been nudged along the
+        // depth axis would silently slope back to the base plane over its own length, and
+        // rebuildMesh would then see a depth step in the middle of a single segment.
+        endPoint.position.z = this->currentSegment.controlPoints.front().position.z;
         endPoint.rawHeight = currentPos.y;
         endPoint.smoothedHeight = endPoint.rawHeight;
         // NOTE: mirrors ProceduralRoadComponent's own preview distFromStart exactly -
@@ -1134,6 +1336,7 @@ namespace NOWA
         }
 
         this->rebuildMesh();
+        this->regenerateGrass();
 
         std::vector<unsigned char> newData = this->getPlatformData();
 
@@ -1236,6 +1439,7 @@ namespace NOWA
             this->rebuildMesh();
             this->updateContinuationPoint();
         }
+        this->regenerateGrass();
 
         std::vector<unsigned char> newData = this->getPlatformData();
 
@@ -1323,9 +1527,29 @@ namespace NOWA
         this->junctionIndices.clear();
         this->currentJunctionVertexIndex = 0;
 
+        // Refilled by generatePlatformBox -> collectGrassFrames as the sweep runs. Turning
+        // them into Items is a separate, much more expensive step that regenerateGrass does
+        // on its own schedule - see the comment there.
+        this->grassFrames.clear();
+
         if (this->platformSegments.empty())
         {
             return;
+        }
+
+        // Default every point's DRAWN depth to its authored one before any chain is walked.
+        // The per-chain ramp below overwrites this for everything it reaches; the default is
+        // what guarantees renderZ is never left at a meaningless 0 for a segment the ramp
+        // does not reach, or for one that has only just been created. That matters because
+        // Segment-mode picking derives its plane offset from renderZ, and a stale 0 there
+        // pushes the pick plane off by the whole plane constant - which makes the segment
+        // unselectable rather than merely slightly off.
+        for (PlatformSegment& seg : this->platformSegments)
+        {
+            for (PlatformControlPoint& cp : seg.controlPoints)
+            {
+                cp.renderZ = cp.position.z;
+            }
         }
 
         Ogre::Vector3 originToUse = this->platformOrigin;
@@ -1573,7 +1797,13 @@ namespace NOWA
             }
 
             // ── Collect waypoints (respecting per-segment reversal) ────────────
+            // waypointOwners records where each collected waypoint CAME FROM, as (segment
+            // index, control point index). It exists so the depth ramp computed below can be
+            // written back onto the real control points as renderZ - see there for why the
+            // overlay and the picking need that.
             std::vector<PlatformControlPoint> chainWaypoints;
+            std::vector<std::pair<size_t, size_t>> waypointOwners;
+
             for (size_t ci = 0; ci < chainIndices.size(); ++ci)
             {
                 const PlatformSegment& seg = this->platformSegments[chainIndices[ci].first];
@@ -1589,6 +1819,7 @@ namespace NOWA
                             continue;
                         }
                         chainWaypoints.push_back(cp);
+                        waypointOwners.push_back({chainIndices[ci].first, pi});
                     }
                 }
                 else
@@ -1601,6 +1832,7 @@ namespace NOWA
                             continue;
                         }
                         chainWaypoints.push_back(cp);
+                        waypointOwners.push_back({chainIndices[ci].first, pi});
                     }
                 }
             }
@@ -1608,6 +1840,88 @@ namespace NOWA
             if (chainWaypoints.size() < 2)
             {
                 continue;
+            }
+
+            // ── Publish the depth ramp back onto the real control points ─────────
+            // BUGFIX: position.z is the AUTHORED offset (what U / SHIFT+U writes, what gets
+            // serialized), but what actually gets DRAWN is the ramp between the chain's two
+            // ends. Anything that has to agree with the drawn geometry therefore cannot read
+            // position.z - and the segment overlay and the Segment-mode picking both did.
+            //
+            // Symptoms: the overlay lines stayed on the authored offsets while the mesh
+            // ramped away from them, and clicking a segment missed, because the pick raycasts
+            // a plane at a single depth while the geometry the user is aiming at is drawn at
+            // a different one - pure parallax, so the miss grows with the offset and with how
+            // oblique the camera is.
+            //
+            // renderZ is derived, never serialized, and recomputed on every rebuild. It is
+            // ramped by the waypoint polyline's arc length while the mesh is ramped by the
+            // dense path's - the two differ by the usual chord-versus-curve amount, a couple
+            // of percent of chain length, which on a one-depth ramp is a centimetre or two.
+            // Far below the pick radius and invisible in an overlay line.
+            {
+                const Ogre::Real startZ = chainWaypoints.front().position.z;
+                const Ogre::Real endZ = chainWaypoints.back().position.z;
+
+                std::vector<Ogre::Real> waypointDist(chainWaypoints.size(), 0.0f);
+                Ogre::Real waypointTotal = 0.0f;
+                for (size_t wi = 1; wi < chainWaypoints.size(); ++wi)
+                {
+                    waypointTotal += pathDistance2D(chainWaypoints[wi - 1].position.x, chainWaypoints[wi - 1].rawHeight, chainWaypoints[wi].position.x, chainWaypoints[wi].rawHeight);
+                    waypointDist[wi] = waypointTotal;
+                }
+
+                for (size_t wi = 0; wi < chainWaypoints.size(); ++wi)
+                {
+                    Ogre::Real rampedZ = startZ;
+                    if (waypointTotal > 1e-4f)
+                    {
+                        rampedZ = startZ + (endZ - startZ) * (waypointDist[wi] / waypointTotal);
+                    }
+
+                    chainWaypoints[wi].renderZ = rampedZ;
+                    this->platformSegments[waypointOwners[wi].first].controlPoints[waypointOwners[wi].second].renderZ = rampedZ;
+                }
+
+                // A shared joint waypoint is collected once, so the duplicate copy on the
+                // neighbouring segment never got written above. Give it the same value, or
+                // that one point would still report the authored offset.
+                for (size_t ci = 0; ci < chainIndices.size(); ++ci)
+                {
+                    PlatformSegment& seg = this->platformSegments[chainIndices[ci].first];
+                    for (PlatformControlPoint& cp : seg.controlPoints)
+                    {
+                        bool wasWritten = false;
+                        for (size_t wi = 0; wi < chainWaypoints.size(); ++wi)
+                        {
+                            if (waypointOwners[wi].first == chainIndices[ci].first)
+                            {
+                                if (pathDistance2D(chainWaypoints[wi].position.x, chainWaypoints[wi].rawHeight, cp.position.x, cp.rawHeight) < 0.01f)
+                                {
+                                    cp.renderZ = chainWaypoints[wi].renderZ;
+                                    wasWritten = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (false == wasWritten)
+                        {
+                            // Not part of this chain's collected waypoints at all (only
+                            // possible for a point deduplicated against a NEIGHBOURING
+                            // segment); fall back to the nearest collected waypoint's value.
+                            Ogre::Real bestDist = std::numeric_limits<Ogre::Real>::max();
+                            for (size_t wi = 0; wi < chainWaypoints.size(); ++wi)
+                            {
+                                const Ogre::Real d = pathDistance2D(chainWaypoints[wi].position.x, chainWaypoints[wi].rawHeight, cp.position.x, cp.rawHeight);
+                                if (d < bestDist)
+                                {
+                                    bestDist = d;
+                                    cp.renderZ = chainWaypoints[wi].renderZ;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // ── Classify every interior waypoint by its TURN ANGLE ───────────────
@@ -1642,6 +1956,23 @@ namespace NOWA
 
             std::vector<size_t> cornerWaypoints;   // indices into chainWaypoints - curve is cut, path stays continuous
             std::vector<size_t> reversalWaypoints; // indices into chainWaypoints - mesh is cut into separate runs
+
+            // ── Depth offset (Sonic crossover) ───────────────────────────────────
+            // position.z carries each control point's depth offset, set by Segment mode's
+            // U / SHIFT+U nudge. The rendered offset is NOT read per waypoint: it is ramped
+            // linearly, by arc length, from the offset stored at the chain's FIRST waypoint to
+            // the one at its LAST, and applied to the finished path further down.
+            //
+            // This replaces the first attempt, which treated a change in the offset as a hard
+            // step: the chain got cut into two separately meshed runs there, each swept at its
+            // own depth. It worked, and it looked wrong - the whole point of a Sonic loop is
+            // that the track drifts smoothly across in depth over the entire loop, so the
+            // entry and exit lanes miss each other while the surface stays continuous the
+            // whole way round. A step in the middle of a loop is a hole to fall through.
+            //
+            // Ramping instead of stepping also means no extra mesh cuts, no extra end caps,
+            // and no special cases anywhere in the sweep - just a per-point Z that
+            // generatePlatformBox now reads directly (see zFrontAt/zBackAt there).
             for (size_t wi = 1; wi + 1 < chainWaypoints.size(); ++wi)
             {
                 Ogre::Vector2 tangentIn(chainWaypoints[wi].position.x - chainWaypoints[wi - 1].position.x, chainWaypoints[wi].smoothedHeight - chainWaypoints[wi - 1].smoothedHeight);
@@ -1686,14 +2017,28 @@ namespace NOWA
             // search existed only because the split points were expressed as world X values;
             // knowing the index at construction time is both exact and far simpler.
             std::vector<PlatformControlPoint> finalPath;
-            std::vector<size_t> reversalPathIndices;
+            std::vector<size_t> meshCutPathIndices;
 
             {
+                // cornerWaypoints is filled by two independent passes (depth steps, then turn
+                // angles), so it arrives unsorted and can contain the same index twice when a
+                // waypoint is both. groupBounds must be strictly increasing for the group loop
+                // below to work at all, so it is built by walking the waypoints in order and
+                // asking whether each one is a corner - which also makes it duplicate-free by
+                // construction. Chains have waypoint counts in the tens, not the dense path's
+                // thousands, so the nested scan is not worth optimising away.
                 std::vector<size_t> groupBounds;
                 groupBounds.push_back(0);
-                for (size_t ci : cornerWaypoints)
+                for (size_t wi = 1; wi + 1 < chainWaypoints.size(); ++wi)
                 {
-                    groupBounds.push_back(ci);
+                    for (size_t ci : cornerWaypoints)
+                    {
+                        if (ci == wi)
+                        {
+                            groupBounds.push_back(wi);
+                            break;
+                        }
+                    }
                 }
                 groupBounds.push_back(chainWaypoints.size() - 1);
 
@@ -1774,22 +2119,25 @@ namespace NOWA
                     }
                     else
                     {
-                        // The shared corner point is already the last entry of finalPath.
-                        // Record it as a mesh cut only if this boundary was classified as a
-                        // genuine reversal, not merely a corner.
+                        // The shared boundary point is already the last entry of finalPath.
+                        // Record it as a MESH cut only for a genuine reversal, where a miter
+                        // cannot resolve a near-180 degree fold. An ordinary corner is not a
+                        // mesh cut - the path stays continuous there and the miter joins the
+                        // two legs - and neither is a depth change, which is ramped smoothly
+                        // across the whole chain rather than stepped.
                         const size_t joinIndex = finalPath.size() - 1;
-                        bool isReversal = false;
+                        bool isMeshCut = false;
                         for (size_t rw : reversalWaypoints)
                         {
                             if (rw == lo)
                             {
-                                isReversal = true;
+                                isMeshCut = true;
                                 break;
                             }
                         }
-                        if (true == isReversal)
+                        if (true == isMeshCut)
                         {
-                            reversalPathIndices.push_back(joinIndex);
+                            meshCutPathIndices.push_back(joinIndex);
                         }
                         finalPath.insert(finalPath.end(), groupPath.begin() + 1, groupPath.end());
                     }
@@ -1810,6 +2158,33 @@ namespace NOWA
                     accumDist += pathDistance2D(finalPath[pi - 1].position.x, finalPath[pi - 1].smoothedHeight, finalPath[pi].position.x, finalPath[pi].smoothedHeight);
                 }
                 finalPath[pi].distFromStart = accumDist;
+            }
+
+            // ── Ramp the depth offset across the whole chain ─────────────────────
+            // Done here because it needs distFromStart, which the loop above has just filled
+            // in. Curving, resampling and height smoothing all discard position.z (they build
+            // fresh control points), so nothing earlier could have carried it anyway - and
+            // nothing needs to, since only these two endpoint values are ever read.
+            //
+            // Linear in ARC LENGTH, not in point index: the path is resampled to roughly
+            // uniform spacing but not exactly, and a loop's samples bunch up on tight curves.
+            // Ramping by index would drift faster through the tight parts of a loop and
+            // slower through the straights, which reads as an uneven wobble in depth.
+            const Ogre::Real chainStartZ = chainWaypoints.front().position.z;
+            const Ogre::Real chainEndZ = chainWaypoints.back().position.z;
+            const Ogre::Real chainLength = finalPath.back().distFromStart;
+
+            for (PlatformControlPoint& fp : finalPath)
+            {
+                if (chainLength > 1e-4f)
+                {
+                    const Ogre::Real t = fp.distFromStart / chainLength;
+                    fp.position.z = chainStartZ + (chainEndZ - chainStartZ) * t;
+                }
+                else
+                {
+                    fp.position.z = chainStartZ;
+                }
             }
 
             // ── Junction membership of this chain's two ends ─────────────────────
@@ -1948,7 +2323,11 @@ namespace NOWA
             for (const auto& cp : finalPath)
             {
                 PlatformControlPoint lp;
-                lp.position = Ogre::Vector3(cp.position.x - originToUse.x, 0.0f, 0.0f);
+                // position.z is the depth offset, made relative to the mesh origin exactly
+                // like x and height. It used to be hard-zeroed here, back when every point of
+                // every platform sat on the one fixed depth plane and the origin carried that
+                // plane constant on its own.
+                lp.position = Ogre::Vector3(cp.position.x - originToUse.x, 0.0f, cp.position.z - originToUse.z);
                 lp.rawHeight = cp.rawHeight - originToUse.y;
                 lp.smoothedHeight = cp.smoothedHeight - originToUse.y;
                 lp.distFromStart = cp.distFromStart;
@@ -1957,9 +2336,9 @@ namespace NOWA
 
             // ── Generate platform geometry for this chain ───────────────────────
             // The chain is meshed as ONE piece unless it contains a genuine hairpin
-            // reversal. reversalPathIndices was recorded while the path was built (see the
-            // turn-angle classification above), so the cut points are exact indices into
-            // this path - no searching needed.
+            // reversal or a deliberate depth step. meshCutPathIndices was recorded while the
+            // path was built (see the turn-angle and depth-step classification above), so the
+            // cut points are exact indices into this path - no searching needed.
             //
             // REPLACES: the old "cut into runs monotonic in local X" machinery, plus its two
             // helper passes (nearest-sample anchor per authored corner, then refinement to
@@ -1978,7 +2357,7 @@ namespace NOWA
             std::vector<std::vector<PlatformControlPoint>> meshRuns;
             {
                 size_t runStart = 0;
-                for (size_t si : reversalPathIndices)
+                for (size_t si : meshCutPathIndices)
                 {
                     if (si > runStart && si + 1 < localPath.size())
                     {
@@ -2000,27 +2379,18 @@ namespace NOWA
                 localSegment.controlPoints = meshRuns[ri];
                 localSegment.isCurved = false;
                 localSegment.curvature = 0.0f;
-                // BUGFIX: both neighbours of an internal split joint used to get a real cap
-                // (skipFrontCap/skipBackCap = false on both sides). The cap is always built as
-                // a flat slice at constant local X (see addEndCap's toVec3 above - only the
-                // shading normal is tilted, not the plane itself), and a split joint's two
-                // runs share that exact X - so the two caps were perfectly coincident,
-                // z-fighting against each other every frame (the flicker in the two
-                // screenshots). Only the run ENDING at a joint draws the cap now; the run
-                // STARTING there skips its front cap, since the previous run's back cap
-                // already closes that seam.
+                // Every run is closed at both ends. Three separate reasons converged on this:
                 //
-                // ARCHITECTURE CHANGE: a junction end now gets a REAL cap. Previously it was
-                // skipped because the junction patch closed that opening; with no patch left,
-                // skipping would leave the slab's hollow interior open at the junction. The
-                // cap ends up buried inside the other arms' solid volume thanks to the
-                // overshoot applied above, so it is never actually visible.
+                //   - A junction end needs a real cap, because junctions build no geometry any
+                //     more and nothing else would close the slab's hollow interior there. The
+                //     cap is buried inside the neighbouring arms' solid volume by the
+                //     overshoot applied above, so it is never actually visible.
+                //   - A REVERSAL cut does put the two caps at the same place, which is what
+                //     the old skipFrontCap was avoiding. They cannot z-fight though: they face
+                //     in opposite directions, so each is backface-culled from the side the
+                //     other is visible from, and the depth nesting below offsets them anyway.
+                localSegment.skipFrontCap = false;
                 localSegment.skipBackCap = false;
-                localSegment.skipFrontCap = true;
-                if (0 == ri)
-                {
-                    localSegment.skipFrontCap = false;
-                }
 
                 // BUGFIX 4: even with the refined split point (BUGFIX 3 above), a residual
                 // sliver of overlap can still show up right at a reversal joint - floating
@@ -2044,6 +2414,9 @@ namespace NOWA
                 // per level is far too small to read as a step on the sides, but well clear
                 // of float noise.
                 g_platformRunDepthOverride = std::max(0.05f, this->platformDepth->getReal() - 0.01f * (static_cast<Ogre::Real>(nestLevel) + static_cast<Ogre::Real>(ri)));
+                // No run-wide depth offset any more: each control point carries its own in
+                // position.z and generatePlatformBox reads it per point, so the ramp simply
+                // travels with the path.
                 this->generatePlatformSegment(localSegment);
                 g_platformRunDepthOverride = -1.0f;
             }
@@ -2577,6 +2950,466 @@ namespace NOWA
         currentIdx += 4;
     }
 
+    void ProceduralPlatformComponent::collectGrassFrames(const std::vector<PlatformControlPoint>& points, const std::vector<Ogre::Vector2>& topPoints, const std::vector<Ogre::Vector2>& downDirs, Ogre::Real depth)
+    {
+        // One frame per path SEGMENT (not per point), positioned at the segment's midpoint.
+        // createGrassItems then scatters spanAlong * spanAcross * density blades over each.
+        // Sampling per segment rather than per point keeps the blade count tied to real
+        // surface AREA instead of to Curve Subdivisions - otherwise raising the subdivision
+        // count to smooth a curve would silently multiply the grass on it.
+        for (size_t i = 0; i + 1 < points.size(); ++i)
+        {
+            const Ogre::Vector2 a = topPoints[i];
+            const Ogre::Vector2 b = topPoints[i + 1];
+
+            Ogre::Vector2 along = b - a;
+            const Ogre::Real spanAlong = along.length();
+            if (spanAlong < 1e-4f)
+            {
+                continue;
+            }
+            along /= spanAlong;
+
+            // downDirs points INTO the slab, so the outward surface normal is its negation.
+            // Averaging the two endpoints keeps a frame centred on the piece of surface it
+            // represents, the same way the sweep averages segment normals into vertex ones.
+            Ogre::Vector2 outward = -(downDirs[i] + downDirs[i + 1]);
+            if (outward.squaredLength() < 1e-8f)
+            {
+                continue;
+            }
+            outward.normalise();
+
+            const Ogre::Real zCentre = (points[i].position.z + points[i + 1].position.z) * 0.5f;
+
+            GrassSurfaceFrame frame;
+            frame.position = Ogre::Vector3((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f, zCentre);
+            frame.normal = Ogre::Vector3(outward.x, outward.y, 0.0f);
+            frame.tangent = Ogre::Vector3(along.x, along.y, 0.0f);
+            frame.spanAlong = spanAlong;
+            frame.spanAcross = depth;
+
+            this->grassFrames.push_back(frame);
+        }
+    }
+
+    void ProceduralPlatformComponent::createGrassItems(void)
+    {
+        //  RUNS ON RENDER THREAD!
+        //
+        // Adapted from ProceduralFoliageVolumeComponent::createGrassItems. Same cross-quad
+        // blade, same vertex layout, same wind UV convention:
+        //   Bottom vertices: uv.y = 1.0 -> windFactor = 0 (rooted, no sway)
+        //   Top vertices:    uv.y = 0.0 -> windFactor = 1 (tip, full sway)
+        //
+        // What differs, and why:
+        //   - A blade is built in the SURFACE's frame (normal / tangent / binormal) rather
+        //     than around world Y, so it stands off the platform at whatever angle that
+        //     piece of platform happens to face.
+        //   - Cells hang off the GameObject's own scene node in mesh-local space instead of
+        //     the static root in world space, so grass moves with the platform.
+        if (true == this->grassFrames.empty())
+        {
+            return;
+        }
+
+        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+        Ogre::VaoManager* vaoManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
+
+        const Ogre::Real bw = this->grassBladeWidth->getReal();
+        const Ogre::Real bh = this->grassBladeHeight->getReal();
+        const Ogre::Real density = this->grassDensity->getReal();
+
+        const size_t floatsPerVertex = 8u;
+        const size_t vertsPerBlade = 8u;
+        const size_t idxPerBlade = 12u;
+
+        // Wind HLMS first, PBS as fallback - your own note in the foliage component: the
+        // datablock lives in the Wind HLMS whether or not a WindComponent is in the scene,
+        // and the component only decides whether the sway actually animates.
+        Ogre::HlmsDatablock* grassDatablock = nullptr;
+        {
+            Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+
+            Ogre::Hlms* hlmsWind = hlmsManager->getHlms(Ogre::HLMS_USER0);
+            if (nullptr != hlmsWind)
+            {
+                grassDatablock = hlmsWind->getDatablock(this->grassMaterialName->getString());
+            }
+
+            if (nullptr == grassDatablock)
+            {
+                Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
+                if (nullptr != hlmsPbs)
+                {
+                    grassDatablock = hlmsPbs->getDatablock(this->grassMaterialName->getString());
+                }
+            }
+
+            if (nullptr == grassDatablock)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Grass datablock '" + this->grassMaterialName->getString() + "' not found in Wind HLMS or PBS. Grass will not be created.");
+                return;
+            }
+        }
+
+        bool isCutoutOrBlended = false;
+        Ogre::HlmsPbsDatablock* pbsDb = static_cast<Ogre::HlmsPbsDatablock*>(grassDatablock);
+        if (nullptr != pbsDb)
+        {
+            // Keep alpha_hash - it is correct for foliage; forcing setAlphaTest() here would
+            // override the material and break the hash pattern.
+            const Ogre::HlmsBlendblock* bb = pbsDb->getBlendblock();
+            isCutoutOrBlended = bb->mIsTransparent != 0;
+        }
+        Ogre::uint8 renderQueue = NOWA::RENDER_QUEUE_V2_MESH;
+        if (true == isCutoutOrBlended)
+        {
+            renderQueue = RENDER_QUEUE_V2_TRANSPARENT;
+        }
+
+        const bool parentIsStatic = this->gameObjectPtr->getSceneNode()->isStatic();
+        Ogre::SceneMemoryMgrTypes memoryType = Ogre::SCENE_DYNAMIC;
+        if (true == parentIsStatic)
+        {
+            memoryType = Ogre::SCENE_STATIC;
+        }
+
+        // Group frames into 10m cells along the path, matching the foliage component's own
+        // cell size, so setRenderingDistance and frustum culling behave the same way.
+        const Ogre::Real cellSize = 10.0f;
+        std::map<int, std::vector<size_t>> cellMap;
+        {
+            Ogre::Real walked = 0.0f;
+            for (size_t fi = 0; fi < this->grassFrames.size(); ++fi)
+            {
+                cellMap[static_cast<int>(std::floor(walked / cellSize))].push_back(fi);
+                walked += this->grassFrames[fi].spanAlong;
+            }
+        }
+
+        size_t cellIndex = 0u;
+
+        for (auto& cellEntry : cellMap)
+        {
+            const std::vector<size_t>& cellFrames = cellEntry.second;
+
+            // Blade count per frame is area * density, so density stays in blades per square
+            // meter regardless of how finely the path happens to be subdivided.
+            std::vector<size_t> bladesPerFrame(cellFrames.size(), 0u);
+            size_t bladesInCell = 0u;
+            for (size_t k = 0; k < cellFrames.size(); ++k)
+            {
+                const GrassSurfaceFrame& f = this->grassFrames[cellFrames[k]];
+                const size_t count = static_cast<size_t>(std::max(0.0f, f.spanAlong * f.spanAcross * density));
+                bladesPerFrame[k] = count;
+                bladesInCell += count;
+            }
+
+            if (0u == bladesInCell)
+            {
+                ++cellIndex;
+                continue;
+            }
+
+            const size_t totalVerts = bladesInCell * vertsPerBlade;
+            const size_t totalIdx = bladesInCell * idxPerBlade;
+
+            float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(totalVerts * floatsPerVertex * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+            Ogre::uint32* id = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(totalIdx * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+
+            Ogre::Vector3 cellMin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+            Ogre::Vector3 cellMax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+
+            size_t bi = 0u;
+
+            for (size_t k = 0; k < cellFrames.size(); ++k)
+            {
+                const GrassSurfaceFrame& f = this->grassFrames[cellFrames[k]];
+
+                // Orthonormal surface frame. binormal is the depth axis: the platform's path
+                // lives entirely in the XY plane, so tangent x normal comes out along Z.
+                Ogre::Vector3 up = f.normal;
+                Ogre::Vector3 along = f.tangent;
+                Ogre::Vector3 across = along.crossProduct(up);
+                if (across.squaredLength() < 1e-8f)
+                {
+                    continue;
+                }
+                across.normalise();
+
+                for (size_t b = 0; b < bladesPerFrame[k]; ++b)
+                {
+                    // Deterministic scatter, same idea as the foliage component's
+                    // position-derived hash: no per-blade state is stored, yet a rebuild with
+                    // unchanged attributes reproduces exactly the same field.
+                    const Ogre::Real seed = f.position.x * 127.1f + f.position.y * 311.7f + f.position.z * 74.7f + static_cast<Ogre::Real>(b) * 43.3f;
+                    const Ogre::Real r0 = std::fmod(std::abs(std::sin(seed) * 43758.5453f), 1.0f);
+                    const Ogre::Real r1 = std::fmod(std::abs(std::sin(seed * 1.7f + 19.1f) * 24634.6345f), 1.0f);
+                    const Ogre::Real r2 = std::fmod(std::abs(std::sin(seed * 2.3f + 7.7f) * 12784.1234f), 1.0f);
+
+                    const Ogre::Vector3 root = f.position + along * ((r0 - 0.5f) * f.spanAlong) + across * ((r1 - 0.5f) * f.spanAcross);
+
+                    const Ogre::Real angle = r2 * Ogre::Math::TWO_PI;
+                    const Ogre::uint32 vBase = static_cast<Ogre::uint32>(bi * vertsPerBlade);
+
+                    for (int q = 0; q < 2; ++q)
+                    {
+                        const Ogre::Real qa = angle + static_cast<Ogre::Real>(q) * Ogre::Math::HALF_PI;
+                        // The blade's width axis, spun about the SURFACE normal rather than
+                        // world Y - this is what makes the blade lie in the platform's own
+                        // tangent plane at any orientation.
+                        const Ogre::Vector3 widthAxis = (along * std::cos(qa) + across * std::sin(qa)) * bw;
+
+                        for (int v = 0; v < 4; ++v)
+                        {
+                            Ogre::Real side = 1.0f;
+                            if (0 == v || 3 == v)
+                            {
+                                side = -1.0f;
+                            }
+                            Ogre::Real vTop = 0.0f;
+                            if (2 == v || 3 == v)
+                            {
+                                vTop = 1.0f;
+                            }
+
+                            const Ogre::Vector3 pos = root + widthAxis * side + up * (bh * vTop);
+
+                            cellMin.makeFloor(pos);
+                            cellMax.makeCeil(pos);
+
+                            const size_t o = (bi * vertsPerBlade + static_cast<size_t>(q) * 4u + static_cast<size_t>(v)) * floatsPerVertex;
+                            vd[o + 0] = pos.x;
+                            vd[o + 1] = pos.y;
+                            vd[o + 2] = pos.z;
+                            // Normal = the surface normal, so blades are lit as part of the
+                            // surface they grow from. The wind shader does not read it.
+                            vd[o + 3] = up.x;
+                            vd[o + 4] = up.y;
+                            vd[o + 5] = up.z;
+                            // UV: u = left(0)/right(1); v = bottom(1)/top(0), which is what
+                            // gives windFactor 0 at the root and 1 at the tip.
+                            vd[o + 6] = 0.0f;
+                            if (side > 0.0f)
+                            {
+                                vd[o + 6] = 1.0f;
+                            }
+                            vd[o + 7] = 1.0f;
+                            if (vTop > 0.0f)
+                            {
+                                vd[o + 7] = 0.0f;
+                            }
+                        }
+
+                        const size_t ii = (bi * idxPerBlade) + static_cast<size_t>(q) * 6u;
+                        const Ogre::uint32 qv = vBase + static_cast<Ogre::uint32>(q * 4);
+                        id[ii + 0] = qv + 0;
+                        id[ii + 1] = qv + 1;
+                        id[ii + 2] = qv + 2;
+                        id[ii + 3] = qv + 0;
+                        id[ii + 4] = qv + 2;
+                        id[ii + 5] = qv + 3;
+                    }
+
+                    ++bi;
+                }
+            }
+
+            if (0u == bi)
+            {
+                OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+                OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+                ++cellIndex;
+                continue;
+            }
+
+            if (cellMin.x > cellMax.x)
+            {
+                cellMin = cellMax = Ogre::Vector3::ZERO;
+            }
+            const Ogre::Vector3 cellCentre = (cellMin + cellMax) * 0.5f;
+
+            for (size_t vi = 0u; vi < totalVerts; ++vi)
+            {
+                const size_t o = vi * floatsPerVertex;
+                vd[o + 0] -= cellCentre.x;
+                vd[o + 1] -= cellCentre.y;
+                vd[o + 2] -= cellCentre.z;
+            }
+
+            Ogre::VertexElement2Vec elems;
+            elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
+            elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
+            elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
+
+            Ogre::VertexBufferPacked* vb = nullptr;
+            try
+            {
+                vb = vaoManager->createVertexBuffer(elems, totalVerts, Ogre::BT_IMMUTABLE, vd, true);
+            }
+            catch (const Ogre::Exception& e)
+            {
+                OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+                OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralPlatformComponent] Grass createVertexBuffer failed for cell " + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
+                ++cellIndex;
+                continue;
+            }
+
+            Ogre::IndexBufferPacked* ib = nullptr;
+            try
+            {
+                ib = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, totalIdx, Ogre::BT_IMMUTABLE, id, true);
+            }
+            catch (const Ogre::Exception& e)
+            {
+                OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralPlatformComponent] Grass createIndexBuffer failed for cell " + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)) + ": " + e.getDescription());
+                ++cellIndex;
+                continue;
+            }
+
+            Ogre::VertexBufferPackedVec vbVec;
+            vbVec.push_back(vb);
+            Ogre::VertexArrayObject* mergedVao = vaoManager->createVertexArrayObject(vbVec, ib, Ogre::OT_TRIANGLE_LIST);
+
+            const Ogre::String cellMeshName = "PlatformGrassCell_GO" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex));
+
+            {
+                Ogre::ResourcePtr existing = Ogre::MeshManager::getSingleton().getByName(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+                if (false == existing.isNull())
+                {
+                    Ogre::MeshManager::getSingleton().remove(existing->getHandle());
+                }
+            }
+
+            Ogre::MeshPtr cellMesh = Ogre::MeshManager::getSingleton().createManual(cellMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
+            cellMesh->_setVaoManager(vaoManager);
+
+            Ogre::SubMesh* cellSM = cellMesh->createSubMesh();
+            cellSM->mVao[Ogre::VpNormal].push_back(mergedVao);
+            cellSM->mVao[Ogre::VpShadow].push_back(mergedVao);
+
+            if (nullptr != grassDatablock->getNameStr())
+            {
+                cellSM->mMaterialName = *grassDatablock->getNameStr();
+            }
+
+            Ogre::Aabb localAabb;
+            localAabb.setExtents(cellMin - cellCentre, cellMax - cellCentre);
+            cellMesh->_setBounds(localAabb, false);
+            cellMesh->_setBoundingSphereRadius(localAabb.getRadius());
+
+            if (false == cellMesh->hasValidShadowMappingVaos())
+            {
+                cellMesh->prepareForShadowMapping(true);
+            }
+
+            Ogre::Item* cellItem = sceneManager->createItem(cellMesh, memoryType);
+            cellItem->setName("PlatformGrassItem_GO" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_C" + Ogre::StringConverter::toString(static_cast<unsigned int>(cellIndex)));
+
+            if (cellItem->getNumSubItems() > 0u)
+            {
+                cellItem->getSubItem(0u)->setDatablock(grassDatablock);
+            }
+
+            cellItem->setRenderQueueGroup(renderQueue);
+            cellItem->setCastShadows(false); // Grass never casts shadows.
+            cellItem->setQueryFlags(this->gameObjectPtr->getCategoryId());
+            cellItem->setVisibilityFlags(NOWA::VISIBILITY_FLAG_GRASS);
+
+            // Child of the platform's own node, in mesh-local space - the same space the
+            // frames were collected in - so the grass follows the platform if the GameObject
+            // is moved or reoriented.
+            Ogre::SceneNode* cellNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(memoryType);
+            cellNode->setPosition(cellCentre);
+            cellNode->setOrientation(Ogre::Quaternion::IDENTITY);
+            cellNode->setScale(Ogre::Vector3::UNIT_SCALE);
+            cellNode->attachObject(cellItem);
+
+            if (Ogre::SCENE_STATIC == memoryType)
+            {
+                // See ProceduralFoliageVolumeComponent: notifyStaticDirty(Node*) alone does
+                // not refresh the Item's world AABB, and a stale one gets the grass culled
+                // out of every view on the first rendered frame.
+                sceneManager->notifyStaticAabbDirty(cellItem);
+            }
+
+            this->grassItems.push_back(cellItem);
+            this->grassNodes.push_back(cellNode);
+
+            ++cellIndex;
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Grass: " + Ogre::StringConverter::toString(static_cast<unsigned int>(this->grassFrames.size())) + " surface frames -> " +
+                                                                               Ogre::StringConverter::toString(static_cast<unsigned int>(this->grassItems.size())) + " cell Items, material=" + this->grassMaterialName->getString());
+    }
+
+    void ProceduralPlatformComponent::destroyGrassItems(void)
+    {
+        //  RUNS ON RENDER THREAD!
+        if (true == this->grassItems.empty() && true == this->grassNodes.empty())
+        {
+            return;
+        }
+
+        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+
+        for (size_t i = 0; i < this->grassItems.size(); ++i)
+        {
+            if (nullptr != this->grassNodes[i])
+            {
+                this->grassNodes[i]->detachAllObjects();
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->grassNodes[i]);
+                sceneManager->destroySceneNode(this->grassNodes[i]);
+                this->grassNodes[i] = nullptr;
+            }
+
+            if (nullptr != this->grassItems[i])
+            {
+                // Remove the cell mesh from MeshManager before destroying the Item, so the
+                // next regenerate can create fresh meshes under the same names.
+                Ogre::MeshPtr meshToRemove = this->grassItems[i]->getMesh();
+                sceneManager->destroyItem(this->grassItems[i]);
+                this->grassItems[i] = nullptr;
+
+                if (false == meshToRemove.isNull())
+                {
+                    if (meshToRemove->getName().find("PlatformGrassCell_") != Ogre::String::npos)
+                    {
+                        Ogre::MeshManager::getSingleton().remove(meshToRemove->getHandle());
+                    }
+                }
+            }
+        }
+
+        this->grassItems.clear();
+        this->grassNodes.clear();
+    }
+
+    void ProceduralPlatformComponent::regenerateGrass(void)
+    {
+        // The one entry point for "the grass is out of date". Deliberately NOT called from
+        // rebuildMesh: that runs on every preview frame while dragging, and destroying and
+        // rebuilding every VAO in the chain per mouse-move would stall the editor on a
+        // loop-sized platform. rebuildMesh only refills grassFrames (via
+        // generatePlatformBox -> collectGrassFrames); this turns them into Items, and is
+        // called from the points where the platform has actually settled: a confirmed
+        // segment, a delete, a depth nudge, an attribute change.
+        GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->destroyGrassItems();
+            if (true == this->useGrass->getBool())
+            {
+                this->createGrassItems();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralPlatformComponent::regenerateGrass");
+    }
+
     void ProceduralPlatformComponent::generatePlatformBox(const std::vector<PlatformControlPoint>& points, Ogre::Real topBevel, Ogre::Real rimHeight, bool skipFrontCap, bool skipBackCap)
     {
         if (points.size() < 2)
@@ -2589,8 +3422,24 @@ namespace NOWA
         // override", i.e. every normal call behaves exactly as before.
         const Ogre::Real depth = (g_platformRunDepthOverride > 0.0f) ? g_platformRunDepthOverride : this->platformDepth->getReal();
         const Ogre::Real height = this->platformHeight->getReal();
-        const Ogre::Real zFront = -depth * 0.5f;
-        const Ogre::Real zBack = depth * 0.5f;
+        // ── Per-point depth offset ───────────────────────────────────────────────────────
+        // The slab's centre in Z is no longer one constant for the whole run: every control
+        // point carries its own offset in position.z, and rebuildMesh ramps that value
+        // smoothly along the chain. Sweeping it is what turns a self-crossing loop into a
+        // gentle helix, so the two lanes pass each other without ever colliding and WITHOUT a
+        // step anywhere.
+        //
+        // Everything downstream just needs the four Z constants evaluated per point instead
+        // of once, hence these accessors. A quad spanning points i and i+1 takes each corner's
+        // Z from that corner's own index.
+        auto zFrontAt = [&points, depth](size_t i)
+        {
+            return points[i].position.z - depth * 0.5f;
+        };
+        auto zBackAt = [&points, depth](size_t i)
+        {
+            return points[i].position.z + depth * 0.5f;
+        };
 
         const Ogre::Vector2 surfUV = this->surfaceUVTiling->getVector2();
         const Ogre::Vector2 groundUV = this->groundUVTiling->getVector2();
@@ -2599,8 +3448,22 @@ namespace NOWA
         const Ogre::Real rim = Ogre::Math::Clamp(rimHeight, 0.0f, height * 0.3f);
         const Ogre::Real rimBand = std::min(depth * 0.15f, 0.3f);
 
-        const Ogre::Real topZFront = zFront + bevel;
-        const Ogre::Real topZBack = zBack - bevel;
+        auto topZFrontAt = [&zFrontAt, bevel](size_t i)
+        {
+            return zFrontAt(i) + bevel;
+        };
+        auto topZBackAt = [&zBackAt, bevel](size_t i)
+        {
+            return zBackAt(i) - bevel;
+        };
+        auto midZFrontAt = [&topZFrontAt, rimBand](size_t i)
+        {
+            return topZFrontAt(i) + rimBand;
+        };
+        auto midZBackAt = [&topZBackAt, rimBand](size_t i)
+        {
+            return topZBackAt(i) - rimBand;
+        };
 
         // ── BUGFIX: mitered (perpendicular-to-path) extrusion instead of straight down ────
         // The slab used to be extruded straight down (-Y) by platformHeight: the bottom of a
@@ -2635,58 +3498,96 @@ namespace NOWA
         const size_t numPoints = points.size();
         const size_t numSegments = numPoints - 1;
 
+        // ── BUGFIX: ONE side decision for the whole path, not one per segment ────────────
+        // The previous rule decided each segment's orientation independently: flip the raw
+        // normal so it points up whenever "up" was a meaningful tie-break (|n.y| > 0.3), fall
+        // back to continuity with the previous segment otherwise. That is a road rule - a
+        // road surface always faces up, so per-segment "prefer up" is not just safe there but
+        // exactly right. A platform path is free in 2D, and the rule breaks in two ways the
+        // user hit:
+        //
+        //   - Looping. Going all the way around, the raw normal rotates through a full 360
+        //     degrees, so "always point up" forces a FLIP as the path passes through
+        //     horizontal at the top of the loop. The slab turns inside out there (grass
+        //     stubbornly staying up instead of following the surface round), and the
+        //     discontinuity tears a hole at the flip point.
+        //
+        //   - A vertical leg meeting a horizontal one. The vertical segment's side was picked
+        //     by the near-vertical fallback while the horizontal one's was forced up, and the
+        //     two landed on OPPOSITE sides of the path. The corner miter then bridged the
+        //     wrong pair of edges, chamfering the outer corner away instead of squaring it -
+        //     the notch out of the L. Continuity alone cannot repair this: at a 90 degree turn
+        //     the dot product between the two normals is exactly zero, so it carries no
+        //     information about which side to stay on.
+        //
+        // What actually has to stay constant along a path is the SIDE - left or right of the
+        // direction of travel - and that is a single decision, not a per-segment one. The raw
+        // 90-degree rotation below is always the left side, so all that is needed is one
+        // global flag. It is chosen from the most horizontal segment in the path, where "the
+        // surface should face up" is most meaningful, and only falls back to an X-based
+        // tie-break if the entire path is near-vertical.
+        //
+        // For an ordinary near-horizontal chain this reproduces the old behaviour exactly. For
+        // a loop it means the walkable surface follows the curve all the way round and ends up
+        // facing the loop's interior, which is what a loop-the-loop needs - and it comes out
+        // right whether the loop was drawn clockwise or counter-clockwise, because reversing
+        // the drawing direction also reverses which side the interior is on. A genuine hairpin
+        // is unaffected: rebuildMesh has already cut the chain into separate runs there, and
+        // each run makes its own side decision, so the material still stays below on both legs.
         std::vector<Ogre::Vector2> segmentNormals(numSegments, Ogre::Vector2(0.0f, 1.0f));
         {
-            Ogre::Vector2 previousUpNormal(0.0f, 0.0f);
+            // Raw left-hand normal per segment - a plain 90 degree rotation of the tangent,
+            // with no orientation decision applied yet.
+            std::vector<Ogre::Vector2> rawNormals(numSegments, Ogre::Vector2(0.0f, 1.0f));
             for (size_t i = 0; i < numSegments; ++i)
             {
                 const Ogre::Real dx = points[i + 1].position.x - points[i].position.x;
                 const Ogre::Real dh = points[i + 1].smoothedHeight - points[i].smoothedHeight;
 
-                Ogre::Vector2 upNormal(-dh, dx); // raw 90-degree rotation of the tangent
-                if (upNormal.squaredLength() > 1e-8f)
+                Ogre::Vector2 n(-dh, dx);
+                if (n.squaredLength() > 1e-8f)
                 {
-                    upNormal.normalise();
+                    n.normalise();
+                    rawNormals[i] = n;
+                }
+                else if (i > 0)
+                {
+                    // Degenerate zero-length segment - carry the previous one forward.
+                    rawNormals[i] = rawNormals[i - 1];
+                }
+            }
 
-                    const Ogre::Real confidence = std::abs(upNormal.y); // how meaningful "prefer true up" is here
-                    if (confidence > 0.3f)
-                    {
-                        if (upNormal.y < 0.0f)
-                        {
-                            upNormal = -upNormal;
-                        }
-                    }
-                    else if (previousUpNormal.squaredLength() > 1e-8f)
-                    {
-                        // Near-vertical segment: true up is an unreliable tie-breaker here, so
-                        // stay smooth with whatever the path was already doing instead.
-                        if (upNormal.dotProduct(previousUpNormal) < 0.0f)
-                        {
-                            upNormal = -upNormal;
-                        }
-                    }
-                    else if (upNormal.x < 0.0f)
-                    {
-                        // First segment in the chain, also near-vertical: no history yet either.
-                        // True up is useless as a tie-breaker at this angle, so pick a stable
-                        // starting side by X instead - a wall pulled straight up then always
-                        // gets its thickness on the same side rather than flipping between
-                        // rebuilds depending on float noise in a near-zero .y.
-                        upNormal = -upNormal;
-                    }
+            bool flipSide = false;
+            bool sideDecided = false;
+            for (size_t i = 0; i < numSegments; ++i)
+            {
+                if (std::abs(rawNormals[i].y) > 0.3f)
+                {
+                    flipSide = (rawNormals[i].y < 0.0f);
+                    sideDecided = true;
+                    break;
+                }
+            }
+
+            if (false == sideDecided)
+            {
+                // Every segment is near-vertical, so "up" says nothing. Pick a stable side by
+                // X instead, so a wall pulled straight up and one pulled straight down get
+                // their body on the same side rather than flipping on float noise in a
+                // near-zero .y.
+                flipSide = (rawNormals.front().x < 0.0f);
+            }
+
+            for (size_t i = 0; i < numSegments; ++i)
+            {
+                if (true == flipSide)
+                {
+                    segmentNormals[i] = -rawNormals[i];
                 }
                 else
                 {
-                    // Degenerate zero-length segment.
-                    upNormal = Ogre::Vector2(0.0f, 1.0f);
-                    if (previousUpNormal.squaredLength() > 1e-8f)
-                    {
-                        upNormal = previousUpNormal;
-                    }
+                    segmentNormals[i] = rawNormals[i];
                 }
-
-                segmentNormals[i] = upNormal;
-                previousUpNormal = upNormal;
             }
         }
 
@@ -2729,19 +3630,36 @@ namespace NOWA
                 adjacentSegment = numSegments - 1;
             }
             const Ogre::Real cosHalfAngle = std::max(0.35f, vertexNormal.dotProduct(segmentNormals[adjacentSegment]));
-            const Ogre::Real thickness = height / cosHalfAngle;
+            const Ogre::Real miterFactor = 1.0f / cosHalfAngle;
+            const Ogre::Real thickness = height * miterFactor;
 
             topPoints[i] = Ogre::Vector2(points[i].position.x, points[i].smoothedHeight);
             downDirs[i] = -vertexNormal;
             bottomPoints[i] = topPoints[i] + downDirs[i] * thickness;
-            bevelPoints[i] = topPoints[i] + downDirs[i] * bevel;
-            rimPoints[i] = topPoints[i] - downDirs[i] * rim;
+            // The chamfer and the raised rim get the same miter extension as the slab itself.
+            // They are widths measured PERPENDICULAR to the surface, so at a sharp corner an
+            // unscaled offset along the (averaged) corner direction would cover less
+            // perpendicular distance than it does mid-run - the grass strip visibly pinching
+            // in exactly where the corner is. Both stay below thickness: bevel is clamped to
+            // 0.45 * height and rim to 0.3 * height, and all three scale by the same factor.
+            bevelPoints[i] = topPoints[i] + downDirs[i] * (bevel * miterFactor);
+            rimPoints[i] = topPoints[i] - downDirs[i] * (rim * miterFactor);
         }
 
         auto toWorld = [](const Ogre::Vector2& xy, Ogre::Real z)
         {
             return Ogre::Vector3(xy.x, xy.y, z);
         };
+
+        // Grass rides on the walkable surface, so it is collected here rather than
+        // recomputed elsewhere: topPoints and downDirs are exactly the surface position and
+        // (negated) surface normal the sweep is about to extrude, already mitered, already
+        // side-consistent. Anything that derived them independently would drift from the
+        // geometry the blades are supposed to sit on.
+        if (true == this->useGrass->getBool())
+        {
+            this->collectGrassFrames(points, topPoints, downDirs, depth);
+        }
 
         for (size_t i = 0; i + 1 < numPoints; ++i)
         {
@@ -2755,39 +3673,45 @@ namespace NOWA
             if (rim > 0.0f && depth > rimBand * 2.5f)
             {
                 // ── 3-band top: raised rim strip along each Z edge, flat middle (Metal) ──
-                const Ogre::Real midZFront = topZFront + rimBand;
-                const Ogre::Real midZBack = topZBack - rimBand;
-
-                this->addPlatformQuad(toWorld(topPoints[i], midZFront), toWorld(topPoints[i + 1], midZFront), toWorld(topPoints[i + 1], midZBack), toWorld(topPoints[i], midZBack), upNormal, u0s, u1s, 0.0f, surfUV.y, PlatformMeshBuffer::SURFACE);
-
-                this->addPlatformQuad(toWorld(topPoints[i], topZFront), toWorld(topPoints[i + 1], topZFront), toWorld(rimPoints[i + 1], topZFront), toWorld(rimPoints[i], topZFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0s, u1s, 0.0f, 1.0f,
-                    PlatformMeshBuffer::SURFACE);
-                this->addPlatformQuad(toWorld(rimPoints[i], topZFront), toWorld(rimPoints[i + 1], topZFront), toWorld(rimPoints[i + 1], midZFront), toWorld(rimPoints[i], midZFront), upNormal, u0s, u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
-                this->addPlatformQuad(toWorld(rimPoints[i + 1], midZFront), toWorld(rimPoints[i], midZFront), toWorld(topPoints[i], midZFront), toWorld(topPoints[i + 1], midZFront), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0s, u1s, 0.0f, 1.0f,
+                this->addPlatformQuad(toWorld(topPoints[i], midZFrontAt(i)), toWorld(topPoints[i + 1], midZFrontAt(i + 1)), toWorld(topPoints[i + 1], midZBackAt(i + 1)), toWorld(topPoints[i], midZBackAt(i)), upNormal, u0s, u1s, 0.0f, surfUV.y,
                     PlatformMeshBuffer::SURFACE);
 
-                this->addPlatformQuad(toWorld(topPoints[i + 1], topZBack), toWorld(topPoints[i], topZBack), toWorld(rimPoints[i], topZBack), toWorld(rimPoints[i + 1], topZBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0s, u1s, 0.0f, 1.0f,
+                this->addPlatformQuad(toWorld(topPoints[i], topZFrontAt(i)), toWorld(topPoints[i + 1], topZFrontAt(i + 1)), toWorld(rimPoints[i + 1], topZFrontAt(i + 1)), toWorld(rimPoints[i], topZFrontAt(i)), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0s,
+                    u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(rimPoints[i], topZFrontAt(i)), toWorld(rimPoints[i + 1], topZFrontAt(i + 1)), toWorld(rimPoints[i + 1], midZFrontAt(i + 1)), toWorld(rimPoints[i], midZFrontAt(i)), upNormal, u0s, u1s, 0.0f, 1.0f,
                     PlatformMeshBuffer::SURFACE);
-                this->addPlatformQuad(toWorld(rimPoints[i + 1], topZBack), toWorld(rimPoints[i], topZBack), toWorld(rimPoints[i], midZBack), toWorld(rimPoints[i + 1], midZBack), upNormal, u0s, u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
-                this->addPlatformQuad(toWorld(rimPoints[i], midZBack), toWorld(rimPoints[i + 1], midZBack), toWorld(topPoints[i + 1], midZBack), toWorld(topPoints[i], midZBack), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0s, u1s, 0.0f, 1.0f,
+                this->addPlatformQuad(toWorld(rimPoints[i + 1], midZFrontAt(i + 1)), toWorld(rimPoints[i], midZFrontAt(i)), toWorld(topPoints[i], midZFrontAt(i)), toWorld(topPoints[i + 1], midZFrontAt(i + 1)), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0s,
+                    u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
+
+                this->addPlatformQuad(toWorld(topPoints[i + 1], topZBackAt(i + 1)), toWorld(topPoints[i], topZBackAt(i)), toWorld(rimPoints[i], topZBackAt(i)), toWorld(rimPoints[i + 1], topZBackAt(i + 1)), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0s, u1s,
+                    0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(rimPoints[i + 1], topZBackAt(i + 1)), toWorld(rimPoints[i], topZBackAt(i)), toWorld(rimPoints[i], midZBackAt(i)), toWorld(rimPoints[i + 1], midZBackAt(i + 1)), upNormal, u0s, u1s, 0.0f, 1.0f,
                     PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(rimPoints[i], midZBackAt(i)), toWorld(rimPoints[i + 1], midZBackAt(i + 1)), toWorld(topPoints[i + 1], midZBackAt(i + 1)), toWorld(topPoints[i], midZBackAt(i)), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0s, u1s,
+                    0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
             }
             else
             {
                 // ── Plain flat top surface ───────────────────────────────────────────
-                this->addPlatformQuad(toWorld(topPoints[i], topZFront), toWorld(topPoints[i + 1], topZFront), toWorld(topPoints[i + 1], topZBack), toWorld(topPoints[i], topZBack), upNormal, u0s, u1s, 0.0f, surfUV.y, PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(topPoints[i], topZFrontAt(i)), toWorld(topPoints[i + 1], topZFrontAt(i + 1)), toWorld(topPoints[i + 1], topZBackAt(i + 1)), toWorld(topPoints[i], topZBackAt(i)), upNormal, u0s, u1s, 0.0f, surfUV.y,
+                    PlatformMeshBuffer::SURFACE);
             }
 
             // ── Bottom surface ───────────────────────────────────────────────────────
-            this->addPlatformQuad(toWorld(bottomPoints[i], zBack), toWorld(bottomPoints[i + 1], zBack), toWorld(bottomPoints[i + 1], zFront), toWorld(bottomPoints[i], zFront), -upNormal, u0g, u1g, 0.0f, groundUV.y, PlatformMeshBuffer::GROUND);
-
-            // ── Front face (z = zFront) ───────────────────────────────────────────────
-            this->addPlatformQuad(toWorld(bevelPoints[i], zFront), toWorld(bottomPoints[i], zFront), toWorld(bottomPoints[i + 1], zFront), toWorld(bevelPoints[i + 1], zFront), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0g, u1g, 0.0f, groundUV.y,
+            this->addPlatformQuad(toWorld(bottomPoints[i], zBackAt(i)), toWorld(bottomPoints[i + 1], zBackAt(i + 1)), toWorld(bottomPoints[i + 1], zFrontAt(i + 1)), toWorld(bottomPoints[i], zFrontAt(i)), -upNormal, u0g, u1g, 0.0f, groundUV.y,
                 PlatformMeshBuffer::GROUND);
 
-            // ── Back face (z = zBack) ─────────────────────────────────────────────────
-            this->addPlatformQuad(toWorld(bevelPoints[i + 1], zBack), toWorld(bottomPoints[i + 1], zBack), toWorld(bottomPoints[i], zBack), toWorld(bevelPoints[i], zBack), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0g, u1g, 0.0f, groundUV.y,
-                PlatformMeshBuffer::GROUND);
+            // ── Front face ────────────────────────────────────────────────────────────
+            // The shading normal stays (0,0,-1) rather than being tilted to follow the depth
+            // ramp. The ramp spreads one platform depth over a whole chain, so its slope is a
+            // couple of degrees at most - well under what any lighting difference would show,
+            // and not worth recomputing a per-quad normal for.
+            this->addPlatformQuad(toWorld(bevelPoints[i], zFrontAt(i)), toWorld(bottomPoints[i], zFrontAt(i)), toWorld(bottomPoints[i + 1], zFrontAt(i + 1)), toWorld(bevelPoints[i + 1], zFrontAt(i + 1)), Ogre::Vector3(0.0f, 0.0f, -1.0f), u0g, u1g,
+                0.0f, groundUV.y, PlatformMeshBuffer::GROUND);
+
+            // ── Back face ─────────────────────────────────────────────────────────────
+            this->addPlatformQuad(toWorld(bevelPoints[i + 1], zBackAt(i + 1)), toWorld(bottomPoints[i + 1], zBackAt(i + 1)), toWorld(bottomPoints[i], zBackAt(i)), toWorld(bevelPoints[i], zBackAt(i)), Ogre::Vector3(0.0f, 0.0f, 1.0f), u0g, u1g, 0.0f,
+                groundUV.y, PlatformMeshBuffer::GROUND);
 
             // ── Chamfer bevel (Grass) ─────────────────────────────────────────────────
             if (bevel > 0.0f)
@@ -2812,9 +3736,11 @@ namespace NOWA
                     bevelBackNormal = Ogre::Vector3(0.0f, 0.0f, 1.0f);
                 }
 
-                this->addPlatformQuad(toWorld(topPoints[i], topZFront), toWorld(topPoints[i + 1], topZFront), toWorld(bevelPoints[i + 1], zFront), toWorld(bevelPoints[i], zFront), bevelFrontNormal, u0s, u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(topPoints[i], topZFrontAt(i)), toWorld(topPoints[i + 1], topZFrontAt(i + 1)), toWorld(bevelPoints[i + 1], zFrontAt(i + 1)), toWorld(bevelPoints[i], zFrontAt(i)), bevelFrontNormal, u0s, u1s, 0.0f, 1.0f,
+                    PlatformMeshBuffer::SURFACE);
 
-                this->addPlatformQuad(toWorld(topPoints[i + 1], topZBack), toWorld(topPoints[i], topZBack), toWorld(bevelPoints[i], zBack), toWorld(bevelPoints[i + 1], zBack), bevelBackNormal, u0s, u1s, 0.0f, 1.0f, PlatformMeshBuffer::SURFACE);
+                this->addPlatformQuad(toWorld(topPoints[i + 1], topZBackAt(i + 1)), toWorld(topPoints[i], topZBackAt(i)), toWorld(bevelPoints[i], zBackAt(i)), toWorld(bevelPoints[i + 1], zBackAt(i + 1)), bevelBackNormal, u0s, u1s, 0.0f, 1.0f,
+                    PlatformMeshBuffer::SURFACE);
             }
         }
 
@@ -2842,7 +3768,10 @@ namespace NOWA
         // at constant X. For a horizontal platform down is -Y and this is identical to before;
         // for a vertical pull the cap correctly becomes a horizontal lid rather than collapsing
         // into the wall's own plane.
-        auto addEndCap = [this, depth, bevel, rim, rimBand, zFront, zBack, groundUV](const Ogre::Vector2& capTop, const Ogre::Vector2& capDown, Ogre::Real capThickness, const Ogre::Vector3& outDir)
+        // capZFront/capZBack are the cap's OWN depth range - the end point's per-point offset
+        // widened by half the depth, exactly as the sweep does at any other index. They used
+        // to be captured from the two run-wide constants, which no longer exist.
+        auto addEndCap = [this, depth, bevel, rim, rimBand, groundUV](const Ogre::Vector2& capTop, const Ogre::Vector2& capDown, Ogre::Real capThickness, Ogre::Real zFront, Ogre::Real zBack, const Ogre::Vector3& outDir)
         {
             std::vector<Ogre::Vector2> profile;
             if (rim > 0.0f && depth > rimBand * 2.5f)
@@ -2904,7 +3833,7 @@ namespace NOWA
                 outDir = Ogre::Vector3(-1.0f, 0.0f, 0.0f);
             }
 
-            addEndCap(topPoints.front(), downDirs.front(), (bottomPoints.front() - topPoints.front()).length(), outDir);
+            addEndCap(topPoints.front(), downDirs.front(), (bottomPoints.front() - topPoints.front()).length(), zFrontAt(0), zBackAt(0), outDir);
         }
         if (false == skipBackCap)
         {
@@ -2921,7 +3850,7 @@ namespace NOWA
                 outDir = Ogre::Vector3(1.0f, 0.0f, 0.0f);
             }
 
-            addEndCap(topPoints.back(), downDirs.back(), (bottomPoints.back() - topPoints.back()).length(), outDir);
+            addEndCap(topPoints.back(), downDirs.back(), (bottomPoints.back() - topPoints.back()).length(), zFrontAt(numPoints - 1), zBackAt(numPoints - 1), outDir);
         }
     }
 
@@ -3970,6 +4899,61 @@ namespace NOWA
         return this->smoothingFactor->getReal();
     }
 
+    void ProceduralPlatformComponent::setUseGrass(bool useGrass)
+    {
+        this->useGrass->setValue(useGrass);
+        this->regenerateGrass();
+    }
+
+    bool ProceduralPlatformComponent::getUseGrass(void) const
+    {
+        return this->useGrass->getBool();
+    }
+
+    void ProceduralPlatformComponent::setGrassMaterialName(const Ogre::String& materialName)
+    {
+        this->grassMaterialName->setValue(materialName);
+        this->regenerateGrass();
+    }
+
+    Ogre::String ProceduralPlatformComponent::getGrassMaterialName(void) const
+    {
+        return this->grassMaterialName->getString();
+    }
+
+    void ProceduralPlatformComponent::setGrassDensity(Ogre::Real density)
+    {
+        this->grassDensity->setValue(Ogre::Math::Clamp(density, 0.1f, 200.0f));
+        this->regenerateGrass();
+    }
+
+    Ogre::Real ProceduralPlatformComponent::getGrassDensity(void) const
+    {
+        return this->grassDensity->getReal();
+    }
+
+    void ProceduralPlatformComponent::setGrassBladeWidth(Ogre::Real width)
+    {
+        this->grassBladeWidth->setValue(Ogre::Math::Clamp(width, 0.01f, 2.0f));
+        this->regenerateGrass();
+    }
+
+    Ogre::Real ProceduralPlatformComponent::getGrassBladeWidth(void) const
+    {
+        return this->grassBladeWidth->getReal();
+    }
+
+    void ProceduralPlatformComponent::setGrassBladeHeight(Ogre::Real height)
+    {
+        this->grassBladeHeight->setValue(Ogre::Math::Clamp(height, 0.05f, 5.0f));
+        this->regenerateGrass();
+    }
+
+    Ogre::Real ProceduralPlatformComponent::getGrassBladeHeight(void) const
+    {
+        return this->grassBladeHeight->getReal();
+    }
+
     void ProceduralPlatformComponent::setCurveSubdivisions(int subdivisions)
     {
         this->curveSubdivisions->setValue(std::max(1, subdivisions));
@@ -4549,6 +5533,10 @@ namespace NOWA
                     memcpy(&cp.position.y, &buffer[off], 4);
                     off += 4;
                     memcpy(&cp.position.z, &buffer[off], 4);
+                    // Seed the derived draw depth from the authored one, so anything that reads
+                    // renderZ before the first rebuildMesh (the segment overlay in particular)
+                    // sees the stored plane rather than 0.
+                    cp.renderZ = cp.position.z;
                     off += 4;
                     memcpy(&cp.rawHeight, &buffer[off], 4);
                     off += 4;
@@ -4890,6 +5878,10 @@ namespace NOWA
                 memcpy(&cp.position.y, &data[off], 4);
                 off += 4;
                 memcpy(&cp.position.z, &data[off], 4);
+                // Seed the derived draw depth from the authored one, so anything that reads
+                // renderZ before the first rebuildMesh (the segment overlay in particular)
+                // sees the stored plane rather than 0.
+                cp.renderZ = cp.position.z;
                 off += 4;
                 memcpy(&cp.rawHeight, &data[off], 4);
                 off += 4;
@@ -5119,6 +6111,7 @@ namespace NOWA
             this->rebuildMesh();
             this->updateContinuationPoint();
         }
+        this->regenerateGrass();
 
         this->scheduleSegmentOverlayUpdate();
 
@@ -5134,7 +6127,7 @@ namespace NOWA
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evtEnd);
     }
 
-    int ProceduralPlatformComponent::findNearestSegmentWithinRadius(const Ogre::Vector3& worldPos, Ogre::Real radius) const
+    int ProceduralPlatformComponent::findNearestSegmentOnScreen(Ogre::Real screenX, Ogre::Real screenY, Ogre::Real radius)
     {
         if (this->platformSegments.empty())
         {
@@ -5142,21 +6135,61 @@ namespace NOWA
         }
 
         int bestSeg = -1;
-        float bestDist = radius; // only accept hits within radius
+        Ogre::Real bestDist = radius; // only accept hits within radius
+
+        // BUGFIX: renderZ (like position.z) is an ABSOLUTE local Z - it already contains the
+        // working plane's own constant, because that is what raycastFixedPlane handed back
+        // when the point was first placed. raycastFixedPlane's localZOffset, by contrast, is
+        // a DELTA applied on top of that same plane. Passing renderZ in directly therefore
+        // added the plane constant a second time and threw every pick plane far off into the
+        // scene, so no segment was ever within radius and nothing could be selected at all.
+        //
+        // The delta is renderZ measured against the base plane's own local Z, which is zero
+        // for any segment that has never been nudged - so an un-nudged platform picks exactly
+        // as it did before any of this existed.
+        const Ogre::Real baseLocalZ = (this->platformFrame.Inverse() * this->platformPlaneAnchor).z;
 
         for (size_t si = 0; si < this->platformSegments.size(); ++si)
         {
             const PlatformSegment& seg = this->platformSegments[si];
+            if (seg.controlPoints.size() < 2)
+            {
+                continue;
+            }
+
+            // One plane per segment, at the depth this segment is drawn at. Averaging the
+            // control points' renderZ rather than taking one of them keeps a segment that
+            // spans part of a ramp centred on itself; the ramp only moves by a fraction of a
+            // platform depth across a single segment, so the residual parallax within a
+            // segment is far below the pick radius.
+            Ogre::Real segZ = 0.0f;
+            for (const PlatformControlPoint& cp : seg.controlPoints)
+            {
+                segZ += cp.renderZ;
+            }
+            segZ /= static_cast<Ogre::Real>(seg.controlPoints.size());
+
+            Ogre::Vector3 hitPos = Ogre::Vector3::ZERO;
+            if (false == this->raycastFixedPlane(screenX, screenY, hitPos, segZ - baseLocalZ))
+            {
+                continue;
+            }
+            hitPos = this->platformFrame.Inverse() * hitPos;
+
             for (size_t pi = 1; pi < seg.controlPoints.size(); ++pi)
             {
                 Ogre::Vector2 a(seg.controlPoints[pi - 1].position.x, seg.controlPoints[pi - 1].smoothedHeight);
                 Ogre::Vector2 b(seg.controlPoints[pi].position.x, seg.controlPoints[pi].smoothedHeight);
-                Ogre::Vector2 p(worldPos.x, worldPos.y);
+                Ogre::Vector2 p(hitPos.x, hitPos.y);
 
                 Ogre::Vector2 ab = b - a;
-                float abLen2 = ab.dotProduct(ab);
-                float t = (abLen2 > 1e-6f) ? Ogre::Math::Clamp((p - a).dotProduct(ab) / abLen2, 0.0f, 1.0f) : 0.0f;
-                float dist = (a + ab * t - p).length();
+                Ogre::Real abLen2 = ab.dotProduct(ab);
+                Ogre::Real t = 0.0f;
+                if (abLen2 > 1e-6f)
+                {
+                    t = Ogre::Math::Clamp((p - a).dotProduct(ab) / abLen2, 0.0f, 1.0f);
+                }
+                const Ogre::Real dist = (a + ab * t - p).length();
 
                 if (dist < bestDist)
                 {
@@ -5287,11 +6320,17 @@ namespace NOWA
             for (int k = 0; k <= N; ++k)
             {
                 const float t = static_cast<float>(k) / static_cast<float>(N);
-                // BUGFIX: cp0.position.z + pushZ, not pushZ alone - the overlay node carries
-                // only orientation (no position offset, same as ProceduralRoadComponent's),
-                // so these vertices must be full frame-local coordinates including the
-                // fixed plane's real Z constant, or the line floats at the wrong depth.
-                path.push_back(Ogre::Vector3(cp0.position.x + (cp1.position.x - cp0.position.x) * t, h0 + (h1 - h0) * t, cp0.position.z + pushZ));
+                // BUGFIX: renderZ + pushZ, not pushZ alone and not position.z - the overlay
+                // node carries only orientation (no position offset, same as
+                // ProceduralRoadComponent's), so these vertices must be full frame-local
+                // coordinates including the real Z, or the line floats at the wrong depth.
+                // renderZ specifically, because that is the depth the MESH is drawn at; using
+                // the authored position.z left the overlay behind wherever the chain's depth
+                // ramp had carried the surface away from it. It is interpolated between the
+                // two control points for the same reason the x/height are.
+                const float z0 = cp0.renderZ;
+                const float z1 = cp1.renderZ;
+                path.push_back(Ogre::Vector3(cp0.position.x + (cp1.position.x - cp0.position.x) * t, h0 + (h1 - h0) * t, z0 + (z1 - z0) * t + pushZ));
             }
 
             for (int k = 0; k < static_cast<int>(path.size()) - 1; ++k)
@@ -5799,6 +6838,7 @@ namespace NOWA
         if (false == this->bBatchMode)
         {
             this->rebuildMesh();
+            this->regenerateGrass();
         }
         this->updateContinuationPoint();
     }
@@ -5818,10 +6858,11 @@ namespace NOWA
         if (atStart)
         {
             const PlatformControlPoint& cp = this->platformSegments.front().controlPoints.front();
-            // BUGFIX: cp.position.z (the real, stored plane constant), not a hardcoded 0 -
-            // this is an external API (e.g. for connecting another procedural component to
-            // this platform's end), so it must return the true world point.
-            return this->platformFrame * Ogre::Vector3(cp.position.x, cp.smoothedHeight, cp.position.z);
+            // BUGFIX: the real Z, not a hardcoded 0 - this is an external API (e.g. for
+            // connecting another procedural component to this platform's end), so it must
+            // return the true world point. renderZ rather than position.z, so it reports
+            // where the surface actually IS once the chain's depth ramp is applied.
+            return this->platformFrame * Ogre::Vector3(cp.position.x, cp.smoothedHeight, cp.renderZ);
         }
         else
         {
@@ -5914,6 +6955,7 @@ namespace NOWA
     void ProceduralPlatformComponent::finalizeBatch(void)
     {
         this->rebuildMesh();
+        this->regenerateGrass();
     }
 
     void ProceduralPlatformComponent::beginBatch(void)
@@ -5925,6 +6967,7 @@ namespace NOWA
     {
         this->bBatchMode = false;
         this->rebuildMesh();
+        this->regenerateGrass();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
