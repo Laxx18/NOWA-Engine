@@ -7,6 +7,7 @@ GPL v3
 #include "NOWAPrecompiled.h"
 #include "MeshModifyComponent.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/PhysicsComponent.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
 #include "main/InputDeviceCore.h"
@@ -55,7 +56,7 @@ namespace NOWA
         lastBrushPosition(Ogre::Vector3::ZERO),
         brushInProgress(false),
         canModify(false),
-        physicsActiveComponent(nullptr),
+        physicsComponent(nullptr),
         currentDamage(0.0f),
         dirtyVertices(false),
         workerRunning(false),
@@ -216,11 +217,11 @@ namespace NOWA
 
         this->addInputListener();
 
-        // Get PhysicsActiveComponent if exists
-        const auto& physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
-        if (physicsActiveCompPtr)
+        // Get PhysicsComponent if exists
+        const auto& physicCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsComponent>());
+        if (physicCompPtr)
         {
-            this->physicsActiveComponent = physicsActiveCompPtr.get();
+            this->physicsComponent = physicCompPtr.get();
         }
 
         // Slow part: extract mesh data and create editable item — but DON'T swap yet.
@@ -243,7 +244,10 @@ namespace NOWA
         this->brushInProgress.store(false);
         this->workerRunning.store(false);
 
-         this->physicsActiveComponent->destroyCollision();
+        if (nullptr != this->physicsComponent)
+        {
+            this->physicsComponent->destroyCollision();
+        }
 
         if (this->editableItem == nullptr)
         {
@@ -258,7 +262,10 @@ namespace NOWA
         this->gameObjectPtr->swapMovableObject(this->editableItem, old);
         this->originalItem = static_cast<Ogre::Item*>(old);
 
-        this->physicsActiveComponent->reCreateDynamicBodyForItem(this->editableItem);
+        if (nullptr != this->physicsComponent)
+        {
+            this->physicsComponent->reCreateBodyForItem(this->editableItem);
+        }
 
         return true;
     }
@@ -275,7 +282,7 @@ namespace NOWA
         }
         if (false == this->gameObjectPtr->hasComponent("PhysicsActiveVehicleComponentV2"))
         {
-            this->physicsActiveComponent->destroyCollision();
+            this->physicsComponent->destroyCollision();
         }
 
         if (this->originalItem != nullptr)
@@ -288,7 +295,7 @@ namespace NOWA
             // Rebuild physics from original BEFORE nulling the pointer
             if (false == this->gameObjectPtr->hasComponent("PhysicsActiveVehicleComponentV2"))
             {
-                this->physicsActiveComponent->reCreateDynamicBodyForItem(this->originalItem);
+                this->physicsComponent->reCreateBodyForItem(this->originalItem);
             }
             this->originalItem = nullptr;
         }
@@ -311,9 +318,9 @@ namespace NOWA
 
     void MeshModifyComponent::rebuildCollision(void)
     {
-        if (this->physicsActiveComponent && this->editableItem)
+        if (this->physicsComponent && this->editableItem)
         {
-            this->physicsActiveComponent->reCreateCollision(this->editableItem);
+            this->physicsComponent->reCreateCollision(this->editableItem);
         }
     }
 
@@ -352,6 +359,15 @@ namespace NOWA
         });
     }
 
+    bool MeshModifyComponent::isEditFocusOwner(void) const
+    {
+        if (true == this->editFocusOwner.empty())
+        {
+            return true;
+        }
+        return this->editFocusOwner == MeshModifyComponent::getStaticClassName();
+    }
+
     bool MeshModifyComponent::onCloned(void)
     {
         return true;
@@ -359,7 +375,7 @@ namespace NOWA
 
     void MeshModifyComponent::onAddComponent(void)
     {
-        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
+        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), MeshModifyComponent::getStaticClassName()));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         this->canModify = true;
     }
@@ -379,7 +395,7 @@ namespace NOWA
 
         this->removeInputListener();
 
-        this->physicsActiveComponent = nullptr;
+        this->physicsComponent = nullptr;
 
         // Destroy ray query
         if (nullptr != this->raySceneQuery)
@@ -394,9 +410,9 @@ namespace NOWA
 
     void MeshModifyComponent::onOtherComponentRemoved(unsigned int index)
     {
-        if (nullptr != this->physicsActiveComponent && index == this->physicsActiveComponent->getIndex())
+        if (nullptr != this->physicsComponent && index == this->physicsComponent->getIndex())
         {
-            this->physicsActiveComponent = nullptr;
+            this->physicsComponent = nullptr;
         }
     }
 
@@ -576,6 +592,10 @@ namespace NOWA
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Failed to load brush image: " + brushName + " - " + e.getDescription());
         }
+
+        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), MeshModifyComponent::getStaticClassName()));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+        this->canModify = true;
     }
 
     Ogre::String MeshModifyComponent::getBrushName(void) const
@@ -911,9 +931,9 @@ namespace NOWA
             this->vertexNeighbors.clear();
 
             // Step 5: rebuild physics from original mesh
-            if (this->physicsActiveComponent)
+            if (this->physicsComponent)
             {
-                this->physicsActiveComponent->reCreateCollision(true);
+                this->physicsComponent->reCreateCollision(true);
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MeshModifyComponent::destroyEditableMesh");
@@ -1289,6 +1309,17 @@ namespace NOWA
 
         Ogre::String meshName = this->gameObjectPtr->getName() + "_Editable_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
+        // An earlier attempt can have registered this name and then thrown partway through
+        // buffer creation, leaving a half-built mesh behind. createManual then fails with
+        // "already exists" and editableItem is never assigned - which is what surfaces later
+        // as a nullptr in mousePressed. Same remove-then-create dance the foliage cell meshes
+        // already do.
+        Ogre::ResourcePtr existingEditable = Ogre::MeshManager::getSingleton().getByName(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+        if (false == existingEditable.isNull())
+        {
+            Ogre::MeshManager::getSingleton().remove(existingEditable->getHandle());
+        }
+
         this->editableMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
         this->editableMesh->_setVaoManager(vaoManager);
 
@@ -1299,6 +1330,15 @@ namespace NOWA
         for (size_t smIdx = 0; smIdx < this->subMeshInfoList.size(); ++smIdx)
         {
             SubMeshInfo& smInfo = this->subMeshInfoList[smIdx];
+
+            // Defensive: a submesh with no indices makes createIndexBuffer map zero bytes, which
+            // throws and aborts the whole editable mesh. The platform component no longer emits
+            // such a submesh, but any mesh can.
+            if (0 == smInfo.vertexCount || 0 == smInfo.indexCount)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Skipping empty submesh " + Ogre::StringConverter::toString(smIdx));
+                continue;
+            }
 
             // ---- Does this submesh's datablock need tangents? ----
             bool needsTangents = false;
@@ -2029,7 +2069,12 @@ namespace NOWA
 
     void MeshModifyComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
     {
-        boost::shared_ptr<NOWA::EventDataEditorMode> castEventData = boost::static_pointer_cast<NOWA::EventDataEditorMode>(eventData);
+        auto castEventData = boost::static_pointer_cast<EventDataEditorMode>(eventData);
+
+        if (true == castEventData->hasEditFocusClaim() && castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+        {
+            this->editFocusOwner = castEventData->getComponentClassName();
+        }
 
         if (NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE == castEventData->getManipulationMode())
         {
@@ -2049,7 +2094,7 @@ namespace NOWA
         {
             if (castEventData->getGameObjectId() == this->gameObjectPtr->getId())
             {
-                if (true == this->canModify && true == castEventData->getIsSelected())
+                if (/*true == this->canModify && */true == castEventData->getIsSelected())
                 {
                     this->addInputListener();
                 }

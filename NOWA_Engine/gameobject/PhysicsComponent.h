@@ -194,6 +194,8 @@ namespace NOWA
 
 		virtual void reCreateCollision(bool overwrite = false) = 0;
 
+		virtual bool reCreateBodyForItem(Ogre::Item* item);
+
 		void destroyCollision(void);
 
 		void destroyBody(void);

@@ -413,6 +413,8 @@ namespace NOWA
         // Returns the BrushMode enum matching the current brushMode list selection.
         PlanetTerra::BrushMode getBrushModeEnum(void) const;
 
+        bool isEditFocusOwner(void) const;
+
         // Event handlers
         void handleMeshModifyMode(NOWA::EventDataPtr eventData);
         void handleGameObjectSelected(NOWA::EventDataPtr eventData);
@@ -445,6 +447,7 @@ namespace NOWA
         std::vector<uint8_t> loadedBlendData;
 
         bool hasModifiedData;
+        Ogre::String editFocusOwner;
 
         // Attributes
         Variant* activated = nullptr;

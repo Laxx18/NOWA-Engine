@@ -96,7 +96,7 @@ namespace NOWA
 		acceleration(new Variant(PlayerControllerComponent::AttrAcceleration(), 0.0f, this->attributes)),
 		categories(new Variant(PlayerControllerComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
 		useStandUp(new Variant(PlayerControllerComponent::AttrUseStandUp(), false, this->attributes)),
-        useWallSeparation(new Variant(PlayerControllerComponent::AttrUseWallSeparation(), true, this->attributes)),
+        wallSeparationMode(new Variant(PlayerControllerComponent::AttrWallSeparationMode(), {"None", "Ring3D", "MovementDirection2D"}, this->attributes)),
 		physicsActiveComponent(nullptr),
 		cameraBehaviorComponent(nullptr),
 		inputDeviceComponent(nullptr),
@@ -125,8 +125,8 @@ namespace NOWA
 	{
 		this->acceleration->setDescription("The acceleration rate, if set to 0, acceleration is disabled and player moves with full speed.");
 		this->useStandUp->setDescription("Sets whether to use stand up feature for a player, so that if he fell down, after 2 seconds, he will stand up again.");
-        this->useWallSeparation->setDescription("Applies a push force away from walls or obstacles when the player touches them from any direction, to prevent sticking to walls. Disable for performance if this game object never needs it (e.g. NPCs "
-                                                "that never approach walls).");
+        this->wallSeparationMode->setDescription("Controls how the player is pushed away from walls/obstacles to prevent sticking. 'None' disables it. 'Ring3D' casts probes in a full ring around the player (best for free 3D movement/planet worlds). "
+                                                 "'MovementDirection2D' casts a single probe along the current movement direction (cheaper, best for 2.5D side-scrolling where movement is constrained to left/right).");
 
 		for (int i = 0; i < 6; ++i)
         {
@@ -224,9 +224,9 @@ namespace NOWA
 			this->useStandUp->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseWallSeparation")
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == PlayerControllerComponent::AttrWallSeparationMode())
         {
-            this->useWallSeparation->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            this->wallSeparationMode->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
 
@@ -437,28 +437,32 @@ namespace NOWA
                 this->frontNormal = contactDataFront[2].getNormal();
             }
 
-#if 0
-			// -------------------------------------------------------------------------
-            // Wall separation from ALL sides, not just the facing direction. A single
-            // forward-only probe only detects walls the player is looking at -- side
-            // or backward contact (e.g. jumping sideways into a wall) was never
-            // caught, so no push was ever applied there, causing the player to stick.
+// -------------------------------------------------------------------------
+            // Wall separation, mode-selectable via wallSeparationMode:
             //
-            // We cast NUM_WALL_PROBES rays in a horizontal ring around the player,
-            // tangent to the local gravity plane (so this also works correctly on a
-            // curved planet surface, not just flat Y-up ground). Each direction gets
-            // its own contact test, its own into-wall factor, and its own low-pass
-            // filter, then all resulting push forces are summed and applied once.
+            // "Ring3D": casts probes in a full horizontal ring around the player,
+            // tangent to the local gravity plane. Correct for free 3D movement (e.g.
+            // on a curved planet surface) where the player can approach a wall from
+            // any direction, including ones velocity alone won't reveal once the wall
+            // has already stopped that component of motion.
             //
-            // Only runs while the player is actually moving (velocity above
-            // threshold). While standing still on sloped/curved planet terrain,
-            // tiny per-frame fluctuations in ground contact were picked up by the
-            // ring probes as marginal wall contact, producing visible jitter even
-            // through the low-pass filter. There is no risk of sticking to a wall
-            // while not moving into one, so gating on speed removes the jitter
-            // entirely at rest.
+            // "MovementDirection2D": casts a single probe along the current
+            // horizontal movement direction, with the always-live facing probe
+            // (hitGameObjectFront/frontNormal) as a fallback once velocity has been
+            // killed by the wall. Cheaper (1-2 probes vs 6), correct for 2.5D
+            // side-scrolling where movement is constrained to left/right and the
+            // ring's extra directions are wasted work.
+            //
+            // "None": wall separation fully disabled.
+            //
+            // Both modes gate on either actual motion or (2D mode only) live facing
+            // contact, so a player standing still on sloped/curved terrain with no
+            // wall nearby produces no probes and no push force -- avoiding the
+            // jitter that came from probing while at rest.
             // -------------------------------------------------------------------------
-            if (true == this->useWallSeparation->getBool())
+            Ogre::String currentWallSeparationMode = this->wallSeparationMode->getListSelectedValue();
+
+            if (currentWallSeparationMode == "Ring3D")
             {
                 Ogre::Real currentSpeed = this->physicsActiveComponent->getVelocity().length();
                 const Ogre::Real wallSeparationSpeedThreshold = 0.1f; // m/s, tune to taste
@@ -501,30 +505,33 @@ namespace NOWA
 
                         Ogre::Vector3 targetPushForce = Ogre::Vector3::ZERO;
 
-						auto hitGameObject = ringContact.getHitGameObject();
+                        GameObject* hitGameObject = ringContact.getHitGameObject();
                         if (nullptr != hitGameObject)
                         {
-                            auto physicsActiveComponent = NOWA::makeStrongPtr(hitGameObject->getComponent<PhysicsActiveComponent>());
-                            if (nullptr != physicsActiveComponent)
+                            auto hitPhysicsActiveComponent = NOWA::makeStrongPtr(hitGameObject->getComponent<PhysicsActiveComponent>());
+                            if (nullptr == hitPhysicsActiveComponent)
                             {
-                                return;
-                            }
-                            Ogre::Vector3 wallNormal = ringContact.getNormal();
-                            if (Ogre::Vector3::ZERO != wallNormal)
-                            {
-                                // How much is THIS probe direction driving into the wall.
-                                Ogre::Real intoWallFactor = std::max(0.0f, -probeDir.dotProduct(wallNormal));
-                                targetPushForce = wallNormal * wallPushStrength * wallMass * intoWallFactor;
+                                // Static obstacle only -- dynamic props (e.g. a movable
+                                // barrel) are skipped for this probe, pushing against them
+                                // needs its own handling rather than treating them like a
+                                // static wall. Skipping just leaves targetPushForce at
+                                // zero for this probe and continues the loop normally.
+                                Ogre::Vector3 wallNormal = ringContact.getNormal();
+                                if (Ogre::Vector3::ZERO != wallNormal)
+                                {
+                                    // How much is THIS probe direction driving into the wall.
+                                    Ogre::Real intoWallFactor = std::max(0.0f, -probeDir.dotProduct(wallNormal));
+                                    targetPushForce = wallNormal * wallPushStrength * wallMass * intoWallFactor;
 
-                                // Strip any vertical component. Flat walls always produce a
-                                // horizontal normal, but round/curved dynamic props (barrels,
-                                // pillars) can return a contact normal with a real vertical
-                                // component depending on exact hit height. Without this, that
-                                // component gets scaled by wallPushStrength and launches the
-                                // player upward on contact with such geometry -- the push must
-                                // only ever separate horizontally.
-                                Ogre::Real upComponent = targetPushForce.dotProduct(upDirLocal);
-                                targetPushForce -= upDirLocal * upComponent;
+                                    // Strip any vertical component. Flat walls always produce a
+                                    // horizontal normal, but round/curved geometry can return a
+                                    // normal with a real vertical component depending on exact
+                                    // hit height -- without this, that component gets scaled
+                                    // by wallPushStrength and launches the player upward on
+                                    // contact. The push must only ever separate horizontally.
+                                    Ogre::Real upComponent = targetPushForce.dotProduct(upDirLocal);
+                                    targetPushForce -= upDirLocal * upComponent;
+                                }
                             }
                         }
 
@@ -534,9 +541,9 @@ namespace NOWA
                         this->lastWallPushForces[i].y = NOWA::MathHelper::getInstance()->lowPassFilter(targetPushForce.y, this->lastWallPushForces[i].y, 0.08f);
                         this->lastWallPushForces[i].z = NOWA::MathHelper::getInstance()->lowPassFilter(targetPushForce.z, this->lastWallPushForces[i].z, 0.08f);
 
-                        if (nullptr != ringContact.getHitGameObject() && true == this->bShowDebugData)
+                        if (nullptr != hitGameObject && true == this->bShowDebugData)
                         {
-                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallRing-DEBUG] probe " + Ogre::StringConverter::toString(i) + " hit: " + ringContact.getHitGameObject()->getName() +
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallRing-DEBUG] probe " + Ogre::StringConverter::toString(i) + " hit: " + hitGameObject->getName() +
                                                                                                     " normal: " + Ogre::StringConverter::toString(ringContact.getNormal()) + " push: " + Ogre::StringConverter::toString(this->lastWallPushForces[i]));
                         }
 
@@ -556,34 +563,13 @@ namespace NOWA
                     // movement resumes and the ring starts running again.
                     for (int i = 0; i < 6; ++i)
                     {
-                        this->lastWallPushForce[i].x = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForce[i].x, 0.08f);
-                        this->lastWallPushForce[i].y = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForce[i].y, 0.08f);
-                        this->lastWallPushForce[i].z = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForce[i].z, 0.08f);
+                        this->lastWallPushForces[i].x = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForces[i].x, 0.08f);
+                        this->lastWallPushForces[i].y = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForces[i].y, 0.08f);
+                        this->lastWallPushForces[i].z = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForces[i].z, 0.08f);
                     }
                 }
             }
-#endif
-
-#if 1
-            // -------------------------------------------------------------------------
-            // Wall separation using a probe aligned with the player's actual movement
-            // direction. Whichever way the player is moving (forward, sideways,
-            // backward, diagonal) tells us where a wall contact would come from.
-            //
-            // FALLBACK: once the wall has already stopped the player's horizontal
-            // velocity (which Newton's solver does almost immediately on a direct
-            // hit), currentVelocity no longer points into the wall, so moveDir loses
-            // its signal exactly when separation is needed most -- that's why a
-            // frontal jump into a wall kept sticking while a glancing/backward hit
-            // didn't. The always-live facing-direction probe (hitGameObjectFront /
-            // frontNormal, computed above regardless of velocity) is used as a
-            // fallback source of contact/normal in that case.
-            //
-            // Only runs while the player is actually moving OR is in facing-probe
-            // contact with a wall. Standing still on sloped/curved planet terrain
-            // with no wall nearby stays fully gated off to avoid jitter.
-            // -------------------------------------------------------------------------
-            if (true == this->useWallSeparation->getBool())
+            else if (currentWallSeparationMode == "MovementDirection2D")
             {
                 Ogre::Vector3 currentVelocity = this->physicsActiveComponent->getVelocity();
                 Ogre::Real currentSpeed = currentVelocity.length();
@@ -708,8 +694,7 @@ namespace NOWA
                     this->lastWallPushForce.z = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForce.z, 0.08f);
                 }
             }
-
-#endif
+            // else "None": wall separation fully disabled, no probes, no force.
 
             if (true == this->bShowDebugData)
             {
@@ -796,9 +781,9 @@ namespace NOWA
 		{
 			this->setUseStandUp(attribute->getBool());
 		}
-        else if (PlayerControllerComponent::AttrUseWallSeparation() == attribute->getName())
+        else if (PlayerControllerComponent::AttrWallSeparationMode() == attribute->getName())
         {
-            this->setUseWallSeparation(attribute->getBool());
+            this->setWallSeparationMode(attribute->getListSelectedValue());
         }
 	}
 
@@ -856,9 +841,9 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "UseWallSeparation"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useWallSeparation->getBool())));
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(PlayerControllerComponent::AttrWallSeparationMode().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallSeparationMode->getListSelectedValue())));
         propertiesXML->append_node(propertyXML);
 	}
 
@@ -884,7 +869,7 @@ namespace NOWA
 		clonedCompPtr->setAcceleration(this->acceleration->getReal());
 		clonedCompPtr->setCategories(this->categories->getString());
         clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
-        clonedCompPtr->setUseWallSeparation(this->useWallSeparation->getBool());
+        clonedCompPtr->setWallSeparationMode(this->wallSeparationMode->getListSelectedValue());
 
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
 		{
@@ -1253,14 +1238,14 @@ namespace NOWA
 #endif
     }
 
-    void PlayerControllerComponent::setUseWallSeparation(bool useWallSeparation)
+    void PlayerControllerComponent::setWallSeparationMode(const Ogre::String& wallSeparationMode)
     {
-        this->useWallSeparation->setValue(useWallSeparation);
+        this->wallSeparationMode->setListSelectedValue(wallSeparationMode);
     }
 
-    bool PlayerControllerComponent::getUseWallSeparation(void) const
+    Ogre::String PlayerControllerComponent::getWallSeparationMode(void) const
     {
-        return this->useWallSeparation->getBool();
+        return this->wallSeparationMode->getListSelectedValue();
     }
 
 	void PlayerControllerComponent::reactOnAnimationFinished(luabind::object closureFunction, bool oneTime)
@@ -1286,19 +1271,33 @@ namespace NOWA
 	{
 		this->animations.resize(this->animationsCount);
 		this->animations[0] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle1(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[0]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[1] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle2(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[1]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[2] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle3(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[2]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[3] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkNorth(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[3]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[4] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkSouth(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[4]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[5] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkWest(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[5]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[6] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkEast(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[6]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[7] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimJumpStart(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[7]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[8] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimJumpWalk(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[8]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[9] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimHighJumpEnd(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[9]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[10] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimJumpEnd(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[10]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[11] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimRun(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[11]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[12] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimSneak(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[12]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[13] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimDuck(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[13]->addUserData(GameObject::AttrActionAutoComplete());
 
 		this->runAfterWalkTime->setDescription("Specifies the time in seconds at which the player will start to run, after walking without interruption. If set to 0, the player will never run.");
 		this->for2D->setDescription("If set to true, in the PhysicsActiveComponent the 'ConstraintAxis' attribute should be set to '0 0 1'. So that the player only can move on x and y axis.");
@@ -2002,10 +2001,15 @@ namespace NOWA
 	{
 		this->animations.resize(this->animationsCount);
 		this->animations[0] = new Variant(PlayerControllerClickToPointComponent::AttrAnimIdle1(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[0]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[1] = new Variant(PlayerControllerClickToPointComponent::AttrAnimIdle2(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[1]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[2] = new Variant(PlayerControllerClickToPointComponent::AttrAnimIdle3(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[2]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[3] = new Variant(PlayerControllerClickToPointComponent::AttrAnimWalkNorth(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[3]->addUserData(GameObject::AttrActionAutoComplete());
 		this->animations[4] = new Variant(PlayerControllerClickToPointComponent::AttrAnimRun(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[4]->addUserData(GameObject::AttrActionAutoComplete());
 		this->autoClick = new Variant(PlayerControllerClickToPointComponent::AttrAutoClick(), false, this->attributes);
 
 		this->autoClick->setDescription("If set to true, the user can hold the middle button and the player will automatically update the waypoints. If set to false, the player must click each time to update the waypoints.");

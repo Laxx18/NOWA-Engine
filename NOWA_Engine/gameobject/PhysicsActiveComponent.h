@@ -380,7 +380,7 @@ namespace NOWA
 
 		virtual void setMass(Ogre::Real mass) override;
 
-		virtual void reCreateDynamicBodyForItem(Ogre::Item* item);
+		virtual bool reCreateBodyForItem(Ogre::Item* item) override;
 
 		Ogre::Real getMass(void) const;
 

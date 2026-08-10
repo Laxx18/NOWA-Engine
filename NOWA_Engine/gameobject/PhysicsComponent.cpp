@@ -1291,6 +1291,11 @@ namespace NOWA
         return col;
     }
 
+    bool PhysicsComponent::reCreateBodyForItem(Ogre::Item* item)
+    {
+        return true;
+    }
+
     void PhysicsComponent::destroyCollision(void)
     {
         if (nullptr != this->physicsBody)

@@ -259,6 +259,7 @@
 					<property type="6" name="Acceleration" data="0"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="UseStandUp" data="false"/>
+					<property type="7" name="Wall Separation Mode" data="Ring3D"/>
 					<property type="6" name="JumpForce" data="10"/>
 					<property type="12" name="DoubleJump" data="false"/>
 					<property type="6" name="RunAfterWalkTime" data="1"/>

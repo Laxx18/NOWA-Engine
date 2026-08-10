@@ -74,6 +74,28 @@ namespace NOWA
 
 		bool createStaticBody(void);
 
+		/**
+         * @brief Rebuilds the static body from an EXPLICIT item, instead of from whatever
+         *        item the GameObject currently holds.
+         *
+         * This exists for the same reason PhysicsActiveComponent::reCreateDynamicBodyForItem
+         * does. reCreateCollision() finds its geometry with
+         * gameObjectPtr->getMovableObject<Ogre::Item>(), which is correct right up until
+         * something swaps the GameObject's item out from under it - MeshModifyComponent does
+         * exactly that, replacing the procedural item with an editable clone whose vertex
+         * buffers it then deforms. After that swap the collision must be built from the item
+         * the caller names, not from the one the lookup happens to return.
+         *
+         * Always builds the collision directly from the item's vertex data, ignoring the
+         * Serialize property: a serialized hull is a cached file keyed by mesh name, and the
+         * whole point here is geometry that changes under the editor's hands. Writing that to
+         * the cache would poison it for every other user of the same mesh name.
+         *
+         * @param[in] item The item whose mesh the collision hull is built from. Ignored if null.
+         * @return True if a body exists afterwards.
+         */
+        virtual bool reCreateBodyForItem(Ogre::Item* item) override;
+
 		void changeCollisionFaceId(unsigned int id);
 
         /**

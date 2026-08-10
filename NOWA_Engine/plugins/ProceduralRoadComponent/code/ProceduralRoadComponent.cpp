@@ -517,7 +517,7 @@ namespace NOWA
 
     void ProceduralRoadComponent::onAddComponent(void)
     {
-        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
+        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), ProceduralRoadComponent::getStaticClassName()));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 
         // Causes correct road selection, if new road game object is added so that roads can be merged together
@@ -4066,6 +4066,15 @@ namespace NOWA
         return resampled;
     }
 
+    bool ProceduralRoadComponent::isEditFocusOwner(void) const
+    {
+        if (true == this->editFocusOwner.empty())
+        {
+            return true;
+        }
+        return this->editFocusOwner == ProceduralRoadComponent::getStaticClassName();
+    }
+
     int ProceduralRoadComponent::findNearestSegment(const Ogre::Vector3& worldPos) const
     {
         if (this->roadSegments.empty())
@@ -6553,6 +6562,11 @@ namespace NOWA
 
         this->isEditorMeshModifyMode = (castEventData->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
 
+        if (true == castEventData->hasEditFocusClaim() && castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+        {
+            this->editFocusOwner = castEventData->getComponentClassName();
+        }
+
         this->updateModificationState();
     }
 
@@ -6580,7 +6594,7 @@ namespace NOWA
             if (true == segmentMode)
             {
                 // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
-                boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+                boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), ProceduralRoadComponent::getStaticClassName()));
                 NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
             }
         }
@@ -6627,7 +6641,7 @@ namespace NOWA
                                                                                " meshModifyMode=" + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " selected=" + Ogre::StringConverter::toString(this->isSelected) +
                                                                                " editMode=" + this->editMode->getListSelectedValue());
 
-        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected;
+        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected && this->isEditFocusOwner();
 
         if (shouldBeActive)
         {
@@ -8236,12 +8250,12 @@ namespace NOWA
             }
 
             // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
-            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), ProceduralRoadComponent::getStaticClassName()));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         }
         else
         {
-            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_SELECT_MODE));
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_SELECT_MODE, this->gameObjectPtr->getId(), ProceduralRoadComponent::getStaticClassName()));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         }
     }

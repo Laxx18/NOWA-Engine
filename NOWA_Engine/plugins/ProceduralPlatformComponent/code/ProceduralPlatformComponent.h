@@ -70,14 +70,17 @@ namespace NOWA
             SEGMENT
         };
 
-        // Two structural buffers (surface = top walkable face, ground = body/side/bottom
-        // faces), plus a third for junction fan patches - mirrors ProceduralRoadComponent's
-        // CENTER/EDGE/JUNCTION split, renamed to match this component's own attribute names.
+        // Two structural buffers: surface = top walkable face, ground = body/side/bottom
+        // faces. There used to be a third, JUNCTION, carried over from
+        // ProceduralRoadComponent's CENTER/EDGE/JUNCTION split - but a road junction is
+        // genuinely separate geometry with its own datablock, whereas a platform junction is
+        // just more arm surface. Nothing ever passed it to addPlatformQuad, so it produced an
+        // empty dummy submesh on every rebuild until it was removed along with its buffers,
+        // its cached copies and its slots in the .platformdata format.
         enum class PlatformMeshBuffer
         {
             SURFACE,
-            GROUND,
-            JUNCTION
+            GROUND
         };
 
         struct PlatformControlPoint
@@ -429,6 +432,26 @@ namespace NOWA
 
         Ogre::Real getGridSize(void) const;
 
+        /**
+         * @brief Announces that this component is now the one editing its GameObject.
+         *
+         * Queues an EventDataEditorMode built with its CLAIMING constructor (mode plus
+         * GameObject id plus this component's class name). Every editing component already
+         * listens for that event, so the claim reaches all of them through the handler they
+         * already have - no second event type, no second listener, and no compile-time
+         * dependency between the components involved.
+         *
+         * Called from this component's own modify-setters, so that touching a component's
+         * settings is what makes it the active editing tool.
+         */
+        void claimEditFocus(void);
+
+        /**
+         * @return True if this component may act on editing input: either it holds the claim
+         *         for its GameObject, or nobody has claimed one at all.
+         */
+        bool isEditFocusOwner(void) const;
+
         void setSmoothingFactor(Ogre::Real factor);
 
         Ogre::Real getSmoothingFactor(void) const;
@@ -626,8 +649,11 @@ namespace NOWA
         // true z-fighting), to rule out anything the heuristics might be missing.
         void logAllVertexPositions(void);
 
+        // Two submeshes only: SURFACE and GROUND. The junction buffers are no longer passed -
+        // nothing ever wrote to the old JUNCTION buffer, so the third submesh was always
+        // an empty dummy VAO. See the comment where submesh 2 used to be built.
         void createPlatformMeshInternal(const std::vector<float>& surfaceVerts, const std::vector<Ogre::uint32>& surfaceInds, size_t numSurfaceVerts, const std::vector<float>& groundVerts, const std::vector<Ogre::uint32>& groundInds,
-            size_t numGroundVerts, const std::vector<float>& junctionVerts, const std::vector<Ogre::uint32>& junctionInds, size_t numJunctionVerts, const Ogre::Vector3& origin);
+            size_t numGroundVerts, const Ogre::Vector3& origin);
 
         void destroyPlatformMesh(void);
 
@@ -756,7 +782,11 @@ namespace NOWA
 
     private:
         static const uint32_t PLATFORMDATA_MAGIC = 0x504C4154; // "PLAT" in hex
-        static const uint32_t PLATFORMDATA_VERSION = 1;
+        // 2: the junction vertex/index arrays and their two header counts were removed.
+        // Nothing ever wrote to that buffer, so the data was always empty - but the header
+        // shrank from 49 to 41 bytes, which makes v1 files unreadable rather than merely
+        // wasteful. They are rejected by the version check with a clear log line.
+        static const uint32_t PLATFORMDATA_VERSION = 2;
 
     private:
         Ogre::String name;
@@ -797,10 +827,6 @@ namespace NOWA
         std::vector<float> groundVertices;
         std::vector<Ogre::uint32> groundIndices;
         Ogre::uint32 currentGroundVertexIndex;
-
-        std::vector<float> junctionVertices;
-        std::vector<Ogre::uint32> junctionIndices;
-        Ogre::uint32 currentJunctionVertexIndex;
 
         // Ogre objects
         Ogre::MeshPtr platformMesh;
@@ -863,6 +889,10 @@ namespace NOWA
         bool isShiftPressed;
         bool isShiftKeyDown;
         bool isCtrlPressed;
+        // Class name of the component currently holding editing on this GameObject, learned
+        // from claiming EventDataEditorMode events. Empty means nobody has claimed - see
+        // isEditFocusOwner for why that has to mean "allowed", not "denied".
+        Ogre::String editFocusOwner;
         Ogre::Vector3 lastValidPosition;
 
         // For continuous platform building
@@ -898,10 +928,6 @@ namespace NOWA
         std::vector<float> cachedGroundVertices;
         std::vector<Ogre::uint32> cachedGroundIndices;
         size_t cachedNumGroundVertices;
-
-        std::vector<float> cachedJunctionVertices;
-        std::vector<Ogre::uint32> cachedJunctionIndices;
-        size_t cachedNumJunctionVertices;
 
         Ogre::Vector3 cachedPlatformOrigin;
         bool originPositionSet;

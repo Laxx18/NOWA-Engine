@@ -33,7 +33,7 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-29.6814 -0.1615 -33.8293" mostRightFarPosition="25.1074 9.76384 21.7834"/>
+		<bounds mostLeftNearPosition="-29.6814 -0.1615 -33.8293" mostRightFarPosition="28.4753 15.0127 25.8835"/>
 	</environment>
 	<OgreNewt solverModel="1" threadCount="4" desiredFps="60" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -235,6 +235,7 @@
 					<property type="6" name="Acceleration" data="2"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="UseStandUp" data="false"/>
+					<property type="7" name="Wall Separation Mode" data="Ring3D"/>
 					<property type="6" name="JumpForce" data="10"/>
 					<property type="12" name="DoubleJump" data="false"/>
 					<property type="6" name="RunAfterWalkTime" data="0"/>
@@ -244,13 +245,13 @@
 					<property type="7" name="AnimIdle3" data="idle-03"/>
 					<property type="7" name="AnimWalkNorth" data="walk-01"/>
 					<property type="7" name="AnimWalkSouth" data="walk-back"/>
-					<property type="7" name="AnimWalkWest" data="walk-left-90"/>
-					<property type="7" name="AnimWalkEast" data="walk-right-90"/>
+					<property type="7" name="AnimWalkWest" data="walk-left-45"/>
+					<property type="7" name="AnimWalkEast" data="walk-right-45"/>
 					<property type="7" name="AnimJumpStart" data="jump-01"/>
 					<property type="7" name="AnimJumpWalk" data="jump-0p"/>
-					<property type="7" name="AnimHighJumpEnd" data="None"/>
+					<property type="7" name="AnimHighJumpEnd" data="jump-pose"/>
 					<property type="7" name="AnimJumpEnd" data="jump-pose"/>
-					<property type="7" name="AnimRun" data="run"/>
+					<property type="7" name="AnimRun" data="run-01"/>
 					<property type="7" name="AnimSneak" data="dragging"/>
 					<property type="7" name="AnimDuck" data="None"/>
 					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
@@ -393,8 +394,8 @@
 			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="1.33822" y="3.09592" z="3.68351"/>
-			<rotation qw="0.967312" qx="-0.17252" qy="-0.182937" qz="-0.0328516"/>
+			<position x="3.46638" y="11.2804" z="17.7233"/>
+			<rotation qw="0.956892" qx="-0.287668" qy="-0.0384137" qz="-0.0114118"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
@@ -423,8 +424,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="1.33822 3.09592 3.68351"/>
-					<property type="9" name="CameraOrientation" data="-20.2295 -21.4137 -0.0265514"/>
+					<property type="9" name="CameraPosition" data="3.46638 11.2804 17.7233"/>
+					<property type="9" name="CameraOrientation" data="-33.4638 -4.60312 0.0179311"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -497,7 +498,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="24.6864" y="9.30132" z="21.2709"/>
+			<position x="28.0543" y="14.5502" z="25.371"/>
 			<rotation qw="0.76995" qx="-0.462633" qy="0.226352" qz="0.376713"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -622,6 +623,54 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 					<property type="7" name="Collidable" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Platform_0" id="1500555365">
+			<position x="-13.5725" y="0.800667" z="3.87311"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="691231185"/>
+					<property type="7" name="Category" data="Platform"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="500"/>
+					<property type="6" name="LodDistance" data="500"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="ComponentProceduralPlatformComponent" data="ProceduralPlatformComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="Platform Depth" data="2"/>
+					<property type="6" name="Platform Height" data="1"/>
+					<property type="7" name="Platform Style" data="Grass"/>
+					<property type="12" name="Snap To Grid" data="false"/>
+					<property type="6" name="Grid Size" data="1"/>
+					<property type="6" name="Smoothing Factor" data="0.5"/>
+					<property type="12" name="Use Grass" data="false"/>
+					<property type="7" name="Grass Material" data="SwayingGrass1Material"/>
+					<property type="6" name="Grass Density" data="8"/>
+					<property type="6" name="Grass Blade Width" data="0.15"/>
+					<property type="6" name="Grass Blade Height" data="0.5"/>
+					<property type="2" name="Curve Subdivisions" data="10"/>
+					<property type="7" name="Surface Datablock" data="grass_clean"/>
+					<property type="7" name="Ground Datablock" data="rockClif_D"/>
+					<property type="8" name="Surface UV Tiling" data="1 1"/>
+					<property type="8" name="Ground UV Tiling" data="1 1"/>
 				</userData>
 			</item>
 		</node>

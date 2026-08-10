@@ -159,11 +159,11 @@ namespace NOWA
         districtCountAttr(new Variant(AttrDistrictCount(), 9u, this->attributes)),
         selectedBuildingIdx(-1),
         isSelected(false),
-        inputListenerRegistered(false),
         selOverlayObject(nullptr),
         selOverlayNode(nullptr),
         cityFrame(Ogre::Quaternion::IDENTITY),
-        isTranslatingBuilding(false)
+        isTranslatingBuilding(false),
+        isEditorMeshModifyMode(false)
     {
         this->generateBtn->addUserData(GameObject::AttrActionExec());
         this->generateBtn->addUserData(GameObject::AttrActionExecId(), ActionGenerate());
@@ -420,6 +420,7 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralCityComponent] postInit for: " + this->gameObjectPtr->getName());
 
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
 
         this->gameObjectPtr->changeCategory("City");
@@ -567,6 +568,7 @@ namespace NOWA
 
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralCityComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
 
         this->removeInputListener();
@@ -680,6 +682,8 @@ namespace NOWA
             this->editModeAttr->setListSelectedValue(attribute->getListSelectedValue());
             this->updateModificationState();
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralCityComponent] EditMode changed to: " + attribute->getListSelectedValue());
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), ProceduralCityComponent::getStaticClassName()));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         }
         else if (AttrRoadComponentId() == attribute->getName())
         {
@@ -3309,7 +3313,30 @@ namespace NOWA
         return Ogre::Quaternion(tangentRight, radialUp, tangentForward);
     }
 
-     void ProceduralCityComponent::handleComponentManuallyDeleted(NOWA::EventDataPtr eventData)
+    bool ProceduralCityComponent::isEditFocusOwner(void) const
+    {
+        if (true == this->editFocusOwner.empty())
+        {
+            return true;
+        }
+        return this->editFocusOwner == ProceduralCityComponent::getStaticClassName();
+    }
+
+    void ProceduralCityComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
+    {
+        auto castEventData = boost::static_pointer_cast<EventDataEditorMode>(eventData);
+
+        this->isEditorMeshModifyMode = (castEventData->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
+
+        if (true == castEventData->hasEditFocusClaim() && castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+        {
+            this->editFocusOwner = castEventData->getComponentClassName();
+        }
+
+        this->updateModificationState();
+    }
+
+    void ProceduralCityComponent::handleComponentManuallyDeleted(NOWA::EventDataPtr eventData)
     {
         auto data = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
         if (data->getGameObjectId() == this->gameObjectPtr->getId())
@@ -3355,23 +3382,17 @@ namespace NOWA
 
     void ProceduralCityComponent::updateModificationState(void)
     {
-        // Segment mode is active when: EditMode=Segment AND this object is selected.
-        // We do NOT require EditorMeshModifyMode — that event fires every frame and
-        // caused severe FPS drops + camera input corruption when used as a trigger.
-        const bool segMode = (this->editModeAttr->getListSelectedValue() == "Segment");
-        const bool shouldListen = segMode && this->isSelected;
+        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected && this->isEditFocusOwner();
 
         // Only call addInputListener / removeInputListener when the state CHANGES.
         // Calling them every frame causes O(n) map operations in InputDeviceCore.
-        if (shouldListen && false == this->inputListenerRegistered)
+        if (shouldBeActive)
         {
             this->addInputListener();
-            this->inputListenerRegistered = true;
         }
-        else if (false == shouldListen && this->inputListenerRegistered)
+        else
         {
             this->removeInputListener();
-            this->inputListenerRegistered = false;
             this->selectedBuildingIdx = -1;
             this->isTranslatingBuilding = false;
             this->updateSelectionOverlay();

@@ -331,11 +331,11 @@ namespace NOWA
         return success;
     }
 
-    void PhysicsActiveVehicleComponentV2::reCreateDynamicBodyForItem(Ogre::Item* item)
+    bool PhysicsActiveVehicleComponentV2::reCreateBodyForItem(Ogre::Item* item)
     {
         if (nullptr == item)
         {
-            return;
+            return false;
         }
 
         // Step 1: destroy existing body and collision
@@ -348,7 +348,7 @@ namespace NOWA
         if (false == this->createDynamicBody())
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveVehicleComponent] reCreateDynamicBodyForItem: createDynamicBody failed for: " + this->gameObjectPtr->getName());
-            return;
+            return false;
         }
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
@@ -363,6 +363,8 @@ namespace NOWA
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveVehicleComponentV2::reCreateDynamicBodyForItem");
+
+        return this->physicsBody;
     }
 
     // =========================================================================

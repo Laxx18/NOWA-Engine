@@ -313,7 +313,7 @@ namespace NOWA
 
     void ProceduralWallComponent::onAddComponent(void)
     {
-        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
+        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), ProceduralWallComponent::getStaticClassName()));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 
         // Causes correct wall selection, if another wall is added
@@ -1553,13 +1553,16 @@ namespace NOWA
         // Fire mesh modify mode immediately when switching to Segment
         if (this->getEditModeEnum() == EditMode::SEGMENT)
         {
-            // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
-            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+            // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments.
+            // Claiming form: this is the component's own modify-setter, so it is also where it takes
+            // editing back from whichever sibling on this GameObject had it. Every editing component
+            // reads the claim in its own handleMeshModifyMode and stands down unless it is named.
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), ProceduralWallComponent::getStaticClassName()));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         }
         else
         {
-            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_SELECT_MODE));
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_SELECT_MODE, this->gameObjectPtr->getId(), ProceduralWallComponent::getStaticClassName()));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         }
         this->scheduleSegmentOverlayUpdate();
@@ -1979,6 +1982,15 @@ namespace NOWA
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "snapWall_draw");
+    }
+
+    bool ProceduralWallComponent::isEditFocusOwner(void) const
+    {
+        if (true == this->editFocusOwner.empty())
+        {
+            return true;
+        }
+        return this->editFocusOwner == ProceduralWallComponent::getStaticClassName();
     }
 
     // ==================== GROUND ADAPTATION ====================
@@ -4272,6 +4284,11 @@ namespace NOWA
 
         this->isEditorMeshModifyMode = (castEventData->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
 
+        if (true == castEventData->hasEditFocusClaim() && castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+        {
+            this->editFocusOwner = castEventData->getComponentClassName();
+        }
+
         this->updateModificationState();
     }
 
@@ -4299,7 +4316,7 @@ namespace NOWA
             if (true == segmentMode)
             {
                 // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
-                boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+                boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), ProceduralWallComponent::getStaticClassName()));
                 NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
             }
         }
@@ -4345,7 +4362,7 @@ namespace NOWA
 
     void ProceduralWallComponent::updateModificationState(void)
     {
-        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected;
+        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected && this->isEditFocusOwner();
 
         if (shouldBeActive)
         {

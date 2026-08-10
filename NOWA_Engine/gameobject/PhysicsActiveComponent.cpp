@@ -1587,11 +1587,11 @@ namespace NOWA
         return this->gravitySourceCategory->getString();
     }
 
-    void PhysicsActiveComponent::reCreateDynamicBodyForItem(Ogre::Item* item)
+    bool PhysicsActiveComponent::reCreateBodyForItem(Ogre::Item* item)
     {
         if (nullptr == item)
         {
-            return;
+            return false;
         }
 
         // Step 1: destroy existing body and collision
@@ -1644,6 +1644,8 @@ namespace NOWA
         const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
         this->physicsBody->setMaterialGroupID(materialId);
         this->setActivated(this->activated->getBool());
+
+        return this->physicsBody;
     }
 
     /*void PhysicsActiveComponent::setDefaultPoseName(const Ogre::String& defaultPoseName)

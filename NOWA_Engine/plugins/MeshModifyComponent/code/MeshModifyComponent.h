@@ -19,7 +19,7 @@ namespace Ogre
 
 namespace NOWA
 {
-    class PhysicsActiveComponent;
+    class PhysicsComponent;
 
 	/**
 	 * @brief	Component for real-time mesh modification/sculpting.
@@ -453,6 +453,8 @@ namespace NOWA
 		void rebuildCollision(void);
 
 		void startWorkerIfNeeded(void);
+
+		bool isEditFocusOwner(void) const;
 	private:
 		Ogre::String name;
 
@@ -498,6 +500,8 @@ namespace NOWA
 		bool isCtrlPressed;
 		Ogre::Vector3 lastBrushPosition;
 
+		Ogre::String editFocusOwner;
+
 		// Attributes
 		Variant* activated;
 		Variant* brushName;
@@ -511,7 +515,7 @@ namespace NOWA
 		Ogre::Real currentDamage; // 0.0 - 1.0, accumulated damage ratio
 
 		bool canModify;
-        PhysicsActiveComponent* physicsActiveComponent;
+        PhysicsComponent* physicsComponent;
 
 		std::atomic<bool> brushInProgress{false};
         std::atomic<bool> dirtyVertices{false}; // vertices changed, need recalc+upload

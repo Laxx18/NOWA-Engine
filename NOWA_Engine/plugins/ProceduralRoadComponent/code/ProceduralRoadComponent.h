@@ -464,7 +464,6 @@ namespace NOWA
         void setRoadFrame(const Ogre::Quaternion& frame);
 
         Ogre::Quaternion deriveRoadFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& currentOrientation, bool isPlanet, const Ogre::Vector3& planetCenter) const;
-
     public:
         // Static attribute names
         static Ogre::String AttrActivated(void)
@@ -748,6 +747,8 @@ namespace NOWA
        void invalidateGroundHeightCache(void);
 
        std::vector<RoadControlPoint> resamplePathUniformly(const std::vector<RoadControlPoint>& densePath, Ogre::Real stepMeters);
+
+       bool isEditFocusOwner(void) const;
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;
@@ -869,9 +870,11 @@ namespace NOWA
         bool roadLoadedFromScene;
         Ogre::Quaternion roadFrame;
         bool roadFrameSet;
-        bool pendingCrossNetworkSnap; 
-        ProceduralRoadComponent* pendingMergeOtherRoad;
+        bool pendingCrossNetworkSnap;
 
+        Ogre::String editFocusOwner;
+
+        ProceduralRoadComponent* pendingMergeOtherRoad;
         PhysicsArtifactComponent* physicsArtifactComponent;
     };
 

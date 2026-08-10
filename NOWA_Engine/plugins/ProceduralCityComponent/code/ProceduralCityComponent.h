@@ -972,12 +972,16 @@ namespace NOWA
 
         Ogre::Quaternion deriveCityFrame(const Ogre::Vector3& origin, const Ogre::Quaternion& nodeOrientation) const;
 
+        bool isEditFocusOwner(void) const;
+
         // ---- Event handlers -----------------------------------------------
 
         /**
          * @brief Deferred load after all postInits have run.
          */
         void handleSceneParsed(NOWA::EventDataPtr eventData);
+
+        void handleMeshModifyMode(NOWA::EventDataPtr eventData);
 
         /**
          * @brief Delete .citydata file when this component is explicitly deleted
@@ -1034,7 +1038,6 @@ namespace NOWA
         // ---- Edit-mode state -------------------------------------------
         int selectedBuildingIdx;      ///< -1 = nothing selected in Segment mode
         bool isSelected;              ///< this component/GO is selected in editor
-        bool inputListenerRegistered; ///< dirty flag — prevents repeated OIS add/remove per frame
 
         // Per-building record kept across Generate calls so Segment mode can
         // click-select and delete individual buildings without regenerating.
@@ -1078,6 +1081,8 @@ namespace NOWA
         bool isDirty;
         bool cityLoadedFromScene;
         bool isTranslatingBuilding;
+        Ogre::String editFocusOwner;
+        bool isEditorMeshModifyMode;
     };
 
 } // namespace NOWA

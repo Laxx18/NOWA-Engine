@@ -1482,6 +1482,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 
 				// Connect combo events
 				comboBox->eventComboChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboChangePosition);
+                comboBox->eventComboAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboSelectAccept);
 				comboBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 				comboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
 				comboBox->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboMousePressed);
@@ -2197,21 +2198,30 @@ MyGUI::EditBox* PropertiesPanelDynamic::getLinkedSearchEdit(MyGUI::ComboBox* com
 
 void PropertiesPanelDynamic::onAutoCompleteComboMousePressed(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id)
 {
-	MyGUI::ComboBox* comboBox = sender->castType<MyGUI::ComboBox>(false);
-	if (nullptr == comboBox)
-	{
-		return;
-	}
+    MyGUI::ComboBox* comboBox = sender->castType<MyGUI::ComboBox>(false);
+    if (nullptr == comboBox)
+    {
+        return;
+    }
 
-	// Ensure current selection index is correct
-	this->syncComboSelectionFromVariant(comboBox);
+    // Ensure current selection index is correct, so the list scrolls to the
+    // right position when opened.
+    this->syncComboSelectionFromVariant(comboBox);
 
-	// Open list
-	comboBox->setAutoHideList(true);
-	comboBox->showList();
+    // Open list
+    comboBox->setAutoHideList(true);
+    comboBox->showList();
 
-	// IMPORTANT: scroll AFTER showList()
-	comboBox->beginToItemSelected();
+    // IMPORTANT: scroll AFTER showList()
+    comboBox->beginToItemSelected();
+
+    // Now that scrolling used the synced index, reset MyGUI's internal
+    // "selected index" back to ITEM_NONE. Same reasoning as in
+    // filterAutoCompleteCombo: leaving the matching item marked as "already
+    // selected" means a mouse click directly on that same item produces no
+    // detectable index change, so eventComboChangePosition (which runs our
+    // actual apply+hideList logic) never fires and the dropdown stays open.
+    comboBox->setIndexSelected(MyGUI::ITEM_NONE);
 }
 
 void PropertiesPanelDynamic::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index)
@@ -2355,16 +2365,24 @@ void PropertiesPanelDynamic::filterAutoCompleteCombo(MyGUI::EditBox* searchEdit,
 
 	// If this call is NOT an internal rebuild, we are filtering due to user input.
 	// In that case, select the first entry so ArrowDown/Enter works immediately.
-	if (false == this->autoCompleteInternalUpdate)
-	{
-		if (comboBox->getItemCount() > 0)
-		{
-			comboBox->setIndexSelected(0);
+	//if (false == this->autoCompleteInternalUpdate)
+	//{
+	//	if (comboBox->getItemCount() > 0)
+	//	{
+	//		comboBox->setIndexSelected(0);
 
-			// Optional: only do this if you want the combo text to change while typing
-			// comboBox->setOnlyText(comboBox->getItemNameAt(0));
-		}
-	}
+	//		// Optional: only do this if you want the combo text to change while typing
+	//		// comboBox->setOnlyText(comboBox->getItemNameAt(0));
+	//	}
+	//}
+
+	if (false == this->autoCompleteInternalUpdate)
+    {
+        if (comboBox->getItemCount() > 0)
+        {
+            comboBox->setIndexSelected(MyGUI::ITEM_NONE);
+        }
+    }
 }
 
 void PropertiesPanelDynamic::onAutoCompleteTextChange(MyGUI::EditBox* sender)
@@ -2440,18 +2458,28 @@ void PropertiesPanelDynamic::onAutoCompleteKeyPressed(MyGUI::Widget* sender, MyG
 			}
 		}
 	}
-	else if (key == MyGUI::KeyCode::Return || key == MyGUI::KeyCode::NumpadEnter)
-	{
-		if (nullptr != comboBox)
-		{
-			size_t currentIndex = comboBox->getIndexSelected();
-			if (currentIndex != MyGUI::ITEM_NONE)
-			{
-				// Accept current selection and APPLY it to Variant
-				this->onAutoCompleteComboSelectAccept(comboBox, currentIndex);
-			}
-		}
-	}
+    else if (key == MyGUI::KeyCode::Return || key == MyGUI::KeyCode::NumpadEnter)
+    {
+        if (nullptr != comboBox)
+        {
+            size_t currentIndex = comboBox->getIndexSelected();
+
+            // No explicit arrow-key navigation happened yet (index still
+            // ITEM_NONE after the filtering reset above), but there is at
+            // least one filtered match -- default to accepting the first
+            // (best) match, matching the old behavior when index 0 used to
+            // be pre-selected automatically after filtering.
+            if (currentIndex == MyGUI::ITEM_NONE && comboBox->getItemCount() > 0)
+            {
+                currentIndex = 0;
+            }
+
+            if (currentIndex != MyGUI::ITEM_NONE)
+            {
+                this->onAutoCompleteComboSelectAccept(comboBox, currentIndex);
+            }
+        }
+    }
 	else if (key == MyGUI::KeyCode::Escape)
 	{
 		searchEdit->setOnlyText("");

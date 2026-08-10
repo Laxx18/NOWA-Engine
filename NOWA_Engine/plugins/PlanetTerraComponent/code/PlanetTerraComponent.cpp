@@ -886,7 +886,7 @@ namespace NOWA
 
     void PlanetTerraComponent::updateModificationState(void)
     {
-        const bool shouldBeActive = activated->getBool() && isEditorMeshModifyMode && isSelected;
+        const bool shouldBeActive = activated->getBool() && isEditorMeshModifyMode && isSelected && this->isEditFocusOwner();
 
         if (shouldBeActive)
         {
@@ -1334,10 +1334,26 @@ namespace NOWA
         return PlanetTerra::BrushMode::PULL; // default
     }
 
+    bool PlanetTerraComponent::isEditFocusOwner(void) const
+    {
+        if (true == this->editFocusOwner.empty())
+        {
+            return true;
+        }
+        return this->editFocusOwner == PlanetTerraComponent::getStaticClassName();
+    }
+
     void PlanetTerraComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
     {
-        auto castData = boost::static_pointer_cast<EventDataEditorMode>(eventData);
-        isEditorMeshModifyMode = (castData->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
+        auto castEventData = boost::static_pointer_cast<EventDataEditorMode>(eventData);
+
+        this->isEditorMeshModifyMode = (castEventData->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
+
+        if (true == castEventData->hasEditFocusClaim() && castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+        {
+            this->editFocusOwner = castEventData->getComponentClassName();
+        }
+
         updateModificationState();
     }
 

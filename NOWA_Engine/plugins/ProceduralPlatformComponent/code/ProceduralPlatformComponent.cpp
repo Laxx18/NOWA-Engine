@@ -93,7 +93,6 @@ namespace NOWA
         isSelected(false),
         currentSurfaceVertexIndex(0),
         currentGroundVertexIndex(0),
-        currentJunctionVertexIndex(0),
         platformItem(nullptr),
         previewItem(nullptr),
         previewNode(nullptr),
@@ -107,7 +106,6 @@ namespace NOWA
         pendingMergeOtherPlatform(nullptr),
         cachedNumSurfaceVertices(0),
         cachedNumGroundVertices(0),
-        cachedNumJunctionVertices(0),
         originPositionSet(false),
         hasLoadedPlatformEndpoint(false),
         loadedPlatformEndpointHeight(0.0f),
@@ -442,7 +440,8 @@ namespace NOWA
 
     void ProceduralPlatformComponent::onAddComponent(void)
     {
-        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
+        // Claiming form: a freshly added platform component takes editing on its GameObject.
+        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), ProceduralPlatformComponent::getStaticClassName()));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 
         // Causes correct platform selection, if new platform game object is added so that
@@ -1493,6 +1492,14 @@ namespace NOWA
         // coincident with it, so there is no plane left to fight over.
         thread_local Ogre::Real g_platformRunDepthOverride = -1.0f;
 
+        // True only while rebuildMesh is sweeping the REAL platform. generatePlatformBox is
+        // also the preview mesh's generator (updatePreviewMesh -> generateStraightPlatform),
+        // and a preview segment must not contribute grass: its frames would be appended to
+        // whatever the last rebuild left behind, so the drag preview would sprout grass and
+        // every mouse-move would add more of it. Same file-local mechanism, and for the same
+        // reason, as g_platformRunDepthOverride above.
+        thread_local bool g_platformCollectGrassFrames = false;
+
         // Platform paths live in exactly TWO axes: horizontal (x) and height - unlike
         // ProceduralRoadComponent, where XZ (ground plane) is one independent quantity and Y
         // (terrain height) is a SEPARATE, independently-raycast quantity that Road
@@ -1523,10 +1530,6 @@ namespace NOWA
         this->groundIndices.clear();
         this->currentGroundVertexIndex = 0;
 
-        this->junctionVertices.clear();
-        this->junctionIndices.clear();
-        this->currentJunctionVertexIndex = 0;
-
         // Refilled by generatePlatformBox -> collectGrassFrames as the sweep runs. Turning
         // them into Items is a separate, much more expensive step that regenerateGrass does
         // on its own schedule - see the comment there.
@@ -1536,6 +1539,11 @@ namespace NOWA
         {
             return;
         }
+
+        // Armed AFTER the early return above, not before it: leaving the flag set on a
+        // bail-out would mean the next drag preview - which runs through the same
+        // generatePlatformBox - quietly started contributing grass frames.
+        g_platformCollectGrassFrames = true;
 
         // Default every point's DRAWN depth to its authored one before any chain is walked.
         // The per-chain ramp below overwrites this for everything it reaches; the default is
@@ -2422,6 +2430,8 @@ namespace NOWA
             }
         }
 
+        g_platformCollectGrassFrames = false;
+
         // ── Junction patches ────────────────────────────────────────────────────
         // ARCHITECTURE CHANGE: this no longer builds anything - generateJunctionPatch is
         // logging only now. The arms above are untrimmed and overlap each other at every
@@ -2435,7 +2445,7 @@ namespace NOWA
             this->generateJunctionPatch(jp, originToUse);
         }
 
-        if (this->currentSurfaceVertexIndex > 0 || this->currentGroundVertexIndex > 0 || this->currentJunctionVertexIndex > 0)
+        if (this->currentSurfaceVertexIndex > 0 || this->currentGroundVertexIndex > 0)
         {
             this->createPlatformMesh();
         }
@@ -2873,9 +2883,9 @@ namespace NOWA
     void ProceduralPlatformComponent::addPlatformQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0, Ogre::Real u1, Ogre::Real v0Val, Ogre::Real v1Val,
         PlatformMeshBuffer targetBuffer)
     {
-        std::vector<float>& verts = (targetBuffer == PlatformMeshBuffer::SURFACE) ? this->surfaceVertices : (targetBuffer == PlatformMeshBuffer::GROUND) ? this->groundVertices : this->junctionVertices;
-        std::vector<Ogre::uint32>& inds = (targetBuffer == PlatformMeshBuffer::SURFACE) ? this->surfaceIndices : (targetBuffer == PlatformMeshBuffer::GROUND) ? this->groundIndices : this->junctionIndices;
-        Ogre::uint32& currentIdx = (targetBuffer == PlatformMeshBuffer::SURFACE) ? this->currentSurfaceVertexIndex : (targetBuffer == PlatformMeshBuffer::GROUND) ? this->currentGroundVertexIndex : this->currentJunctionVertexIndex;
+        std::vector<float>& verts = (targetBuffer == PlatformMeshBuffer::SURFACE) ? this->surfaceVertices : this->groundVertices;
+        std::vector<Ogre::uint32>& inds = (targetBuffer == PlatformMeshBuffer::SURFACE) ? this->surfaceIndices : this->groundIndices;
+        Ogre::uint32& currentIdx = (targetBuffer == PlatformMeshBuffer::SURFACE) ? this->currentSurfaceVertexIndex : this->currentGroundVertexIndex;
 
         Ogre::Vector3 edge1 = v1 - v0;
         Ogre::Vector3 edge2 = v2 - v0;
@@ -3656,7 +3666,15 @@ namespace NOWA
         // (negated) surface normal the sweep is about to extrude, already mitered, already
         // side-consistent. Anything that derived them independently would drift from the
         // geometry the blades are supposed to sit on.
-        if (true == this->useGrass->getBool())
+        //
+        // BUGFIX: this used to be gated on Use Grass. That made toggling the attribute a
+        // no-op in one direction: with Use Grass off, rebuildMesh collected no frames, so
+        // switching it on later gave regenerateGrass an empty list and nothing appeared -
+        // which is why hardcoding the Variant's default to true "fixed" it (the very first
+        // rebuild then happened to collect). Frames are cheap - a handful of structs per path
+        // segment, against the thousands of vertices being written right next to them - so
+        // they are always collected, and Use Grass decides only whether they become Items.
+        if (true == g_platformCollectGrassFrames)
         {
             this->collectGrassFrames(points, topPoints, downDirs, depth);
         }
@@ -3964,7 +3982,7 @@ namespace NOWA
     {
         this->destroyPlatformMesh();
 
-        if (this->currentSurfaceVertexIndex == 0 && this->currentGroundVertexIndex == 0 && this->currentJunctionVertexIndex == 0)
+        if (this->currentSurfaceVertexIndex == 0 && this->currentGroundVertexIndex == 0)
         {
             return;
         }
@@ -3983,10 +4001,6 @@ namespace NOWA
         this->cachedGroundIndices = this->groundIndices;
         this->cachedNumGroundVertices = this->currentGroundVertexIndex;
 
-        this->cachedJunctionVertices = this->junctionVertices;
-        this->cachedJunctionIndices = this->junctionIndices;
-        this->cachedNumJunctionVertices = this->currentJunctionVertexIndex;
-
         this->cachedPlatformOrigin = this->platformOrigin;
 
         this->logSuspectedZFightingPairs();
@@ -4001,16 +4015,11 @@ namespace NOWA
         std::vector<Ogre::uint32> groundIndicesCopy = this->groundIndices;
         size_t numGroundVertices = this->currentGroundVertexIndex;
 
-        std::vector<float> junctionVerticesCopy = this->junctionVertices;
-        std::vector<Ogre::uint32> junctionIndicesCopy = this->junctionIndices;
-        size_t numJunctionVertices = this->currentJunctionVertexIndex;
-
         Ogre::Vector3 platformOriginCopy = this->platformOrigin;
 
-        GraphicsModule::RenderCommand renderCommand =
-            [this, surfaceVerticesCopy, surfaceIndicesCopy, numSurfaceVertices, groundVerticesCopy, groundIndicesCopy, numGroundVertices, junctionVerticesCopy, junctionIndicesCopy, numJunctionVertices, platformOriginCopy]()
+        GraphicsModule::RenderCommand renderCommand = [this, surfaceVerticesCopy, surfaceIndicesCopy, numSurfaceVertices, groundVerticesCopy, groundIndicesCopy, numGroundVertices, platformOriginCopy]()
         {
-            this->createPlatformMeshInternal(surfaceVerticesCopy, surfaceIndicesCopy, numSurfaceVertices, groundVerticesCopy, groundIndicesCopy, numGroundVertices, junctionVerticesCopy, junctionIndicesCopy, numJunctionVertices, platformOriginCopy);
+            this->createPlatformMeshInternal(surfaceVerticesCopy, surfaceIndicesCopy, numSurfaceVertices, groundVerticesCopy, groundIndicesCopy, numGroundVertices, platformOriginCopy);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralPlatformComponent::createPlatformMesh");
 
@@ -4018,8 +4027,6 @@ namespace NOWA
         this->surfaceIndices.clear();
         this->groundVertices.clear();
         this->groundIndices.clear();
-        this->junctionVertices.clear();
-        this->junctionIndices.clear();
     }
 
     void ProceduralPlatformComponent::logSuspectedZFightingPairs(void)
@@ -4064,7 +4071,6 @@ namespace NOWA
 
         extract(this->surfaceVertices, this->surfaceIndices, "SURFACE");
         extract(this->groundVertices, this->groundIndices, "GROUND");
-        extract(this->junctionVertices, this->junctionIndices, "JUNCTION");
 
         // 2cm centroid tolerance (generous enough to catch near-but-not-exactly coincident
         // triangles - the kind that flickers depending on viewing angle/float rounding -
@@ -4159,7 +4165,6 @@ namespace NOWA
 
         extract(this->surfaceVertices, this->surfaceIndices, "SURFACE");
         extract(this->groundVertices, this->groundIndices, "GROUND");
-        extract(this->junctionVertices, this->junctionIndices, "JUNCTION");
 
         // Barycentric point-in-triangle test, done in the triangle's own plane.
         auto pointInTriangle2D = [](const Ogre::Vector3& p, const Ogre::Vector3& a, const Ogre::Vector3& b, const Ogre::Vector3& c) -> bool
@@ -4299,11 +4304,10 @@ namespace NOWA
 
         dumpBuffer(this->surfaceVertices, this->surfaceIndices, "SURFACE");
         dumpBuffer(this->groundVertices, this->groundIndices, "GROUND");
-        dumpBuffer(this->junctionVertices, this->junctionIndices, "JUNCTION");
     }
 
     void ProceduralPlatformComponent::createPlatformMeshInternal(const std::vector<float>& surfaceVerts, const std::vector<Ogre::uint32>& surfaceInds, size_t numSurfaceVerts, const std::vector<float>& groundVerts,
-        const std::vector<Ogre::uint32>& groundInds, size_t numGroundVerts, const std::vector<float>& junctionVerts, const std::vector<Ogre::uint32>& junctionInds, size_t numJunctionVerts, const Ogre::Vector3& origin)
+        const std::vector<Ogre::uint32>& groundInds, size_t numGroundVerts, const Ogre::Vector3& origin)
     {
         Ogre::Root* root = Ogre::Root::getSingletonPtr();
         Ogre::RenderSystem* renderSystem = root->getRenderSystem();
@@ -4467,8 +4471,39 @@ namespace NOWA
         // ==================== SUBMESH 1: GROUND =====================
         buildSubMesh(groundVerts, groundInds, numGroundVerts, "ground");
 
-        // ==================== SUBMESH 2: JUNCTION ====================
-        buildSubMesh(junctionVerts, junctionInds, numJunctionVerts, "junction");
+        // ==================== (no submesh 2) ====================
+        // REMOVED: the JUNCTION submesh. Nothing has ever written to PlatformMeshBuffer::
+        // JUNCTION - not one call to addPlatformQuad passes it, and never did. The three-buffer
+        // split came over wholesale from ProceduralRoadComponent's CENTER/EDGE/JUNCTION, where
+        // a junction fan really is separate geometry with its own datablock; on a platform a
+        // junction was always just more arm surface, so generateJunctionPatch wrote into
+        // SURFACE and GROUND instead and this third buffer stayed empty from the very first
+        // port. The later junction rework only removed the last theoretical way it could fill.
+        //
+        // buildSubMesh calls createSubMesh() BEFORE it checks whether there is anything to put
+        // in it, and a SubMesh with no VAO crashes Ogre when the Item is built - so the empty
+        // case fell through to a dummy VAO of one vertex and ZERO indices, every single
+        // rebuild, along with a "Creating empty junction submesh" log line.
+        //
+        // Ogre tolerates that (a zero-index submesh draws nothing and the render queue skips
+        // it), but anything that walks the submeshes and REBUILDS them does not.
+        // MeshModifyComponent was the first thing to try, and died on it:
+        //
+        //   [MeshModifyComponent] Extracted 1233 vertices, 1848 indices across 3 submesh(es)
+        //   [MeshModifyComponent] SubMesh 0: 600 verts, 900 indices (tangents)
+        //   [MeshModifyComponent] SubMesh 1: 632 verts, 948 indices (tangents)
+        //   OGRE EXCEPTION(2:InvalidParametersException): StagingBuffer cannot map 0 bytes
+        //
+        // 600 + 632 = 1232 of 1233 - the missing vertex is the dummy, and its zero-length index
+        // buffer is the zero-byte map. That exception aborted mesh creation partway, which is
+        // what left MeshModifyComponent's editableItem null and made the NEXT attempt fail with
+        // "mesh already exists".
+        //
+        // The junction BUFFERS are gone too, along with their cached copies, the
+        // PlatformMeshBuffer::JUNCTION enum value and their two counts in the .platformdata
+        // header - which is why PLATFORMDATA_VERSION is now 2. Junctions themselves are
+        // unaffected: they were never a buffer, they are a property of the PATH (arms meeting
+        // at a shared endpoint, then interpenetrating), and all of that still works.
 
         if (minBounds.x == std::numeric_limits<float>::max())
         {
@@ -4515,25 +4550,6 @@ namespace NOWA
             }
         }
 
-        // Submesh 2: Junction fill - no separate property, always mirrors Ground Datablock
-        // (falling back to Surface if Ground is also empty).
-        if (false == groundDbName.empty())
-        {
-            Ogre::HlmsDatablock* groundDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(groundDbName);
-            if (nullptr != groundDb)
-            {
-                this->platformItem->getSubItem(2)->setDatablock(groundDb);
-            }
-        }
-        else if (false == surfaceDbName.empty())
-        {
-            Ogre::HlmsDatablock* surfaceDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(surfaceDbName);
-            if (nullptr != surfaceDb)
-            {
-                this->platformItem->getSubItem(2)->setDatablock(surfaceDb);
-            }
-        }
-
         if (false == this->originPositionSet)
         {
             this->originPositionSet = true;
@@ -4550,8 +4566,8 @@ namespace NOWA
             this->physicsArtifactComponent->reCreateCollision();
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Platform mesh created with " + Ogre::StringConverter::toString(numSurfaceVerts) + " surface vertices, " +
-                                                                               Ogre::StringConverter::toString(numGroundVerts) + " ground vertices, " + Ogre::StringConverter::toString(numJunctionVerts) + " junction vertices, attached to scene");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ProceduralPlatformComponent] Platform mesh created with " + Ogre::StringConverter::toString(numSurfaceVerts) + " surface vertices, " + Ogre::StringConverter::toString(numGroundVerts) + " ground vertices, attached to scene");
     }
 
     void ProceduralPlatformComponent::destroyPlatformMesh(void)
@@ -5003,8 +5019,7 @@ namespace NOWA
         if (nullptr != this->platformItem && this->platformItem->getNumSubItems() >= 2)
         {
             const Ogre::String dbToUse = datablock.empty() ? this->surfaceDatablock->getString() : datablock;
-            const bool hasJunctionSubmesh = this->platformItem->getNumSubItems() >= 3;
-            GraphicsModule::RenderCommand renderCommand = [this, dbToUse, hasJunctionSubmesh]()
+            GraphicsModule::RenderCommand renderCommand = [this, dbToUse]()
             {
                 if (false == dbToUse.empty())
                 {
@@ -5012,10 +5027,6 @@ namespace NOWA
                     if (nullptr != db)
                     {
                         this->platformItem->getSubItem(1)->setDatablock(db);
-                        if (true == hasJunctionSubmesh)
-                        {
-                            this->platformItem->getSubItem(2)->setDatablock(db);
-                        }
                     }
                 }
             };
@@ -5163,10 +5174,6 @@ namespace NOWA
                         {
                             newItem->getSubItem(1)->setDatablock(groundDb);
                         }
-                        if (newItem->getNumSubItems() >= 3)
-                        {
-                            newItem->getSubItem(2)->setDatablock(groundDb);
-                        }
                     }
                 }
             };
@@ -5279,8 +5286,6 @@ namespace NOWA
             uint32_t numSurfaceIdx = static_cast<uint32_t>(this->cachedSurfaceIndices.size());
             uint32_t numGroundVerts = static_cast<uint32_t>(this->cachedNumGroundVertices);
             uint32_t numGroundIdx = static_cast<uint32_t>(this->cachedGroundIndices.size());
-            uint32_t numJunctionVerts = static_cast<uint32_t>(this->cachedNumJunctionVertices);
-            uint32_t numJunctionIdx = static_cast<uint32_t>(this->cachedJunctionIndices.size());
 
             const size_t floatsPerVertex = 8;
 
@@ -5293,15 +5298,15 @@ namespace NOWA
                 segmentDataSize += seg.controlPoints.size() * 20;
             }
 
-            size_t headerSize = 49;
+            // 41 bytes: magic(4) version(4) origin(12) numSegments(4) surfaceVerts(4)
+            // surfaceIdx(4) groundVerts(4) groundIdx(4) posSet(1). Was 49 - the two junction
+            // counts are gone with the junction buffers, hence PLATFORMDATA_VERSION 2.
+            size_t headerSize = 41;
             size_t surfaceVertBytes = numSurfaceVerts * floatsPerVertex * sizeof(float);
             size_t surfaceIdxBytes = numSurfaceIdx * sizeof(uint32_t);
             size_t groundVertBytes = numGroundVerts * floatsPerVertex * sizeof(float);
             size_t groundIdxBytes = numGroundIdx * sizeof(uint32_t);
-            size_t junctionVertBytes = numJunctionVerts * floatsPerVertex * sizeof(float);
-            size_t junctionIdxBytes = numJunctionIdx * sizeof(uint32_t);
-
-            size_t totalSize = headerSize + segmentDataSize + surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes + junctionVertBytes + junctionIdxBytes;
+            size_t totalSize = headerSize + segmentDataSize + surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes;
 
             std::vector<unsigned char> buffer(totalSize);
             size_t off = 0;
@@ -5327,10 +5332,6 @@ namespace NOWA
             memcpy(&buffer[off], &numGroundVerts, 4);
             off += 4;
             memcpy(&buffer[off], &numGroundIdx, 4);
-            off += 4;
-            memcpy(&buffer[off], &numJunctionVerts, 4);
-            off += 4;
-            memcpy(&buffer[off], &numJunctionIdx, 4);
             off += 4;
             uint8_t posSet = this->originPositionSet ? 1 : 0;
             buffer[off++] = posSet;
@@ -5385,18 +5386,6 @@ namespace NOWA
                 memcpy(&buffer[off], this->cachedGroundIndices.data(), groundIdxBytes);
             }
             off += groundIdxBytes;
-
-            if (junctionVertBytes > 0)
-            {
-                memcpy(&buffer[off], this->cachedJunctionVertices.data(), junctionVertBytes);
-            }
-            off += junctionVertBytes;
-
-            if (junctionIdxBytes > 0)
-            {
-                memcpy(&buffer[off], this->cachedJunctionIndices.data(), junctionIdxBytes);
-            }
-            off += junctionIdxBytes;
 
             std::ofstream outFile(filePath.c_str(), std::ios::binary);
             if (false == outFile.is_open())
@@ -5497,11 +5486,6 @@ namespace NOWA
             off += 4;
             memcpy(&numGroundIdx, &buffer[off], 4);
             off += 4;
-            uint32_t numJunctionVerts, numJunctionIdx;
-            memcpy(&numJunctionVerts, &buffer[off], 4);
-            off += 4;
-            memcpy(&numJunctionIdx, &buffer[off], 4);
-            off += 4;
 
             uint8_t posSet = buffer[off++];
             this->originPositionSet = (posSet != 0);
@@ -5559,10 +5543,7 @@ namespace NOWA
             size_t surfaceIdxBytes = numSurfaceIdx * sizeof(uint32_t);
             size_t groundVertBytes = numGroundVerts * floatsPerVertex * sizeof(float);
             size_t groundIdxBytes = numGroundIdx * sizeof(uint32_t);
-            size_t junctionVertBytes = numJunctionVerts * floatsPerVertex * sizeof(float);
-            size_t junctionIdxBytes = numJunctionIdx * sizeof(uint32_t);
-
-            size_t expectedRemaining = surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes + junctionVertBytes + junctionIdxBytes;
+            size_t expectedRemaining = surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes;
             if (off + expectedRemaining > fileSize)
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
@@ -5574,8 +5555,6 @@ namespace NOWA
             this->cachedSurfaceIndices.resize(numSurfaceIdx);
             this->cachedGroundVertices.resize(numGroundVerts * floatsPerVertex);
             this->cachedGroundIndices.resize(numGroundIdx);
-            this->cachedJunctionVertices.resize(numJunctionVerts * floatsPerVertex);
-            this->cachedJunctionIndices.resize(numJunctionIdx);
 
             if (surfaceVertBytes > 0)
             {
@@ -5601,35 +5580,19 @@ namespace NOWA
             }
             off += groundIdxBytes;
 
-            if (junctionVertBytes > 0)
-            {
-                memcpy(this->cachedJunctionVertices.data(), &buffer[off], junctionVertBytes);
-            }
-            off += junctionVertBytes;
-
-            if (junctionIdxBytes > 0)
-            {
-                memcpy(this->cachedJunctionIndices.data(), &buffer[off], junctionIdxBytes);
-            }
-            off += junctionIdxBytes;
-
             this->cachedNumSurfaceVertices = numSurfaceVerts;
             this->cachedNumGroundVertices = numGroundVerts;
-            this->cachedNumJunctionVertices = numJunctionVerts;
 
             std::vector<float> sv = this->cachedSurfaceVertices;
             std::vector<Ogre::uint32> si = this->cachedSurfaceIndices;
             std::vector<float> gv = this->cachedGroundVertices;
             std::vector<Ogre::uint32> gi = this->cachedGroundIndices;
-            std::vector<float> jv = this->cachedJunctionVertices;
-            std::vector<Ogre::uint32> ji = this->cachedJunctionIndices;
             size_t nsv = this->cachedNumSurfaceVertices;
             size_t ngv = this->cachedNumGroundVertices;
-            size_t njv = this->cachedNumJunctionVertices;
 
-            GraphicsModule::RenderCommand renderCommand = [this, sv, si, nsv, gv, gi, ngv, jv, ji, njv, origin]()
+            GraphicsModule::RenderCommand renderCommand = [this, sv, si, nsv, gv, gi, ngv, origin]()
             {
-                this->createPlatformMeshInternal(sv, si, nsv, gv, gi, ngv, jv, ji, njv, origin);
+                this->createPlatformMeshInternal(sv, si, nsv, gv, gi, ngv, origin);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralPlatformComponent::loadPlatformDataFromFile");
 
@@ -5659,8 +5622,6 @@ namespace NOWA
         uint32_t numSurfaceIdx = static_cast<uint32_t>(this->cachedSurfaceIndices.size());
         uint32_t numGroundVerts = static_cast<uint32_t>(this->cachedNumGroundVertices);
         uint32_t numGroundIdx = static_cast<uint32_t>(this->cachedGroundIndices.size());
-        uint32_t numJunctionVerts = static_cast<uint32_t>(this->cachedNumJunctionVertices);
-        uint32_t numJunctionIdx = static_cast<uint32_t>(this->cachedJunctionIndices.size());
 
         const size_t floatsPerVertex = 8;
 
@@ -5673,15 +5634,12 @@ namespace NOWA
             segmentDataSize += seg.controlPoints.size() * 20;
         }
 
-        size_t headerSize = 49;
+        size_t headerSize = 41; // see savePlatformDataToFile for the byte-by-byte breakdown
         size_t surfaceVertBytes = numSurfaceVerts * floatsPerVertex * sizeof(float);
         size_t surfaceIdxBytes = numSurfaceIdx * sizeof(uint32_t);
         size_t groundVertBytes = numGroundVerts * floatsPerVertex * sizeof(float);
         size_t groundIdxBytes = numGroundIdx * sizeof(uint32_t);
-        size_t junctionVertBytes = numJunctionVerts * floatsPerVertex * sizeof(float);
-        size_t junctionIdxBytes = numJunctionIdx * sizeof(uint32_t);
-
-        size_t totalSize = headerSize + segmentDataSize + surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes + junctionVertBytes + junctionIdxBytes;
+        size_t totalSize = headerSize + segmentDataSize + surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes;
 
         result.resize(totalSize);
         size_t off = 0;
@@ -5707,10 +5665,6 @@ namespace NOWA
         memcpy(&result[off], &numGroundVerts, 4);
         off += 4;
         memcpy(&result[off], &numGroundIdx, 4);
-        off += 4;
-        memcpy(&result[off], &numJunctionVerts, 4);
-        off += 4;
-        memcpy(&result[off], &numJunctionIdx, 4);
         off += 4;
 
         uint8_t posSet = this->originPositionSet ? 1 : 0;
@@ -5767,18 +5721,6 @@ namespace NOWA
         }
         off += groundIdxBytes;
 
-        if (junctionVertBytes > 0)
-        {
-            memcpy(&result[off], this->cachedJunctionVertices.data(), junctionVertBytes);
-        }
-        off += junctionVertBytes;
-
-        if (junctionIdxBytes > 0)
-        {
-            memcpy(&result[off], this->cachedJunctionIndices.data(), junctionIdxBytes);
-        }
-        off += junctionIdxBytes;
-
         return result;
     }
 
@@ -5793,11 +5735,8 @@ namespace NOWA
             this->cachedSurfaceIndices.clear();
             this->cachedGroundVertices.clear();
             this->cachedGroundIndices.clear();
-            this->cachedJunctionVertices.clear();
-            this->cachedJunctionIndices.clear();
             this->cachedNumSurfaceVertices = 0;
             this->cachedNumGroundVertices = 0;
-            this->cachedNumJunctionVertices = 0;
             this->hasPlatformOrigin = false;
             this->updateContinuationPoint();
             return;
@@ -5841,11 +5780,6 @@ namespace NOWA
         memcpy(&numGroundVerts, &data[off], 4);
         off += 4;
         memcpy(&numGroundIdx, &data[off], 4);
-        off += 4;
-        uint32_t numJunctionVerts, numJunctionIdx;
-        memcpy(&numJunctionVerts, &data[off], 4);
-        off += 4;
-        memcpy(&numJunctionIdx, &data[off], 4);
         off += 4;
 
         uint8_t posSet = data[off++];
@@ -5903,10 +5837,7 @@ namespace NOWA
         size_t surfaceIdxBytes = numSurfaceIdx * sizeof(uint32_t);
         size_t groundVertBytes = numGroundVerts * floatsPerVertex * sizeof(float);
         size_t groundIdxBytes = numGroundIdx * sizeof(uint32_t);
-        size_t junctionVertBytes = numJunctionVerts * floatsPerVertex * sizeof(float);
-        size_t junctionIdxBytes = numJunctionIdx * sizeof(uint32_t);
-
-        if (off + surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes + junctionVertBytes + junctionIdxBytes > data.size())
+        if (off + surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes > data.size())
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] setPlatformData: buffer too small for vertex data");
             return;
@@ -5916,8 +5847,6 @@ namespace NOWA
         this->cachedSurfaceIndices.resize(numSurfaceIdx);
         this->cachedGroundVertices.resize(numGroundVerts * floatsPerVertex);
         this->cachedGroundIndices.resize(numGroundIdx);
-        this->cachedJunctionVertices.resize(numJunctionVerts * floatsPerVertex);
-        this->cachedJunctionIndices.resize(numJunctionIdx);
 
         if (surfaceVertBytes > 0)
         {
@@ -5943,37 +5872,21 @@ namespace NOWA
         }
         off += groundIdxBytes;
 
-        if (junctionVertBytes > 0)
-        {
-            memcpy(this->cachedJunctionVertices.data(), &data[off], junctionVertBytes);
-        }
-        off += junctionVertBytes;
-
-        if (junctionIdxBytes > 0)
-        {
-            memcpy(this->cachedJunctionIndices.data(), &data[off], junctionIdxBytes);
-        }
-        off += junctionIdxBytes;
-
         this->cachedNumSurfaceVertices = numSurfaceVerts;
         this->cachedNumGroundVertices = numGroundVerts;
-        this->cachedNumJunctionVertices = numJunctionVerts;
 
-        if (numSurfaceVerts > 0 || numGroundVerts > 0 || numJunctionVerts > 0)
+        if (numSurfaceVerts > 0 || numGroundVerts > 0)
         {
             std::vector<float> sv = this->cachedSurfaceVertices;
             std::vector<Ogre::uint32> si = this->cachedSurfaceIndices;
             std::vector<float> gv = this->cachedGroundVertices;
             std::vector<Ogre::uint32> gi = this->cachedGroundIndices;
-            std::vector<float> jv = this->cachedJunctionVertices;
-            std::vector<Ogre::uint32> ji = this->cachedJunctionIndices;
             size_t nsv = this->cachedNumSurfaceVertices;
             size_t ngv = this->cachedNumGroundVertices;
-            size_t njv = this->cachedNumJunctionVertices;
 
-            GraphicsModule::RenderCommand renderCommand = [this, sv, si, nsv, gv, gi, ngv, jv, ji, njv, origin]()
+            GraphicsModule::RenderCommand renderCommand = [this, sv, si, nsv, gv, gi, ngv, origin]()
             {
-                this->createPlatformMeshInternal(sv, si, nsv, gv, gi, ngv, jv, ji, njv, origin);
+                this->createPlatformMeshInternal(sv, si, nsv, gv, gi, ngv, origin);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralPlatformComponent::setPlatformData");
         }
@@ -5981,7 +5894,7 @@ namespace NOWA
         this->updateContinuationPoint();
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] setPlatformData: restored " + Ogre::StringConverter::toString(numSegments) + " segments, " + Ogre::StringConverter::toString(numSurfaceVerts) +
-                                                                               " surface verts, " + Ogre::StringConverter::toString(numGroundVerts) + " ground verts, " + Ogre::StringConverter::toString(numJunctionVerts) + " junction verts");
+                                                                               " surface verts, " + Ogre::StringConverter::toString(numGroundVerts) + " ground verts");
     }
 
     void ProceduralPlatformComponent::deletePlatformDataFile(void)
@@ -6073,13 +5986,15 @@ namespace NOWA
                 }
             }
 
-            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+            // Claiming form. This is the component's own modify-setter, so it is where it
+            // takes editing back from whichever sibling had it - symmetric with
+            // MeshModifyComponent::setBrushName. The last modify-setter the user touches wins,
+            // which is what "switch tool by picking its setting" should feel like.
+            this->claimEditFocus();
         }
         else
         {
-            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_SELECT_MODE));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+            this->claimEditFocus();
         }
     }
 
@@ -6974,11 +6889,58 @@ namespace NOWA
     // Event Handlers
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
+    void ProceduralPlatformComponent::claimEditFocus(void)
+    {
+        // Announce that THIS component is now the one editing this GameObject, using the
+        // editor-mode event that every editing component ALREADY listens to. Deliberately not
+        // a second event type: with seven procedural components each listening for editor
+        // mode, adding a parallel focus event would mean two listeners per component firing in
+        // an order nobody controls, and two pieces of state that can disagree about who is
+        // editing. One event, one handler, one truth.
+        //
+        // The mode carried is whatever this component currently needs - a claim is not a mode
+        // switch, it rides along with one.
+        unsigned short manipulationMode = NOWA::EditorManager::EDITOR_SELECT_MODE;
+        if (this->getEditModeEnum() == EditMode::SEGMENT)
+        {
+            manipulationMode = NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE;
+        }
+
+        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(manipulationMode, this->gameObjectPtr->getId(), ProceduralPlatformComponent::getStaticClassName()));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+    }
+
+    bool ProceduralPlatformComponent::isEditFocusOwner(void) const
+    {
+        // Empty means nobody has claimed editing on this GameObject, which is the normal case
+        // for an object carrying a single editing component. Defaulting to "yes" there is what
+        // keeps a lone ProceduralPlatformComponent working exactly as it did before any of
+        // this existed - the rule only bites once someone actually claims.
+        if (true == this->editFocusOwner.empty())
+        {
+            return true;
+        }
+        return this->editFocusOwner == ProceduralPlatformComponent::getStaticClassName();
+    }
+
     void ProceduralPlatformComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
     {
         auto castEventData = boost::static_pointer_cast<EventDataEditorMode>(eventData);
 
         this->isEditorMeshModifyMode = (castEventData->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
+
+        // Only a CLAIMING event carries an owner. Events built with the old single-argument
+        // constructor - which is most of them, EditorManager's own mode switches included -
+        // leave the owner alone, so an ordinary mode change never reassigns editing.
+        //
+        // Scoped to this GameObject on purpose: the conflict being solved is several editing
+        // components sharing ONE object and fighting over its clicks. A claim made on a
+        // different object says nothing about this one, and handleGameObjectSelected already
+        // stops an unselected component from listening at all.
+        if (true == castEventData->hasEditFocusClaim() && castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+        {
+            this->editFocusOwner = castEventData->getComponentClassName();
+        }
 
         this->updateModificationState();
     }
@@ -7053,7 +7015,13 @@ namespace NOWA
                                                                                " meshModifyMode=" + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " selected=" + Ogre::StringConverter::toString(this->isSelected) +
                                                                                " editMode=" + this->editMode->getListSelectedValue());
 
-        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected;
+        // isEditFocusOwner is the fourth condition, and it is what lets a SIBLING component on
+        // the same GameObject take over editing - see claimEditFocus. Not owning editing means
+        // the input listener comes off entirely, so the click reaches whoever does own it;
+        // routing through here rather than just dropping the listener also cancels an
+        // in-progress drag, clears the segment selection and hides the overlay, so nothing is
+        // left on screen over geometry another component is now editing.
+        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected && this->isEditFocusOwner();
 
         if (shouldBeActive)
         {

@@ -373,45 +373,127 @@ namespace NOWA
 		unsigned long id;
 	};
 
-	//---------------------------------------------------------------------------------------------------------------------
-	// EventDataEditorMode - This event is sent out when the editor manager mode has changed
-	//---------------------------------------------------------------------------------------------------------------------
-	class EXPORTED EventDataEditorMode : public BaseEventData
-	{
-	public:
+	// ─────────────────────────────────────────────────────────────────────────────────────────
+    // REPLACES the existing EventDataEditorMode in Events.h. Not a standalone header - it needs
+    // BaseEventData / EventType / EventDataPtr / EXPORTED from that file.
+    //
+    // The single-argument constructor is unchanged and stays source-compatible, so every existing
+    // caller (EditorManager's mode switches and all the rest) keeps compiling and keeps meaning
+    // exactly what it meant before: "the editor mode changed", with no statement about who is
+    // editing.
+    // ─────────────────────────────────────────────────────────────────────────────────────────
 
-		explicit EventDataEditorMode(unsigned short manipulationMode)
-			: manipulationMode(manipulationMode)
-		{
-		}
+    /**
+     * @brief Editor manipulation mode change, optionally carrying an edit-focus claim.
+     *
+     * Several components on one GameObject can each want the mouse: ProceduralPlatformComponent
+     * builds segments with left-click, MeshModifyComponent paints brush strokes with it, and every
+     * other procedural component wants the same button. They all register their own listener with
+     * InputDeviceCore and they are all registered at once, with nothing arbitrating - so whichever
+     * one consumes the press first wins every time and the others are simply dead.
+     *
+     * The claim is carried HERE, on the event every editing component already listens to, rather
+     * than in an event of its own. With seven procedural components a parallel focus event would
+     * mean two listeners per component firing in an order nobody controls, and two pieces of state
+     * that can disagree about who is editing. One event, one handler, one truth.
+     *
+     * A component announces itself by CLASS NAME when its own modify-setter is touched. Every
+     * editing component then applies the same rule in the handleMeshModifyMode it already has:
+     *
+     *     Am I the named owner of this GameObject's editing? If not, remove my input listener.
+     *
+     * The knowledge lives in the rule, not in a list of participants, so no component needs a
+     * compile-time dependency on any other and an eighth one needs no change to the first seven.
+     *
+     * Two properties worth keeping in mind when implementing a handler:
+     *
+     *  - Only a CLAIMING event carries an owner. hasEditFocusClaim() is false for anything built
+     *    with the single-argument constructor, and such an event must leave the recorded owner
+     *    ALONE - otherwise every ordinary mode switch would silently reassign editing.
+     *
+     *  - An EMPTY component name on a claiming event is the release signal, meaning "nobody owns
+     *    editing", which is also the natural starting state. A component that has never seen a
+     *    claim must therefore treat "no owner" as permission, not denial - otherwise a GameObject
+     *    carrying a single editing component would never be able to edit anything.
+     */
+    class EXPORTED EventDataEditorMode : public BaseEventData
+    {
+    public:
+        /**
+         * @brief Plain mode change - says nothing about who is editing.
+         * @param[in] manipulationMode One of EditorManager's EDITOR_... modes.
+         */
+        explicit EventDataEditorMode(unsigned short manipulationMode)
+			: manipulationMode(manipulationMode), gameObjectId(0), componentClassName("")
+        {
+        }
 
-		static EventType getStaticEventType(void)
-		{
-			return 0xe86c7c47;
-		}
+        /**
+         * @brief Mode change that also claims editing for one component.
+         * @param[in] manipulationMode   One of EditorManager's EDITOR_... modes.
+         * @param[in] gameObjectId       The GameObject whose editing focus is being claimed.
+         * @param[in] componentClassName Claiming component's getStaticClassName(), or an empty
+         *                               string to RELEASE focus so every component on that
+         *                               GameObject returns to its own normal gating.
+         */
+        EventDataEditorMode(unsigned short manipulationMode, unsigned long gameObjectId, const Ogre::String& componentClassName)
+			: manipulationMode(manipulationMode), gameObjectId(gameObjectId), componentClassName(componentClassName)
+        {
+        }
 
-		virtual const EventType getEventType(void) const
-		{
-			return 0xe86c7c47;
-		}
+        static EventType getStaticEventType(void)
+        {
+            return 0xe86c7c47;
+        }
 
-		virtual EventDataPtr copy(void) const
-		{
-			return EventDataPtr(new EventDataEditorMode(this->manipulationMode));
-		}
+        virtual const EventType getEventType(void) const
+        {
+            return 0xe86c7c47;
+        }
 
-		virtual const char* getName(void) const
-		{
-			return "EventDataEditorMode";
-		}
+        virtual EventDataPtr copy(void) const
+        {
+            return EventDataPtr(new EventDataEditorMode(this->manipulationMode, this->gameObjectId, this->componentClassName));
+        }
 
-		unsigned short getManipulationMode(void) const
-		{
-			return this->manipulationMode;
-		}
-	private:
-		unsigned short manipulationMode;
-	};
+        virtual const char* getName(void) const
+        {
+            return "EventDataEditorMode";
+        }
+
+        unsigned short getManipulationMode(void) const
+        {
+            return this->manipulationMode;
+        }
+
+        /**
+         * @return True if this event carries an edit-focus claim. False for events built with the
+         *         plain single-argument constructor, whose owner fields must be ignored.
+         */
+        bool hasEditFocusClaim(void) const
+        {
+            return 0 != this->gameObjectId;
+        }
+
+        unsigned long getGameObjectId(void) const
+        {
+            return this->gameObjectId;
+        }
+
+        /**
+         * @return The claiming component's class name, or an empty string if focus was released.
+         *         Only meaningful when hasEditFocusClaim() is true.
+         */
+        Ogre::String getComponentClassName(void) const
+        {
+            return this->componentClassName;
+        }
+
+    private:
+        unsigned short manipulationMode;
+        unsigned long gameObjectId;
+        Ogre::String componentClassName;
+    };
 
 	//---------------------------------------------------------------------------------------------------------------------
 	// EventDataGenerateCategories - Sent when a category has changed, so that the categories are generated again (maybe a new has been added)

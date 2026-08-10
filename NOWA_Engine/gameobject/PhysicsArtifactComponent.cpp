@@ -302,7 +302,110 @@ namespace NOWA
 		return true;
 	}
 
-	void PhysicsArtifactComponent::changeCollisionFaceId(unsigned int id)
+	bool PhysicsArtifactComponent::reCreateBodyForItem(Ogre::Item* item)
+    {
+        if (nullptr == item)
+        {
+            return nullptr != this->physicsBody;
+        }
+
+        if (nullptr == this->ogreNewt)
+        {
+            this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
+        }
+
+        // Step 1: tear the old body down completely. Unlike reCreateCollision, which keeps the
+        // body and swaps only its collision, the body is rebuilt here - mirroring
+        // PhysicsActiveComponent::reCreateDynamicBodyForItem. reCreateCollision's early
+        // "return if no body" is deliberately NOT copied: this is also the path that gives a
+        // component its first body after an item swap, so bailing out when there is none would
+        // defeat the point.
+        this->destroyCollision();
+        this->destroyBody();
+
+        // Step 2: build the collision from the PASSED item, on the render thread.
+        //
+        // The render-thread hop is not optional and not about thread affinity as such: the
+        // TreeCollision constructor calls vao->mapAsyncTickets() internally, and doing that
+        // while immutable buffer uploads are still pending forces an immediate flush and logs
+        // the D3D11 performance warning. enqueueAndWait guarantees the render thread has
+        // drained its queue first - the same reasoning as in createStaticBody.
+        OgreNewt::CollisionPtr staticCollision;
+
+        const Ogre::String meshName = item->getMesh()->getName();
+
+        if (Ogre::StringUtil::match(meshName, "Plane*", true))
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
+            {
+                // TreeCollision does not work for a plane, so use a flattened box - same
+                // special case as createStaticBody.
+                Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
+                size.y = 0.001f;
+                staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::reCreateBoxCollisionForItem");
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
+            {
+                staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::reCreateTreeCollisionForItem");
+        }
+
+        if (nullptr == staticCollision)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[PhysicsArtifactComponent] Could not create collision from item for game object: " + this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.");
+            return false;
+        }
+
+        // Step 3: new body. Third argument true = kinematic, as for every artifact body.
+        this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision, true);
+        NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
+
+        // Mass must NOT be set - it is prohibited for non-movable bodies.
+
+        this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
+        this->physicsBody->setCollidable(this->collidable->getBool());
+        this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
+
+        // Step 4: sync to the node's CURRENT transform, not to whatever postInit captured.
+        //
+        // A TreeCollision hull is MESH-LOCAL - vertex data and scale only - so the body
+        // transform is the only thing carrying its world placement. The item may well have been
+        // swapped and the node moved since this component was initialised, which is precisely
+        // the bug the same block in reCreateCollision was added to fix. Prefer the movable's
+        // own parent node when there is one, because a swapped item can hang off a different
+        // node than gameObjectPtr->getSceneNode() returns.
+        Ogre::SceneNode* itemNode = this->gameObjectPtr->getSceneNode();
+        Ogre::MovableObject* syncMovable = this->gameObjectPtr->getMovableObject();
+        if (nullptr != syncMovable && nullptr != syncMovable->getParentSceneNode())
+        {
+            itemNode = syncMovable->getParentSceneNode();
+        }
+        this->initialPosition = itemNode->getPosition();
+        this->initialOrientation = itemNode->getOrientation();
+        this->initialScale = itemNode->getScale();
+        this->setPosition(this->initialPosition);
+        this->setOrientation(this->initialOrientation);
+
+        this->physicsBody->setAutoSleep(1);
+        this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
+
+        // A fresh body resets m_shapeMaterial.m_userId to 0, so the material group has to be
+        // re-applied - same trailing step as reCreateCollision.
+        const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
+        this->physicsBody->setMaterialGroupID(materialId);
+
+        this->gameObjectPtr->setDynamic(false);
+
+        return true;
+    }
+
+    void PhysicsArtifactComponent::changeCollisionFaceId(unsigned int id)
 	{
 		if (nullptr != this->collisionPtr)
 		{

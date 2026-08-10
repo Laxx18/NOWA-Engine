@@ -387,7 +387,6 @@ namespace NOWA
         // Paints RGBA blend using bilinear grid interpolation + corrected slope.
         // amplitude is passed so depth clamping is available without a member.
         void autoRPaintLayers(const std::vector<float>& heights, const std::vector<Ogre::Vector2>& uvCoords, int vertexCount, float radius, float amplitude, uint32_t blendSize, unsigned char* blendOut) const;
-
     private:
         Ogre::String name;
 

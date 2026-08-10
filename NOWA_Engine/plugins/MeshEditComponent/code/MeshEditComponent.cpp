@@ -2753,7 +2753,7 @@ namespace NOWA
         {
             this->scheduleOverlayUpdate();
             // Notify editor mode change so edit mesh does work immediately
-            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), MeshEditComponent::getStaticClassName()));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         }
     }
@@ -3664,6 +3664,9 @@ namespace NOWA
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshEditComponent] Brush load failed: " + e.getDescription());
         }
+
+        boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), MeshEditComponent::getStaticClassName()));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
     }
 
     Ogre::String MeshEditComponent::getBrushName(void) const
@@ -6352,6 +6355,15 @@ namespace NOWA
         return best;
     }
 
+    bool MeshEditComponent::isEditFocusOwner(void) const
+    {
+        if (true == this->editFocusOwner.empty())
+        {
+            return true;
+        }
+        return this->editFocusOwner == MeshEditComponent::getStaticClassName();
+    }
+
     // =========================================================================
     //  Coordinates
     // =========================================================================
@@ -6396,7 +6408,7 @@ namespace NOWA
     void MeshEditComponent::updateModificationState(void)
     {
         // Exactly mirrors ProceduralRoadComponent::updateModificationState
-        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected && !this->isSimulating;
+        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected && !this->isSimulating && this->isEditFocusOwner();
         if (true == shouldBeActive)
         {
             this->addInputListener();
@@ -6417,8 +6429,15 @@ namespace NOWA
 
     void MeshEditComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
     {
-        auto cast = boost::static_pointer_cast<NOWA::EventDataEditorMode>(eventData);
-        this->isEditorMeshModifyMode = (cast->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
+        auto castEventData = boost::static_pointer_cast<EventDataEditorMode>(eventData);
+
+        this->isEditorMeshModifyMode = (castEventData->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
+
+        if (true == castEventData->hasEditFocusClaim() && castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+        {
+            this->editFocusOwner = castEventData->getComponentClassName();
+        }
+
         this->updateModificationState();
 
         if (true == this->isEditorMeshModifyMode)
@@ -6451,7 +6470,7 @@ namespace NOWA
             if (true == editMode)
             {
                 // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
-                boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+                boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE, this->gameObjectPtr->getId(), MeshEditComponent::getStaticClassName()));
                 NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
             }
         }

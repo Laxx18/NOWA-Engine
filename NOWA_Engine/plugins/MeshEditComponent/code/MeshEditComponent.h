@@ -700,6 +700,7 @@ namespace NOWA
         // inherits the correct datablock.
         size_t getActiveSubmesh(void) const;
 
+        bool isEditFocusOwner(void) const;
     private:
         Ogre::String componentName;
 
@@ -850,6 +851,8 @@ namespace NOWA
         // Undo snapshots for multi-tick operations
         std::vector<unsigned char> grabUndoData;  ///< captured at beginGrab
         std::vector<unsigned char> brushUndoData; ///< captured at brush stroke start
+
+        Ogre::String editFocusOwner;
     };
 
 }; // namespace NOWA

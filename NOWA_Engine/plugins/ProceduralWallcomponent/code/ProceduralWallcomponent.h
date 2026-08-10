@@ -529,6 +529,8 @@ namespace NOWA
 
         void scheduleSnapIndicatorUpdate(void);
 
+        bool isEditFocusOwner(void) const;
+
     private:
         static const uint32_t WALLDATA_MAGIC = 0x57414C4C; // "WALL" in hex
         static const uint32_t WALLDATA_VERSION = 1;
@@ -616,7 +618,8 @@ namespace NOWA
         Ogre::ManualObject* snapOverlayObject;
 
         Ogre::Quaternion wallFrame;
-        bool wallFrameSet;  
+        bool wallFrameSet;
+        Ogre::String editFocusOwner;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };
