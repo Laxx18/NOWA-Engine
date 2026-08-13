@@ -147,7 +147,7 @@ namespace NOWA
         usePCC(new Variant(WorkspaceBaseComponent::AttrUsePCC(), false, this->attributes)),
         shadowGlobalBias(new Variant(WorkspaceBaseComponent::AttrShadowGlobalBias(), Ogre::Real(2.0f), this->attributes)),
         shadowGlobalNormalOffset(new Variant(WorkspaceBaseComponent::AttrShadowGlobalNormalOffset(), Ogre::Real(164.0f), this->attributes)),
-        shadowPSSMLambda(new Variant(WorkspaceBaseComponent::AttrShadowPSSMLambda(), Ogre::Real(0.8f), this->attributes)),
+        shadowPSSMLambda(new Variant(WorkspaceBaseComponent::AttrShadowPSSMLambda(), Ogre::Real(0.98f), this->attributes)),
         shadowSplitBlend(new Variant(WorkspaceBaseComponent::AttrShadowSplitBlend(), Ogre::Real(0.0125f), this->attributes)),
         shadowSplitFade(new Variant(WorkspaceBaseComponent::AttrShadowSplitFade(), Ogre::Real(0.313f), this->attributes)),
         shadowSplitPadding(new Variant(WorkspaceBaseComponent::AttrShadowSplitPadding(), Ogre::Real(1.0f), this->attributes)),

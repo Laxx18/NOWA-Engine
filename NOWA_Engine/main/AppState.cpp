@@ -306,7 +306,6 @@ namespace NOWA
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->camera = this->sceneManager->createCamera(this->appStateName + "_Camera");
-                NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(this->camera);
                 this->camera->setFOVy(Ogre::Degree(90.0f));
                 this->camera->setNearClipDistance(0.1f);
                 this->camera->setFarClipDistance(500.0f);

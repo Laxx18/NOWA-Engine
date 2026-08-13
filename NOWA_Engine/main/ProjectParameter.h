@@ -2,11 +2,11 @@
 #define PROJECT_PARAMETER_H
 
 #include "defines.h"
+#include "OgreNewt_World.h"
 
 class Ogre::SceneManager;
 class Ogre::Camera;
 class Ogre::Light;
-class OgreNewt::World;
 
 namespace NOWA
 {

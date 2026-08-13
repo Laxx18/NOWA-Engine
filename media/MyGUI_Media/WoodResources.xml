@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Resource" version="1.1">
+
+    <Resource type="ResourceImageSet" name="WoodPanelTexture">
+        <Group name="States" texture="inventory_panel_256x256.png" size="256 256">
+            <Index name="Normal">
+                <Frame point="0 0"/>
+            </Index>
+        </Group>
+    </Resource>
+
+</MyGUI>

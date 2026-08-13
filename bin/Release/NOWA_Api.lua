@@ -10666,6 +10666,22 @@ return {
 				returns = "(MinimapComponent)",
 				valuetype = "MinimapComponent"
 			},
+			getMorphAnimationComponentFromName =
+			{
+				type = "function",
+				description = "Gets the morph animation component by the given name. Returns nil if the component does not exist.",
+				args = "(string name)",
+				returns = "(MorphAnimationComponent)",
+				valuetype = "MorphAnimationComponent"
+			},
+			getMorphAnimationComponent =
+			{
+				type = "function",
+				description = "Gets the morph animation component. Returns nil if the component does not exist.",
+				args = "()",
+				returns = "(MorphAnimationComponent)",
+				valuetype = "MorphAnimationComponent"
+			},
 			getMyGUIItemBoxComponent =
 			{
 				type = "function",
@@ -13081,6 +13097,14 @@ return {
 				args = "(MinimapComponent other)",
 				returns = "(MinimapComponent)",
 				valuetype = "MinimapComponent"
+			},
+			castMorphAnimationComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(MorphAnimationComponent other)",
+				returns = "(MorphAnimationComponent)",
+				valuetype = "MorphAnimationComponent"
 			},
 			castMyGUIItemBoxComponent =
 			{
@@ -21052,6 +21076,183 @@ return {
 				args = "(number index)",
 				returns = "(string)",
 				valuetype = "string"
+			}
+		}
+	},
+	MorphAnimationComponent =
+	{
+		type = "class",
+		description = "Usage: Controls morph (blend shape) pose weights on an Ogre::Item. Use mathematical functions to animate pose weights over time. Requirements: A game object with an Ogre::Item whose mesh carries at least one pose. A pose defines vertex offsets from the original mesh position. For example: A face mesh could have poses like a smile (moves mouth vertices up) or closed eyes (moves eyelid vertices down). A chest could have a pose that moves the lid vertices to the open position. Poses must be baked into the mesh file during export from Blender/Maya/3DS Max. They are called: Shape Keys in Blender, Blend Shapes in Maya, Morph Targets in 3DS Max. In Ogre-Next V2 a pose belongs to a sub mesh, not to the whole mesh. Therefore each entry addresses a sub item index plus a pose index inside that sub item. Use the log output of this component to see how many poses each sub item actually has after the mesh has been converted to v2. The weight function uses 't' as the time variable, where t = accumulated time * speed + time offset. Example: '(sin(t) + 1) / 2' oscillates the weight between 0 and 1.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether the morph animation is activated.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getActivated =
+			{
+				type = "function",
+				description = "Gets whether the morph animation is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setPoseAnimationCount =
+			{
+				type = "method",
+				description = "Sets the number of pose animation entries to control.",
+				args = "(number count)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPoseAnimationCount =
+			{
+				type = "function",
+				description = "Gets the number of pose animation entries.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSubItemIndex =
+			{
+				type = "method",
+				description = "Sets the sub item index the entry at the given position addresses.",
+				args = "(number index, number subItemIndex)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSubItemIndex =
+			{
+				type = "function",
+				description = "Gets the sub item index the entry at the given position addresses.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setPoseIndex =
+			{
+				type = "method",
+				description = "Sets the pose index the entry at the given position addresses.",
+				args = "(number index, number poseIndex)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPoseIndex =
+			{
+				type = "function",
+				description = "Gets the pose index the entry at the given position addresses.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWeightFunction =
+			{
+				type = "method",
+				description = "Sets the weight function for the entry at the given index. Example: '(sin(t) + 1) / 2'",
+				args = "(number index, string weightFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWeightFunction =
+			{
+				type = "function",
+				description = "Gets the weight function for the entry at the given index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setSpeed =
+			{
+				type = "method",
+				description = "Sets the speed multiplier for the entry at the given index.",
+				args = "(number index, number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSpeed =
+			{
+				type = "function",
+				description = "Gets the speed multiplier for the entry at the given index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setTimeOffset =
+			{
+				type = "method",
+				description = "Sets the time offset for the entry at the given index.",
+				args = "(number index, number timeOffset)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTimeOffset =
+			{
+				type = "function",
+				description = "Gets the time offset for the entry at the given index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getSubItemCount =
+			{
+				type = "function",
+				description = "Gets the number of sub items of the item.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getPoseCount =
+			{
+				type = "function",
+				description = "Gets the number of poses of the given sub item.",
+				args = "(number subItemIndex)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setPoseWeight =
+			{
+				type = "method",
+				description = "Manually sets the weight of a pose, addressed by sub item index and pose index.",
+				args = "(number subItemIndex, number poseIndex, number weight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setPoseWeightByName =
+			{
+				type = "method",
+				description = "Manually sets the weight of a pose, addressed by sub item index and pose name.",
+				args = "(number subItemIndex, string poseName, number weight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPoseWeight =
+			{
+				type = "function",
+				description = "Gets the last weight this component wrote for the given pose.",
+				args = "(number subItemIndex, number poseIndex)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			resetTime =
+			{
+				type = "method",
+				description = "Resets the time accumulator to zero.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAccumulatedTime =
+			{
+				type = "function",
+				description = "Gets the current time accumulator value.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},

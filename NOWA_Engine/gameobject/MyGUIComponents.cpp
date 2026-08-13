@@ -1408,8 +1408,9 @@ namespace NOWA
 		movable(new Variant(MyGUIWindowComponent::AttrMovable(), false, this->attributes)),
 		windowCaption(new Variant(MyGUIWindowComponent::AttrWindowCaption(), "", this->attributes))
 	{
-		this->skin = new Variant(MyGUIComponent::AttrSkin(), { "WindowCSX", "Window", "WindowC", "WindowCX", "WindowCS",
-			"WindowCX2_Dark", "WindowCXS2_Dark", "Back1Skin_Dark", "PanelSkin" }, this->attributes);
+		this->skin = new Variant(MyGUIComponent::AttrSkin(), { "WindowCSX", "Window", "WindowC", "WindowCX", "WindowCS", "WindowCX2_Dark", "WindowCXS2_Dark", "Back1Skin_Dark", "PanelSkin", "WoodPanel",
+                "WoodWindow"},
+            this->attributes);
 	}
 
 	MyGUIWindowComponent::~MyGUIWindowComponent()
@@ -2426,7 +2427,7 @@ namespace NOWA
 		textOffset(new Variant(MyGUIButtonComponent::AttrTextOffset(), Ogre::Vector2(0.0f, 0.0f), this->attributes)),
 		textColor(new Variant(MyGUIButtonComponent::AttrTextColor(), Ogre::Vector4(0.0f, 0.0f, 0.0, 1.0f), this->attributes))
 	{
-		std::vector<Ogre::String> skins({ "Button", "ButtonExpandSkin", "ButtonAcceptSkin", "ButtonLeftSkin", "ButtonRightSkin", "ButtonUpSkin", "ButtonDownSkin" });
+        std::vector<Ogre::String> skins({"Button", "ButtonExpandSkin", "ButtonAcceptSkin", "ButtonLeftSkin", "ButtonRightSkin", "ButtonUpSkin", "ButtonDownSkin", "WoodButton"});
 		this->skin = new Variant(MyGUIComponent::AttrSkin(), skins, this->attributes);
 		this->textColor->addUserData(GameObject::AttrActionColorDialog());
 	}

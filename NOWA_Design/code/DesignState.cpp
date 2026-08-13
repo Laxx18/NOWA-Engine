@@ -241,7 +241,6 @@ void DesignState::createScene(void)
         this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "NOWA_SceneManager");
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
         this->camera = this->sceneManager->createCamera("GamePlayCamera");
-        NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(this->camera);
         Ogre::Vector3 position = this->camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f));
         this->camera->setPosition(position);
 

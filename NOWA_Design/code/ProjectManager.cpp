@@ -1,6 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "ProjectManager.h"
 #include "GuiEvents.h"
+#include "main/Core.h"
 #include "modules/GraphicsModule.h"
 #include "modules/WorkspaceModule.h"
 
@@ -503,69 +504,7 @@ void ProjectManager::internalApplySettings(void)
 {
     NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
-        if (nullptr != this->sunLight)
-        {
-            /*
-            Tip: Set the upperHemisphere to a cold colour (e.g. blueish sky) and lowerHemisphere
-                to a warm colour (e.g. sun-yellowish, orange) and the hemisphereDir in the opposite
-                direction of your main directional light for a convincing look.
-            */
-            this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
-                Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b) /* * 0.065f * 0.75f*/,
-                -this->sunLight->getDirection() /* + Ogre::Vector3::UNIT_Y * 0.2f*/, this->projectParameter.envmapScale);
-        }
-        else
-        {
-            this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
-                Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b) /* * 0.065f * 0.75f*/,
-                this->projectParameter.hemisphereDir.normalisedCopy(), this->projectParameter.envmapScale);
-        }
-
-        // Set sane defaults for proper shadow mapping
-        this->sceneManager->setShadowFarDistance(this->projectParameter.shadowFarDistance);
-        this->sceneManager->setShadowDirectionalLightExtrusionDistance(this->projectParameter.shadowDirectionalLightExtrusionDistance);
-        this->sceneManager->setShadowDirLightTextureOffset(this->projectParameter.shadowDirLightTextureOffset);
-
-        // this->sceneManager->setShadowTextureFadeStart(0.8f);
-        // this->sceneManager->setShadowTextureFadeEnd(0.9f);
-
-        // Just a test: https://forums.ogre3d.org/viewtopic.php?t=96470
-        Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-        Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
-
-        if (0 == this->projectParameter.forwardMode)
-        {
-            hlmsPbs->setUseLightBuffers(false);
-            this->sceneManager->setForward3D(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance,
-                this->projectParameter.maxLightDistance);
-            this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, 10, 10,
-                this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-        }
-        else if (1 == this->projectParameter.forwardMode)
-        {
-            hlmsPbs->setUseLightBuffers(true);
-            this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance,
-                this->projectParameter.maxLightDistance);
-        }
-        else if (2 == this->projectParameter.forwardMode)
-        {
-            hlmsPbs->setUseLightBuffers(true);
-            this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, 10, 10,
-                this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-        }
-
-        NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
-
-        OgreNewt::World* ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
-        if (nullptr != ogreNewt)
-        {
-            ogreNewt->setSolverModel(this->projectParameter.solverModel);
-            ogreNewt->setUpdateFPS(this->projectParameter.physicsUpdateRate, 2);
-            ogreNewt->setThreadCount(this->projectParameter.physicsThreadCount);
-            ogreNewt->setDefaultLinearDamping(this->projectParameter.linearDamping);
-            ogreNewt->setDefaultAngularDamping(this->projectParameter.angularDamping);
-            NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
-        }
+        NOWA::Core::getSingletonPtr()->setSettings(this->sceneManager, this->sunLight, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->projectParameter);
 
         if (true == this->projectParameter.hasRecast)
         {
@@ -611,10 +550,6 @@ void ProjectManager::internalApplySettings(void)
         {
             NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
         }
-
-        this->sceneManager->setShadowColour(Ogre::ColourValue(this->projectParameter.shadowColor.r, this->projectParameter.shadowColor.g, this->projectParameter.shadowColor.b, 1.0f));
-        NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), true);
-        NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
 
         const auto oceanComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::OceanComponent>();
 
@@ -694,7 +629,6 @@ void ProjectManager::createDummyCamera(void)
     NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         Ogre::Camera* camera = this->sceneManager->createCamera("GamePlayCamera");
-        NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(camera);
         camera->setFOVy(Ogre::Degree(90.0f));
         camera->setNearClipDistance(0.1f);
         camera->setFarClipDistance(500.0f);

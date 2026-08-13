@@ -29,6 +29,7 @@
 #include "EngineResourceListener.h"
 #include "shader/HlmsBaseListenerContainer.h"
 #include "utilities/rapidxml.hpp"
+#include "ProjectParameter.h"
 
 #include "defines.h"
 
@@ -654,10 +655,10 @@ namespace NOWA
 		Ogre::StringVector getSectionPath(const Ogre::String& strSection);
 
 		/**
-		* @brief Apply user-configured menu quality settings to a camera (LOD bias, mipmaps, filtering, anisotropy).
-		* @param camera Camera to apply the settings to.
+		* @brief Apply user-configured menu quality settings to a scene (LOD bias, light, shadows etc.).
+		* @note  Is not threadsafe!
 		*/
-		void setMenuSettingsForCamera(Ogre::Camera* camera);
+        void setSettings(Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::Camera* camera, const ProjectParameter& projectParameter);
 
 		/**
 		 * @brief Set polygon rendering mode for all geometry (solid, wireframe, points).

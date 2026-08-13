@@ -531,6 +531,8 @@ namespace NOWA
         {
             AppStateManager::getSingletonPtr()->getGameObjectController()->reserveGameObjectCapacity(gameObjectCount);
         }
+
+        Core::getSingletonPtr()->setSettings(this->sceneManager, this->sunLight, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->projectParameter);
     }
 
     std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)
@@ -1107,7 +1109,6 @@ namespace NOWA
                 {
                     this->projectParameter.envmapScale = XMLConverter::getAttribReal(subElement, "envmapScale", 1.0f);
                 }
-                this->sceneManager->setAmbientLight(this->projectParameter.ambientLightUpperHemisphere, this->projectParameter.ambientLightLowerHemisphere, this->projectParameter.hemisphereDir, this->projectParameter.envmapScale);
             }
         }
 
@@ -1202,21 +1203,7 @@ namespace NOWA
                     this->projectParameter.maxLightDistance = XMLConverter::getAttribReal(subElement, "value", 500.0f);
                 }
 
-                if (0 == this->projectParameter.forwardMode)
-                {
-                    this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-                        this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-                }
-                else if (1 == this->projectParameter.forwardMode)
-                {
-                    this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance,
-                        this->projectParameter.maxLightDistance);
-                }
-                else if (2 == this->projectParameter.forwardMode)
-                {
-                    this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-                        this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-                }
+                // Setting to scenemanager is done in postInitData setSettings...
             }
             else
             {
@@ -1240,7 +1227,6 @@ namespace NOWA
                 if (subElement)
                 {
                     this->projectParameter.renderDistance = XMLConverter::getAttribReal(subElement, "renderDistance", Core::getSingletonPtr()->getGlobalRenderDistance());
-                    NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
                 }
             }
         }

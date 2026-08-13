@@ -518,7 +518,6 @@ namespace NOWA
 
 				// Is not used, just a dummy, also the finalRenderingNodeName is just a node without a scene, which just combines the textures in a shader
 				this->tempCamera = this->gameObjectPtr->getSceneManager()->createCamera("FinalSplitScreenDummyCamera_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-				NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(tempCamera);
 				this->tempCamera->setFOVy(Ogre::Degree(90.0f));
 				this->tempCamera->setNearClipDistance(0.1f);
 				this->tempCamera->setFarClipDistance(500.0f);

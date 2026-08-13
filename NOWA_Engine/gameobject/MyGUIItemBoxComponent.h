@@ -397,6 +397,10 @@ namespace NOWA
         void handleSpriteAnimationFinished(NOWA::EventDataPtr eventData);
 	private:
 		int getIndexFromResourceName(const Ogre::String& resourceName);
+
+		std::vector<Ogre::String> buildResourceItemNameList(void) const;
+
+        void refreshResourceNameVariantLists(void);
 	private:
 		ToolTip* toolTip;
 		ItemBoxWindow* itemBoxWindow;

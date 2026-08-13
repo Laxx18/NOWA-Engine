@@ -242,7 +242,18 @@ namespace NOWA
         this->currentDamage = 0.0f;
         this->dirtyVertices.store(false);
         this->brushInProgress.store(false);
+
+        // BUGFIX: this stored false into workerRunning WITHOUT joining, unlike disconnect()
+        // which stores false and then joins. Storing false only ends the worker's while loop;
+        // the std::thread OBJECT stays joinable, holding a handle to a finished thread. The
+        // next brush stroke then reaches startWorkerIfNeeded, finds workerRunning false, and
+        // move-assigns a fresh std::thread over that still-joinable handle - which calls
+        // std::terminate(). A hard abort with no exception and no log line.
         this->workerRunning.store(false);
+        if (true == this->workerThread.joinable())
+        {
+            this->workerThread.join();
+        }
 
         if (nullptr != this->physicsComponent)
         {
@@ -276,11 +287,23 @@ namespace NOWA
 
         this->currentDamage = 0.0f;
         this->workerRunning.store(false);
-        if (this->workerThread.joinable())
+        if (true == this->workerThread.joinable())
         {
             this->workerThread.join();
         }
-        if (false == this->gameObjectPtr->hasComponent("PhysicsActiveVehicleComponentV2"))
+
+        // Also clear the brush latch here. It is normally cleared by the worker's upload
+        // command, which by this point will never run again - leaving it set would block every
+        // stroke after the next connect().
+        this->brushInProgress.store(false);
+        this->dirtyVertices.store(false);
+
+        // BUGFIX: physicsActiveComponent was dereferenced through a test that only asks whether
+        // the GameObject has a *vehicle* component, so a GameObject with NO PhysicsActive
+        // component at all fell straight through into a null dereference. That is exactly the
+        // case for a ProceduralPlatformComponent, which carries a PhysicsArtifactComponent
+        // instead - connect() already guarded on nullptr here, disconnect() did not.
+        if (nullptr != this->physicsComponent && false == this->gameObjectPtr->hasComponent("PhysicsActiveVehicleComponentV2"))
         {
             this->physicsComponent->destroyCollision();
         }
@@ -293,7 +316,7 @@ namespace NOWA
             // old == editableItem, keep alive for next connect
 
             // Rebuild physics from original BEFORE nulling the pointer
-            if (false == this->gameObjectPtr->hasComponent("PhysicsActiveVehicleComponentV2"))
+            if (nullptr != this->physicsComponent && false == this->gameObjectPtr->hasComponent("PhysicsActiveVehicleComponentV2"))
             {
                 this->physicsComponent->reCreateBodyForItem(this->originalItem);
             }
@@ -308,7 +331,14 @@ namespace NOWA
             this->tangents = this->originalTangents;
             GraphicsModule::RenderCommand cmd = [this]()
             {
-                this->uploadVertexData();
+                try
+                {
+                    this->uploadVertexData();
+                }
+                catch (const Ogre::Exception& e)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] disconnect reset upload failed: " + e.getDescription());
+                }
             };
             NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshModifyComponent::disconnect::reset");
         }
@@ -332,31 +362,70 @@ namespace NOWA
             return;
         }
 
-        this->workerThread = std::thread([this]()
+        // BUGFIX: a std::thread object that is still joinable cannot be assigned to - doing so
+        // calls std::terminate(). It can be joinable here even though workerRunning was false,
+        // because connect() used to end the worker's loop without joining the object. The join
+        // is kept even now that connect() joins as well, because this is the assignment that
+        // would abort the process, and it must not depend on every caller having been careful.
+        if (true == this->workerThread.joinable())
         {
-            while (this->workerRunning.load())
-            {
-                if (this->dirtyVertices.exchange(false))
-                {
-                    // Heavy CPU work
-                    this->recalculateNormals();
-                    this->recalculateTangents();
+            this->workerThread.join();
+        }
 
-                    // GPU upload on render thread
-                    GraphicsModule::RenderCommand renderCommand = [this]()
-                    {
-                        this->uploadVertexData();
-                        this->brushInProgress.store(false);
-                    };
-                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MeshModifyComponent::worker::upload");
-                }
-                else
+        this->workerThread = std::thread([this]()
+            {
+                while (this->workerRunning.load())
                 {
-                    // Nothing to do — sleep briefly to avoid busy-wait
-                    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                    if (this->dirtyVertices.exchange(false))
+                    {
+                        // Heavy CPU work
+                        this->recalculateNormals();
+                        this->recalculateTangents();
+
+                        // GPU upload on render thread
+                        GraphicsModule::RenderCommand renderCommand = [this]()
+                        {
+                            // BUGFIX: uploadVertexData used to be called bare, with
+                            // brushInProgress.store(false) after it. brushInProgress is a one-shot
+                            // latch that applyBrush sets on entry and returns early on:
+                            //
+                            //     if (this->brushInProgress.exchange(true)) { return; }
+                            //
+                            // so if uploadVertexData threw, the latch was never cleared and EVERY
+                            // later stroke returned at that line. applyBrush then never reached its
+                            // dirtyVertices.store(true), and the worker sat spinning with
+                            // dirtyVertices permanently false - which looks exactly like "the dirty
+                            // flag is never set" in a debugger, and like "mesh editing does nothing
+                            // at all" in the editor. One throw wedges the component for good.
+                            //
+                            // Ogre throws from this path readily (a zero-length buffer alone is
+                            // enough: "StagingBuffer cannot map 0 bytes"), and the render command
+                            // queue swallows it into a log line, so nothing else would have made
+                            // this visible. The latch is now released on every path.
+                            try
+                            {
+                                this->uploadVertexData();
+                            }
+                            catch (const Ogre::Exception& e)
+                            {
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] uploadVertexData failed, brush released anyway: " + e.getDescription());
+                            }
+                            catch (...)
+                            {
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] uploadVertexData failed with an unknown exception, brush released anyway.");
+                            }
+
+                            this->brushInProgress.store(false);
+                        };
+                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MeshModifyComponent::worker::upload");
+                    }
+                    else
+                    {
+                        // Nothing to do — sleep briefly to avoid busy-wait
+                        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                    }
                 }
-            }
-        });
+            });
     }
 
     bool MeshModifyComponent::isEditFocusOwner(void) const

@@ -6,16 +6,12 @@
 #include "OgrePlugin.h"
 #include "fparser.hh"
 
-// TODO: Port for Item
-
-#if 0
-
 namespace NOWA
 {
 	/**
-	  * @brief		Morph animation component for controlling pose/blend shape animations via mathematical functions.
-	  *				Works with Item and supports creating, querying, and animating poses.
-	  *				Can optionally be associated with a specific bone.
+	  * @brief		Morph animation component for controlling pose (blend shape) weights via mathematical functions.
+	  *				Works with Ogre::Item and Ogre::SubItem pose weights.
+	  *				In Ogre-Next V2 poses belong to a sub mesh, hence each entry addresses a sub item index plus a pose index.
 	  */
 	class EXPORTED MorphAnimationComponent : public GameObjectComponent, public Ogre::Plugin
 	{
@@ -125,110 +121,123 @@ namespace NOWA
 		bool getActivated(void) const;
 
 		/**
-		 * @brief Sets the bone name to associate with (optional)
-		 * @param boneName The bone name, empty for no bone association
-		 */
-		void setBoneName(const Ogre::String& boneName);
-
-		/**
-		 * @brief Gets the associated bone name
-		 * @return The bone name
-		 */
-		Ogre::String getBoneName(void) const;
-
-		/**
-		 * @brief Sets the number of pose animations to control
-		 * @param poseAnimationCount The number of pose animations
+		 * @brief Sets the number of pose animation entries to control
+		 * @param poseAnimationCount The number of pose animation entries
 		 */
 		void setPoseAnimationCount(unsigned int poseAnimationCount);
 
 		/**
-		 * @brief Gets the number of pose animations
-		 * @return The pose animation count
+		 * @brief Gets the number of pose animation entries
+		 * @return The pose animation entry count
 		 */
 		unsigned int getPoseAnimationCount(void) const;
 
 		/**
-		 * @brief Sets the pose name at the given index
-		 * @param index The pose index
-		 * @param poseName The pose name to set
+		 * @brief Sets the sub item index the entry at the given position addresses
+		 * @param index The entry index
+		 * @param subItemIndex The sub item index of the item
 		 */
-		void setPoseName(unsigned int index, const Ogre::String& poseName);
+		void setSubItemIndex(unsigned int index, unsigned int subItemIndex);
 
 		/**
-		 * @brief Gets the pose name at the given index
-		 * @param index The pose index
-		 * @return The pose name
+		 * @brief Gets the sub item index the entry at the given position addresses
+		 * @param index The entry index
+		 * @return The sub item index
 		 */
-		Ogre::String getPoseName(unsigned int index) const;
+		unsigned int getSubItemIndex(unsigned int index) const;
 
 		/**
-		 * @brief Sets the weight function for the pose at the given index
-		 * @param index The pose index
-		 * @param weightFunction The mathematical function string (e.g., "(sin(t) + 1) / 2")
+		 * @brief Sets the pose index the entry at the given position addresses
+		 * @param index The entry index
+		 * @param poseIndex The pose index inside the addressed sub item
+		 */
+		void setPoseIndex(unsigned int index, unsigned int poseIndex);
+
+		/**
+		 * @brief Gets the pose index the entry at the given position addresses
+		 * @param index The entry index
+		 * @return The pose index inside the addressed sub item
+		 */
+		unsigned int getPoseIndex(unsigned int index) const;
+
+		/**
+		 * @brief Sets the weight function for the entry at the given index
+		 * @param index The entry index
+		 * @param weightFunction The mathematical function string, 't' is the time variable (e.g., "(sin(t) + 1) / 2")
 		 */
 		void setWeightFunction(unsigned int index, const Ogre::String& weightFunction);
 
 		/**
-		 * @brief Gets the weight function for the pose at the given index
-		 * @param index The pose index
+		 * @brief Gets the weight function for the entry at the given index
+		 * @param index The entry index
 		 * @return The weight function string
 		 */
 		Ogre::String getWeightFunction(unsigned int index) const;
 
 		/**
-		 * @brief Sets the speed multiplier for the pose at the given index
-		 * @param index The pose index
+		 * @brief Sets the speed multiplier for the entry at the given index
+		 * @param index The entry index
 		 * @param speed The speed multiplier
 		 */
 		void setSpeed(unsigned int index, Ogre::Real speed);
 
 		/**
-		 * @brief Gets the speed multiplier for the pose at the given index
-		 * @param index The pose index
+		 * @brief Gets the speed multiplier for the entry at the given index
+		 * @param index The entry index
 		 * @return The speed multiplier
 		 */
 		Ogre::Real getSpeed(unsigned int index) const;
 
 		/**
-		 * @brief Sets the time offset for the pose at the given index
-		 * @param index The pose index
+		 * @brief Sets the time offset for the entry at the given index
+		 * @param index The entry index
 		 * @param timeOffset The time offset value
 		 */
 		void setTimeOffset(unsigned int index, Ogre::Real timeOffset);
 
 		/**
-		 * @brief Gets the time offset for the pose at the given index
-		 * @param index The pose index
+		 * @brief Gets the time offset for the entry at the given index
+		 * @param index The entry index
 		 * @return The time offset
 		 */
 		Ogre::Real getTimeOffset(unsigned int index) const;
 
 		/**
-		 * @brief Gets all available pose names from the mesh
-		 * @return Vector of pose name strings
+		 * @brief Gets the number of sub items of the item
+		 * @return The sub item count
 		 */
-		std::vector<Ogre::String> getAvailablePoseNames(void) const;
+		unsigned int getSubItemCount(void) const;
 
 		/**
-		 * @brief Gets all available bone names from the skeleton
-		 * @return Vector of bone name strings
+		 * @brief Gets the number of poses of the given sub item
+		 * @param subItemIndex The sub item index of the item
+		 * @return The pose count
 		 */
-		std::vector<Ogre::String> getAvailableBoneNames(void) const;
+		unsigned int getPoseCount(unsigned int subItemIndex) const;
 
 		/**
-		 * @brief Manually sets the weight for a pose by name (via animation state)
-		 * @param poseName The pose name
-		 * @param weight The weight value (typically 0.0 to 1.0)
+		 * @brief Manually sets the weight of a pose, addressed by sub item index and pose index
+		 * @param subItemIndex The sub item index of the item
+		 * @param poseIndex The pose index inside that sub item
+		 * @param weight The weight value (clamped to 0.0 - 1.0)
 		 */
-		void setPoseWeight(const Ogre::String& poseName, Ogre::Real weight);
+		void setPoseWeight(unsigned int subItemIndex, unsigned int poseIndex, Ogre::Real weight);
 
 		/**
-		 * @brief Gets the current weight for a pose by name
-		 * @param poseName The pose name
-		 * @return The current weight
+		 * @brief Manually sets the weight of a pose, addressed by sub item index and pose name
+		 * @param subItemIndex The sub item index of the item
+		 * @param poseName The pose name inside that sub item
+		 * @param weight The weight value (clamped to 0.0 - 1.0)
 		 */
-		Ogre::Real getPoseWeight(const Ogre::String& poseName) const;
+		void setPoseWeightByName(unsigned int subItemIndex, const Ogre::String& poseName, Ogre::Real weight);
+
+		/**
+		 * @brief Gets the last weight this component wrote for the given pose
+		 * @param subItemIndex The sub item index of the item
+		 * @param poseIndex The pose index inside that sub item
+		 * @return The last written weight, 0.0 if this component never wrote that pose
+		 */
+		Ogre::Real getPoseWeight(unsigned int subItemIndex, unsigned int poseIndex) const;
 
 		/**
 		 * @brief Resets the time accumulator to zero
@@ -240,52 +249,6 @@ namespace NOWA
 		 * @return The accumulated time
 		 */
 		Ogre::Real getAccumulatedTime(void) const;
-
-		/**
-		 * @brief Creates a new pose on the mesh
-		 * @param poseName The name for the new pose
-		 * @param target The target: 0 = shared geometry, 1+ = submesh index
-		 * @return True if pose was created successfully
-		 */
-		bool createPose(const Ogre::String& poseName, unsigned short target = 0);
-
-		/**
-		 * @brief Adds a vertex offset to an existing pose
-		 * @param poseName The pose name
-		 * @param vertexIndex The vertex index to modify
-		 * @param offset The position offset vector
-		 * @param normalOffset Optional normal offset vector (can be Vector3::ZERO)
-		 * @return True if vertex was added successfully
-		 */
-		bool addPoseVertex(const Ogre::String& poseName, size_t vertexIndex,
-			const Ogre::Vector3& offset, const Ogre::Vector3& normalOffset = Ogre::Vector3::ZERO);
-
-		/**
-		 * @brief Removes a pose from the mesh
-		 * @param poseName The pose name to remove
-		 * @return True if pose was removed successfully
-		 */
-		bool removePose(const Ogre::String& poseName);
-
-		/**
-		 * @brief Gets the number of poses on the mesh
-		 * @return The pose count
-		 */
-		size_t getMeshPoseCount(void) const;
-
-		/**
-		 * @brief Gets a pose by index
-		 * @param index The pose index
-		 * @return The pose pointer or nullptr
-		 */
-		Ogre::v1::Pose* getPoseByIndex(size_t index) const;
-
-		/**
-		 * @brief Gets a pose by name
-		 * @param poseName The pose name
-		 * @return The pose pointer or nullptr
-		 */
-		Ogre::v1::Pose* getPoseByName(const Ogre::String& poseName) const;
 
 	public:
 		/**
@@ -314,24 +277,23 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: Controls morph/pose animations on v1 meshes with blend shapes. "
+			return "Usage: Controls morph (blend shape) pose weights on an Ogre::Item. "
 				"Use mathematical functions to animate pose weights over time. "
-				"Can also create new poses at runtime. "
-				"Requirements: v1::Entity with mesh. "
+				"Requirements: A game object with an Ogre::Item whose mesh carries at least one pose. "
 
 				"A pose defines vertex offsets from the original mesh position. For example: "
-				"A face mesh could have poses like \"Smile\" (moves mouth vertices up), \"EyesClosed\" (moves eyelid vertices down). "
-				"A chest could have a pose like \"Open\" (moves lid vertices to open position). "
+				"A face mesh could have poses like a smile (moves mouth vertices up) or closed eyes (moves eyelid vertices down). "
+				"A chest could have a pose that moves the lid vertices to the open position. "
 
-				"The Problem: Poses must be baked into the mesh file during export from Blender/Maya/3DS Max. They're called: "
+				"Poses must be baked into the mesh file during export from Blender/Maya/3DS Max. They are called: "
 				"Shape Keys in Blender, Blend Shapes in Maya, Morph Targets in 3DS Max. "
 
-				"How to Use This Component: "
-				"Option A: Mesh already has poses (from Blender export). "
-				"In Blender: Create Shape Keys on your mesh. "
-				"Export to .mesh with OgreExporter (it exports shape keys as poses). "
-				"Add MorphAnimationComponent -> poses appear in dropdown. "
-				"Set math function to animate them.";
+				"In Ogre-Next V2 a pose belongs to a sub mesh, not to the whole mesh. Therefore each entry addresses "
+				"a sub item index plus a pose index inside that sub item. Use the log output of this component to see "
+				"how many poses each sub item actually has after the mesh has been converted to v2. "
+
+				"The weight function uses 't' as the time variable, where t = accumulated time * speed + time offset. "
+				"Example: '(sin(t) + 1) / 2' oscillates the weight between 0 and 1.";
 		}
 
 		/**
@@ -344,17 +306,17 @@ namespace NOWA
 		{
 			return "Activated";
 		}
-		static const Ogre::String AttrBoneName(void)
-		{
-			return "Bone Name";
-		}
 		static const Ogre::String AttrPoseAnimationCount(void)
 		{
 			return "Pose Animation Count";
 		}
-		static const Ogre::String AttrPoseName(void)
+		static const Ogre::String AttrSubItemIndex(void)
 		{
-			return "Pose Name ";
+			return "Sub Item Index ";
+		}
+		static const Ogre::String AttrPoseIndex(void)
+		{
+			return "Pose Index ";
 		}
 		static const Ogre::String AttrWeightFunction(void)
 		{
@@ -371,23 +333,18 @@ namespace NOWA
 
 	private:
 		/**
-		 * @brief Parses all mathematical functions for pose weights
+		 * @brief Parses all mathematical functions for the pose weights
 		 * @return True if all functions parsed successfully
 		 */
 		bool parseMathematicalFunctions(void);
 
 		/**
-		 * @brief Initializes the pose data from the mesh
+		 * @brief Collects the item and the pose count of each of its sub items
 		 */
 		void initializePoseData(void);
 
 		/**
-		 * @brief Initializes the bone data from the skeleton
-		 */
-		void initializeBoneData(void);
-
-		/**
-		 * @brief Creates the variant attributes for pose animations
+		 * @brief Creates the variant attributes for the pose animation entries
 		 * @param prevIndex The previous count (for dynamic attribute creation)
 		 */
 		void createPoseAnimationAttributes(unsigned int prevIndex);
@@ -399,23 +356,31 @@ namespace NOWA
 		void removePoseAnimationAttributes(unsigned int count);
 
 		/**
-		 * @brief Sets up the manual pose animation for blending
+		 * @brief Evaluates all weight functions for the current accumulator and writes the results to the sub items.
+		 *		  Must only be called on the render thread.
 		 */
-		void setupPoseAnimation(void);
+		void applyPoseWeights(void);
 
 		/**
-		 * @brief Updates pose weights in the vertex pose key frame
+		 * @brief Sets all pose weights this component ever wrote back to zero.
+		 *		  Must only be called on the render thread.
 		 */
-		void updatePoseKeyFrame(void);
+		void clearPoseWeights(void);
+
+		/**
+		 * @brief Builds the tracked closure id for this component instance
+		 * @return The closure id
+		 */
+		Ogre::String getClosureId(void) const;
 
 	private:
 		Ogre::String name;
 
 		Variant* activated;
-		Variant* boneName;
 		Variant* poseAnimationCount;
 
-		std::vector<Variant*> poseNames;
+		std::vector<Variant*> subItemIndices;
+		std::vector<Variant*> poseIndices;
 		std::vector<Variant*> weightFunctions;
 		std::vector<Variant*> speeds;
 		std::vector<Variant*> timeOffsets;
@@ -423,23 +388,16 @@ namespace NOWA
 		std::vector<FunctionParser> functionParsers;
 		Ogre::Real accumulator;
 
-		Ogre::v1::Entity* entity;
-		Ogre::v1::Mesh* mesh;
-		Ogre::v1::Skeleton* skeleton;
+		Ogre::Item* item;
 
-		std::vector<Ogre::String> availablePoseNames;
-		std::vector<Ogre::String> availableBoneNames;
+		// Pose count per sub item index, filled in initializePoseData
+		std::vector<unsigned int> poseCountsPerSubItem;
 
-		// For manual pose animation
-		Ogre::v1::AnimationState* poseAnimationState;
-		Ogre::v1::VertexPoseKeyFrame* poseKeyFrame;
-
-		// Store current pose weights
-		std::map<Ogre::String, Ogre::Real> currentPoseWeights;
+		// Last weight written per (sub item index, pose index), so getPoseWeight
+		// does not have to read back from the render thread
+		std::map<std::pair<unsigned int, unsigned int>, Ogre::Real> currentPoseWeights;
 	};
 
 }; // namespace end
-
-#endif
 
 #endif

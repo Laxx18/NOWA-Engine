@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Skin">
+
+    <!--
+        inventory_panel_256x256.png layout (9-patch):
+
+        TL corner : 0,   0  → 32, 32
+        Top edge  : 32,  0  → 192, 32
+        TR corner : 224, 0  → 32, 32
+        Left edge : 0,   32 → 32, 192
+        Center    : 32,  32 → 192, 192
+        Right edge: 224, 32 → 32, 192
+        BL corner : 0,   224→ 32, 32
+        Bot edge  : 32,  224→ 192, 32
+        BR corner : 224, 224→ 32, 32
+    -->
+
+    <!-- ── Simple panel — no caption bar, pure decorated container ───────── -->
+    <Skin name="WoodPanel" size="256 256" texture="inventory_panel_256x256.png">
+
+        <!-- 9-patch background sub-skins -->
+        <!-- Top-left corner -->
+        <BasisSkin type="SubSkin" offset="0 0 32 32" align="Left Top">
+            <State name="normal" offset="0 0 32 32"/>
+            <State name="disabled" offset="0 0 32 32"/>
+        </BasisSkin>
+        <!-- Top edge (stretches horizontally) -->
+        <BasisSkin type="SubSkin" offset="32 0 192 32" align="HStretch Top">
+            <State name="normal" offset="32 0 192 32"/>
+            <State name="disabled" offset="32 0 192 32"/>
+        </BasisSkin>
+        <!-- Top-right corner -->
+        <BasisSkin type="SubSkin" offset="224 0 32 32" align="Right Top">
+            <State name="normal" offset="224 0 32 32"/>
+            <State name="disabled" offset="224 0 32 32"/>
+        </BasisSkin>
+        <!-- Left edge (stretches vertically) -->
+        <BasisSkin type="SubSkin" offset="0 32 32 192" align="Left VStretch">
+            <State name="normal" offset="0 32 32 192"/>
+            <State name="disabled" offset="0 32 32 192"/>
+        </BasisSkin>
+        <!-- Center fill (stretches both ways) -->
+        <BasisSkin type="SubSkin" offset="32 32 192 192" align="Stretch">
+            <State name="normal" offset="32 32 192 192"/>
+            <State name="disabled" offset="32 32 192 192"/>
+        </BasisSkin>
+        <!-- Right edge -->
+        <BasisSkin type="SubSkin" offset="224 32 32 192" align="Right VStretch">
+            <State name="normal" offset="224 32 32 192"/>
+            <State name="disabled" offset="224 32 32 192"/>
+        </BasisSkin>
+        <!-- Bottom-left corner -->
+        <BasisSkin type="SubSkin" offset="0 224 32 32" align="Left Bottom">
+            <State name="normal" offset="0 224 32 32"/>
+            <State name="disabled" offset="0 224 32 32"/>
+        </BasisSkin>
+        <!-- Bottom edge -->
+        <BasisSkin type="SubSkin" offset="32 224 192 32" align="HStretch Bottom">
+            <State name="normal" offset="32 224 192 32"/>
+            <State name="disabled" offset="32 224 192 32"/>
+        </BasisSkin>
+        <!-- Bottom-right corner -->
+        <BasisSkin type="SubSkin" offset="224 224 32 32" align="Right Bottom">
+            <State name="normal" offset="224 224 32 32"/>
+            <State name="disabled" offset="224 224 32 32"/>
+        </BasisSkin>
+
+        <!-- Client area — content placed inside the inner 32px margin -->
+        <BasisSkin type="SimpleText" offset="32 32 192 192" align="Stretch">
+            <State name="normal"/>
+        </BasisSkin>
+
+        <Widget type="Widget" skin="Null" offset="32 32 192 192" align="Stretch" name="Client"/>
+    </Skin>
+
+
+    <!-- ── Window with caption bar — wood style ──────────────────────────── -->
+    <!-- Reuses WoodPanel as background; adds a caption strip at top -->
+    <Skin name="WoodWindow" size="256 256" texture="inventory_panel_256x256.png">
+
+        <!-- Same 9-patch corners/edges as WoodPanel -->
+        <BasisSkin type="SubSkin" offset="0 0 32 32" align="Left Top">
+            <State name="normal" offset="0 0 32 32"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="32 0 192 32" align="HStretch Top">
+            <State name="normal" offset="32 0 192 32"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="224 0 32 32" align="Right Top">
+            <State name="normal" offset="224 0 32 32"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="0 32 32 192" align="Left VStretch">
+            <State name="normal" offset="0 32 32 192"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="32 32 192 192" align="Stretch">
+            <State name="normal" offset="32 32 192 192"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="224 32 32 192" align="Right VStretch">
+            <State name="normal" offset="224 32 32 192"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="0 224 32 32" align="Left Bottom">
+            <State name="normal" offset="0 224 32 32"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="32 224 192 32" align="HStretch Bottom">
+            <State name="normal" offset="32 224 192 32"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="224 224 32 32" align="Right Bottom">
+            <State name="normal" offset="224 224 32 32"/>
+        </BasisSkin>
+
+        <!-- Caption text — sits in the top border strip (first 32px) -->
+        <!-- 42px inset left/right to clear the corner ornaments -->
+        <BasisSkin type="SimpleText" offset="42 8 172 20" align="HStretch Top">
+            <Property key="FontName" value="DejaVuSans12"/>
+            <Property key="TextAlign" value="HCenter VCenter"/>
+            <Property key="TextColour" value="1 0.85 0.5 1"/>
+            <State name="normal" offset="42 8 172 20"/>
+        </BasisSkin>
+
+        <!-- Client area below the caption strip -->
+        <Widget type="Widget" skin="Null" offset="36 36 184 184" align="Stretch" name="Client"/>
+
+        <!-- Caption widget (MyGUI Window requires this child) -->
+        <Widget type="TextBox" skin="Null" offset="42 8 172 20" align="HStretch Top" name="Caption"/>
+    </Skin>
+
+</MyGUI>

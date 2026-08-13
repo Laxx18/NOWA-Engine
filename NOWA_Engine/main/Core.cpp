@@ -1818,6 +1818,8 @@ namespace NOWA
         MyGUI::ResourceManager::getInstance().load("MyGUI_NOWA_Images.xml");
 
         MyGUI::ResourceManager::getInstancePtr()->load("InventoryPanel.xml");
+        MyGUI::ResourceManager::getInstancePtr()->load("WoodWindowSkin.xml");
+        MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_WoodButton.xml");
     }
 
     void Core::setSceneManagerForMyGuiPlatform(Ogre::SceneManager* sceneManager)
@@ -1896,20 +1898,75 @@ namespace NOWA
         return this->pluginFactory;
     }
 
-    void Core::setMenuSettingsForCamera(Ogre::Camera* camera)
+    void Core::setSettings(Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::Camera* camera, const ProjectParameter& projectParameter)
     {
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
+        if (nullptr != light)
         {
-            // camera->setNearClipDistance(0.01f);
-            // to be removed
-            // camera->setFarClipDistance(this->optionViewRange);
-            // camera->setAutoAspectRatio(true);
-            camera->setLodBias(this->optionLODBias);
-            // Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(0);
-            // Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering((Ogre::TextureFilterOptions)this->optionTextureFiltering);
-            // Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(this->optionAnisotropyLevel);
-        };
-        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::setMenuSettingsForCamera");
+            /*
+            Tip: Set the upperHemisphere to a cold colour (e.g. blueish sky) and lowerHemisphere
+                to a warm colour (e.g. sun-yellowish, orange) and the hemisphereDir in the opposite
+                direction of your main directional light for a convincing look.
+            */
+            sceneManager->setAmbientLight(Ogre::ColourValue(projectParameter.ambientLightUpperHemisphere.r, projectParameter.ambientLightUpperHemisphere.g, projectParameter.ambientLightUpperHemisphere.b),
+                Ogre::ColourValue(projectParameter.ambientLightLowerHemisphere.r, projectParameter.ambientLightLowerHemisphere.g, projectParameter.ambientLightLowerHemisphere.b) /* * 0.065f * 0.75f*/,
+                -light->getDirection() /* + Ogre::Vector3::UNIT_Y * 0.2f*/, projectParameter.envmapScale);
+        }
+        else
+        {
+            sceneManager->setAmbientLight(Ogre::ColourValue(projectParameter.ambientLightUpperHemisphere.r, projectParameter.ambientLightUpperHemisphere.g, projectParameter.ambientLightUpperHemisphere.b),
+                Ogre::ColourValue(projectParameter.ambientLightLowerHemisphere.r, projectParameter.ambientLightLowerHemisphere.g, projectParameter.ambientLightLowerHemisphere.b) /* * 0.065f * 0.75f*/,
+                projectParameter.hemisphereDir.normalisedCopy(), projectParameter.envmapScale);
+        }
+
+        // Set sane defaults for proper shadow mapping
+        sceneManager->setShadowFarDistance(projectParameter.shadowFarDistance);
+        sceneManager->setShadowDirectionalLightExtrusionDistance(projectParameter.shadowDirectionalLightExtrusionDistance);
+        sceneManager->setShadowDirLightTextureOffset(projectParameter.shadowDirLightTextureOffset);
+
+        // sceneManager->setShadowTextureFadeStart(0.8f);
+        // sceneManager->setShadowTextureFadeEnd(0.9f);
+
+        // Just a test: https://forums.ogre3d.org/viewtopic.php?t=96470
+        Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+        Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+
+        if (0 == projectParameter.forwardMode)
+        {
+            hlmsPbs->setUseLightBuffers(false);
+            sceneManager->setForward3D(false, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, projectParameter.minLightDistance,
+                projectParameter.maxLightDistance);
+            sceneManager->setForwardClustered(false, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, 10, 10,
+                projectParameter.minLightDistance, projectParameter.maxLightDistance);
+        }
+        else if (1 == projectParameter.forwardMode)
+        {
+            hlmsPbs->setUseLightBuffers(true);
+            sceneManager->setForward3D(true, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, projectParameter.minLightDistance,
+                projectParameter.maxLightDistance);
+        }
+        else if (2 == projectParameter.forwardMode)
+        {
+            hlmsPbs->setUseLightBuffers(true);
+            sceneManager->setForwardClustered(true, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, 10, 10,
+                projectParameter.minLightDistance, projectParameter.maxLightDistance);
+        }
+
+        NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(projectParameter.renderDistance);
+
+        OgreNewt::World* ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
+        if (nullptr != ogreNewt)
+        {
+            ogreNewt->setSolverModel(projectParameter.solverModel);
+            ogreNewt->setUpdateFPS(projectParameter.physicsUpdateRate, 2);
+            ogreNewt->setThreadCount(projectParameter.physicsThreadCount);
+            ogreNewt->setDefaultLinearDamping(projectParameter.linearDamping);
+            ogreNewt->setDefaultAngularDamping(projectParameter.angularDamping);
+            NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(projectParameter.gravity);
+        }
+
+        sceneManager->setShadowColour(Ogre::ColourValue(projectParameter.shadowColor.r, projectParameter.shadowColor.g, projectParameter.shadowColor.b, 1.0f));
+        NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(projectParameter.shadowQualityIndex), true);
+        NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(projectParameter.ambientLightModeIndex));
     }
 
     void Core::setPolygonMode(unsigned short mode)

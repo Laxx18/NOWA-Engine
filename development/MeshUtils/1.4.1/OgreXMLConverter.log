@@ -1,10 +1,84 @@
-17:41:08: Creating resource group General
-17:41:08: Creating resource group Internal
-17:41:08: Creating resource group Autodetect
-17:41:08: Registering ResourceManager for type Mesh
-17:41:08: Registering ResourceManager for type Material
-17:41:08: Registering ResourceManager for type Skeleton
-17:41:08: OGRE EXCEPTION(7:InternalErrorException): Cannot find serializer implementation for current version [MeshSerializer_v2.1 R2] in MeshSerializer::importMesh at ..\..\..\..\OgreMain\src\OgreMeshSerializer.cpp (line 118)
-17:41:08: Unregistering ResourceManager for type Skeleton
-17:41:08: Unregistering ResourceManager for type Material
-17:41:08: Unregistering ResourceManager for type Mesh
+17:48:03: Creating resource group General
+17:48:03: Creating resource group Internal
+17:48:03: Creating resource group Autodetect
+17:48:03: Registering ResourceManager for type Mesh
+17:48:03: Registering ResourceManager for type Material
+17:48:03: Registering ResourceManager for type Skeleton
+17:48:03: XMLSkeletonSerializer: reading XML data from ToonCharacter.skeleton.xml...
+17:48:03: XMLSkeletonSerializer: Reading Bones name...
+17:48:03: XMLSkeletonSerializer: Reading Hierarchy data...
+17:48:03: XMLSkeletonSerializer: Reading Bones data...
+17:48:03: XMLSkeletonSerializer: Reading Animations data...
+17:48:03: Animation: nom: Attack_1 et longueur: 1.03333
+17:48:03: Animation: nom: Attack_2 et longueur: 1.36667
+17:48:03: Animation: nom: Attack_3 et longueur: 1.7
+17:48:03: Animation: nom: Damage_Heavy et longueur: 1.36667
+17:48:03: Animation: nom: Damage_Light et longueur: 1.36667
+17:48:03: Animation: nom: Die et longueur: 2.03333
+17:48:03: Animation: nom: Fall et longueur: 1.36667
+17:48:03: Animation: nom: Get_Up et longueur: 2.03333
+17:48:03: Animation: nom: Idle et longueur: 4.03333
+17:48:03: Animation: nom: Idle_2 et longueur: 3.36667
+17:48:03: Animation: nom: Idle_3 et longueur: 2.7
+17:48:03: Animation: nom: Jump_Up et longueur: 1.36667
+17:48:03: Animation: nom: Land et longueur: 1.03333
+17:48:03: Animation: nom: Roar et longueur: 2.36667
+17:48:04: Animation: nom: Run et longueur: 0.7
+17:48:04: Animation: nom: Run_Turn_Left et longueur: 0.7
+17:48:04: Animation: nom: Run_Turn_Right et longueur: 0.7
+17:48:04: Animation: nom: Turn_Left et longueur: 1.36667
+17:48:04: Animation: nom: Turn_Right et longueur: 1.36667
+17:48:04: Animation: nom: Walk et longueur: 0.866667
+17:48:04: Animation: nom: Walk_Turn_Left et longueur: 0.866667
+17:48:04: Animation: nom: Walk_Turn_Right et longueur: 0.866667
+17:48:04: XMLSkeletonSerializer: Finished. Running SkeletonSerializer...
+17:48:04: Exporting bones..
+17:48:04: Bones exported.
+17:48:04: Exporting animations, count=22
+17:48:04: Exporting animation: Attack_1
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Attack_2
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Attack_3
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Damage_Heavy
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Damage_Light
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Die
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Fall
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Get_Up
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Idle
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Idle_2
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Idle_3
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Jump_Up
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Land
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Roar
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Run
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Run_Turn_Left
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Run_Turn_Right
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Turn_Left
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Turn_Right
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Walk
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Walk_Turn_Left
+17:48:04: Animation exported.
+17:48:04: Exporting animation: Walk_Turn_Right
+17:48:04: Animation exported.
+17:48:04: Unregistering ResourceManager for type Skeleton
+17:48:04: Unregistering ResourceManager for type Material
+17:48:04: Unregistering ResourceManager for type Mesh

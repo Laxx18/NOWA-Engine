@@ -164,6 +164,15 @@ namespace NOWA
     void ItemData::setResourceName(const Ogre::String& resourceName)
     {
         this->resourceName = resourceName;
+
+        if (true == resourceName.empty())
+        {
+            // User picked the empty "" list entry (no item) - clear any previously shown image/info
+            this->resourceInfo = nullptr;
+            this->resourceImage = nullptr;
+            return;
+        }
+
         MyGUI::ResourceManager& manager = MyGUI::ResourceManager::getInstance();
         MyGUI::IResource* resource = manager.getByName(resourceName, false);
         if (nullptr != resource)
@@ -178,6 +187,13 @@ namespace NOWA
                     this->resourceImage = imageResource->castType<MyGUI::ResourceImageSet>(false);
                 }
             }
+        }
+        else
+        {
+            // A resourceName was given but no matching resource found (e.g. stale name after
+            // ResourceLocationName changed) - also clear stale data, don't keep showing the old image
+            this->resourceInfo = nullptr;
+            this->resourceImage = nullptr;
         }
     }
 
@@ -514,7 +530,7 @@ namespace NOWA
         this->resourceLocationName = new Variant(MyGUIItemBoxComponent::AttrResourceLocationName(), "InventoryItemsTemplateClean.xml", this->attributes);
         this->useToolTip = new Variant(MyGUIItemBoxComponent::AttrUseToolTip(), true, this->attributes);
         this->allowDragDrop = new Variant(MyGUIItemBoxComponent::AttrAllowDragDrop(), true, this->attributes);
-        this->style = new Variant(MyGUIComponent::AttrStyle(), std::vector<Ogre::String>{"ItemBox", "ItemBoxInventory"}, this->attributes);
+        this->style = new Variant(MyGUIComponent::AttrStyle(), std::vector<Ogre::String>{"ItemBox", "ItemBoxInventory", "ItemBoxInventory_MysticLax"}, this->attributes);
         this->style->setListSelectedValue("ItemBox");
         this->itemCount = new Variant(MyGUIItemBoxComponent::AttrItemCount(), 0, this->attributes);
 
@@ -627,17 +643,19 @@ namespace NOWA
             {
                 if (nullptr == this->resourceNames[i])
                 {
-                    this->resourceNames[i] = new Variant(MyGUIItemBoxComponent::AttrResourceName() + Ogre::StringConverter::toString(i), XMLConverter::getAttrib(propertyElement, "data"), this->attributes);
+                    this->resourceNames[i] = new Variant(MyGUIItemBoxComponent::AttrResourceName() + Ogre::StringConverter::toString(i), this->buildResourceItemNameList(), this->attributes);
+                    this->resourceNames[i]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
                 }
                 else
                 {
-                    this->resourceNames[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+                    this->resourceNames[i]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
                 }
                 propertyElement = propertyElement->next_sibling("property");
             }
             else
             {
-                this->resourceNames[i] = new Variant(MyGUIItemBoxComponent::AttrResourceName() + Ogre::StringConverter::toString(i), "", this->attributes);
+                this->resourceNames[i] = new Variant(MyGUIItemBoxComponent::AttrResourceName() + Ogre::StringConverter::toString(i), this->buildResourceItemNameList(), this->attributes);
+                this->resourceNames[i]->setListSelectedValue("");
             }
             if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Quantity" + Ogre::StringConverter::toString(i))
             {
@@ -763,7 +781,7 @@ namespace NOWA
 
         for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
         {
-            clonedCompPtr->setResourceName(i, this->resourceNames[i]->getString());
+            clonedCompPtr->setResourceName(i, this->resourceNames[i]->getListSelectedValue());
             clonedCompPtr->setQuantity(i, this->quantities[i]->getUInt());
             clonedCompPtr->setSellValue(i, this->sellValues[i]->getReal());
             clonedCompPtr->setBuyValue(i, this->buyValues[i]->getReal());
@@ -816,9 +834,9 @@ namespace NOWA
             // during simulation without needing widget operations
             for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
             {
-                if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getString().empty())
+                if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getListSelectedValue().empty())
                 {
-                    this->resourceNameToIndex[this->resourceNames[i]->getString()] = i;
+                    this->resourceNameToIndex[this->resourceNames[i]->getListSelectedValue()] = i;
                 }
             }
 
@@ -861,7 +879,7 @@ namespace NOWA
                 if (this->quantities[i]->getUInt() > 0)
                 {
                     // setResourceName also populates resourceNameToIndex
-                    this->setResourceName(i, this->resourceNames[i]->getString());
+                    this->setResourceName(i, this->resourceNames[i]->getListSelectedValue());
                 }
             }
 
@@ -1057,7 +1075,7 @@ namespace NOWA
             {
                 if (MyGUIItemBoxComponent::AttrResourceName() + Ogre::StringConverter::toString(i) == attribute->getName())
                 {
-                    this->setResourceName(i, attribute->getString());
+                    this->setResourceName(i, attribute->getListSelectedValue());
                 }
                 else if (MyGUIItemBoxComponent::AttrQuantity() + Ogre::StringConverter::toString(i) == attribute->getName())
                 {
@@ -1123,7 +1141,7 @@ namespace NOWA
             propertyXML = doc.allocate_node(node_element, "property");
             propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "ResourceName" + Ogre::StringConverter::toString(i))));
-            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->resourceNames[i]->getString())));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->resourceNames[i]->getListSelectedValue())));
             propertiesXML->append_node(propertyXML);
 
             propertyXML = doc.allocate_node(node_element, "property");
@@ -1498,7 +1516,7 @@ namespace NOWA
         Ogre::String resourceName;
         if (_info.index < static_cast<size_t>(this->resourceNames.size()) && nullptr != this->resourceNames[_info.index])
         {
-            resourceName = this->resourceNames[_info.index]->getString();
+            resourceName = this->resourceNames[_info.index]->getListSelectedValue();
         }
 
         unsigned int slotIndex = static_cast<unsigned int>(_info.index);
@@ -1971,9 +1989,9 @@ namespace NOWA
                 ItemData** itemData = sharedWindow->getItemBox()->getItemDataAt<ItemData*>(i, false);
                 if (nullptr != itemData && nullptr != *itemData)
                 {
-                    if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getString().empty())
+                    if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getListSelectedValue().empty())
                     {
-                        (*itemData)->setResourceName(this->resourceNames[i]->getString());
+                        (*itemData)->setResourceName(this->resourceNames[i]->getListSelectedValue());
                     }
                     if (nullptr != this->quantities[i])
                     {
@@ -2071,7 +2089,7 @@ namespace NOWA
                 unsigned int qty = 0;
                 if (nullptr != this->resourceNames[i])
                 {
-                    name = this->resourceNames[i]->getString();
+                    name = this->resourceNames[i]->getListSelectedValue();
                 }
                 if (nullptr != this->quantities[i])
                 {
@@ -2153,7 +2171,7 @@ namespace NOWA
         {
             if (nullptr != this->resourceNames[i] && nullptr != this->quantities[i])
             {
-                savedItems.push_back({this->resourceNames[i]->getString(), this->quantities[i]->getUInt()});
+                savedItems.push_back({this->resourceNames[i]->getListSelectedValue(), this->quantities[i]->getUInt()});
             }
         }
 
@@ -2316,9 +2334,9 @@ namespace NOWA
                 ItemData** itemData = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i, false);
                 if (nullptr != itemData && nullptr != *itemData)
                 {
-                    if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getString().empty())
+                    if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getListSelectedValue().empty())
                     {
-                        (*itemData)->setResourceName(this->resourceNames[i]->getString());
+                        (*itemData)->setResourceName(this->resourceNames[i]->getListSelectedValue());
                     }
                     if (nullptr != this->quantities[i])
                     {
@@ -2424,9 +2442,9 @@ namespace NOWA
                 bool alreadyLoaded = false;
                 for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
                 {
-                    if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getString().empty())
+                    if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getListSelectedValue().empty())
                     {
-                        if (MyGUI::ResourceManager::getInstance().isExist(this->resourceNames[i]->getString()))
+                        if (MyGUI::ResourceManager::getInstance().isExist(this->resourceNames[i]->getListSelectedValue()))
                         {
                             alreadyLoaded = true;
                             break;
@@ -2446,6 +2464,10 @@ namespace NOWA
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setResourceLocationName");
 
             // MyGUI::ResourceManager::getInstance().load("ItemBox_skin.xml");
+
+            // Refresh the selectable item names for all currently existing slots from the new xml,
+            // before resetting the item count below.
+            this->refreshResourceNameVariantLists();
 
             // Reset everything
             if (this->itemCount->getUInt() > 0)
@@ -2534,7 +2556,9 @@ namespace NOWA
 
             for (size_t i = oldSize; i < this->resourceNames.size(); i++)
             {
-                this->resourceNames[i] = new Variant(MyGUIItemBoxComponent::AttrResourceName() + Ogre::StringConverter::toString(i), "", this->attributes);
+                this->resourceNames[i] = new Variant(MyGUIItemBoxComponent::AttrResourceName() + Ogre::StringConverter::toString(i), this->buildResourceItemNameList(), this->attributes);
+                this->resourceNames[i]->setListSelectedValue("");
+                this->quantities[i] = new Variant(MyGUIItemBoxComponent::AttrQuantity() + Ogre::StringConverter::toString(i), 0, this->attributes);
                 this->quantities[i] = new Variant(MyGUIItemBoxComponent::AttrQuantity() + Ogre::StringConverter::toString(i), 0, this->attributes);
                 this->sellValues[i] = new Variant(MyGUIItemBoxComponent::AttrSellValue() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
                 this->buyValues[i] = new Variant(MyGUIItemBoxComponent::AttrBuyValue() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
@@ -2564,7 +2588,7 @@ namespace NOWA
             {
                 if (this->resourceNames[i])
                 {
-                    const Ogre::String& name = this->resourceNames[i]->getString();
+                    const Ogre::String& name = this->resourceNames[i]->getListSelectedValue();
                     if (!name.empty())
                     {
                         this->resourceNameToIndex.erase(name);
@@ -2621,7 +2645,7 @@ namespace NOWA
         }
 
         // Keep the logic-thread index map in sync
-        const Ogre::String& oldName = this->resourceNames[index]->getString();
+        const Ogre::String& oldName = this->resourceNames[index]->getListSelectedValue();
         if (!oldName.empty())
         {
             this->resourceNameToIndex.erase(oldName);
@@ -2631,7 +2655,7 @@ namespace NOWA
             this->resourceNameToIndex[resourceName] = index;
         }
 
-        this->resourceNames[index]->setValue(resourceName);
+        this->resourceNames[index]->setListSelectedValue(resourceName);
 
         if (true == this->bIsCloning || nullptr == this->itemBoxWindow)
         {
@@ -2663,7 +2687,7 @@ namespace NOWA
         {
             return "";
         }
-        return this->resourceNames[index]->getString();
+        return this->resourceNames[index]->getListSelectedValue();
     }
 
     void MyGUIItemBoxComponent::setQuantity(unsigned int index, unsigned int quantity)
@@ -2691,9 +2715,9 @@ namespace NOWA
             ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(index, false);
             if (nullptr != item && nullptr != *item)
             {
-                if (quantity > 0 && (*item)->isEmpty() && index < this->resourceNames.size() && nullptr != this->resourceNames[index] && !this->resourceNames[index]->getString().empty())
+                if (quantity > 0 && (*item)->isEmpty() && index < this->resourceNames.size() && nullptr != this->resourceNames[index] && !this->resourceNames[index]->getListSelectedValue().empty())
                 {
-                    (*item)->setResourceName(this->resourceNames[index]->getString());
+                    (*item)->setResourceName(this->resourceNames[index]->getListSelectedValue());
                 }
                 (*item)->setQuantity(quantity);
             }
@@ -2758,6 +2782,85 @@ namespace NOWA
         }
 
         return -1;
+    }
+
+    std::vector<Ogre::String> MyGUIItemBoxComponent::buildResourceItemNameList(void) const
+    {
+        std::vector<Ogre::String> itemNames;
+        // First entry stays empty, so that the user can pick "no item" in the combo box
+        itemNames.push_back("");
+
+        const Ogre::String resourceLocation = this->resourceLocationName->getString();
+
+        try
+        {
+            // Resolve the file the same way Ogre resolves any other resource (searches all resource groups),
+            // instead of going through MyGUI's own DataManager.
+            Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(resourceLocation);
+            Ogre::String xmlContent = stream->getAsString();
+
+            // rapidxml parses in place and needs a writable, null-terminated buffer
+            std::vector<char> buffer(xmlContent.begin(), xmlContent.end());
+            buffer.push_back('\0');
+
+            rapidxml::xml_document<> doc;
+            doc.parse<0>(&buffer[0]);
+
+            rapidxml::xml_node<>* rootNode = doc.first_node("MyGUI");
+            if (nullptr != rootNode)
+            {
+                for (rapidxml::xml_node<>* resourceNode = rootNode->first_node("Resource"); resourceNode; resourceNode = resourceNode->next_sibling("Resource"))
+                {
+                    rapidxml::xml_attribute<>* typeAttr = resourceNode->first_attribute("type");
+                    rapidxml::xml_attribute<>* nameAttr = resourceNode->first_attribute("name");
+                    if (nullptr != typeAttr && nullptr != nameAttr && Ogre::String(typeAttr->value()) == "ResourceItemInfo")
+                    {
+                        Ogre::String itemName = nameAttr->value();
+                        if (false == itemName.empty())
+                        {
+                            itemNames.push_back(itemName);
+                        }
+                    }
+                }
+            }
+        }
+        catch (const Ogre::Exception& exception)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[MyGUIItemBoxComponent] ERROR: Could not parse resource location xml: " + resourceLocation + " for building item name list, for game object: " + this->gameObjectPtr->getName() + " details: " + exception.getFullDescription());
+        }
+
+        return itemNames;
+    }
+
+    void MyGUIItemBoxComponent::refreshResourceNameVariantLists(void)
+    {
+        std::vector<Ogre::String> itemNames = this->buildResourceItemNameList();
+
+        for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
+        {
+            if (nullptr == this->resourceNames[i])
+            {
+                continue;
+            }
+
+            // Remember currently selected value, so it can be restored if it still exists in the new list
+            Ogre::String currentlySelected = this->resourceNames[i]->getListSelectedValue();
+
+            this->resourceNames[i]->setValue(itemNames);
+
+            bool stillExists = false;
+            for (const Ogre::String& name : itemNames)
+            {
+                if (name == currentlySelected)
+                {
+                    stillExists = true;
+                    break;
+                }
+            }
+
+            this->resourceNames[i]->setListSelectedValue(true == stillExists ? currentlySelected : "");
+        }
     }
 
     void MyGUIItemBoxComponent::addQuantity(const Ogre::String& resourceName, unsigned int quantity)
@@ -2866,7 +2969,7 @@ namespace NOWA
                 else
                 {
                     // No quantity, remove item from inventory
-                    this->resourceNames[index]->setValue("");
+                    this->resourceNames[index]->setListSelectedValue("");
                     this->quantities[index]->setValue(static_cast<unsigned int>(0));
                     this->sellValues[index]->setValue(0.0f);
                     this->buyValues[index]->setValue(0.0f);

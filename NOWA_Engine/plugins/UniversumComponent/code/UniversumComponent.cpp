@@ -751,7 +751,7 @@ namespace NOWA
             }
         }
 
-#if 1
+#if 0
         // --- DEBUG: log Eri's full transform state right before the test-pause call ---
         {
             GameObjectPtr debugPlanetGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(2490287205);
