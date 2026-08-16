@@ -47,7 +47,6 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	luaApiTree(nullptr),
 	luaApiSearchEdit(nullptr),
 	meshSearchCombo(nullptr),
-	meshToolWindow(nullptr),
 	simulationWindow(nullptr),
 	aboutWindow(nullptr),
 	sceneDescriptionWindow(nullptr),
@@ -337,11 +336,6 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		menuItem->hideItemChild();
 		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-		menuItem = utilitiesMenuControl->addItem("meshToolMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
-		menuItem->setCaptionWithReplacing("Mesh Tool");
-		menuItem->hideItemChild();
-		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-
 		menuItem = utilitiesMenuControl->addItem("drawNavigationMeshMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
 		menuItem->setCaptionWithReplacing("#{DrawNavigationMesh}");
 		menuItem->hideItemChild();
@@ -477,88 +471,89 @@ void MainMenuBar::enableMenuEntries(bool enable)
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
 	}
 
-	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::enableMenuEntries", _1(enable),
-	{
-		this->fileMenuItem->getItemChild()->getItemAt(SAVE)->setEnabled(enable && !NOWA::Core::getSingletonPtr()->isProjectEncoded()); // save
-		this->fileMenuItem->getItemChild()->getItemAt(SAVE_AS)->setEnabled(enable && !NOWA::Core::getSingletonPtr()->isProjectEncoded()); // save as
-		this->fileMenuItem->getItemChild()->getItemAt(SETTINGS)->setEnabled(enable);
-		this->fileMenuItem->getItemChild()->getItemAt(COPY_SCENE)->setEnabled(enable);
-		this->fileMenuItem->getItemChild()->getItemAt(COPY_SCENE)->setEnabled(enable);
-		this->fileMenuItem->getItemChild()->getItemAt(CREATE_CPLUS_PLUS_PROJECT)->setEnabled(enable);
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, enable]()
+    {
+        this->fileMenuItem->getItemChild()->getItemAt(SAVE)->setEnabled(enable && !NOWA::Core::getSingletonPtr()->isProjectEncoded());    // save
+        this->fileMenuItem->getItemChild()->getItemAt(SAVE_AS)->setEnabled(enable && !NOWA::Core::getSingletonPtr()->isProjectEncoded()); // save as
+        this->fileMenuItem->getItemChild()->getItemAt(SETTINGS)->setEnabled(enable);
+        this->fileMenuItem->getItemChild()->getItemAt(COPY_SCENE)->setEnabled(enable);
+        this->fileMenuItem->getItemChild()->getItemAt(COPY_SCENE)->setEnabled(enable);
+        this->fileMenuItem->getItemChild()->getItemAt(CREATE_CPLUS_PLUS_PROJECT)->setEnabled(enable);
 
+        this->editMenuItem->getItemChild()->getItemAt(SAVE_GROUP)->setEnabled(enable);          // save group
+        this->editMenuItem->getItemChild()->getItemAt(LOAD_GROUP)->setEnabled(enable);          // load group
+        this->editMenuItem->getItemChild()->getItemAt(LOAD_MESH_RESOURCE)->setEnabled(enable);  // load mesh resource
+        this->editMenuItem->getItemChild()->getItemAt(OPEN_PROJECT_FOLDER)->setEnabled(enable); // open project folder
+        this->editMenuItem->getItemChild()->getItemAt(START_GAME)->setEnabled(enable);          // start game
 
-		this->editMenuItem->getItemChild()->getItemAt(SAVE_GROUP)->setEnabled(enable); // save group
-		this->editMenuItem->getItemChild()->getItemAt(LOAD_GROUP)->setEnabled(enable); // load group
-		this->editMenuItem->getItemChild()->getItemAt(LOAD_MESH_RESOURCE)->setEnabled(enable); // load mesh resource
-		this->editMenuItem->getItemChild()->getItemAt(OPEN_PROJECT_FOLDER)->setEnabled(enable); // open project folder
-		this->editMenuItem->getItemChild()->getItemAt(START_GAME)->setEnabled(enable); // start game
+        this->editMenuItem->getItemChild()->getItemAt(UNDO)->setEnabled(enable);           // undo
+        this->editMenuItem->getItemChild()->getItemAt(REDO)->setEnabled(enable);           // redo
+        this->editMenuItem->getItemChild()->getItemAt(SELECTION_UNDO)->setEnabled(enable); // selection undo
+        this->editMenuItem->getItemChild()->getItemAt(SELECTION_REDO)->setEnabled(enable); // selection redo
 
-		this->editMenuItem->getItemChild()->getItemAt(UNDO)->setEnabled(enable); // undo
-		this->editMenuItem->getItemChild()->getItemAt(REDO)->setEnabled(enable); // redo
-		this->editMenuItem->getItemChild()->getItemAt(SELECTION_UNDO)->setEnabled(enable); // selection undo
-		this->editMenuItem->getItemChild()->getItemAt(SELECTION_REDO)->setEnabled(enable); // selection redo
+        this->cameraMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // camera views
+        this->cameraMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // camera views
+        this->cameraMenuItem->getItemChild()->getItemAt(2)->setEnabled(enable); // camera views
+        this->cameraMenuItem->getItemChild()->getItemAt(3)->setEnabled(enable); // camera views
+        this->cameraMenuItem->getItemChild()->getItemAt(4)->setEnabled(enable); // camera views
+        this->cameraMenuItem->getItemChild()->getItemAt(5)->setEnabled(enable); // camera views
+        this->cameraMenuItem->getItemChild()->getItemAt(7)->setEnabled(enable); // camera undo
+        this->cameraMenuItem->getItemChild()->getItemAt(8)->setEnabled(enable); // camera redo
 
-		this->cameraMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // camera views
-		this->cameraMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // camera views
-		this->cameraMenuItem->getItemChild()->getItemAt(2)->setEnabled(enable); // camera views
-		this->cameraMenuItem->getItemChild()->getItemAt(3)->setEnabled(enable); // camera views
-		this->cameraMenuItem->getItemChild()->getItemAt(4)->setEnabled(enable); // camera views
-		this->cameraMenuItem->getItemChild()->getItemAt(5)->setEnabled(enable); // camera views
-		this->cameraMenuItem->getItemChild()->getItemAt(7)->setEnabled(enable); // camera undo
-		this->cameraMenuItem->getItemChild()->getItemAt(8)->setEnabled(enable); // camera redo
+        this->utilitiesMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable);                                                                                                // scene analysis
+        this->utilitiesMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable);                                                                                                // deploy
+        this->utilitiesMenuItem->getItemChild()->getItemAt(2)->setEnabled(enable);                                                                                                // lua analysis
+        this->utilitiesMenuItem->getItemChild()->getItemAt(3)->setEnabled(enable);                                                                                                // lua api
+        this->utilitiesMenuItem->getItemChild()->getItemAt(4)->setEnabled(enable);                                                                                                // open all lua scripts                                                                                              // mesh utils
+        this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setEnabled(enable && nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()); // Draw navigation mesh
+        this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setEnabled(enable);                                                                                                // Draw Collision Lines
+        this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setEnabled(enable);                                                                                                // Optimize scene
+        this->utilitiesMenuItem->getItemChild()->getItemAt(8)->setEnabled(enable);                                                                                                // Toggle MyGUI Components
+        this->utilitiesMenuItem->getItemChild()->getItemAt(9)->setEnabled(enable);                                                                                               // Engine Warnings
 
-		this->utilitiesMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // scene analysis
-		this->utilitiesMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // deploy
-		this->utilitiesMenuItem->getItemChild()->getItemAt(2)->setEnabled(enable); // lua analysis
-		this->utilitiesMenuItem->getItemChild()->getItemAt(3)->setEnabled(enable); // lua api
-		this->utilitiesMenuItem->getItemChild()->getItemAt(4)->setEnabled(enable); // open all lua scripts
-		this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setEnabled(enable); // mesh utils
-		this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setEnabled(enable && nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()); // Draw navigation mesh
-		this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setEnabled(enable); // Draw Collision Lines
-		this->utilitiesMenuItem->getItemChild()->getItemAt(8)->setEnabled(enable); // Optimize scene
-		this->utilitiesMenuItem->getItemChild()->getItemAt(9)->setEnabled(enable); // Toggle MyGUI Components
-        this->utilitiesMenuItem->getItemChild()->getItemAt(10)->setEnabled(enable); // Engine Warnings
-
-		this->simulationMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // control selected player
-		this->simulationMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // test selected game objects
-	});
+        this->simulationMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // control selected player
+        this->simulationMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // test selected game objects
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::enableMenuEntries");
 }
 
 void MainMenuBar::enableFileMenu(bool enable)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::enableFileMenu", _1(enable),
-	{
-		this->fileMenuItem->getItemChild()->getItemAt(NEW)->setEnabled(enable);
-		this->fileMenuItem->getItemChild()->getItemAt(OPEN)->setEnabled(enable);
-		this->fileMenuItem->getItemChild()->getItemAt(SAVE)->setEnabled(enable);
-		this->fileMenuItem->getItemChild()->getItemAt(SAVE_AS)->setEnabled(enable);
-		this->fileMenuItem->getItemChild()->getItemAt(SETTINGS)->setEnabled(enable);
-		this->fileMenuItem->getItemChild()->getItemAt(COPY_SCENE)->setEnabled(enable);
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, enable]()
+    {
+        this->fileMenuItem->getItemChild()->getItemAt(NEW)->setEnabled(enable);
+        this->fileMenuItem->getItemChild()->getItemAt(OPEN)->setEnabled(enable);
+        this->fileMenuItem->getItemChild()->getItemAt(SAVE)->setEnabled(enable);
+        this->fileMenuItem->getItemChild()->getItemAt(SAVE_AS)->setEnabled(enable);
+        this->fileMenuItem->getItemChild()->getItemAt(SETTINGS)->setEnabled(enable);
+        this->fileMenuItem->getItemChild()->getItemAt(COPY_SCENE)->setEnabled(enable);
 
-		const RecentFilesManager::VectorUString & recentFiles = RecentFilesManager::getInstance().getRecentFiles();
-		if (!recentFiles.empty())
-		{
-			size_t index = 0;
-			for (RecentFilesManager::VectorUString::const_iterator iter = recentFiles.begin(); iter != recentFiles.end(); ++iter, ++index)
-			{
-				this->recentFileItem[index]->setEnabled(enable);
-			}
-		}
-	});
+        const RecentFilesManager::VectorUString& recentFiles = RecentFilesManager::getInstance().getRecentFiles();
+        if (!recentFiles.empty())
+        {
+            size_t index = 0;
+            for (RecentFilesManager::VectorUString::const_iterator iter = recentFiles.begin(); iter != recentFiles.end(); ++iter, ++index)
+            {
+                this->recentFileItem[index]->setEnabled(enable);
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::enableFileMenu");
 }
 
 void MainMenuBar::setVisible(bool visible)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::setVisible", _1(visible),
-	{
-		this->mainMenuBar->setVisible(visible);
-		this->fileMenuItem->setVisible(visible);
-		this->editMenuItem->setVisible(visible);
-		this->cameraMenuItem->setVisible(visible);
-		this->utilitiesMenuItem->setVisible(visible);
-		this->simulationMenuItem->setVisible(visible);
-		this->helpMenuItem->setVisible(visible);
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]()
+    {
+        this->mainMenuBar->setVisible(visible);
+        this->fileMenuItem->setVisible(visible);
+        this->editMenuItem->setVisible(visible);
+        this->cameraMenuItem->setVisible(visible);
+        this->utilitiesMenuItem->setVisible(visible);
+        this->simulationMenuItem->setVisible(visible);
+        this->helpMenuItem->setVisible(visible);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::setVisible");
 }
 
 void MainMenuBar::callNewProject(void)
@@ -578,10 +573,11 @@ void MainMenuBar::clearLuaErrors(void)
 
     if (nullptr != this->simulationWindow)
     {
-        ENQUEUE_RENDER_COMMAND("MainMenuBar::clearLuaErrors",
-		{
-			this->updateSimulationWindowCaption();
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->updateSimulationWindowCaption();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::clearLuaErrors");
     }
 }
 
@@ -623,10 +619,13 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 		{
 			this->drawCollisionLines(false);
 			this->drawNavigationMap(false);
-			ENQUEUE_RENDER_COMMAND("MainMenuBar::notifyPopupMenuAccept configpanel visible",
-			{
-				this->configPanel->setVisible(true);
-			});
+
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->configPanel->setVisible(true);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::notifyPopupMenuAccept configpanel visible");
+
 			this->configPanel->callForSettings(true);
 			// Apply settings from loaded project
 			this->configPanel->applySettings();
@@ -827,40 +826,35 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->openAllLuaScripts();
 			break;
 		}
-		case 46: // Mesh Tool
-		{
-			this->showMeshToolWindow();
-			break;
-		}
-		case 47: // Draw Navigation Mesh
+		case 46: // Draw Navigation Mesh
 		{
 			this->bDrawNavigationMesh = !this->bDrawNavigationMesh;
 			this->drawNavigationMap(this->bDrawNavigationMesh);
 			break;
 		}
-		case 48: // Draw Collision Lines
+		case 47: // Draw Collision Lines
 		{
 			this->bDrawCollisionLines = !this->bDrawCollisionLines;
 			this->drawCollisionLines(this->bDrawCollisionLines);
 			break;
 		}
-		case 49: // Optimize scene
+		case 48: // Optimize scene
 		{
 			this->projectManager->getEditorManager()->optimizeScene(true);
 			break;
 		}
-		case 50: // Toggle MyGUI Components
+		case 49: // Toggle MyGUI Components
 		{
 			this->bToggleMyGUIComponents = !this->bToggleMyGUIComponents;
 			this->toggleMyGUIComponents(this->bToggleMyGUIComponents);
 			break;
 		}
-        case 51: // Engine Warnings
+        case 50: // Engine Warnings
         {
             this->showOgreLogWindow();
             break;
         }
-        case 52: // Control selected player
+        case 51: // Control selected player
         {
             for (auto it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
             {
@@ -872,7 +866,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
             }
             break;
         }
-        case 53: // Test selected game objects
+        case 52: // Test selected game objects
         {
             this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
             this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
@@ -880,17 +874,17 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
             break;
         }
-        case 54: // About
+        case 53: // About
         {
             this->showAboutWindow();
             break;
         }
-        case 55: // Scene description
+        case 54: // Scene description
         {
             this->showSceneDescriptionWindow();
             break;
         }
-        case 56: // Lua Wiki
+        case 55: // Lua Wiki
         {
             this->showLuaWikiWindow();
             break;
@@ -917,14 +911,6 @@ void MainMenuBar::buttonHit(MyGUI::Widget* sender)
         else if (this->luaApiButton == sender)
         {
             this->luaApiWindow->setVisible(false);
-        }
-        else if ("meshToolButtonClose" == sender->getName())
-        {
-            this->meshToolWindow->setVisible(false);
-        }
-        else if ("meshToolButtonApply" == sender->getName())
-        {
-            this->applyMeshToolOperations();
         }
         else if ("aboutOkButton" == sender->getName())
         {
@@ -1068,42 +1054,45 @@ void MainMenuBar::editTextChange(MyGUI::Widget* sender)
 		// Start a new search each time for data that do match the search caption string
 		this->luaApiAutoCompleteSearch.reset();
 
-		ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::refreshLuaApi", _1(editBox),
-		{
-			this->refreshLuaApi(editBox->getOnlyText());
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, editBox]()
+        {
+            this->refreshLuaApi(editBox->getOnlyText());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::refreshLuaApi");
 	}
 	else if (sender->getName() == "meshSearchCombo")
 	{
 		// Start a new search each time for data that do match the search caption string for meshes
 		this->meshAutoCompleteSearch.reset();
 
-		ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::refreshMeshes", _1(editBox),
-		{
-			this->refreshMeshes(editBox->getOnlyText());
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, editBox]()
+        {
+            this->refreshMeshes(editBox->getOnlyText());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::refreshMeshes");
 	}
 }
 
 void MainMenuBar::updateRecentFilesMenu()
 {
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::updateRecentFilesMenu",
-	{
-		const RecentFilesManager::VectorUString & recentFiles = RecentFilesManager::getInstance().getRecentFiles();
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        const RecentFilesManager::VectorUString& recentFiles = RecentFilesManager::getInstance().getRecentFiles();
 
-		// First reset
-		for (size_t i = 0; i < RecentFilesManager::maxRecentFiles; i++)
-		{
-			this->recentFileItem[i]->setCaption("--");
-		}
+        // First reset
+        for (size_t i = 0; i < RecentFilesManager::maxRecentFiles; i++)
+        {
+            this->recentFileItem[i]->setCaption("--");
+        }
 
-		// Then fill
-		for (size_t i = 0; i < recentFiles.size(); i++)
-		{
-			Ogre::String file = recentFiles[i];
-			this->recentFileItem[i]->setCaption(file);
-		}
-	});
+        // Then fill
+        for (size_t i = 0; i < recentFiles.size(); i++)
+        {
+            Ogre::String file = recentFiles[i];
+            this->recentFileItem[i]->setCaption(file);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::updateRecentFilesMenu");
 }
 
 void MainMenuBar::createOgreLogWindow(void)
@@ -1188,10 +1177,11 @@ void MainMenuBar::clearOgreLogErrors(void)
 
     if (nullptr != this->simulationWindow)
     {
-        ENQUEUE_RENDER_COMMAND("MainMenuBar::clearOgreLogErrors",
-		{
-			this->updateSimulationWindowCaption();
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->updateSimulationWindowCaption();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::clearOgreLogErrors");
     }
 }
 
@@ -1303,11 +1293,11 @@ void MainMenuBar::handleProjectManipulation(NOWA::EventDataPtr eventData)
             this->projectManager->getEditorManager()->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
 
             this->bDrawCollisionLines = false;
-            this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(this->bDrawCollisionLines);
+            this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setStateCheck(this->bDrawCollisionLines);
             NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(this->bDrawCollisionLines);
 
             this->bDrawNavigationMesh = false;
-            this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(this->bDrawNavigationMesh);
+            this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(this->bDrawNavigationMesh);
             NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(this->bDrawNavigationMesh);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MainMenuBar::handleProjectManipulation");
@@ -1338,7 +1328,8 @@ void MainMenuBar::handleLuaError(NOWA::EventDataPtr eventData)
 
     if (false == castEventData->getErrorMessage().empty())
     {
-        ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::handleLuaError", _1(castEventData), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData]()
+        {
             if (true == this->luaErrorFirstTime)
             {
                 MyGUI::PointerManager::getInstancePtr()->setVisible(true);
@@ -1358,7 +1349,8 @@ void MainMenuBar::handleLuaError(NOWA::EventDataPtr eventData)
             this->errorCount++;
 
             this->updateSimulationWindowCaption();
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::handleLuaError");
     }
 }
 
@@ -1379,7 +1371,7 @@ void MainMenuBar::handleNavMeshBusy(NOWA::EventDataPtr eventData)
 
 	NOWA::GraphicsModule::RenderCommand renderCommand = [this, busy]()
     {
-        MyGUI::MenuItem* item = this->utilitiesMenuItem->getItemChild()->getItemAt(6);
+        MyGUI::MenuItem* item = this->utilitiesMenuItem->getItemChild()->getItemAt(5);
         if (busy)
         {
             item->setCaption("Generating NavMesh...");
@@ -1397,211 +1389,215 @@ void MainMenuBar::handleNavMeshBusy(NOWA::EventDataPtr eventData)
 
 void MainMenuBar::showAnalysisWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::showAnalysisWindow",
-	{
-		if (0 == this->analysisWidgets.size())
-		{
-			this->analysisWidgets = MyGUI::LayoutManager::getInstancePtr()->loadLayout("AnalysisWindow.layout");
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        if (0 == this->analysisWidgets.size())
+        {
+            this->analysisWidgets = MyGUI::LayoutManager::getInstancePtr()->loadLayout("AnalysisWindow.layout");
 
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("analysisOkButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-		}
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("analysisOkButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+        }
 
-		MyGUI::FloatPoint windowPosition;
-		windowPosition.left = 0.4f;
-		windowPosition.top = 0.4f;
-		this->analysisWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("analysisWindow");
-		this->analysisWindow->setRealPosition(windowPosition);
-		this->analysisWindow->setVisible(true);
+        MyGUI::FloatPoint windowPosition;
+        windowPosition.left = 0.4f;
+        windowPosition.top = 0.4f;
+        this->analysisWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("analysisWindow");
+        this->analysisWindow->setRealPosition(windowPosition);
+        this->analysisWindow->setVisible(true);
 
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("gameObjectsCountLabel")->setCaptionWithReplacing("#{GameObjectsCount}: "
-			+ Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size()));
+        MyGUI::Gui::getInstancePtr()
+            ->findWidget<MyGUI::EditBox>("gameObjectsCountLabel")
+            ->setCaptionWithReplacing("#{GameObjectsCount}: " + Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size()));
 
+        const auto overlappingGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getOverlappingGameObjects();
+        MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("overlappingGameObjectsCountLabel")->setCaptionWithReplacing("#{OverlappingGameObjectsCount}: " + Ogre::StringConverter::toString(overlappingGameObjects.size()));
 
-		const auto overlappingGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getOverlappingGameObjects();
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("overlappingGameObjectsCountLabel")->setCaptionWithReplacing("#{OverlappingGameObjectsCount}: "
-																												   + Ogre::StringConverter::toString(overlappingGameObjects.size()));
+        auto comboBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("overlappingGameObjectsCombo");
+        comboBox->removeAllItems();
+        for (size_t i = 0; i < overlappingGameObjects.size(); i++)
+        {
+            comboBox->addItem(overlappingGameObjects[i]->getName());
+        }
 
-		auto comboBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("overlappingGameObjectsCombo");
-		comboBox->removeAllItems();
-		for (size_t i = 0; i < overlappingGameObjects.size(); i++)
-		{
-			comboBox->addItem(overlappingGameObjects[i]->getName());
-		}
+        size_t componentsCount = 0;
+        unsigned int dynamicGameObjectsCount = 0;
+        unsigned int lightsCount = 0;
 
-		size_t componentsCount = 0;
-		unsigned int dynamicGameObjectsCount = 0;
-		unsigned int lightsCount = 0;
+        const auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+        for (auto it = gameObjects->begin(); it != gameObjects->end(); it++)
+        {
+            componentsCount += it->second->getComponents()->size();
+            if (true == it->second->isDynamic())
+            {
+                dynamicGameObjectsCount++;
+            }
+            if (nullptr != NOWA::makeStrongPtr(it->second->getComponent<NOWA::LightAreaComponent>()) || nullptr != NOWA::makeStrongPtr(it->second->getComponent<NOWA::LightPointComponent>()) ||
+                nullptr != NOWA::makeStrongPtr(it->second->getComponent<NOWA::LightSpotComponent>()) || nullptr != NOWA::makeStrongPtr(it->second->getComponent<NOWA::LightDirectionalComponent>()))
+            {
+                lightsCount++;
+            }
+        }
+        MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("dynamicGameObjectsCountLabel")->setCaptionWithReplacing("#{DynamicGameObjectsCount}: " + Ogre::StringConverter::toString(dynamicGameObjectsCount));
+        MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("componentsCountLabel")->setCaptionWithReplacing("#{ComponentsCount}: " + Ogre::StringConverter::toString(componentsCount));
 
-		const auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-		for (auto it = gameObjects->begin(); it != gameObjects->end(); it++)
-		{
-			componentsCount += it->second->getComponents()->size();
-			if (true == it->second->isDynamic())
-			{
-				dynamicGameObjectsCount++;
-			}
-			if (nullptr != NOWA::makeStrongPtr(it->second->getComponent<NOWA::LightAreaComponent>())
-				|| nullptr != NOWA::makeStrongPtr(it->second->getComponent<NOWA::LightPointComponent>())
-					|| nullptr != NOWA::makeStrongPtr(it->second->getComponent<NOWA::LightSpotComponent>())
-						|| nullptr != NOWA::makeStrongPtr(it->second->getComponent<NOWA::LightDirectionalComponent>()))
-			{
-				lightsCount++;
-			}
-		}
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("dynamicGameObjectsCountLabel")->setCaptionWithReplacing("#{DynamicGameObjectsCount}: "
-			+ Ogre::StringConverter::toString(dynamicGameObjectsCount));
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("componentsCountLabel")->setCaptionWithReplacing("#{ComponentsCount}: "
-			+ Ogre::StringConverter::toString(componentsCount));
+        MyGUI::Gui::getInstancePtr()
+            ->findWidget<MyGUI::EditBox>("physicsBodyCountLabel")
+            ->setCaptionWithReplacing("#{PhysicsBodyCount}: " + Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->getBodyCount()));
+        MyGUI::Gui::getInstancePtr()
+            ->findWidget<MyGUI::EditBox>("physicsConstraintsCountLabel")
+            ->setCaptionWithReplacing("#{PhysicsConstraintsCount}: " + Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->getConstraintCount()));
+        MyGUI::Gui::getInstancePtr()
+            ->findWidget<MyGUI::EditBox>("physicsMemoryLabel")
+            ->setCaptionWithReplacing("#{PhysicsMemory}: " + Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->getMemoryUsed() / 1000) + " KB");
+        MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("threadCountLabel")->setCaptionWithReplacing("#{ThreadCount}: " + Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount()));
 
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("physicsBodyCountLabel")->setCaptionWithReplacing("#{PhysicsBodyCount}: "
-			+ Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->getBodyCount()));
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("physicsConstraintsCountLabel")->setCaptionWithReplacing("#{PhysicsConstraintsCount}: "
-			+ Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->getConstraintCount()));
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("physicsMemoryLabel")->setCaptionWithReplacing("#{PhysicsMemory}: "
-			+ Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->getMemoryUsed() / 1000) + " KB");
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("threadCountLabel")->setCaptionWithReplacing("#{ThreadCount}: "
-			+ Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount()));
-
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("lightsCountLabel")->setCaptionWithReplacing("#{LightsCount}: "
-			+ Ogre::StringConverter::toString(lightsCount));
-	});
+        MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("lightsCountLabel")->setCaptionWithReplacing("#{LightsCount}: " + Ogre::StringConverter::toString(lightsCount));
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::showAnalysisWindow");
 }
 
 void MainMenuBar::showDeployWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::showAnalysisWindow",
-	{
-		if (0 == this->deployWidgets.size())
-		{
-			this->deployWidgets = MyGUI::LayoutManager::getInstancePtr()->loadLayout("DeployWindow.layout");
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        if (0 == this->deployWidgets.size())
+        {
+            this->deployWidgets = MyGUI::LayoutManager::getInstancePtr()->loadLayout("DeployWindow.layout");
 
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployCloseButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployCloseButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("encryptButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("decryptButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployOkButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-			MyGUI::Button* button = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployOkButton");
-			button->setNeedToolTip(true);
-			button->setUserString("tooltip", "Deploys all meshes, skeleton files, textures and all materials in one json file at the given [Project] resource folder. "
-				"E.g. ../media/Projects/ApplicationName/media. "
-				" Creates in applicationName/bin/resources an applicationNameDeployed.cfg file. "
-				" Now if application is started, in Core preLoadTextures is called for [Project] resource folder, which pre loads all textures at application start.");
-			button->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		}
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("encryptButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("decryptButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployOkButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+            MyGUI::Button* button = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployOkButton");
+            button->setNeedToolTip(true);
+            button->setUserString("tooltip", "Deploys all meshes, skeleton files, textures and all materials in one json file at the given [Project] resource folder. "
+                                             "E.g. ../media/Projects/ApplicationName/media. "
+                                             " Creates in applicationName/bin/resources an applicationNameDeployed.cfg file. "
+                                             " Now if application is started, in Core preLoadTextures is called for [Project] resource folder, which pre loads all textures at application start.");
+            button->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        }
 
-		MyGUI::FloatPoint windowPosition;
-		windowPosition.left = 0.4f;
-		windowPosition.top = 0.4f;
-		this->deployWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("deployWindow");
-		this->deployWindow->setRealPosition(windowPosition);
-		this->deployWindow->setVisible(true);
+        MyGUI::FloatPoint windowPosition;
+        windowPosition.left = 0.4f;
+        windowPosition.top = 0.4f;
+        this->deployWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("deployWindow");
+        this->deployWindow->setRealPosition(windowPosition);
+        this->deployWindow->setVisible(true);
 
-		this->keyEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("keyEdit");
-		this->resultLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::TextBox>("resultLabel");
-		this->resultLabel->setVisible(false);
-	});
+        this->keyEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("keyEdit");
+        this->resultLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::TextBox>("resultLabel");
+        this->resultLabel->setVisible(false);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::showDeployWindow");
 }
 
 void MainMenuBar::createLuaAnalysisWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::createLuaAnalysisWindow",
-	{
-		if (0 == this->luaAnalysisWidgets.size())
-		{
-			this->luaAnalysisWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowCS", MyGUI::IntCoord(10, 10, 800, 600), MyGUI::Align::Default, "Popup");
-			this->luaAnalysisWindow->setMinSize(400, 400);
-			MyGUI::IntCoord coord = this->luaAnalysisWindow->getClientCoord();
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        if (0 == this->luaAnalysisWidgets.size())
+        {
+            this->luaAnalysisWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowCS", MyGUI::IntCoord(10, 10, 800, 600), MyGUI::Align::Default, "Popup");
+            this->luaAnalysisWindow->setMinSize(400, 400);
+            MyGUI::IntCoord coord = this->luaAnalysisWindow->getClientCoord();
 
-			this->luaErrorEdit = this->luaAnalysisWindow->createWidget<MyGUI::HyperTextBox>("HyperTextBox", MyGUI::IntCoord(0, 0, coord.width, coord.height - 55), MyGUI::Align::Stretch);
-			this->luaErrorEdit->setTextSelectable(true);
-			this->luaErrorEdit->eventNotifyInsideKeyButtonPressed += newDelegate(this, &MainMenuBar::notifyInsideKeyButtonPressed);
-			this->luaErrorEdit->setCaption("No errors.");
+            this->luaErrorEdit = this->luaAnalysisWindow->createWidget<MyGUI::HyperTextBox>("HyperTextBox", MyGUI::IntCoord(0, 0, coord.width, coord.height - 55), MyGUI::Align::Stretch);
+            this->luaErrorEdit->setTextSelectable(true);
+            this->luaErrorEdit->eventNotifyInsideKeyButtonPressed += newDelegate(this, &MainMenuBar::notifyInsideKeyButtonPressed);
+            this->luaErrorEdit->setCaption("No errors.");
 
-			this->luaAnalysisButton = this->luaAnalysisWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(0, coord.height - 40, 100, 40), MyGUI::Align::Bottom | MyGUI::Align::HCenter);
-			this->luaAnalysisButton->setCaption("Ok");
-			this->luaAnalysisButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+            this->luaAnalysisButton = this->luaAnalysisWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(0, coord.height - 40, 100, 40), MyGUI::Align::Bottom | MyGUI::Align::HCenter);
+            this->luaAnalysisButton->setCaption("Ok");
+            this->luaAnalysisButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-			// Force update layout
-			this->luaAnalysisWindow->setSize(this->luaAnalysisWindow->getSize().width - 1, this->luaAnalysisWindow->getSize().height - 1);
-			this->luaAnalysisWindow->setSize(this->luaAnalysisWindow->getSize().width + 1, this->luaAnalysisWindow->getSize().height + 1);
-			this->luaAnalysisWindow->setCaption("Lua Errors");
+            // Force update layout
+            this->luaAnalysisWindow->setSize(this->luaAnalysisWindow->getSize().width - 1, this->luaAnalysisWindow->getSize().height - 1);
+            this->luaAnalysisWindow->setSize(this->luaAnalysisWindow->getSize().width + 1, this->luaAnalysisWindow->getSize().height + 1);
+            this->luaAnalysisWindow->setCaption("Lua Errors");
 
-			this->luaAnalysisWidgets.push_back(this->luaAnalysisWindow);
-			this->luaApiWidgets.push_back(this->luaErrorEdit);
-			this->luaApiWidgets.push_back(this->luaAnalysisButton);
+            this->luaAnalysisWidgets.push_back(this->luaAnalysisWindow);
+            this->luaApiWidgets.push_back(this->luaErrorEdit);
+            this->luaApiWidgets.push_back(this->luaAnalysisButton);
 
-			this->simulationWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("simulationWindow");
-		}
+            this->simulationWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("simulationWindow");
+        }
 
-		MyGUI::FloatPoint windowPosition;
-		windowPosition.left = 0.3f;
-		windowPosition.top = 0.3f;
+        MyGUI::FloatPoint windowPosition;
+        windowPosition.left = 0.3f;
+        windowPosition.top = 0.3f;
 
-		this->luaAnalysisWindow->setRealPosition(windowPosition);
-		this->luaAnalysisWindow->setVisible(false);
-	});
+        this->luaAnalysisWindow->setRealPosition(windowPosition);
+        this->luaAnalysisWindow->setVisible(false);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::createLuaAnalysisWindow");
 }
 
 void MainMenuBar::createLuaApiWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::createLuaAnalysisWindow",
-	{
-		if (0 == this->luaApiWidgets.size() || nullptr == this->luaApiWindow)
-		{
-			this->luaApiWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowCS", MyGUI::IntCoord(10, 10, 1280, 768), MyGUI::Align::Default, "Popup");
-			this->luaApiWindow->setMinSize(400, 400);
-			MyGUI::IntCoord coord = this->luaApiWindow->getClientCoord();
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        if (0 == this->luaApiWidgets.size() || nullptr == this->luaApiWindow)
+        {
+            this->luaApiWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowCS", MyGUI::IntCoord(10, 10, 1280, 768), MyGUI::Align::Default, "Popup");
+            this->luaApiWindow->setMinSize(400, 400);
+            MyGUI::IntCoord coord = this->luaApiWindow->getClientCoord();
 
-			this->luaApiSearchEdit = this->luaApiWindow->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(0, 0, coord.width, 24), MyGUI::Align::Top | MyGUI::Align::HStretch, "luaApiSearchEdit");
-			this->luaApiSearchEdit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
-			this->luaApiSearchEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			this->luaApiSearchEdit->setEditStatic(false);
-			this->luaApiSearchEdit->setEditReadOnly(false);
-			this->luaApiSearchEdit->eventEditTextChange += MyGUI::newDelegate(this, &MainMenuBar::editTextChange);
+            this->luaApiSearchEdit = this->luaApiWindow->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(0, 0, coord.width, 24), MyGUI::Align::Top | MyGUI::Align::HStretch, "luaApiSearchEdit");
+            this->luaApiSearchEdit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+            this->luaApiSearchEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+            this->luaApiSearchEdit->setEditStatic(false);
+            this->luaApiSearchEdit->setEditReadOnly(false);
+            this->luaApiSearchEdit->eventEditTextChange += MyGUI::newDelegate(this, &MainMenuBar::editTextChange);
 
-			this->luaApiTree = this->luaApiWindow->createWidget<MyGUI::TreeControl>("Tree", MyGUI::IntCoord(0, 24, coord.width, coord.height - 70), MyGUI::Align::Stretch);
+            this->luaApiTree = this->luaApiWindow->createWidget<MyGUI::TreeControl>("Tree", MyGUI::IntCoord(0, 24, coord.width, coord.height - 70), MyGUI::Align::Stretch);
 
-			this->luaApiButton = this->luaApiWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(0, coord.height - 40, 100, 40), MyGUI::Align::Bottom | MyGUI::Align::HCenter);
-			this->luaApiButton->setCaption("Ok");
-			this->luaApiButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+            this->luaApiButton = this->luaApiWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(0, coord.height - 40, 100, 40), MyGUI::Align::Bottom | MyGUI::Align::HCenter);
+            this->luaApiButton->setCaption("Ok");
+            this->luaApiButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-			// Force update layout
-			this->luaApiWindow->setSize(this->luaApiWindow->getSize().width - 1, this->luaApiWindow->getSize().height - 1);
-			this->luaApiWindow->setSize(this->luaApiWindow->getSize().width + 1, this->luaApiWindow->getSize().height + 1);
-			this->luaApiWindow->setCaption("Lua Api");
+            // Force update layout
+            this->luaApiWindow->setSize(this->luaApiWindow->getSize().width - 1, this->luaApiWindow->getSize().height - 1);
+            this->luaApiWindow->setSize(this->luaApiWindow->getSize().width + 1, this->luaApiWindow->getSize().height + 1);
+            this->luaApiWindow->setCaption("Lua Api");
 
-			this->luaApiWidgets.push_back(this->luaApiWindow);
-			this->luaApiWidgets.push_back(this->luaApiSearchEdit);
-			this->luaApiWidgets.push_back(this->luaApiButton);
+            this->luaApiWidgets.push_back(this->luaApiWindow);
+            this->luaApiWidgets.push_back(this->luaApiSearchEdit);
+            this->luaApiWidgets.push_back(this->luaApiButton);
 
-			this->refreshLuaApi("");
-		}
+            this->refreshLuaApi("");
+        }
 
-		MyGUI::FloatPoint windowPosition;
-		windowPosition.left = 0.3f;
-		windowPosition.top = 0.3f;
+        MyGUI::FloatPoint windowPosition;
+        windowPosition.left = 0.3f;
+        windowPosition.top = 0.3f;
 
-		this->luaApiWindow->setRealPosition(windowPosition);
-		this->luaApiWindow->setVisible(false);
-	});
+        this->luaApiWindow->setRealPosition(windowPosition);
+        this->luaApiWindow->setVisible(false);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::createLuaApiWindow");
 }
 
 void MainMenuBar::showLuaAnalysisWindow(void)
 {
 	this->createLuaAnalysisWindow();
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::showLuaAnalysisWindow",
-	{
-		this->luaAnalysisWindow->setVisible(true);
-	});
+
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->luaAnalysisWindow->setVisible(true);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::showLuaAnalysisWindow");
 }
 
 void MainMenuBar::showLuaApiWindow(void)
 {
 	this->createLuaApiWindow();
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::showLuaApiWindow",
-	{
-		this->luaApiWindow->setVisible(true);
-	});
+
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->luaApiWindow->setVisible(true);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::showLuaApiWindow");
 }
 
 void MainMenuBar::refreshLuaApi(const Ogre::String& filter)
@@ -1775,143 +1771,6 @@ void MainMenuBar::refreshMeshes(const Ogre::String& filter)
 	// this->meshSearchCombo->showList();
 }
 
-void MainMenuBar::createMeshToolWindow(void)
-{
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::createMeshToolWindow",
-	{
-		if (0 == this->meshToolWidgets.size())
-		{
-			this->meshToolWidgets = MyGUI::LayoutManager::getInstancePtr()->loadLayout("MeshToolWindow.layout");
-
-			MyGUI::EditBox* rotateLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("rotateLabel");
-			rotateLabel->setCaptionWithReplacing("#{MeshRotate}");
-			MyGUI::EditBox* scaleLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("scaleLabel");
-			scaleLabel->setCaptionWithReplacing("#{MeshScale}");
-			MyGUI::EditBox* transformOriginLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("transformOriginLabel");
-			transformOriginLabel->setCaptionWithReplacing("#{MeshTransform}");
-			MyGUI::EditBox* changeAxesLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("changeAxesLabel");
-			changeAxesLabel->setCaptionWithReplacing("#{MeshAxesChange}");
-
-			this->meshSearchCombo = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("meshSearchCombo");
-			this->meshSearchCombo->eventEditTextChange += MyGUI::newDelegate(this, &MainMenuBar::editTextChange);
-
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("meshToolButtonClose")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("meshToolButtonApply")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-
-			this->refreshMeshes("");
-		}
-
-		MyGUI::FloatPoint windowPosition;
-		windowPosition.left = 0.3f;
-		windowPosition.top = 0.3f;
-		this->meshToolWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("meshToolWindow");
-		this->meshToolWindow->setRealPosition(windowPosition);
-		this->meshToolWindow->setVisible(true);
-	});
-}
-
-void MainMenuBar::applyMeshToolOperations(void)
-{
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::applyMeshToolOperations",
-	{
-		MyGUI::EditBox * rotateEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("rotateEdit");
-		MyGUI::EditBox * scaleEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("scaleEdit");
-		MyGUI::EditBox * transformOriginEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("transformOriginEdit");
-		MyGUI::EditBox * changeAxesEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("changeAxesEdit");
-		MyGUI::EditBox * meshInfoLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("meshInfoLabel");
-
-		Ogre::String meshName = this->meshSearchCombo->getOnlyText();
-
-		auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromMeshName(this->meshSearchCombo->getOnlyText());
-
-		if (false == gameObjects.empty())
-		{
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Feedback", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MeshInUse}"),
-																		  MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-
-			return;
-		}
-
-		/*
-		 * MeshMagick transform -rotate=90/0/1/0 robot.mesh
-		 */
-
-		 // TODO: DIfferent folder
-		 // "D:\Ogre\GameEngineDevelopment\media\models\Destructable\"
-		 // Ogre::String destinationFolder = rootFolder + "/media/models/Destructable/";
-		 // destinationFolder = NOWA::Core::getSingletonPtr()->replaceSlashes(destinationFolder, false);
-
-		 Ogre::String rotateText = rotateEdit->getOnlyText();
-		 // MeshMagick transform -rotate=90/0/1/0 robot.mesh
-		 if (false == rotateText.empty())
-		 {
-			 Ogre::String params;
-			 params += "transform ";
-			 params += "-rotate=";
-			 params += "\"";
-			 params += rotateText;
-			 params += "\"";
-
-			 NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
-		 }
-
-		 Ogre::String scaleText = scaleEdit->getOnlyText();
-		 if (false == scaleText.empty())
-		 {
-			 Ogre::String params;
-			 params += "transform ";
-			 params += "-scale=";
-			 params += "\"";
-			 params += scaleText;
-			 params += "\"";
-
-			 NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
-		 }
-
-		 Ogre::String transformOriginText = transformOriginEdit->getOnlyText();
-		 if (false == transformOriginText.empty())
-		 {
-			 Ogre::String params;
-			 params += "transform ";
-			 params += "-transform=";
-			 params += "\"";
-			 params += transformOriginText;
-			 params += "\"";
-
-			 NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
-		 }
-
-		 Ogre::String changeAxesText = changeAxesEdit->getOnlyText();
-		 if (false == changeAxesText.empty())
-		 {
-			 Ogre::String params;
-			 params += "transform ";
-			 params += "-axes=";
-			 params += "\"";
-			 params += changeAxesText;
-			 params += "\"";
-
-			 NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
-		 }
-
-
-		 // Ogre::String params;
-		 // params += "info  ";
-		 // NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
-
-		 // TODO: How to get info result for meshInfoLabel??
-	});
-}
-
-void MainMenuBar::showMeshToolWindow(void)
-{
-	this->createMeshToolWindow();
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::showMeshToolWindow",
-	{
-		this->meshToolWindow->setVisible(true);
-	});
-}
-
 void MainMenuBar::notifyInsideKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch, const std::string& selectedText)
 {
 	MyGUI::HyperTextBox* textBox = sender->castType<MyGUI::HyperTextBox>(false);
@@ -1929,106 +1788,197 @@ void MainMenuBar::notifyInsideKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Key
 
 void MainMenuBar::showAboutWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::showAboutWindow",
-	{
-		if (0 == this->aboutWindowWidgets.size())
-		{
-			this->aboutWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowC", MyGUI::IntCoord(10, 10, 650, 500), MyGUI::Align::Default, "Popup");
-			MyGUI::IntCoord coord = this->aboutWindow->getClientCoord();
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        if (0 == this->aboutWindowWidgets.size())
+        {
+            this->aboutWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowC", MyGUI::IntCoord(10, 10, 650, 500), MyGUI::Align::Default, "Popup");
+            MyGUI::IntCoord coord = this->aboutWindow->getClientCoord();
 
-			MyGUI::HyperTextBox* hyperTextBox = this->aboutWindow->createWidget<MyGUI::HyperTextBox>("HyperTextBox", MyGUI::IntCoord(0, 0, coord.width, coord.height - 50), MyGUI::Align::Stretch);
-			hyperTextBox->setUrlColour(MyGUI::Colour::White);
+            MyGUI::HyperTextBox* hyperTextBox = this->aboutWindow->createWidget<MyGUI::HyperTextBox>("HyperTextBox", MyGUI::IntCoord(0, 0, coord.width, coord.height - 50), MyGUI::Align::Stretch);
+            hyperTextBox->setUrlColour(MyGUI::Colour::White);
 
-			hyperTextBox->setCaption(
-				"<p float='left'><img width='260' height='159'>pic_NOWA</img> </p><br/>"
-				"<p align='center'><color value='#1D6EA7'><h2>" + Ogre::String(NOWA_DESIGN_INTERNALNAME_STR) + "</h2></color></p><br/>"
-				"<p align='center'><color value='#FFFFFF'><h3>" + Ogre::String(NOWA_DESIGN_PRODUCTVERSION_STR) + "</h3></color></p><br/>"
-				"<p align='center'><color value='#FFFFFF'>Developed by <b>Lukas Kalinowski</b></color></p><br/>"
-				"<p align='center'><color value='#FFFFFF'>" + Ogre::String(NOWA_LEGALCOPYRIGHT_STR) + "</color></p><br/>"
-				"<p align='center'><color value='#FFFFFF'>" + Ogre::String(NOWA_LEGALTRADEMARKS2_STR) + "</color></p><br/>"
-				"<p align='center'><color value='#FFFFFF'><url value='" + Ogre::String(NOWA_COMPANYDOMAIN_STR) + "'>" + Ogre::String(NOWA_COMPANYDOMAIN_STR) + "</url></color></p><br/><br/>"
+            hyperTextBox->setCaption("<p float='left'><img width='260' height='159'>pic_NOWA</img> </p><br/>"
+                                     "<p align='center'><color value='#1D6EA7'><h2>" +
+                                     Ogre::String(NOWA_DESIGN_INTERNALNAME_STR) +
+                                     "</h2></color></p><br/>"
+                                     "<p align='center'><color value='#FFFFFF'><h3>" +
+                                     Ogre::String(NOWA_DESIGN_PRODUCTVERSION_STR) +
+                                     "</h3></color></p><br/>"
+                                     "<p align='center'><color value='#FFFFFF'>Developed by <b>Lukas Kalinowski</b></color></p><br/>"
+                                     "<p align='center'><color value='#FFFFFF'>" +
+                                     Ogre::String(NOWA_LEGALCOPYRIGHT_STR) +
+                                     "</color></p><br/>"
+                                     "<p align='center'><color value='#FFFFFF'>" +
+                                     Ogre::String(NOWA_LEGALTRADEMARKS2_STR) +
+                                     "</color></p><br/>"
+                                     "<p align='center'><color value='#FFFFFF'><url value='" +
+                                     Ogre::String(NOWA_COMPANYDOMAIN_STR) + "'>" + Ogre::String(NOWA_COMPANYDOMAIN_STR) +
+                                     "</url></color></p><br/><br/>"
 
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_1) + "<url value='" + Ogre::String(NOWA_LICENSE_STR_2) + "'>" + Ogre::String(NOWA_LICENSE_STR_2) + "</url>" + Ogre::String(NOWA_LICENSE_STR_3) + "</color></p>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_4) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_5) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_6) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_7) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_8) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_9) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_10) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_11) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_12) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_13) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_14) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_15) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_16) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_17) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_18) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_19) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_20) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_21) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_22) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_23) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_24) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_25) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_26) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_27) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_28) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_29) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_30) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_31) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_32) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_33) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_34) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_35) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_36) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_37) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_38) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_39) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_40) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_41) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_42) + "</color></p><br/>"
-				"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_43) + "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_1) + "<url value='" + Ogre::String(NOWA_LICENSE_STR_2) + "'>" + Ogre::String(NOWA_LICENSE_STR_2) + "</url>" + Ogre::String(NOWA_LICENSE_STR_3) +
+                                     "</color></p>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_4) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_5) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_6) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_7) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_8) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_9) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_10) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_11) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_12) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_13) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_14) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_15) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_16) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_17) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_18) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_19) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_20) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_21) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_22) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_23) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_24) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_25) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_26) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_27) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_28) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_29) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_30) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_31) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_32) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_33) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_34) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_35) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_36) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_37) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_38) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_39) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_40) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_41) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_42) +
+                                     "</color></p><br/>"
+                                     "<p><color value='#1D6EA7'>" +
+                                     Ogre::String(NOWA_LICENSE_STR_43) +
+                                     "</color></p><br/>"
 
-				"<p><color value='#FFFFFF'> - Ogre3D: MIT <url value='https://www.ogre3d.org/licensing'>https://www.ogre3d.org/licensing</url></color></p>"
-				"<p><color value='#FFFFFF'> - fparser: LGPL <url value='https://github.com/TheComet/ik/blob/master/LICENSE'>https://github.com/TheComet/ik/blob/master/LICENSE</url></color></p>"
-				"<p><color value='#FFFFFF'> - kiss-fft: BSD <url value='https://github.com/berndporr/kiss-fft/blob/master/LICENSE'>https://github.com/berndporr/kiss-fft/blob/master/LICENSE</url></color></p>"
-				"<p><color value='#FFFFFF'> - lua: MIT <url value='https://www.lua.org/source/'>https://www.lua.org/source/</url></color></p>"
-				"<p><color value='#FFFFFF'> - luabind: MIT <url value='http://luabind.sourceforge.net/docs.html'>http://luabind.sourceforge.net/docs.html</url></color></p>"
-				"<p><color value='#FFFFFF'> - MyGUI: MIT <url value='http://mygui.info/pages/license.html'>http://mygui.info/pages/license.html</url></color></p>"
-				"<p><color value='#FFFFFF'> - newton dynamics: ZLIB (compatible to LGPL) <url value='http://www.gzip.org/zlib/zlib_license.html'>http://www.gzip.org/zlib/zlib_license.html</url></color></p>"
-				"<p><color value='#FFFFFF'> - ogg: BSD <url value='http://www.xiph.org'>http://www.xiph.org</url></color></p>"
-				"<p><color value='#FFFFFF'> - vorbis: BSD <url value='http://www.xiph.org'>http://www.xiph.org</url></color></p>"
-				"<p><color value='#FFFFFF'> - Raknet: BSD <url value='https://github.com/facebookarchive/RakNet/blob/master/LICENSE'>https://github.com/facebookarchive/RakNet/blob/master/LICENSE</url></color></p>"
-				"<p><color value='#FFFFFF'> - OpenAL: LGPL <url value='https://en.wikipedia.org/wiki/OpenAL'>https://en.wikipedia.org/wiki/OpenAL</url></color></p>"
-				"<p><color value='#FFFFFF'> - OgreAL: LGPL</color></p>"
-				"<p><color value='#FFFFFF'> - OgreNewt: LGPL</color></p>"
-				"<p><color value='#FFFFFF'> - OgreProzedural: MIT</color></p>"
-				"<p><color value='#FFFFFF'> - OgreRecast: MIT</color></p>"
-				"<p><color value='#FFFFFF'> - TinyXML: ZLIB</color></p>"
-			);
+                                     "<p><color value='#FFFFFF'> - Ogre3D: MIT <url value='https://www.ogre3d.org/licensing'>https://www.ogre3d.org/licensing</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - fparser: LGPL <url value='https://github.com/TheComet/ik/blob/master/LICENSE'>https://github.com/TheComet/ik/blob/master/LICENSE</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - kiss-fft: BSD <url value='https://github.com/berndporr/kiss-fft/blob/master/LICENSE'>https://github.com/berndporr/kiss-fft/blob/master/LICENSE</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - lua: MIT <url value='https://www.lua.org/source/'>https://www.lua.org/source/</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - luabind: MIT <url value='http://luabind.sourceforge.net/docs.html'>http://luabind.sourceforge.net/docs.html</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - MyGUI: MIT <url value='http://mygui.info/pages/license.html'>http://mygui.info/pages/license.html</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - newton dynamics: ZLIB (compatible to LGPL) <url value='http://www.gzip.org/zlib/zlib_license.html'>http://www.gzip.org/zlib/zlib_license.html</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - ogg: BSD <url value='http://www.xiph.org'>http://www.xiph.org</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - vorbis: BSD <url value='http://www.xiph.org'>http://www.xiph.org</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - Raknet: BSD <url value='https://github.com/facebookarchive/RakNet/blob/master/LICENSE'>https://github.com/facebookarchive/RakNet/blob/master/LICENSE</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - OpenAL: LGPL <url value='https://en.wikipedia.org/wiki/OpenAL'>https://en.wikipedia.org/wiki/OpenAL</url></color></p>"
+                                     "<p><color value='#FFFFFF'> - OgreAL: LGPL</color></p>"
+                                     "<p><color value='#FFFFFF'> - OgreNewt: LGPL</color></p>"
+                                     "<p><color value='#FFFFFF'> - OgreProzedural: MIT</color></p>"
+                                     "<p><color value='#FFFFFF'> - OgreRecast: MIT</color></p>"
+                                     "<p><color value='#FFFFFF'> - TinyXML: ZLIB</color></p>");
 
-			hyperTextBox->eventUrlClick += MyGUI::newDelegate(this, &MainMenuBar::onClickUrl);
+            hyperTextBox->eventUrlClick += MyGUI::newDelegate(this, &MainMenuBar::onClickUrl);
 
-			MyGUI::Button* aboutOkButton = this->aboutWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(0, coord.height - 40, 100, 40), MyGUI::Align::Bottom | MyGUI::Align::HCenter, "aboutOkButton");
-			aboutOkButton->setCaption("Ok");
-			aboutOkButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-			// Force update layout
-			this->aboutWindow->setSize(this->aboutWindow->getSize().width - 1, this->aboutWindow->getSize().height - 1);
-			this->aboutWindow->setSize(this->aboutWindow->getSize().width + 1, this->aboutWindow->getSize().height + 1);
+            MyGUI::Button* aboutOkButton = this->aboutWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(0, coord.height - 40, 100, 40), MyGUI::Align::Bottom | MyGUI::Align::HCenter, "aboutOkButton");
+            aboutOkButton->setCaption("Ok");
+            aboutOkButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+            // Force update layout
+            this->aboutWindow->setSize(this->aboutWindow->getSize().width - 1, this->aboutWindow->getSize().height - 1);
+            this->aboutWindow->setSize(this->aboutWindow->getSize().width + 1, this->aboutWindow->getSize().height + 1);
 
-			this->aboutWindowWidgets.push_back(hyperTextBox);
-			this->aboutWindowWidgets.push_back(aboutOkButton);
-			this->aboutWindowWidgets.push_back(this->aboutWindow);
-		}
+            this->aboutWindowWidgets.push_back(hyperTextBox);
+            this->aboutWindowWidgets.push_back(aboutOkButton);
+            this->aboutWindowWidgets.push_back(this->aboutWindow);
+        }
 
-		MyGUI::FloatPoint windowPosition;
-		windowPosition.left = 0.3f;
-		windowPosition.top = 0.2f;
+        MyGUI::FloatPoint windowPosition;
+        windowPosition.left = 0.3f;
+        windowPosition.top = 0.2f;
 
-		this->aboutWindow->setRealPosition(windowPosition);
-		this->aboutWindow->setVisible(true);
-	});
+        this->aboutWindow->setRealPosition(windowPosition);
+        this->aboutWindow->setVisible(true);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::showAboutWindow");
 }
 
 void MainMenuBar::showSceneDescriptionWindow(void)
@@ -2176,33 +2126,37 @@ void MainMenuBar::showComponentPlugin(void)
 #else
 	void MainMenuBar::showComponentPlugin(void)
 	{
-		ENQUEUE_RENDER_COMMAND("MainMenuBar::showComponentPlugin",
-		{
-			if (nullptr == this->cPlusPlusComponentGenerator)
-			{
-				// Load the layout and get the root widget
-				this->componentPluginWindowWidgets = MyGUI::LayoutManager::getInstancePtr()->loadLayout("ComponentGenerator.layout");
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            if (nullptr == this->cPlusPlusComponentGenerator)
+            {
+                // Load the layout and get the root widget
+                this->componentPluginWindowWidgets = MyGUI::LayoutManager::getInstancePtr()->loadLayout("ComponentGenerator.layout");
 
-				// Assuming the root widget is the first widget in the layout
-				MyGUI::Widget* rootWidget = this->componentPluginWindowWidgets.at(0);
+                // Assuming the root widget is the first widget in the layout
+                MyGUI::Widget* rootWidget = this->componentPluginWindowWidgets.at(0);
 
-				this->cPlusPlusComponentGenerator = new NOWA::CPlusPlusComponentGenerator(rootWidget);
-			}
-			else
-			{
-				this->cPlusPlusComponentGenerator->getMainWidget()->setVisible(true);
-			}
-		});
+                this->cPlusPlusComponentGenerator = new NOWA::CPlusPlusComponentGenerator(rootWidget);
+            }
+            else
+            {
+                this->cPlusPlusComponentGenerator->getMainWidget()->setVisible(true);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::showComponentPlugin");
 	}
 #endif
 
 void MainMenuBar::activateTestSelectedGameObjects(bool bActivated)
 {
 	this->bTestSelectedGameObjects = bActivated;
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::activateTestSelectedGameObjects",
-	{
-		this->simulationMenuItem->getItemChild()->getItemAt(1)->setStateCheck(this->bTestSelectedGameObjects);
-	});
+
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->simulationMenuItem->getItemChild()->getItemAt(1)->setStateCheck(this->bTestSelectedGameObjects);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::activateTestSelectedGameObjects");
+
 	this->projectManager->getEditorManager()->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
 }
 
@@ -2216,7 +2170,7 @@ void MainMenuBar::drawNavigationMap(bool bDraw)
             return;
         }
 
-        this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
+        this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setStateCheck(bDraw);
         NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(bDraw);
     };
     NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::drawNavigationMap");
@@ -2224,44 +2178,46 @@ void MainMenuBar::drawNavigationMap(bool bDraw)
 
 void MainMenuBar::drawCollisionLines(bool bDraw)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::drawNavigationMap", _1(bDraw),
-	{
-		this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(bDraw);
-		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(bDraw);
-	});
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, bDraw]()
+    {
+        this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
+        NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(bDraw);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::drawNavigationMap");
 }
 
 void MainMenuBar::toggleMyGUIComponents(bool bToggleMyGUIComponents)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::toggleMyGUIComponents", _1(bToggleMyGUIComponents),
-	{
-		const auto & allMyGuiComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::MyGUIComponent>();
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, bToggleMyGUIComponents]()
+    {
+        const auto& allMyGuiComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::MyGUIComponent>();
 
-		// Iterate through all MyGUI components
-		for (const auto& myGuiComponent : allMyGuiComponents)
-		{
-			// Check if the component visibility has been stored before
-			auto it = this->componentVisibilityMap.find(myGuiComponent.get());
-			if (it == this->componentVisibilityMap.end())
-			{
-				// If not found, store the current visibility state of the component
-				this->componentVisibilityMap[myGuiComponent.get()] = myGuiComponent->isActivated();
-			}
+        // Iterate through all MyGUI components
+        for (const auto& myGuiComponent : allMyGuiComponents)
+        {
+            // Check if the component visibility has been stored before
+            auto it = this->componentVisibilityMap.find(myGuiComponent.get());
+            if (it == this->componentVisibilityMap.end())
+            {
+                // If not found, store the current visibility state of the component
+                this->componentVisibilityMap[myGuiComponent.get()] = myGuiComponent->isActivated();
+            }
 
-			bool wasVisible = this->componentVisibilityMap[myGuiComponent.get()];
-			if (true == bToggleMyGUIComponents)
-			{
-				if (true == wasVisible)
-				{
-					myGuiComponent->setActivated(true);
-				}
-			}
-			else
-			{
-				myGuiComponent->setActivated(false);
-			}
-		}
-	});
+            bool wasVisible = this->componentVisibilityMap[myGuiComponent.get()];
+            if (true == bToggleMyGUIComponents)
+            {
+                if (true == wasVisible)
+                {
+                    myGuiComponent->setActivated(true);
+                }
+            }
+            else
+            {
+                myGuiComponent->setActivated(false);
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::toggleMyGUIComponents");
 }
 
 void MainMenuBar::showLuaWikiWindow(void)

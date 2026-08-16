@@ -334,15 +334,16 @@ namespace NOWA
 					{
                         this->hitBody->setKinematicPositionOrientation(globalPos, this->hitBody->getOrientation());
 					}
-					else
-					{
-						Ogre::Vector3 bodyPos;
-						Ogre::Quaternion bodyOrientation;
+                    else
+                    {
+                        Ogre::Vector3 bodyPos;
+                        Ogre::Quaternion bodyOrientation;
 
-						// Store the body position and orientation
-                        this->hitBody->setKinematicPositionOrientation(bodyPos, bodyOrientation);
-						localPos = bodyOrientation.Inverse() * (globalPos - bodyPos);
-					}
+                        // Read (not set!) the body's current position and orientation, so we can
+                        // compute the local drag point relative to it.
+                        this->hitBody->getPositionOrientation(bodyPos, bodyOrientation);
+                        localPos = bodyOrientation.Inverse() * (globalPos - bodyPos);
+                    }
 
 					// Try to cast to physics component
 					this->dragComponent = OgreNewt::any_cast<PhysicsComponent*>(this->hitBody->getUserData());
@@ -460,37 +461,47 @@ namespace NOWA
 	}
 
 	// ---- Classic Newton callback implementation for Picker ----
-	void Picker::dragCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
-	{
-		Ogre::Ray mouseRay = this->getRayFromMouse();
-		Ogre::Vector3 cursorPos = mouseRay.getPoint(this->dragDistance);
+    void Picker::dragCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
+    {
+        Ogre::Ray mouseRay = this->getRayFromMouse();
+        Ogre::Vector3 cursorPos = mouseRay.getPoint(this->dragDistance);
 
-		Ogre::Quaternion bodyOrientation;
-		Ogre::Vector3 bodyPos;
-		body->getPositionOrientation(bodyPos, bodyOrientation);
+        Ogre::Quaternion bodyOrientation;
+        Ogre::Vector3 bodyPos;
+        body->getPositionOrientation(bodyPos, bodyOrientation);
 
-		Ogre::Vector3 dragPos = (bodyOrientation * this->dragPoint) + bodyPos;
+        Ogre::Vector3 dragPos = (bodyOrientation * this->dragPoint) + bodyPos;
 
-		Ogre::Vector3 inertia;
-		Ogre::Real mass;
-		body->getMassMatrix(mass, inertia);
+        Ogre::Vector3 inertia;
+        Ogre::Real mass;
+        body->getMassMatrix(mass, inertia);
 
-		if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
-		{
-            body->setKinematicPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
-			body->addForce(body->getGravity() * mass);
-			this->destroyLine();
-		}
-		else
-		{
-			Ogre::Vector3 dragForce = ((cursorPos - dragPos) * mass * this->pickForce) - body->getVelocity();
-			if (this->getDrawLine())
-			{
-				this->drawLine(cursorPos, dragPos);
-			}
-			body->addGlobalForce(dragForce, dragPos);
-		}
-	}
+        if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
+        {
+            // Keep the body's OWN orientation. Passing IDENTITY re-orients the body to the world axes on
+            // every step, which for a jointed body (every ragdoll bone) is a constraint violation fed in
+            // each frame and comes back as runaway spin.
+            body->setKinematicPositionOrientation(cursorPos, bodyOrientation);
+            body->addForce(body->getGravity() * mass);
+            this->destroyLine();
+        }
+        else
+        {
+            // Spring towards the cursor with critical damping: with springK = mass * pickForce the
+            // natural frequency is sqrt(pickForce), so the critically damped coefficient is
+            // 2 * mass * sqrt(pickForce). The old term subtracted a raw velocity from a force.
+            const Ogre::Real springK = mass * this->pickForce;
+            const Ogre::Real damperC = 2.0f * mass * Ogre::Math::Sqrt(this->pickForce);
+
+            Ogre::Vector3 dragForce = ((cursorPos - dragPos) * springK) - (body->getVelocity() * damperC);
+
+            if (this->getDrawLine())
+            {
+                this->drawLine(cursorPos, dragPos);
+            }
+            body->addGlobalForce(dragForce, dragPos);
+        }
+    }
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -832,108 +843,114 @@ namespace NOWA
 	}
 
 	void GameObjectPicker::grabGameObject(OgreNewt::World* ogreNewt, const Ogre::Vector2 position, Ogre::Window* renderWindow, Ogre::Real pickForce, Ogre::Real dragAffectDistance, const Ogre::Vector3& offsetPosition)
-	{
-		this->mousePosition = position;
-		this->renderWindow = renderWindow;
-		this->pickForce = pickForce;
-		this->dragAffectDistance = dragAffectDistance;
-		this->offsetPosition = offsetPosition;
+    {
+        this->mousePosition = position;
+        this->renderWindow = renderWindow;
+        this->pickForce = pickForce;
+        this->dragAffectDistance = dragAffectDistance;
+        this->offsetPosition = offsetPosition;
 
-		if (this->pickForce < 1.0f)
-		{
-			this->pickForce = 1.0f;
-		}
-		else if (this->pickForce > 50.0f)
-		{
-			this->pickForce = 50.0f;
-		}
+        if (this->pickForce < 1.0f)
+        {
+            this->pickForce = 1.0f;
+        }
+        else if (this->pickForce > 50.0f)
+        {
+            this->pickForce = 50.0f;
+        }
 
-		if (false == active || nullptr == this->sceneManager)
-		{
-			return;
-		}
+        if (false == active || nullptr == this->sceneManager)
+        {
+            return;
+        }
 
-		this->updateVisual();
+        this->updateVisual();
 
-		if (false == this->dragging)
-		{
-			// Get ray origin and end coordinates
-			Ogre::Ray mouseRay = getRayFromMouse();
+        if (false == this->dragging)
+        {
+            // Get ray origin and end coordinates
+            Ogre::Ray mouseRay = getRayFromMouse();
 
-			// Found a body in the ray's path
-			if (nullptr != this->hitBody)
-			{
-				// Calculate hit global and local position (info.mDistance is in the range [0,1])
-				Ogre::Plane plGround = Ogre::Plane(camera->getDerivedDirection(), -(this->hitBody->getPosition() + this->offsetPosition) * camera->getDerivedDirection());
+            // Found a body in the ray's path
+            if (nullptr != this->hitBody)
+            {
+                // Calculate hit global and local position (info.mDistance is in the range [0,1])
+                Ogre::Plane plGround = Ogre::Plane(camera->getDerivedDirection(), -(this->hitBody->getPosition() + this->offsetPosition) * camera->getDerivedDirection());
 
-				std::pair<bool, Ogre::Real> intersectionDistance = mouseRay.intersects(plGround);
+                std::pair<bool, Ogre::Real> intersectionDistance = mouseRay.intersects(plGround);
 
-				Ogre::Real length = 0.0f;
+                Ogre::Real length = 0.0f;
 
-				if (intersectionDistance.first)
-				{
-					length = intersectionDistance.second;
-				}
+                if (intersectionDistance.first)
+                {
+                    length = intersectionDistance.second;
+                }
 
-				Ogre::Vector3 globalPos = Ogre::Vector3::ZERO;
+                // FIX: globalPos was previously left at Vector3::ZERO and never actually
+                // computed from the ray/plane intersection. That meant the body got
+                // kinematically teleported to the world origin below on every single
+                // grab. Now it's the actual point where the mouse ray hits the ground
+                // plane through the body.
+                Ogre::Vector3 globalPos = mouseRay.getPoint(length);
 
-				if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
-				{
+                if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
+                {
+                    // "Welded" pick: snap the body kinematically to the cursor point.
                     this->hitBody->setKinematicPositionOrientation(globalPos, this->hitBody->getOrientation());
-				}
-				else
-				{
-					Ogre::Quaternion bodyOrientation;
+                }
+                // FIX: the previous else-branch here unconditionally called
+                // setKinematicPositionOrientation(globalPos, bodyOrientation) with an
+                // always-ZERO globalPos and an uninitialized bodyOrientation -- teleporting
+                // the body to the origin on every non-welded (non-50) grab too. For
+                // non-welded dragging, nothing needs to be set on the body at all: the pull
+                // is applied purely as a spring force in PickForceObserver::onForceAdd() /
+                // dragCallback() further below, using dragPoint/dragDistance computed here.
 
-					// Store the body position and orientation
-                    this->hitBody->setKinematicPositionOrientation(globalPos, bodyOrientation);
-				}
+                // Try to cast to physics component
+                this->dragComponent = OgreNewt::any_cast<PhysicsComponent*>(this->hitBody->getUserData());
 
-				// Try to cast to physics component
-				this->dragComponent = OgreNewt::any_cast<PhysicsComponent*>(this->hitBody->getUserData());
+                if (nullptr != this->dragComponent)
+                {
+                    // if this is a physics component, try to cast to an active one and subscribe, to be called in the force and torque callback of the active component
+                    // to integrate its force there without disrupting other forces
+                    PhysicsActiveComponent* physicsActiveComponent = dynamic_cast<PhysicsActiveComponent*>(this->dragComponent);
+                    if (nullptr != physicsActiveComponent)
+                    {
+                        if (this->drawLines)
+                        {
+                            this->createLine();
+                        }
+                        GameObjectPicker::PickForceObserver* pickForceObserver = new GameObjectPicker::PickForceObserver();
+                        pickForceObserver->setPicker(this);
+                        pickForceObserver->setName(this->dragComponent->getOwner()->getName() + "_GameObjectPicker" + Ogre::StringConverter::toString(this->dragComponent->getIndex()));
+                        physicsActiveComponent->attachForceObserver(pickForceObserver);
+                    }
+                }
+                else
+                {
+                    // ---- Reintroduced classic Newton callback path (no component attached) ----
+                    this->oldForceTorqueCallback = this->hitBody->getForceTorqueCallback();
+                    this->hitBody->setCustomForceAndTorqueCallback<GameObjectPicker>(&GameObjectPicker::dragCallback, this);
+                    this->hasMoveCallback = true;
+                }
 
-				if (nullptr != this->dragComponent)
-				{
-					// if this is a physics component, try to cast to an active one and subscribe, to be called in the force and torque callback of the active component
-					// to integrate its force there without disrupting other forces
-					PhysicsActiveComponent* physicsActiveComponent = dynamic_cast<PhysicsActiveComponent*>(this->dragComponent);
-					if (nullptr != physicsActiveComponent)
-					{
-						if (this->drawLines)
-						{
-							this->createLine();
-						}
-						GameObjectPicker::PickForceObserver* pickForceObserver = new GameObjectPicker::PickForceObserver();
-						pickForceObserver->setPicker(this);
-						pickForceObserver->setName(this->dragComponent->getOwner()->getName() + "_GameObjectPicker" + Ogre::StringConverter::toString(this->dragComponent->getIndex()));
-						physicsActiveComponent->attachForceObserver(pickForceObserver);
-					}
-				}
-				else
-				{
-					// ---- Reintroduced classic Newton callback path (no component attached) ----
-					this->oldForceTorqueCallback = this->hitBody->getForceTorqueCallback();
-					this->hitBody->setCustomForceAndTorqueCallback<GameObjectPicker>(&GameObjectPicker::dragCallback, this);
-					this->hasMoveCallback = true;
-				}
+                Ogre::Vector3 currentMousePoint = mouseRay.getOrigin(); /*mouseRay.getPoint(length);*/
+                this->dragDistance = ((globalPos + this->offsetPosition) - currentMousePoint).length();
 
-				Ogre::Vector3 currentMousePoint = mouseRay.getOrigin(); /*mouseRay.getPoint(length);*/
-				this->dragDistance = ((globalPos + this->offsetPosition) - currentMousePoint).length();
+                // this->dragPoint = localPos;
+                this->dragPoint = Ogre::Vector3::ZERO;
 
-				// this->dragPoint = localPos;
-				this->dragPoint = Ogre::Vector3::ZERO;
-
-				this->dragging = true;
-			}
-		}
-		else
-		{
-			if (true == this->drawLines)
-			{
-				this->drawLine(this->cursorPos, this->dragPos);
-			}
-		}
-	}
+                this->dragging = true;
+            }
+        }
+        else
+        {
+            if (true == this->drawLines)
+            {
+                this->drawLine(this->cursorPos, this->dragPos);
+            }
+        }
+    }
 
 	void GameObjectPicker::release(bool resetBody)
 	{

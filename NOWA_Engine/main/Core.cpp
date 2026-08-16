@@ -306,6 +306,8 @@ namespace NOWA
         optionTextureFiltering(2),
         optionAnisotropyLevel(4),
         optionQualityLevel(1),
+        optionShadowQuality(-1),
+        optionShadowFarDistance(0.0f),
         optionSoundVolume(70),
         optionMusicVolume(50),
         optionLogLevel(2),
@@ -598,6 +600,7 @@ namespace NOWA
         this->isGame = coreConfiguration.isGame;
         this->logName = "../resources/" + this->title + Ogre::String("_") + this->graphicsConfigName + Ogre::String(".log");
         this->resourceGroupNames.clear();
+        this->useDefaultGraphicsOptions = coreConfiguration.useDefaultGraphicsOptions;
 
         if (false == coreConfiguration.startProjectName.empty())
         {
@@ -645,31 +648,58 @@ namespace NOWA
         }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: Configuration filename: " + this->graphicsConfigName);
-        FILE* fp = nullptr;
-        if (this->graphicsConfigName.length() > 0)
-        {
-            fp = fopen(this->graphicsConfigName.c_str(), "r");
-        }
-        else
-        {
-            fp = fopen("ogre.cfg", "r");
-        }
 
-        // pruefen ob die Ogre-Konfigurationsdatei existiert
-        if (fp == nullptr)
+        // Check whether the ogre configuration file does exist
+        bool configFileExists = false;
         {
-            // Wenn diese nicht existiert, dann wird config dialog gezeigt, damit der Benutzer Einstellungen fuer die Grafik vornehmen kann
-            if (!this->root->showConfigDialog())
+            FILE* fp = nullptr;
+            if (this->graphicsConfigName.length() > 0)
             {
-                // Wenn Abbrechen im Konfigurationsdialog gedrueckt wird
-                return false;
+                fp = fopen(this->graphicsConfigName.c_str(), "r");
+            }
+            else
+            {
+                fp = fopen("ogre.cfg", "r");
+            }
+
+            if (nullptr != fp)
+            {
+                configFileExists = true;
+                fclose(fp);
             }
         }
+
+        if (true == this->useDefaultGraphicsOptions)
+        {
+            // Never show the windows configuration dialog. This mode is used for
+            // console like targets (Steam, Steam Deck), where the graphics settings
+            // are changed in game via the GraphicsConfigurationComponent instead.
+            if (true == configFileExists)
+            {
+                this->root->restoreConfig();
+            }
+
+            // Forces Direct3D11 and validates all options. If the configuration file
+            // did already exist, the user values for resolution, fullscreen, vsync and
+            // FSAA are kept and only the fixed options are enforced.
+            this->applyDefaultGraphicsOptions(configFileExists);
+        }
         else
         {
-            // Ansonsten werden die Daten aus der "*.cfg" im Hintergrund geladen
-            this->root->restoreConfig();
-            fclose(fp);
+            if (false == configFileExists)
+            {
+                // Wenn diese nicht existiert, dann wird config dialog gezeigt, damit der Benutzer Einstellungen fuer die Grafik vornehmen kann
+                if (!this->root->showConfigDialog())
+                {
+                    // Wenn Abbrechen im Konfigurationsdialog gedrueckt wird
+                    return false;
+                }
+            }
+            else
+            {
+                // Ansonsten werden die Daten aus der "*.cfg" im Hintergrund geladen
+                this->root->restoreConfig();
+            }
         }
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
@@ -750,39 +780,17 @@ namespace NOWA
 
         // Params for window inside graphics
         params.insert(std::make_pair("vsyncInterval", cfgOpts["VSync Interval"].currentValue));
-        /*params.insert(std::make_pair("vsync", cfgOpts["VSync"].currentValue));
-        params.insert(std::make_pair("left", "0"));
-        params.insert(std::make_pair("top", "0"));
-        params.insert(std::make_pair("parentWindowHandle", "0"));
-        params.insert(std::make_pair("externalWindowHandle", "0"));
-        params.insert(std::make_pair("border", "fixed"));
-        params.insert(std::make_pair("alwaysWindowedMode", "Yes"));
-        params.insert(std::make_pair("enableDoubleClick", "Yes"));
-        */
         params.insert(std::make_pair("useFlipMode", "Yes"));
         params.insert(std::make_pair("monitorIndex", "0"));
 
         // Note: Fixes MyGUI Font rendering issues if set to "none"
         params.insert(std::make_pair("border", this->borderType));
 
-        /*parentWindowHandle       -> parentHwnd
-        externalWindowHandle     -> externalHandle
-        border : none, fixed
-        outerDimensions
-        monitorIndex
-        useFlipMode
-        vsync
-        vsyncInterval
-        alwaysWindowedMode
-        enableDoubleClick*/
-
         // Add also custom params
         for (const auto& customParam : coreConfiguration.customParams)
         {
             params.insert(std::make_pair(customParam.first, customParam.second));
         }
-
-        // this->initMiscParamsListener(params);
 
         this->renderWindow = Ogre::Root::getSingleton().createRenderWindow(coreConfiguration.wndTitle, width, height, fullscreen, &params);
 
@@ -834,19 +842,6 @@ namespace NOWA
             resourceCheck = true;
         }
 
-        // FIXME: porting to linux
-        // works strangly only with release on windows
-        /*#ifdef WIN32 & !_DEBUG
-        HWND handle = 0;
-        this->renderWindow->getCustomAttribute("WINDOW", handle);
-
-        if (handle != NULL)
-        SetForegroundWindow(handle);
-        #endif*/
-        // this->root->clearEventTimes();
-
-        // vsync on off at runtime: http://www.ogre3d.org/forums/viewtopic.php?f=2&t=61531
-
         // Creates a dummy scene manager and camera, to show the state when loading resources
         Ogre::SceneManager* dummySceneManager = this->root->createSceneManager(Ogre::ST_GENERIC, 1, "DummyScene");
         Ogre::Camera* dummyCamera = dummySceneManager->createCamera("DummyCamera");
@@ -877,10 +872,6 @@ namespace NOWA
 
         // Registers as a Window listener
         Ogre::WindowEventUtilities::addWindowEventListener(this->renderWindow, this);
-        // this->root->getRenderSystem()->addListener(this);
-
-        // this->resourceLoadingListener = new ResourceLoadingListenerImpl();
-        // Ogre::ResourceGroupManager::getSingletonPtr()->setLoadingListener(this->resourceLoadingListener);
 
         if (nullptr == Ogre::FontManager::getSingletonPtr())
         {
@@ -933,7 +924,6 @@ namespace NOWA
         }
 
         // Count the resource objects for progress visualisation
-        // loadableObjectsCount = (jsonMaterialsCount - resourceGroupNames.size()) * 2;
         loadableObjectsCount = static_cast<unsigned int>(this->resourceGroupNames.size());
         if (loadableObjectsCount < 0)
         {
@@ -952,8 +942,6 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: " + description);
             throw Ogre::ItemIdentityException(1, description, "initialiseResourceGroup(Essential, true)", __FILE__, __LINE__);
         }
-
-        // Ogre::ResourceGroupManager::getSingleton().initialiseResourceGroup("TerrainTextures", false);
 
         // After that my gui must be initialized
         this->initMyGui(dummySceneManager, dummyCamera, logName);
@@ -985,11 +973,6 @@ namespace NOWA
 
         this->defaultEngineResourceListener = new EngineResourceRotateListener(this->renderWindow);
         this->defaultEngineResourceListener->showLoadingBar(1, 1, 1.0f / static_cast<Ogre::Real>(loadableObjectsCount));
-
-        // Note: If via DeployResourceModule deploy has been called for an external app, in the project folder a media folder has been created and all at the deploy timepoint created resources (meshes, json, textures) have been copied there.
-        // Also a appDeployed.cfg has been created with a resource group name called "Project", which points to that place, so if the app is started, all those textures in that folder will be preloaded at app start
-        // So scene loading times will be improved.
-        // this->preLoadTextures("Project");
 
         try
         {
@@ -1034,9 +1017,6 @@ namespace NOWA
         this->root->destroySceneManager(dummySceneManager);
         dummySceneManager = nullptr;
 
-        // this->renderWindow->setAutoUpdated(false);
-        //  this->renderWindow->setActive(true);
-
         // Create the plugin factory
         Ogre::LogManager::getSingletonPtr()->logMessage("*** Initializing PluginFactory ***");
         this->pluginFactory = new PluginFactory();
@@ -1058,9 +1038,6 @@ namespace NOWA
         Ogre::TextureGpuManager* textureGpuManager = this->root->getRenderSystem()->getTextureGpuManager();
         textureGpuManager->setTextureGpuManagerListener(this);
 
-        // Test:
-        // textureGpuManager->dumpMemoryUsage(Ogre::LogManager::getSingletonPtr()->getDefaultLog());
-
 #ifdef _DEBUG
         // Debugging multithreaded code is a PITA, disable it.
         const size_t numThreads = 1;
@@ -1072,7 +1049,6 @@ namespace NOWA
         Ogre::TextureGpuManager* hlmsTextureManager = this->root->getRenderSystem()->getTextureGpuManager();
         hlmsTextureManager->setMultiLoadPool(numThreads);
 
-        // setTightMemoryBudget();
         setRelaxedMemoryBudget();
         this->defaultBudget = textureGpuManager->getBudget();
 
@@ -1820,6 +1796,7 @@ namespace NOWA
         MyGUI::ResourceManager::getInstancePtr()->load("InventoryPanel.xml");
         MyGUI::ResourceManager::getInstancePtr()->load("WoodWindowSkin.xml");
         MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_WoodButton.xml");
+        MyGUI::ResourceManager::getInstancePtr()->load("WoodSliderSkin.xml");
     }
 
     void Core::setSceneManagerForMyGuiPlatform(Ogre::SceneManager* sceneManager)
@@ -1873,6 +1850,695 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataBoundsUpdated);
     }
 
+    // =========================================================================
+    // Core::applyDefaultGraphicsOptions
+    //
+    // Forces the Direct3D11 render system and applies all fixed options.
+    // If keepExistingUserValues is true, the user configurable options
+    // (Video Mode, Full Screen, VSync, VSync Interval, FSAA) are left untouched
+    // but still validated against the possible values of the current hardware.
+    // =========================================================================
+    void Core::applyDefaultGraphicsOptions(bool keepExistingUserValues)
+    {
+        Ogre::RenderSystem* renderSystem = this->root->getRenderSystemByName("Direct3D11 Rendering Subsystem");
+        if (nullptr == renderSystem)
+        {
+            Ogre::String description = "[Core] Could not find the 'Direct3D11 Rendering Subsystem'. This application requires Direct3D11. "
+                                       "Please check the plugins.cfg and make sure RenderSystem_Direct3D11 is listed and the DLL does exist!";
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, description);
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, description + "\n", "NOWA");
+        }
+
+        this->root->setRenderSystem(renderSystem);
+
+        Ogre::ConfigOptionMap& configOptions = renderSystem->getConfigOptions();
+
+        // ── Fixed options, never exposed in the GraphicsConfigurationComponent ──
+        renderSystem->setConfigOption("sRGB Gamma Conversion", "Yes");
+        renderSystem->setConfigOption("Floating-point mode", "Fastest");
+        renderSystem->setConfigOption("Fast Shader Build Hack", "Yes");
+        renderSystem->setConfigOption("Vendor Extensions", "Auto");
+        renderSystem->setConfigOption("Driver type", "Hardware");
+        renderSystem->setConfigOption("Allow NVPerfHUD", "No");
+        renderSystem->setConfigOption("Backbuffer Count", "Auto");
+        renderSystem->setConfigOption("Information Queue Exceptions Bottom Level", "No information queue exceptions");
+
+        if (true == this->isConfigOptionValueValid(configOptions, "Rendering Device", "(default)"))
+        {
+            renderSystem->setConfigOption("Rendering Device", "(default)");
+        }
+
+        if (true == keepExistingUserValues)
+        {
+            // Only validate what the user already has. If a stored value is no longer
+            // supported (monitor changed, driver update), fall back to the default.
+            if (false == this->isConfigOptionValueValid(configOptions, "Video Mode", configOptions["Video Mode"].currentValue))
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] The stored video mode '" + configOptions["Video Mode"].currentValue + "' is not supported anymore. Falling back to the desktop resolution.");
+                keepExistingUserValues = false;
+            }
+            else if (false == this->isConfigOptionValueValid(configOptions, "FSAA", configOptions["FSAA"].currentValue))
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] The stored FSAA value '" + configOptions["FSAA"].currentValue + "' is not supported anymore. Falling back to 'None'.");
+                renderSystem->setConfigOption("FSAA", "None");
+            }
+        }
+
+        if (false == keepExistingUserValues)
+        {
+            // ── Determine the current desktop resolution ──────────────────────
+            unsigned int desktopWidth = 1280;
+            unsigned int desktopHeight = 720;
+
+            DEVMODE devMode;
+            memset(&devMode, 0, sizeof(devMode));
+            devMode.dmSize = sizeof(devMode);
+
+            if (0 != EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &devMode))
+            {
+                desktopWidth = static_cast<unsigned int>(devMode.dmPelsWidth);
+                desktopHeight = static_cast<unsigned int>(devMode.dmPelsHeight);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Detected desktop resolution: " + Ogre::StringConverter::toString(desktopWidth) + " x " + Ogre::StringConverter::toString(desktopHeight));
+            }
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Could not detect the desktop resolution. Using 1280 x 720 as fallback.");
+            }
+
+            Ogre::String videoMode = this->findMatchingVideoMode(configOptions["Video Mode"].possibleValues, desktopWidth, desktopHeight);
+            if (false == videoMode.empty())
+            {
+                renderSystem->setConfigOption("Video Mode", videoMode);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Using default video mode: " + videoMode);
+            }
+
+            renderSystem->setConfigOption("Full Screen", "Yes");
+            renderSystem->setConfigOption("VSync", "Yes");
+            renderSystem->setConfigOption("VSync Interval", "1");
+
+            // Prefer 4x MSAA, but only if the hardware reports it
+            if (true == this->isConfigOptionValueValid(configOptions, "FSAA", "4x MSAA"))
+            {
+                renderSystem->setConfigOption("FSAA", "4x MSAA");
+            }
+            else if (true == this->isConfigOptionValueValid(configOptions, "FSAA", "2x MSAA"))
+            {
+                renderSystem->setConfigOption("FSAA", "2x MSAA");
+            }
+            else
+            {
+                renderSystem->setConfigOption("FSAA", "None");
+            }
+        }
+
+        Ogre::String validationError = renderSystem->validateConfigOptions();
+        if (false == validationError.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Graphics configuration validation failed: " + validationError);
+        }
+
+        this->root->saveConfig();
+    }
+
+    // =========================================================================
+    // Core::findMatchingVideoMode
+    //
+    // Searches for a video mode string matching the given resolution.
+    // Falls back to the largest supported mode that is not bigger than the
+    // desktop resolution and finally to the largest mode at all.
+    // =========================================================================
+    Ogre::String Core::findMatchingVideoMode(const Ogre::StringVector& possibleValues, unsigned int width, unsigned int height) const
+    {
+        if (true == possibleValues.empty())
+        {
+            return "";
+        }
+
+        Ogre::String bestFittingMode;
+        unsigned int bestFittingPixels = 0;
+        Ogre::String largestMode;
+        unsigned int largestPixels = 0;
+
+        for (size_t i = 0; i < possibleValues.size(); i++)
+        {
+            const Ogre::String& currentMode = possibleValues[i];
+
+            // Format is: "1920 x 1080 @ 32-bit colour"
+            Ogre::String::size_type separatorPosition = currentMode.find('x');
+            if (Ogre::String::npos == separatorPosition)
+            {
+                continue;
+            }
+
+            unsigned int currentWidth = static_cast<unsigned int>(Ogre::StringConverter::parseInt(currentMode.substr(0, separatorPosition)));
+
+            Ogre::String remainder = currentMode.substr(separatorPosition + 1);
+            unsigned int currentHeight = static_cast<unsigned int>(Ogre::StringConverter::parseInt(remainder));
+
+            if (0 == currentWidth || 0 == currentHeight)
+            {
+                continue;
+            }
+
+            const unsigned int currentPixels = currentWidth * currentHeight;
+
+            if (currentWidth == width && currentHeight == height)
+            {
+                // Exact match, nothing better can be found
+                return currentMode;
+            }
+
+            if (currentWidth <= width && currentHeight <= height && currentPixels > bestFittingPixels)
+            {
+                bestFittingPixels = currentPixels;
+                bestFittingMode = currentMode;
+            }
+
+            if (currentPixels > largestPixels)
+            {
+                largestPixels = currentPixels;
+                largestMode = currentMode;
+            }
+        }
+
+        if (false == bestFittingMode.empty())
+        {
+            return bestFittingMode;
+        }
+
+        return largestMode;
+    }
+
+    // =========================================================================
+    // Core::isConfigOptionValueValid
+    // =========================================================================
+    bool Core::isConfigOptionValueValid(const Ogre::ConfigOptionMap& configOptions, const Ogre::String& optionName, const Ogre::String& value) const
+    {
+        Ogre::ConfigOptionMap::const_iterator it = configOptions.find(optionName);
+        if (it == configOptions.cend())
+        {
+            return false;
+        }
+
+        if (true == it->second.possibleValues.empty())
+        {
+            // Option without a fixed value list, e.g. a free text option
+            return true;
+        }
+
+        for (size_t i = 0; i < it->second.possibleValues.size(); i++)
+        {
+            if (it->second.possibleValues[i] == value)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // =========================================================================
+    // Core::setVideoMode
+    // =========================================================================
+    bool Core::setVideoMode(unsigned int width, unsigned int height)
+    {
+        if (nullptr == this->renderWindow || nullptr == this->root->getRenderSystem())
+        {
+            return false;
+        }
+
+        if (0 == width || 0 == height)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot set video mode, because the given resolution is invalid.");
+            return false;
+        }
+
+        Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
+        Ogre::ConfigOptionMap& configOptions = renderSystem->getConfigOptions();
+
+        Ogre::String videoMode = this->findMatchingVideoMode(configOptions["Video Mode"].possibleValues, width, height);
+        if (true == videoMode.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot set video mode " + Ogre::StringConverter::toString(width) + " x " + Ogre::StringConverter::toString(height) + ", because it is not supported.");
+            return false;
+        }
+
+        renderSystem->setConfigOption("Video Mode", videoMode);
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, width, height]()
+        {
+            this->renderWindow->requestResolution(width, height);
+            this->renderWindow->windowMovedOrResized();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::setVideoMode");
+
+        // Actualizes the mouse clipping size and propagates the new size to MyGUI and all cameras
+        this->windowResized(this->renderWindow);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Video mode changed to: " + videoMode);
+
+        return true;
+    }
+
+    // =========================================================================
+    // Core::setFullscreen
+    // =========================================================================
+    bool Core::setFullscreen(bool fullscreen, unsigned int monitorIndex)
+    {
+        if (nullptr == this->renderWindow || nullptr == this->root->getRenderSystem())
+        {
+            return false;
+        }
+
+        Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
+
+        if (true == fullscreen)
+        {
+            renderSystem->setConfigOption("Full Screen", "Yes");
+        }
+        else
+        {
+            renderSystem->setConfigOption("Full Screen", "No");
+        }
+
+        std::pair<unsigned int, unsigned int> resolution = this->getCurrentVideoModeResolution();
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, fullscreen, monitorIndex, resolution]()
+        {
+            this->renderWindow->requestFullscreenSwitch(fullscreen, false, monitorIndex, resolution.first, resolution.second, 0, 0);
+            this->renderWindow->windowMovedOrResized();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::setFullscreen");
+
+        this->windowResized(this->renderWindow);
+
+        if (true == fullscreen)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Switched to fullscreen mode.");
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Switched to windowed mode.");
+        }
+
+        return true;
+    }
+
+    // =========================================================================
+    // Core::setVSync
+    // =========================================================================
+    bool Core::setVSync(bool vsync, unsigned int interval)
+    {
+        if (nullptr == this->renderWindow || nullptr == this->root->getRenderSystem())
+        {
+            return false;
+        }
+
+        if (interval < 1)
+        {
+            interval = 1;
+        }
+
+        Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
+
+        if (true == vsync)
+        {
+            renderSystem->setConfigOption("VSync", "Yes");
+        }
+        else
+        {
+            renderSystem->setConfigOption("VSync", "No");
+        }
+        renderSystem->setConfigOption("VSync Interval", Ogre::StringConverter::toString(interval));
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, vsync, interval]()
+        {
+            this->renderWindow->setVSync(vsync, interval);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::setVSync");
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] VSync set to: " + Ogre::StringConverter::toString(vsync) + " with interval: " + Ogre::StringConverter::toString(interval));
+
+        return true;
+    }
+
+    // =========================================================================
+    // Core::setFSAA
+    //
+    // Anti aliasing is baked into the render window texture at creation time.
+    // There is no supported way in Ogre-Next to change it without recreating
+    // the window, which would invalidate every workspace, compositor texture
+    // and the MyGUI render manager. Therefore the value is only stored and
+    // takes effect after an application restart.
+    // =========================================================================
+    bool Core::setFSAA(const Ogre::String& fsaaValue)
+    {
+        if (nullptr == this->root->getRenderSystem())
+        {
+            return false;
+        }
+
+        Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
+        Ogre::ConfigOptionMap& configOptions = renderSystem->getConfigOptions();
+
+        if (false == this->isConfigOptionValueValid(configOptions, "FSAA", fsaaValue))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot set FSAA to '" + fsaaValue + "', because it is not supported.");
+            return false;
+        }
+
+        renderSystem->setConfigOption("FSAA", fsaaValue);
+        this->root->saveConfig();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] FSAA stored as '" + fsaaValue + "'. A restart is required for this to take effect.");
+
+        return true;
+    }
+
+    // =========================================================================
+    // Core::getAvailableVideoModes
+    // =========================================================================
+    std::vector<Ogre::String> Core::getAvailableVideoModes(void) const
+    {
+        std::vector<Ogre::String> videoModes;
+
+        if (nullptr == this->root->getRenderSystem())
+        {
+            return videoModes;
+        }
+
+        const Ogre::ConfigOptionMap& configOptions = this->root->getRenderSystem()->getConfigOptions();
+        Ogre::ConfigOptionMap::const_iterator it = configOptions.find("Video Mode");
+        if (it == configOptions.cend())
+        {
+            return videoModes;
+        }
+
+        for (size_t i = 0; i < it->second.possibleValues.size(); i++)
+        {
+            videoModes.emplace_back(it->second.possibleValues[i]);
+        }
+
+        return videoModes;
+    }
+
+    // =========================================================================
+    // Core::getAvailableFSAAModes
+    // =========================================================================
+    std::vector<Ogre::String> Core::getAvailableFSAAModes(void) const
+    {
+        std::vector<Ogre::String> fsaaModes;
+
+        if (nullptr == this->root->getRenderSystem())
+        {
+            return fsaaModes;
+        }
+
+        const Ogre::ConfigOptionMap& configOptions = this->root->getRenderSystem()->getConfigOptions();
+        Ogre::ConfigOptionMap::const_iterator it = configOptions.find("FSAA");
+        if (it == configOptions.cend())
+        {
+            return fsaaModes;
+        }
+
+        for (size_t i = 0; i < it->second.possibleValues.size(); i++)
+        {
+            fsaaModes.emplace_back(it->second.possibleValues[i]);
+        }
+
+        return fsaaModes;
+    }
+
+    // =========================================================================
+    // Core::getAvailableRenderingDevices
+    // =========================================================================
+    std::vector<Ogre::String> Core::getAvailableRenderingDevices(void) const
+    {
+        std::vector<Ogre::String> renderingDevices;
+
+        if (nullptr == this->root->getRenderSystem())
+        {
+            return renderingDevices;
+        }
+
+        const Ogre::ConfigOptionMap& configOptions = this->root->getRenderSystem()->getConfigOptions();
+        Ogre::ConfigOptionMap::const_iterator it = configOptions.find("Rendering Device");
+        if (it == configOptions.cend())
+        {
+            return renderingDevices;
+        }
+
+        for (size_t i = 0; i < it->second.possibleValues.size(); i++)
+        {
+            renderingDevices.emplace_back(it->second.possibleValues[i]);
+        }
+
+        return renderingDevices;
+    }
+
+    // =========================================================================
+    // Core::getCurrentVideoMode
+    // =========================================================================
+    Ogre::String Core::getCurrentVideoMode(void) const
+    {
+        if (nullptr == this->root->getRenderSystem())
+        {
+            return "";
+        }
+
+        const Ogre::ConfigOptionMap& configOptions = this->root->getRenderSystem()->getConfigOptions();
+        Ogre::ConfigOptionMap::const_iterator it = configOptions.find("Video Mode");
+        if (it == configOptions.cend())
+        {
+            return "";
+        }
+
+        return it->second.currentValue;
+    }
+
+    // =========================================================================
+    // Core::getCurrentVideoModeResolution
+    // =========================================================================
+    std::pair<unsigned int, unsigned int> Core::getCurrentVideoModeResolution(void) const
+    {
+        unsigned int width = 1280;
+        unsigned int height = 720;
+
+        Ogre::String videoMode = this->getCurrentVideoMode();
+        if (true == videoMode.empty())
+        {
+            return std::make_pair(width, height);
+        }
+
+        Ogre::String::size_type separatorPosition = videoMode.find('x');
+        if (Ogre::String::npos == separatorPosition)
+        {
+            return std::make_pair(width, height);
+        }
+
+        width = static_cast<unsigned int>(Ogre::StringConverter::parseInt(videoMode.substr(0, separatorPosition)));
+        height = static_cast<unsigned int>(Ogre::StringConverter::parseInt(videoMode.substr(separatorPosition + 1)));
+
+        if (0 == width || 0 == height)
+        {
+            width = 1280;
+            height = 720;
+        }
+
+        return std::make_pair(width, height);
+    }
+
+    // =========================================================================
+    // Core::getIsFullscreen
+    // =========================================================================
+    bool Core::getIsFullscreen(void) const
+    {
+        if (nullptr == this->root->getRenderSystem())
+        {
+            return false;
+        }
+
+        const Ogre::ConfigOptionMap& configOptions = this->root->getRenderSystem()->getConfigOptions();
+        Ogre::ConfigOptionMap::const_iterator it = configOptions.find("Full Screen");
+        if (it == configOptions.cend())
+        {
+            return false;
+        }
+
+        return Ogre::StringConverter::parseBool(it->second.currentValue);
+    }
+
+    // =========================================================================
+    // Core::getIsVSync
+    // =========================================================================
+    bool Core::getIsVSync(void) const
+    {
+        if (nullptr == this->root->getRenderSystem())
+        {
+            return false;
+        }
+
+        const Ogre::ConfigOptionMap& configOptions = this->root->getRenderSystem()->getConfigOptions();
+        Ogre::ConfigOptionMap::const_iterator it = configOptions.find("VSync");
+        if (it == configOptions.cend())
+        {
+            return false;
+        }
+
+        return Ogre::StringConverter::parseBool(it->second.currentValue);
+    }
+
+    // =========================================================================
+    // Core::getCurrentFSAA
+    // =========================================================================
+    Ogre::String Core::getCurrentFSAA(void) const
+    {
+        if (nullptr == this->root->getRenderSystem())
+        {
+            return "None";
+        }
+
+        const Ogre::ConfigOptionMap& configOptions = this->root->getRenderSystem()->getConfigOptions();
+        Ogre::ConfigOptionMap::const_iterator it = configOptions.find("FSAA");
+        if (it == configOptions.cend())
+        {
+            return "None";
+        }
+
+        return it->second.currentValue;
+    }
+
+    // =========================================================================
+    // Core::saveGraphicsConfig
+    // =========================================================================
+    void Core::saveGraphicsConfig(void)
+    {
+        if (nullptr == this->root)
+        {
+            return;
+        }
+
+        this->root->saveConfig();
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Graphics configuration saved to: " + this->graphicsConfigName);
+    }
+
+    // =========================================================================
+    // Core::getUseDefaultGraphicsOptions
+    // =========================================================================
+    bool Core::getUseDefaultGraphicsOptions(void) const
+    {
+        return this->useDefaultGraphicsOptions;
+    }
+
+    // =========================================================================
+    // Core::applyGlobalGraphicsQuality
+    //
+    // Applies the player facing quality overrides to the given scene.
+    // A setting left at its sentinel (-1 for shadow quality, 0.0f for shadow far
+    // distance) means: do not override, keep the value the level designer authored.
+    // Core does not own a scene manager, each app state does, therefore it must be
+    // fed from the outside, exactly like in Core::setSettings.
+    // =========================================================================
+    void Core::applyGlobalGraphicsQuality(Ogre::SceneManager* sceneManager)
+    {
+        // Shadow quality is handled completely by the WorkspaceModule, no scene manager needed
+        if (this->optionShadowQuality >= 0)
+        {
+            if (true == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
+            {
+                NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->optionShadowQuality), true);
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Core] Applied global shadow quality override: " + Ogre::StringConverter::toString(this->optionShadowQuality));
+            }
+        }
+
+        // Shadow far distance is a scene manager property
+        if (this->optionShadowFarDistance > 0.0f && nullptr != sceneManager)
+        {
+            const Ogre::Real shadowFarDistance = this->optionShadowFarDistance;
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [sceneManager, shadowFarDistance]()
+            {
+                sceneManager->setShadowFarDistance(shadowFarDistance);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::applyGlobalGraphicsQuality shadowFarDistance");
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Core] Applied global shadow far distance override: " + Ogre::StringConverter::toString(shadowFarDistance));
+        }
+    }
+
+    // =========================================================================
+    // Core::setShadowQuality
+    //
+    // 0 = PCF 2x2, 1 = PCF 3x3, 2 = PCF 4x4, 3 = Exponential Shadow Maps,
+    // -1 = do not override, use the value of the currently loaded scene.
+    // Applied at once, because the WorkspaceModule recreates the workspace itself.
+    // =========================================================================
+    void Core::setShadowQuality(short shadowQuality)
+    {
+        if (shadowQuality > 3)
+        {
+            shadowQuality = 3;
+        }
+        if (shadowQuality < -1)
+        {
+            shadowQuality = -1;
+        }
+
+        this->optionShadowQuality = shadowQuality;
+
+        if (this->optionShadowQuality >= 0)
+        {
+            if (true == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
+            {
+                NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->optionShadowQuality), true);
+            }
+        }
+    }
+
+    // =========================================================================
+    // Core::getShadowQuality
+    // =========================================================================
+    short Core::getShadowQuality(void) const
+    {
+        return this->optionShadowQuality;
+    }
+
+    // =========================================================================
+    // Core::setShadowFarDistance
+    //
+    // The scene manager must be fed from the outside, because Core does not own one.
+    // A value <= 0 means: do not override, use the value of the currently loaded scene.
+    // =========================================================================
+    void Core::setShadowFarDistance(Ogre::SceneManager* sceneManager, Ogre::Real shadowFarDistance)
+    {
+        if (shadowFarDistance < 0.0f)
+        {
+            shadowFarDistance = 0.0f;
+        }
+
+        this->optionShadowFarDistance = shadowFarDistance;
+
+        if (this->optionShadowFarDistance > 0.0f && nullptr != sceneManager)
+        {
+            const Ogre::Real distance = this->optionShadowFarDistance;
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [sceneManager, distance]()
+            {
+                sceneManager->setShadowFarDistance(distance);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::setShadowFarDistance");
+        }
+    }
+
+    // =========================================================================
+    // Core::getShadowFarDistance
+    // =========================================================================
+    Ogre::Real Core::getShadowFarDistance(void) const
+    {
+        return this->optionShadowFarDistance;
+    }
+
     Ogre::Vector3 Core::getCurrentSceneBoundLeftNear(void)
     {
         return this->mostLeftNearPosition;
@@ -1914,8 +2580,8 @@ namespace NOWA
         else
         {
             sceneManager->setAmbientLight(Ogre::ColourValue(projectParameter.ambientLightUpperHemisphere.r, projectParameter.ambientLightUpperHemisphere.g, projectParameter.ambientLightUpperHemisphere.b),
-                Ogre::ColourValue(projectParameter.ambientLightLowerHemisphere.r, projectParameter.ambientLightLowerHemisphere.g, projectParameter.ambientLightLowerHemisphere.b) /* * 0.065f * 0.75f*/,
-                projectParameter.hemisphereDir.normalisedCopy(), projectParameter.envmapScale);
+                Ogre::ColourValue(projectParameter.ambientLightLowerHemisphere.r, projectParameter.ambientLightLowerHemisphere.g, projectParameter.ambientLightLowerHemisphere.b) /* * 0.065f * 0.75f*/, projectParameter.hemisphereDir.normalisedCopy(),
+                projectParameter.envmapScale);
         }
 
         // Set sane defaults for proper shadow mapping
@@ -1933,22 +2599,20 @@ namespace NOWA
         if (0 == projectParameter.forwardMode)
         {
             hlmsPbs->setUseLightBuffers(false);
-            sceneManager->setForward3D(false, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, projectParameter.minLightDistance,
+            sceneManager->setForward3D(false, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, projectParameter.minLightDistance, projectParameter.maxLightDistance);
+            sceneManager->setForwardClustered(false, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, 10, 10, projectParameter.minLightDistance,
                 projectParameter.maxLightDistance);
-            sceneManager->setForwardClustered(false, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, 10, 10,
-                projectParameter.minLightDistance, projectParameter.maxLightDistance);
         }
         else if (1 == projectParameter.forwardMode)
         {
             hlmsPbs->setUseLightBuffers(true);
-            sceneManager->setForward3D(true, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, projectParameter.minLightDistance,
-                projectParameter.maxLightDistance);
+            sceneManager->setForward3D(true, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, projectParameter.minLightDistance, projectParameter.maxLightDistance);
         }
         else if (2 == projectParameter.forwardMode)
         {
             hlmsPbs->setUseLightBuffers(true);
-            sceneManager->setForwardClustered(true, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, 10, 10,
-                projectParameter.minLightDistance, projectParameter.maxLightDistance);
+            sceneManager->setForwardClustered(true, projectParameter.lightWidth, projectParameter.lightHeight, projectParameter.numLightSlices, projectParameter.lightsPerCell, 10, 10, projectParameter.minLightDistance,
+                projectParameter.maxLightDistance);
         }
 
         NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(projectParameter.renderDistance);
@@ -1967,6 +2631,10 @@ namespace NOWA
         sceneManager->setShadowColour(Ogre::ColourValue(projectParameter.shadowColor.r, projectParameter.shadowColor.g, projectParameter.shadowColor.b, 1.0f));
         NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(projectParameter.shadowQualityIndex), true);
         NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(projectParameter.ambientLightModeIndex));
+
+        // The player configured quality overrides win over the values the level designer authored in the ProjectParameter.
+        // Must be applied last, otherwise loading a scene would silently reset what the player has chosen in the options menu.
+        this->applyGlobalGraphicsQuality(sceneManager);
     }
 
     void Core::setPolygonMode(unsigned short mode)
@@ -2093,57 +2761,35 @@ namespace NOWA
 
     void Core::windowResized(Ogre::Window* renderWindow)
     {
-        if (renderWindow == this->renderWindow)
+        if (renderWindow != this->renderWindow)
         {
-            // Check if AppStateManager is valid before accessing during potential shutdown
-            /*if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+            return;
+        }
+
+        unsigned int width, height;
+        int left, top;
+        renderWindow->getMetrics(width, height, left, top);
+
+        const OIS::MouseState& ms = InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+        ms.width = width;
+        ms.height = height;
+
+        Win32_ResetCursorToArrow();
+        Win32_SetCursorVisible(false);
+        setMyGuiPointerVisible(true);
+
+        // Notify all listeners (MyGUI components, workspace components) that the window geometry has changed,
+        // so that they can re-apply their relative coordinates and aspect ratios.
+        // Without this event, a runtime resolution change via Core::setVideoMode would leave the whole UI at the old layout.
+        // Attention: Only queueEvent may be used here. windowResized can be called from the OS message pump while the
+        // render thread is busy, so an enqueueAndWait would deadlock (this is what the former disabled code ran into).
+        if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+        {
+            if (nullptr != AppStateManager::getSingletonPtr()->getEventManager())
             {
                 boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
                 AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWindowChanged);
-            }*/
-
-            unsigned int width, height;
-            int left, top;
-            renderWindow->getMetrics(width, height, left, top);
-
-            const OIS::MouseState& ms = InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-            ms.width = width;
-            ms.height = height;
-
-            // Not working here does hang
-#if 0
-			if (nullptr == AppStateManager::getSingletonPtr())
-			{
-                return;
-			}
-
-			// Attention: this is new and only set for the active camera, what about other cameras?
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, width, height]()
-            {
-                Ogre::Real aspectRatio = static_cast<Ogre::Real>(width) / static_cast<Ogre::Real>(height);
-
-				auto gameobjectController = AppStateManager::getSingletonPtr()->getGameObjectController();
-                if (nullptr != gameobjectController)
-                {
-                    auto gameObjectPtr = gameobjectController->getGameObjectFromId(GameObjectController::MAIN_CAMERA_ID);
-
-					if (nullptr != gameObjectPtr)
-                    {
-                        Ogre::SceneManager::CameraIterator it = gameObjectPtr->getSceneManager()->getCameraIterator();
-                        while (it.hasMoreElements())
-                        {
-                            Ogre::Camera* tempCamera = it.getNext();
-                            tempCamera->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
-                        }
-                    }
-                }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::setAspectRatio");
-#endif
-
-            Win32_ResetCursorToArrow();
-            Win32_SetCursorVisible(false);
-            setMyGuiPointerVisible(true);
+            }
         }
     }
 
@@ -3752,6 +4398,28 @@ namespace NOWA
             {
                 this->globalRenderDistance = Ogre::StringConverter::parseInt(pSubElement->first_attribute("RenderDistance")->value());
             }
+            // Player facing overrides, configured via the GraphicsConfigurationComponent.
+            // -1 / 0 means: do not override, use the value the level designer authored in the scene.
+            if (pSubElement->first_attribute("ShadowQuality"))
+            {
+                this->optionShadowQuality = static_cast<short>(Ogre::StringConverter::parseInt(pSubElement->first_attribute("ShadowQuality")->value()));
+                if (this->optionShadowQuality > 3)
+                {
+                    this->optionShadowQuality = 3;
+                }
+                if (this->optionShadowQuality < -1)
+                {
+                    this->optionShadowQuality = -1;
+                }
+            }
+            if (pSubElement->first_attribute("ShadowFarDistance"))
+            {
+                this->optionShadowFarDistance = Ogre::StringConverter::parseReal(pSubElement->first_attribute("ShadowFarDistance")->value());
+                if (this->optionShadowFarDistance < 0.0f)
+                {
+                    this->optionShadowFarDistance = 0.0f;
+                }
+            }
         }
         // retrieve audio configuration
         pSubElement = XMLRoot->first_node("Audio");
@@ -3938,6 +4606,8 @@ namespace NOWA
                 << " DesiredFramesUpdates=\"" << Ogre::StringConverter::toString(this->optionDesiredFramesUpdates).c_str() << "\""
                 << " DesiredSimulationUpdates=\"" << Ogre::StringConverter::toString(this->optionDesiredSimulationUpdates).c_str() << "\""
                 << " RenderDistance=\"" << Ogre::StringConverter::toString(this->globalRenderDistance).c_str() << "\""
+                << " ShadowQuality=\"" << Ogre::StringConverter::toString(static_cast<int>(this->optionShadowQuality)).c_str() << "\""
+                << " ShadowFarDistance=\"" << Ogre::StringConverter::toString(this->optionShadowFarDistance).c_str() << "\""
                 << "/>\n";
         // Audio-Configuration
         outfile << "<Audio SoundVolume=\"" << Ogre::StringConverter::toString(this->optionSoundVolume).c_str() << "\""
@@ -4655,197 +5325,6 @@ namespace NOWA
             return Screen.dmDisplayFrequency;
         }
         return 0;
-    }
-
-    bool Core::processMeshMagick(const Ogre::String& meshName, const Ogre::String& parameters)
-    {
-        Ogre::String rootFolder = this->getRootFolderName();
-        if (true == rootFolder.empty())
-        {
-            return false;
-        }
-
-        // "Material/SOLID/TEX/case1.png"
-        Ogre::String meshResourceFolderName = Ogre::ResourceGroupManager::getSingleton().findGroupContainingResource(meshName);
-
-        Ogre::FileInfoListPtr fileInfoList = Ogre::FileInfoListPtr(Ogre::ResourceGroupManager::getSingletonPtr()->findResourceFileInfo(meshResourceFolderName, meshName));
-        if (fileInfoList->empty())
-        {
-            return false;
-        }
-
-        // "D:\Ogre\GameEngineDevelopment\media/models/Objects"
-        Ogre::String sourceFolder = fileInfoList->at(0).archive->getName();
-        sourceFolder = rootFolder + "/" + sourceFolder.substr(6, sourceFolder.length());
-
-        // "D:\Ogre\GameEngineDevelopment\media\models\Objects\Case1.mesh"
-        Ogre::String sourceFile = sourceFolder + "/" + meshName;
-
-        sourceFile = this->replaceSlashes(sourceFile, false);
-
-        Ogre::String destFile = sourceFile + "_backup";
-
-        // Makes a backup of the file
-        CopyFile(sourceFile.data(), destFile.data(), TRUE);
-
-#if 0
-		STARTUPINFO startupInfo;
-		memset(&startupInfo, 0, sizeof(startupInfo));
-		startupInfo.cb = sizeof(startupInfo);
-		startupInfo.dwFlags = STARTF_USESHOWWINDOW;
-		startupInfo.wShowWindow = SW_HIDE;
-		PROCESS_INFORMATION processInformation;
-#endif
-
-#if 0
-		Ogre::String param;
-		param += "-smooth ";
-		param += "-relsize ";
-		param += "0.35 ";
-		param += "-cut_surface ";
-		param += "\"";
-		param += datablockName;
-		param += "\" ";
-		param += "-random ";
-		param += "\"";
-		param += sourceFile;
-		param += "\" ";
-		param += "\"";
-		param += destinationFolder;
-		param += "\"";
-#endif
-
-        Ogre::String applicationFolder = rootFolder + "/development/MeshUtils/1.4.1";
-
-        // Copies the file to the targed folder
-        Ogre::String destinationFilePathName = applicationFolder + "/" + meshName;
-        CopyFile(sourceFile.data(), destinationFilePathName.data(), TRUE);
-
-        Ogre::String meshMagickFilePathName = applicationFolder + "\\MeshMagick.exe";
-        meshMagickFilePathName = this->replaceSlashes(meshMagickFilePathName, true);
-
-        Ogre::String tempParameters = meshMagickFilePathName + " " + parameters;
-        tempParameters += " in=" + sourceFile;
-        tempParameters += " out=" + sourceFile + "_rotated.mesh";
-
-        // 90/0/1/0
-
-        Ogre::String meshMagickCallerFilePathName = applicationFolder + "\\MeshMagickCaller.exe";
-        meshMagickCallerFilePathName = this->replaceSlashes(meshMagickCallerFilePathName, true);
-
-#if 0
-		DWORD creationFlags = DETACHED_PROCESS /*NORMAL_PRIORITY_CLASS | CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP*/;
-		BOOL result = ::CreateProcess(
-			meshMagickCallerFilePathName.data(), // Path to executable
-			tempParameters.data(),            // Command line
-			NULL,            // Process handle not inheritable
-			NULL,            // Thread handle not inheritable
-			FALSE,           // Set handle inheritance to FALSE
-			creationFlags,               // No creation flags
-			NULL,            // Use parent's environment block
-			"", // Set the working directory
-			&startupInfo,             // Pointer to STARTUPINFO structure
-			&processInformation);
-
-		if (result)
-		{
-			// Wait for external application to finish
-			WaitForSingleObject(processInformation.hProcess, INFINITE);
-
-			DWORD exitCode = 0;
-			// Get the exit code.
-			result = GetExitCodeProcess(processInformation.hProcess, &exitCode);
-
-			// Close the handles.
-			CloseHandle(processInformation.hProcess);
-			CloseHandle(processInformation.hThread);
-
-			if (FALSE == result)
-			{
-				// Could not get exit code.
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Could not get exit code from OgreMeshMagick.exe.");
-
-				return false;
-			}
-		}
-		else
-		{
-			Ogre::String lastError = Ogre::StringConverter::toString(GetLastError());
-			Core::getSingletonPtr()->displayError("Could not create process for OgreMeshMagick.exe", GetLastError());
-
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot continue, because the OgreMeshMagick detected an error during mesh operation: "
-															+ meshName + ".");
-
-			// Sent event with feedback
-			boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, "#{MeshOperationFail}"));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
-			return false;
-		}
-#endif
-#if 1
-        // 90/0/1/0
-
-        SHELLEXECUTEINFO shRun = {0};
-        shRun.cbSize = sizeof(SHELLEXECUTEINFO);
-        shRun.fMask = SEE_MASK_NOCLOSEPROCESS;
-        shRun.hwnd = NULL;
-        shRun.lpVerb = NULL;
-        shRun.lpFile = meshMagickCallerFilePathName.data();
-        shRun.lpParameters = tempParameters.data();
-        shRun.nShow = SW_SHOW;
-        shRun.hInstApp = NULL;
-
-        if (!ShellExecuteEx(&shRun))
-        {
-            Ogre::String lastError = Ogre::StringConverter::toString(GetLastError());
-            Core::getSingletonPtr()->displayError("Could not create process for OgreMeshMagick.exe", GetLastError());
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot continue, because the OgreMeshMagick detected an error during mesh operation: " + meshName + ".");
-
-            // Sent event with feedback
-            boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, "#{MeshOperationFail}"));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
-            return false;
-        }
-
-        WaitForSingleObject(shRun.hProcess, INFINITE);
-        CloseHandle(shRun.hProcess);
-#endif
-
-        STARTUPINFO si;
-        PROCESS_INFORMATION pi;
-        ZeroMemory(&si, sizeof(si));
-        si.cb = sizeof(si);
-        ZeroMemory(&pi, sizeof(pi));
-
-        applicationFolder = this->replaceSlashes(applicationFolder, true);
-
-        // Set up the environment block to use the old OgreMain.dll path
-        std::string env = "PATH=" + applicationFolder + ";" + getenv("PATH");
-        LPSTR envBlock = const_cast<char*>(env.c_str());
-
-        // Create the process
-        if (!CreateProcess(NULL, const_cast<char*>(tempParameters.c_str()), NULL, NULL, FALSE, CREATE_UNICODE_ENVIRONMENT, envBlock, NULL, &si, &pi))
-        {
-            Ogre::String lastError = Ogre::StringConverter::toString(GetLastError());
-            Core::getSingletonPtr()->displayError("Could not create process for OgreMeshMagick.exe", GetLastError());
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot continue, because the OgreMeshMagick detected an error during mesh operation: " + meshName + ".");
-
-            // Sent event with feedback
-            boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, "#{MeshOperationFail}"));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
-            return false;
-        }
-
-        // Wait for the process to complete
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-
-        return true;
-
-        return true;
     }
 
     template <typename T, size_t MaxNumTextures> void Core::unloadTexturesFromUnusedMaterials(Ogre::HlmsDatablock* datablock, std::set<Ogre::TextureGpu*>& usedTex, std::set<Ogre::TextureGpu*>& unusedTex)

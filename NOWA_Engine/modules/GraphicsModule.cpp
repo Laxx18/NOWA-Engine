@@ -26,7 +26,6 @@ namespace NOWA
         currentTransformCameraIdx(0),
         currentTransformOldBoneIdx(0),
         currentTransformBoneIdx(0),
-        currentTransformPassIdx(0),
         currentTrackedDatablockIdx(0),
         interpolationWeight(0.0f),
         accumTimeSinceLastLogicFrame(0.0f),
@@ -73,13 +72,6 @@ namespace NOWA
         for (size_t i = 0; i < GraphicsModule::BONE_POOL_CAPACITY; ++i)
         {
             this->freeBoneSlots.push_back(i);
-        }
-
-        this->passPool.resize(GraphicsModule::PASS_POOL_CAPACITY);
-        this->freePassSlots.reserve(GraphicsModule::PASS_POOL_CAPACITY);
-        for (size_t i = 0; i < GraphicsModule::PASS_POOL_CAPACITY; ++i)
-        {
-            this->freePassSlots.push_back(i);
         }
 
         this->datablockPool.resize(GraphicsModule::DATABLOCK_POOL_CAPACITY);
@@ -269,10 +261,6 @@ namespace NOWA
         this->boneToIndexMap.clear();
         this->freeBoneSlots.clear();
 
-        this->passPool.clear();
-        this->passToIndexMap.clear();
-        this->freePassSlots.clear();
-
         this->datablockPool.clear();
         this->datablockToIndexMap.clear();
         this->freeDatablockSlots.clear();
@@ -285,7 +273,6 @@ namespace NOWA
         this->currentTransformCameraIdx = 0;
         this->currentTransformOldBoneIdx = 0;
         this->currentTransformBoneIdx = 0;
-        this->currentTransformPassIdx = 0;
         this->currentTrackedDatablockIdx = 0;
 
         this->accumTimeSinceLastLogicFrame = 0.0f;
@@ -445,21 +432,6 @@ namespace NOWA
         }
 
         {
-            std::lock_guard<std::mutex> lock(this->passRegistrationMutex);
-            for (auto& slot : this->passPool)
-            {
-                slot.pass.store(nullptr, std::memory_order_relaxed);
-                slot.active.store(false, std::memory_order_relaxed);
-            }
-            this->passToIndexMap.clear();
-            this->freePassSlots.clear();
-            for (size_t i = 0; i < this->passPool.size(); ++i)
-            {
-                this->freePassSlots.push_back(i);
-            }
-        }
-
-        {
             std::lock_guard<std::mutex> lock(this->datablockRegistrationMutex);
             for (auto& slot : this->datablockPool)
             {
@@ -478,7 +450,6 @@ namespace NOWA
         this->currentTransformCameraIdx = 0;
         this->currentTransformOldBoneIdx = 0;
         this->currentTransformBoneIdx = 0;
-        this->currentTransformPassIdx = 0;
         this->currentTrackedDatablockIdx = 0;
         this->interpolationWeight = 0.0f;
         this->accumTimeSinceLastLogicFrame = 0.0f;
@@ -1245,62 +1216,6 @@ namespace NOWA
 
         BoneTransforms* slot = this->resolveBoneSlotLocked(bone);
         tlsCache[bone] = slot;
-        return slot;
-    }
-
-    GraphicsModule::PassTransforms* GraphicsModule::resolvePassSlotLocked(Ogre::Pass* pass)
-    {
-        std::lock_guard<std::mutex> lock(this->passRegistrationMutex);
-
-        auto it = this->passToIndexMap.find(pass);
-        if (it != this->passToIndexMap.end())
-        {
-            return &this->passPool[it->second];
-        }
-
-        size_t index;
-        if (true == this->freePassSlots.empty())
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule] Pass pool exhausted (capacity " + Ogre::StringConverter::toString(GraphicsModule::PASS_POOL_CAPACITY) + "). Raise PASS_POOL_CAPACITY.");
-            return &this->passOverflowSink;
-        }
-        index = this->freePassSlots.back();
-        this->freePassSlots.pop_back();
-
-        PassTransforms& slot = this->passPool[index];
-
-        GraphicsModule::PassSpeedData currentData;
-        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-        {
-            slot.transforms[i] = currentData;
-        }
-
-        slot.isNew = true;
-        slot.active.store(true, std::memory_order_relaxed);
-        slot.pass.store(pass, std::memory_order_release);
-
-        this->passToIndexMap[pass] = index;
-
-        return &slot;
-    }
-
-    GraphicsModule::PassTransforms* GraphicsModule::acquirePassSlot(Ogre::Pass* pass)
-    {
-        thread_local std::unordered_map<Ogre::Pass*, PassTransforms*> tlsCache;
-
-        auto cacheIt = tlsCache.find(pass);
-        if (cacheIt != tlsCache.end())
-        {
-            PassTransforms* slot = cacheIt->second;
-            if (slot->pass.load(std::memory_order_acquire) == pass)
-            {
-                return slot;
-            }
-            tlsCache.erase(cacheIt);
-        }
-
-        PassTransforms* slot = this->resolvePassSlotLocked(pass);
-        tlsCache[pass] = slot;
         return slot;
     }
 
@@ -2088,47 +2003,6 @@ namespace NOWA
         boneTransforms->active.store(false, std::memory_order_relaxed);*/
     }
 
-    void GraphicsModule::addTrackedPass(Ogre::Pass* pass)
-    {
-        this->acquirePassSlot(pass);
-    }
-
-    void GraphicsModule::removeTrackedPass(Ogre::Pass* pass)
-    {
-        std::lock_guard<std::mutex> lock(this->passRegistrationMutex);
-
-        auto it = this->passToIndexMap.find(pass);
-        if (it == this->passToIndexMap.end())
-        {
-            return;
-        }
-
-        size_t index = it->second;
-        PassTransforms& slot = this->passPool[index];
-
-        slot.pass.store(nullptr, std::memory_order_release);
-        slot.active.store(false, std::memory_order_relaxed);
-
-        this->passToIndexMap.erase(it);
-        this->freePassSlots.push_back(index);
-    }
-
-    void GraphicsModule::updatePassSpeedsX(Ogre::Pass* pass, unsigned short index, Ogre::Real speedX)
-    {
-        GraphicsModule::PassTransforms* passTransform = this->acquirePassSlot(pass);
-
-        passTransform->transforms[this->currentTransformPassIdx].speedsX[index] = speedX;
-        passTransform->active.store(true, std::memory_order_relaxed);
-    }
-
-    void GraphicsModule::updatePassSpeedsY(Ogre::Pass* pass, unsigned short index, Ogre::Real speedY)
-    {
-        GraphicsModule::PassTransforms* passTransform = this->acquirePassSlot(pass);
-
-        passTransform->transforms[this->currentTransformPassIdx].speedsY[index] = speedY;
-        passTransform->active.store(true, std::memory_order_relaxed);
-    }
-
     void GraphicsModule::addTrackedDatablock(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, std::function<void(Ogre::ColourValue)> applyFunc,
         std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc)
     {
@@ -2210,7 +2084,6 @@ namespace NOWA
         cmd.fireAndForget = false;
         cmd.isUpdate = false;
         bool success = this->closureQueue.enqueue(this->producerToken, std::move(cmd));
-        ;
 
         if (false == success)
         {
@@ -2411,11 +2284,6 @@ namespace NOWA
     size_t GraphicsModule::getPreviousTransformBoneIdx(void) const
     {
         return (this->currentTransformBoneIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
-    }
-
-    size_t GraphicsModule::getPreviousTransformPassIdx(void) const
-    {
-        return (this->currentTransformPassIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
     }
 
     size_t GraphicsModule::getPreviousTrackedDatablockIdx(void) const
@@ -2628,32 +2496,6 @@ namespace NOWA
         }
 
         // =========================================================================
-        // Pass transforms (no eviction)
-        // =========================================================================
-        {
-            size_t prevPassIdx = this->currentTransformPassIdx;
-            this->currentTransformPassIdx = (this->currentTransformPassIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-            for (auto& passTransform : this->passPool)
-            {
-                if (passTransform.isNew)
-                {
-                    GraphicsModule::PassSpeedData currentData;
-
-                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-                    {
-                        passTransform.transforms[i] = currentData;
-                    }
-                    passTransform.isNew = false;
-                }
-                else if (passTransform.active.load(std::memory_order_relaxed))
-                {
-                    passTransform.transforms[this->currentTransformPassIdx] = passTransform.transforms[prevPassIdx];
-                }
-            }
-        }
-
-        // =========================================================================
         // Datablock transforms (no eviction)
         // =========================================================================
         {
@@ -2818,42 +2660,6 @@ namespace NOWA
 
                     bone->setOrientation(interpRot);
                     bone->setPosition(interpPos);
-                }
-            }
-        }
-
-        size_t prevPassIdx = this->getPreviousTransformPassIdx();
-
-        {
-            for (const auto& passTransform : this->passPool)
-            {
-                if (passTransform.active.load(std::memory_order_relaxed))
-                {
-                    Ogre::Pass* pass = passTransform.pass.load(std::memory_order_relaxed);
-                    if (nullptr == pass)
-                    {
-                        continue;
-                    }
-
-                    const GraphicsModule::PassSpeedData& prev = passTransform.transforms[prevPassIdx];
-                    const GraphicsModule::PassSpeedData& curr = passTransform.transforms[this->currentTransformPassIdx];
-
-                    Ogre::Real interpX[9];
-                    Ogre::Real interpY[9];
-
-                    for (int i = 0; i < 9; ++i)
-                    {
-                        interpX[i] = Ogre::Math::lerp(prev.speedsX[i], curr.speedsX[i], this->interpolationWeight);
-                        interpY[i] = Ogre::Math::lerp(prev.speedsY[i], curr.speedsY[i], this->interpolationWeight);
-
-                        /*Ogre::LogManager::getSingletonPtr()->logMessage(
-                            "[Render] Layer " + std::to_string(i) +
-                            ": X=" + Ogre::StringConverter::toString(interpX[i]) +
-                            " Y=" + Ogre::StringConverter::toString(interpY[i]));*/
-                    }
-
-                    pass->getFragmentProgramParameters()->setNamedConstant("speedsX", interpX, 9, 1);
-                    pass->getFragmentProgramParameters()->setNamedConstant("speedsY", interpY, 9, 1);
                 }
             }
         }

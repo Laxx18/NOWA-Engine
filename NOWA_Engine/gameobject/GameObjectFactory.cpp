@@ -79,6 +79,7 @@
 #include "MyGUIMiniMapComponent.h"
 #include "BackgroundScrollComponent.h"
 #include "WindComponent.h"
+#include "GraphicsConfigurationComponent.h"
 
 #include "modules/RakNetModule.h"
 #include "main/Events.h"
@@ -282,6 +283,7 @@ namespace NOWA
 		this->componentFactory.registerClass<MyGUIEdgeHideControllerComponent>(MyGUIEdgeHideControllerComponent::getStaticClassId(), MyGUIEdgeHideControllerComponent::getStaticClassName());
 		this->componentFactory.registerClass<MyGUIRepeatClickControllerComponent>(MyGUIRepeatClickControllerComponent::getStaticClassId(), MyGUIRepeatClickControllerComponent::getStaticClassName());
 		this->componentFactory.registerClass<MyGUIMiniMapComponent>(MyGUIMiniMapComponent::getStaticClassId(), MyGUIMiniMapComponent::getStaticClassName());
+        this->componentFactory.registerClass<GraphicsConfigurationComponent>(GraphicsConfigurationComponent::getStaticClassId(), GraphicsConfigurationComponent::getStaticClassName());
 	}
 
 	GameObjectFactory::~GameObjectFactory()

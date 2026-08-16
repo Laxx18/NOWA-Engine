@@ -246,12 +246,6 @@ void PropertiesPanel::onMouseRelease(MyGUI::Widget* sender, int left, int top, M
 
 void PropertiesPanel::showProperties(unsigned int componentIndex)
 {
-    if (false == PropertiesPanel::bShowProperties)
-    {
-        PropertiesPanel::bShowProperties = true;
-        return;
-    }
-
     // Schrott MyGUI, those events do not work at all
     // this->propertiesPanelView1->getScrollView()->eventMouseWheel += MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
     // this->propertiesPanelView1->getScrollView()->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanel::onMouseRelease);
@@ -685,6 +679,8 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 
                 this->heightCurrent += heightStep;
 
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, item->getMesh()->getName() + "List all animations:");
+
                 unsigned int i = 0;
                 // list all animations
                 for (auto& anim : skeleton->getAnimationsNonConst())
@@ -706,6 +702,8 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 
                     this->heightCurrent += heightStep;
                     i++;
+
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationBlenderV2] Animation name: '" + anim.getName().getFriendlyText() + "' length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
                 }
 
                 MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
@@ -723,6 +721,8 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 
                 this->itemsText.push_back(keyTextBox);
                 this->heightCurrent += heightStep;
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, item->getMesh()->getName()  + "List all bones:");
 
                 unsigned short numBones = skeleton->getNumBones();
                 for (unsigned short iBone = 0; iBone < numBones; iBone++)
@@ -751,7 +751,8 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                         if (true == unique)
                         {
                             boneNames.emplace_back(bone->getName());
-                            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] Bone name: " + bone->getName());
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "-> Bone name: '" + bone->getName() + "' position: " + Ogre::StringConverter::toString(bone->getPosition()) 
+								+ " orientation: " + Ogre::StringConverter::toString(bone->getOrientation()));
                         }
                     }
                     else
@@ -768,7 +769,8 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                         if (true == unique)
                         {
                             boneNames.emplace_back(bone->getName());
-                            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] Bone name: " + bone->getName());
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                                "-> Bone name: '" + bone->getName() + "' position: " + Ogre::StringConverter::toString(bone->getPosition()) + " orientation: " + Ogre::StringConverter::toString(bone->getOrientation()));
                         }
                     }
                 }

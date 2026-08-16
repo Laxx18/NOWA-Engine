@@ -4417,11 +4417,16 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    WorkspaceBackgroundComponent::WorkspaceBackgroundComponent() : WorkspaceBaseComponent(), hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes)), activeLayerCount(0)
+    WorkspaceBackgroundComponent::WorkspaceBackgroundComponent()
+        : WorkspaceBaseComponent(),
+        hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes)),
+        activeLayerCount(0)
     {
         for (size_t i = 0; i < 9; i++)
         {
             this->layerEnabled[i] = 0.0f;
+            this->speedsXValues[i] = 0.0f;
+            this->speedsYValues[i] = 0.0f;
         }
     }
 
@@ -4450,6 +4455,22 @@ namespace NOWA
         bool success = WorkspaceBaseComponent::postInit();
 
         return success;
+    }
+
+    bool WorkspaceBackgroundComponent::disconnect(void)
+    {
+        WorkspaceBaseComponent::disconnect();
+
+        for (size_t i = 0; i < 9; i++)
+        {
+            this->layerEnabled[i] = 0.0f;
+            this->speedsXValues[i] = 0.0f;
+            this->speedsYValues[i] = 0.0f;
+
+            Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::setBackgroundScrollSpeedY" + Ogre::StringConverter::toString(i);
+            NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
+        }
+        return true;
     }
 
     void WorkspaceBackgroundComponent::actualizeValue(Variant* attribute)
@@ -5096,7 +5117,7 @@ namespace NOWA
             this->materialBackgroundPtr.setNull();
         }
 
-        NOWA::GraphicsModule::getInstance()->removeTrackedPass(this->passBackground);
+        // NOWA::GraphicsModule::getInstance()->removeTrackedPass(this->passBackground);
 
         this->passBackground = nullptr;
     }
@@ -5151,10 +5172,22 @@ namespace NOWA
             return;
         }
 
-        // Update shader parameters
         if (this->passBackground)
         {
-            NOWA::GraphicsModule::getInstance()->updatePassSpeedsX(this->passBackground, index, speedX);
+            auto closureFunction = [this, index, speedX](Ogre::Real renderDt)
+            {
+                // "speedsX" is a single "float9" named constant (9 raw floats), NOT a true
+                // GLSL array that Ogre would split into individually addressable
+                // "speedsX[0]".."speedsX[8]" constants. setNamedConstant() also has no
+                // offset parameter, so we can't target just one slot directly. We keep our
+                // own local copy of all 9 values, update this instance's slot, and push the
+                // WHOLE array back every time -- exactly like layerEnabled already does in
+                // changeBackground().
+                this->speedsXValues[index] = speedX;
+                this->passBackground->getFragmentProgramParameters()->setNamedConstant("speedsX", this->speedsXValues, 9, 1);
+            };
+            Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::setBackgroundScrollSpeedX" + Ogre::StringConverter::toString(index);
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
         }
     }
 
@@ -5166,10 +5199,15 @@ namespace NOWA
             return;
         }
 
-        // Update shader parameters
         if (this->passBackground)
         {
-            NOWA::GraphicsModule::getInstance()->updatePassSpeedsY(this->passBackground, index, speedY);
+            auto closureFunction = [this, index, speedY](Ogre::Real renderDt)
+            {
+                this->speedsYValues[index] = speedY;
+                this->passBackground->getFragmentProgramParameters()->setNamedConstant("speedsY", this->speedsYValues, 9, 1);
+            };
+            Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::setBackgroundScrollSpeedY" + Ogre::StringConverter::toString(index);
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
         }
     }
 

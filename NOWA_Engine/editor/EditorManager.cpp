@@ -4160,6 +4160,8 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Simulation started");
 
+        this->isInSimulation = true;
+
         this->selectionManager->clearSelection();
 
         // Physics simulation will be corrupt!
@@ -4196,8 +4198,6 @@ namespace NOWA
         {
             this->sceneManipulationCommandModule.pushCommand(std::make_shared<GameObjectManipulationUndoCommand>(this->oldGameObjectDataList, gameObjectIds));
         }
-
-        this->isInSimulation = true;
     }
 
     void EditorManager::stopSimulation(bool withUndo)

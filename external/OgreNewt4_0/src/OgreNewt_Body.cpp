@@ -1022,14 +1022,23 @@ namespace OgreNewt
         Ogre::Quaternion ori;
         getPositionOrientation(pos, ori);
 
+        // FIX: "GreenNoLighting" came from a material script with depth_check/depth_write
+        // enabled, so these lines got occluded by geometry -- same root cause as the
+        // OgreNewt_Debugger.cpp collision-hull lines. Also, the passed-in "color" argument
+        // was previously ignored entirely. Route through Debugger::createUnlitDatablock(),
+        // which builds an Unlit datablock with mDepthCheck = false / mDepthWrite = false
+        // AND applies the requested colour, exactly like the collision-hull debugger does.
+        const Ogre::String datablockName = "DebugBodyCollisionUnlitDatablock__" + Ogre::StringConverter::toString(reinterpret_cast<uintptr_t>(this));
+        // True: always visible
+        Debugger::createUnlitDatablock(datablockName, color, true);
+
         if (m_debugCollisionLines && m_debugCollisionLines->getNumSections() > 0)
         {
             m_debugCollisionLines->beginUpdate(0);
         }
         else
         {
-            m_debugCollisionLines->begin("GreenNoLighting", Ogre::OperationType::OT_LINE_LIST);
-            // m_debugCollisionLines->begin("BaseWhiteLine", Ogre::OperationType::OT_LINE_LIST);
+            m_debugCollisionLines->begin(datablockName, Ogre::OperationType::OT_LINE_LIST);
         }
 
         CollisionDebugNotify collisionDebugNotify(m_debugCollisionLines);

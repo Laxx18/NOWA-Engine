@@ -595,6 +595,11 @@ namespace NOWA
 		virtual bool postInit(void) override;
 
 		/**
+         * @see		WorkspaceBaseComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
+
+		/**
 		 * @see		GameObjectComponent::getClassName
 		 */
 		virtual Ogre::String getClassName(void) const override;
@@ -665,6 +670,8 @@ namespace NOWA
 		Variant* hardwareGammaEnabled;
 		Ogre::Real layerEnabled[9];
 		int activeLayerCount;
+        Ogre::Real speedsXValues[9];
+        Ogre::Real speedsYValues[9];
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////

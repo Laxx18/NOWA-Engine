@@ -216,6 +216,7 @@
     <ClInclude Include="gameobject\DescriptionComponent.h" />
     <ClInclude Include="gameobject\DistributedComponent.h" />
     <ClInclude Include="gameobject\GeometricComponentBase.h" />
+    <ClInclude Include="gameobject\GraphicsConfigurationComponent.h" />
     <ClInclude Include="gameobject\InputDeviceComponent.h" />
     <ClInclude Include="gameobject\MeshEditComponentBase.h" />
     <ClInclude Include="gameobject\MyGUISpriteComponentBase.h" />
@@ -301,6 +302,7 @@
     <ClInclude Include="main\AppState.h" />
     <ClInclude Include="main\AppStateManager.h" />
     <ClInclude Include="main\ClientConfigurationStateMyGui.h" />
+    <ClInclude Include="main\ConfigurationState.h" />
     <ClInclude Include="main\Core.h" />
     <ClInclude Include="main\EngineResourceListener.h" />
     <ClInclude Include="main\EventManager.h" />
@@ -441,6 +443,7 @@
     <ClCompile Include="gameobject\DecalComponent.cpp" />
     <ClCompile Include="gameobject\DescriptionComponent.cpp" />
     <ClCompile Include="gameobject\DistributedComponent.cpp" />
+    <ClCompile Include="gameobject\GraphicsConfigurationComponent.cpp" />
     <ClCompile Include="gameobject\InputDeviceComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveComplexVehicleComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveSpiderComponent.cpp" />
@@ -515,6 +518,7 @@
     <ClCompile Include="main\AppState.cpp" />
     <ClCompile Include="main\AppStateManager.cpp" />
     <ClCompile Include="main\ClientConfigurationStateMyGui.cpp" />
+    <ClCompile Include="main\ConfigurationState.cpp" />
     <ClCompile Include="main\Core.cpp" />
     <ClCompile Include="main\EngineResourceListener.cpp" />
     <ClCompile Include="main\EventManager.cpp" />

@@ -54,19 +54,21 @@ namespace NOWA
 	* @param[in]	customConfigName	The custom configuration xml filename for custom configuration
 	* @param[in]	startProjectName	The optional start project file name, that is project name and scene name. For example: "MyProject1/MyScene1.scene"
 	* @param[in]	customParams		The optional custom string parameters for customizing the window: 
-	        parentWindowHandle       -> parentHwnd
-			externalWindowHandle     -> externalHandle
-			border : none, fixed
-			outerDimensions
-			monitorIndex
-			useFlipMode
-			vsync
-			vsyncInterval
-			alwaysWindowedMode
-			enableDoubleClick
-			left
-			top
-
+	*       parentWindowHandle       -> parentHwnd
+	*		externalWindowHandle     -> externalHandle
+	*		border : none, fixed
+	*		outerDimensions
+	*		monitorIndex
+	*		useFlipMode
+	*		vsync
+	*		vsyncInterval
+	*		alwaysWindowedMode
+	*		enableDoubleClick
+	*		left
+	*		top
+	* @param[in]    useDefaultGraphicsOptions  If true, the Ogre graphics configuration dialog is never shown. Instead Direct3D11 is forced and sensible defaults are applied,
+    *                                          based on the current desktop resolution. Required for console-like targets such as Steam Deck, where a Windows dialog is unusable.
+	*
 	*/
 	struct CoreConfiguration
 	{
@@ -75,7 +77,8 @@ namespace NOWA
 			graphicsConfigName("ogre.cfg"),
 			resourcesName("resources.cfg"),
 			customConfigName("defaultConfig.xml"),
-			isGame(true)
+			isGame(true),
+			useDefaultGraphicsOptions(false)
 		{
 
 		}
@@ -87,6 +90,7 @@ namespace NOWA
 		Ogre::String startProjectName;
 		Ogre::NameValuePairList customParams;
 		bool isGame;
+        bool useDefaultGraphicsOptions;
 	};
 
 	class ResourceLoadingListenerImpl : public Ogre::ResourceLoadingListener
@@ -181,6 +185,56 @@ namespace NOWA
 		 * @return true on success, false otherwise.
 		 */
 		bool initialize(const CoreConfiguration& coreConfiguration);
+
+		 /* @brief Gets whether the engine bypasses the Ogre configuration dialog.
+		  * @return True if default graphics options are used, else false.
+		  */ 
+		bool getUseDefaultGraphicsOptions(void) const;
+
+        /** @brief Changes the render window resolution at runtime.
+		 * @param[in] width The desired width in pixels.
+		 * @param[in] height The desired height in pixels.
+		 * @return True if the resolution has been applied, else false.*/
+		bool setVideoMode(unsigned int width, unsigned int height);
+
+        /**
+          * @brief      Switches between fullscreen and windowed mode at runtime.
+          * @param[in]  fullscreen    True for fullscreen, false for windowed.
+          * @param[in]  monitorIndex  The monitor index to use.
+          * @return     True if the switch has been applied, else false.
+          */
+        bool setFullscreen(bool fullscreen, unsigned int monitorIndex = 0);
+
+        /** @brief Enables or disables vertical synchronisation at runtime.
+		 * @param[in] vsync True to enable vsync, else false.
+		 * @param[in] interval The vsync interval(1 = every frame).
+		 * @return True if applied, else false.
+		 */
+		bool setVSync(bool vsync, unsigned int interval);
+
+        /** @brief Stores the anti aliasing mode.Requires an application restart.
+		 * @param[in] fsaaValue The FSAA value, e.g."4x MSAA" or "None".*@ return True if the value is valid and has been stored, else false.
+		 */ 
+		bool setFSAA(const Ogre::String& fsaaValue);
+
+        std::vector<Ogre::String> getAvailableVideoModes(void) const;
+
+        std::vector<Ogre::String> getAvailableFSAAModes(void) const;
+
+        std::vector<Ogre::String> getAvailableRenderingDevices(void) const;
+
+        Ogre::String getCurrentVideoMode(void) const;
+
+        std::pair<unsigned int, unsigned int> getCurrentVideoModeResolution(void) const;
+
+        bool getIsFullscreen(void) const;
+
+        bool getIsVSync(void) const;
+
+        Ogre::String getCurrentFSAA(void) const;
+
+        /* @brief Writes the current graphics options to the ogre configuration file.*/
+		void saveGraphicsConfig(void);
 
 		/* -------------------
 		 * Input listeners (OIS)
@@ -660,6 +714,16 @@ namespace NOWA
 		*/
         void setSettings(Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::Camera* camera, const ProjectParameter& projectParameter);
 
+		void applyGlobalGraphicsQuality(Ogre::SceneManager* sceneManager);
+
+        void setShadowQuality(short shadowQuality);
+
+        short getShadowQuality(void) const;
+
+        void setShadowFarDistance(Ogre::SceneManager* sceneManager, Ogre::Real shadowFarDistance);
+
+        Ogre::Real getShadowFarDistance(void) const;
+
 		/**
 		 * @brief Set polygon rendering mode for all geometry (solid, wireframe, points).
 		 * @param mode 3=Solid, 2=Wireframe, 1=Points.
@@ -1034,15 +1098,6 @@ namespace NOWA
 		 * @return Refresh rate in Hz, or 0 on failure.
 		 */
 		unsigned int getScreenRefreshRate(void);
-
-		/**
-		* @brief Run MeshMagick operations on a mesh (rotation, resize, transform, origin, axes).
-		* @see https://wiki.ogre3d.org/MeshMagick
-		* @param meshName Mesh resource name (without path).
-		* @param parameters Command line parameters for MeshMagick (excluding mesh name).
-		* @return true if operation succeeded, false on error.
-		*/
-		bool processMeshMagick(const Ogre::String& meshName, const Ogre::String& parameters);
 		
 		/**
 		* @brief Preload textures required for the specified scene to reduce hitches during scene startup.
@@ -1106,6 +1161,11 @@ namespace NOWA
 		void setCurrentScenePath(const Ogre::String& currentScenePath);
 		void setCurrentSceneBounds(const Ogre::Vector3& mostLeftNearPosition, const Ogre::Vector3& mostRightFarPosition);
 
+        void applyDefaultGraphicsOptions(bool keepExistingUserValues);
+
+        Ogre::String findMatchingVideoMode(const Ogre::StringVector& possibleValues, unsigned int width, unsigned int height) const;
+
+        bool isConfigOptionValueValid(const Ogre::ConfigOptionMap& configOptions, const Ogre::String& optionName, const Ogre::String& value) const;
         /**
          * @brief Registers ALL types, called once on main thread
          */
@@ -1155,6 +1215,7 @@ namespace NOWA
 		
 		Ogre::String writeAccessFolder;
 		bool isGame;
+        bool useDefaultGraphicsOptions;
 		Ogre::String saveGameName;
 		
 		MyGUI::Gui* myGui;
@@ -1201,6 +1262,9 @@ namespace NOWA
 		int requiredRAMPhysicalMB;
 		int requiredRAMVirtualMB;
 		Ogre::Real globalRenderDistance;
+
+        short optionShadowQuality;          // -1 = use scene value
+        Ogre::Real optionShadowFarDistance; // <= 0.0f = use scene value
 
 		int cryptKey;
 		bool projectEncoded;

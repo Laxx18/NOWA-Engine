@@ -168,22 +168,23 @@ namespace NOWA
 	{
 		if (this->ogreNewt)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("OgreNewtModule::showOgreNewtCollisionLines", _1(enabled),
-			{
-				OgreNewt::Debugger & debug = this->ogreNewt->getDebugger();
-				if (enabled)
-				{
-					debug.showDebugInformation();
-					debug.startRaycastRecording();
-					debug.clearRaycastsRecorded();
-				}
-				else
-				{
-					debug.hideDebugInformation();
-					debug.clearRaycastsRecorded();
-					debug.stopRaycastRecording();
-				}
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, enabled]()
+            {
+                OgreNewt::Debugger& debug = this->ogreNewt->getDebugger();
+                if (enabled)
+                {
+                    debug.showDebugInformation();
+                    debug.startRaycastRecording();
+                    debug.clearRaycastsRecorded();
+                }
+                else
+                {
+                    debug.hideDebugInformation();
+                    debug.clearRaycastsRecorded();
+                    debug.stopRaycastRecording();
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MainMenuBar::showOgreNewtCollisionLines");
 		}
 	}
 
@@ -236,10 +237,11 @@ namespace NOWA
 			// Cycle through colors
 			colorIndex = (colorIndex + 1) % colorPalette.size();
 
-			ENQUEUE_RENDER_COMMAND_MULTI("OgreNewtModule::setMaterialIdForDebugger", _3(&debug, material, tempColour),
-			{
-				debug.setMaterialColor(material, tempColour);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, &debug, material, tempColour]()
+            {
+                debug.setMaterialColor(material, tempColour);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::setMaterialIdForDebugger");
 		}
 	}
 

@@ -35,26 +35,26 @@ namespace NOWA
 		ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderProcess(FaderProcess::FadeOperation::FADE_IN, 3.5f)));
 		Ogre::LogManager::getSingletonPtr()->logMessage("Entering MainConfigurationStateMyGui...");
 
-		ENQUEUE_RENDER_COMMAND_WAIT("MainConfigurationStateMyGui::enter",
-		{
-			this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "MainConfigurationStateMyGui");
-			// this->sceneManager->setAmbientLight(Ogre::ColourValue(0.7f, 0.7f, 0.7f));
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "MainConfigurationStateMyGui");
 
-			this->camera = this->sceneManager->createCamera("MenuCamera");
-			this->camera->setPosition(Ogre::Vector3(0, 25, -50));
-			this->camera->lookAt(Ogre::Vector3(0, 0, 0));
-			this->camera->setNearClipDistance(1);
-			this->camera->setAutoAspectRatio(true);
+            this->camera = this->sceneManager->createCamera("MenuCamera");
+            this->camera->setPosition(Ogre::Vector3(0, 25, -50));
+            this->camera->lookAt(Ogre::Vector3(0, 0, 0));
+            this->camera->setNearClipDistance(1);
+            this->camera->setAutoAspectRatio(true);
 
-			WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
+            WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
 
-			this->initializeModules(false, false);
+            this->initializeModules(false, false);
 
-			this->setupWidgets();
+            this->setupWidgets();
 
-			this->createScene();
-			this->createBackgroundMusic();
-		});
+            this->createScene();
+            this->createBackgroundMusic();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MainConfigurationStateMyGui::enter");
 	}
 
 	void MainConfigurationStateMyGui::exit()
@@ -67,11 +67,13 @@ namespace NOWA
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MainConfigurationStateMyGui] Leaving...");
 
-		ENQUEUE_RENDER_COMMAND_WAIT("MainConfigurationStateMyGui::exit",
-		{
-			MyGUI::Gui::getInstancePtr()->destroyWidget(MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ImageBox>("Background"));
-			MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgets);
-		});
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            MyGUI::Gui::getInstancePtr()->destroyWidget(MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ImageBox>("Background"));
+            MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgets);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MainConfigurationStateMyGui::exit");
+
 		this->menuMusic = nullptr;
 		this->renderSystemCombo = nullptr;
 		this->antiAliasingCombo = nullptr;
@@ -96,10 +98,7 @@ namespace NOWA
 		// create sound
 		OgreALModule::getInstance()->init(this->sceneManager);
 		this->menuMusic = OgreALModule::getInstance()->createSound(this->sceneManager, "MenuMusic1", "Lines Of Code.ogg", true, true);
-		ENQUEUE_RENDER_COMMAND_WAIT("MainConfigurationStateMyGui::createBackgroundMusic play",
-		{
-			this->menuMusic->play();
-		});
+        this->menuMusic->play();
 	}
 
 	void MainConfigurationStateMyGui::setupWidgets(void)
@@ -209,119 +208,120 @@ namespace NOWA
 
 	void MainConfigurationStateMyGui::populateOptions(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("MainConfigurationStateMyGui::populateOptions",
-		{
-			// load some options and set the GUI states
-			// Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
-			// Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering(static_cast<Ogre::TextureFilterOptions>(Core::getSingletonPtr()->getOptionTextureFiltering()));
-			// Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(Core::getSingletonPtr()->getOptionAnisotropyLevel());
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            // load some options and set the GUI states
+            // Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
+            // Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering(static_cast<Ogre::TextureFilterOptions>(Core::getSingletonPtr()->getOptionTextureFiltering()));
+            // Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(Core::getSingletonPtr()->getOptionAnisotropyLevel());
 
-			this->soundSlider->setScrollPosition(Core::getSingletonPtr()->getOptionSoundVolume());
-			this->musicSlider->setScrollPosition(Core::getSingletonPtr()->getOptionMusicVolume());
+            this->soundSlider->setScrollPosition(Core::getSingletonPtr()->getOptionSoundVolume());
+            this->musicSlider->setScrollPosition(Core::getSingletonPtr()->getOptionMusicVolume());
 
-			OgreALModule::getInstance()->setupVolumes(static_cast<int>(this->soundSlider->getScrollPosition()), static_cast<int>(this->musicSlider->getScrollPosition()));
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("musicLabel")->setCaptionWithReplacing("#{Music_Volume}: ("
-				+ Ogre::StringConverter::toString(musicSlider->getScrollPosition()) + " %)");
+            OgreALModule::getInstance()->setupVolumes(static_cast<int>(this->soundSlider->getScrollPosition()), static_cast<int>(this->musicSlider->getScrollPosition()));
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("musicLabel")->setCaptionWithReplacing("#{Music_Volume}: (" + Ogre::StringConverter::toString(musicSlider->getScrollPosition()) + " %)");
 
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("soundLabel")->setCaptionWithReplacing("#{Sound_Volume}: ("
-				+ Ogre::StringConverter::toString(soundSlider->getScrollPosition()) + " %)");
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("soundLabel")->setCaptionWithReplacing("#{Sound_Volume}: (" + Ogre::StringConverter::toString(soundSlider->getScrollPosition()) + " %)");
 
-			// Render systems
-			const Ogre::RenderSystemList & rsList = Core::getSingletonPtr()->getOgreRoot()->getAvailableRenderers();
-			for (unsigned int i = 0; i < rsList.size(); i++)
-			{
-				this->renderSystemCombo->addItem(rsList[i]->getName());
-			}
-			this->renderSystemCombo->setCaption(Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->getName());
-			size_t index = this->renderSystemCombo->findItemIndexWith(Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->getName());
-			this->renderSystemCombo->setIndexSelected(index);
-			this->strOldRenderSystem = renderSystemCombo->getItemNameAt(index);
-			Ogre::ConfigOptionMap& configOptions = Core::getSingletonPtr()->getOgreRoot()->getRenderSystemByName(renderSystemCombo->getItemNameAt(index))->getConfigOptions();
-			Ogre::ConfigOption configOption;
-			Ogre::StringVector possibleOptions;
+            // Render systems
+            const Ogre::RenderSystemList& rsList = Core::getSingletonPtr()->getOgreRoot()->getAvailableRenderers();
+            for (unsigned int i = 0; i < rsList.size(); i++)
+            {
+                this->renderSystemCombo->addItem(rsList[i]->getName());
+            }
+            this->renderSystemCombo->setCaption(Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->getName());
+            size_t index = this->renderSystemCombo->findItemIndexWith(Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->getName());
+            this->renderSystemCombo->setIndexSelected(index);
+            this->strOldRenderSystem = renderSystemCombo->getItemNameAt(index);
+            Ogre::ConfigOptionMap& configOptions = Core::getSingletonPtr()->getOgreRoot()->getRenderSystemByName(renderSystemCombo->getItemNameAt(index))->getConfigOptions();
+            Ogre::ConfigOption configOption;
+            Ogre::StringVector possibleOptions;
 
-			// Anti-Aliasing
-			configOption = configOptions.find("FSAA")->second;
-			possibleOptions = configOption.possibleValues;
-			for (unsigned int i = 0; i < possibleOptions.size(); i++)
-			{
-				this->antiAliasingCombo->addItem(possibleOptions.at(i));
-			}
-			this->antiAliasingCombo->setCaption(configOption.currentValue);
-			index = this->antiAliasingCombo->findItemIndexWith(configOption.currentValue);
-			this->antiAliasingCombo->setIndexSelected(index);
-			this->strOldFSAA = this->antiAliasingCombo->getItemNameAt(index);
+            // Anti-Aliasing
+            configOption = configOptions.find("FSAA")->second;
+            possibleOptions = configOption.possibleValues;
+            for (unsigned int i = 0; i < possibleOptions.size(); i++)
+            {
+                this->antiAliasingCombo->addItem(possibleOptions.at(i));
+            }
+            this->antiAliasingCombo->setCaption(configOption.currentValue);
+            index = this->antiAliasingCombo->findItemIndexWith(configOption.currentValue);
+            this->antiAliasingCombo->setIndexSelected(index);
+            this->strOldFSAA = this->antiAliasingCombo->getItemNameAt(index);
 
-			// Fullscreen
-			this->fullscreenCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MessageBox_Yes}"));
-			this->fullscreenCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MessageBox_No}"));
-			configOption = configOptions.find("Full Screen")->second;
-			if ("Yes" == configOption.currentValue)
-			{
-				index = 0;
-			}
-			else
-			{
-				index = 1;
-			}
-			this->fullscreenCombo->setIndexSelected(index);
-			this->strOldFullscreen = this->fullscreenCombo->getItemNameAt(index);
+            // Fullscreen
+            this->fullscreenCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MessageBox_Yes}"));
+            this->fullscreenCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MessageBox_No}"));
+            configOption = configOptions.find("Full Screen")->second;
+            if ("Yes" == configOption.currentValue)
+            {
+                index = 0;
+            }
+            else
+            {
+                index = 1;
+            }
+            this->fullscreenCombo->setIndexSelected(index);
+            this->strOldFullscreen = this->fullscreenCombo->getItemNameAt(index);
 
-			// VSync
-			configOption = configOptions.find("VSync")->second;
-			this->vSyncCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MessageBox_Yes}"));
-			this->vSyncCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MessageBox_No}"));
-			if ("Yes" == configOption.currentValue || "1" == configOption.currentValue)
-			{
-				index = 0;
-			}
-			else
-			{
-				index = 1;
-			}
+            // VSync
+            configOption = configOptions.find("VSync")->second;
+            this->vSyncCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MessageBox_Yes}"));
+            this->vSyncCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MessageBox_No}"));
+            if ("Yes" == configOption.currentValue || "1" == configOption.currentValue)
+            {
+                index = 0;
+            }
+            else
+            {
+                index = 1;
+            }
 
-			this->vSyncCombo->setIndexSelected(index);
-			this->strOldVSync = this->vSyncCombo->getItemNameAt(index);
+            this->vSyncCombo->setIndexSelected(index);
+            this->strOldVSync = this->vSyncCombo->getItemNameAt(index);
 
-			// Resolution
-			configOption = configOptions.find("Video Mode")->second;
-			possibleOptions = configOption.possibleValues;
-			for (unsigned int i = 0; i < possibleOptions.size(); i++)
-			{
-				this->resolutionCombo->addItem(possibleOptions.at(i));
-			}
-			this->resolutionCombo->setCaption(configOption.currentValue);
-			index = this->resolutionCombo->findItemIndexWith(configOption.currentValue);
-			this->resolutionCombo->setIndexSelected(index);
-			this->strOldResolution = this->resolutionCombo->getItemNameAt(index);
+            // Resolution
+            configOption = configOptions.find("Video Mode")->second;
+            possibleOptions = configOption.possibleValues;
+            for (unsigned int i = 0; i < possibleOptions.size(); i++)
+            {
+                this->resolutionCombo->addItem(possibleOptions.at(i));
+            }
+            this->resolutionCombo->setCaption(configOption.currentValue);
+            index = this->resolutionCombo->findItemIndexWith(configOption.currentValue);
+            this->resolutionCombo->setIndexSelected(index);
+            this->strOldResolution = this->resolutionCombo->getItemNameAt(index);
 
-			// Quality
-			graphicsQualityCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Low}"));
-			graphicsQualityCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Middle}"));
-			graphicsQualityCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{High}"));
+            // Quality
+            graphicsQualityCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Low}"));
+            graphicsQualityCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Middle}"));
+            graphicsQualityCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{High}"));
 
-			index = Core::getSingletonPtr()->getOptionQualityLevel();
-			this->graphicsQualityCombo->setIndexSelected(index);
-			this->strOldQuality = this->graphicsQualityCombo->getItemNameAt(index);
+            index = Core::getSingletonPtr()->getOptionQualityLevel();
+            this->graphicsQualityCombo->setIndexSelected(index);
+            this->strOldQuality = this->graphicsQualityCombo->getItemNameAt(index);
 
-			// Language
-			this->languageCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{English}"));
-			this->languageCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{German}"));
+            // Language
+            this->languageCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{English}"));
+            this->languageCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{German}"));
 
-			index = Core::getSingletonPtr()->getOptionLanguage();
-			this->languageCombo->setIndexSelected(index);
-			this->strOldLanguage = this->languageCombo->getItemNameAt(index);
-		});
+            index = Core::getSingletonPtr()->getOptionLanguage();
+            this->languageCombo->setIndexSelected(index);
+            this->strOldLanguage = this->languageCombo->getItemNameAt(index);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MainConfigurationStateMyGui::populateOptions");
 	}
 
 	void MainConfigurationStateMyGui::itemSelected(MyGUI::ComboBox* _sender, size_t _index)
 	{
 		// Check if an item selection has been changed, that required a new start of the application
 		bool restart = false;
-		ENQUEUE_RENDER_COMMAND("MainConfigurationStateMyGui::itemSelected messageLabel caption",
-		{
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("messageLabel")->setCaption("");
-		});
+
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("messageLabel")->setCaption("");
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MainConfigurationStateMyGui::itemSelected messageLabel caption");
 
 		if (_sender == this->renderSystemCombo)
 		{
@@ -371,10 +371,7 @@ namespace NOWA
 		{
 			if (!Core::getSingletonPtr()->isStartedAsServer())
 			{
-				ENQUEUE_RENDER_COMMAND_WAIT("MainConfigurationStateMyGui::buttonHit menuMusic pause",
-				{
-					this->menuMusic->pause();
-				});
+                this->menuMusic->pause();
 			}
 			this->changeAppState(this->findByName("ClientConfigurationStateMyGui"));
 			// this->changeAppState(this->findByName(this->nextAppStateName));
@@ -385,130 +382,136 @@ namespace NOWA
 		}
 		else if ("optionsButton" == _sender->getName())
 		{
-			ENQUEUE_RENDER_COMMAND("MainConfigurationStateMyGui::buttonHit optionsButton",
-			{
-				MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("menueStatePanel")->setVisible(false);
-				MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("configurationPanel")->setVisible(true);
-			});
+			GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("menueStatePanel")->setVisible(false);
+                MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("configurationPanel")->setVisible(true);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainConfigurationStateMyGui::buttonHit optionsButton");
 		}
 		else if ("quitButton" == _sender->getName())
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("MainConfigurationStateMyGui::buttonHit quitButton",
-			{
-				MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
-					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+			GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
+                    MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
-				messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &MainConfigurationStateMyGui::notifyMessageBoxEnd);
-			});
+                messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &MainConfigurationStateMyGui::notifyMessageBoxEnd);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainConfigurationStateMyGui::buttonHit quitButton");
 		}
 		else if ("applyButton" == _sender->getName())
 		{
 			this->applyOptions();
-			ENQUEUE_RENDER_COMMAND("MainConfigurationStateMyGui::buttonHit applyButton",
-			{
-				MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("menueStatePanel")->setVisible(true);
-				MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("configurationPanel")->setVisible(false);
-			});
+
+			GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("menueStatePanel")->setVisible(true);
+                MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("configurationPanel")->setVisible(false);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainConfigurationStateMyGui::buttonHit applyButton");
 		}
 		else if ("abordButton" == _sender->getName())
 		{
-			ENQUEUE_RENDER_COMMAND("MainConfigurationStateMyGui::buttonHit abordButton",
-			{
-				MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("menueStatePanel")->setVisible(true);
-				MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("configurationPanel")->setVisible(false);
+            GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("menueStatePanel")->setVisible(true);
+                MyGUI::Gui::getInstance().findWidget<MyGUI::Window>("configurationPanel")->setVisible(false);
 
-				// Rest unsaved values to old ones
-				this->renderSystemCombo->setCaptionWithReplacing(this->strOldRenderSystem);
-				this->antiAliasingCombo->setCaptionWithReplacing(this->strOldFSAA);
-				this->fullscreenCombo->setCaptionWithReplacing(this->strOldFullscreen);
-				this->vSyncCombo->setCaptionWithReplacing(this->strOldVSync);
-				this->resolutionCombo->setCaptionWithReplacing(this->strOldResolution);
-				this->graphicsQualityCombo->setCaptionWithReplacing(this->strOldQuality);
-				this->languageCombo->setCaptionWithReplacing(this->strOldLanguage);
-				for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
-				{
-					this->keyConfigTextboxes[i]->setCaptionWithReplacing(this->oldKeyValue[i]);
-					this->textboxActive[i] = false;
-				}
-				for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
-				{
-					this->buttonConfigTextboxes[i]->setCaptionWithReplacing(this->oldButtonValue[i]);
-					this->textboxActive[i] = false;
-				}
-			});
+                // Rest unsaved values to old ones
+                this->renderSystemCombo->setCaptionWithReplacing(this->strOldRenderSystem);
+                this->antiAliasingCombo->setCaptionWithReplacing(this->strOldFSAA);
+                this->fullscreenCombo->setCaptionWithReplacing(this->strOldFullscreen);
+                this->vSyncCombo->setCaptionWithReplacing(this->strOldVSync);
+                this->resolutionCombo->setCaptionWithReplacing(this->strOldResolution);
+                this->graphicsQualityCombo->setCaptionWithReplacing(this->strOldQuality);
+                this->languageCombo->setCaptionWithReplacing(this->strOldLanguage);
+                for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+                {
+                    this->keyConfigTextboxes[i]->setCaptionWithReplacing(this->oldKeyValue[i]);
+                    this->textboxActive[i] = false;
+                }
+                for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
+                {
+                    this->buttonConfigTextboxes[i]->setCaptionWithReplacing(this->oldButtonValue[i]);
+                    this->textboxActive[i] = false;
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainConfigurationStateMyGui::buttonHit abordButton");
 		}
 	}
 
 	void  MainConfigurationStateMyGui::notifyMouseSetFocus(MyGUI::Widget* _sender, MyGUI::Widget* _old)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("MainConfigurationStateMyGui::notifyMouseSetFocus", _1(_sender),
-		{
-			// Does not work with this combination
-			// if (NOWA::Core::getSingletonPtr()->getMouse()->getMouseState().buttonDown(OIS::MB_Left))
-			{
-				// Highlight current edit box for key-mapping
-				for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
-				{
-					this->keyConfigTextboxes[i]->setTextShadow(false);
-					this->textboxActive[i] = false;
-					if (_sender == this->keyConfigTextboxes[i])
-					{
-						this->textboxActive[i] = true;
-						this->keyConfigTextboxes[i]->setTextShadow(true);
-					}
-				}
-			}
-			/*
-			// does not work if cursor is editcursor in edit box, only works on border of editbox, silly shit
-			MyGUI::Widget* focus = MyGUI::InputManager::getInstance().getMouseFocusWidget();
-			MyGUI::Widget* widget = MyGUI::LayerManager::getInstance().getWidgetFromPoint(positionX, positionY);
-			*/
-		});
+        GraphicsModule::RenderCommand renderCommand = [this, _sender]()
+        {
+            // Does not work with this combination
+            // if (NOWA::Core::getSingletonPtr()->getMouse()->getMouseState().buttonDown(OIS::MB_Left))
+            {
+                // Highlight current edit box for key-mapping
+                for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+                {
+                    this->keyConfigTextboxes[i]->setTextShadow(false);
+                    this->textboxActive[i] = false;
+                    if (_sender == this->keyConfigTextboxes[i])
+                    {
+                        this->textboxActive[i] = true;
+                        this->keyConfigTextboxes[i]->setTextShadow(true);
+                    }
+                }
+            }
+            /*
+            // does not work if cursor is editcursor in edit box, only works on border of editbox, silly shit
+            MyGUI::Widget* focus = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+            MyGUI::Widget* widget = MyGUI::LayerManager::getInstance().getWidgetFromPoint(positionX, positionY);
+            */
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainConfigurationStateMyGui::notifyMouseSetFocus");
 	}
 
 	void  MainConfigurationStateMyGui::notifyMouseSetFocusJoyStick(MyGUI::Widget* _sender, MyGUI::Widget* _old)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("MainConfigurationStateMyGui::notifyMouseSetFocusJoyStick", _1(_sender),
-		{
-			// Does not work with this combination
-			// if (NOWA::Core::getSingletonPtr()->getMouse()->getMouseState().buttonDown(OIS::MB_Left))
-			{
-				// Highlight current edit box for key-mapping
-				for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
-				{
-					this->buttonConfigTextboxes[i]->setTextShadow(false);
-					this->textboxActive[i + this->buttonConfigTextboxes.size()] = false;
-					if (_sender == this->buttonConfigTextboxes[i])
-					{
-						this->textboxActive[i + this->buttonConfigTextboxes.size()] = true;
-						this->buttonConfigTextboxes[i]->setTextShadow(true);
-					}
-				}
-			}
-			/*
-			// does not work if cursor is editcursor in edit box, only works on border of editbox, silly shit
-			MyGUI::Widget* focus = MyGUI::InputManager::getInstance().getMouseFocusWidget();
-			MyGUI::Widget* widget = MyGUI::LayerManager::getInstance().getWidgetFromPoint(positionX, positionY);
-			*/
-		});
+        GraphicsModule::RenderCommand renderCommand = [this, _sender]()
+        {
+            // Does not work with this combination
+            // if (NOWA::Core::getSingletonPtr()->getMouse()->getMouseState().buttonDown(OIS::MB_Left))
+            {
+                // Highlight current edit box for key-mapping
+                for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
+                {
+                    this->buttonConfigTextboxes[i]->setTextShadow(false);
+                    this->textboxActive[i + this->buttonConfigTextboxes.size()] = false;
+                    if (_sender == this->buttonConfigTextboxes[i])
+                    {
+                        this->textboxActive[i + this->buttonConfigTextboxes.size()] = true;
+                        this->buttonConfigTextboxes[i]->setTextShadow(true);
+                    }
+                }
+            }
+            /*
+            // does not work if cursor is editcursor in edit box, only works on border of editbox, silly shit
+            MyGUI::Widget* focus = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+            MyGUI::Widget* widget = MyGUI::LayerManager::getInstance().getWidgetFromPoint(positionX, positionY);
+            */
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainConfigurationStateMyGui::notifyMouseSetFocusJoyStick");
 	}
 
 	void MainConfigurationStateMyGui::sliderMoved(MyGUI::ScrollBar* _sender, size_t _position)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("MainConfigurationStateMyGui::sliderMoved", _1(_sender),
-		{
-			if (this->menuMusic && _sender == this->musicSlider)
-			{
-				this->menuMusic->setGain(musicSlider->getScrollPosition() / 100.0f);
-				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("musicLabel")->setCaptionWithReplacing("#{Music_Volume}: ("
-					+ Ogre::StringConverter::toString(musicSlider->getScrollPosition()) + " %)");
-			}
-			else if (_sender == this->soundSlider)
-			{
-				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("soundLabel")->setCaptionWithReplacing("#{Sound_Volume}: ("
-					+ Ogre::StringConverter::toString(soundSlider->getScrollPosition()) + " %)");
-			}
-		});
+		GraphicsModule::RenderCommand renderCommand = [this, _sender]()
+        {
+            if (this->menuMusic && _sender == this->musicSlider)
+            {
+                this->menuMusic->setGain(musicSlider->getScrollPosition() / 100.0f);
+                MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("musicLabel")->setCaptionWithReplacing("#{Music_Volume}: (" + Ogre::StringConverter::toString(musicSlider->getScrollPosition()) + " %)");
+            }
+            else if (_sender == this->soundSlider)
+            {
+                MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("soundLabel")->setCaptionWithReplacing("#{Sound_Volume}: (" + Ogre::StringConverter::toString(soundSlider->getScrollPosition()) + " %)");
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainConfigurationStateMyGui::sliderMoved");
 	}
 
 	void MainConfigurationStateMyGui::createScene()
@@ -525,76 +528,79 @@ namespace NOWA
 			return true;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainConfigurationStateMyGui::sliderMoved", _1(keyEventRef),
-		{
-			// Check if an editbox is active and set the pressed key to the edit box for key-mapping
-			bool keepMappingActive = false;
-			bool alreadyExisting = false;
-			short index = -1;
-			Ogre::String strKeyCode;
-			for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
-			{
-				if (true == this->textboxActive[i])
-				{
-					index = i;
-					// this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
-					// get key string and set the text
-					strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedKey(keyEventRef.key);
-					this->textboxActive[i] = false;
-					this->keyConfigTextboxes[i]->setTextShadow(false);
-					keepMappingActive = true;
-				}
-			}
+		GraphicsModule::RenderCommand renderCommand = [this, keyEventRef]()
+        {
+            // Check if an editbox is active and set the pressed key to the edit box for key-mapping
+            bool keepMappingActive = false;
+            bool alreadyExisting = false;
+            short index = -1;
+            Ogre::String strKeyCode;
+            for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+            {
+                if (true == this->textboxActive[i])
+                {
+                    index = i;
+                    // this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
+                    // get key string and set the text
+                    strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedKey(keyEventRef.key);
+                    this->textboxActive[i] = false;
+                    this->keyConfigTextboxes[i]->setTextShadow(false);
+                    keepMappingActive = true;
+                }
+            }
 
-			index = -1;
-			Ogre::String strButton;
-			for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
-			{
-				if (true == this->textboxActive[i + this->buttonConfigTextboxes.size()])
-				{
-					index = i;
-					// this->oldKeyValue[i] = this->buttonConfigTextboxes[i]->getCaption();
-					// get key string and set the text
-					strButton = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedButton(NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButton());
-					this->textboxActive[i + this->buttonConfigTextboxes.size()] = false;
-					this->buttonConfigTextboxes[i]->setTextShadow(false);
-					keepMappingActive = true;
-				}
-			}
+            index = -1;
+            Ogre::String strButton;
+            for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
+            {
+                if (true == this->textboxActive[i + this->buttonConfigTextboxes.size()])
+                {
+                    index = i;
+                    // this->oldKeyValue[i] = this->buttonConfigTextboxes[i]->getCaption();
+                    // get key string and set the text
+                    strButton = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedButton(NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButton());
+                    this->textboxActive[i + this->buttonConfigTextboxes.size()] = false;
+                    this->buttonConfigTextboxes[i]->setTextShadow(false);
+                    keepMappingActive = true;
+                }
+            }
 
-			if (InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_RETURN) && false == keepMappingActive)
-			{
-				// start next state
-				this->changeAppState(this->findByName(this->nextAppStateName));
-				return;
-			}
+            if (InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_RETURN) && false == keepMappingActive)
+            {
+                // start next state
+                this->changeAppState(this->findByName(this->nextAppStateName));
+                return;
+            }
 
-			// Check if the key does not exist already
-			for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
-			{
-				if (this->keyConfigTextboxes[i]->getCaption() == strKeyCode)
-				{
-					alreadyExisting = true;
-					break;
-				}
-			}
+            // Check if the key does not exist already
+            for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+            {
+                if (this->keyConfigTextboxes[i]->getCaption() == strKeyCode)
+                {
+                    alreadyExisting = true;
+                    break;
+                }
+            }
 
-			for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
-			{
-				if (this->buttonConfigTextboxes[i]->getCaption() == strButton)
-				{
-					alreadyExisting = true;
-					break;
-				}
-			}
+            for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
+            {
+                if (this->buttonConfigTextboxes[i]->getCaption() == strButton)
+                {
+                    alreadyExisting = true;
+                    break;
+                }
+            }
 
-			// Set the new button
-			if (-1 != index && !alreadyExisting && !strButton.empty())
-			{
-				this->buttonConfigTextboxes[index]->setCaptionWithReplacing(strButton);
-				NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->remapButton(static_cast<InputDeviceModule::Action>(index), NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButton());
-			}
-		});
+            // Set the new button
+            if (-1 != index && !alreadyExisting && !strButton.empty())
+            {
+                this->buttonConfigTextboxes[index]->setCaptionWithReplacing(strButton);
+                NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->remapButton(static_cast<InputDeviceModule::Action>(index),
+                    NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButton());
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainConfigurationStateMyGui::sliderMoved");
+
 		return true;
 	}
 
@@ -655,111 +661,112 @@ namespace NOWA
 
 	void MainConfigurationStateMyGui::applyOptions(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("MainConfigurationStateMyGui::applyOptions",
-		{
-			Ogre::String renderSystemSelected = Ogre::String(this->renderSystemCombo->getItemNameAt(this->renderSystemCombo->getIndexSelected()));
-			Ogre::String antiAliasingSelected = Ogre::String(this->antiAliasingCombo->getItemNameAt(this->antiAliasingCombo->getIndexSelected()));
-			Ogre::String fullScreenSelected = Ogre::String(this->fullscreenCombo->getItemNameAt(this->fullscreenCombo->getIndexSelected()));
-			Ogre::String vSyncSelected = Ogre::String(this->vSyncCombo->getItemNameAt(this->vSyncCombo->getIndexSelected()));
-			Ogre::String resolutionSelected = Ogre::String(this->resolutionCombo->getItemNameAt(this->resolutionCombo->getIndexSelected()));
-			Ogre::String qualitySelected = Ogre::String(this->graphicsQualityCombo->getItemNameAt(this->graphicsQualityCombo->getIndexSelected()));
-			Ogre::String languageSelected = Ogre::String(this->languageCombo->getItemNameAt(this->languageCombo->getIndexSelected()));
+        GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            Ogre::String renderSystemSelected = Ogre::String(this->renderSystemCombo->getItemNameAt(this->renderSystemCombo->getIndexSelected()));
+            Ogre::String antiAliasingSelected = Ogre::String(this->antiAliasingCombo->getItemNameAt(this->antiAliasingCombo->getIndexSelected()));
+            Ogre::String fullScreenSelected = Ogre::String(this->fullscreenCombo->getItemNameAt(this->fullscreenCombo->getIndexSelected()));
+            Ogre::String vSyncSelected = Ogre::String(this->vSyncCombo->getItemNameAt(this->vSyncCombo->getIndexSelected()));
+            Ogre::String resolutionSelected = Ogre::String(this->resolutionCombo->getItemNameAt(this->resolutionCombo->getIndexSelected()));
+            Ogre::String qualitySelected = Ogre::String(this->graphicsQualityCombo->getItemNameAt(this->graphicsQualityCombo->getIndexSelected()));
+            Ogre::String languageSelected = Ogre::String(this->languageCombo->getItemNameAt(this->languageCombo->getIndexSelected()));
 
-			if (this->strOldRenderSystem != renderSystemSelected)
-			{
-				this->bQuit = true;
-			}
-			if (this->strOldFSAA != antiAliasingSelected)
-			{
-				this->bQuit = true;
-			}
-			if (this->strOldFullscreen != fullScreenSelected)
-			{
-				this->bQuit = true;
-			}
-			if (this->strOldResolution != resolutionSelected)
-			{
-				this->bQuit = true;
-			}
-			if (this->strOldLanguage != languageSelected)
-			{
-				Core::getSingletonPtr()->setOptionLanguage(static_cast<unsigned int>(this->languageCombo->getIndexSelected()));
-				this->bQuit = true;
-			}
+            if (this->strOldRenderSystem != renderSystemSelected)
+            {
+                this->bQuit = true;
+            }
+            if (this->strOldFSAA != antiAliasingSelected)
+            {
+                this->bQuit = true;
+            }
+            if (this->strOldFullscreen != fullScreenSelected)
+            {
+                this->bQuit = true;
+            }
+            if (this->strOldResolution != resolutionSelected)
+            {
+                this->bQuit = true;
+            }
+            if (this->strOldLanguage != languageSelected)
+            {
+                Core::getSingletonPtr()->setOptionLanguage(static_cast<unsigned int>(this->languageCombo->getIndexSelected()));
+                this->bQuit = true;
+            }
 
-			if (this->strOldVSync != vSyncSelected)
-			{
-				bool vSync = false;
-				if (1 == this->vSyncCombo->getIndexSelected())
-				{
-					vSync = true;
-				}
-				// Not supported anymore
-				// Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->setWaitForVerticalBlank(vSync);
-				Ogre::ConfigOptionMap& cfgOpts = Ogre::Root::getSingletonPtr()->getRenderSystem()->getConfigOptions();
-				Core::getSingletonPtr()->getOgreRenderWindow()->setVSync(vSync, Ogre::StringConverter::parseUnsignedInt(cfgOpts["VSync"].currentValue));
-			}
+            if (this->strOldVSync != vSyncSelected)
+            {
+                bool vSync = false;
+                if (1 == this->vSyncCombo->getIndexSelected())
+                {
+                    vSync = true;
+                }
+                // Not supported anymore
+                // Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->setWaitForVerticalBlank(vSync);
+                Ogre::ConfigOptionMap& cfgOpts = Ogre::Root::getSingletonPtr()->getRenderSystem()->getConfigOptions();
+                Core::getSingletonPtr()->getOgreRenderWindow()->setVSync(vSync, Ogre::StringConverter::parseUnsignedInt(cfgOpts["VSync"].currentValue));
+            }
 
-			if (this->strOldQuality != Ogre::String(this->graphicsQualityCombo->getItemNameAt(this->graphicsQualityCombo->getIndexSelected())))
-			{
-				if (0 == this->graphicsQualityCombo->getIndexSelected())
-				{
-					Core::getSingletonPtr()->setOptionLODBias(0.5f);
-					Core::getSingletonPtr()->setOptionTextureFiltering(1);
-					Core::getSingletonPtr()->setOptionAnisotropyLevel(4);
-				}
-				else if (1 == this->graphicsQualityCombo->getIndexSelected())
-				{
-					Core::getSingletonPtr()->setOptionLODBias(1);
-					Core::getSingletonPtr()->setOptionTextureFiltering(2);
-					Core::getSingletonPtr()->setOptionAnisotropyLevel(8);
-					// Here rts shadows quality if available
-				}
-				else if (2 == this->graphicsQualityCombo->getIndexSelected())
-				{
-					Core::getSingletonPtr()->setOptionLODBias(1.5f);
-					Core::getSingletonPtr()->setOptionTextureFiltering(3);
-					Core::getSingletonPtr()->setOptionAnisotropyLevel(16);
-				}
-				Core::getSingletonPtr()->setOptionQualityLevel(static_cast<int>(this->graphicsQualityCombo->getIndexSelected()));
-			}
+            if (this->strOldQuality != Ogre::String(this->graphicsQualityCombo->getItemNameAt(this->graphicsQualityCombo->getIndexSelected())))
+            {
+                if (0 == this->graphicsQualityCombo->getIndexSelected())
+                {
+                    Core::getSingletonPtr()->setOptionLODBias(0.5f);
+                    Core::getSingletonPtr()->setOptionTextureFiltering(1);
+                    Core::getSingletonPtr()->setOptionAnisotropyLevel(4);
+                }
+                else if (1 == this->graphicsQualityCombo->getIndexSelected())
+                {
+                    Core::getSingletonPtr()->setOptionLODBias(1);
+                    Core::getSingletonPtr()->setOptionTextureFiltering(2);
+                    Core::getSingletonPtr()->setOptionAnisotropyLevel(8);
+                    // Here rts shadows quality if available
+                }
+                else if (2 == this->graphicsQualityCombo->getIndexSelected())
+                {
+                    Core::getSingletonPtr()->setOptionLODBias(1.5f);
+                    Core::getSingletonPtr()->setOptionTextureFiltering(3);
+                    Core::getSingletonPtr()->setOptionAnisotropyLevel(16);
+                }
+                Core::getSingletonPtr()->setOptionQualityLevel(static_cast<int>(this->graphicsQualityCombo->getIndexSelected()));
+            }
 
-			// Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
-			// Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering(static_cast<Ogre::TextureFilterOptions>(Core::getSingletonPtr()->getOptionTextureFiltering()));
-			// Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(Core::getSingletonPtr()->getOptionAnisotropyLevel());
+            // Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
+            // Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering(static_cast<Ogre::TextureFilterOptions>(Core::getSingletonPtr()->getOptionTextureFiltering()));
+            // Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(Core::getSingletonPtr()->getOptionAnisotropyLevel());
 
-			OgreALModule::getInstance()->setupVolumes(static_cast<int>(this->soundSlider->getScrollPosition()), static_cast<int>(this->musicSlider->getScrollPosition()));
+            OgreALModule::getInstance()->setupVolumes(static_cast<int>(this->soundSlider->getScrollPosition()), static_cast<int>(this->musicSlider->getScrollPosition()));
 
-			Core::getSingletonPtr()->setOptionSoundVolume(static_cast<int>(this->soundSlider->getScrollPosition()));
-			Core::getSingletonPtr()->setOptionMusicVolume(static_cast<int>(this->musicSlider->getScrollPosition()));
+            Core::getSingletonPtr()->setOptionSoundVolume(static_cast<int>(this->soundSlider->getScrollPosition()));
+            Core::getSingletonPtr()->setOptionMusicVolume(static_cast<int>(this->musicSlider->getScrollPosition()));
 
-			this->strOldRenderSystem = renderSystemSelected;
-			this->strOldFSAA = antiAliasingSelected;
-			this->strOldFullscreen = fullScreenSelected;
-			this->strOldVSync = vSyncSelected;
-			this->strOldResolution = resolutionSelected;
-			this->strOldQuality = qualitySelected;
-			this->strOldLanguage = languageSelected;
+            this->strOldRenderSystem = renderSystemSelected;
+            this->strOldFSAA = antiAliasingSelected;
+            this->strOldFullscreen = fullScreenSelected;
+            this->strOldVSync = vSyncSelected;
+            this->strOldResolution = resolutionSelected;
+            this->strOldQuality = qualitySelected;
+            this->strOldLanguage = languageSelected;
 
-			for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
-			{
-				this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
-				this->textboxActive[i] = false;
-			}
-			for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
-			{
-				this->oldButtonValue[i] = this->buttonConfigTextboxes[i]->getCaption();
-				this->textboxActive[i] = false;
-			}
+            for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+            {
+                this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
+                this->textboxActive[i] = false;
+            }
+            for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
+            {
+                this->oldButtonValue[i] = this->buttonConfigTextboxes[i]->getCaption();
+                this->textboxActive[i] = false;
+            }
 
-			Ogre::RenderSystem* renderSystem = Core::getSingletonPtr()->getOgreRoot()->getRenderSystemByName(renderSystemSelected);
-			renderSystem->setConfigOption("FSAA", antiAliasingSelected);
-			renderSystem->setConfigOption("Full Screen", fullScreenSelected);
-			renderSystem->setConfigOption("VSync", vSyncSelected);
-			renderSystem->setConfigOption("Video Mode", resolutionSelected);
+            Ogre::RenderSystem* renderSystem = Core::getSingletonPtr()->getOgreRoot()->getRenderSystemByName(renderSystemSelected);
+            renderSystem->setConfigOption("FSAA", antiAliasingSelected);
+            renderSystem->setConfigOption("Full Screen", fullScreenSelected);
+            renderSystem->setConfigOption("VSync", vSyncSelected);
+            renderSystem->setConfigOption("Video Mode", resolutionSelected);
 
-			Core::getSingletonPtr()->getOgreRoot()->saveConfig();
-		});
+            Core::getSingletonPtr()->getOgreRoot()->saveConfig();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MainConfigurationStateMyGui::applyOptions");
 
 		/*if (true == MainConfigurationStateMyGui::bShowCameraSettings)
 		{

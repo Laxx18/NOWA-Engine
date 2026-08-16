@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Resource" version="1.1">
+
+    <!-- ═══════════════ Horizontal slider ═══════════════ -->
+
+    <!-- Background track panel, 9-slice, 20x14 source -->
+    <Resource type="ResourceSkin" name="WoodSliderPanelHSkin" size="20 14" texture="WoodSliderSkin.png">
+        <BasisSkin type="SubSkin" offset="0 0 5 6" align="Left Top">
+            <State name="normal" offset="0 0 5 6"/>
+        </BasisSkin>
+        <BasisSkin type="TileRect" offset="5 0 10 6" align="HStretch Top">
+            <State name="normal" offset="5 0 10 6">
+                <Property key="TileSize" value="10 6"/>
+                <Property key="TileH" value="true"/>
+                <Property key="TileV" value="false"/>
+            </State>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="15 0 5 6" align="Right Top">
+            <State name="normal" offset="15 0 5 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="15 6 5 2" align="Right VStretch">
+            <State name="normal" offset="15 6 5 2"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="15 8 5 6" align="Right Bottom">
+            <State name="normal" offset="15 8 5 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="5 8 10 6" align="HStretch Bottom">
+            <State name="normal" offset="5 8 10 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="0 8 5 6" align="Left Bottom">
+            <State name="normal" offset="0 8 5 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="0 6 5 2" align="Left VStretch">
+            <State name="normal" offset="0 6 5 2"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="5 6 10 2" align="Stretch">
+            <State name="normal" offset="5 6 10 2"/>
+        </BasisSkin>
+    </Resource>
+
+    <!-- Slider handle/thumb button, 9-slice, 14x14 source (row 2 of texture, y=14) -->
+    <Resource type="ResourceSkin" name="WoodSliderTrackHSkin" size="14 14" texture="WoodSliderSkin.png">
+        <BasisSkin type="SubSkin" offset="0 0 6 6" align="Left Top">
+            <State name="normal" offset="0 14 6 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="6 0 2 6" align="HStretch Top">
+            <State name="normal" offset="6 14 2 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="8 0 6 6" align="Right Top">
+            <State name="normal" offset="8 14 6 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="8 6 6 2" align="Right VStretch">
+            <State name="normal" offset="8 20 6 2"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="8 8 6 6" align="Right Bottom">
+            <State name="normal" offset="8 22 6 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="6 8 2 6" align="HStretch Bottom">
+            <State name="normal" offset="6 22 2 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="0 8 6 6" align="Left Bottom">
+            <State name="normal" offset="0 22 6 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="0 6 6 2" align="Left VStretch">
+            <State name="normal" offset="0 20 6 2"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="6 6 2 2" align="Stretch">
+            <State name="normal" offset="6 20 2 2"/>
+        </BasisSkin>
+    </Resource>
+
+    <!-- ═══════════════ Compound slider skin (usable as widget skin name) ═══════════════ -->
+
+    <Resource type="ResourceLayout" name="SliderHWood" version="3.2.0">
+        <Widget type="Widget" skin="WoodSliderPanelHSkin" position="25 50 125 15" name="Root">
+            <Property key="MoveToClick" value="true"/>
+            <Property key="VerticalAlignment" value="false"/>
+            <UserString key="LE_TargetWidgetType" value="ScrollBar"/>
+            <Widget type="Widget" skin="PanelEmpty" position="2 0 122 15" align="Stretch" name="TrackPlace">
+                <Property key="NeedKey" value="false"/>
+                <Property key="InheritsPick" value="true"/>
+                <Widget type="Button" skin="WoodSliderTrackHSkin" position="35 1 7 14" align="Left VStretch" name="Track"/>
+                <Widget type="Widget" skin="PanelEmpty" position="0 0 35 15" align="Left VStretch" name="FirstPart"/>
+                <Widget type="Widget" skin="PanelEmpty" position="42 0 80 15" align="Left VStretch" name="SecondPart"/>
+            </Widget>
+        </Widget>
+    </Resource>
+
+</MyGUI>

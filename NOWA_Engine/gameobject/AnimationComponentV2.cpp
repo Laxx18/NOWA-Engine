@@ -162,7 +162,7 @@ namespace NOWA
         this->skeleton = item->getSkeletonInstance();
         if (nullptr == this->skeleton)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "...");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2]: Error cannot use animations because the given mesh has no skeleton.");
             return;
         }
 

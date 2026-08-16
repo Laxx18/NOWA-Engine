@@ -15,6 +15,30 @@
 #include "Animation/OgreSkeletonInstance.h"
 #include "Animation/OgreTagPoint2.h"
 
+namespace
+{
+    // Extracts a bone's LOCAL-space position/orientation (i.e. relative to
+    // the skeleton root, ignoring the owning entity's own scene node
+    // transform). Scale is intentionally discarded here, mirroring
+    // PhysicsRagDollComponentV2::extractBoneDerivedTransform, since bones
+    // in this engine are not expected to carry their own non-uniform scale.
+    void extractBoneLocalTransform(Ogre::Bone* bone, Ogre::Vector3& outPos, Ogre::Quaternion& outOrient)
+    {
+        // Make sure the bone's cached transform is not stale before we
+        // read it (Ogre::Bone does not have Node-style _getDerivedXyzUpdated()
+        // methods, this is the equivalent for bones).
+        bone->_getFullTransformUpdated();
+
+        const Ogre::SimpleMatrixAf4x3& t = bone->_getLocalSpaceTransform();
+
+        Ogre::Matrix4 mat4;
+        t.store(&mat4);
+
+        Ogre::Vector3 scale;
+        mat4.decomposition(outPos, scale, outOrient);
+    }
+}
+
 namespace NOWA
 {
     using namespace rapidxml;
@@ -281,7 +305,8 @@ namespace NOWA
 
     void TagPointComponent::connectV2Item(Ogre::Item* item)
     {
-        ENQUEUE_RENDER_COMMAND_MULTI("TagPointComponent::connectV2Item", _1(item), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, item]()
+        {
             if (nullptr != this->skeletonInstance)
             {
                 GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
@@ -304,6 +329,46 @@ namespace NOWA
 
                 if (nullptr != this->attachedBone)
                 {
+                    Ogre::SceneNode* characterSceneNode = this->gameObjectPtr->getSceneNode();
+                    Ogre::SceneNode* sourceSceneNode = sourceGameObjectPtr->getSceneNode();
+
+                    // Capture the shield's CURRENT world transform before it gets
+                    // detached from its own scene node. This is exactly the pose
+                    // we want to preserve once it hangs from the bone.
+                    Ogre::Vector3 sourceWorldPosition = sourceSceneNode->_getDerivedPositionUpdated();
+                    Ogre::Quaternion sourceWorldOrientation = sourceSceneNode->_getDerivedOrientationUpdated();
+                    Ogre::Vector3 sourceWorldScale = sourceSceneNode->_getDerivedScale();
+
+                    // Character's (the skeleton owner's) current world transform.
+                    Ogre::Vector3 characterWorldPosition = characterSceneNode->_getDerivedPositionUpdated();
+                    Ogre::Quaternion characterWorldOrientation = characterSceneNode->_getDerivedOrientationUpdated();
+                    Ogre::Vector3 characterWorldScale = characterSceneNode->_getDerivedScale();
+
+                    // Ogre::Bone is NOT a generic Ogre::Node, so it has no
+                    // _getDerivedPositionUpdated()/_getDerivedOrientationUpdated()/
+                    // _getDerivedScale(). We get its LOCAL-space transform (relative
+                    // to the skeleton root) instead, and combine it manually with
+                    // the character's world transform to get the bone's world transform.
+                    Ogre::Vector3 boneLocalPosition;
+                    Ogre::Quaternion boneLocalOrientation;
+                    extractBoneLocalTransform(this->attachedBone, boneLocalPosition, boneLocalOrientation);
+
+                    Ogre::Vector3 boneWorldPosition = characterWorldOrientation * (boneLocalPosition * characterWorldScale) + characterWorldPosition;
+                    Ogre::Quaternion boneWorldOrientation = characterWorldOrientation * boneLocalOrientation;
+                    Ogre::Vector3 boneWorldScale = characterWorldScale; // bones don't carry their own scale here
+
+                    Ogre::Quaternion boneWorldOrientationInverse = boneWorldOrientation.Inverse();
+
+                    // Base local transform: keeps the shield exactly where it
+                    // currently is/looks in the world, relative to the bone.
+                    Ogre::Vector3 baseLocalPosition = boneWorldOrientationInverse * ((sourceWorldPosition - boneWorldPosition) / boneWorldScale);
+                    Ogre::Quaternion baseLocalOrientation = boneWorldOrientationInverse * sourceWorldOrientation;
+                    Ogre::Vector3 baseLocalScale = sourceWorldScale / boneWorldScale;
+
+                    // User-specified additional offset, applied on top of the base transform
+                    Ogre::Vector3 offsetPos = this->offsetPosition->getVector3();
+                    Ogre::Quaternion offsetQuat = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+
                     // -------------------------------------------------------
                     // Create the real v2 TagPoint and parent it to the bone.
                     // TagPoint is a SceneNode subclass so we can reuse
@@ -311,10 +376,18 @@ namespace NOWA
                     // -------------------------------------------------------
                     this->tagPointV2 = this->gameObjectPtr->getSceneManager()->createTagPoint();
 
-                    // Apply user-specified offset position and orientation
-                    this->tagPointV2->setPosition(this->offsetPosition->getVector3());
-                    Ogre::Quaternion offsetQuat = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
-                    this->tagPointV2->setOrientation(offsetQuat);
+                    // Keep the shield's current world position/orientation and only
+                    // THEN add the user-specified offset on top of it (instead of
+                    // using the offset as the sole/absolute local transform, which
+                    // caused the visible twist).
+                    this->tagPointV2->setPosition(baseLocalPosition + (baseLocalOrientation * offsetPos));
+                    this->tagPointV2->setOrientation(baseLocalOrientation * offsetQuat);
+
+                    // Re-apply the shield's own visual scale (e.g. 0.5, 0.5, 0.5).
+                    // Without this the tag point defaults to scale (1,1,1), so the
+                    // shield snapped back to its unscaled mesh size once it was
+                    // re-parented from its own scene node to the tag point.
+                    this->tagPointV2->setScale(baseLocalScale);
 
                     // Register with the bone — Ogre-Next will update this
                     // TagPoint every frame as part of the skeleton update pass
@@ -325,7 +398,6 @@ namespace NOWA
                     this->tagPointNode = this->tagPointV2;
 
                     std::vector<Ogre::MovableObject*> movableObjects;
-                    Ogre::SceneNode* sourceSceneNode = sourceGameObjectPtr->getSceneNode();
                     auto it = sourceSceneNode->getAttachedObjectIterator();
 
                     while (it.hasMoreElements())
@@ -385,7 +457,8 @@ namespace NOWA
 
                 this->alreadyConnected = true;
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "TagPointComponent::connectV2Item");
     }
 
     void TagPointComponent::updateV2PhysicsFromTagPoint(void)
@@ -402,8 +475,8 @@ namespace NOWA
         if (nullptr != sourcePhysicsActiveKinematicComponent)
         {
             // Directly drive the kinematic body to follow the TagPoint world transform
-            sourcePhysicsActiveKinematicComponent->setOrientation(this->tagPointV2->_getDerivedOrientationUpdated());
-            sourcePhysicsActiveKinematicComponent->setPosition(this->tagPointV2->_getDerivedPositionUpdated());
+            sourcePhysicsActiveKinematicComponent->setOrientation(this->tagPointV2->_getDerivedOrientation());
+            sourcePhysicsActiveKinematicComponent->setPosition(this->tagPointV2->_getDerivedPosition());
             // Use joint kinematic approach (if jointKinematicComponent exists)
             // This would need to be set up similar to v1 approach if needed
         }
@@ -414,7 +487,7 @@ namespace NOWA
             auto jointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
             if (nullptr != jointKinematicCompPtr)
             {
-                jointKinematicCompPtr->setTargetPositionRotation(this->tagPointV2->_getDerivedPositionUpdated(), this->tagPointV2->_getDerivedOrientationUpdated());
+                jointKinematicCompPtr->setTargetPositionRotation(this->tagPointV2->_getDerivedPosition(), this->tagPointV2->_getDerivedOrientation());
             }
         }
     }

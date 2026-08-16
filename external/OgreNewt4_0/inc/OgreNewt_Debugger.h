@@ -96,6 +96,8 @@ namespace OgreNewt
         // utility function to build a visual wire from shape for a collision
         void buildDebugObjectFromCollision(Ogre::ManualObject* object, Ogre::ColourValue colour, int index, OgreNewt::Body* body) const;
 
+        static void createUnlitDatablock(const Ogre::String& datablockName, const Ogre::ColourValue& colour, bool alwaysVisible = false);
+
     protected:
         friend class OgreNewt::World;
         //! this function must only be used by an instance of the OgreNewt::World class
@@ -152,8 +154,6 @@ namespace OgreNewt
 
         //! this function is declared private, so nobody can use it!
         const Debugger& operator=(const Debugger& d) { return d; } // actually this implementation must *never* be used!
-
-        static void createUnlitDatablock(const Ogre::String& datablockName, const Ogre::ColourValue& color);
 
     private:
         static std::vector<Ogre::String> unlitDatablockNames;

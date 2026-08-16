@@ -213,9 +213,16 @@ namespace NOWA
     {
         // ALWAYS capture the current scene node transform.
         // V2 meshes typically use non-unit scale (e.g., 0.01 for cm->m conversion).
-        this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
-        this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
-        this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+        //
+        // FIX: Use the DERIVED transform (and force it to be up to date) instead of the
+        // local transform. applyModelStateToRagdoll() and applyRagdollStateToModel() both
+        // operate on the DERIVED node transform. Capturing the LOCAL transform here mixed
+        // two different spaces, which offsets the whole ragdoll as soon as the game object
+        // node is parented below another node. For a root level node both are identical,
+        // so this change is a no-op in the simple case and correct in the general case.
+        this->initialPosition = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
+        this->initialScale = this->gameObjectPtr->getSceneNode()->_getDerivedScaleUpdated();
+        this->initialOrientation = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
 
         if (true == this->boneConfigFile->getString().empty())
         {
@@ -367,10 +374,16 @@ namespace NOWA
 
     bool PhysicsRagDollComponentV2::disconnect(void)
     {
-        bool success = PhysicsActiveComponent::disconnect();
-
+        // Remove the tracked closure FIRST. applyRagdollStateToModel() drives the game object
+        // scene node from the root body, so as long as the closure is still registered it can fire
+        // once more on the render thread while the rest of this function runs, and drag the node
+        // back to the collapsed ragdoll pose after it has been restored below.
         Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+        const bool wasRagdolling = (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING && false == this->ragDataList.empty());
+
+        bool success = PhysicsActiveComponent::disconnect();
 
         this->isSimulating = false;
         this->internalShowDebugData(false);
@@ -378,6 +391,22 @@ namespace NOWA
         if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
         {
             this->endRagdolling();
+        }
+
+        if (true == wasRagdolling)
+        {
+            // endRagdolling() has reset all bones to the bind pose, but the game object node is
+            // still where the ragdoll collapsed to. Since the node was driven from the ROOT body,
+            // it sits roughly one pelvis height below the object origin once the ragdoll has fallen
+            // over, which is exactly why the character ended up half way in the ground after
+            // stopping the simulation. Put the node back to where the ragdoll started.
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                auto node = this->gameObjectPtr->getSceneNode();
+                node->setPosition(this->initialPosition);
+                node->setOrientation(this->initialOrientation);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponentV2::disconnect_restoreNode");
         }
 
         this->rdOldState = PhysicsRagDollComponentV2::INACTIVE;
@@ -430,10 +459,13 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::setActivated(bool activated)
     {
-        this->activated->setValue(activated);
-
-        if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
+        // Discriminate on the presence of rag bones, not on the state name: ANIMATION state also owns
+        // rag bone bodies now, and handing those to the base class would install its moveCallback on
+        // the root body and thus re-introduce gravity on an animation-driven ragdoll.
+        if (false == this->ragDataList.empty())
         {
+            this->activated->setValue(activated);
+
             for (auto it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
             {
                 if (true == activated)
@@ -446,16 +478,21 @@ namespace NOWA
                 }
             }
         }
+        else
+        {
+            // Inactive state: createDynamicBody() has created ONE ordinary dynamic body, which must
+            // behave exactly like a plain PhysicsActiveComponent. The base class installs the force
+            // and torque callback here (and adds the body to the world) - skipping that left the body
+            // without gravity, so Newton pushed it out of the ground penetration and nothing ever
+            // pulled it back down.
+            PhysicsActiveComponent::setActivated(activated);
+        }
     }
 
     // ============================================================================
     // update
-    // ============================================================================
-
-    // ============================================================================
-    // REPLACE these 3 functions in PhysicsRagDollComponentV2.cpp
     //
-    // ROOT CAUSE EXPLAINED:
+    // ROOT CAUSE EXPLAINED (V1 vs V2 bone cascade):
     //
     // V1 OldNode with inheritOrientation=false:
     //   derivedOri = localOri                                          (orientation: no parent)
@@ -478,33 +515,90 @@ namespace NOWA
     //   localPos = invParentOri * (skelPos - parentPos)  [parentScale=(1,1,1)]
     //
     // This is the SAME math as V1 applyRagdollStateToModel.
-    // Parent transforms from extractBoneDerivedTransform are one frame stale,
-    // but with inheritOrientation=TRUE the cascade in updateAllTransforms produces
-    // correct results, so the stale data self-corrects each frame.
-    // ============================================================================
-
-    // ============================================================================
-    // 1) update
     // ============================================================================
 
     void PhysicsRagDollComponentV2::update(Ogre::Real dt, bool notSimulating)
     {
+        if (this->rdState == PhysicsRagDollComponentV2::INACTIVE)
+        {
+            // No ragdoll at all in this state, only the single dynamic body from createDynamicBody().
+            // Inactive is supposed to be plain PhysicsActiveComponent behaviour, so hand over completely.
+            PhysicsActiveComponent::update(dt, notSimulating);
+            return;
+        }
+
         if (true == activated->getBool() && false == notSimulating)
         {
-            if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
+            if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::ANIMATION)
             {
                 if (nullptr != this->skeletonInstance)
                 {
                     auto closureFunction = [this](Ogre::Real renderDt)
                     {
-                        this->applyRagdollStateToModel();
+                        if (this->rdState == PhysicsRagDollComponentV2::ANIMATION)
+                        {
+                            // ndBodyKinematic::IntegrateVelocity() advances the body by its CURRENT
+                            // velocity - it does NOT derive a velocity from a transform delta. So the
+                            // transform is written directly by applyModelStateToRagdoll() and the linear
+                            // velocity is computed from the frame delta around it. The contact solver
+                            // needs that velocity: without it the hulls would move to the right place
+                            // but push nothing, because every contact would see a relative velocity of
+                            // zero. integrateVelocity() must NOT be called on top - that would move the
+                            // body a second time and drift it away from the bone.
+                            //
+                            // No angular velocity is set here on purpose: setBodyAngularVelocity() takes
+                            // a timestep and therefore works via torque, which only exists on a dynamic
+                            // body. On an ndBodyKinematic that path is not valid.
+                            const size_t ragBoneCount = this->ragDataList.size();
+
+                            std::vector<Ogre::Vector3> previousPositions;
+                            previousPositions.reserve(ragBoneCount);
+
+                            for (size_t i = 0; i < ragBoneCount; i++)
+                            {
+                                Ogre::Vector3 previousPosition = Ogre::Vector3::ZERO;
+
+                                if (nullptr != this->ragDataList[i].ragBone && nullptr != this->ragDataList[i].ragBone->getBody())
+                                {
+                                    previousPosition = this->ragDataList[i].ragBone->getBody()->getPosition();
+                                }
+
+                                previousPositions.emplace_back(previousPosition);
+                            }
+
+                            this->applyModelStateToRagdoll();
+
+                            if (renderDt > 0.0f)
+                            {
+                                for (size_t i = 0; i < ragBoneCount && i < previousPositions.size(); i++)
+                                {
+                                    if (nullptr == this->ragDataList[i].ragBone)
+                                    {
+                                        continue;
+                                    }
+
+                                    OgreNewt::Body* body = this->ragDataList[i].ragBone->getBody();
+                                    if (nullptr == body)
+                                    {
+                                        continue;
+                                    }
+
+                                    body->setVelocity((body->getPosition() - previousPositions[i]) / renderDt);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Physics drives the bones.
+                            this->applyRagdollStateToModel();
+                        }
                     };
                     Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
                     NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
                 }
             }
 
-            if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
+            if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::ANIMATION)
             {
                 for (auto it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
                 {
@@ -659,18 +753,23 @@ namespace NOWA
                     boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
                     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
+                    // See the Animation branch: only restore when a full ragdoll really ran, otherwise
+                    // initialPosition may never have been filled by createRagDoll().
+                    const bool ragdollWasActive = (this->rdOldState == PhysicsRagDollComponentV2::RAGDOLLING && false == this->ragDataList.empty());
+
                     this->endRagdolling();
 
-                    this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
-                    if (this->rdOldState == PhysicsRagDollComponentV2::RAGDOLLING)
+                    if (true == ragdollWasActive)
                     {
-                        this->initialPosition += Ogre::Vector3(0.0f, this->gameObjectPtr->getBottomOffset().y, 0.0f);
+                        this->gameObjectPtr->getSceneNode()->setPosition(this->initialPosition);
+                        this->gameObjectPtr->getSceneNode()->setOrientation(this->initialOrientation);
                     }
-                    this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
-                    if (this->rdOldState != PhysicsRagDollComponentV2::RAGDOLLING)
+                    else
                     {
+                        this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
                         this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
                     }
+                    this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
 
                     this->releaseConstraintDirection();
                     this->releaseConstraintAxis();
@@ -688,23 +787,49 @@ namespace NOWA
                     boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
                     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
+                    // The node must only be restored if a full ragdoll REALLY ran and therefore really
+                    // displaced the node. rdOldState alone is not sufficient: switching the state
+                    // attribute in the editor while the simulation is stopped records
+                    // rdOldState = RAGDOLLING without ever calling createRagDoll(), so initialPosition
+                    // is still its default ZERO and restoring from it would teleport the game object to
+                    // the world origin. Existing rag bones are the reliable evidence, so ask before
+                    // endRagdolling() deletes them.
+                    const bool ragdollWasActive = (this->rdOldState == PhysicsRagDollComponentV2::RAGDOLLING && false == this->ragDataList.empty());
+
                     this->endRagdolling();
 
-                    this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
-                    if (this->rdOldState == PhysicsRagDollComponentV2::RAGDOLLING)
+                    if (true == ragdollWasActive)
                     {
-                        this->initialPosition += Ogre::Vector3(0.0f, this->gameObjectPtr->getBottomOffset().y, 0.0f);
+                        this->gameObjectPtr->getSceneNode()->setPosition(this->initialPosition);
+                        this->gameObjectPtr->getSceneNode()->setOrientation(this->initialOrientation);
                     }
-                    this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
-                    if (this->rdOldState != PhysicsRagDollComponentV2::RAGDOLLING)
+                    else
                     {
+                        this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
                         this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
                     }
+                    this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
 
                     this->releaseConstraintDirection();
                     this->releaseConstraintAxis();
                     this->destroyBody();
-                    this->createDynamicBody();
+
+                    // ANIMATION state: build the SAME rag bone bodies as for ragdolling, but run the
+                    // data flow in the opposite direction. The bones stay under animation control
+                    // (no setManualBone, no startRagdolling) and applyModelStateToRagdoll() pushes the
+                    // animated bone transforms into the bodies every render frame, so the collision
+                    // hulls follow the animation and can push other physics objects around.
+                    this->partialRagdollBoneName = "";
+                    this->createRagDoll(this->partialRagdollBoneName);
+
+                    // Attach every rag bone body to its own scene node. Nothing in ANIMATION state reads
+                    // those nodes, but Body::showDebugCollision() attaches its manual object to the
+                    // body's node and bails out when there is none - so without this the hulls exist but
+                    // stay invisible.
+                    for (size_t j = 0; j < this->ragDataList.size(); j++)
+                    {
+                        this->ragDataList[j].ragBone->attachToNode();
+                    }
                 }
 
                 this->internalShowDebugData(true);
@@ -724,22 +849,27 @@ namespace NOWA
 
         this->partialRagdollBoneName = "";
 
+        // See internalApplyState(): the rag bones are the evidence that a full ragdoll really ran and
+        // therefore really displaced the node. Ask before endRagdolling() deletes them.
+        const bool ragdollWasActive = (this->rdOldState == PhysicsRagDollComponentV2::RAGDOLLING && false == this->ragDataList.empty());
+
         this->destroyBody();
 
         this->endRagdolling();
         this->releaseConstraintDirection();
         this->releaseConstraintAxis();
 
-        this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
-        if (this->rdOldState == PhysicsRagDollComponentV2::RAGDOLLING)
+        if (true == ragdollWasActive)
         {
-            this->initialPosition += Ogre::Vector3(0.0f, this->gameObjectPtr->getBottomOffset().y, 0.0f);
+            this->gameObjectPtr->getSceneNode()->setPosition(this->initialPosition);
+            this->gameObjectPtr->getSceneNode()->setOrientation(this->initialOrientation);
         }
-        this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
-        if (this->rdOldState != PhysicsRagDollComponentV2::RAGDOLLING)
+        else
         {
+            this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
             this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
         }
+        this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
 
         this->createDynamicBody();
 
@@ -798,25 +928,20 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::setPosition(Ogre::Real x, Ogre::Real y, Ogre::Real z)
     {
-        if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
-        {
-            if (false == this->isSimulating)
-            {
-                NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(x, y, z));
-            }
-            else
-            {
-                PhysicsComponent::setPosition(x, y, z);
-            }
-        }
-        else
-        {
-            PhysicsComponent::setPosition(x, y, z);
-        }
+        this->setPosition(Ogre::Vector3(x, y, z));
     }
 
     void PhysicsRagDollComponentV2::setPosition(const Ogre::Vector3& position)
     {
+        if (this->rdState == PhysicsRagDollComponentV2::ANIMATION && false == this->ragDataList.empty())
+        {
+            // Animation state: the rag bone bodies are slaves of the animated bones, so the game object
+            // is moved by moving its scene node. The bodies catch up on the next render frame, because
+            // applyModelStateToRagdoll() derives the bone world transforms from the node.
+            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), position);
+            return;
+        }
+
         if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
         {
             if (false == this->isSimulating)
@@ -836,6 +961,12 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::translate(const Ogre::Vector3& relativePosition)
     {
+        if (this->rdState == PhysicsRagDollComponentV2::ANIMATION && false == this->ragDataList.empty())
+        {
+            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getPosition() + relativePosition);
+            return;
+        }
+
         if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
         {
             if (false == this->isSimulating)
@@ -855,6 +986,12 @@ namespace NOWA
         {
             return this->gameObjectPtr->getPosition();
         }
+        else if (this->rdState == PhysicsRagDollComponentV2::ANIMATION && false == this->ragDataList.empty())
+        {
+            // The root body sits at the pelvis bone, which is NOT the game object origin, so report
+            // the node instead - that is what the caller moved via setPosition().
+            return this->gameObjectPtr->getPosition();
+        }
         else
         {
             return this->physicsBody->getPosition();
@@ -867,6 +1004,12 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::setOrientation(const Ogre::Quaternion& orientation)
     {
+        if (this->rdState == PhysicsRagDollComponentV2::ANIMATION && false == this->ragDataList.empty())
+        {
+            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), orientation);
+            return;
+        }
+
         if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
         {
             if (false == this->isSimulating)
@@ -886,6 +1029,12 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::rotate(const Ogre::Quaternion& relativeRotation)
     {
+        if (this->rdState == PhysicsRagDollComponentV2::ANIMATION && false == this->ragDataList.empty())
+        {
+            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getOrientation() * relativeRotation);
+            return;
+        }
+
         if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
         {
             if (false == this->isSimulating)
@@ -903,6 +1052,11 @@ namespace NOWA
     {
         if (false == this->isSimulating || nullptr == this->physicsBody)
         {
+            return this->gameObjectPtr->getOrientation();
+        }
+        else if (this->rdState == PhysicsRagDollComponentV2::ANIMATION && false == this->ragDataList.empty())
+        {
+            // See getPosition(): the root body carries the pelvis bone transform, not the object one.
             return this->gameObjectPtr->getOrientation();
         }
         else
@@ -1074,17 +1228,42 @@ namespace NOWA
                 bone = this->skeletonInstance->getBone(boneIdString);
             }
 
-            // Pick the child bone with the greatest distance — this skips twist bones
+            // The child bone decides the DIRECTION and LENGTH of the collision hull. By default the
+            // child with the greatest distance is picked, which skips co-located twist bones. That
+            // heuristic is wrong for bones that branch: for the pelvis the farthest child is the spine,
+            // so the hull points UP towards the chest instead of spanning the hips - which is exactly
+            // why the pelvis capsule ends up offset from the legs. An explicit ChildBone attribute
+            // overrides the heuristic, e.g. ChildBone="Boy 1 L Thigh" for the pelvis.
+            Ogre::Bone* childSkeletonBone = nullptr;
+
+            if (auto* childBoneAttr = boneXmlElement->first_attribute("ChildBone"))
+            {
+                Ogre::String childBoneName = childBoneAttr->value();
+                if (false == childBoneName.empty())
+                {
+                    Ogre::IdString childBoneIdString(childBoneName);
+                    if (this->skeletonInstance->hasBone(childBoneIdString))
+                    {
+                        childSkeletonBone = this->skeletonInstance->getBone(childBoneIdString);
+                    }
+                    else
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                            "[PhysicsRagDollComponentV2] Warning: ChildBone: " + childBoneName + " not found for game object: " + this->gameObjectPtr->getName() + ", falling back to auto detection");
+                    }
+                }
+            }
+
+            // Pick the child bone with the greatest distance -- this skips twist bones
             // (which sit nearly at the same position as the parent) and finds the real
             // limb segment child regardless of child ordering in the skeleton.
-            Ogre::Bone* childSkeletonBone = nullptr;
-            if (nullptr != bone)
+            if (nullptr == childSkeletonBone && nullptr != bone)
             {
                 Ogre::Vector3 boneSkelPos;
                 Ogre::Quaternion boneSkelOri;
                 PhysicsRagDollComponentV2::extractBoneDerivedTransform(bone, boneSkelPos, boneSkelOri);
 
-                Ogre::Real bestDistSq = 1e-6f; // minimum threshold — ignore co-located twist bones
+                Ogre::Real bestDistSq = 1e-6f; // minimum threshold -- ignore co-located twist bones
                 for (size_t ci = 0; ci < bone->getNumChildren(); ++ci)
                 {
                     Ogre::Bone* candidate = static_cast<Ogre::Bone*>(bone->getChild(ci));
@@ -1129,6 +1308,20 @@ namespace NOWA
             if (auto* offsetAttr2 = boneXmlElement->first_attribute("Offset"))
             {
                 offset = Ogre::StringConverter::parseVector3(offsetAttr2->value());
+            }
+
+            // CenterOnBone keeps the child bone for the hull DIRECTION and LENGTH, but places the hull
+            // ON the bone instead of halfway between bone and child joint. That is what a pelvis or a
+            // head needs: the automatic centering is right for limb segments, where the hull should
+            // span from one joint to the next, but wrong for a bone that sits in the middle of the
+            // volume it represents. Cancelling collisionOffset here (instead of not computing it) keeps
+            // the capsule's automatic axis alignment intact.
+            if (auto* centerAttr = boneXmlElement->first_attribute("CenterOnBone"))
+            {
+                if (true == Ogre::StringConverter::parseBool(centerAttr->value()))
+                {
+                    offset -= collisionOffset;
+                }
             }
 
             // Get display name
@@ -1211,6 +1404,11 @@ namespace NOWA
         // Parse Joints section (SAME format as V1)
         // ============================================================================
 
+        // The joints are created in ANIMATION state too. Not because anything needs solving there -
+        // every body is pinned to its bone - but because each joint carries
+        // setJointRecursiveCollisionEnabled(false), and that is what stops the overlapping capsules
+        // (upper arm vs lower arm at the elbow, thigh vs calf at the knee) from colliding with each
+        // other.
         rapidxml::xml_node<>* jointsXmlElement = rootXmlElement->first_node("Joints");
         if (nullptr == jointsXmlElement)
         {
@@ -1379,6 +1577,12 @@ namespace NOWA
     void PhysicsRagDollComponentV2::joinBones(PhysicsRagDollComponentV2::JointType type, RagBone* childRagBone, RagBone* parentRagBone, const Ogre::Vector3& pin, const Ogre::Degree& minTwistAngle, const Ogre::Degree& maxTwistAngle,
         const Ogre::Degree& maxConeAngle, const Ogre::Degree& minTwistAngle2, const Ogre::Degree& maxTwistAngle2, Ogre::Real friction, bool useSpring, const Ogre::Vector3& offset)
     {
+        // Constraint stiffness for ALL ragdoll joints. NOTE: this currently has NO effect - the value
+        // only reaches the joint through JointComponent::applyStiffness(), and that call is commented
+        // out in every createJoint() in JointComponents.cpp. setStiffness() therefore just sets a
+        // variant. Kept here so the value is in one place if applyStiffness() is ever enabled again.
+        const Ogre::Real ragDollJointStiffness = 0.9f;
+
         JointCompPtr parentJointCompPtr;
         JointCompPtr childJointCompPtr;
 
@@ -1410,7 +1614,7 @@ namespace NOWA
 
             tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
             tempChildCompPtr->setBody(childRagBone->getBody());
-            tempChildCompPtr->setStiffness(0.1f);
+            tempChildCompPtr->setStiffness(ragDollJointStiffness);
             tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
             tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
             tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
@@ -1426,13 +1630,18 @@ namespace NOWA
             tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
             tempChildCompPtr->setBody(childRagBone->getBody());
             tempChildCompPtr->setAnchorPosition(offset);
-            tempChildCompPtr->setStiffness(0.1f);
+            tempChildCompPtr->setStiffness(ragDollJointStiffness);
             tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
             tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
 
             tempChildCompPtr->setConeLimitsEnabled(true);
             tempChildCompPtr->setTwistLimitsEnabled(true);
             tempChildCompPtr->setMinMaxConeAngleLimit(minTwistAngle, maxTwistAngle, maxConeAngle);
+
+            // Set before createJoint() so the joint is built with the right collision state instead of
+            // being corrected afterwards. Both orders work - setJointRecursiveCollisionEnabled() also
+            // applies to a live joint - this is just the cleaner sequence.
+            tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
 
             tempChildCompPtr->createJoint();
 
@@ -1441,8 +1650,6 @@ namespace NOWA
                 tempChildCompPtr->setConeFriction(friction);
                 tempChildCompPtr->setTwistFriction(friction);
             }
-
-            tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
 
             childJointCompPtr = tempChildCompPtr;
             AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(tempChildCompPtr);
@@ -1455,7 +1662,7 @@ namespace NOWA
             tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
             tempChildCompPtr->setBody(childRagBone->getBody());
             tempChildCompPtr->setAnchorPosition(offset);
-            tempChildCompPtr->setStiffness(0.1f);
+            tempChildCompPtr->setStiffness(ragDollJointStiffness);
             tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
             tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
 
@@ -1463,17 +1670,18 @@ namespace NOWA
 
             tempChildCompPtr->setLimitsEnabled(true);
             tempChildCompPtr->setMinMaxAngleLimit(minTwistAngle, maxTwistAngle);
-            tempChildCompPtr->setStiffness(0.1f);
+            tempChildCompPtr->setStiffness(ragDollJointStiffness);
             // tempChildCompPtr->setSpring(useSpring);
             // tempChildCompPtr->setMinMaxConeAngleLimit(minTwistAngle, maxTwistAngle, maxConeAngle);
+            // Set before createJoint(), see the ball and socket case.
+            tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
+
             tempChildCompPtr->createJoint();
 
             if (-1.0f != friction)
             {
                 tempChildCompPtr->setFriction(friction);
             }
-
-            tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
 
             childJointCompPtr = tempChildCompPtr;
             AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(tempChildCompPtr);
@@ -1486,7 +1694,7 @@ namespace NOWA
             tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
             tempChildCompPtr->setBody(childRagBone->getBody());
             tempChildCompPtr->setAnchorPosition(offset);
-            tempChildCompPtr->setStiffness(0.1f);
+            tempChildCompPtr->setStiffness(ragDollJointStiffness);
             tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
             tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
 
@@ -1495,9 +1703,10 @@ namespace NOWA
             tempChildCompPtr->setMinAngleLimit(minTwistAngle);
             tempChildCompPtr->setMaxAngleLimit(maxTwistAngle);
 
-            tempChildCompPtr->createJoint();
-
+            // Set before createJoint(), see the ball and socket case.
             tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
+
+            tempChildCompPtr->createJoint();
 
             childJointCompPtr = tempChildCompPtr;
             AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(tempChildCompPtr);
@@ -1510,26 +1719,42 @@ namespace NOWA
             tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
             tempChildCompPtr->setBody(childRagBone->getBody());
             tempChildCompPtr->setAnchorPosition(offset);
-            tempChildCompPtr->setStiffness(0.1f);
+            tempChildCompPtr->setStiffness(ragDollJointStiffness);
             tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
             tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
 
-            tempChildCompPtr->setPin(pin);
+            // A universal joint MUST have a pin. JointUniversalComponent::createJoint() only rotates the
+            // pin into world space when it is non-zero, so a missing Pin attribute in the .rag produces
+            // OgreNewt::Universal(..., Vector3::ZERO) - a degenerate joint frame, which is why such
+            // joints behaved as if they had no angular limits at all. The pin is expressed in CHILD
+            // BONE LOCAL space, because createJoint() multiplies it by the child body's orientation.
+            Ogre::Vector3 universalPin = pin;
+            if (Ogre::Vector3::ZERO == universalPin)
+            {
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Pin for universal joint is missing in " + this->boneConfigFile->getString() + " for bone: '" + childRagBone->getName() +
+                                                                                    "' for game object " + this->gameObjectPtr->getName() + ". Falling back to 0 0 1, the joint limits will not behave as configured.");
+                universalPin = Ogre::Vector3::UNIT_Z;
+            }
+            tempChildCompPtr->setPin(universalPin);
 
+            // Axis 0 is the pin, axis 1 is perpendicular to it. MinTwistAngle/MaxTwistAngle therefore
+            // belong to limit 0 and MinTwistAngle2/MaxTwistAngle2 to limit 1 - they used to be wired
+            // crosswise, so the two ranges from the .rag ended up on the opposite axes.
             tempChildCompPtr->setLimits0Enabled(true);
-            tempChildCompPtr->setMinMaxAngleLimit1(minTwistAngle, maxTwistAngle);
+            tempChildCompPtr->setMinMaxAngleLimit0(minTwistAngle, maxTwistAngle);
             tempChildCompPtr->setLimits1Enabled(true);
-            tempChildCompPtr->setMinMaxAngleLimit0(minTwistAngle2, maxTwistAngle2);
+            tempChildCompPtr->setMinMaxAngleLimit1(minTwistAngle2, maxTwistAngle2);
             tempChildCompPtr->setSpring0(useSpring, 1024.0f, 512.0f, 0.9f);
             tempChildCompPtr->setSpring1(useSpring, 1024.0f, 512.0f, 0.9f);
+            // Set before createJoint(), see the ball and socket case.
+            tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
+
             tempChildCompPtr->createJoint();
             if (-1.0f != friction)
             {
                 tempChildCompPtr->setFriction0(friction);
                 tempChildCompPtr->setFriction1(friction);
             }
-
-            tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
 
             childJointCompPtr = tempChildCompPtr;
             AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(tempChildCompPtr);
@@ -1542,7 +1767,7 @@ namespace NOWA
             tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
             tempChildCompPtr->setBody(childRagBone->getBody());
             tempChildCompPtr->setAnchorPosition(offset);
-            tempChildCompPtr->setStiffness(0.1f);
+            tempChildCompPtr->setStiffness(ragDollJointStiffness);
             tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
             tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
 
@@ -1721,10 +1946,17 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::applyModelStateToRagdoll(void)
     {
+        if (true == this->ragDataList.empty())
+        {
+            return;
+        }
+
         const auto node = this->gameObjectPtr->getSceneNode();
         Ogre::Vector3 nodePos = node->_getDerivedPosition();
         Ogre::Quaternion nodeOri = node->_getDerivedOrientation();
         Ogre::Vector3 nodeScale = node->_getDerivedScale();
+
+        const bool animationDriven = (this->rdState == PhysicsRagDollComponentV2::ANIMATION);
 
         size_t i = 0;
 
@@ -1750,30 +1982,29 @@ namespace NOWA
             Ogre::Vector3 boneWorldPos = nodePos + nodeOri * (nodeScale * boneSkelPos);
             Ogre::Quaternion boneWorldOri = nodeOri * boneSkelOri;
 
+            // The body is an ndBodyKinematic in ANIMATION state, so the matrix is simply written; the
+            // velocity that the contact solver needs is derived from the frame delta by the caller.
             ragBone->getBody()->setPositionOrientation(boneWorldPos, boneWorldOri);
-            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-            //     "[PhysicsRagDollComponentV2] applyModelStateToRagdoll BoneName: " + ragBone->getName() + " boneWorldPos: " + Ogre::StringConverter::toString(boneWorldPos) + " boneWorldOrientation: " + Ogre::StringConverter::toString(boneWorldOri));
         }
 
-        // Set constraint axis for root body
-        this->setConstraintAxis(this->constraintAxis->getVector3());
+        if (false == animationDriven)
+        {
+            // Set constraint axis for root body
+            this->setConstraintAxis(this->constraintAxis->getVector3());
 
-        if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
-        {
-            this->releaseConstraintAxisPin();
-        }
-        else if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
-        {
-            this->setConstraintDirection(this->constraintDirection->getVector3());
+            if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
+            {
+                this->releaseConstraintAxisPin();
+            }
+            else if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
+            {
+                this->setConstraintDirection(this->constraintDirection->getVector3());
+            }
         }
     }
 
     // ============================================================================
     // applyRagdollStateToModel
-    // ============================================================================
-
-    // ============================================================================
-    // 2) applyRagdollStateToModel
     //
     // With inheritOrientation=TRUE (same as bind pose default), the V2 cascade is:
     //   derivedOri = parentDerivedOri * localOri
@@ -1785,11 +2016,26 @@ namespace NOWA
     //   localOri = invParentDerivedOri * skelOri
     //   localPos = invParentDerivedOri * (skelPos - parentDerivedPos)
     //   (parentDerivedScale = (1,1,1) for bones, no division needed)
+    //
+    // FIX (full ragdolling only): the game object scene node is now driven from the
+    // ROOT body here, with the root bone's skeleton space transform compensated out.
+    // The root body carries the BONE transform (pelvis), not the object transform.
+    // Simply syncing the node to the root body (via attachNode, or via the old
+    // setPosition/setOrientation calls in the RagBone constructor) rotated and shifted
+    // the whole model by the bone axis convention (e.g. quaternion 0.5 0.5 0.5 0.5 =
+    // 120 degrees around 1 1 1), which then poisoned every world -> skeleton space
+    // conversion below. That was the tearing/flicker seen when connect() was called.
     // ============================================================================
 
-#if 1
     void PhysicsRagDollComponentV2::applyRagdollStateToModel(void)
     {
+        // This function writes the game object node, so it must never run after the simulation has
+        // been stopped, else it would undo the node restore done in disconnect().
+        if (false == this->isSimulating)
+        {
+            return;
+        }
+
         if (true == this->ragDataList.empty())
         {
             return;
@@ -1803,9 +2049,52 @@ namespace NOWA
         }
 
         const auto node = this->gameObjectPtr->getSceneNode();
-        Ogre::Quaternion nodeOri = node->_getDerivedOrientation();
-        Ogre::Vector3 nodePos = node->_getDerivedPosition();
-        Ogre::Vector3 nodeScale = node->_getDerivedScale();
+
+        Ogre::Vector3 nodePos = Ogre::Vector3::ZERO;
+        Ogre::Quaternion nodeOri = Ogre::Quaternion::IDENTITY;
+        Ogre::Vector3 nodeScale = Ogre::Vector3::UNIT_SCALE;
+
+        bool nodeDrivenByRootBody = false;
+
+        if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
+        {
+            RagBone* rootRagBone = this->ragDataList[0].ragBone;
+            if (nullptr != rootRagBone && nullptr != rootRagBone->getBody())
+            {
+                // Skeleton space transform of the root bone at ragdoll creation time.
+                // Derived from data that is already stored, so no new members are needed:
+                //   initialBonePosition/Orientation = root bone in WORLD space at creation
+                //   initialPosition/Orientation/Scale = game object node in WORLD space at creation
+                Ogre::Quaternion invInitialOri = this->initialOrientation.Inverse();
+                Ogre::Quaternion rootBoneSkelOri = invInitialOri * rootRagBone->getInitialBoneOrientation();
+                Ogre::Vector3 rootBoneSkelPos = invInitialOri * (rootRagBone->getInitialBonePosition() - this->initialPosition);
+                rootBoneSkelPos /= this->initialScale;
+
+                Ogre::Vector3 rootBodyPos = rootRagBone->getBody()->getPosition();
+                Ogre::Quaternion rootBodyOri = rootRagBone->getBody()->getOrientation();
+
+                // Invert boneWorld = node * boneSkel for the node transform
+                nodeOri = rootBodyOri * rootBoneSkelOri.Inverse();
+                nodeScale = this->initialScale;
+                nodePos = rootBodyPos - nodeOri * (nodeScale * rootBoneSkelPos);
+
+                // Runs on the render thread (tracked closure), so the node may be written directly.
+                // Note: this assumes the game object node is a direct child of the root scene node,
+                // which is the case for all NOWA game objects.
+                node->setPosition(nodePos);
+                node->setOrientation(nodeOri);
+
+                nodeDrivenByRootBody = true;
+            }
+        }
+
+        if (false == nodeDrivenByRootBody)
+        {
+            nodePos = node->_getDerivedPosition();
+            nodeOri = node->_getDerivedOrientation();
+            nodeScale = node->_getDerivedScale();
+        }
+
         Ogre::Quaternion invNodeOri = nodeOri.Inverse();
 
         for (; i < this->ragDataList.size(); i++)
@@ -1869,127 +2158,12 @@ namespace NOWA
             boneCorrectionData.first->setOrientation(targetOrient);
         }
     }
-#else
-    void PhysicsRagDollComponentV2::applyRagdollStateToModel(void)
-    {
-        if (true == this->ragDataList.empty())
-        {
-            return;
-        }
-
-        size_t i = 0;
-        if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
-        {
-            i = 1;
-        }
-
-        const auto node = this->gameObjectPtr->getSceneNode();
-        Ogre::Quaternion nodeOri = node->_getDerivedOrientation();
-        Ogre::Vector3 nodePos = node->_getDerivedPosition();
-        Ogre::Vector3 nodeScale = node->_getDerivedScale();
-        Ogre::Quaternion invNodeOri = nodeOri.Inverse();
-
-        // Cache skeleton-space transforms keyed by Ogre::Bone* for ragbones already
-        // processed. Child ragbones look here first instead of using the skeleton
-        // cache, which is stale or contaminated by animation re-runs on parent bones.
-        std::unordered_map<Ogre::Bone*, std::pair<Ogre::Vector3, Ogre::Quaternion>> ragBoneSkelCache;
-
-        for (; i < this->ragDataList.size(); i++)
-        {
-            auto ragBone = this->ragDataList[i].ragBone;
-            if (nullptr == ragBone || nullptr == ragBone->getBody() || nullptr == ragBone->getBone())
-            {
-                continue;
-            }
-
-            Ogre::Bone* bone = ragBone->getBone();
-
-            Ogre::Vector3 bodyWorldPos = ragBone->getBody()->getPosition();
-            Ogre::Quaternion bodyWorldOri = ragBone->getBody()->getOrientation();
-
-            Ogre::Vector3 skelPos = invNodeOri * (bodyWorldPos - nodePos);
-            skelPos /= nodeScale;
-            Ogre::Quaternion skelOri = invNodeOri * bodyWorldOri;
-
-            // Store this bone's physics-derived skeleton-space transform so
-            // child bones can use it directly instead of the stale cache
-            ragBoneSkelCache[bone] = {skelPos, skelOri};
-
-            Ogre::Bone* parentBone = bone->getParent();
-            Ogre::Vector3 boneLocalPos;
-            Ogre::Quaternion boneLocalOri;
-
-            if (parentBone)
-            {
-                Ogre::Vector3 parentDerivedPos;
-                Ogre::Quaternion parentDerivedOri;
-
-                // If parent was already processed as a ragbone, use its
-                // physics-derived skel transform — NOT the skeleton cache
-                auto it = ragBoneSkelCache.find(parentBone);
-                if (it != ragBoneSkelCache.end())
-                {
-                    parentDerivedPos = it->second.first;
-                    parentDerivedOri = it->second.second;
-                }
-                else
-                {
-                    // Parent is an animation-driven bone (e.g. Shoulder_R),
-                    // read its current transform from the skeleton cache
-                    extractBoneDerivedTransform(parentBone, parentDerivedPos, parentDerivedOri);
-                }
-
-                Ogre::Quaternion invParentOri = parentDerivedOri.Inverse();
-                boneLocalPos = invParentOri * (skelPos - parentDerivedPos);
-                boneLocalOri = invParentOri * skelOri;
-            }
-            else
-            {
-                boneLocalPos = skelPos;
-                boneLocalOri = skelOri;
-            }
-
-            bone->setPosition(boneLocalPos);
-            bone->setOrientation(boneLocalOri);
-        }
-
-        // Apply bone corrections
-        for (const auto& boneCorrectionData : this->boneCorrectionMap)
-        {
-            Ogre::Vector3 targetPos;
-            Ogre::Quaternion targetOrient;
-            extractBoneDerivedTransform(boneCorrectionData.second.first, targetPos, targetOrient);
-            boneCorrectionData.first->setPosition(targetPos + boneCorrectionData.second.second);
-            boneCorrectionData.first->setOrientation(targetOrient);
-        }
-
-        // Set constraint axis for root body
-        this->setConstraintAxis(this->constraintAxis->getVector3());
-
-        if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
-        {
-            this->releaseConstraintAxisPin();
-        }
-        else if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
-        {
-            this->setConstraintDirection(this->constraintDirection->getVector3());
-        }
-    }
-
-#endif
 
     // ============================================================================
     // startRagdolling
-    // ============================================================================
-
-    // ============================================================================
-    // 3) startRagdolling
     //
     // KEY CHANGE: Do NOT call bone->setInheritOrientation(false) !
     // Keep it TRUE so the cascade math matches V1's OldNode behavior.
-    //
-    // Instead of setting the derived orientation directly, convert to local:
-    //   localOri = invParentOri * derivedOri
     // ============================================================================
 
     void PhysicsRagDollComponentV2::startRagdolling(void)
@@ -2056,7 +2230,9 @@ namespace NOWA
                 // Keep TRUE so V2 cascade math matches V1
             }
 
-            // Attach ragdoll bones to their scene nodes
+            // Attach ragdoll bones to their scene nodes.
+            // Note: attachToNode() intentionally does nothing for the root rag bone of a
+            // full ragdoll, see RagBone::attachToNode().
             for (size_t j = 0; j < this->ragDataList.size(); j++)
             {
                 this->ragDataList[j].ragBone->attachToNode();
@@ -2066,10 +2242,6 @@ namespace NOWA
 
     // ============================================================================
     // endRagdolling
-    // ============================================================================
-
-    // ============================================================================
-    // REPLACE endRagdolling in PhysicsRagDollComponentV2.cpp
     //
     // V1 does skeleton->unload()/load() which completely resets all bones.
     // V2 has no equivalent. We must:
@@ -2233,36 +2405,32 @@ namespace NOWA
                 .def("getRagDataList", &getRagDataListV2)
                 .def("getRagBone", &PhysicsRagDollComponentV2::getRagBone)
                 .def("setBoneRotation", &PhysicsRagDollComponentV2::setBoneRotation)
-                .scope
-                [
-                    class_<PhysicsRagDollComponentV2::RagBone>("RagBone")
-                    .def("getName", &PhysicsRagDollComponentV2::RagBone::getName)
-                    .def("getPosition", &PhysicsRagDollComponentV2::RagBone::getPosition)
-                    .def("setOrientation", &PhysicsRagDollComponentV2::RagBone::setOrientation)
-                    .def("getOrientation", &PhysicsRagDollComponentV2::RagBone::getOrientation)
-                    .def("setInitialState", &PhysicsRagDollComponentV2::RagBone::setInitialState)
-                    .def("getOgreBone", &PhysicsRagDollComponentV2::RagBone::getBone)
-                    .def("getParentRagBone", &PhysicsRagDollComponentV2::RagBone::getParentRagBone)
-                    .def("getInitialBonePosition", &PhysicsRagDollComponentV2::RagBone::getInitialBonePosition)
-                    .def("getInitialBoneOrientation", &PhysicsRagDollComponentV2::RagBone::getInitialBoneOrientation)
-                    .def("getPhysicsRagDollComponentV2", &PhysicsRagDollComponentV2::RagBone::getPhysicsRagDollComponent)
-                    .def("getRagPose", &PhysicsRagDollComponentV2::RagBone::getRagPose)
-                    .def("applyPose", &PhysicsRagDollComponentV2::RagBone::applyPose)
-                    .def("applyRequiredForceForVelocity", &PhysicsRagDollComponentV2::RagBone::applyRequiredForceForVelocity)
-                    .def("applyOmegaForce", &PhysicsRagDollComponentV2::RagBone::applyOmegaForce)
-                    .def("applyOmegaForceRotateTo", &PhysicsRagDollComponentV2::RagBone::applyOmegaForceRotateTo)
-                    .def("getSize", &PhysicsRagDollComponentV2::RagBone::getBodySize)
-                    .def("getJointId", &getJointId)
-                    .def("getBody", &PhysicsRagDollComponentV2::RagBone::getBody)
-                    .def("getJointComponent", &getRagJointComponent)
-                    .def("getJointHingeComponent", &getRagJointHingeComponent)
-                    .def("getJointUniversalComponent", &getRagJointUniversalComponent)
-                    .def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
-                    .def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
-                    .def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
-                    .def("getJointKinematicComponent", &getRagJointKinematicComponent)
-                ]
-        ];
+                .scope[class_<PhysicsRagDollComponentV2::RagBone>("RagBone")
+                        .def("getName", &PhysicsRagDollComponentV2::RagBone::getName)
+                        .def("getPosition", &PhysicsRagDollComponentV2::RagBone::getPosition)
+                        .def("setOrientation", &PhysicsRagDollComponentV2::RagBone::setOrientation)
+                        .def("getOrientation", &PhysicsRagDollComponentV2::RagBone::getOrientation)
+                        .def("setInitialState", &PhysicsRagDollComponentV2::RagBone::setInitialState)
+                        .def("getOgreBone", &PhysicsRagDollComponentV2::RagBone::getBone)
+                        .def("getParentRagBone", &PhysicsRagDollComponentV2::RagBone::getParentRagBone)
+                        .def("getInitialBonePosition", &PhysicsRagDollComponentV2::RagBone::getInitialBonePosition)
+                        .def("getInitialBoneOrientation", &PhysicsRagDollComponentV2::RagBone::getInitialBoneOrientation)
+                        .def("getPhysicsRagDollComponentV2", &PhysicsRagDollComponentV2::RagBone::getPhysicsRagDollComponent)
+                        .def("getRagPose", &PhysicsRagDollComponentV2::RagBone::getRagPose)
+                        .def("applyPose", &PhysicsRagDollComponentV2::RagBone::applyPose)
+                        .def("applyRequiredForceForVelocity", &PhysicsRagDollComponentV2::RagBone::applyRequiredForceForVelocity)
+                        .def("applyOmegaForce", &PhysicsRagDollComponentV2::RagBone::applyOmegaForce)
+                        .def("applyOmegaForceRotateTo", &PhysicsRagDollComponentV2::RagBone::applyOmegaForceRotateTo)
+                        .def("getSize", &PhysicsRagDollComponentV2::RagBone::getBodySize)
+                        .def("getJointId", &getJointId)
+                        .def("getBody", &PhysicsRagDollComponentV2::RagBone::getBody)
+                        .def("getJointComponent", &getRagJointComponent)
+                        .def("getJointHingeComponent", &getRagJointHingeComponent)
+                        .def("getJointUniversalComponent", &getRagJointUniversalComponent)
+                        .def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
+                        .def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
+                        .def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
+                        .def("getJointKinematicComponent", &getRagJointKinematicComponent)]];
 
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "class inherits PhysicsActiveComponent", PhysicsRagDollComponentV2::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "void setVelocity(Vector3 velocity)",
@@ -2284,7 +2452,6 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "RagBone getRagBone(String ragboneName)", "Gets RagBone from the given name or nil, if it does not exist.");
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "void setBoneRotation(String ragboneName, Vector3 axis, float degree)", "Rotates the given RagBone around the given axis by degree amount.");
 
-
         LuaScriptApi::getInstance()->addClassToCollection("RagBone", "JointComponent getJointComponent()", "Gets the base joint component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
         LuaScriptApi::getInstance()->addClassToCollection("RagBone", "JointHingeComponent getJointHingeComponent()",
             "Gets the joint hinge component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
@@ -2296,7 +2463,7 @@ namespace NOWA
             "Gets the joint hinge actuator component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
         LuaScriptApi::getInstance()->addClassToCollection("RagBone", "JointComponent getJointUniversalActuatorComponent()",
             "Gets the joint universal actuator (double hinge actuator) component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
-		
+
         LuaScriptApi::getInstance()->addClassToCollection("RagBone", "class", "The inner class RagBone represents one physically controlled rag bone.");
         LuaScriptApi::getInstance()->addClassToCollection("RagBone", "String getName()", "Gets name of this bone, that has been specified in the bone config file.");
         LuaScriptApi::getInstance()->addClassToCollection("RagBone", "Vector3 getPosition()", "Gets the position of this rag bone in global space.");
@@ -2431,7 +2598,11 @@ namespace NOWA
             this->initialBoneOrientation.w = 0.0f;
         }
 
-        Ogre::Vector3 collisionPosition = this->physicsRagDollComponentV2->ragdollPositionOffset + collisionOffset;
+        // FIX: the per-bone Offset from the .rag was parsed and stored, but never applied to anything -
+        // it is now the fine-tuning knob for the hull placement, on top of the automatic
+        // joint-to-child-joint centering. It is expressed in BONE LOCAL space (the same space the
+        // capsule offset is computed in), not in world space.
+        Ogre::Vector3 collisionPosition = this->physicsRagDollComponentV2->ragdollPositionOffset + collisionOffset + offset;
         Ogre::Quaternion collisionOrientation = this->physicsRagDollComponentV2->ragdollOrientationOffset;
 
         // If collisionOffset is non-zero, its direction IS the bone segment direction
@@ -2522,7 +2693,16 @@ namespace NOWA
         }
         }
 
+        // NOTE: These are deliberately ORDINARY dynamic bodies, even in ANIMATION state where they are
+        // pinned to the animation every frame. An ndBodyKinematic has infinite mass (invMass == 0), and
+        // Newton cannot build a contact in which BOTH bodies have invMass == 0 - see
+        // ndContact::SetBodies(), which swaps the bodies so that body0 has a non-zero inverse mass and
+        // then asserts it. The static terrain is infinite mass too, so the first time an animated hull
+        // touched the ground the contact produced diag == 0 and the solver divided by it.
+        // A dynamic body with a real mass keeps every contact solvable; gravity is kept off simply by
+        // not installing a force and torque callback (see below).
         this->body = new OgreNewt::Body(this->physicsRagDollComponentV2->ogreNewt, this->physicsRagDollComponentV2->gameObjectPtr->getSceneManager(), collisionPtr);
+
         NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->body);
 
         this->body->setGravity(this->physicsRagDollComponentV2->gravity->getVector3());
@@ -2578,7 +2758,10 @@ namespace NOWA
         this->body->setType(categoryId);
         this->body->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this->physicsRagDollComponentV2)));
 
-        if (nullptr != this->parentRagBone && true == this->physicsRagDollComponentV2->activated->getBool())
+        // In ANIMATION state the bodies are driven kinematically from the bones, so they must not
+        // receive gravity or any other force - otherwise the solver would fight the transforms that
+        // applyModelStateToRagdoll() writes every frame.
+        if (nullptr != this->parentRagBone && true == this->physicsRagDollComponentV2->activated->getBool() && PhysicsRagDollComponentV2::ANIMATION != this->physicsRagDollComponentV2->rdState)
         {
             this->body->setCustomForceAndTorqueCallback<PhysicsRagDollComponentV2::RagBone>(&PhysicsRagDollComponentV2::RagBone::moveCallback, this);
         }
@@ -2598,28 +2781,69 @@ namespace NOWA
 
         this->body->setCollidable(this->physicsRagDollComponentV2->collidable->getBool());
 
-        // Root bone: use the game object's scene node and set as physicsBody
+        // Every rag bone needs its OWN scene node to be able to show its debug collision, because
+        // Body::showDebugCollision() attaches the manual object to the body's node and returns
+        // immediately when there is none. The only exception is the root of a ragdoll/partial ragdoll:
+        // there the node IS the game object node, and attaching the root body to it would drive the
+        // whole model from the pelvis bone transform.
+        const bool ownSceneNode = (nullptr != this->parentRagBone) || (PhysicsRagDollComponentV2::ANIMATION == this->physicsRagDollComponentV2->rdState);
+
         if (nullptr == this->parentRagBone)
         {
-            this->sceneNode = this->physicsRagDollComponentV2->gameObjectPtr->getSceneNode();
             this->physicsRagDollComponentV2->physicsBody = this->body;
 
-            this->physicsRagDollComponentV2->setPosition(this->initialBonePosition);
-            this->physicsRagDollComponentV2->setOrientation(this->initialBoneOrientation);
+            // ATTENTION: Do NOT call setPosition()/setOrientation() on the component here!
+            //
+            // This was the main bug: initialBonePosition/initialBoneOrientation describe the
+            // ROOT BONE (pelvis) in world space, NOT the game object. Feeding them into
+            // PhysicsComponent::setPosition/setOrientation teleported the game object scene node
+            // to the pelvis position and rotated it by the bone axis convention
+            // (e.g. quaternion 0.5 0.5 0.5 0.5 = 120 degrees around 1 1 1) at the very moment
+            // the FIRST rag bone was created. All other rag bones were still created against the
+            // ORIGINAL node transform (initialPosition/initialOrientation are cached members), so
+            // the bodies were fine, but every subsequent world -> skeleton space conversion in
+            // applyRagdollStateToModel() used the corrupted node transform.
+            //
+            // The game object node is driven from the root body in applyRagdollStateToModel(),
+            // where the root bone transform can be compensated correctly.
+        }
+
+        if (false == ownSceneNode)
+        {
+            this->sceneNode = this->physicsRagDollComponentV2->gameObjectPtr->getSceneNode();
         }
         else
         {
-            // Child bones: create child scene nodes
-            this->sceneNode = this->physicsRagDollComponentV2->gameObjectPtr->getSceneNode()->createChildSceneNode();
-            this->sceneNode->setName(name);
-            this->sceneNode->getUserObjectBindings().setUserAny(Ogre::Any(this->physicsRagDollComponentV2->gameObjectPtr.get()));
+            // These nodes are attached to the OgreNewt body, and OgreNewt writes the body's WORLD
+            // transform into them. Creating them below the game object scene node would apply the game
+            // object transform a second time (double transform), which pushed the debug collision
+            // visuals far away from the character. They must be children of the root scene node so that
+            // node local == world.
+            //
+            // ATTENTION: do NOT put a GameObject into the user object bindings here. These nodes are
+            // now direct children of the root scene node, and the scene serializer walks those children
+            // and exports every node that claims to be a game object. With the user any set, saving the
+            // scene wrote one full <node> entry per rag bone (all carrying the character's item and
+            // userData), which on reload produced a phantom duplicate of the character that was neither
+            // selectable nor present in the game object tree. The node name is prefixed with the game
+            // object name for the same reason: several ragdolls in one scene would otherwise all create
+            // nodes called "LeftFoot", "Head" and so on.
+            this->sceneNode = this->physicsRagDollComponentV2->gameObjectPtr->getSceneManager()->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+            this->sceneNode->setName(this->physicsRagDollComponentV2->gameObjectPtr->getName() + "_RagBone_" + name);
         }
 
         if (nullptr == this->parentRagBone)
         {
             this->physicsRagDollComponentV2->setGyroscopicTorqueEnabled(this->physicsRagDollComponentV2->gyroscopicTorque->getBool());
 
-            if (nullptr != this->parentRagBone && true == this->physicsRagDollComponentV2->activated->getBool())
+            // FIX: the inner condition used to be "nullptr != this->parentRagBone", which is ALWAYS
+            // false inside this branch - the root rag bone therefore never got a force and torque
+            // callback at all. Two consequences: the pelvis had no gravity (it only fell because the
+            // limbs dragged it), and PhysicsActiveComponent::moveCallback never ran for it, so the
+            // force observers it dispatches - the Picker's PickForceObserver among them - were never
+            // called. ANIMATION state is excluded on purpose: there the bodies are pinned to the bones
+            // and must not receive any force.
+            if (true == this->physicsRagDollComponentV2->activated->getBool() && PhysicsRagDollComponentV2::ANIMATION != this->physicsRagDollComponentV2->rdState)
             {
                 this->body->setCustomForceAndTorqueCallback<PhysicsRagDollComponentV2>(&PhysicsActiveComponent::moveCallback, this->physicsRagDollComponentV2);
             }
@@ -2678,16 +2902,20 @@ namespace NOWA
         if (nullptr != this->sceneNode)
         {
             NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->sceneNode);
-            if (nullptr != this->parentRagBone)
+
+            // Destroy only nodes this rag bone created itself. The root of a ragdoll/partial ragdoll
+            // uses the game object node, which must obviously survive - but in ANIMATION state even the
+            // root owns a separate node, so the ownership test is "is it the game object node", not
+            // "is there a parent rag bone".
+            if (this->sceneNode != this->physicsRagDollComponentV2->gameObjectPtr->getSceneNode())
             {
-                auto sceneNode = this->physicsRagDollComponentV2->gameObjectPtr->getSceneNode();
-                auto thisSceneNode = this->sceneNode;
-                sceneNode->removeAndDestroyChild(thisSceneNode);
+                Ogre::SceneNode* parentSceneNode = this->sceneNode->getParentSceneNode();
+                if (nullptr != parentSceneNode)
+                {
+                    parentSceneNode->removeAndDestroyChild(this->sceneNode);
+                }
             }
-            else
-            {
-                this->sceneNode = nullptr;
-            }
+            this->sceneNode = nullptr;
         }
     }
 
@@ -2874,6 +3102,18 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::RagBone::attachToNode(void)
     {
+        // The root rag bone of a FULL ragdoll must not drive the game object scene node: its body
+        // carries the root BONE (pelvis) transform, so OgreNewt would write the bone transform -
+        // including the bone axis convention rotation - into the game object node every frame, and
+        // applyRagdollStateToModel() would then convert all body transforms against that corrupted
+        // node transform and tear the model apart. In ANIMATION state the root owns a separate node
+        // (see the constructor), so attaching is safe and is what makes its debug hull visible.
+        // For a PARTIAL ragdoll the first rag bone IS the game object, so attaching stays correct.
+        if (nullptr == this->parentRagBone && false == this->partial && PhysicsRagDollComponentV2::ANIMATION != this->physicsRagDollComponentV2->rdState)
+        {
+            return;
+        }
+
         this->body->attachNode(this->sceneNode);
     }
 

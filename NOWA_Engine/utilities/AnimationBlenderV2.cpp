@@ -1180,16 +1180,16 @@ namespace NOWA
             {
                 if (true == item->hasSkeleton())
                 {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, padding + "List all animations for mesh '" + item->getMesh()->getName() + "':");
+                    /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, padding + "List all animations for mesh '" + item->getMesh()->getName() + "':");
                     Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
                     if (nullptr != skeleton)
                     {
                         for (const auto& anim : skeleton->getAnimations())
                         {
                             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                                "[AnimationComponent] Animation name: " + anim.getName().getFriendlyText() + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
+                                "[AnimationBlenderV2] Animation name: " + anim.getName().getFriendlyText() + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
                         }
-                    }
+                    }*/
                 }
             }
         }

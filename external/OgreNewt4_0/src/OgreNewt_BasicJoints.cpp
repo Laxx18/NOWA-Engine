@@ -661,6 +661,15 @@ namespace OgreNewt
         OgreNewt::Converters::QuatPosToMatrix(q, pos, frame);
 
         auto* joint = new NdUniversalAdapter(frame, b0, b1);
+
+        // This is key: prefer the iterative soft model for stability, else whole simulation can become
+        // unstable! Hinge and BallAndSocket already do this, Universal did not - so its joints kept the
+        // default kinematic model, Newton put the chain into an ndSkeletonContainer, and a chain with
+        // exactly one auxiliary row (a single active limit row) trips
+        // ndAssert(sparseFactor > 0) in ndSkeletonContainer::BuildSparseMatrix(), because
+        // ndInt32(1 * D_SPARSE_SKELETON_MATRIX_FACTOR) truncates to 0.
+        joint->SetSolverModel(m_jointIterativeSoft);
+
         SetSupportJoint(child->getWorld(), joint);
     }
 
@@ -679,6 +688,10 @@ namespace OgreNewt
         OgreNewt::Converters::QuatPosToMatrix(q, mid, frame);
 
         auto* joint = new NdUniversalAdapter(frame, b0, b1);
+
+        // Same as above: without the iterative soft model this joint ends up in a skeleton container.
+        joint->SetSolverModel(m_jointIterativeSoft);
+
         SetSupportJoint(child->getWorld(), joint);
     }
 

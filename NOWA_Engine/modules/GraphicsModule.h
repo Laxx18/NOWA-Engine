@@ -83,7 +83,7 @@ namespace NOWA
      * Only one thread owns and modifies a slot at any time.
      *
      * IMPORTANT - Threading model for the tracked-resource containers (nodePool, cameraPool,
-     * oldBonePool, bonePool, passPool, datablockPool) and their *ToIndexMap siblings:
+     * oldBonePool, bonePool, datablockPool) and their *ToIndexMap siblings:
      *
      * This mirrors how Ogre-Next's own Tutorial06_Multithreading sample (GameEntityManager)
      * does it: a tracked object is resolved into a stable storage slot EXACTLY ONCE per
@@ -153,12 +153,6 @@ namespace NOWA
             Ogre::Vector3 position = Ogre::Vector3::ZERO;
             Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
             Ogre::Vector3 scale = Ogre::Vector3::UNIT_SCALE;
-        };
-
-        struct PassSpeedData
-        {
-            Ogre::Real speedsX[9] = {};
-            Ogre::Real speedsY[9] = {};
         };
 
         struct CameraTransformData
@@ -346,44 +340,6 @@ namespace NOWA
                 if (this != &other)
                 {
                     bone.store(other.bone.load(std::memory_order_relaxed), std::memory_order_relaxed);
-                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-                    {
-                        transforms[i] = other.transforms[i];
-                    }
-                    active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
-                    isNew = other.isNew;
-                }
-                return *this;
-            }
-        };
-
-        struct PassTransforms
-        {
-            std::atomic<Ogre::Pass*> pass{nullptr};
-            PassSpeedData transforms[NUM_TRANSFORM_BUFFERS];
-            std::atomic<bool> active{false};
-            bool isNew = false;
-
-            PassTransforms() = default;
-            PassTransforms(const PassTransforms&) = delete;
-            PassTransforms& operator=(const PassTransforms&) = delete;
-
-            PassTransforms(PassTransforms&& other) noexcept
-            {
-                pass.store(other.pass.load(std::memory_order_relaxed), std::memory_order_relaxed);
-                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-                {
-                    transforms[i] = other.transforms[i];
-                }
-                active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
-                isNew = other.isNew;
-            }
-
-            PassTransforms& operator=(PassTransforms&& other) noexcept
-            {
-                if (this != &other)
-                {
-                    pass.store(other.pass.load(std::memory_order_relaxed), std::memory_order_relaxed);
                     for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
                     {
                         transforms[i] = other.transforms[i];
@@ -806,18 +762,6 @@ namespace NOWA
         // Instant warp - see setNodePosition() for the full contract.
         void setBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
-        // Add a Pass to be tracked and transformed
-        void addTrackedPass(Ogre::Pass* pass);
-
-        // Remove a Pass from tracking
-        void removeTrackedPass(Ogre::Pass* pass);
-
-        // Update speed x for a Pass in the current buffer
-        void updatePassSpeedsX(Ogre::Pass* pass, unsigned short index, Ogre::Real speedX);
-
-        // Update speed y for a Pass in the current buffer
-        void updatePassSpeedsY(Ogre::Pass* pass, unsigned short index, Ogre::Real speedY);
-
         void addTrackedDatablock(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, std::function<void(Ogre::ColourValue)> applyFunc,
             std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc);
 
@@ -858,8 +802,6 @@ namespace NOWA
         size_t getPreviousTransformOldBoneIdx(void) const;
 
         size_t getPreviousTransformBoneIdx(void) const;
-
-        size_t getPreviousTransformPassIdx(void) const;
 
         size_t getPreviousTrackedDatablockIdx(void) const;
 
@@ -965,9 +907,6 @@ namespace NOWA
         BoneTransforms* resolveBoneSlotLocked(Ogre::Bone* bone);
         BoneTransforms* acquireBoneSlot(Ogre::Bone* bone);
 
-        PassTransforms* resolvePassSlotLocked(Ogre::Pass* pass);
-        PassTransforms* acquirePassSlot(Ogre::Pass* pass);
-
         // Datablock needs the extra creation parameters because - unlike position/
         // orientation for a node - the apply/interpolate functions cannot be derived
         // from the object itself and must come from the caller on first contact.
@@ -1072,7 +1011,6 @@ namespace NOWA
         CameraTransforms cameraOverflowSink;
         OldBoneTransforms oldBoneOverflowSink;
         BoneTransforms boneOverflowSink;
-        PassTransforms passOverflowSink;
         TrackedDatablock datablockOverflowSink;
 
         // Pool storage for tracked nodes. resize()'d to NODE_POOL_CAPACITY exactly
@@ -1111,11 +1049,6 @@ namespace NOWA
         std::vector<size_t> freeBoneSlots;
         mutable std::mutex boneRegistrationMutex;
 
-        std::vector<PassTransforms> passPool;
-        std::unordered_map<Ogre::Pass*, size_t> passToIndexMap;
-        std::vector<size_t> freePassSlots;
-        mutable std::mutex passRegistrationMutex;
-
         std::vector<TrackedDatablock> datablockPool;
         std::unordered_map<Ogre::HlmsDatablock*, size_t> datablockToIndexMap;
         std::vector<size_t> freeDatablockSlots;
@@ -1142,7 +1075,6 @@ namespace NOWA
         std::atomic<size_t> currentTransformCameraIdx;
         std::atomic<size_t> currentTransformOldBoneIdx;
         std::atomic<size_t> currentTransformBoneIdx;
-        std::atomic<size_t> currentTransformPassIdx;
         std::atomic<size_t> currentTrackedDatablockIdx;
         Ogre::Real interpolationWeight;
 

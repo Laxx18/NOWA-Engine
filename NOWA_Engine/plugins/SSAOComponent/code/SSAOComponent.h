@@ -108,6 +108,8 @@ namespace NOWA
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
+		virtual void enableEffect(const Ogre::String& effectName, bool activated) override;
+
 		void setKernelRadius(Ogre::Real kernelRadius);
 
 		Ogre::Real getKernelRadius(void) const;

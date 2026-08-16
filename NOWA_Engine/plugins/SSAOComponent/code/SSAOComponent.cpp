@@ -208,7 +208,27 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "PowerScale"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->powerScale->getReal())));
 		propertiesXML->append_node(propertyXML);
-	}
+    }
+
+    void SSAOComponent::enableEffect(const Ogre::String& effectName, bool activated)
+    {
+        // SSAO is NOT represented by a dedicated CompositorNode that can be
+        // toggled via CompositorWorkspace::findNode() the way Distortion/Bloom
+        // etc. are. Its passes (depth downscale, SSAO generation, blur H/V,
+        // apply) are baked directly into renderingNodeName/finalRenderingNodeName
+        // at WORKSPACE BUILD TIME, driven entirely by WorkspaceBaseComponent's
+        // useSSAO flag (see internalCreateCompositorNode() / createFinalRenderNode()).
+        //
+        // WorkspaceBaseComponent::enableEffect() calls this for every
+        // CompositorEffectBaseComponent (including this one) whenever ANY effect
+        // gets toggled, since it needs everyone's current activation state to
+        // rebuild the workspace. The base implementation would call
+        // workspace->findNode("SSAO") here, which throws ItemIdentityException
+        // because that node simply never exists.
+        //
+        // So: intentionally do nothing. Toggling SSAO on/off is handled entirely
+        // by WorkspaceBaseComponent::setUseSSAO() rebuilding the node graph.
+    }
 
 	Ogre::String SSAOComponent::getClassName(void) const
 	{

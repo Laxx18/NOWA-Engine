@@ -276,7 +276,7 @@ namespace OgreNewt
         m_defaultcolor = col;
     }
 
-    void Debugger::createUnlitDatablock(const Ogre::String& datablockName, const Ogre::ColourValue& colour)
+    void Debugger::createUnlitDatablock(const Ogre::String& datablockName, const Ogre::ColourValue& colour, bool alwaysVisible)
     {
         Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
         Ogre::HlmsUnlit* hlmsUnlit = static_cast<Ogre::HlmsUnlit*>(hlms);
@@ -286,8 +286,13 @@ namespace OgreNewt
 
         Ogre::HlmsMacroblock macroblock;
         macroblock.mCullMode = Ogre::CULL_NONE; // Example: No culling
-        macroblock.mDepthCheck = true;
-        macroblock.mDepthWrite = true;
+
+        // alwaysVisible == true: draw regardless of what's already in the depth buffer
+        // (i.e. through walls/geometry) and don't write depth ourselves, so overlapping
+        // debug shapes don't occlude each other either.
+        // alwaysVisible == false (default): normal depth-tested behaviour.
+        macroblock.mDepthCheck = !alwaysVisible;
+        macroblock.mDepthWrite = !alwaysVisible;
 
         // Check if datablock already exists
         Ogre::HlmsDatablock* existingDatablock = hlmsUnlit->getDatablock(datablockName);
@@ -300,6 +305,14 @@ namespace OgreNewt
 
             existingDatablock = datablock;
         }
+        else
+        {
+            // Datablock already exists (e.g. this is a toggle call) -- update its
+            // macroblock too, otherwise switching alwaysVisible on an already-created
+            // datablock would silently do nothing.
+            existingDatablock->setMacroblock(macroblock);
+        }
+
         // Set color usage
         static_cast<Ogre::HlmsUnlitDatablock*>(existingDatablock)->setUseColour(true); // Enable manual colour
 

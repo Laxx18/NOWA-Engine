@@ -142,7 +142,7 @@ namespace NOWA
 		 * - "Night Vision"
 		 * - "Dither"
 		 */
-		void enableEffect(const Ogre::String& effectName, bool enabled);
+		virtual void enableEffect(const Ogre::String& effectName, bool enabled);
 	private:
 			void handleWorkspaceComponentDeleted(NOWA::EventDataPtr eventData);
 	protected:

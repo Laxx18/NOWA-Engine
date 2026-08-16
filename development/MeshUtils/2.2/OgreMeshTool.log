@@ -1,15 +1,39 @@
-20:41:50: MeshSerializer writing mesh data to stream ...
-20:41:50: File header written.
-20:41:50: Writing mesh data...
-20:41:50: Writing submesh...
-20:41:50: Submesh exported.
-20:41:50: Exporting LOD level thresholds....
-20:41:50: LOD level thresholds exported.
-20:41:50: Exporting bounds information....
-20:41:50: Bounds information exported.
-20:41:50: Exporting submesh name table...
-20:41:50: Submesh name table exported.
-20:41:50: Exporting hash for caches...
-20:41:50: Exporting hash for caches exported.
-20:41:50: Mesh data exported.
-20:41:50: MeshSerializer export successful.
+22:44:39: XMLSkeletonSerializer: reading XML data from _rootmotion_tmp\Deer.skeleton.xml...
+22:44:39: XMLSkeletonSerializer: Reading Bones name...
+22:44:39: XMLSkeletonSerializer: Reading Hierarchy data...
+22:44:39: XMLSkeletonSerializer: Reading Bones data...
+22:44:39: XMLSkeletonSerializer: Reading Animations data...
+22:44:39: XMLSkeletonSerializer: Finished. Running SkeletonSerializer...
+22:44:39: Exporting bones..
+22:44:39: Bones exported.
+22:44:39: Exporting animations, count=15
+22:44:39: Exporting animation: Failure
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Fall
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Idle
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Idle_2
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Jump_Up
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Land
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Roll
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Roll_In_Place
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Run
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Run_In_Place
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Sleep
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Success
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Talk
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Walk
+22:44:39: Animation exported.
+22:44:39: Exporting animation: Walk_In_Place
+22:44:39: Animation exported.

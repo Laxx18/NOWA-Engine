@@ -690,6 +690,12 @@
     <ClInclude Include="gameobject\PlatformComponentBase.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\GraphicsConfigurationComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="main\ConfigurationState.h">
+      <Filter>main</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1256,6 +1262,12 @@
     </ClCompile>
     <ClCompile Include="camera\ThirdPersonOcclusionCamera.cpp">
       <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\GraphicsConfigurationComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="main\ConfigurationState.cpp">
+      <Filter>main</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

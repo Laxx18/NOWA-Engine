@@ -24,47 +24,52 @@ namespace NOWA
 
 	void MiniMapToolTip::show(const MyGUI::IntPoint& point, const Ogre::String& description)
 	{
-		// TODO: No wait
-		ENQUEUE_RENDER_COMMAND_MULTI("MiniMapToolTip::show", _2(point, description),
-		{
-			// First fetch the viewport size.  (Do not try to getParent()->getSize().
-			// Top level widgets do not have parents, but getParentSize() returns something useful anyway.)
-			const MyGUI::IntSize & viewSize = this->toolTip->getParentSize();
-			// Then set our tooltip panel size to something excessive...
-			this->toolTip->setSize(viewSize.width / 2, viewSize.height / 2);
-			// ... update its caption to whatever the sender widget has for tooltip text
-			// (You did use setUserString(), right?)...
-			MyGUI::UString toolTipText = description;
-			if (true == toolTipText.empty())
-			{
-				return;
-			}
-			this->textDescription->setCaption(toolTipText);
-			// ... fetch the new text size from the tooltip's Edit control...
-			const MyGUI::IntSize& textSize = this->textDescription->getTextSize();
-			// ... and resize the tooltip panel to match it.  The Stretch property on the Edit
-			// control will see to it that the Edit control resizes along with it.
-			// The constants are padding to fit in the edges of the PanelSmall skin; adjust as
-			// necessary for your theme.
-			this->toolTip->setSize(textSize.width + 6, textSize.height + 6);
-			// You can fade it in smooth if you like, but that gets obnoxious.
-			this->toolTip->setVisible(true);
-		});
+		GraphicsModule::RenderCommand renderCommand = [this, point, description]()
+        {
+            // First fetch the viewport size.  (Do not try to getParent()->getSize().
+            // Top level widgets do not have parents, but getParentSize() returns something useful anyway.)
+            const MyGUI::IntSize& viewSize = this->toolTip->getParentSize();
+            // Then set our tooltip panel size to something excessive...
+            this->toolTip->setSize(viewSize.width / 2, viewSize.height / 2);
+            // ... update its caption to whatever the sender widget has for tooltip text
+            // (You did use setUserString(), right?)...
+            MyGUI::UString toolTipText = description;
+            if (true == toolTipText.empty())
+            {
+                return;
+            }
+            this->textDescription->setCaption(toolTipText);
+            // ... fetch the new text size from the tooltip's Edit control...
+            const MyGUI::IntSize& textSize = this->textDescription->getTextSize();
+            // ... and resize the tooltip panel to match it.  The Stretch property on the Edit
+            // control will see to it that the Edit control resizes along with it.
+            // The constants are padding to fit in the edges of the PanelSmall skin; adjust as
+            // necessary for your theme.
+            this->toolTip->setSize(textSize.width + 6, textSize.height + 6);
+            // You can fade it in smooth if you like, but that gets obnoxious.
+            this->toolTip->setVisible(true);
 
-		boundedMove(this->toolTip, point);
+			boundedMove(this->toolTip, point);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MiniMapToolTip::show");
 	}
 
 	void MiniMapToolTip::hide()
 	{
-		ENQUEUE_RENDER_COMMAND("MiniMapToolTip::hide",
-		{
-			this->toolTip->setVisible(false);
-		});
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->toolTip->setVisible(false);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MiniMapToolTip::hide");
 	}
 
 	void MiniMapToolTip::move(const MyGUI::IntPoint& point)
 	{
-		this->boundedMove(this->toolTip, point);
+        GraphicsModule::RenderCommand renderCommand = [this, point]()
+        {
+            this->boundedMove(this->toolTip, point);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MiniMapToolTip::move");
 	}
 
 	void MiniMapToolTip::boundedMove(MyGUI::Widget* moving, const MyGUI::IntPoint& point)
@@ -85,11 +90,7 @@ namespace NOWA
 			boundedpoint.top -= offset.top + offset.top + size.height;
 		}
 
-		// TODO: Wait?
-		ENQUEUE_RENDER_COMMAND_MULTI("MiniMapToolTip::boundedMove", _2(moving, boundedpoint),
-		{
-			moving->setPosition(boundedpoint);
-		});
+		moving->setPosition(boundedpoint);
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,11 +136,12 @@ namespace NOWA
 		
 		if (nullptr != this->toolTip)
 		{
-			ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::~MyGUIMiniMapComponent",
-			{
-				delete this->toolTip;
-				this->toolTip = nullptr;
-			});
+			GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                delete this->toolTip;
+                this->toolTip = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::~MyGUIMiniMapComponent");
 		}
 	}
 
@@ -337,10 +339,12 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::postInit",
-			{
-				this->widget->setVisible(false);
-			});
+			GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->widget->setVisible(false);
+                this->setLayer("Overlapped");
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::postInit");
 		}
 
 		this->setTrackableCount(this->trackableCount->getUInt());
@@ -350,158 +354,163 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::destroyMiniMap(void)
 	{
-		ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::destroyMiniMap",
-		{
-			for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
-			{
-				// this->textBoxMapTiles[i]->detachFromWidget();
-				MyGUI::Gui::getInstancePtr()->destroyWidget(this->textBoxMapTiles[i]);
-			}
-			for (size_t i = 0; i < this->windowMapTiles.size(); i++)
-			{
-				if (true == this->useToolTip->getBool())
-					this->windowMapTiles[i]->eventToolTip -= newDelegate(this, &MyGUIMiniMapComponent::notifyToolTip);
+        GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
+            {
+                // this->textBoxMapTiles[i]->detachFromWidget();
+                MyGUI::Gui::getInstancePtr()->destroyWidget(this->textBoxMapTiles[i]);
+            }
+            for (size_t i = 0; i < this->windowMapTiles.size(); i++)
+            {
+                if (true == this->useToolTip->getBool())
+                {
+                    this->windowMapTiles[i]->eventToolTip -= newDelegate(this, &MyGUIMiniMapComponent::notifyToolTip);
+                }
 
-				this->windowMapTiles[i]->detachFromWidget();
-				MyGUI::Gui::getInstancePtr()->destroyWidget(this->windowMapTiles[i]);
-			}
-			this->textBoxMapTiles.clear();
-			this->windowMapTiles.clear();
+                this->windowMapTiles[i]->detachFromWidget();
+                MyGUI::Gui::getInstancePtr()->destroyWidget(this->windowMapTiles[i]);
+            }
+            this->textBoxMapTiles.clear();
+            this->windowMapTiles.clear();
 
-			MyGUI::Window* window = this->widget->castType<MyGUI::Window>(false);
-			if (window != nullptr)
-			{
-				// window->eventKeyButtonPressed += newDelegate(this, &MyGUIMiniMapComponent::notifyKeyButtonPressed);
-				window->eventWindowButtonPressed -= newDelegate(this, &MyGUIMiniMapComponent::notifyWindowButtonPressed);
-			}
-		});
+            MyGUI::Window* window = this->widget->castType<MyGUI::Window>(false);
+            if (window != nullptr)
+            {
+                // window->eventKeyButtonPressed += newDelegate(this, &MyGUIMiniMapComponent::notifyKeyButtonPressed);
+                window->eventWindowButtonPressed -= newDelegate(this, &MyGUIMiniMapComponent::notifyWindowButtonPressed);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::destroyMiniMap");
 	}
 
 	void MyGUIMiniMapComponent::destroyTrackables(void)
 	{
-		ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::destroyTrackables",
-		{
-			for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
-			{
-				// this->trackableImageBoxes[i]->detachFromWidget();
-				MyGUI::Gui::getInstancePtr()->destroyWidget(this->trackableImageBoxes[i]);
-			}
-			this->trackableImageBoxes.clear();
-			this->spriteAnimationIndices.clear();
-		});
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
+            {
+                // this->trackableImageBoxes[i]->detachFromWidget();
+                MyGUI::Gui::getInstancePtr()->destroyWidget(this->trackableImageBoxes[i]);
+            }
+            this->trackableImageBoxes.clear();
+            this->spriteAnimationIndices.clear();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::destroyTrackables");
 	}
 
 	void MyGUIMiniMapComponent::generateMiniMap(void)
-	{
-		// Threadsafe from the outside
+    {
+        // Threadsafe from the outside
 
-		this->destroyMiniMap();
+        this->destroyMiniMap();
 
-		// MyGUI::IntSize tempSize = MyGUI::RenderManager::getInstance().getViewSize();
+        Ogre::Vector2 viewPortSize = Ogre::Vector2(static_cast<Ogre::Real>(this->widget->getAbsoluteCoord().width), static_cast<Ogre::Real>(this->widget->getAbsoluteCoord().height)) / this->scaleFactor->getReal();
 
-		Ogre::Vector2 viewPortSize = Ogre::Vector2(static_cast<Ogre::Real>(this->widget->getAbsoluteCoord().width), static_cast<Ogre::Real>(this->widget->getAbsoluteCoord().height)) / this->scaleFactor->getReal();
+        // Check how many mini maps can be created
+        this->miniMapDataList =
+            AppStateManager::getSingletonPtr()->getMiniMapModule()->parseMinimaps(this->gameObjectPtr->getSceneManager(), this->axis->getListSelectedValue() == "X,Y" ? true : false, this->startPosition->getVector2(), viewPortSize);
 
-		// Check how many mini maps can be created
-		this->miniMapDataList = AppStateManager::getSingletonPtr()->getMiniMapModule()->parseMinimaps(this->gameObjectPtr->getSceneManager(), 
-			this->axis->getListSelectedValue() == "X,Y" ? true : false, this->startPosition->getVector2(), viewPortSize);
+        if (this->miniMapDataList.size() > this->skinNames.size())
+        {
+            miniMapTilesCount = static_cast<unsigned int>(this->miniMapDataList.size());
 
-		if (this->miniMapDataList.size() > this->skinNames.size())
-		{
-			miniMapTilesCount = static_cast<unsigned int>(this->miniMapDataList.size());
-			// If there are more scene, then actually properties loaded sind the last save, fill up with default data
-			for (size_t i = this->skinNames.size(); i < this->miniMapDataList.size(); i++)
-			{
-				this->skinNames.push_back(new Variant(MyGUIMiniMapComponent::AttrSkinName() + Ogre::StringConverter::toString(i), std::vector<Ogre::String>{ "PanelSkin" }, this->attributes));
-				this->miniMapTilesColors.push_back(new Variant(MyGUIMiniMapComponent::AttrMiniMapTileColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.2f, 0.2f, 0.2f), this->attributes));
-				this->miniMapTilesColors[i]->addUserData(GameObject::AttrActionColorDialog());
-				this->toolTipDescriptions.push_back(new Variant(MyGUIMiniMapComponent::AttrToolTipDescription() + Ogre::StringConverter::toString(i), "", this->attributes));
-				this->visitedList.push_back(new Variant(this->miniMapDataList[i].sceneName + " Scene Visited", true, this->attributes));
-			}
-		}
-		else if (this->miniMapDataList.size() < this->skinNames.size())
-		{
-			miniMapTilesCount = static_cast<unsigned int>(this->miniMapDataList.size());
+            // If there are more scenes than saved properties, fill up with default data
+            for (size_t i = this->skinNames.size(); i < this->miniMapDataList.size(); i++)
+            {
+                // ── CHANGE: added WoodPanel and WoodWindow to tile skin choices ──
+                this->skinNames.push_back(new Variant(MyGUIMiniMapComponent::AttrSkinName() + Ogre::StringConverter::toString(i), std::vector<Ogre::String>{"PanelSkin", "WoodPanel", "WoodWindow"}, this->attributes));
 
-			this->eraseVariants(this->skinNames, miniMapTilesCount);
-			this->eraseVariants(this->miniMapTilesColors, miniMapTilesCount);
-			this->eraseVariants(this->toolTipDescriptions, miniMapTilesCount);
-			this->eraseVariants(this->visitedList, this->miniMapDataList.size());
-		}
+                this->miniMapTilesColors.push_back(new Variant(MyGUIMiniMapComponent::AttrMiniMapTileColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.2f, 0.2f, 0.2f), this->attributes));
+                this->miniMapTilesColors[i]->addUserData(GameObject::AttrActionColorDialog());
 
-		if (true == this->visitedList.empty())
-		{
-			for (size_t i = 0; i < this->miniMapDataList.size(); i++)
-			{
-				this->visitedList.push_back(new Variant(this->miniMapDataList[i].sceneName + " Scene Visited", true, this->attributes));
-			}
-		}
-		else
-		{
-			for (size_t i = 0; i < this->miniMapDataList.size(); i++)
-			{
-				if (nullptr == this->visitedList[i])
-				{
-					this->visitedList[i] = new Variant(this->miniMapDataList[i].sceneName + " Scene Visited", true, this->attributes);
-				}
-			}
-		}
+                this->toolTipDescriptions.push_back(new Variant(MyGUIMiniMapComponent::AttrToolTipDescription() + Ogre::StringConverter::toString(i), "", this->attributes));
 
-		for (size_t i = 0; i < this->miniMapDataList.size(); i++)
-		{
-			const MiniMapModule::MiniMapData& miniMapData = this->miniMapDataList[i];
+                this->visitedList.push_back(new Variant(this->miniMapDataList[i].sceneName + " Scene Visited", true, this->attributes));
+            }
+        }
+        else if (this->miniMapDataList.size() < this->skinNames.size())
+        {
+            miniMapTilesCount = static_cast<unsigned int>(this->miniMapDataList.size());
 
-			// Note: Widgets are created with absolute coordinates!?
-			MyGUI::Widget* mapTileWindow = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>(this->skinNames[i]->getListSelectedValue(),
-				miniMapData.position.x, miniMapData.position.y, miniMapData.size.x, miniMapData.size.y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue());
+            this->eraseVariants(this->skinNames, miniMapTilesCount);
+            this->eraseVariants(this->miniMapTilesColors, miniMapTilesCount);
+            this->eraseVariants(this->toolTipDescriptions, miniMapTilesCount);
+            this->eraseVariants(this->visitedList, this->miniMapDataList.size());
+        }
 
-			Ogre::Vector3 color = this->miniMapTilesColors[i]->getVector3();
-			mapTileWindow->setColour(MyGUI::Colour(color.x, color.y, color.z));
-			mapTileWindow->setUserString("description", this->toolTipDescriptions[i]->getString());
-			mapTileWindow->setVisible(this->bShowMiniMap);
+        if (true == this->visitedList.empty())
+        {
+            for (size_t i = 0; i < this->miniMapDataList.size(); i++)
+            {
+                this->visitedList.push_back(new Variant(this->miniMapDataList[i].sceneName + " Scene Visited", true, this->attributes));
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < this->miniMapDataList.size(); i++)
+            {
+                if (nullptr == this->visitedList[i])
+                {
+                    this->visitedList[i] = new Variant(this->miniMapDataList[i].sceneName + " Scene Visited", true, this->attributes);
+                }
+            }
+        }
 
-			// Attach each map tile to the main mini map window
-			mapTileWindow->attachToWidget(this->widget);
-			mapTileWindow->setRealSize(miniMapData.size.x, miniMapData.size.y);
-			mapTileWindow->setRealPosition(miniMapData.position.x, miniMapData.position.y);
+        for (size_t i = 0; i < this->miniMapDataList.size(); i++)
+        {
+            const MiniMapModule::MiniMapData& miniMapData = this->miniMapDataList[i];
 
-			this->windowMapTiles.emplace_back(mapTileWindow);
+            // Note: Widgets are created with absolute coordinates
+            MyGUI::Widget* mapTileWindow = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>(this->skinNames[i]->getListSelectedValue(), miniMapData.position.x, miniMapData.position.y, miniMapData.size.x, miniMapData.size.y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue());
 
-			MyGUI::TextBox* mapTileTextBox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::TextBox>(/*this->skin->getListSelectedValue()*/"TextBox",
-				miniMapData.position.x, miniMapData.position.y, miniMapData.size.x, miniMapData.size.y,
-				MyGUI::Align::Stretch, this->layer->getListSelectedValue());
+            Ogre::Vector3 color = this->miniMapTilesColors[i]->getVector3();
+            mapTileWindow->setColour(MyGUI::Colour(color.x, color.y, color.z));
+            mapTileWindow->setUserString("description", this->toolTipDescriptions[i]->getString());
+            mapTileWindow->setVisible(this->bShowMiniMap);
 
-			mapTileTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+            // Attach each map tile to the main mini map window
+            mapTileWindow->attachToWidget(this->widget);
+            mapTileWindow->setRealSize(miniMapData.size.x, miniMapData.size.y);
+            mapTileWindow->setRealPosition(miniMapData.position.x, miniMapData.position.y);
 
-			if (false == this->bShowDebugData)
-				mapTileTextBox->setCaption(miniMapData.sceneName);
-			else
-				mapTileTextBox->setCaption(miniMapData.sceneName + " s: " + Ogre::StringConverter::toString(miniMapData.size.x) + " x " + Ogre::StringConverter::toString(miniMapData.size.y)
-					+ " p: " + Ogre::StringConverter::toString(miniMapData.position.x) + " x " + Ogre::StringConverter::toString(miniMapData.position.y));
-			mapTileTextBox->setVisible(this->showNames->getBool() && this->bShowMiniMap);
+            this->windowMapTiles.emplace_back(mapTileWindow);
 
-			// Set map tile text box as child of map tile window
-			// mapTileTextBox->attachToWidget(mapTileWindow);
-			// mapTileTextBox->setRealSize(miniMapData.size.x, 0.05f);
-			mapTileTextBox->setRealPosition(miniMapData.position.x + 0.01f, miniMapData.position.y + 0.015f);
+            MyGUI::TextBox* mapTileTextBox =
+                MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::TextBox>("TextBox", miniMapData.position.x, miniMapData.position.y, miniMapData.size.x, miniMapData.size.y, MyGUI::Align::Stretch, this->layer->getListSelectedValue());
 
-			// Set label
-			this->skinNames[i]->addUserData(GameObject::AttrActionLabel());
-			this->skinNames[i]->setDescription(miniMapData.sceneName);
+            mapTileTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
 
-			this->textBoxMapTiles.emplace_back(mapTileTextBox);
-		}
+            if (false == this->bShowDebugData)
+            {
+                mapTileTextBox->setCaption(miniMapData.sceneName);
+            }
+            else
+            {
+                mapTileTextBox->setCaption(miniMapData.sceneName + " s: " + Ogre::StringConverter::toString(miniMapData.size.x) + " x " + Ogre::StringConverter::toString(miniMapData.size.y) +
+                                           " p: " + Ogre::StringConverter::toString(miniMapData.position.x) + " x " + Ogre::StringConverter::toString(miniMapData.position.y));
+            }
 
-		this->widget->setVisible(this->bShowMiniMap);
-		// 
-		// Add event handler, if its a window, to close the mini map when x button is pressed
-		MyGUI::Window* window = this->widget->castType<MyGUI::Window>(false);
-		if (window != nullptr)
-		{
-			// window->eventKeyButtonPressed += newDelegate(this, &MyGUIMiniMapComponent::notifyKeyButtonPressed);
-			window->eventWindowButtonPressed += newDelegate(this, &MyGUIMiniMapComponent::notifyWindowButtonPressed);
-		}
-	}
+            mapTileTextBox->setVisible(this->showNames->getBool() && this->bShowMiniMap);
+            mapTileTextBox->setRealPosition(miniMapData.position.x + 0.01f, miniMapData.position.y + 0.015f);
+
+            // Set label so NOWA-Design shows the scene name next to the skin dropdown
+            this->skinNames[i]->addUserData(GameObject::AttrActionLabel());
+            this->skinNames[i]->setDescription(miniMapData.sceneName);
+
+            this->textBoxMapTiles.emplace_back(mapTileTextBox);
+        }
+
+        this->widget->setVisible(this->bShowMiniMap);
+
+        // Add close handler if the outer widget is a Window
+        MyGUI::Window* window = this->widget->castType<MyGUI::Window>(false);
+        if (nullptr != window)
+        {
+            window->eventWindowButtonPressed += newDelegate(this, &MyGUIMiniMapComponent::notifyWindowButtonPressed);
+        }
+    }
 
 	void MyGUIMiniMapComponent::generateTrackables(void)
 	{
@@ -724,10 +733,12 @@ namespace NOWA
 	void MyGUIMiniMapComponent::showDebugData(void)
 	{
 		GameObjectComponent::showDebugData();
-		ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::showDebugData",
-		{
-			this->generateMiniMap();
-		});
+
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->generateMiniMap();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::showDebugData");
 	}
 
 	bool MyGUIMiniMapComponent::connect(void)
@@ -735,12 +746,14 @@ namespace NOWA
 		bool success = MyGUIWindowComponent::connect();
 
 		this->setUseVisitation(this->useVisitation->getBool());
-		ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::connect",
-		{
-			this->generateMiniMap();
-			this->generateTrackables();
-			this->setUseToolTip(this->useToolTip->getBool());
-		});
+
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->generateMiniMap();
+            this->generateTrackables();
+            this->setUseToolTip(this->useToolTip->getBool());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::connect");
 
 		return success;
 	}
@@ -984,10 +997,11 @@ namespace NOWA
 	void MyGUIMiniMapComponent::setStartPosition(const Ogre::Vector2& startPosition)
 	{
 		this->startPosition->setValue(startPosition);
-		ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::setStartPosition generateMiniMap",
-		{
-			this->generateMiniMap();
-		});
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->generateMiniMap();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::setStartPosition");
 	}
 
 	Ogre::Vector2 MyGUIMiniMapComponent::getStartPosition(void) const
@@ -1002,10 +1016,12 @@ namespace NOWA
 			scaleFactor = 1.0f;
 		}
 		this->scaleFactor->setValue(scaleFactor);
-		ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::setScaleFactor generateMiniMap",
-		{
-			this->generateMiniMap();
-		});
+
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->generateMiniMap();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::setScaleFactor");
 	}
 
 	Ogre::Real MyGUIMiniMapComponent::getScaleFactor(void) const
@@ -1066,10 +1082,11 @@ namespace NOWA
 		}
 		this->skinNames[index]->setListSelectedValue(skinName);
 
-		ENQUEUE_RENDER_COMMAND_MULTI("MyGUIMiniMapComponent::setSkinName", _2(index, skinName),
-		{
-			this->windowMapTiles[index]->changeWidgetSkin(skinName);
-		});
+		GraphicsModule::RenderCommand renderCommand = [this, index, skinName]()
+        {
+            this->windowMapTiles[index]->changeWidgetSkin(skinName);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::setSkinName");
 	}
 
 	Ogre::String MyGUIMiniMapComponent::getSkinName(unsigned int index) const
@@ -1099,10 +1116,11 @@ namespace NOWA
 		}
 		this->miniMapTilesColors[index]->setValue(color);
 
-		ENQUEUE_RENDER_COMMAND_MULTI("MyGUIMiniMapComponent::setMiniMapTileColor", _2(index, color),
-		{
-			this->windowMapTiles[index]->setColour(MyGUI::Colour(color.x, color.y, color.z));
-		});
+		GraphicsModule::RenderCommand renderCommand = [this, index, color]()
+        {
+            this->windowMapTiles[index]->setColour(MyGUI::Colour(color.x, color.y, color.z));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIMiniMapComponent::setMiniMapTileColor");
 	}
 
 	Ogre::Vector3 MyGUIMiniMapComponent::getMiniMapTileColor(unsigned int index)
@@ -1145,11 +1163,12 @@ namespace NOWA
 		}
 		if (index < this->windowMapTiles.size())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIMiniMapComponent::setMiniMapTileVisible", _2(index, miniMapTileVisible),
-			{
-				this->windowMapTiles[index]->setVisible(miniMapTileVisible);
-				this->textBoxMapTiles[index]->setVisible(miniMapTileVisible);
-			});
+			GraphicsModule::RenderCommand renderCommand = [this, index, miniMapTileVisible]()
+            {
+                this->windowMapTiles[index]->setVisible(miniMapTileVisible);
+                this->textBoxMapTiles[index]->setVisible(miniMapTileVisible);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIMiniMapComponent::setMiniMapTileVisible");
 		}
 	}
 
@@ -1199,10 +1218,11 @@ namespace NOWA
 
 		if (true == trackableCountChanged)
 		{
-			ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::setTrackableCount generateMiniMap",
-			{
-				this->generateMiniMap();
-			});
+			GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->generateMiniMap();
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::setTrackableCount");
 		}
 	}
 
@@ -1219,11 +1239,12 @@ namespace NOWA
 		}
 		this->trackableIds[index]->setValue(id);
 
-		ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::setTrackableId generateMiniMap generateTrackables",
-		{
-			this->generateMiniMap();
-			this->generateTrackables();
-		});
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->generateMiniMap();
+            this->generateTrackables();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::setTrackableId");
 	}
 
 	Ogre::String MyGUIMiniMapComponent::getTrackableId(unsigned int index)
@@ -1242,19 +1263,20 @@ namespace NOWA
 			index = static_cast<unsigned int>(this->trackableImages.size()) - 1;
 		}
 		this->trackableImages[index]->setValue(imageName);
-		ENQUEUE_RENDER_COMMAND_MULTI("MyGUIMiniMapComponent::setTrackableImage", _2(index, imageName),
-		{
-			if (this->trackableImageBoxes.size() == this->trackableImages.size())
-			{
-				this->trackableImageBoxes[index]->setImageTexture(imageName);
-				this->trackableImageBoxes[index]->setImageRect(MyGUI::IntRect(0, 0, this->trackableImageBoxes[index]->getImageSize().width,
-					this->trackableImageBoxes[index]->getImageSize().height));
-			}
-			else
-			{
-				this->generateTrackables();
-			}
-		});
+
+		GraphicsModule::RenderCommand renderCommand = [this, index, imageName]()
+        {
+            if (this->trackableImageBoxes.size() == this->trackableImages.size())
+            {
+                this->trackableImageBoxes[index]->setImageTexture(imageName);
+                this->trackableImageBoxes[index]->setImageRect(MyGUI::IntRect(0, 0, this->trackableImageBoxes[index]->getImageSize().width, this->trackableImageBoxes[index]->getImageSize().height));
+            }
+            else
+            {
+                this->generateTrackables();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::setTrackableId");
 	}
 
 	Ogre::String MyGUIMiniMapComponent::getTrackableImage(unsigned int index)
@@ -1273,31 +1295,33 @@ namespace NOWA
 			index = static_cast<unsigned int>(this->trackableImageTileSizes.size()) - 1;
 		}
 		this->trackableImageTileSizes[index]->setValue(imageTileSize);
-		ENQUEUE_RENDER_COMMAND_MULTI("MyGUIMiniMapComponent::setTrackableImageTileSize", _2(index, imageTileSize),
-		{
-			if (this->trackableImageBoxes.size() == this->trackableImages.size())
-			{
-				// Sets the tile size: e.g. Image may be of size: 32x64, but tile size 32x32, so that sprite animation is done automatically switching the image tiles from 0 to 32 and 32 to 64 automatically
-				this->trackableImageBoxes[index]->setImageTile(MyGUI::IntSize(static_cast<int>(imageTileSize.x), static_cast<int>(imageTileSize.y)));
-				// If the image size is bigger as the tile, enable sprite animation, by setting the corresponding spriteAnimationIndices from -1 to 0
 
-				unsigned int indexBoundsHorizontal = this->trackableImageBoxes[index]->getImageSize().width / static_cast<int>(this->trackableImageTileSizes[index]->getVector2().x);
-				unsigned int indexBoundsVertical = this->trackableImageBoxes[index]->getImageSize().height / static_cast<int>(this->trackableImageTileSizes[index]->getVector2().y);
+		GraphicsModule::RenderCommand renderCommand = [this, index, imageTileSize]()
+        {
+            if (this->trackableImageBoxes.size() == this->trackableImages.size())
+            {
+                // Sets the tile size: e.g. Image may be of size: 32x64, but tile size 32x32, so that sprite animation is done automatically switching the image tiles from 0 to 32 and 32 to 64 automatically
+                this->trackableImageBoxes[index]->setImageTile(MyGUI::IntSize(static_cast<int>(imageTileSize.x), static_cast<int>(imageTileSize.y)));
+                // If the image size is bigger as the tile, enable sprite animation, by setting the corresponding spriteAnimationIndices from -1 to 0
 
-				if (indexBoundsHorizontal > 1 || indexBoundsVertical > 1)
-				{
-					this->spriteAnimationIndices[index] = 0;
-				}
-				else
-				{
-					this->spriteAnimationIndices[index] = -1;
-				}
-			}
-			else
-			{
-				this->generateTrackables();
-			}
-		});
+                unsigned int indexBoundsHorizontal = this->trackableImageBoxes[index]->getImageSize().width / static_cast<int>(this->trackableImageTileSizes[index]->getVector2().x);
+                unsigned int indexBoundsVertical = this->trackableImageBoxes[index]->getImageSize().height / static_cast<int>(this->trackableImageTileSizes[index]->getVector2().y);
+
+                if (indexBoundsHorizontal > 1 || indexBoundsVertical > 1)
+                {
+                    this->spriteAnimationIndices[index] = 0;
+                }
+                else
+                {
+                    this->spriteAnimationIndices[index] = -1;
+                }
+            }
+            else
+            {
+                this->generateTrackables();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIMiniMapComponent::setTrackableImageTileSize");
 	}
 
 	Ogre::Vector2 MyGUIMiniMapComponent::getTrackableImageTileSize(unsigned int index)
@@ -1326,65 +1350,66 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::showMiniMap(bool bShow)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("MyGUIMiniMapComponent::showMiniMap", _1(bShow),
-		{
-			this->bShowMiniMap = bShow;
-			this->generateTrackables();
-			if (nullptr != this->widget)
-			{
-				this->widget->setVisible(bShow);
+        GraphicsModule::RenderCommand renderCommand = [this, bShow]()
+        {
+            this->bShowMiniMap = bShow;
+            this->generateTrackables();
+            if (nullptr != this->widget)
+            {
+                this->widget->setVisible(bShow);
 
-				if (false == this->useVisitation->getBool())
-				{
-					for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
-					{
-						this->textBoxMapTiles[i]->setVisible(bShow);
-					}
-					for (size_t i = 0; i < this->windowMapTiles.size(); i++)
-					{
-						this->windowMapTiles[i]->setVisible(bShow);
-					}
-					for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
-					{
-						this->trackableImageBoxes[i]->setVisible(bShow);
-					}
-				}
-				else
-				{
-					if (true == bShow)
-					{
-						// Only show tile if also is set on visited list!
-						for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
-						{
-							this->textBoxMapTiles[i]->setVisible(this->visitedList[i]->getBool());
-						}
-						for (size_t i = 0; i < this->windowMapTiles.size(); i++)
-						{
-							this->windowMapTiles[i]->setVisible(this->visitedList[i]->getBool());
-						}
-						for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
-						{
-							this->trackableImageBoxes[i]->setVisible(this->visitedList[i]->getBool());
-						}
-					}
-					else
-					{
-						for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
-						{
-							this->textBoxMapTiles[i]->setVisible(false);
-						}
-						for (size_t i = 0; i < this->windowMapTiles.size(); i++)
-						{
-							this->windowMapTiles[i]->setVisible(false);
-						}
-						for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
-						{
-							this->trackableImageBoxes[i]->setVisible(false);
-						}
-					}
-				}
-			}
-		});
+                if (false == this->useVisitation->getBool())
+                {
+                    for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
+                    {
+                        this->textBoxMapTiles[i]->setVisible(bShow);
+                    }
+                    for (size_t i = 0; i < this->windowMapTiles.size(); i++)
+                    {
+                        this->windowMapTiles[i]->setVisible(bShow);
+                    }
+                    for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
+                    {
+                        this->trackableImageBoxes[i]->setVisible(bShow);
+                    }
+                }
+                else
+                {
+                    if (true == bShow)
+                    {
+                        // Only show tile if also is set on visited list!
+                        for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
+                        {
+                            this->textBoxMapTiles[i]->setVisible(this->visitedList[i]->getBool());
+                        }
+                        for (size_t i = 0; i < this->windowMapTiles.size(); i++)
+                        {
+                            this->windowMapTiles[i]->setVisible(this->visitedList[i]->getBool());
+                        }
+                        for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
+                        {
+                            this->trackableImageBoxes[i]->setVisible(this->visitedList[i]->getBool());
+                        }
+                    }
+                    else
+                    {
+                        for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
+                        {
+                            this->textBoxMapTiles[i]->setVisible(false);
+                        }
+                        for (size_t i = 0; i < this->windowMapTiles.size(); i++)
+                        {
+                            this->windowMapTiles[i]->setVisible(false);
+                        }
+                        for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
+                        {
+                            this->trackableImageBoxes[i]->setVisible(false);
+                        }
+                    }
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIMiniMapComponent::showMiniMap");
 	}
 
 	bool MyGUIMiniMapComponent::isMiniMapShown(void) const

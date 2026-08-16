@@ -151,6 +151,7 @@ extern "C"
 #include "gameObject/BackgroundScrollComponent.h"
 #include "gameobject/CrowdComponent.h"
 #include "gameobject/WindComponent.h"
+#include "gameobject/GraphicsConfigurationComponent.h"
 
 namespace NOWA
 {
@@ -336,10 +337,9 @@ namespace NOWA
 	typedef boost::shared_ptr<MyGUIScrollingMessageControllerComponent> MyGUIScrollingMessageControllerCompPtr;
 	typedef boost::shared_ptr<MyGUIEdgeHideControllerComponent> MyGUIEdgeHideControllerCompPtr;
 	typedef boost::shared_ptr<MyGUIRepeatClickControllerComponent> MyGUIRepeatClickControllerCompPtr;
-	
+    typedef boost::shared_ptr<NOWA::GraphicsConfigurationComponent> GraphicsConfigurationCompPtr;
 
 	typedef boost::shared_ptr<NOWA::BackgroundScrollComponent> BackgroundScrollCompPtr;
-
 }; // namespace end
 
 // Modules

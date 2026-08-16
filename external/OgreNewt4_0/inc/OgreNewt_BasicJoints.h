@@ -218,33 +218,47 @@ namespace OgreNewt
 			ndFloat32   m_reg1 = 0.1f, m_k1 = 0.0f, m_c1 = 0.0f;
 
 			void JacobianDerivative(ndConstraintDescritor& desc) override
-			{
-				// limits (apply wide limits if disabled)
-				ndFloat32 limMin0 = m_limits0Enabled ? m_min0 : -ndFloat32(1.0e10f);
-				ndFloat32 limMax0 = m_limits0Enabled ? m_max0 : ndFloat32(1.0e10f);
-				ndFloat32 limMin1 = m_limits1Enabled ? m_min1 : -ndFloat32(1.0e10f);
-				ndFloat32 limMax1 = m_limits1Enabled ? m_max1 : ndFloat32(1.0e10f);
-				SetLimits0(limMin0, limMax0);
-				SetLimits1(limMin1, limMax1);
+            {
+                // limits (apply wide limits if disabled)
+                ndFloat32 limMin0 = m_limits0Enabled ? m_min0 : -ndFloat32(1.0e10f);
+                ndFloat32 limMax0 = m_limits0Enabled ? m_max0 : ndFloat32(1.0e10f);
+                ndFloat32 limMin1 = m_limits1Enabled ? m_min1 : -ndFloat32(1.0e10f);
+                ndFloat32 limMax1 = m_limits1Enabled ? m_max1 : ndFloat32(1.0e10f);
+                SetLimits0(limMin0, limMax0);
+                SetLimits1(limMin1, limMax1);
 
-				// friction emulation (viscous damping): damper only, no spring
-				// merge with user spring/damper configuration:
-				ndFloat32 damper0 = m_c0 + m_friction0;
-				ndFloat32 damper1 = m_c1 + m_friction1;
+                // ndJointDoubleHinge::SubmitLimits() only runs when m_axisX.m_limitState is set, and that
+                // flag is set ONLY by SetLimitStateX(). Without these two calls the joint has no angular
+                // limits whatsoever - it stays a free 2 DOF joint regardless of SetLimitsX().
+                SetLimitState0(m_limits0Enabled);
+                SetLimitState1(m_limits1Enabled);
 
-				SetAsSpringDamper0(m_reg0, m_k0, damper0);
-				SetAsSpringDamper1(m_reg1, m_k1, damper1);
+                // SubmitLimits() compares m_axisX.m_param (the accumulated joint angle) against the limits,
+                // but m_param/m_paramSpeed are only refreshed by UpdateParameters(), which the base class
+                // calls solely from ClearMemory() - the equivalent bookkeeping at the end of ApplyBaseRows()
+                // is commented out. Without this the angle stays at its initial value and no limit is ever
+                // reached. UpdateParameters() converges on the true angle, so calling it once per step is
+                // safe even if something else were to call it too.
+                UpdateParameters();
 
-				// motor emulation on axis0: advance offset angle with speed
-				if (m_motor0Enabled)
-				{
-					const ndFloat32 angle0 = GetAngle0();
+                // friction emulation (viscous damping): damper only, no spring
+                // merge with user spring/damper configuration:
+                ndFloat32 damper0 = m_c0 + m_friction0;
+                ndFloat32 damper1 = m_c1 + m_friction1;
+
+                SetAsSpringDamper0(m_reg0, m_k0, damper0);
+                SetAsSpringDamper1(m_reg1, m_k1, damper1);
+
+                // motor emulation on axis0: advance offset angle with speed
+                if (m_motor0Enabled)
+                {
+                    const ndFloat32 angle0 = GetAngle0();
                     SetTargetAngle0(angle0 + m_motor0Speed * desc.m_timestep);
-				}
+                }
 
-				// run base implementation
-				ndJointDoubleHinge::JacobianDerivative(desc);
-			}
+                // run base implementation
+                ndJointDoubleHinge::JacobianDerivative(desc);
+            }
 		};
 
 		NdUniversalAdapter* asNd() const

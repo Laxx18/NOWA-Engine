@@ -10418,6 +10418,22 @@ return {
 				returns = "(GameObjectPlaceComponent)",
 				valuetype = "GameObjectPlaceComponent"
 			},
+			getGraphicsConfigurationComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object has this component just once.",
+				args = "()",
+				returns = "(GraphicsConfigurationComponent)",
+				valuetype = "GraphicsConfigurationComponent"
+			},
+			getGraphicsConfigurationComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(GraphicsConfigurationComponent)",
+				valuetype = "GraphicsConfigurationComponent"
+			},
 			getHdrEffectComponent =
 			{
 				type = "function",
@@ -12994,6 +13010,14 @@ return {
 				returns = "(GameObjectPlaceComponent)",
 				valuetype = "GameObjectPlaceComponent"
 			},
+			castGraphicsConfigurationComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(GraphicsConfigurationComponent other)",
+				returns = "(GraphicsConfigurationComponent)",
+				valuetype = "GraphicsConfigurationComponent"
+			},
 			castHdrEffectComponent =
 			{
 				type = "function",
@@ -13876,6 +13900,111 @@ return {
 			{
 				type = "value"
 			},
+	},
+	GraphicsConfigurationComponent =
+	{
+		type = "class",
+		description = "Usage: This component can be used as building block in order to have an in game graphics configuration menu. It replaces the Ogre configuration dialog, which is unusable on console like targets such as Steam Deck. It can be placed as root via the relative position or using a parent id to be placed as a child in a parent MyGUI window. Note: Resolution, fullscreen and vsync are applied immediately. Anti aliasing is stored and requires an application restart. Note: Render distance and shadow far distance are authored per scene by the level designer and are not configurable here. Note: In order to get rid of the Ogre configuration dialog at application start, the flag 'useDefaultGraphicsOptions' must be set in the CoreConfiguration.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this component should be activated or not. If activated, the graphics configuration menu is shown.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRelativePosition =
+			{
+				type = "method",
+				description = "Sets the relative position of the configuration window (0 = top/left, 1 = bottom/right).",
+				args = "(Vector2 relativePosition)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRelativePosition =
+			{
+				type = "function",
+				description = "Gets the relative position of the configuration window.",
+				args = "()",
+				returns = "(Vector2)",
+				valuetype = "Vector2"
+			},
+			setRelativeSize =
+			{
+				type = "method",
+				description = "Sets the relative size of the configuration window.",
+				args = "(Vector2 relativeSize)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRelativeSize =
+			{
+				type = "function",
+				description = "Gets the relative size of the configuration window.",
+				args = "()",
+				returns = "(Vector2)",
+				valuetype = "Vector2"
+			},
+			setSkin =
+			{
+				type = "method",
+				description = "Sets the skin of the configuration window, e.g. 'WoodWindow'.",
+				args = "(string skin)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSkin =
+			{
+				type = "function",
+				description = "Gets the skin of the configuration window.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setLayer =
+			{
+				type = "method",
+				description = "Sets the MyGUI layer. Must be a layer that receives mouse picking (e.g. 'Overlapped').",
+				args = "(string layer)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLayer =
+			{
+				type = "function",
+				description = "Gets the MyGUI layer.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setShowAdvancedOptions =
+			{
+				type = "method",
+				description = "Sets whether the shadow quality option is shown.",
+				args = "(boolean showAdvancedOptions)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShowAdvancedOptions =
+			{
+				type = "function",
+				description = "Gets whether the shadow quality option is shown.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			}
+		}
 	},
 	HdrEffectComponent =
 	{
