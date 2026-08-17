@@ -1027,10 +1027,12 @@ namespace NOWA
 
     bool GameObject::disconnect(void)
     {
-        // Reset stuff from life AdaptiveQualityLevel from WorkspaceModule
-        this->setPerformanceRenderDistance(this->renderDistance->getUInt());
-        this->setPerformanceShadowRenderingDistance(this->shadowRenderingDistance->getUInt());
-
+        if (true == AppStateManager::getSingletonPtr()->isSafeToDispatchEvents())
+        {
+            // Reset stuff from life AdaptiveQualityLevel from WorkspaceModule
+            this->setPerformanceRenderDistance(this->renderDistance->getUInt());
+            this->setPerformanceShadowRenderingDistance(this->shadowRenderingDistance->getUInt());
+        }
         for (const auto& component : this->gameObjectComponents)
         {
             std::get<COMPONENT>(component)->disconnect();

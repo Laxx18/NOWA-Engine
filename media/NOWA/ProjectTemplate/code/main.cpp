@@ -1,5 +1,6 @@
 #include "NOWAPrecompiled.h"
 #include "MainApplication.h"
+#include "main/AppStateManager.h"
 #include <string>
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32

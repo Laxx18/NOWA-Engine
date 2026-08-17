@@ -15,11 +15,10 @@ class MainApplication
 {
 public:
 	MainApplication();
+	
 	~MainApplication();
-	//Start simulation
+	
 	void startSimulation(const Ogre::String& graphicsConfigName = "");
-private:
-	void renderThreadFunction(void);
 private:
 	Ogre::String configName;
 	std::condition_variable renderInitCondition;

@@ -2,175 +2,186 @@
 #include "AppState.h"
 #include "Core.h"
 
-#include "utilities/FaderProcess.h"
-#include "modules/LuaScriptApi.h"
-#include "modules/InputDeviceModule.h"
-#include "modules/OgreALModule.h"
-#include "main/AppStateManager.h"
 #include "gameobject/WorkspaceComponents.h"
+#include "main/AppStateManager.h"
+#include "modules/InputDeviceModule.h"
+#include "modules/LuaScriptApi.h"
+#include "modules/OgreALModule.h"
+#include "utilities/FaderProcess.h"
 
 #include "RenderQueueEnums.h"
 
 namespace NOWA
 {
-	AppState::AppState()
-		: sceneManager(nullptr),
-		camera(nullptr),
-		ogreNewt(nullptr),
-		bQuit(false),
-		canUpdate(false),
-		gameObjectController(nullptr),
-		gameProgressModule(nullptr),
-		rakNetModule(nullptr),
-		miniMapModule(nullptr),
-		ogreNewtModule(nullptr),
-		decalsModule(nullptr),
-		cameraManager(nullptr),
-		ogreRecastModule(nullptr),
-		particleFxModule(nullptr),
-		luaScriptModule(nullptr),
-		eventManager(nullptr),
-		scriptEventManager(nullptr),
-		hasStarted(false),
-		workspaceBaseComponent(nullptr)
-	{
-		
-	}
+    AppState::AppState() :
+        sceneManager(nullptr),
+        camera(nullptr),
+        ogreNewt(nullptr),
+        bQuit(false),
+        canUpdate(false),
+        gameObjectController(nullptr),
+        gameProgressModule(nullptr),
+        rakNetModule(nullptr),
+        miniMapModule(nullptr),
+        ogreNewtModule(nullptr),
+        decalsModule(nullptr),
+        cameraManager(nullptr),
+        ogreRecastModule(nullptr),
+        particleFxModule(nullptr),
+        luaScriptModule(nullptr),
+        eventManager(nullptr),
+        scriptEventManager(nullptr),
+        hasStarted(false),
+        workspaceBaseComponent(nullptr)
+    {
+    }
 
-	void AppState::startRendering(void)
-	{
- 		NOWA::GraphicsModule::getInstance()->startRendering();
-	}
+    void AppState::startRendering(void)
+    {
+        // Attention: this is an engine-lifetime call, not a per-state one. It is invoked
+        // exactly once, from AppStateManager::internalChangeAppState() with initial == true.
+        // The render thread then lives until GraphicsModule::doCleanup() joins it.
+        NOWA::GraphicsModule::getInstance()->startRendering();
+    }
 
-	void AppState::stopRendering(void)
-	{
-		NOWA::GraphicsModule::getInstance()->stopRendering();
-	}
+    void AppState::stopRendering(void)
+    {
+        // Attention: this kills the render thread for good - it is NOT a pause. Everything
+        // that runs afterwards (AppState::exit(), GameObjectController::stop(),
+        // destroyModules()) still pushes render commands and waits for them, so calling this
+        // before the teardown produces a shutdown deadlock. That is why
+        // AppStateManager::shutdown() no longer calls it; the render thread is stopped and
+        // joined in GraphicsModule::doCleanup() at the very end of AppStateManager::start().
+        //
+        // To pause rendering without killing the thread, use bStall / beginShutdownDrain()
+        // style flags instead.
+        NOWA::GraphicsModule::getInstance()->stopRendering();
+    }
 
-	// static function for macro
-	void AppState::create(AppStateListener* appStateManager, const Ogre::String name, const Ogre::String nextAppStateName)
-	{
-	}
+    // static function for macro
+    void AppState::create(AppStateListener* appStateManager, const Ogre::String name, const Ogre::String nextAppStateName)
+    {
+    }
 
-	void AppState::enter(void)
-	{
-		this->hasStarted = true;
-		this->canUpdate = true;
+    void AppState::enter(void)
+    {
+        this->hasStarted = true;
+        this->canUpdate = true;
 
-		this->initializeModules(true, true);
+        this->initializeModules(true, true);
 
-		// Note: All listener must be added after the modules are initialized
-		// React when scene has been loaded to get data
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
+        // Note: All listener must be added after the modules are initialized
+        // React when scene has been loaded to get data
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
 
-		// Attention: Load scene is loaded at an different frame, so after that camera, etc is not available, use EventDataSceneChanged event to get data
-		if (false == this->currentSceneName.empty())
-		{
-			NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->loadScene(this->currentSceneName);
-		}
-		else
-		{
-			// If no scene name specified, just call start and set default parameter
-			NOWA::SceneParameter sceneParameter;
-			sceneParameter.sceneManager = this->sceneManager;
-			sceneParameter.dotSceneImportModule = nullptr;
-			sceneParameter.mainCamera = this->camera;
-			// User must created manually if want to use
-			sceneParameter.ogreNewt = nullptr;
+        // Attention: Load scene is loaded at an different frame, so after that camera, etc is not available, use EventDataSceneChanged event to get data
+        if (false == this->currentSceneName.empty())
+        {
+            NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->loadScene(this->currentSceneName);
+        }
+        else
+        {
+            // If no scene name specified, just call start and set default parameter
+            NOWA::SceneParameter sceneParameter;
+            sceneParameter.sceneManager = this->sceneManager;
+            sceneParameter.dotSceneImportModule = nullptr;
+            sceneParameter.mainCamera = this->camera;
+            // User must created manually if want to use
+            sceneParameter.ogreNewt = nullptr;
 
-			this->start(sceneParameter);
-		}
-	}
+            this->start(sceneParameter);
+        }
+    }
 
-	void AppState::exit(void)
-	{
-		this->canUpdate = false;
-		this->hasStarted = false;
+    void AppState::exit(void)
+    {
+        this->canUpdate = false;
+        this->hasStarted = false;
 
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
         // Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
         NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->stop();
         NOWA::AppStateManager::getSingletonPtr()->getScriptEventManager(this->appStateName)->destroyContent();
         NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->stopSimulation();
-		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
-		this->destroyModules();
-	}
+        NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
+        this->destroyModules();
+    }
 
-	void AppState::handleSceneLoaded(NOWA::EventDataPtr eventData)
-	{
-		boost::shared_ptr<NOWA::EventDataSceneLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataSceneLoaded>(eventData);
+    void AppState::handleSceneLoaded(NOWA::EventDataPtr eventData)
+    {
+        boost::shared_ptr<NOWA::EventDataSceneLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataSceneLoaded>(eventData);
 
-		this->sceneManager = castEventData->getSceneParameter().sceneManager;
-		this->camera = castEventData->getSceneParameter().mainCamera;
-		this->ogreNewt = castEventData->getSceneParameter().ogreNewt;
+        this->sceneManager = castEventData->getSceneParameter().sceneManager;
+        this->camera = castEventData->getSceneParameter().mainCamera;
+        this->ogreNewt = castEventData->getSceneParameter().ogreNewt;
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             // Start game
             NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->start();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::handleSceneLoaded");
 
-		// Set the start position for the player
-		NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->determinePlayerStartLocation(castEventData->getProjectParameter().sceneName);
-		// Activate player controller, so that user can move player
-		NOWA::GameObjectPtr player = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->getPlayerName());
-		if (nullptr != player)
-		{
-			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, player->getId(), true);
-		}
+        // Set the start position for the player
+        NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->determinePlayerStartLocation(castEventData->getProjectParameter().sceneName);
+        // Activate player controller, so that user can move player
+        NOWA::GameObjectPtr player = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->getPlayerName());
+        if (nullptr != player)
+        {
+            NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, player->getId(), true);
+        }
 
-		this->start(castEventData->getSceneParameter());
-	}
+        this->start(castEventData->getSceneParameter());
+    }
 
-	void AppState::destroy(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppState] Destroy");
-		delete this;
-	}
+    void AppState::destroy(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppState] Destroy");
+        delete this;
+    }
 
-	bool AppState::pause(void)
-	{
-		this->gameObjectController->pause();
-		// Remember the active workspace
-		this->workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-		this->canUpdate = false;
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppState] Pausing State...");
-		return true;
-	}
+    bool AppState::pause(void)
+    {
+        this->gameObjectController->pause();
+        // Remember the active workspace
+        this->workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+        this->canUpdate = false;
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppState] Pausing State...");
+        return true;
+    }
 
-	void AppState::resume(void)
-	{
-		// If there was an active workspace, set the workspace in order to continue rendering
-		if (nullptr != this->workspaceBaseComponent)
-		{
-			this->workspaceBaseComponent->createWorkspace();
-			WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->workspaceBaseComponent);
-		}
-		else
-		{
-			Ogre::String message = "[WorkspaceModule] Error: Cannot resume AppState there is no active workspace set!";
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, message + "\n", "NOWA");
-		}
-		this->canUpdate = true;
-		ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderProcess(FaderProcess::FadeOperation::FADE_IN, 2.5f)));
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppState] Resuming State...");
+    void AppState::resume(void)
+    {
+        // If there was an active workspace, set the workspace in order to continue rendering
+        if (nullptr != this->workspaceBaseComponent)
+        {
+            this->workspaceBaseComponent->createWorkspace();
+            WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->workspaceBaseComponent);
+        }
+        else
+        {
+            Ogre::String message = "[WorkspaceModule] Error: Cannot resume AppState there is no active workspace set!";
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, message + "\n", "NOWA");
+        }
+        this->canUpdate = true;
+        ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderProcess(FaderProcess::FadeOperation::FADE_IN, 2.5f)));
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppState] Resuming State...");
 
-// Attention: is this correct?
-		Core::getSingletonPtr()->setSceneManagerForMyGuiPlatform(this->sceneManager);
-		OgreALModule::getInstance()->init(this->sceneManager);
+        // Attention: is this correct?
+        Core::getSingletonPtr()->setSceneManagerForMyGuiPlatform(this->sceneManager);
+        OgreALModule::getInstance()->init(this->sceneManager);
 
-		this->bQuit = false;
-		this->gameObjectController->resume();
-	}
+        this->bQuit = false;
+        this->gameObjectController->resume();
+    }
 
-	void AppState::update(Ogre::Real dt)
-	{
-		if (true == this->canUpdate)
-		{
-			if (false == AppStateManager::getSingletonPtr()->bStall && false == this->gameProgressModule->bSceneLoading)
-			{
+    void AppState::update(Ogre::Real dt)
+    {
+        if (true == this->canUpdate)
+        {
+            if (false == AppStateManager::getSingletonPtr()->bStall && false == this->gameProgressModule->bSceneLoading)
+            {
                 bool isSimulating = this->gameObjectController->getIsSimulating();
 
                 if (true == isSimulating)
@@ -179,24 +190,24 @@ namespace NOWA
                     this->particleFxModule->update(dt);
                 }
 
-				// Update the GameObjects
+                // Update the GameObjects
                 this->gameObjectController->update(dt);
 
-				if (true == isSimulating)
+                if (true == isSimulating)
                 {
                     this->ogreNewtModule->update(dt);
                     this->cameraManager->moveCamera(dt);
                 }
-			}
-		}
+            }
+        }
 
-		if (true == this->bQuit)
-		{
-			this->shutdown();
-		}
-	}
+        if (true == this->bQuit)
+        {
+            this->shutdown();
+        }
+    }
 
-	void AppState::renderUpdate(Ogre::Real dt)
+    void AppState::renderUpdate(Ogre::Real dt)
     {
         bool isSimulating = this->gameObjectController->getIsSimulating();
         if (true == isSimulating)
@@ -205,89 +216,89 @@ namespace NOWA
         }
     }
 
-	AppState* AppState::findByName(Ogre::String stateName)
-	{
-		return this->appStateManager->findByName(stateName);
-	}
+    AppState* AppState::findByName(Ogre::String stateName)
+    {
+        return this->appStateManager->findByName(stateName);
+    }
 
-	AppState* AppState::getNextState(AppState* currentAppState)
-	{
-		return this->appStateManager->getNextState(currentAppState);
-	}
+    AppState* AppState::getNextState(AppState* currentAppState)
+    {
+        return this->appStateManager->getNextState(currentAppState);
+    }
 
-	void AppState::changeAppState(AppState* state)
-	{
-		this->bQuit = false;
-		this->appStateManager->changeAppState(state);
-	}
+    void AppState::changeAppState(AppState* state)
+    {
+        this->bQuit = false;
+        this->appStateManager->changeAppState(state);
+    }
 
-	bool AppState::pushAppState(AppState* state)
-	{
-		this->bQuit = false;
-		return this->appStateManager->pushAppState(state);
-	}
+    bool AppState::pushAppState(AppState* state)
+    {
+        this->bQuit = false;
+        return this->appStateManager->pushAppState(state);
+    }
 
-	void AppState::popAppState(void)
-	{
-		this->appStateManager->popAppState();
-	}
+    void AppState::popAppState(void)
+    {
+        this->appStateManager->popAppState();
+    }
 
-	void AppState::shutdown(void)
-	{
-		this->appStateManager->shutdown();
-	}
+    void AppState::shutdown(void)
+    {
+        this->appStateManager->shutdown();
+    }
 
-	void AppState::popAllAndPushAppState(AppState* state)
-	{
-		this->bQuit = false;
-		this->appStateManager->popAllAndPushAppState(state);
-	}
+    void AppState::popAllAndPushAppState(AppState* state)
+    {
+        this->bQuit = false;
+        this->appStateManager->popAllAndPushAppState(state);
+    }
 
-	Ogre::String AppState::getName(void) const
-	{
-		return this->appStateName;
-	}
+    Ogre::String AppState::getName(void) const
+    {
+        return this->appStateName;
+    }
 
-	AppStateListener* AppState::getAppStateManager(void) const
-	{
-		return this->appStateManager;
-	}
+    AppStateListener* AppState::getAppStateManager(void) const
+    {
+        return this->appStateManager;
+    }
 
-	void AppState::initializeModules(bool initSceneManager, bool initCamera)
-	{
-		bool canInitialize = true;
+    void AppState::initializeModules(bool initSceneManager, bool initCamera)
+    {
+        bool canInitialize = true;
 
-		if (nullptr == this->gameObjectController)
-		{
-			this->gameObjectController = new GameObjectController(this->appStateName);
-			this->gameProgressModule = new GameProgressModule(this->appStateName);
-			this->rakNetModule = new RakNetModule(this->appStateName);
-			this->miniMapModule = new MiniMapModule(this->appStateName);
-			this->ogreNewtModule = new OgreNewtModule(this->appStateName);
-			this->decalsModule = new DecalsModule(this->appStateName);
-			this->cameraManager = new CameraManager(this->appStateName);
-			this->ogreRecastModule = new OgreRecastModule(this->appStateName);
-			this->particleFxModule = new ParticleFxModule(this->appStateName);
-			this->luaScriptModule = new LuaScriptModule(this->appStateName);
-			this->eventManager = new EventManager(this->appStateName);
-			this->scriptEventManager = new ScriptEventManager(this->appStateName);
-		}
+        if (nullptr == this->gameObjectController)
+        {
+            this->gameObjectController = new GameObjectController(this->appStateName);
+            this->gameProgressModule = new GameProgressModule(this->appStateName);
+            this->rakNetModule = new RakNetModule(this->appStateName);
+            this->miniMapModule = new MiniMapModule(this->appStateName);
+            this->ogreNewtModule = new OgreNewtModule(this->appStateName);
+            this->decalsModule = new DecalsModule(this->appStateName);
+            this->cameraManager = new CameraManager(this->appStateName);
+            this->ogreRecastModule = new OgreRecastModule(this->appStateName);
+            this->particleFxModule = new ParticleFxModule(this->appStateName);
+            this->luaScriptModule = new LuaScriptModule(this->appStateName);
+            this->eventManager = new EventManager(this->appStateName);
+            this->scriptEventManager = new ScriptEventManager(this->appStateName);
+        }
 
-		if (true == initSceneManager)
-		{
-			// http://www.ogre3d.org/2016/01/01/ogre-progress-report-december-2015
-			// Longer loading times, but faster, test it
-			// Ogre::v1::Mesh::msOptimizeForShadowMapping = true;
-			// constexpr size_t numThreads = 1;
+        if (true == initSceneManager)
+        {
+            // http://www.ogre3d.org/2016/01/01/ogre-progress-report-december-2015
+            // Longer loading times, but faster, test it
+            // Ogre::v1::Mesh::msOptimizeForShadowMapping = true;
+            // constexpr size_t numThreads = 1;
 #if OGRE_DEBUG_MODE
-		//Debugging multithreaded code is a PITA, disable it.
-			const size_t numThreads = 1;
+            // Debugging multithreaded code is a PITA, disable it.
+            const size_t numThreads = 1;
 #else
-		//getNumLogicalCores() may return 0 if couldn't detect
-			const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
+            // getNumLogicalCores() may return 0 if couldn't detect
+            const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
 #endif
 
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, numThreads]()
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, numThreads]()
             {
                 // Loads textures in background in multiple threads
                 Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
@@ -296,13 +307,12 @@ namespace NOWA
                 // Create the SceneManager, in this case a generic one
                 this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, this->appStateName + "_SceneManager");
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[AppState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
-
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::initializeModules sceneManager");
-		}
+        }
 
-		if (true == initCamera)
-		{
+        if (true == initCamera)
+        {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->camera = this->sceneManager->createCamera(this->appStateName + "_Camera");
@@ -320,24 +330,24 @@ namespace NOWA
                 this->cameraManager->setActiveCameraBehavior(this->camera, baseCamera->getBehaviorType());
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::initializeModules camera");
-		}
+        }
 
-		if (nullptr == this->sceneManager)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState]: Could not initialize modules, because the scene manager is null.");
-			canInitialize = false;
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[AppState] Could not initialize modules, because the scene manager is null.\n", "NOWA");
-		}
-		
-		if (nullptr == this->camera)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState]: Could not initialize modules, because the camera is null.");
-			canInitialize = false;
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[AppState] Could not initialize modules, because the camera is null.\n", "NOWA");
-		}
-			
-		if (true == canInitialize)
-		{
+        if (nullptr == this->sceneManager)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState]: Could not initialize modules, because the scene manager is null.");
+            canInitialize = false;
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[AppState] Could not initialize modules, because the scene manager is null.\n", "NOWA");
+        }
+
+        if (nullptr == this->camera)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState]: Could not initialize modules, because the camera is null.");
+            canInitialize = false;
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[AppState] Could not initialize modules, because the camera is null.\n", "NOWA");
+        }
+
+        if (true == canInitialize)
+        {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 Core::getSingletonPtr()->setSceneManagerForMyGuiPlatform(this->sceneManager);
@@ -381,7 +391,7 @@ namespace NOWA
                 this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_GIZMO, Ogre::RenderQueue::Modes::FAST);
                 this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_GIZMO, sortMode);
 
-				// MyGUI's Ogre2RenderManager already sets this queue to FAST + DisableSort
+                // MyGUI's Ogre2RenderManager already sets this queue to FAST + DisableSort
                 // internally (see setSceneManager(), called via setSceneManagerForMyGuiPlatform
                 // above). Repeated here explicitly so this file stays the single source of
                 // truth for every queue's mode and doesn't rely on init-order luck.
@@ -403,92 +413,92 @@ namespace NOWA
                 OgreALModule::getInstance()->init(this->sceneManager);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::initializeModules renderqueue and init");
-		}
-	}
+        }
+    }
 
-	void AppState::destroyModules(void)
-	{
-		bool canDestroy = true;
-		if (nullptr == this->sceneManager)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState]: Could not destroy modules, because the scene manager is null");
-			canDestroy = false;
-		}
+    void AppState::destroyModules(void)
+    {
+        bool canDestroy = true;
+        if (nullptr == this->sceneManager)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState]: Could not destroy modules, because the scene manager is null");
+            canDestroy = false;
+        }
 
-		if (true == canDestroy)
-		{
-			// Internally destroys all datablocks and movable objects (lines)
-			this->ogreNewtModule->showOgreNewtCollisionLines(false);
+        if (true == canDestroy)
+        {
+            // Internally destroys all datablocks and movable objects (lines)
+            this->ogreNewtModule->showOgreNewtCollisionLines(false);
 
-			this->gameObjectController->destroyContent();
-			delete this->gameObjectController;
-			this->gameObjectController = nullptr;
+            this->gameObjectController->destroyContent();
+            delete this->gameObjectController;
+            this->gameObjectController = nullptr;
 
-			this->cameraManager->destroyContent();
-			delete this->cameraManager;
-			this->cameraManager = nullptr;
+            this->cameraManager->destroyContent();
+            delete this->cameraManager;
+            this->cameraManager = nullptr;
 
-			this->ogreRecastModule->destroyContent();
-			delete this->ogreRecastModule;
-			this->ogreRecastModule = nullptr;
+            this->ogreRecastModule->destroyContent();
+            delete this->ogreRecastModule;
+            this->ogreRecastModule = nullptr;
 
-			this->particleFxModule->destroyContent();
-			delete this->particleFxModule;
-			this->particleFxModule = nullptr;
+            this->particleFxModule->destroyContent();
+            delete this->particleFxModule;
+            this->particleFxModule = nullptr;
 
-			this->gameProgressModule->destroyContent();
-			delete this->gameProgressModule;
-			this->gameProgressModule = nullptr;
+            this->gameProgressModule->destroyContent();
+            delete this->gameProgressModule;
+            this->gameProgressModule = nullptr;
 
-			this->miniMapModule->destroyContent();
-			delete this->miniMapModule;
-			this->miniMapModule = nullptr;
+            this->miniMapModule->destroyContent();
+            delete this->miniMapModule;
+            this->miniMapModule = nullptr;
 
-			delete this->decalsModule;
-			this->decalsModule = nullptr;
+            delete this->decalsModule;
+            this->decalsModule = nullptr;
 
-			// Destroy all scripts for just this AppState
-			this->luaScriptModule->destroyContent();
-			delete this->luaScriptModule;
-			this->luaScriptModule = nullptr;
+            // Destroy all scripts for just this AppState
+            this->luaScriptModule->destroyContent();
+            delete this->luaScriptModule;
+            this->luaScriptModule = nullptr;
 
-			if (nullptr != this->rakNetModule)
-			{
-				this->rakNetModule->destroyContent();
-				delete this->rakNetModule;
-				this->rakNetModule = nullptr;
-			}
+            if (nullptr != this->rakNetModule)
+            {
+                this->rakNetModule->destroyContent();
+                delete this->rakNetModule;
+                this->rakNetModule = nullptr;
+            }
 
-			WorkspaceModule::getInstance()->destroyContent();
+            WorkspaceModule::getInstance()->destroyContent();
 
-			// If another states continues, do not destroy sounds
-			if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 1)
-			{
-				OgreALModule::getInstance()->destroySounds(this->sceneManager);
-			}
-			else
-			{
-				OgreALModule::getInstance()->destroyContent();
-			}
+            // If another states continues, do not destroy sounds
+            if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 1)
+            {
+                OgreALModule::getInstance()->destroySounds(this->sceneManager);
+            }
+            else
+            {
+                OgreALModule::getInstance()->destroyContent();
+            }
 
-			Core::getSingletonPtr()->destroyScene(this->sceneManager);
+            Core::getSingletonPtr()->destroyScene(this->sceneManager);
 
-			delete this->eventManager;
-			this->eventManager = nullptr;
+            delete this->eventManager;
+            this->eventManager = nullptr;
 
-			this->scriptEventManager->destroyContent();
-			delete this->scriptEventManager;
-			this->scriptEventManager = nullptr;
-		}
+            this->scriptEventManager->destroyContent();
+            delete this->scriptEventManager;
+            this->scriptEventManager = nullptr;
+        }
 
-		this->ogreNewtModule->destroyContent();
-		delete this->ogreNewtModule;
-		this->ogreNewtModule = nullptr;
-	}
+        this->ogreNewtModule->destroyContent();
+        delete this->ogreNewtModule;
+        this->ogreNewtModule = nullptr;
+    }
 
-	bool AppState::getHasStarted(void) const
-	{
-		return this->hasStarted;
-	}
+    bool AppState::getHasStarted(void) const
+    {
+        return this->hasStarted;
+    }
 
 }; // namespace end

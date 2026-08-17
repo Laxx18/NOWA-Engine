@@ -49,9 +49,13 @@
 #include "Detour/DetourNavMeshBuilder.h"
 #include "Detour/DetourNavMeshQuery.h"
 
-#define MAX_PATHSLOT      128 // how many paths we can store
-#define MAX_PATHPOLY      2048 // max number of polygons in a path
-#define MAX_PATHVERT      4096 // most verts in a path 
+#define MAX_PATHSLOT      128   // how many paths we can store
+#define MAX_PATHPOLY      8192  // max number of polygons in a path (was 2048 — too small for large/winding mazes)
+#define MAX_PATHVERT      4096  // max verts in a straight path
+// Node pool size for the A* search. 2048 is the Recast-demo default and is
+// too small for a large maze with many dead ends / long detours — the
+// search runs out of nodes (DT_OUT_OF_NODES) before it reaches the goal.
+#define NAV_QUERY_MAX_NODES 16384
 
 // structure for storing output straight line paths
 typedef struct

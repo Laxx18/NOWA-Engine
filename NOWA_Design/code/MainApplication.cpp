@@ -16,17 +16,17 @@ MainApplication::MainApplication()
 MainApplication::~MainApplication()
 {
 	// Applictation state manager must always be deleted before core will be deleted in order to avoid ugly side effects
-	if (NOWA::AppStateManager::getSingletonPtr())
-	{
-		// delete core singleton
-		delete NOWA::AppStateManager::getSingletonPtr();
-	}
-	if (NOWA::Core::getSingletonPtr())
-	{
-		// delete core singleton
-		delete NOWA::Core::getSingletonPtr();
-	}
-	NOWA::GraphicsModule::getInstance()->doCleanup();
+    if (NOWA::AppStateManager::getSingletonPtr())
+    {
+        delete NOWA::AppStateManager::getSingletonPtr();
+    }
+
+    NOWA::GraphicsModule::getInstance()->doCleanup();
+
+    if (NOWA::Core::getSingletonPtr())
+    {
+        delete NOWA::Core::getSingletonPtr();
+    }
 }
 
 void MainApplication::startSimulation(const Ogre::String& configName)

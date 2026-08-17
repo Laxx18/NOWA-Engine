@@ -51,6 +51,13 @@ namespace OgreNewt
             Ogre::Real springConst;
             Ogre::Real springDamp;
 
+            Ogre::Real maxSteeringAngleDeg;
+            Ogre::Real brakeTorque;
+            Ogre::Real handBrakeTorque;
+            Ogre::Real suspensionLowerStop;
+            Ogre::Real suspensionUpperStop;
+            Ogre::Real regularizer;
+
             TireConfiguration() :
                 tireSide(tsTireSideA),
                 tireSteer(tsNoSteer),
@@ -62,7 +69,13 @@ namespace OgreNewt
                 springLength(0.2f),
                 smass(50.0f),
                 springConst(200.0f),
-                springDamp(12.0f)
+                springDamp(12.0f),
+                maxSteeringAngleDeg(35.0f),
+                brakeTorque(1500.0f),
+                handBrakeTorque(1500.0f),
+                suspensionLowerStop(-0.05f),
+                suspensionUpperStop(0.2f),
+                regularizer(0.025f)
             {
             }
         };
@@ -133,6 +146,22 @@ namespace OgreNewt
         void setSpringDamp(Ogre::Real springDamp);
         Ogre::Real getSpringDamp(void) const;
 
+        void setMaxSteeringAngleDeg(Ogre::Real angleDeg);
+        Ogre::Real getMaxSteeringAngleDeg(void) const;
+
+        void setBrakeTorque(Ogre::Real torque);
+        Ogre::Real getBrakeTorque(void) const;
+
+        void setHandBrakeTorque(Ogre::Real torque);
+        Ogre::Real getHandBrakeTorque(void) const;
+
+        void setSuspensionStops(Ogre::Real lowerStop, Ogre::Real upperStop);
+        Ogre::Real getSuspensionLowerStop(void) const;
+        Ogre::Real getSuspensionUpperStop(void) const;
+
+        void setRegularizer(Ogre::Real regularizer);
+        Ogre::Real getRegularizer(void) const;
+
         const TireConfiguration& getTireConfiguration(void) const
         {
             return m_tireConfiguration;
@@ -192,7 +221,8 @@ namespace OgreNewt
         }
 
         // Helper: build ND4 joint info for this tire (uses local frame and configuration)
-        ndMultiBodyVehicleTireJointInfo buildJointInfo(void) const;
+        ndWheelDescriptor buildJointInfo(void) const;
+
     private:
         ComplexVehicle* m_complexVehicle;
         Axle m_axle;
@@ -300,6 +330,7 @@ namespace OgreNewt
 
         // Engine / motor helpers
         void createMotor(Ogre::Real mass, Ogre::Real radius);
+        void applyMotorCurve(void);
         void setMotorMaxRpm(Ogre::Real rpm);
         void setMotorOmegaAccel(Ogre::Real rpmPerSec);
         void setMotorFrictionLoss(Ogre::Real newtonMeters);

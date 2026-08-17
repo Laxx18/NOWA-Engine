@@ -298,6 +298,7 @@ namespace NOWA
 		bool logicFrameFinished = false;
 		moodycamel::ConcurrentQueue<LogicCommand> queue;
 		std::atomic<std::thread::id> logicThreadId;
+        std::atomic<bool> logicQueueServiced{false};
 	};
 
 }; // namespace end

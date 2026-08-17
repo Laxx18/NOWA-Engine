@@ -16,12 +16,13 @@ MainApplication::MainApplication()
 
 MainApplication::~MainApplication()
 {
-	NOWA::GraphicsModule::getInstance()->doCleanup();
-	
 	if (NOWA::AppStateManager::getSingletonPtr())
 	{
 		delete NOWA::AppStateManager::getSingletonPtr();
 	}
+
+	NOWA::GraphicsModule::getInstance()->doCleanup();
+
 	if (NOWA::Core::getSingletonPtr())
 	{
 		delete NOWA::Core::getSingletonPtr();

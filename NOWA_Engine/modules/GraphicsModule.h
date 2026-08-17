@@ -3,16 +3,16 @@
 
 #include "defines.h"
 
-#include <functional>
-#include <mutex>
-#include <future>
-#include <chrono>
+#include <array>
 #include <atomic>
+#include <chrono>
+#include <deque>
+#include <functional>
+#include <future>
+#include <mutex>
+#include <thread>
 #include <unordered_map>
 #include <vector>
-#include <deque>
-#include <array>
-#include <thread>
 
 #include "MyGUI_InputManager.h"
 
@@ -29,6 +29,13 @@ namespace NOWA
         inline thread_local int g_renderCommandDepth;
         inline thread_local int g_waitDepth;
         inline thread_local bool g_inLogicCommand = false;
+
+        // Attention: this replaces the former GraphicsModule::isRunningWaitClosure member.
+        // The flag means "THIS thread is currently blocked inside an enqueueAndWait", which is
+        // per-thread state by definition. As a member it was written by the render thread
+        // (processAllCommands cleared it after every command) while the logic thread still
+        // relied on it, which silently defeated the destroy-deferral in enqueueDestroy().
+        inline thread_local bool g_insideWaitClosure = false;
     }
 
     /*
@@ -415,12 +422,12 @@ namespace NOWA
 
             ClosureCommand() = default;
 
-            ClosureCommand(const Ogre::String& name, std::function<void(Ogre::Real)> func, bool fireForget = true, bool update = false, bool removal = false)
-                : uniqueName(name)
-                , closureFunc(std::move(func))
-                , fireAndForget(fireForget)
-                , isUpdate(update)
-                , isRemoval(removal)
+            ClosureCommand(const Ogre::String& name, std::function<void(Ogre::Real)> func, bool fireForget = true, bool update = false, bool removal = false) :
+                uniqueName(name),
+                closureFunc(std::move(func)),
+                fireAndForget(fireForget),
+                isUpdate(update),
+                isRemoval(removal)
             {
             }
         };
@@ -434,8 +441,7 @@ namespace NOWA
 
             PersistentClosure() = default;
 
-            PersistentClosure(const Ogre::String& name, std::function<void(Ogre::Real)> func)
-                : uniqueName(name), closureFunc(std::move(func))
+            PersistentClosure(const Ogre::String& name, std::function<void(Ogre::Real)> func) : uniqueName(name), closureFunc(std::move(func))
             {
             }
         };
@@ -454,6 +460,8 @@ namespace NOWA
         };
 
     public:
+        void beginShutdownDrain(void);
+
         void beginWorkspaceTransition(void);
 
         void endWorkspaceTransition(void);
@@ -482,17 +490,35 @@ namespace NOWA
 
         template <typename T> T enqueueAndWaitWithResult(std::function<T()> command, const char* commandName)
         {
-            // ── Render-thread re-entrancy: execute directly to prevent deadlock ───
-            // This is the only real re-entrancy scenario: a command running on the
-            // render thread calls back into the queue system. Executing directly
-            // bypasses the queue and avoids "render thread waits for itself".
-            // All other nesting scenarios are impossible: the logic thread blocks
-            // immediately on future.wait(), so waitDepth can never exceed 1 on it.
-            if (this->isRenderThread())
+            // Attention: g_insideWaitClosure is thread_local and must be saved and restored,
+            // never blindly cleared on exit, so that a nested call cannot clear it while the
+            // outer call is still running.
+            const bool previousInsideWaitClosure = RenderGlobals::g_insideWaitClosure;
+
+            // -- Inline execution paths ----------------------------------------------------
+            // 1) We ARE the render thread. Enqueueing to ourselves and then waiting for
+            //    ourselves is a guaranteed self-deadlock. The thread identity decides this,
+            //    NOT g_renderCommandDepth: a closure, a MyGUI callback or an Ogre listener
+            //    runs on the render thread with depth 0 and must still take this path.
+            // 2) There is no render thread (not started yet, or already joined). Note this
+            //    checks renderThreadAlive and NOT bRunning: between stopRendering() and the
+            //    render thread actually returning it still drains the queue and touches the
+            //    device, so inline execution on a foreign thread would be a data race.
+            const bool isOnRenderThread = this->isRenderThread();
+            const bool hasNoConsumer = (false == this->renderThreadAlive.load(std::memory_order_acquire));
+
+            if (true == isOnRenderThread || true == hasNoConsumer)
             {
                 try
                 {
-                    this->logCommandEvent(std::string("Executing '") + commandName + "' directly on render thread (re-entrant)", Ogre::LML_TRIVIAL);
+                    if (true == isOnRenderThread)
+                    {
+                        this->logCommandEvent(std::string("Executing '") + commandName + "' directly on render thread (re-entrant)", Ogre::LML_TRIVIAL);
+                    }
+                    else
+                    {
+                        this->logCommandEvent(std::string("Executing '") + commandName + "' inline, because there is no render thread", Ogre::LML_NORMAL);
+                    }
                     return command();
                 }
                 catch (const std::exception& e)
@@ -507,10 +533,10 @@ namespace NOWA
                 }
             }
 
-            // ── Logic-thread path ─────────────────────────────────────────────────
+            // -- Logic-thread path ---------------------------------------------------------
             // Mark so enqueueDestroy() defers instead of pushing into the ring-buffer
             // while we are blocked below (mirrors enqueueAndWait behaviour).
-            this->isRunningWaitClosure = true;
+            RenderGlobals::g_insideWaitClosure = true;
 
             try
             {
@@ -535,30 +561,75 @@ namespace NOWA
                     },
                     commandName);
 
-                // Spin-wait: same pattern as enqueueAndWait — yields the CPU slice
-                // rather than hard-blocking, consistent with the rest of the queue system.
-                if (this->isTimeoutEnabled())
+                // Attention: never wait unbounded, not even when the timeout is disabled, and
+                // never call future.get() without knowing the future is ready - get() blocks
+                // forever otherwise. We poll in slices so a render thread that dies or stops
+                // servicing the queue while we wait cannot hang this thread.
+                const std::chrono::milliseconds sliceDuration(1);
+                const auto waitStart = std::chrono::steady_clock::now();
+                const bool timeoutIsEnabled = this->isTimeoutEnabled();
+                const auto timeoutValue = this->getTimeoutDuration();
+
+                bool isReady = false;
+                bool hasGivenUp = false;
+
+                while (false == isReady && false == hasGivenUp)
                 {
-                    auto timeout = this->getTimeoutDuration();
-                    if (future.wait_for(timeout) == std::future_status::timeout)
+                    if (std::future_status::ready == future.wait_for(sliceDuration))
                     {
-                        this->logCommandEvent(std::string("Timeout waiting for '") + commandName + "'", Ogre::LML_CRITICAL);
-                        this->processQueueSync(); // attempt recovery
+                        isReady = true;
+                        break;
                     }
-                }
-                else
-                {
-                    while (future.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready)
+
+                    if (false == this->renderThreadAlive.load(std::memory_order_acquire))
                     {
-                        std::this_thread::yield();
+                        this->logCommandEvent(std::string("Render thread ended while waiting for '") + commandName + "', draining queue on this thread", Ogre::LML_CRITICAL);
+                        this->processQueueSync();
+                        hasGivenUp = true;
+                        break;
+                    }
+
+                    if (true == timeoutIsEnabled)
+                    {
+                        if ((std::chrono::steady_clock::now() - waitStart) >= timeoutValue)
+                        {
+                            // Attention: do NOT drain the queue here. The render thread is still
+                            // alive, it is just slow or blocked, and touching the device from
+                            // this thread would make things much worse.
+                            this->logCommandEvent(std::string("Timeout waiting for '") + commandName + "'. The render thread is alive but did not service the queue in time", Ogre::LML_CRITICAL);
+                            hasGivenUp = true;
+                            break;
+                        }
+                    }
+
+                    std::this_thread::yield();
+                }
+
+                if (false == isReady)
+                {
+                    if (std::future_status::ready == future.wait_for(sliceDuration))
+                    {
+                        isReady = true;
                     }
                 }
 
-                // future is guaranteed ready here — get() will not block.
+                if (false == isReady)
+                {
+                    // Hard correctness problem: the command never ran, so there is no result.
+                    // Returning a default value is the least bad option - blocking here would
+                    // hang the engine, and the log entry makes the cause visible.
+                    this->logCommandEvent(std::string("Command '") + commandName + "' was NOT executed, returning a default constructed result", Ogre::LML_CRITICAL);
+
+                    this->flushDeferredDestroyCommands();
+                    RenderGlobals::g_insideWaitClosure = previousInsideWaitClosure;
+                    return T{};
+                }
+
+                // future is guaranteed ready here - get() will not block.
                 T result = future.get(); // also rethrows any exception set by the render thread
 
                 this->flushDeferredDestroyCommands(); // flush anything deferred during the wait
-                this->isRunningWaitClosure = false;
+                RenderGlobals::g_insideWaitClosure = previousInsideWaitClosure;
 
                 this->logCommandEvent(std::string("'") + commandName + "' completed with result", Ogre::LML_TRIVIAL);
 
@@ -567,7 +638,7 @@ namespace NOWA
             catch (...)
             {
                 this->flushDeferredDestroyCommands(); // flush even on exception
-                this->isRunningWaitClosure = false;
+                RenderGlobals::g_insideWaitClosure = previousInsideWaitClosure;
                 throw;
             }
         }
@@ -953,12 +1024,17 @@ namespace NOWA
                 return;
             }
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-                "[GraphicsModule] Flushing " + Ogre::StringConverter::toString(this->deferredDestroyCommands.size()) + " deferred destroy commands into slot " + Ogre::StringConverter::toString(this->currentDestroySlot));
+            const size_t destroySlot = this->currentDestroySlot.load(std::memory_order_acquire);
 
-            for (const auto& [cmd, name] : this->deferredDestroyCommands)
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+                "[GraphicsModule] Flushing " + Ogre::StringConverter::toString(this->deferredDestroyCommands.size()) + " deferred destroy commands into slot " + Ogre::StringConverter::toString(destroySlot));
+
+            // Attention: the binding must NOT be const. std::move() on a const reference
+            // silently decays to a copy, which meant every deferred destroy command
+            // (and everything it captured) was copied instead of moved.
+            for (auto& [cmd, name] : this->deferredDestroyCommands)
             {
-                this->destroySlots[this->currentDestroySlot].emplace_back(std::move(cmd));
+                this->destroySlots[destroySlot].emplace_back(std::move(cmd));
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GraphicsModule] Flushed deferred destroy: " + name);
             }
 
@@ -969,7 +1045,21 @@ namespace NOWA
 
     private:
         std::thread renderThread;
+
+        // Asks the render thread to leave its main loop. Attention: this does NOT mean the
+        // render thread is gone - afterwards it still drains the command queue, runs the
+        // deferred destroy slots and clears the pools. Never use this to decide whether
+        // executing a render command inline on a foreign thread is safe.
         std::atomic<bool> bRunning{false};
+
+        // Set by beginShutdownDrain(): the render thread stops rendering but keeps servicing
+        // the command queue, so the logic-side teardown can still use enqueueAndWait().
+        std::atomic<bool> shutdownDrain{false};
+
+        // True from startRendering() until renderThreadFunction() has really returned (and is
+        // cleared again after join() in doCleanup()). THIS is the flag that decides whether a
+        // foreign thread may execute a render command inline - see enqueueAndWait().
+        std::atomic<bool> renderThreadAlive{false};
 
         std::atomic<bool> workspaceTransitionInProgress{false};
 
@@ -1084,7 +1174,6 @@ namespace NOWA
 
         std::atomic<size_t> currentDestroySlot;
         std::array<std::vector<DestroyCommand>, NUM_DESTROY_SLOTS> destroySlots;
-        std::atomic<bool> isRunningWaitClosure;
 
         // Destroy commands that arrived while a wait closure was in flight.
         // Written and read exclusively on the logic thread — no lock needed.
@@ -1115,14 +1204,15 @@ namespace NOWA
 #define _16(var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16) var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16
 #define _17(var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16, var17) var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16, var17
 #define _18(var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16, var17, var18) var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16, var17, var18
-#define _19(var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16, var17, var18, var19) var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16, var17, var18, var19
+#define _19(var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16, var17, var18, var19)                                                                                                                  \
+    var1, var2, var3, var4, var5, var6, var7, var8, var9, var10, var11, var12, var13, var14, var15, var16, var17, var18, var19
 
 /*
-* Info:
-* For non-blocking commands, the logic is a bit different since these macros are not waiting for a promise to resolve. 
-* However, to ensure safety and correctness, it's still beneficial to check if we're already on the render thread and execute the command immediately, 
-* as in the previous case. This would avoid unnecessary queuing and improve performance if the logic is already running on the render thread.
-*/
+ * Info:
+ * For non-blocking commands, the logic is a bit different since these macros are not waiting for a promise to resolve.
+ * However, to ensure safety and correctness, it's still beneficial to check if we're already on the render thread and execute the command immediately,
+ * as in the previous case. This would avoid unnecessary queuing and improve performance if the logic is already running on the render thread.
+ */
 //
 ///* Example usage:
 //* 		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Class::yourFunctionForDebugLogging", _2(position, rotation), {
@@ -1152,7 +1242,7 @@ namespace NOWA
 //
 ///*
 //*  Note about blocking, wait (promise):
-//* 
+//*
 //* - Immediate execution when already on the render thread.
 //* - Queued + waited execution when on any other thread.
 //* - Nested safety by design (no deadlock).
@@ -1160,7 +1250,7 @@ namespace NOWA
 //*/
 //
 
- /**
+/**
  * Example Usage:
  * ENQUEUE_RENDER_COMMAND_MULTI_WAIT("", _6(name, templateName, playTimeMS, orientation, position, scale),
  *  {
@@ -1170,176 +1260,177 @@ namespace NOWA
  * It will block this code til finished on render thread and then the logic thread goes on
  */
 
-#define ENQUEUE_RENDER_COMMAND_WAIT(command_name, lambda_body) \
-{ \
-    NOWA::GraphicsModule::RenderCommand renderCommand = [this]() { \
-        try { \
-            lambda_body \
-        } catch (const std::exception& e) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Exception in command '") + command_name + "': " + e.what(), \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } catch (...) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Unknown exception in command '") + command_name + "'", \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } \
-    }; \
-    \
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), command_name); \
-}
+#define ENQUEUE_RENDER_COMMAND_WAIT(command_name, lambda_body)                                                                                                                                                                                           \
+    {                                                                                                                                                                                                                                                    \
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()                                                                                                                                                                                     \
+        {                                                                                                                                                                                                                                                \
+            try                                                                                                                                                                                                                                          \
+            {                                                                                                                                                                                                                                            \
+                lambda_body                                                                                                                                                                                                                              \
+            }                                                                                                                                                                                                                                            \
+            catch (const std::exception& e)                                                                                                                                                                                                              \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Exception in command '") + command_name + "': " + e.what(), Ogre::LML_CRITICAL);                                                                                      \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+            catch (...)                                                                                                                                                                                                                                  \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Unknown exception in command '") + command_name + "'", Ogre::LML_CRITICAL);                                                                                           \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+        };                                                                                                                                                                                                                                               \
+                                                                                                                                                                                                                                                         \
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), command_name);                                                                                                                                                     \
+    }
 
- // Multi-capture wait macro with timeout, logging, and depth tracking
-#define ENQUEUE_RENDER_COMMAND_MULTI_WAIT(command_name, capture_macro, lambda_body) \
-{ \
-    NOWA::GraphicsModule::RenderCommand renderCommand = [this, capture_macro]() { \
-        try { \
-            lambda_body \
-        } catch (const std::exception& e) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Exception in command '") + command_name + "': " + e.what(), \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } catch (...) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Unknown exception in command '") + command_name + "'", \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } \
-    }; \
-    \
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), command_name); \
-}
+// Multi-capture wait macro with timeout, logging, and depth tracking
+#define ENQUEUE_RENDER_COMMAND_MULTI_WAIT(command_name, capture_macro, lambda_body)                                                                                                                                                                      \
+    {                                                                                                                                                                                                                                                    \
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, capture_macro]()                                                                                                                                                                      \
+        {                                                                                                                                                                                                                                                \
+            try                                                                                                                                                                                                                                          \
+            {                                                                                                                                                                                                                                            \
+                lambda_body                                                                                                                                                                                                                              \
+            }                                                                                                                                                                                                                                            \
+            catch (const std::exception& e)                                                                                                                                                                                                              \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Exception in command '") + command_name + "': " + e.what(), Ogre::LML_CRITICAL);                                                                                      \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+            catch (...)                                                                                                                                                                                                                                  \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Unknown exception in command '") + command_name + "'", Ogre::LML_CRITICAL);                                                                                           \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+        };                                                                                                                                                                                                                                               \
+                                                                                                                                                                                                                                                         \
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), command_name);                                                                                                                                                     \
+    }
 
 // Non-waiting command macros (for completeness)
-#define ENQUEUE_RENDER_COMMAND(command_name, lambda_body) \
-{ \
-    NOWA::GraphicsModule::RenderCommand renderCommand = [this]() { \
-        try { \
-            lambda_body \
-        } catch (const std::exception& e) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Exception in command '") + command_name + "': " + e.what(), \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } catch (...) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Unknown exception in command '") + command_name + "'", \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } \
-    }; \
-    \
-    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), command_name); \
-}
+#define ENQUEUE_RENDER_COMMAND(command_name, lambda_body)                                                                                                                                                                                                \
+    {                                                                                                                                                                                                                                                    \
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()                                                                                                                                                                                     \
+        {                                                                                                                                                                                                                                                \
+            try                                                                                                                                                                                                                                          \
+            {                                                                                                                                                                                                                                            \
+                lambda_body                                                                                                                                                                                                                              \
+            }                                                                                                                                                                                                                                            \
+            catch (const std::exception& e)                                                                                                                                                                                                              \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Exception in command '") + command_name + "': " + e.what(), Ogre::LML_CRITICAL);                                                                                      \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+            catch (...)                                                                                                                                                                                                                                  \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Unknown exception in command '") + command_name + "'", Ogre::LML_CRITICAL);                                                                                           \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+        };                                                                                                                                                                                                                                               \
+                                                                                                                                                                                                                                                         \
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), command_name);                                                                                                                                                            \
+    }
 
-
-#define ENQUEUE_RENDER_COMMAND_MULTI(command_name, capture_macro, lambda_body) \
-{ \
-    NOWA::GraphicsModule::RenderCommand renderCommand = [this, capture_macro]() { \
-        try { \
-            lambda_body \
-        } catch (const std::exception& e) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Exception in command '") + command_name + "': " + e.what(), \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } catch (...) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Unknown exception in command '") + command_name + "'", \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } \
-    }; \
-    \
-    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), command_name); \
-}
+#define ENQUEUE_RENDER_COMMAND_MULTI(command_name, capture_macro, lambda_body)                                                                                                                                                                           \
+    {                                                                                                                                                                                                                                                    \
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, capture_macro]()                                                                                                                                                                      \
+        {                                                                                                                                                                                                                                                \
+            try                                                                                                                                                                                                                                          \
+            {                                                                                                                                                                                                                                            \
+                lambda_body                                                                                                                                                                                                                              \
+            }                                                                                                                                                                                                                                            \
+            catch (const std::exception& e)                                                                                                                                                                                                              \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Exception in command '") + command_name + "': " + e.what(), Ogre::LML_CRITICAL);                                                                                      \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+            catch (...)                                                                                                                                                                                                                                  \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Unknown exception in command '") + command_name + "'", Ogre::LML_CRITICAL);                                                                                           \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+        };                                                                                                                                                                                                                                               \
+                                                                                                                                                                                                                                                         \
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), command_name);                                                                                                                                                            \
+    }
 
 /////////////////No This//////////////////////////////////////////////////////
 
- // Multi-capture wait macro with timeout, logging, and depth tracking
-#define ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS(command_name, capture_macro, lambda_body) \
-{ \
-    NOWA::GraphicsModule::RenderCommand renderCommand = [capture_macro]() { \
-        try { \
-            lambda_body \
-        } catch (const std::exception& e) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Exception in command '") + command_name + "': " + e.what(), \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } catch (...) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Unknown exception in command '") + command_name + "'", \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } \
-    }; \
-    \
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), command_name); \
-}
+// Multi-capture wait macro with timeout, logging, and depth tracking
+#define ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS(command_name, capture_macro, lambda_body)                                                                                                                                                              \
+    {                                                                                                                                                                                                                                                    \
+        NOWA::GraphicsModule::RenderCommand renderCommand = [capture_macro]()                                                                                                                                                                            \
+        {                                                                                                                                                                                                                                                \
+            try                                                                                                                                                                                                                                          \
+            {                                                                                                                                                                                                                                            \
+                lambda_body                                                                                                                                                                                                                              \
+            }                                                                                                                                                                                                                                            \
+            catch (const std::exception& e)                                                                                                                                                                                                              \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Exception in command '") + command_name + "': " + e.what(), Ogre::LML_CRITICAL);                                                                                      \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+            catch (...)                                                                                                                                                                                                                                  \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Unknown exception in command '") + command_name + "'", Ogre::LML_CRITICAL);                                                                                           \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+        };                                                                                                                                                                                                                                               \
+                                                                                                                                                                                                                                                         \
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), command_name);                                                                                                                                                     \
+    }
 
-#define ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS(command_name, capture_macro, lambda_body) \
-{ \
-    NOWA::GraphicsModule::RenderCommand renderCommand = [capture_macro]() { \
-        try { \
-            lambda_body \
-        } catch (const std::exception& e) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Exception in command '") + command_name + "': " + e.what(), \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } catch (...) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Unknown exception in command '") + command_name + "'", \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } \
-    }; \
-    \
-    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), command_name); \
-}
+#define ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS(command_name, capture_macro, lambda_body)                                                                                                                                                                   \
+    {                                                                                                                                                                                                                                                    \
+        NOWA::GraphicsModule::RenderCommand renderCommand = [capture_macro]()                                                                                                                                                                            \
+        {                                                                                                                                                                                                                                                \
+            try                                                                                                                                                                                                                                          \
+            {                                                                                                                                                                                                                                            \
+                lambda_body                                                                                                                                                                                                                              \
+            }                                                                                                                                                                                                                                            \
+            catch (const std::exception& e)                                                                                                                                                                                                              \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Exception in command '") + command_name + "': " + e.what(), Ogre::LML_CRITICAL);                                                                                      \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+            catch (...)                                                                                                                                                                                                                                  \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Unknown exception in command '") + command_name + "'", Ogre::LML_CRITICAL);                                                                                           \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+        };                                                                                                                                                                                                                                               \
+                                                                                                                                                                                                                                                         \
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), command_name);                                                                                                                                                            \
+    }
 
-
-#define ENQUEUE_DESTROY_COMMAND(command_name, capture_macro, lambda_body) \
-{ \
-    NOWA::GraphicsModule::DestroyCommand destroyCommand = [capture_macro]() mutable { \
-        try { \
-            lambda_body \
-        } catch (const std::exception& e) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Exception in destroy command '") + command_name + "': " + e.what(), \
-                Ogre::LML_CRITICAL \
-            ); \
-            throw; /* Re-throw to propagate to the promise */ \
-        } catch (...) { \
-            NOWA::GraphicsModule::getInstance()->logCommandEvent( \
-                Ogre::String("Unknown exception in destroy command '") + command_name + "'", \
-                Ogre::LML_CRITICAL \
-            ); \
-        } \
-    }; \
-    \
-    auto* graphicsModule = NOWA::GraphicsModule::getInstance(); \
-    if (graphicsModule->isRenderThread()) { \
-        destroyCommand(); \
-    } else { \
-        graphicsModule->enqueueDestroy(destroyCommand, command_name); \
-    } \
-}
+#define ENQUEUE_DESTROY_COMMAND(command_name, capture_macro, lambda_body)                                                                                                                                                                                \
+    {                                                                                                                                                                                                                                                    \
+        NOWA::GraphicsModule::DestroyCommand destroyCommand = [capture_macro]() mutable                                                                                                                                                                  \
+        {                                                                                                                                                                                                                                                \
+            try                                                                                                                                                                                                                                          \
+            {                                                                                                                                                                                                                                            \
+                lambda_body                                                                                                                                                                                                                              \
+            }                                                                                                                                                                                                                                            \
+            catch (const std::exception& e)                                                                                                                                                                                                              \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Exception in destroy command '") + command_name + "': " + e.what(), Ogre::LML_CRITICAL);                                                                              \
+                throw; /* Re-throw to propagate to the promise */                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                            \
+            catch (...)                                                                                                                                                                                                                                  \
+            {                                                                                                                                                                                                                                            \
+                NOWA::GraphicsModule::getInstance()->logCommandEvent(Ogre::String("Unknown exception in destroy command '") + command_name + "'", Ogre::LML_CRITICAL);                                                                                   \
+            }                                                                                                                                                                                                                                            \
+        };                                                                                                                                                                                                                                               \
+                                                                                                                                                                                                                                                         \
+        auto* graphicsModule = NOWA::GraphicsModule::getInstance();                                                                                                                                                                                      \
+        if (graphicsModule->isRenderThread())                                                                                                                                                                                                            \
+        {                                                                                                                                                                                                                                                \
+            destroyCommand();                                                                                                                                                                                                                            \
+        }                                                                                                                                                                                                                                                \
+        else                                                                                                                                                                                                                                             \
+        {                                                                                                                                                                                                                                                \
+            graphicsModule->enqueueDestroy(destroyCommand, command_name);                                                                                                                                                                                \
+        }                                                                                                                                                                                                                                                \
+    }
 
 #endif

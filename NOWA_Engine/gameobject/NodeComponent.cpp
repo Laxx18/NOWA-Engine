@@ -63,10 +63,11 @@ namespace NOWA
 		if (nullptr != dummyItem)
 		{
 			bool visible = this->show->getBool() && this->gameObjectPtr->isVisible();
-			ENQUEUE_RENDER_COMMAND_MULTI("NodeComponent::connect", _1(visible),
-			{
-				this->dummyItem->setVisible(visible);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]()
+            {
+                this->dummyItem->setVisible(visible);
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "NodeComponent::connect");
 		}
 
 		return true;
@@ -77,10 +78,11 @@ namespace NOWA
 		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->gameObjectPtr->isVisible();
-			ENQUEUE_RENDER_COMMAND_MULTI("NodeComponent::disconnect", _1(visible),
-			{
-				this->dummyItem->setVisible(visible);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]()
+            {
+                this->dummyItem->setVisible(visible);
+            };
+            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "NodeComponent::disconnect");
 		}
 		return true;
 	}

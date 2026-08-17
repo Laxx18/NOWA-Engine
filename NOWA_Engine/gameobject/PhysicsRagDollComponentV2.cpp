@@ -537,55 +537,11 @@ namespace NOWA
                     {
                         if (this->rdState == PhysicsRagDollComponentV2::ANIMATION)
                         {
-                            // ndBodyKinematic::IntegrateVelocity() advances the body by its CURRENT
-                            // velocity - it does NOT derive a velocity from a transform delta. So the
-                            // transform is written directly by applyModelStateToRagdoll() and the linear
-                            // velocity is computed from the frame delta around it. The contact solver
-                            // needs that velocity: without it the hulls would move to the right place
-                            // but push nothing, because every contact would see a relative velocity of
-                            // zero. integrateVelocity() must NOT be called on top - that would move the
-                            // body a second time and drift it away from the bone.
-                            //
-                            // No angular velocity is set here on purpose: setBodyAngularVelocity() takes
-                            // a timestep and therefore works via torque, which only exists on a dynamic
-                            // body. On an ndBodyKinematic that path is not valid.
-                            const size_t ragBoneCount = this->ragDataList.size();
-
-                            std::vector<Ogre::Vector3> previousPositions;
-                            previousPositions.reserve(ragBoneCount);
-
-                            for (size_t i = 0; i < ragBoneCount; i++)
-                            {
-                                Ogre::Vector3 previousPosition = Ogre::Vector3::ZERO;
-
-                                if (nullptr != this->ragDataList[i].ragBone && nullptr != this->ragDataList[i].ragBone->getBody())
-                                {
-                                    previousPosition = this->ragDataList[i].ragBone->getBody()->getPosition();
-                                }
-
-                                previousPositions.emplace_back(previousPosition);
-                            }
-
+                            // Inverse direction: the animated bones drive the bodies.
+                            // No renderDt anywhere in here: OgreNewt/Newton run their own timing, and
+                            // deriving a velocity from a render frame delta only feeds the solver values
+                            // from the wrong clock.
                             this->applyModelStateToRagdoll();
-
-                            if (renderDt > 0.0f)
-                            {
-                                for (size_t i = 0; i < ragBoneCount && i < previousPositions.size(); i++)
-                                {
-                                    if (nullptr == this->ragDataList[i].ragBone)
-                                    {
-                                        continue;
-                                    }
-
-                                    OgreNewt::Body* body = this->ragDataList[i].ragBone->getBody();
-                                    if (nullptr == body)
-                                    {
-                                        continue;
-                                    }
-
-                                    body->setVelocity((body->getPosition() - previousPositions[i]) / renderDt);
-                                }
-                            }
                         }
                         else
                         {
@@ -593,6 +549,7 @@ namespace NOWA
                             this->applyRagdollStateToModel();
                         }
                     };
+
                     Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
                     NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
                 }
@@ -2048,51 +2005,29 @@ namespace NOWA
             i = 1;
         }
 
+        // Reference frame for the bone conversion below.
+        //
+        // The node is driven by the ROOT body through attachToNode() - but OgreNewt feeds it the
+        // INTERPOLATED transform (Body::updateNode: m_prevPosit + velocity * interpolatParam, and a
+        // Slerp for the rotation), while getPosition()/getOrientation() on the bodies return the RAW
+        // current transform. Reading the node here and mixing it with raw body transforms produces a
+        // small per-frame error in every bone - the root bone no longer resolves to exact identity -
+        // and that error is what shows up as jitter. Body::updateNode() warns about reading the
+        // SceneNode for the same reason: the render thread may be writing its SIMD data concurrently.
+        //
+        // So take the reference straight from the ROOT BODY instead. Node and root body describe the
+        // same transform (up to that interpolation), so the result is identical when they are in sync
+        // and immune to the offset when they are not.
         const auto node = this->gameObjectPtr->getSceneNode();
 
-        Ogre::Vector3 nodePos = Ogre::Vector3::ZERO;
-        Ogre::Quaternion nodeOri = Ogre::Quaternion::IDENTITY;
-        Ogre::Vector3 nodeScale = Ogre::Vector3::UNIT_SCALE;
+        Ogre::Quaternion nodeOri = node->_getDerivedOrientation();
+        Ogre::Vector3 nodePos = node->_getDerivedPosition();
+        Ogre::Vector3 nodeScale = node->_getDerivedScale();
 
-        bool nodeDrivenByRootBody = false;
-
-        if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
+        if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING && nullptr != this->ragDataList[0].ragBone && nullptr != this->ragDataList[0].ragBone->getBody())
         {
-            RagBone* rootRagBone = this->ragDataList[0].ragBone;
-            if (nullptr != rootRagBone && nullptr != rootRagBone->getBody())
-            {
-                // Skeleton space transform of the root bone at ragdoll creation time.
-                // Derived from data that is already stored, so no new members are needed:
-                //   initialBonePosition/Orientation = root bone in WORLD space at creation
-                //   initialPosition/Orientation/Scale = game object node in WORLD space at creation
-                Ogre::Quaternion invInitialOri = this->initialOrientation.Inverse();
-                Ogre::Quaternion rootBoneSkelOri = invInitialOri * rootRagBone->getInitialBoneOrientation();
-                Ogre::Vector3 rootBoneSkelPos = invInitialOri * (rootRagBone->getInitialBonePosition() - this->initialPosition);
-                rootBoneSkelPos /= this->initialScale;
-
-                Ogre::Vector3 rootBodyPos = rootRagBone->getBody()->getPosition();
-                Ogre::Quaternion rootBodyOri = rootRagBone->getBody()->getOrientation();
-
-                // Invert boneWorld = node * boneSkel for the node transform
-                nodeOri = rootBodyOri * rootBoneSkelOri.Inverse();
-                nodeScale = this->initialScale;
-                nodePos = rootBodyPos - nodeOri * (nodeScale * rootBoneSkelPos);
-
-                // Runs on the render thread (tracked closure), so the node may be written directly.
-                // Note: this assumes the game object node is a direct child of the root scene node,
-                // which is the case for all NOWA game objects.
-                node->setPosition(nodePos);
-                node->setOrientation(nodeOri);
-
-                nodeDrivenByRootBody = true;
-            }
-        }
-
-        if (false == nodeDrivenByRootBody)
-        {
-            nodePos = node->_getDerivedPosition();
-            nodeOri = node->_getDerivedOrientation();
-            nodeScale = node->_getDerivedScale();
+            this->ragDataList[0].ragBone->getBody()->getPositionOrientation(nodePos, nodeOri);
+            nodeScale = this->initialScale;
         }
 
         Ogre::Quaternion invNodeOri = nodeOri.Inverse();
@@ -2230,13 +2165,47 @@ namespace NOWA
                 // Keep TRUE so V2 cascade math matches V1
             }
 
-            // Attach ragdoll bones to their scene nodes.
-            // Note: attachToNode() intentionally does nothing for the root rag bone of a
-            // full ragdoll, see RagBone::attachToNode().
+            // FIX: the loop above starts at index 1 to skip a master bone. If this skeleton has no
+            // separate master and the ROOT rag bone's bone happens to BE bone 0, that bone is never set
+            // manual - and a non-manual bone is overwritten by skeletonInstance->update() right after
+            // applyRagdollStateToModel() wrote it. Result: every bone follows its body except the root
+            // one. So flag the driven bones explicitly, by identity instead of by index.
+            for (size_t j = 0; j < this->ragDataList.size(); j++)
+            {
+                if (nullptr != this->ragDataList[j].ragBone && nullptr != this->ragDataList[j].ragBone->getBone())
+                {
+                    this->skeletonInstance->setManualBone(this->ragDataList[j].ragBone->getBone(), true);
+                }
+            }
+
+            // Attach ragdoll bones to their scene nodes, the root included.
             for (size_t j = 0; j < this->ragDataList.size(); j++)
             {
                 this->ragDataList[j].ragBone->attachToNode();
             }
+        }
+
+        // Everything that becomes visible at once is written here, in one render command:
+        //
+        // 1. the bones, so they are no longer in the animation pose,
+        // 2. a skeleton update, so those bone writes are effective for THIS frame and not only after the
+        //    next skeleton pass,
+        // 3. the node, placed on the root body - from here on OgreNewt keeps it there via attachToNode().
+        //
+        // The order matters only in that all three happen together. Doing the node first (in the RagBone
+        // constructor, as it used to be) left one frame with a rotated node and unrotated bones.
+        this->applyRagdollStateToModel();
+
+        this->skeletonInstance->update();
+
+        if (nullptr != this->ragDataList[0].ragBone && nullptr != this->ragDataList[0].ragBone->getBody())
+        {
+            Ogre::Vector3 rootBodyPos;
+            Ogre::Quaternion rootBodyOri;
+            this->ragDataList[0].ragBone->getBody()->getPositionOrientation(rootBodyPos, rootBodyOri);
+
+            this->setPosition(rootBodyPos);
+            this->setOrientation(rootBodyOri);
         }
     }
 
@@ -2285,8 +2254,10 @@ namespace NOWA
             // V2: Unset all manual bones first, so resetToPose() can reset them.
             // resetToPose() uses manualBones mask: 0.0 = manual (skip), 1.0 = normal (reset).
             // We must set them back to non-manual so the lerp weight becomes 1.0.
-            // Start at idx=1 to skip Master (same as startRagdolling).
-            for (size_t idx = 1; idx < this->skeletonInstance->getNumBones(); idx++)
+            // Starts at idx 0, not 1: startRagdolling() may have flagged bone 0 as well (it flags the
+            // driven bones by identity, and the root rag bone's bone can be index 0 on a skeleton
+            // without a separate master bone). Setting a non-manual bone to non-manual is harmless.
+            for (size_t idx = 0; idx < this->skeletonInstance->getNumBones(); idx++)
             {
                 Ogre::Bone* bone = this->skeletonInstance->getBone(idx);
                 this->skeletonInstance->setManualBone(bone, false);
@@ -2792,20 +2763,15 @@ namespace NOWA
         {
             this->physicsRagDollComponentV2->physicsBody = this->body;
 
-            // ATTENTION: Do NOT call setPosition()/setOrientation() on the component here!
+            // The ROOT body drives the game object node: attachToNode() hands the node to OgreNewt, so
+            // the node carries the pelvis body transform and node * boneSkel reproduces the body
+            // orientation - the rotation lives in the NODE, not in the pelvis bone.
             //
-            // This was the main bug: initialBonePosition/initialBoneOrientation describe the
-            // ROOT BONE (pelvis) in world space, NOT the game object. Feeding them into
-            // PhysicsComponent::setPosition/setOrientation teleported the game object scene node
-            // to the pelvis position and rotated it by the bone axis convention
-            // (e.g. quaternion 0.5 0.5 0.5 0.5 = 120 degrees around 1 1 1) at the very moment
-            // the FIRST rag bone was created. All other rag bones were still created against the
-            // ORIGINAL node transform (initialPosition/initialOrientation are cached members), so
-            // the bodies were fine, but every subsequent world -> skeleton space conversion in
-            // applyRagdollStateToModel() used the corrupted node transform.
-            //
-            // The game object node is driven from the root body in applyRagdollStateToModel(),
-            // where the root bone transform can be compensated correctly.
+            // The initial placement of the node used to happen HERE, which cost one frame: the node was
+            // already on the pelvis transform (rotated by the bone axis convention) while the bones were
+            // still in their animation pose, so the model was rendered tipped over for exactly one
+            // frame before the bones caught up. It now happens at the end of startRagdolling(), right
+            // next to the bone write, so both become visible in the same frame.
         }
 
         if (false == ownSceneNode)
@@ -3102,18 +3068,7 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::RagBone::attachToNode(void)
     {
-        // The root rag bone of a FULL ragdoll must not drive the game object scene node: its body
-        // carries the root BONE (pelvis) transform, so OgreNewt would write the bone transform -
-        // including the bone axis convention rotation - into the game object node every frame, and
-        // applyRagdollStateToModel() would then convert all body transforms against that corrupted
-        // node transform and tear the model apart. In ANIMATION state the root owns a separate node
-        // (see the constructor), so attaching is safe and is what makes its debug hull visible.
-        // For a PARTIAL ragdoll the first rag bone IS the game object, so attaching stays correct.
-        if (nullptr == this->parentRagBone && false == this->partial && PhysicsRagDollComponentV2::ANIMATION != this->physicsRagDollComponentV2->rdState)
-        {
-            return;
-        }
-
+        // Every rag bone is attached, the root included - as in the original version.
         this->body->attachNode(this->sceneNode);
     }
 

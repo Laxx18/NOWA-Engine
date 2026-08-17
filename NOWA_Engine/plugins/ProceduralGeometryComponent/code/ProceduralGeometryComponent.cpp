@@ -834,9 +834,18 @@ namespace NOWA
 
     void ProceduralGeometryComponent::destroyGeometryMesh(void)
     {
-        if (nullptr == geomItem && geomMesh.isNull())
+        // Another component (e.g. MeshConstructionComponent) may have swapped
+        // the GameObject's movable object behind our back and already destroyed
+        // the Ogre::Item our item pointer used to refer to. Re-sync against
+        // the GameObject's *current* movable object before touching item,
+        // otherwise we dereference freed memory here.
+        Ogre::Item* currentItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (currentItem != this->geomItem)
         {
-            return;
+            // Stale pointer: our original item is gone, someone else owns the
+            // slot now (or a freshly recreated item that isn't "ours" anymore).
+            // Nothing safe left for us to destroy here.
+            this->geomItem = nullptr;
         }
 
         NOWA::GraphicsModule::RenderCommand cmd = [this]()

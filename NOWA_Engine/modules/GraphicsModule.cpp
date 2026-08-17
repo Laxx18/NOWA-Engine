@@ -33,7 +33,6 @@ namespace NOWA
         currentRenderDt(0.0f),
         debugVisualization(false),
         currentDestroySlot(0),
-        isRunningWaitClosure(false),
         closureQueue(),
         producerToken(closureQueue),
         consumerToken(closureQueue),
@@ -108,11 +107,21 @@ namespace NOWA
     void GraphicsModule::startRendering(void)
     {
         this->bRunning = true;
+
+        // Attention: must be set BEFORE the thread is spawned. enqueueAndWait() uses this
+        // flag to decide whether a foreign thread may execute a command inline, and a logic
+        // thread that gets here first would otherwise run Ogre commands on itself.
+        this->renderThreadAlive.store(true, std::memory_order_release);
+
         this->renderThread = std::thread(&GraphicsModule::renderThreadFunction, this);
     }
 
     void GraphicsModule::stopRendering(void)
     {
+        // Attention: this only asks the render thread to leave its main loop. It does NOT
+        // mean the render thread is gone - it still drains the queue, runs the deferred
+        // destroy slots and clears the pools afterwards. Use renderThreadAlive (not
+        // bRunning) to decide whether inline execution on a foreign thread is safe.
         this->bRunning = false;
     }
 
@@ -133,8 +142,10 @@ namespace NOWA
         const float fixedDt = 1.0f / float(NOWA::Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
         this->setFrameTime(fixedDt);
 
+        // Attention: The timeout must stay enabled in debug builds too. Disabling it turns every
+        // producer/consumer mismatch into an unbreakable hang instead of a logged warning.
 #ifdef _DEBUG
-        this->enableTimeout(false);
+        this->enableTimeout(true);
         this->setLogLevel(Ogre::LML_TRIVIAL);
 #else
         this->setLogLevel(Ogre::LML_TRIVIAL);
@@ -150,9 +161,12 @@ namespace NOWA
 
         while (true == this->bRunning)
         {
-            // ── STALL HANDSHAKE ─────────────────────────────────────────────────────
+            // -- STALL HANDSHAKE -----------------------------------------------------
             // Must be FIRST: logic thread may have called requestStall() and is waiting
             // to finish the previous iteration before it touches vectors.
+            // Attention: The logic thread must NEVER call enqueueAndWait() between
+            // requestStall() and releaseStall(), because commands are deliberately not
+            // serviced while parked here.
             if (this->stallRequested.load(std::memory_order_acquire))
             {
                 // Acknowledge: we are at a frame boundary, not inside any vector loop
@@ -164,8 +178,24 @@ namespace NOWA
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
 
-                // Logic thread called releaseStall() — resume normal rendering
+                // Logic thread called releaseStall() -- resume normal rendering
                 this->stallAcknowledged.store(false, std::memory_order_release);
+                continue;
+            }
+
+            // -- COMMAND SERVICE -----------------------------------------------------
+            // Unconditional and before every early-out below. The logic thread blocks in
+            // enqueueAndWait() until these run, so skipping this in ANY branch (stall,
+            // scene loading, shutdown drain) deadlocks the logic thread.
+            this->processAllCommands();
+
+            // -- SHUTDOWN DRAIN ------------------------------------------------------
+            // The logic loop has ended and the teardown (state exit, GameObjectController::stop,
+            // scene destruction) is running on the logic thread. No rendering, no closures,
+            // no transform interpolation -- only keep the command queue alive.
+            if (this->shutdownDrain.load(std::memory_order_acquire))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
             }
 
@@ -184,7 +214,6 @@ namespace NOWA
 
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
                 this->advanceFrameAndDestroyOld();
-                this->processAllCommands();
 
                 const float alpha = this->consumeInterpolationAlpha();
                 this->setInterpolationWeight(alpha);
@@ -202,7 +231,7 @@ namespace NOWA
                 // Stalled or scene loading.
                 // Vector clears are now exclusively the logic thread's job,
                 // done safely inside requestStall()/clearSceneResources()/releaseStall().
-                // Only clear closure state here — it is render-thread-owned.
+                // Only clear closure state here -- it is render-thread-owned.
                 this->clearAllClosures();
             }
 
@@ -223,18 +252,43 @@ namespace NOWA
             this->processAllCommands();
         }
 
-        // Now it's safe to do frame advancement
+        // Now it's safe to do frame advancement.
+        // Attention: after beginShutdownDrain() flushed the ring-buffer and enqueueDestroy()
+        // stopped deferring, these slots should be empty. Anything still in here was
+        // enqueued after the scene was torn down and is very likely to hold dangling Ogre
+        // pointers, so make it visible in the log instead of just crashing in the lambda.
+        size_t leftoverDestroyCommands = 0;
+        for (size_t i = 0; i < NOWA::GraphicsModule::NUM_DESTROY_SLOTS; ++i)
+        {
+            leftoverDestroyCommands += this->destroySlots[i].size();
+        }
+
+        if (leftoverDestroyCommands > 0)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule]: " + Ogre::StringConverter::toString(leftoverDestroyCommands) +
+                                                                                    " destroy commands were still deferred at render thread exit. They were enqueued after the shutdown drain began and may reference already destroyed Ogre objects.");
+        }
+
         for (size_t i = 0; i < NOWA::GraphicsModule::NUM_DESTROY_SLOTS; ++i)
         {
             this->advanceFrameAndDestroyOld();
         }
 
-        // Check for remaining commands
+        // The deferred destroy commands above may themselves have enqueued work, so drain
+        // one more time before declaring the queue empty.
+        while (this->hasPendingRenderCommands())
+        {
+            this->processAllCommands();
+        }
+
+        // Check for remaining commands.
+        // Attention: this must NOT throw. A bare 'throw;' outside a catch block calls
+        // std::terminate(), and even a real exception is fatal here because nothing on the
+        // render thread catches it. Logging is the only useful thing we can do.
         const int remainingCommands = this->queue.size_approx();
         if (remainingCommands > 0)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Illegal state, as there are still: " + Ogre::StringConverter::toString(remainingCommands) + " pending commands!");
-            throw;
         }
 
         this->clearAllClosures();
@@ -266,6 +320,7 @@ namespace NOWA
         this->freeDatablockSlots.clear();
 
         this->bRunning = false;
+        this->shutdownDrain = false;
         this->timeoutEnabled = false;
         this->timeoutDuration = g_defaultTimeout.count();
         this->logLevel = Ogre::LML_NORMAL;
@@ -280,7 +335,42 @@ namespace NOWA
         this->frameTime = 1.0f / 60.0f;
         this->debugVisualization = false;
         this->currentDestroySlot = 0;
-        this->isRunningWaitClosure = false;
+
+        // Attention: MUST be the very last statement of this function. From here on any
+        // enqueueAndWait() from a foreign thread executes inline instead of blocking on a
+        // consumer that no longer exists. Setting it any earlier would let the logic thread
+        // touch the device while we are still draining and clearing the pools above.
+        this->renderThreadAlive.store(false, std::memory_order_release);
+    }
+
+    void GraphicsModule::beginShutdownDrain(void)
+    {
+        // Called from the logic thread right after its main loop ended, BEFORE any teardown
+        // (state exit, GameObjectController::stop, scene destruction) is executed.
+        // The render thread stops rendering but keeps servicing the command queue, so that
+        // enqueueAndWait() from the teardown path can still complete.
+
+        // Attention: the deferred destroy ring-buffer MUST be flushed here, while the scene,
+        // the SceneManager and everything the destroy commands captured are still alive.
+        // The two-frame delay of destroySlots only means anything while frames are actually
+        // being rendered. From here on no frame is rendered anymore, so anything left in the
+        // ring-buffer would only be executed at the very end of renderThreadFunction - long
+        // after Core::destroyScene() killed the SceneManager, which turns every captured
+        // Ogre::SceneNode* into a dangling pointer (crash in UserObjectBindings::clear()).
+        //
+        // The flush runs as a queued command so it executes on the render thread, which is
+        // still servicing the queue at this point (shutdownDrain is set only afterwards).
+        this->enqueueAndWait(
+            [this]()
+            {
+                for (size_t i = 0; i < GraphicsModule::NUM_DESTROY_SLOTS; ++i)
+                {
+                    this->advanceFrameAndDestroyOld();
+                }
+            },
+            "GraphicsModule::beginShutdownDrain::flushDestroySlots");
+
+        this->shutdownDrain.store(true, std::memory_order_release);
     }
 
     void GraphicsModule::publishInterpolationAlpha(float alpha)
@@ -343,6 +433,45 @@ namespace NOWA
 
     void GraphicsModule::clearAllClosures(void)
     {
+        // Attention: closureQueue's consumer token and persistentClosures are owned by the
+        // RENDER thread exclusively. A moodycamel ConsumerToken is not thread safe, and the
+        // render thread iterates persistentClosures in executeActiveClosures(). Calling this
+        // from the logic thread (as GameObjectController::stop() does) while the render
+        // thread is in its stall branch means two threads dequeue through the same token,
+        // which is undefined behaviour. Any foreign thread is therefore routed through the
+        // command queue instead.
+        if (false == this->isRenderThread())
+        {
+            if (true == this->renderThreadAlive.load(std::memory_order_acquire))
+            {
+                this->enqueueAndWait(
+                    [this]()
+                    {
+                        this->clearAllClosures();
+                    },
+                    "clearAllClosures");
+                return;
+            }
+
+            // No render thread at all - nobody can race us, so doing it here is safe.
+            // Attention: the token-less overload on purpose, the consumer token belongs to
+            // the (now dead) render thread.
+            ClosureCommand shutdownCommand;
+            size_t shutdownClearedCommands = 0;
+            while (this->closureQueue.try_dequeue(shutdownCommand))
+            {
+                ++shutdownClearedCommands;
+            }
+
+            const size_t shutdownClearedPersistent = this->persistentClosures.size();
+            this->persistentClosures.clear();
+
+            Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Cleared " + Ogre::StringConverter::toString(shutdownClearedCommands) + " queued closure commands and " + Ogre::StringConverter::toString(shutdownClearedPersistent) +
+                                                            " persistent closures (no render thread)",
+                Ogre::LML_NORMAL);
+            return;
+        }
+
         // Clear the concurrent queue - drain all pending commands
         ClosureCommand command;
         size_t clearedCommands = 0;
@@ -351,14 +480,17 @@ namespace NOWA
             ++clearedCommands;
         }
 
+        // Attention: read the size BEFORE clearing. The original log read it afterwards and
+        // therefore always reported zero persistent closures.
+        const size_t clearedPersistent = this->persistentClosures.size();
+
         // Clear all persistent closures
         this->persistentClosures.clear();
 
         // Log the cleanup for debugging
-        if (clearedCommands > 0)
+        if (clearedCommands > 0 || clearedPersistent > 0)
         {
-            Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Cleared " + Ogre::StringConverter::toString(clearedCommands) + " queued closure commands and " + Ogre::StringConverter::toString(persistentClosures.size()) +
-                                                            " persistent closures",
+            Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Cleared " + Ogre::StringConverter::toString(clearedCommands) + " queued closure commands and " + Ogre::StringConverter::toString(clearedPersistent) + " persistent closures",
                 Ogre::LML_NORMAL);
         }
     }
@@ -467,11 +599,26 @@ namespace NOWA
 
     void GraphicsModule::doCleanup(void)
     {
+        // Attention: this must be called AFTER the whole logic side teardown (state exit ->
+        // GameObjectController::stop() -> scene destruction) has finished, because all of
+        // that still needs the render thread to service the command queue.
+        //
+        // Attention: bRunning must be cleared HERE. Nothing else in the shutdown path does
+        // it, and join() on a render thread whose 'while (true == this->bRunning)' never
+        // ends blocks forever.
+        this->bRunning = false;
+        this->shutdownDrain.store(false, std::memory_order_release);
+
         // Wait for render thread to finish before cleanup
         if (this->renderThread.joinable())
         {
             this->renderThread.join();
         }
+
+        // Belt and braces: renderThreadFunction() clears this as its last statement, but if
+        // the thread was never started (or already joined earlier) it must be false here too,
+        // so that late destructors calling enqueueAndWait() execute inline instead of hanging.
+        this->renderThreadAlive.store(false, std::memory_order_release);
     }
 
     void GraphicsModule::enqueue(RenderCommand&& command, const char* commandName, std::shared_ptr<std::promise<void>> promise)
@@ -568,7 +715,13 @@ namespace NOWA
                 {
                     this->logCommandEvent("Executing command, queue size: " + Ogre::StringConverter::toString(this->queue.size_approx()), Ogre::LML_TRIVIAL);
                     entry.command();
-                    this->isRunningWaitClosure = false;
+
+                    // Attention: the former 'this->isRunningWaitClosure = false;' was removed
+                    // here. That flag is owned by the WAITING thread, not by us. Clearing it
+                    // from the render thread cancelled the destroy-deferral in
+                    // enqueueDestroy() while the logic thread was still blocked in
+                    // enqueueAndWait(). It is now RenderGlobals::g_insideWaitClosure, which
+                    // is thread_local and therefore cannot be clobbered across threads.
                 }
 
                 if (entry.completionPromise)
@@ -626,42 +779,27 @@ namespace NOWA
             return;
         }
 
-        // Submit a command that processes all pending commands and blocks until it's done
-        auto promise = std::make_shared<std::promise<void>>();
-        auto future = promise->get_future();
+        // No consumer -> there is nothing to synchronize against, and waiting would hang.
+        if (false == this->renderThreadAlive.load(std::memory_order_acquire))
+        {
+            this->logCommandEvent("waitForRenderCompletion called without a render thread - draining the queue instead", Ogre::LML_NORMAL);
+            this->processQueueSync();
+            return;
+        }
 
-        // Create a special sync command that processes everything in the queue
-        this->enqueue(
+        // Submit a command that acts as a sync point and wait until it has been executed.
+        // Attention: this deliberately goes through enqueueAndWait() instead of duplicating
+        // the wait logic. The original code did a bare future.wait() with no timeout and no
+        // liveness check, which hangs the logic thread if the render thread stops servicing
+        // the queue - exactly the shutdown deadlock this whole path had to be hardened for.
+        this->enqueueAndWait(
             [this]()
             {
-                // This will execute in the render thread and process any commands ahead of it
                 this->logCommandEvent("Processing queue from waitForRenderCompletion", Ogre::LML_NORMAL);
             },
-            "", promise);
+            "waitForRenderCompletion");
 
-        // Wait for the command to complete
-        try
-        {
-            this->logCommandEvent("Waiting for render queue synchronization", Ogre::LML_NORMAL);
-            auto timeout = getTimeoutDuration();
-            if (true == this->isTimeoutEnabled())
-            {
-                if (future.wait_for(timeout) == std::future_status::timeout)
-                {
-                    this->logCommandEvent("Timeout occurred waiting for render queue synchronization", Ogre::LML_NORMAL);
-                }
-            }
-            else
-            {
-                future.wait();
-            }
-            this->isRunningWaitClosure = false;
-            this->logCommandEvent("Render queue synchronization complete", Ogre::LML_NORMAL);
-        }
-        catch (const std::exception& e)
-        {
-            this->logCommandEvent(std::string("Exception waiting for render completion: ") + e.what(), Ogre::LML_CRITICAL);
-        }
+        this->logCommandEvent("Render queue synchronization complete", Ogre::LML_NORMAL);
     }
 
     bool GraphicsModule::pop(CommandEntry& commandEntry)
@@ -676,37 +814,61 @@ namespace NOWA
 
     void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
     {
-        this->isRunningWaitClosure = true;
+        // Attention: g_insideWaitClosure is thread_local and must be saved and restored, not
+        // blindly cleared on exit. A nested call would otherwise clear it while the outer
+        // call is still running.
+        const bool previousInsideWaitClosure = g_insideWaitClosure;
+        g_insideWaitClosure = true;
 
-        // ── Render-thread re-entrant path ─────────────────────────────────────
-        if (true == this->isRenderThread() && RenderGlobals::g_renderCommandDepth > 0)
+        // -- Inline execution paths --------------------------------------------------
+        // Two cases must never go through the queue:
+        // 1) We ARE the render thread. Enqueueing to ourselves and then waiting for
+        //    ourselves is a guaranteed self-deadlock. The thread identity decides this,
+        //    NOT g_renderCommandDepth: a closure, a MyGUI callback or an Ogre listener
+        //    runs on the render thread with depth 0 and must still take this path.
+        // 2) There is no render thread (not started yet, or already joined). Note this
+        //    checks renderThreadAlive and NOT bRunning: between stopRendering() and the
+        //    render thread actually returning it still drains the queue and touches the
+        //    device, so inline execution on a foreign thread would be a data race.
+        const bool isOnRenderThread = this->isRenderThread();
+        const bool hasNoConsumer = (false == this->renderThreadAlive.load(std::memory_order_acquire));
+
+        if (true == isOnRenderThread || true == hasNoConsumer)
         {
             try
             {
-                this->logCommandEvent(std::string("Executing '") + commandName + "' directly on render thread with **WAIT** (re-entrant)", Ogre::LML_TRIVIAL);
+                if (true == isOnRenderThread)
+                {
+                    this->logCommandEvent(std::string("Executing '") + commandName + "' directly on render thread with **WAIT** (re-entrant)", Ogre::LML_TRIVIAL);
+                }
+                else
+                {
+                    this->logCommandEvent(std::string("Executing '") + commandName + "' inline with **WAIT**, because there is no render thread", Ogre::LML_NORMAL);
+                }
+
                 command();
 
-                this->flushDeferredDestroyCommands(); // <- flush before clearing flag
-                this->isRunningWaitClosure = false;
+                this->flushDeferredDestroyCommands(); // <- flush before restoring flag
+                g_insideWaitClosure = previousInsideWaitClosure;
                 return;
             }
             catch (const std::exception& e)
             {
                 this->logCommandEvent(std::string("Exception in direct execution of '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
                 this->flushDeferredDestroyCommands(); // <- flush even on exception
-                this->isRunningWaitClosure = false;
+                g_insideWaitClosure = previousInsideWaitClosure;
                 throw;
             }
             catch (...)
             {
                 this->logCommandEvent(std::string("Unknown exception in direct execution of '") + commandName + "'", Ogre::LML_CRITICAL);
                 this->flushDeferredDestroyCommands(); // <- flush even on exception
-                this->isRunningWaitClosure = false;
+                g_insideWaitClosure = previousInsideWaitClosure;
                 throw;
             }
         }
 
-        // ── Normal path (logic thread -> render thread) ────────────────────────
+        // -- Normal path (logic thread -> render thread) ------------------------------
         this->incrementWaitDepth();
 
         try
@@ -716,39 +878,88 @@ namespace NOWA
 
             this->logCommandEvent(std::string("Enqueueing '") + commandName + "' with **WAIT**", Ogre::LML_NORMAL);
 
-            bool isNested = isInNestedWait() && g_waitDepth > 1;
+            // Attention: with the thread-identity guard above in place this must not happen
+            // anymore. g_waitDepth is thread_local, the render thread returns before
+            // incrementWaitDepth(), and the logic thread cannot re-enter while it is blocked
+            // - so the depth can no longer exceed 1. This branch used to be the emergency
+            // brake against the self-deadlock the old 'isRenderThread() &&
+            // g_renderCommandDepth > 0' condition left open.
+            //
+            // It is dangerous, because it returns WITHOUT having executed the command: any
+            // caller capturing stack variables by reference then reads garbage, and the
+            // render thread later writes into a dead frame. Logged as CRITICAL now - if this
+            // never fires in practice, delete the branch.
+            const bool isNested = this->isInNestedWait() && g_waitDepth > 1;
 
-            if (isNested)
+            if (true == isNested)
             {
-                this->logCommandEvent(std::string("Command '") + commandName + "' is a nested **WAIT** (depth: " + std::to_string(g_waitDepth) + ")", Ogre::LML_NORMAL);
+                this->logCommandEvent(std::string("Command '") + commandName + "' is a nested **WAIT** (depth: " + std::to_string(g_waitDepth) + ") and will NOT be waited for. This should no longer be reachable", Ogre::LML_CRITICAL);
             }
 
             this->enqueue(std::move(command), commandName, promise);
 
             if (false == isNested)
             {
-                if (true == this->isTimeoutEnabled())
-                {
-                    auto timeout = getTimeoutDuration();
-                    auto status = future.wait_for(timeout);
+                // Attention: never wait unbounded, not even when the timeout is disabled.
+                // We poll in slices so that a render thread which dies or stops servicing
+                // the queue while we are waiting cannot hang the logic thread forever.
+                const std::chrono::milliseconds sliceDuration(1);
+                const auto waitStart = std::chrono::steady_clock::now();
+                const bool timeoutIsEnabled = this->isTimeoutEnabled();
+                const auto timeoutValue = this->getTimeoutDuration();
 
-                    if (status == std::future_status::timeout)
-                    {
-                        this->logCommandEvent(std::string("Timeout waiting for '") + commandName + "'", Ogre::LML_CRITICAL);
-                        this->processQueueSync();
-                    }
-                }
-                else
+                bool isReady = false;
+                bool hasGivenUp = false;
+
+                while (false == isReady && false == hasGivenUp)
                 {
-                    while (future.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready)
+                    if (std::future_status::ready == future.wait_for(sliceDuration))
                     {
-                        std::this_thread::yield();
+                        isReady = true;
+                        break;
+                    }
+
+                    // The render thread vanished while we were waiting. Draining the queue
+                    // ourselves is only safe once it has really returned, which is exactly
+                    // what renderThreadAlive tells us.
+                    if (false == this->renderThreadAlive.load(std::memory_order_acquire))
+                    {
+                        this->logCommandEvent(std::string("Render thread ended while waiting for '") + commandName + "', draining queue on this thread", Ogre::LML_CRITICAL);
+                        this->processQueueSync();
+                        hasGivenUp = true;
+                        break;
+                    }
+
+                    if (true == timeoutIsEnabled)
+                    {
+                        if ((std::chrono::steady_clock::now() - waitStart) >= timeoutValue)
+                        {
+                            // Attention: do NOT drain the queue here. The render thread is
+                            // still alive, it is just slow or blocked, and touching the
+                            // device from this thread would make things much worse.
+                            this->logCommandEvent(std::string("Timeout waiting for '") + commandName + "'. The render thread is alive but did not service the queue in time", Ogre::LML_CRITICAL);
+                            hasGivenUp = true;
+                            break;
+                        }
+                    }
+
+                    std::this_thread::yield();
+                }
+
+                // Verify once more, because the caller may hold references to stack objects
+                // the command uses. If it is still pending, this is a hard correctness
+                // problem and must be visible in the log.
+                if (false == isReady)
+                {
+                    if (std::future_status::ready == future.wait_for(sliceDuration))
+                    {
+                        isReady = true;
+                    }
+                    else
+                    {
+                        this->logCommandEvent(std::string("Command '") + commandName + "' was NOT executed. The caller continues with a command still pending, which may access dead stack objects", Ogre::LML_CRITICAL);
                     }
                 }
-            }
-            else
-            {
-                this->logCommandEvent(std::string("Nested command '") + commandName + "' enqueued without blocking wait", Ogre::LML_NORMAL);
             }
         }
         catch (const std::exception& e)
@@ -756,7 +967,7 @@ namespace NOWA
             this->logCommandEvent(std::string("Exception waiting for '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
             this->decrementWaitDepth();
             this->flushDeferredDestroyCommands(); // <- flush even on exception
-            this->isRunningWaitClosure = false;
+            g_insideWaitClosure = previousInsideWaitClosure;
             throw;
         }
         catch (...)
@@ -764,7 +975,7 @@ namespace NOWA
             this->logCommandEvent(std::string("Unknown exception waiting for '") + commandName + "'", Ogre::LML_CRITICAL);
             this->decrementWaitDepth();
             this->flushDeferredDestroyCommands(); // <- flush even on exception
-            this->isRunningWaitClosure = false;
+            g_insideWaitClosure = previousInsideWaitClosure;
             throw;
         }
 
@@ -772,7 +983,7 @@ namespace NOWA
         this->logCommandEvent(std::string("Command '") + commandName + "' completed", Ogre::LML_TRIVIAL);
 
         this->flushDeferredDestroyCommands(); // <- flush on normal completion
-        this->isRunningWaitClosure = false;
+        g_insideWaitClosure = previousInsideWaitClosure;
     }
 
     void GraphicsModule::processQueueSync(void)
@@ -785,23 +996,73 @@ namespace NOWA
             return;
         }
 
-        // Otherwise, we need to add a sync point and wait for it
-        auto syncPromise = std::make_shared<std::promise<void>>();
-        auto syncFuture = syncPromise->get_future();
+        // Attention: this is a LAST RESORT, called from enqueueAndWait() once the render
+        // thread has ended. It must NEVER enqueue-and-wait again: the original version
+        // pushed a sync command and then did a bare syncFuture.wait(), which hangs forever
+        // precisely because nobody is servicing the queue anymore.
+        if (true == this->renderThreadAlive.load(std::memory_order_acquire))
+        {
+            this->logCommandEvent("processQueueSync called while the render thread is still alive - refusing to touch the queue from a foreign thread", Ogre::LML_CRITICAL);
+            return;
+        }
 
-        // Create a special command that just completes the sync
-        enqueue(
-            [this]()
+        this->logCommandEvent("Render thread is gone - draining the command queue on the calling thread", Ogre::LML_CRITICAL);
+
+        CommandEntry entry;
+        size_t drainedCommands = 0;
+
+        while (this->pop(entry))
+        {
+            try
             {
-                // This will execute after all previous commands
-                this->logCommandEvent("Sync point reached in queue processing", Ogre::LML_NORMAL);
-            },
-            "", syncPromise);
+                if (entry.command)
+                {
+                    entry.command();
+                    ++drainedCommands;
+                }
 
-        // Wait without timeout - we need to ensure this completes
-        this->logCommandEvent("Waiting for queue sync point", Ogre::LML_NORMAL);
-        syncFuture.wait();
-        this->logCommandEvent("Queue sync point completed", Ogre::LML_NORMAL);
+                if (entry.completionPromise)
+                {
+                    try
+                    {
+                        entry.completionPromise->set_value();
+                    }
+                    catch (const std::future_error&)
+                    { /* already set inside command */
+                    }
+                }
+            }
+            catch (const std::exception& e)
+            {
+                this->logCommandEvent(std::string("Exception while draining the queue: ") + e.what(), Ogre::LML_CRITICAL);
+                if (entry.completionPromise)
+                {
+                    try
+                    {
+                        entry.completionPromise->set_exception(std::current_exception());
+                    }
+                    catch (const std::future_error&)
+                    { /* already set */
+                    }
+                }
+            }
+            catch (...)
+            {
+                this->logCommandEvent("Unknown exception while draining the queue", Ogre::LML_CRITICAL);
+                if (entry.completionPromise)
+                {
+                    try
+                    {
+                        entry.completionPromise->set_exception(std::current_exception());
+                    }
+                    catch (const std::future_error&)
+                    { /* already set */
+                    }
+                }
+            }
+        }
+
+        this->logCommandEvent("Drained " + Ogre::StringConverter::toString(drainedCommands) + " commands on the calling thread", Ogre::LML_CRITICAL);
     }
 
     void GraphicsModule::markCurrentThreadAsRenderThread()
@@ -883,7 +1144,9 @@ namespace NOWA
             ss << "Queue has " << this->queue.size_approx() << " pending commands during timeout recovery";
             this->logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
 
-            // Reset wait depth if it's non-zero (something might have gone wrong)
+            // Reset wait depth if it's non-zero (something might have gone wrong).
+            // Attention: g_waitDepth is thread_local, so this only ever resets the depth of
+            // the thread that calls recoverFromTimeout - it cannot unstick a different one.
             if (g_waitDepth > 0)
             {
                 std::stringstream ss2;
@@ -909,26 +1172,47 @@ namespace NOWA
 
     bool GraphicsModule::waitForFutureWithTimeout(std::future<void>& future, const std::chrono::milliseconds& timeout, const char* commandName)
     {
-        if (false == this->timeoutEnabled)
+        // Attention: this must never wait unbounded, not even with the timeout disabled.
+        // The former 'future.wait()' hung the calling thread forever as soon as the render
+        // thread stopped servicing the queue, which is exactly what happens during shutdown.
+        // With the timeout disabled we still poll, but only give up once the render thread
+        // has really ended.
+        const std::chrono::milliseconds sliceDuration(1);
+        const auto waitStart = std::chrono::steady_clock::now();
+        const bool timeoutIsEnabled = this->timeoutEnabled;
+
+        while (true)
         {
-            // If timeout is disabled, wait indefinitely
-            future.wait();
-            return true;
+            if (std::future_status::ready == future.wait_for(sliceDuration))
+            {
+                return true;
+            }
+
+            if (false == this->renderThreadAlive.load(std::memory_order_acquire))
+            {
+                std::stringstream ssDead;
+                ssDead << "Command '" << commandName << "' cannot complete, the render thread has ended";
+                this->logCommandEvent(ssDead.str(), Ogre::LML_CRITICAL);
+                return false;
+            }
+
+            if (true == timeoutIsEnabled)
+            {
+                if ((std::chrono::steady_clock::now() - waitStart) >= timeout)
+                {
+                    std::stringstream ss;
+                    ss << "Command '" << commandName << "' timed out after " << timeout.count() << "ms";
+                    this->logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
+
+                    // Try to recover from the timeout
+                    this->recoverFromTimeout();
+
+                    return false;
+                }
+            }
+
+            std::this_thread::yield();
         }
-
-        auto status = future.wait_for(timeout);
-        if (status == std::future_status::timeout)
-        {
-            std::stringstream ss;
-            ss << "Command '" << commandName << "' timed out after " << timeout.count() << "ms";
-            this->logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
-
-            // Try to recover from the timeout
-            this->recoverFromTimeout();
-
-            return false;
-        }
-        return true;
     }
 
     void GraphicsModule::requestStall()
@@ -2076,6 +2360,16 @@ namespace NOWA
             return;
         }
 
+        // Attention: producerToken is a single moodycamel ProducerToken shared by the whole
+        // module and is NOT thread safe. If we are already on the render thread we own
+        // persistentClosures anyway, so remove directly instead of pushing through the token
+        // (updateTrackedClosure() does the same for the same reason).
+        if (true == this->isRenderThread())
+        {
+            this->removePersistentClosure(uniqueName);
+            return;
+        }
+
         // Post a removal command so the render thread removes it at the next
         // safe point (processClosureCommands), not immediately from main thread.
         ClosureCommand cmd;
@@ -2782,18 +3076,37 @@ namespace NOWA
 
     void GraphicsModule::enqueueDestroy(GraphicsModule::DestroyCommand destroyCommand, const char* commandName)
     {
-        // Engine shutting down: bypass ring-buffer, execute immediately with wait.
-        if (false == this->bRunning)
+        // No render thread at all: bypass ring-buffer, execute immediately with wait.
+        // Attention: checks renderThreadAlive and not bRunning. Between stopRendering() and
+        // the render thread actually returning, the destroy slots are still owned and
+        // advanced by the render thread, so pushing or executing here would race.
+        if (false == this->renderThreadAlive.load(std::memory_order_acquire))
         {
             this->enqueueAndWait(std::move(destroyCommand), commandName);
             return;
         }
 
-        // A wait closure is in flight on the render thread. We cannot push into
+        // Shutdown teardown in progress: bypass the ring-buffer as well and destroy right
+        // away, on the render thread.
+        //
+        // Attention: this branch is what makes the teardown safe. The ring-buffer delays a
+        // destroy by NUM_DESTROY_SLOTS *rendered frames*, and during the shutdown drain no
+        // frame is ever rendered again. A deferred command would therefore only run at the
+        // end of renderThreadFunction, i.e. after AppState::destroyModules() already called
+        // Core::destroyScene() - every Ogre pointer it captured would be dangling by then.
+        // Executing now is safe precisely because rendering has stopped: nothing can still
+        // be reading the resource we are about to destroy.
+        if (true == this->shutdownDrain.load(std::memory_order_acquire))
+        {
+            this->enqueueAndWait(std::move(destroyCommand), commandName);
+            return;
+        }
+
+        // A wait closure is in flight on THIS thread. We cannot push into
         // destroySlots right now because the render thread owns the slot state
         // during command execution. Defer until enqueueAndWait() finishes, then
         // flushDeferredDestroyCommands() will move them into the ring-buffer safely.
-        if (true == this->isRunningWaitClosure)
+        if (true == g_insideWaitClosure)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
                 "[GraphicsModule] Deferring destroy '" + Ogre::String(commandName) + "' (wait closure in flight, " + Ogre::StringConverter::toString(this->deferredDestroyCommands.size() + 1) + " total deferred)");
@@ -2802,7 +3115,7 @@ namespace NOWA
             return;
         }
 
-        this->destroySlots[this->currentDestroySlot].emplace_back(std::move(destroyCommand));
+        this->destroySlots[this->currentDestroySlot.load(std::memory_order_acquire)].emplace_back(std::move(destroyCommand));
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "Enqueue destroy command: " + Ogre::String(commandName));
     }
 
@@ -2811,7 +3124,8 @@ namespace NOWA
         // this->isRunningDestroyClosure = true;
 
         // Slot to destroy is two frames behind
-        const size_t destroySlot = (this->currentDestroySlot + 1) % GraphicsModule::NUM_DESTROY_SLOTS;
+        const size_t currentSlot = this->currentDestroySlot.load(std::memory_order_acquire);
+        const size_t destroySlot = (currentSlot + 1) % GraphicsModule::NUM_DESTROY_SLOTS;
 
         for (auto& destroyCommand : this->destroySlots[destroySlot])
         {
@@ -2821,7 +3135,7 @@ namespace NOWA
         this->destroySlots[destroySlot].clear();
 
         // Advance to next logic slot
-        this->currentDestroySlot = (this->currentDestroySlot + 1) % GraphicsModule::NUM_DESTROY_SLOTS;
+        this->currentDestroySlot.store(destroySlot, std::memory_order_release);
 
         // this->isRunningDestroyClosure = false;
     }

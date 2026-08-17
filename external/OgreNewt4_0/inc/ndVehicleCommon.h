@@ -97,7 +97,7 @@ class ndVehicleDectriptor
 		bool m_manual;
 	};
 
-	class ndTireDefinition: public ndMultiBodyVehicleTireJointInfo
+	class ndTireDefinition : public ndWheelDescriptor
 	{
 		public:
 		ndFloat32 m_mass;

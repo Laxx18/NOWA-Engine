@@ -95,7 +95,10 @@ namespace
 // ─────────────────────────────────────────────────────────────────────────────
 //  SpiderModelNotify
 // ─────────────────────────────────────────────────────────────────────────────
-SpiderModelNotify::SpiderModelNotify(SpiderArticulation* model) : ndModelNotify(), m_model(model), m_timeAcc(0.0f)
+SpiderModelNotify::SpiderModelNotify(SpiderArticulation* model)
+    : ndModelNotify(),
+    m_model(model),
+    m_timeAcc(0.0f)
 {
 }
 
@@ -274,8 +277,10 @@ void SpiderModelNotify::applyEffectors()
     }
 }
 
-void SpiderModelNotify::Update(ndFloat32 timestep)
+void SpiderModelNotify::Update(ndFloat32 timestep, ndInt32 threadId)
 {
+    ndModelNotify::Update(timestep, threadId);
+
     if (!m_model || !m_model->torsoNd)
     {
         return;
@@ -302,8 +307,10 @@ void SpiderModelNotify::Update(ndFloat32 timestep)
     applyEffectors();
 }
 
-void SpiderModelNotify::PostTransformUpdate(ndFloat32 /*timestep*/)
+void SpiderModelNotify::PostTransformUpdate(ndFloat32 timestep, ndInt32 threadId)
 {
+    ndModelNotify::PostTransformUpdate(timestep, threadId);
+
     // Compute anyLegOnGround before taking the mutex (avoids holding it longer)
     bool anyOnGround = false;
     for (int i = 0; i < m_model->activeLegCount; ++i)

@@ -1280,6 +1280,20 @@ namespace NOWA
 
     void ProceduralMazeComponent::destroyMazeMesh(void)
     {
+        // Another component (e.g. MeshConstructionComponent) may have swapped
+        // the GameObject's movable object behind our back and already destroyed
+        // the Ogre::Item our mazeItem pointer used to refer to. Re-sync against
+        // the GameObject's *current* movable object before touching mazeItem,
+        // otherwise we dereference freed memory here.
+        Ogre::Item* currentItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (currentItem != this->mazeItem)
+        {
+            // Stale pointer: our original item is gone, someone else owns the
+            // slot now (or a freshly recreated item that isn't "ours" anymore).
+            // Nothing safe left for us to destroy here.
+            this->mazeItem = nullptr;
+        }
+
         if (this->mazeItem)
         {
             if (this->mazeItem->getParentSceneNode())

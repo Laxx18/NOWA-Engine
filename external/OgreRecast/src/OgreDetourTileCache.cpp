@@ -239,7 +239,7 @@ bool OgreDetourTileCache::initTileCache()
 
     // Init recast navmeshquery with created navmesh (in OgreRecast component)
     m_recast->m_navQuery = dtAllocNavMeshQuery();
-    status = m_recast->m_navQuery->init(m_recast->m_navMesh, 2048);
+    status = m_recast->m_navQuery->init(m_recast->m_navMesh, NAV_QUERY_MAX_NODES);
     if (dtStatusFailed(status))
     {
         m_recast->m_pLog->logMessage("ERROR: buildTiledNavigation: Could not init Detour navmesh query");
@@ -1634,7 +1634,7 @@ bool OgreDetourTileCache::loadAll(Ogre::String filename)
 
        // Init recast navmeshquery with created navmesh (in OgreRecast component)
        m_recast->m_navQuery = dtAllocNavMeshQuery();
-       m_recast->m_navQuery->init(m_recast->m_navMesh, 2048);
+       m_recast->m_navQuery->init(m_recast->m_navMesh, NAV_QUERY_MAX_NODES);
 
 
        // Config

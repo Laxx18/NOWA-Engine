@@ -63,7 +63,7 @@ namespace
         static_cast<Ogre::HlmsUnlitDatablock*>(db)->setUseColour(true);
     }
 
-    static float frand()
+    float frand()
     {
         return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
     }
@@ -626,23 +626,31 @@ int OgreRecast::FindPath(float* pStartPos, float* pEndPos,
     float StraightPath[MAX_PATHVERT * 3];
     int nVertCount = 0;
 
+    // NOTE: only DT_FAILURE means the query truly failed. The detail bits
+    // (DT_OUT_OF_NODES, DT_PARTIAL_RESULT, ...) can be set together with
+    // DT_SUCCESS and still return a usable, just imperfect, path/result.
+    // Treating every detail bit as an error was rejecting valid long/winding
+    // paths through the maze.
     status = m_navQuery->findNearestPoly(pStartPos, mExtents, mFilter, &StartPoly, StartNearest);
-    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -1;
+    if (status & DT_FAILURE) return -1;
 
     status = m_navQuery->findNearestPoly(pEndPos, mExtents, mFilter, &EndPoly, EndNearest);
-    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -2;
+    if (status & DT_FAILURE) return -2;
 
     status = m_navQuery->findPath(StartPoly, EndPoly, StartNearest, EndNearest,
         mFilter, PolyPath, &nPathCount, MAX_PATHPOLY);
-    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -3;
+    if (status & DT_FAILURE) return -3;
     if (nPathCount == 0) return -4;
+    // Optional: log if we hit the search budget, path is still usable.
+    // if (status & DT_OUT_OF_NODES) m_pLog->logMessage("[OgreRecast] FindPath: DT_OUT_OF_NODES, path may be suboptimal.");
 
     status = m_navQuery->findStraightPath(StartNearest, EndNearest,
         PolyPath, nPathCount,
         StraightPath, nullptr, nullptr,
         &nVertCount, MAX_PATHVERT);
-    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -5;
+    if (status & DT_FAILURE) return -5;
     if (nVertCount == 0) return -6;
+    // if (status & DT_PARTIAL_RESULT) m_pLog->logMessage("[OgreRecast] FindPath: DT_PARTIAL_RESULT, straight path may stop short.");
 
     int nIndex = 0;
     for (int nVert = 0; nVert < nVertCount; ++nVert)
@@ -669,8 +677,6 @@ int OgreRecast::FindPathWithQuery(dtNavMeshQuery* query,
     float* pStartPos, float* pEndPos,
     int nPathSlot, int nTarget)
 {
-    // Shared lock: multiple agents read m_navMesh concurrently.
-    // OgreDetourTileCache::handleUpdate holds unique_lock during tile rebuilds.
     std::shared_lock<std::shared_mutex> readLock(m_navMeshMutex);
 
     dtPolyRef StartPoly, EndPoly;
@@ -681,19 +687,23 @@ int OgreRecast::FindPathWithQuery(dtNavMeshQuery* query,
     int nVertCount = 0;
 
     dtStatus status;
+    // Same fix as FindPath(): only DT_FAILURE is an actual error.
     status = query->findNearestPoly(pStartPos, mExtents, mFilter, &StartPoly, StartNearest);
-    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -1;
+    if (status & DT_FAILURE) return -1;
+
     status = query->findNearestPoly(pEndPos, mExtents, mFilter, &EndPoly, EndNearest);
-    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -2;
+    if (status & DT_FAILURE) return -2;
+
     status = query->findPath(StartPoly, EndPoly, StartNearest, EndNearest,
         mFilter, PolyPath, &nPathCount, MAX_PATHPOLY);
-    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -3;
+    if (status & DT_FAILURE) return -3;
     if (nPathCount == 0) return -4;
+
     status = query->findStraightPath(StartNearest, EndNearest,
         PolyPath, nPathCount,
         StraightPath, nullptr, nullptr,
         &nVertCount, MAX_PATHVERT);
-    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -5;
+    if (status & DT_FAILURE) return -5;
     if (nVertCount == 0) return -6;
 
     int nIndex = 0;
@@ -740,7 +750,7 @@ void OgreRecast::createNavQueryForSlot(int pathSlot)
     if (m_slotNavQueries.find(pathSlot) == m_slotNavQueries.end())
     {
         dtNavMeshQuery* q = dtAllocNavMeshQuery();
-        q->init(m_navMesh, 2048);
+        q->init(m_navMesh, NAV_QUERY_MAX_NODES);
         m_slotNavQueries[pathSlot] = q;
     }
 }
@@ -772,7 +782,7 @@ int OgreRecast::acquireNextFreeSlot()
     int slot = 0;
     while (m_slotNavQueries.count(slot)) ++slot;
     dtNavMeshQuery* q = dtAllocNavMeshQuery();
-    q->init(m_navMesh, 2048);
+    q->init(m_navMesh, NAV_QUERY_MAX_NODES);
     m_slotNavQueries[slot] = q;
     m_slotRefCounts[slot] = 1;
     return slot;

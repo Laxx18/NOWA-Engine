@@ -249,9 +249,8 @@ namespace OgreNewt
         explicit SpiderModelNotify(SpiderArticulation* model);
         ~SpiderModelNotify() override = default;
 
-        void Update(ndFloat32 timestep) override;
-        void PostTransformUpdate(ndFloat32 timestep) override;
-
+        void Update(ndFloat32 timestep, ndInt32 threadId) override;
+        void PostTransformUpdate(ndFloat32 timestep, ndInt32 threadId) override;
     private:
         ndFloat32 advanceTime(ndFloat32 current, ndFloat32 timestep) const;
         LegGaitPhase getState(int legIndex, ndFloat32 timeAcc, ndFloat32 timestep) const;

@@ -117,7 +117,7 @@ namespace NOWA
 
 		if (false == this->componentBeingLoaded)
 		{
-			Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth()/* * 0.5f*/;
+			Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
 			Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() /** 1.0f*/;
 
 			this->textureSize->setValue(Ogre::Vector2(windowWidth, windowHeight));

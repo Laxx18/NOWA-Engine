@@ -146,16 +146,79 @@ namespace OgreNewt
         return m_tireConfiguration.springDamp;
     }
 
-    ndMultiBodyVehicleTireJointInfo ComplexVehicleTire::buildJointInfo(void) const
+    void ComplexVehicleTire::setMaxSteeringAngleDeg(Ogre::Real angleDeg)
     {
-        // We do not touch internal fields of ndWheelDescriptor / ndTireFrictionModel here,
-        // we only rely on their default constructors. If you need more detailed tuning
-        // (radius, width, mass, suspension, friction curves, etc.) you can expand this
-        // later once you see those types.
+        m_tireConfiguration.maxSteeringAngleDeg = angleDeg;
+    }
+
+    Ogre::Real ComplexVehicleTire::getMaxSteeringAngleDeg(void) const
+    {
+        return m_tireConfiguration.maxSteeringAngleDeg;
+    }
+
+    void ComplexVehicleTire::setBrakeTorque(Ogre::Real torque)
+    {
+        m_tireConfiguration.brakeTorque = torque;
+    }
+
+    Ogre::Real ComplexVehicleTire::getBrakeTorque(void) const
+    {
+        return m_tireConfiguration.brakeTorque;
+    }
+
+    void ComplexVehicleTire::setHandBrakeTorque(Ogre::Real torque)
+    {
+        m_tireConfiguration.handBrakeTorque = torque;
+    }
+
+    Ogre::Real ComplexVehicleTire::getHandBrakeTorque(void) const
+    {
+        return m_tireConfiguration.handBrakeTorque;
+    }
+
+    void ComplexVehicleTire::setSuspensionStops(Ogre::Real lowerStop, Ogre::Real upperStop)
+    {
+        m_tireConfiguration.suspensionLowerStop = lowerStop;
+        m_tireConfiguration.suspensionUpperStop = upperStop;
+    }
+
+    Ogre::Real ComplexVehicleTire::getSuspensionLowerStop(void) const
+    {
+        return m_tireConfiguration.suspensionLowerStop;
+    }
+
+    Ogre::Real ComplexVehicleTire::getSuspensionUpperStop(void) const
+    {
+        return m_tireConfiguration.suspensionUpperStop;
+    }
+
+    void ComplexVehicleTire::setRegularizer(Ogre::Real regularizer)
+    {
+        m_tireConfiguration.regularizer = regularizer;
+    }
+
+    Ogre::Real ComplexVehicleTire::getRegularizer(void) const
+    {
+        return m_tireConfiguration.regularizer;
+    }
+
+    ndWheelDescriptor ComplexVehicleTire::buildJointInfo(void) const
+    {
         ndWheelDescriptor wheelDesc;
-        ndTireFrictionModel frictionModel;
-        ndMultiBodyVehicleTireJointInfo info(wheelDesc, frictionModel);
-        return info;
+
+        wheelDesc.m_springK = m_tireConfiguration.springConst;
+        wheelDesc.m_damperC = m_tireConfiguration.springDamp;
+        wheelDesc.m_regularizer = m_tireConfiguration.regularizer;
+        wheelDesc.m_lowerStop = m_tireConfiguration.suspensionLowerStop;
+        wheelDesc.m_upperStop = m_tireConfiguration.suspensionUpperStop;
+
+        wheelDesc.m_steeringAngle = (m_tireConfiguration.tireSteer == tsSteer) ? (m_tireConfiguration.maxSteeringAngleDeg * ndDegreeToRad) : 0.0f;
+
+        wheelDesc.m_brakeTorque = (m_tireConfiguration.brakeMode == tsBrake) ? m_tireConfiguration.brakeTorque : 0.0f;
+
+        wheelDesc.m_handBrakeTorque = m_tireConfiguration.handBrakeTorque;
+
+        return wheelDesc;
     }
 
     // -------------------------------------------------------------------------
@@ -247,11 +310,14 @@ namespace OgreNewt
             return;
         }
 
-        ndMultiBodyVehicleTireJointInfo info = tire->buildJointInfo();
+        ndWheelDescriptor info = tire->buildJointInfo();
         ndBodyKinematic* ndTireBody = tireBody->getNewtonBody();
 
         ndSharedPtr<ndBody> tireShared(ndTireBody);
         ndMultiBodyVehicleTireJoint* joint = m_vehicleModel->AddTire(info, tireShared);
+
+        ndTireFrictionModel frictionModel;
+        joint->SetFrictionModel(frictionModel);
 
         tire->setTireJoint(joint);
     }
@@ -433,37 +499,44 @@ namespace OgreNewt
         m_motor = m_vehicleModel->AddMotor(static_cast<ndFloat32>(mass), static_cast<ndFloat32>(radius));
         if (m_motor)
         {
-            m_motor->SetMaxRpm(static_cast<ndFloat32>(m_motorMaxRpm));
-            m_motor->SetOmegaAccel(static_cast<ndFloat32>(m_motorOmegaAccel));
-            m_motor->SetFrictionLoss(static_cast<ndFloat32>(m_motorFrictionLoss));
+            applyMotorCurve();
         }
+    }
+
+    void ComplexVehicle::applyMotorCurve()
+    {
+        if (!m_motor)
+        {
+            return;
+        }
+
+        ndMultiBodyVehicleMotor::ndEngineTorqueCurve curve;
+        // Init(idleTorquePoundFoot, idleRpm, horsePower, rpm0, rpm1, horsePowerAtRedLine, redLineRpm)
+        curve.Init(static_cast<ndFloat32>(m_motorFrictionLoss), static_cast<ndFloat32>(m_motorMaxRpm * 0.15f), static_cast<ndFloat32>(m_motorTorqueScale), static_cast<ndFloat32>(m_motorMaxRpm * 0.6f), static_cast<ndFloat32>(m_motorMaxRpm * 0.75f),
+            static_cast<ndFloat32>(m_motorTorqueScale * 0.25f), static_cast<ndFloat32>(m_motorMaxRpm));
+
+        curve.SetOmegaAccel(static_cast<ndFloat32>(m_motorOmegaAccel));
+        curve.m_frictionLoss = static_cast<ndReal>(m_motorFrictionLoss);
+
+        m_motor->SetCurve(curve);
     }
 
     void ComplexVehicle::setMotorMaxRpm(Ogre::Real rpm)
     {
         m_motorMaxRpm = rpm;
-        if (m_motor)
-        {
-            m_motor->SetMaxRpm(static_cast<ndFloat32>(rpm));
-        }
+        applyMotorCurve();
     }
 
     void ComplexVehicle::setMotorOmegaAccel(Ogre::Real rpmPerSec)
     {
         m_motorOmegaAccel = rpmPerSec;
-        if (m_motor)
-        {
-            m_motor->SetOmegaAccel(static_cast<ndFloat32>(rpmPerSec));
-        }
+        applyMotorCurve();
     }
 
     void ComplexVehicle::setMotorFrictionLoss(Ogre::Real newtonMeters)
     {
         m_motorFrictionLoss = newtonMeters;
-        if (m_motor)
-        {
-            m_motor->SetFrictionLoss(static_cast<ndFloat32>(newtonMeters));
-        }
+        applyMotorCurve();
     }
 
     void ComplexVehicle::setMotorTorqueScale(Ogre::Real nmPerUnit)

@@ -37,7 +37,6 @@
 #include "OgreDetourCrowd.h"
 #include "Detour/DetourCommon.h"
 
-
 OgreDetourCrowd::OgreDetourCrowd(OgreRecast *recast)
     : m_crowd(0),
     m_recast(recast),
@@ -62,7 +61,7 @@ OgreDetourCrowd::OgreDetourCrowd(OgreRecast *recast)
     memset(m_trails, 0, sizeof(m_trails));
 
     m_vod = dtAllocObstacleAvoidanceDebugData();
-    m_vod->init(2048);
+    m_vod->init(NAV_QUERY_MAX_NODES);
 
     memset(&m_agentDebug, 0, sizeof(m_agentDebug));
     m_agentDebug.idx = -1;
