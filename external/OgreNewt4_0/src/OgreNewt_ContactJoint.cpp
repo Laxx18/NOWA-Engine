@@ -443,13 +443,29 @@ namespace OgreNewt
         normal.m_w = ndFloat32(0.0f);
 
         ndVector tangent0, tangent1;
+
+        // NOTE: the two branches below were previously swapped, which made
+        // tangent0 degenerate to a zero-length vector for near-vertical
+        // normals (e.g. a floor/ceiling contact, normal ~= (0, +-1, 0)) -
+        // cross-producting a normal with an axis it's nearly parallel to
+        // collapses to (near) zero, which then crashed in ndVector::Normalize()
+        // (division by a zero-length magnitude).
+        //
+        // Correct pairing, proven never to degenerate given |normal| == 1:
+        // - when |normal.m_y| > 0.577 (normal points mostly along Y, e.g. a
+        //   floor/ceiling contact), normal.m_y itself can't be zero here, so
+        //   (-normal.m_y, normal.m_x, 0) can't be the zero vector.
+        // - otherwise (|normal.m_y| <= 0.577), normal.m_x and normal.m_z can't
+        //   both be zero at the same time (that would force |normal.m_y| == 1,
+        //   contradicting this branch), so (-normal.m_z, 0, normal.m_x) can't
+        //   be the zero vector either.
         if (ndAbs(normal.m_y) > ndFloat32(0.577f))
         {
-            tangent0 = ndVector(-normal.m_z, ndFloat32(0.0f), normal.m_x, ndFloat32(0.0f));
+            tangent0 = ndVector(-normal.m_y, normal.m_x, ndFloat32(0.0f), ndFloat32(0.0f));
         }
         else
         {
-            tangent0 = ndVector(-normal.m_y, normal.m_x, ndFloat32(0.0f), ndFloat32(0.0f));
+            tangent0 = ndVector(-normal.m_z, ndFloat32(0.0f), normal.m_x, ndFloat32(0.0f));
         }
 
         tangent0 = tangent0.Normalize();

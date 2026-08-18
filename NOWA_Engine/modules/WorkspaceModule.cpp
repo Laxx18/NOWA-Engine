@@ -438,14 +438,14 @@ namespace NOWA
 	}
 
 	void WorkspaceModule::setPrimaryWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent)
-	{
-		auto found = this->workspaceMap.find(camera);
-		if (found != this->workspaceMap.cend())
-		{
-			// If there is no external workspace, create a dummy one
-			if (nullptr == workspaceBaseComponent)
-			{
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, found, sceneManager, camera]()
+    {
+        auto found = this->workspaceMap.find(camera);
+        if (found != this->workspaceMap.cend())
+        {
+            // If there is no external workspace, create a dummy one
+            if (nullptr == workspaceBaseComponent)
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, found, sceneManager, camera]()
                 {
                     found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
                     found->second.workspaceBaseComponent = nullptr;
@@ -453,48 +453,48 @@ namespace NOWA
                     found->second.isDummy = true;
                 };
                 GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setPrimaryWorkspace");
-			}
-			else
-			{
-				// If there is a dummy workspace, it must be first removed
-				if (true == found->second.isDummy)
-				{
-					NOWA::GraphicsModule::RenderCommand renderCommand = [this, found]()
+            }
+            else
+            {
+                // If there is a dummy workspace, it must be first removed
+                if (true == found->second.isDummy)
+                {
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, found]()
                     {
                         this->compositorManager->removeWorkspace(found->second.workspace);
 
                         found->second.workspace = nullptr;
-						if (nullptr != found->second.workspaceBaseComponent)
-						{
+                        if (nullptr != found->second.workspaceBaseComponent)
+                        {
                             found->second.workspaceBaseComponent->setWorkspace(nullptr);
-						}
+                        }
                     };
                     GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setPrimaryWorkspace::RemoveDummyWorkspace");
-				}
+                }
 
-				found->second.workspaceBaseComponent = workspaceBaseComponent;
-				found->second.workspace = workspaceBaseComponent->getWorkspace();
-				// If its the main camera, or an active one, set as primary
-				unsigned int countCameras = AppStateManager::getSingletonPtr()->getCameraManager()->getCountCameras();
-				if (1 == countCameras && AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() == camera)
-				{
-					found->second.isPrimary = true;
-				}
-				else if (workspaceBaseComponent->getOwner()->getId() == GameObjectController::MAIN_CAMERA_ID)
-				{
-					found->second.isPrimary = true;
-				}
+                found->second.workspaceBaseComponent = workspaceBaseComponent;
+                found->second.workspace = workspaceBaseComponent->getWorkspace();
+                // If its the main camera, or an active one, set as primary
+                unsigned int countCameras = AppStateManager::getSingletonPtr()->getCameraManager()->getCountCameras();
+                if (1 == countCameras && AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() == camera)
+                {
+                    found->second.isPrimary = true;
+                }
+                else if (workspaceBaseComponent->getOwner()->getId() == GameObjectController::MAIN_CAMERA_ID)
+                {
+                    found->second.isPrimary = true;
+                }
 
-				// No dummy workspace
-				found->second.isDummy = false;
-			}
-		}
-		else
-		{
-			// If there is no external workspace, create a dummy one
-			if (nullptr == workspaceBaseComponent)
-			{
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, camera]()
+                // No dummy workspace
+                found->second.isDummy = false;
+            }
+        }
+        else
+        {
+            // If there is no external workspace, create a dummy one
+            if (nullptr == workspaceBaseComponent)
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, camera]()
                 {
                     WorkspaceData workspaceData;
                     workspaceData.workspace = this->createDummyWorkspace(sceneManager, camera);
@@ -502,109 +502,146 @@ namespace NOWA
                     this->workspaceMap.emplace(camera, workspaceData);
                 };
                 GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setPrimaryWorkspace::CreateDummyWorkspace");
-			}
-			else
-			{
-				// Remove an existing current workspace before another one is added, because only one workspace can be running actively!
-				for (auto it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
-				{
-					if (false == it->second.isDummy)
-					{
-						it->second.workspaceBaseComponent->removeWorkspace();
-					}
-					else
-					{
-						NOWA::GraphicsModule::RenderCommand renderCommand = [this, it, found]()
+            }
+            else
+            {
+                // Remove an existing current workspace before another one is added, because only one workspace can be running actively!
+                //
+                // ATTENTION: Workspaces which are involved in split screen MUST be skipped here. During split
+                // screen each split camera owns its own workspace and all of them must run in parallel. Without
+                // this check, the workspace of a split camera created earlier would be destroyed as soon as the
+                // next split camera registers its own workspace, leaving its split screen texture black.
+                //
+                // Note: iterating with a NON const iterator here on purpose, because the dummy branch below
+                // writes back into the entry. The previous version wrote into 'found', which is end() in this
+                // branch (undefined behaviour).
+                for (auto it = this->workspaceMap.begin(); it != this->workspaceMap.end(); ++it)
+                {
+                    if (nullptr != it->second.workspaceBaseComponent && true == it->second.workspaceBaseComponent->getInvolvedInSplitScreen())
+                    {
+                        continue;
+                    }
+
+                    if (false == it->second.isDummy)
+                    {
+                        it->second.workspaceBaseComponent->removeWorkspace();
+                    }
+                    else
+                    {
+                        NOWA::GraphicsModule::RenderCommand renderCommand = [this, it]()
                         {
-                            this->compositorManager->removeWorkspace(it->second.workspace);
-                            found->second.workspace = nullptr;
-                            if (nullptr != found->second.workspaceBaseComponent)
+                            if (nullptr != it->second.workspace)
                             {
-                                found->second.workspaceBaseComponent->setWorkspace(nullptr);
+                                this->compositorManager->removeWorkspace(it->second.workspace);
+                            }
+                            it->second.workspace = nullptr;
+                            if (nullptr != it->second.workspaceBaseComponent)
+                            {
+                                it->second.workspaceBaseComponent->setWorkspace(nullptr);
                             }
                         };
                         GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setPrimaryWorkspace::RemoveWorkspace2");
-					}
-				}
+                    }
+                }
 
-				WorkspaceData workspaceData;
-				workspaceData.workspaceBaseComponent = workspaceBaseComponent;
-				workspaceData.workspace = workspaceBaseComponent->getWorkspace();
-				workspaceData.isDummy = false;
-				// If its the main camera, or an active one, set as primary
-				unsigned int countCameras = AppStateManager::getSingletonPtr()->getCameraManager()->getCountCameras();
-				if (1 == countCameras && AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() == camera)
-				{
-					workspaceData.isPrimary = true;
-				}
-				else if (workspaceBaseComponent->getOwner()->getId() == GameObjectController::MAIN_CAMERA_ID)
-				{
-					workspaceData.isPrimary = true;
-				}
+                WorkspaceData workspaceData;
+                workspaceData.workspaceBaseComponent = workspaceBaseComponent;
+                workspaceData.workspace = workspaceBaseComponent->getWorkspace();
+                workspaceData.isDummy = false;
+                // If its the main camera, or an active one, set as primary
+                unsigned int countCameras = AppStateManager::getSingletonPtr()->getCameraManager()->getCountCameras();
+                if (1 == countCameras && AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() == camera)
+                {
+                    workspaceData.isPrimary = true;
+                }
+                else if (workspaceBaseComponent->getOwner()->getId() == GameObjectController::MAIN_CAMERA_ID)
+                {
+                    workspaceData.isPrimary = true;
+                }
 
-				this->workspaceMap.emplace(camera, workspaceData);
-			}
-		}
-	}
+                this->workspaceMap.emplace(camera, workspaceData);
+            }
+        }
+    }
 
 	void WorkspaceModule::setPrimaryWorkspace2(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::CompositorWorkspace* workspace)
-	{
-		if (nullptr == workspace)
-		{
-			return;
-		}
+    {
+        if (nullptr == workspace)
+        {
+            return;
+        }
 
-		auto found = this->workspaceMap.find(camera);
-		if (found != this->workspaceMap.cend())
-		{
-			// If there is a dummy workspace, it must be first removed
-			if (true == found->second.isDummy)
-			{
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, found]()
+        auto found = this->workspaceMap.find(camera);
+        if (found != this->workspaceMap.cend())
+        {
+            // If there is a dummy workspace, it must be first removed
+            if (true == found->second.isDummy)
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, found]()
                 {
-                    // cannot be used anymore, still necessary?
-                    // found->second.workspace->setListener(nullptr);
-                    // found->second.workspace->removeListener()
                     this->compositorManager->removeWorkspace(found->second.workspace);
                     found->second.workspace = nullptr;
-                    found->second.workspaceBaseComponent->setWorkspace(nullptr);
+                    if (nullptr != found->second.workspaceBaseComponent)
+                    {
+                        found->second.workspaceBaseComponent->setWorkspace(nullptr);
+                    }
                 };
                 GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setPrimaryWorkspace2");
-			}
+            }
 
-			found->second.workspaceBaseComponent = nullptr;
-			found->second.workspace = workspace;
-			found->second.isDummy = true;
-		}
-		else
-		{
-			// Remove an existing current workspace before another one is added, because only one workspace can be running actively!
-			for (auto it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
-			{
-				if (false == it->second.isDummy)
-				{
-					it->second.workspaceBaseComponent->removeWorkspace();
-				}
-				else
-				{
-					NOWA::GraphicsModule::RenderCommand renderCommand = [this, it, found]()
+            found->second.workspaceBaseComponent = nullptr;
+            found->second.workspace = workspace;
+            found->second.isDummy = true;
+        }
+        else
+        {
+            // Remove an existing current workspace before another one is added, because only one workspace can be running actively!
+            //
+            // ATTENTION: This function is called with the dummy camera of the final split screen combining
+            // workspace, WHILE the split screen workspaces of all split cameras are already registered and
+            // must keep running. So workspaces involved in split screen are skipped here, exactly like in
+            // setPrimaryWorkspace. Without that check the final combine step would destroy the very split
+            // screen workspaces whose textures it is about to combine.
+            //
+            // Note: the old version wrote into 'found' inside this branch, but 'found' is end() here
+            // (undefined behaviour) - it now correctly writes into the iterated entry.
+            for (auto it = this->workspaceMap.begin(); it != this->workspaceMap.end(); ++it)
+            {
+                if (nullptr != it->second.workspaceBaseComponent && true == it->second.workspaceBaseComponent->getInvolvedInSplitScreen())
+                {
+                    continue;
+                }
+
+                if (false == it->second.isDummy)
+                {
+                    it->second.workspaceBaseComponent->removeWorkspace();
+                }
+                else
+                {
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, it]()
                     {
-                        this->compositorManager->removeWorkspace(it->second.workspace);
-                        found->second.workspace = nullptr;
-                        // it->second.workspaceBaseComponent->setWorkspace(nullptr);
+                        if (nullptr != it->second.workspace)
+                        {
+                            this->compositorManager->removeWorkspace(it->second.workspace);
+                        }
+                        it->second.workspace = nullptr;
+                        if (nullptr != it->second.workspaceBaseComponent)
+                        {
+                            it->second.workspaceBaseComponent->setWorkspace(nullptr);
+                        }
                     };
                     GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setPrimaryWorkspace2::removeWorkspace");
-				}
-			}
+                }
+            }
 
-			WorkspaceData workspaceData;
-			workspaceData.workspaceBaseComponent = nullptr;
-			workspaceData.workspace = workspace;
-			workspaceData.isDummy = true;
+            WorkspaceData workspaceData;
+            workspaceData.workspaceBaseComponent = nullptr;
+            workspaceData.workspace = workspace;
+            workspaceData.isDummy = true;
 
-			this->workspaceMap.emplace(camera, workspaceData);
-		}
-	}
+            this->workspaceMap.emplace(camera, workspaceData);
+        }
+    }
 
 	void WorkspaceModule::addNthWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent)
 	{

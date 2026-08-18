@@ -753,11 +753,6 @@ namespace NOWA
             boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(gameObjectPtr->getId(), false));
             AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataHdrActivated);
 
-            // };
-            // NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-            // delayProcess->attachChild(closureProcess);
-            // NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-
             this->updateShadowGlobalBias();
         };
         Ogre::String message = "WorkspaceBaseComponent::createWorkspace for: " + name;

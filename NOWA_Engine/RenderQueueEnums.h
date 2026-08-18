@@ -24,12 +24,6 @@ namespace NOWA
 		RENDER_QUEUE_MAX = 254 // MyGUI
 	};
 
-	enum eVisibilityEnums
-    {
-        VISIBILITY_FLAG_GRASS = (1u << 20u),
-        VISIBILITY_FLAG_TREE = (1u << 21u),
-    };
-
 }; // namespace end
 
 #endif // RENDER_QUEUE_ENUMS_H

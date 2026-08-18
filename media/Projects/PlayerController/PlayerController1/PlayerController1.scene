@@ -183,7 +183,7 @@
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
-					<property type="7" name="ExcludeRenderCategories" data="All"/>
+					
 					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

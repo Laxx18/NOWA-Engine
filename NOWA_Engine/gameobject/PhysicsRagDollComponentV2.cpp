@@ -533,25 +533,19 @@ namespace NOWA
             {
                 if (nullptr != this->skeletonInstance)
                 {
-                    auto closureFunction = [this](Ogre::Real renderDt)
+                    if (this->rdState == PhysicsRagDollComponentV2::ANIMATION)
                     {
-                        if (this->rdState == PhysicsRagDollComponentV2::ANIMATION)
-                        {
-                            // Inverse direction: the animated bones drive the bodies.
-                            // No renderDt anywhere in here: OgreNewt/Newton run their own timing, and
-                            // deriving a velocity from a render frame delta only feeds the solver values
-                            // from the wrong clock.
-                            this->applyModelStateToRagdoll();
-                        }
-                        else
-                        {
-                            // Physics drives the bones.
-                            this->applyRagdollStateToModel();
-                        }
-                    };
-
-                    Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-                    NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+                        // Inverse direction: the animated bones drive the bodies.
+                        // No renderDt anywhere in here: OgreNewt/Newton run their own timing, and
+                        // deriving a velocity from a render frame delta only feeds the solver values
+                        // from the wrong clock.
+                        this->applyModelStateToRagdoll();
+                    }
+                    else
+                    {
+                        // Physics drives the bones.
+                        this->applyRagdollStateToModel();
+                    }
                 }
             }
 
@@ -1983,7 +1977,7 @@ namespace NOWA
     // 120 degrees around 1 1 1), which then poisoned every world -> skeleton space
     // conversion below. That was the tearing/flicker seen when connect() was called.
     // ============================================================================
-
+    static int ragdollFirstFrameLogCounter = 0;
     void PhysicsRagDollComponentV2::applyRagdollStateToModel(void)
     {
         // This function writes the game object node, so it must never run after the simulation has
@@ -2078,8 +2072,39 @@ namespace NOWA
                                                                                        " | boneLocalOri: " + Ogre::StringConverter::toString(boneLocalOri));*/
             }
 
-            bone->setPosition(boneLocalPos);
-            bone->setOrientation(boneLocalOri);
+            GraphicsModule::getInstance()->updateBoneTransform(bone, boneLocalPos, boneLocalOri);
+
+            // TEMPORARY DIAGNOSTIC: the first four passes after the process started, for every rag bone.
+            // The point is to see WHICH bones are wrong in those first frames and why:
+            //   - parentDerived*  : the parent transform this bone was computed against. If it still
+            //                       holds the animation pose while the body is already ragdolling, the
+            //                       parent is stale.
+            //   - boneLocal*      : what was written.
+            //   - readBack*       : the bone's derived transform as currently cached. Compare it against
+            //                       skel* - if it does not follow, the write did not take effect.
+            if (ragdollFirstFrameLogCounter < 4)
+            {
+                Ogre::Vector3 readBackPos;
+                Ogre::Quaternion readBackOri;
+                PhysicsRagDollComponentV2::extractBoneDerivedTransform(bone, readBackPos, readBackOri);
+
+                Ogre::String parentName = "NONE";
+                if (nullptr != parentBone)
+                {
+                    parentName = parentBone->getName();
+                }
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[RAGSTART] pass: " + Ogre::StringConverter::toString(static_cast<int>(ragdollFirstFrameLogCounter)) + " bone: '" + bone->getName() + "' parent: '" + parentName + "' | bodyOri: " + Ogre::StringConverter::toString(bodyWorldOri) +
+                        " | skelOri: " + Ogre::StringConverter::toString(skelOri) + " | boneLocalOri(written): " + Ogre::StringConverter::toString(boneLocalOri) + " | boneDerivedOri(readBack): " + Ogre::StringConverter::toString(readBackOri) +
+                        " | skelPos: " + Ogre::StringConverter::toString(skelPos) + " | boneLocalPos(written): " + Ogre::StringConverter::toString(boneLocalPos) + " | boneDerivedPos(readBack): " + Ogre::StringConverter::toString(readBackPos));
+            }
+        }
+
+        // TEMPORARY DIAGNOSTIC counter, see above.
+        if (ragdollFirstFrameLogCounter < 4)
+        {
+            ragdollFirstFrameLogCounter++;
         }
 
         // Apply bone corrections
@@ -2089,8 +2114,7 @@ namespace NOWA
             Ogre::Quaternion targetOrient;
             extractBoneDerivedTransform(boneCorrectionData.second.first, targetPos, targetOrient);
 
-            boneCorrectionData.first->setPosition(targetPos + boneCorrectionData.second.second);
-            boneCorrectionData.first->setOrientation(targetOrient);
+            GraphicsModule::getInstance()->updateBoneTransform(boneCorrectionData.first, targetPos + boneCorrectionData.second.second, targetOrient);
         }
     }
 
@@ -2185,19 +2209,13 @@ namespace NOWA
             }
         }
 
-        // Everything that becomes visible at once is written here, in one render command:
-        //
-        // 1. the bones, so they are no longer in the animation pose,
-        // 2. a skeleton update, so those bone writes are effective for THIS frame and not only after the
-        //    next skeleton pass,
-        // 3. the node, placed on the root body - from here on OgreNewt keeps it there via attachToNode().
-        //
-        // The order matters only in that all three happen together. Doing the node first (in the RagBone
-        // constructor, as it used to be) left one frame with a rotated node and unrotated bones.
         this->applyRagdollStateToModel();
 
-        this->skeletonInstance->update();
+        // this->skeletonInstance->update();
 
+        // The node last, placed on the root body - from here on OgreNewt keeps it there via
+        // attachToNode(). Doing this first (in the RagBone constructor, as it used to be) left one frame
+        // with a rotated node and unrotated bones.
         if (nullptr != this->ragDataList[0].ragBone && nullptr != this->ragDataList[0].ragBone->getBody())
         {
             Ogre::Vector3 rootBodyPos;

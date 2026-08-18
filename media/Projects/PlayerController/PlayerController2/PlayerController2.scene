@@ -470,7 +470,7 @@
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
-					<property type="7" name="ExcludeRenderCategories" data="All"/>
+					
 					<property type="7" name="ComponentWorkspaceBackgroundComponent" data="WorkspaceBackgroundComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -761,14 +761,6 @@
 					<property type="6" name="LodLevels" data="4"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="PrehistoricLaxBoy"/>
-					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="AnimationActivated" data="true"/>
-					<property type="7" name="AnimationName" data="Boy 1 Walk"/>
-					<property type="6" name="AnimationSpeed" data="1"/>
-					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="7" name="ComponentTagPointComponent" data="TagPointComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

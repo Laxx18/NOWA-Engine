@@ -748,15 +748,18 @@ namespace NOWA
 
                         passScene->setAllStoreActions(Ogre::StoreAction::Store);
 
-                        unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
+                        unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->gameObjectPtr->getRenderCategory());
 
-                        finalRenderMask &= ~NOWA::VISIBILITY_FLAG_GRASS;
-                        finalRenderMask &= ~NOWA::VISIBILITY_FLAG_TREE;
+                        unsigned int foliageCategory = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId("Foliage");
+
+                        if (foliageCategory > 0)
+                        {
+                            finalRenderMask &= foliageCategory;
+                        }
 
                         if (true == this->bShowDebugData)
                         {
-                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' ExcludeRenderCategories='"
-                                + this->cameraComponent->getExcludeRenderCategories() + "' -> finalRenderMask=" + Ogre::StringConverter::toString(finalRenderMask)
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetMinimapComponent] '" + this->gameObjectPtr->getName() + "' RenderCategories='" + this->gameObjectPtr->getRenderCategory() + "' -> finalRenderMask=" + Ogre::StringConverter::toString(finalRenderMask)
                                 + (0u == finalRenderMask ? " (WARNING: mask is 0, nothing will be rendered)" : ""));
                         }
 
@@ -835,10 +838,14 @@ namespace NOWA
                         passScene->setAllStoreActions(Ogre::StoreAction::Store);
 
                         // Sets the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
-                        unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
+                        unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->gameObjectPtr->getRenderCategory());
 
-                        finalRenderMask &= ~NOWA::VISIBILITY_FLAG_GRASS;
-                        finalRenderMask &= ~NOWA::VISIBILITY_FLAG_TREE;
+                        unsigned int foliageCategory = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId("Foliage");
+
+                        if (foliageCategory > 0)
+                        {
+                            finalRenderMask &= foliageCategory;
+                        }
 
                         passScene->setVisibilityMask(finalRenderMask);
 

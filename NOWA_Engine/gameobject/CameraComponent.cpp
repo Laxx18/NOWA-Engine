@@ -33,8 +33,7 @@ namespace NOWA
 		orthographic(new Variant(CameraComponent::AttrOrthographic(), false, this->attributes)),
 		orthoWindowSize(new Variant(CameraComponent::AttrOrthoWindowSize(), Ogre::Vector2(10.0f, 10.0f), this->attributes)),
 		fixedYawAxis(new Variant(CameraComponent::AttrFixedYawAxis(), true, this->attributes)),
-		showDummyEntity(new Variant(CameraComponent::AttrShowDummyItem(), false, this->attributes)),
-		excludeRenderCategories(new Variant(CameraComponent::AttrExcludeRenderCategories(), Ogre::String("All"), this->attributes))
+		showDummyEntity(new Variant(CameraComponent::AttrShowDummyItem(), false, this->attributes))
 	{
 		this->orthographic->addUserData(GameObject::AttrActionNeedRefresh());
 		this->orthoWindowSize->setVisible(false);
@@ -55,9 +54,6 @@ namespace NOWA
 			"straight ahead.You can change this behaviour by calling this "
 			"method, which you will want to do if you are making a completely "
 			"free camera like the kind used in a flight simulator. ");
-
-		this->excludeRenderCategories->setDescription("Sets the render categories, which shall be excluded from this camera rendering. By default nothing will be excluded. Possible is also: 'All-LeftCamera-Enemy'. "
-			"For this case e.g. all render categories but the game object which do belong to the left camera and the enemy would not be rendered by this camera.");
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCamera), EventDataRemoveCamera::getStaticEventType());
@@ -187,11 +183,6 @@ namespace NOWA
 			this->showDummyEntity->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExcludeRenderCategories")
-		{
-			this->excludeRenderCategories->setValue(XMLConverter::getAttrib(propertyElement, "data", ""));
-			propertyElement = propertyElement->next_sibling("property");
-		}
 		
 		return true;
 	}
@@ -210,7 +201,6 @@ namespace NOWA
 		clonedCompPtr->setOrthographic(this->orthographic->getBool());
 		clonedCompPtr->setOrthoWindowSize(this->orthoWindowSize->getVector2());
 		clonedCompPtr->setFixedYawAxis(this->fixedYawAxis->getBool());
-		clonedCompPtr->setExcludeRenderCategories(this->excludeRenderCategories->getString());
 		
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -373,24 +363,49 @@ namespace NOWA
             return;
         }
 
-        // -------------------------------------------------------------------
-        // THE MISSING PIECE: the camera stays on its own, never-moving default
-        // node (see createCamera() for why - camera behaviors depend on that).
-        // The GameObject's node, however, IS what the editor gizmo actually
-        // drags around, and it's what the dummy item is attached to.
-        //
-        // Previously, nothing ever pushed a post-creation gizmo edit from the
-        // GameObject node onto the actual Ogre::Camera - createCamera() only
-        // aligned them once, at creation/load time. That's why dragging
-        // Camera_1's gizmo moved the visible dummy mesh but never the real
-        // camera, and why CameraPosition/CameraOrientation looked permanently
-        // stuck.
-        //
-        // This only runs in design mode (notSimulating), i.e. exactly when the
-        // gizmo can be used - during simulation, camera behaviors drive the
-        // camera directly and this block is skipped entirely (early return
-        // above), so there is no conflict with FirstPersonCamera etc.
-        // -------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // ACTIVE camera (the current editor viewport camera, or in-game the
+        // currently rendering one): it is being driven directly by its own
+        // camera behavior (BaseCamera free-fly navigation, FirstPersonCamera,
+        // orbit cam, etc.) via camera->setPosition()/setOrientation() calls
+        // that never touch the GameObject's scene node at all. Forcing the
+        // camera to follow the (static, unrelated) node here would fight that
+        // behavior every debounce tick, snapping the camera back mid-navigation
+        // - this is what caused the gizmo/viewport jitter. So for the active
+        // camera we ONLY read its current world transform into the Variants,
+        // exactly like before this sync logic existed; we never write back to
+        // either the camera or the node.
+        // ---------------------------------------------------------------------
+        if (true == this->active->getBool())
+        {
+            Ogre::Vector3 worldPos = this->camera->getDerivedPosition();
+            Ogre::Quaternion worldOri = this->camera->getDerivedOrientation();
+
+            if (!MathHelper::getInstance()->vector3Equals(this->position->getVector3(), worldPos, 0.001f))
+            {
+                this->position->setValue(worldPos);
+            }
+
+            const Ogre::Vector3 worldDeg = MathHelper::getInstance()->quatToDegrees(worldOri);
+            if (!MathHelper::getInstance()->vector3Equals(this->orientation->getVector3(), worldDeg, 0.001f))
+            {
+                this->orientation->setValue(worldDeg);
+            }
+
+            this->timeSinceLastUpdate = 0.05f;
+            return;
+        }
+
+        // -----------------------------------------------------------------
+        // INACTIVE camera: nothing drives this camera's own transform except
+        // the gizmo, which moves the GameObject's scene node (the same node
+        // the dummy item is attached to). The camera itself stays on its own
+        // separate default node (see createCamera() - required so existing
+        // camera behaviors keep working in world space), so it never follows
+        // the node automatically. Push the node's current transform onto the
+        // camera here so a gizmo drag actually moves the real Ogre::Camera,
+        // not just the visible dummy mesh.
+        // -----------------------------------------------------------------
         Ogre::Vector3 nodePos = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
         Ogre::Quaternion nodeOri = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
 
@@ -407,8 +422,6 @@ namespace NOWA
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::update_syncCameraToNode");
         }
 
-        // Read back from the camera (world space; matches the node after the
-        // sync above) into the Variants - unchanged from before.
         Ogre::Vector3 worldPos = this->camera->getDerivedPosition();
         Ogre::Quaternion worldOri = this->camera->getDerivedOrientation();
 
@@ -425,78 +438,6 @@ namespace NOWA
 
         this->timeSinceLastUpdate = 0.05f;
     }
-
-	//void CameraComponent::createCamera(void)
-	//{
-	//	if (nullptr == this->camera)
-	//	{
-	//		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-	//			{
-	//				this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName());
-
-	//				this->camera->setFixedYawAxis(this->fixedYawAxis->getBool());
-	//				this->camera->setFOVy(Ogre::Degree(this->fovy->getReal()));
-	//				this->camera->setNearClipDistance(this->nearClipDistance->getReal());
-	//				this->camera->setFarClipDistance(this->farClipDistance->getReal());
-	//				this->camera->setQueryFlags(0 << 0);
-	//				this->setOrthographic(this->orthographic->getBool());
-
-	//				// Attention: This is new and set for any created camera
-	//				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth();
- //                   Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight();
- //                   Ogre::Real aspectRatio = windowWidth / windowHeight;
- //                   this->camera->setAspectRatio(aspectRatio);
-
-	//				// Ogre creates a default node automatically.
-	//				// We only need to set the transform on our GameObject node and align the camera.
-	//				this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
-	//				this->gameObjectPtr->getSceneNode()->setOrientation(
-	//					MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
-
-	//				// Sync camera local transform to match node/world correctly
-	//				const Ogre::Vector3 worldPos = this->gameObjectPtr->getSceneNode()->getPosition();
-	//				const Ogre::Quaternion worldOri = this->gameObjectPtr->getSceneNode()->getOrientation();
-
-	//				if (this->camera->getParentSceneNode())
-	//				{
-	//					this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(worldPos));
-	//					this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(worldOri));
-	//				}
-
-	//				// Borrow the entity from the game object
-	//				this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-	//				if (nullptr != this->dummyItem)
-	//				{
- //                       this->dummyItem->setName("DummyItem");
-	//					this->dummyItem->setCastShadows(false);
-	//				}
-
-	//				// Register camera
-	//				if (this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
-	//				{
-	//					Ogre::Camera* previousCamera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-	//					if (nullptr != previousCamera)
-	//					{
-	//						NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(previousCamera);
-	//						NOWA::GraphicsModule::getInstance()->removeTrackedCamera(previousCamera);
-	//						this->gameObjectPtr->getSceneManager()->destroyCamera(previousCamera);
-	//					}
-
-	//					if (nullptr == this->baseCamera)
-	//					{
-	//						this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 1.0f, 0.01f);
-	//					}
-
-	//					AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
-	//					AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
-	//				}
-
-	//				// Final activation
-	//				this->setActivated(this->active->getBool());
-	//			};
-	//		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::createCamera");
-	//	}
-	//}
 
 	void CameraComponent::createCamera(void)
     {
@@ -652,10 +593,6 @@ namespace NOWA
 		{
 			this->setShowDummyEntity(attribute->getBool());
 		}
-		else if (CameraComponent::AttrExcludeRenderCategories() == attribute->getName())
-		{
-			this->setExcludeRenderCategories(attribute->getString());
-		}
 	}
 
 	void CameraComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -731,12 +668,6 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ShowDummyEntity"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->showDummyEntity->getBool())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "ExcludeRenderCategories"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->excludeRenderCategories->getString())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -891,7 +822,7 @@ namespace NOWA
             }
 
             if (false == this->active->getBool())
-            {
+            { 
                 WorkspaceModule::getInstance()->removeCamera(this->camera);
                 AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
             }
@@ -899,14 +830,17 @@ namespace NOWA
 
         if (nullptr != this->gameObjectPtr)
         {
+            Ogre::String name = this->gameObjectPtr->getName();
             // Send out event, whether is camera has been activated or not, to camera manager and other camera components, to adapt their state
-            boost::shared_ptr<EventDataSwitchCamera> eventDataSwitchCamera(new EventDataSwitchCamera(this->gameObjectPtr->getId(), this->gameObjectPtr->getIndexFromComponent(this), this->active->getBool()));
+            boost::shared_ptr<EventDataSwitchCamera> eventDataSwitchCamera(new EventDataSwitchCamera(this->gameObjectPtr->getId(), this->gameObjectPtr->getIndexFromComponent(this), activated));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSwitchCamera);
         }
     }
 
 	void CameraComponent::setActivatedFlag(bool activated)
 	{
+        Ogre::String name = this->gameObjectPtr->getName();
+
 		this->active->setValue(activated);
 		if (nullptr != this->camera)
 		{
@@ -1138,11 +1072,6 @@ namespace NOWA
 		return 	this->showDummyEntity->getBool();
 	}
 
-	void CameraComponent::setExcludeRenderCategories(const Ogre::String& excludeRenderCategories)
-	{
-		this->excludeRenderCategories->setValue(excludeRenderCategories);
-	}
-
 	void CameraComponent::setAspectRatio(Ogre::Real aspectRatio)
 	{
 		if (nullptr != this->camera)
@@ -1153,11 +1082,6 @@ namespace NOWA
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setAspectRatio");
 		}
-	}
-
-	Ogre::String CameraComponent::getExcludeRenderCategories(void) const
-	{
-		return this->excludeRenderCategories->getString();
 	}
 
 	Ogre::Camera* CameraComponent::getCamera(void) const

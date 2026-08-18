@@ -190,14 +190,25 @@ namespace NOWA
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
 		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: Can be used to render a workspace in a split screen texture. Must be placed under the n-th created camera.\n"
-				"Example: 2 player vertical split : geometry1 0.5 0 0.5 1 geometry2 0 0 0.5 1\n"
-				"Example: 2 player horizonal split: geometry1 0 0.5 1 0.5 geometry2 0 0 1 0.5\n"
-				"Example: 3 player vertical split: geometry1 0 0 0.3333 1 geometry2 0.3333 0 0.3333 1 geometry3 0.6666 0 0.3333 1\n"
-				"Example: 4 player vertical/horizontal split: geometry1 0 0.5 0.5 0.5 geometry2 0.5 0.5 0.5 0.5 geometry3 0 0 0.5 0.5  geometry4 0.5 0 0.5 0.5\n";
-		}
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: Renders this camera's view into its own split screen texture, which is combined with all other activated split screen cameras into the final image. "
+                   "Must be placed on a camera game object, below its CameraComponent and a WorkspaceBaseComponent (e.g. WorkspacePbsComponent).\n"
+                   "Activation: The split screen scenario starts as soon as the FIRST activated SplitScreenComponent in the scene connects (simulation start), and ends once the LAST one disconnects, at which point the main camera is activated "
+                   "again. "
+                   "Every camera that shall take part in the split screen needs this component with Activated = true.\n"
+                   "Geometry: Position and size of this camera's tile on screen, relative to the window (0..1 range), format Vector4(pos.x, pos.y, width, height). "
+                   "Can be set by hand, or computed automatically for all activated split screen cameras at once via SplitPreset.\n"
+                   "Example: 2 player vertical split: geometry1 0.5 0 0.5 1 geometry2 0 0 0.5 1\n"
+                   "Example: 2 player horizonal split: geometry1 0 0.5 1 0.5 geometry2 0 0 1 0.5\n"
+                   "Example: 3 player vertical split: geometry1 0 0 0.3333 1 geometry2 0.3333 0 0.3333 1 geometry3 0.6666 0 0.3333 1\n"
+                   "Example: 4 player vertical/horizontal split: geometry1 0 0.5 0.5 0.5 geometry2 0.5 0.5 0.5 0.5 geometry3 0 0 0.5 0.5  geometry4 0.5 0 0.5 0.5\n"
+                   "Per-camera visibility: What THIS camera renders is controlled by the camera game object's OWN RenderCategory attribute (GameObject::RenderCategory). "
+                   "Example: give an obstacle game object RenderCategory 'Object', then set this split screen camera's own RenderCategory to 'All-Object' to hide that obstacle only for this camera, while a second split screen camera with "
+                   "RenderCategory 'All' still renders it.\n"
+                   "Camera behavior: CameraBehaviorGameObjectId is optional. Leave it at 0 for a statically placed split screen camera. Set it to a game object id that owns a CameraBehaviorComponent (FirstPersonCamera, ThirdPersonCamera etc.) to "
+                   "let that behavior drive this split screen camera.";
+        }
 
 		/**
 		 * @see	GameObjectComponent::createStaticApiForLua
@@ -208,13 +219,17 @@ namespace NOWA
 		static const Ogre::String AttrTextureSize(void) { return "Texture Size (w, h)"; }
 		static const Ogre::String AttrGeometry(void) { return "Geometry"; }
 		static const Ogre::String AttrCameraBehaviorGameObjectId(void) { return "Camera Behavior GameObject Id"; }
-		
+        static const Ogre::String AttrApplyPreset(void) { return "Apply Preset"; }
 	private:
 		Ogre::TextureGpu* createSplitScreenTexture(const Ogre::String& name);
 
 		void setupSplitScreen(void);
 
 		void cleanupSplitScreen(void);
+
+		Ogre::Vector4 computeGeometryFromPreset(const Ogre::String& preset, size_t index, size_t totalCount);
+
+		void applyPreset(void);
 	private:
 		Ogre::String name;
 		Ogre::TextureGpu* splitScreenTexture;
@@ -230,6 +245,7 @@ namespace NOWA
 		Variant* textureSize;
 		Variant* geometry;
 		Variant* cameraBehaviorGameObjectId;
+        Variant* splitPreset;    // List: "Custom", "2Vertical", "2Horizontal", "3Vertical", "3Horizontal", "4Grid". Transient, not saved/loaded.
 	};
 
 }; // namespace end

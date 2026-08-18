@@ -630,12 +630,16 @@ namespace NOWA
 
 						// Sets the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
 						// Note: MyGui is added to the final split combined workspace, so it does not make sense to exclude mygui objects from rendering
-						unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
+						unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->gameObjectPtr->getRenderCategory());
 
 						// Always exclude procedural grass from minimap -- it serves no navigational
                         // purpose overhead and costs significant GPU time (wind shader, alpha hash).
-                        finalRenderMask &= ~NOWA::VISIBILITY_FLAG_GRASS;
-                        finalRenderMask &= ~NOWA::VISIBILITY_FLAG_TREE;
+                        unsigned int foliageCategory = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId("Foliage");
+
+                        if (foliageCategory > 0)
+                        {
+                            finalRenderMask &= foliageCategory;
+                        }
 
 						passScene->setVisibilityMask(finalRenderMask);
 
@@ -713,9 +717,9 @@ namespace NOWA
 
 						passScene->setAllStoreActions(Ogre::StoreAction::Store);
 
-						// Sets the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
+						// Sets the corresponding render category. All game objects which do not match that render category, will not be rendered for this camera
 						// Note: MyGui is added to the final split combined workspace, so it does not make sense to exclude mygui objects from rendering
-						unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
+						unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->gameObjectPtr->getRenderCategory());
 						passScene->setVisibilityMask(finalRenderMask);
 
 						passScene->mIncludeOverlays = false;

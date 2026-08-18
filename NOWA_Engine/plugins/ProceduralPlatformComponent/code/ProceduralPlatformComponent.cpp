@@ -3329,7 +3329,7 @@ namespace NOWA
             cellItem->setRenderQueueGroup(renderQueue);
             cellItem->setCastShadows(false); // Grass never casts shadows.
             cellItem->setQueryFlags(this->gameObjectPtr->getCategoryId());
-            cellItem->setVisibilityFlags(NOWA::VISIBILITY_FLAG_GRASS);
+            // cellItem->setVisibilityFlags(this->gameObjectPtr->getRenderCategoryId());
 
             // Child of the platform's own node, in mesh-local space - the same space the
             // frames were collected in - so the grass follows the platform if the GameObject

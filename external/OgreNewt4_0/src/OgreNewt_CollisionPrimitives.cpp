@@ -223,10 +223,11 @@ namespace OgreNewt
             OGRE_ASSERT_LOW(obj);
             Ogre::Vector3 scale(1, 1, 1);
 
-            if (Ogre::Node* node = obj->getParentNode())
+            // Do not apply scale, it will be already extracted out if vertex positions are use. Additional scale, would scale twice!
+            /*if (Ogre::Node* node = obj->getParentNode())
             {
                 scale = node->_getDerivedScaleUpdated();
-            }
+            }*/
 
             if (forceScale != Ogre::Vector3::ZERO)
             {
@@ -409,10 +410,11 @@ namespace OgreNewt
             OGRE_ASSERT_LOW(item);
             Ogre::Vector3 scale(1, 1, 1);
 
-            if (Ogre::Node* node = item->getParentNode())
+            // Do not apply scale, it will be already extracted out if vertex positions are use. Additional scale, would scale twice!
+            /*if (Ogre::Node* node = item->getParentNode())
             {
                 scale = node->_getDerivedScaleUpdated();
-            }
+            }*/
             if (forceScale != Ogre::Vector3::ZERO)
             {
                 scale = forceScale;
