@@ -777,6 +777,10 @@ namespace NOWA
                         AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
                         AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
                     }
+                    /*else
+                    {
+                        AppStateManager::getSingletonPtr()->getCameraManager()->activateCamera(this->camera);
+                    }*/
 
                     // Create and switch workspace -- must run BEFORE setPrimaryWorkspace below, so that
                     // workspaceBaseCompPtr->getWorkspace() (read inside setPrimaryWorkspace) returns the

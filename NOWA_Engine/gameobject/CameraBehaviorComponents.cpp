@@ -940,8 +940,6 @@ namespace NOWA
 
             this->baseCamera = new ThirdPersonCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(), this->offsetPosition->getVector3(),
                 this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
-
-            auto physComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
         }
         CameraBehaviorComponent::setActivated(activated);
 

@@ -79,6 +79,10 @@ namespace NOWA
 
 		unsigned int getCameraBehaviorId(void);
 
+		void registerSplitScreenCamera(Ogre::Camera* camera, const Ogre::Vector4& geometry);
+
+        Ogre::Camera* getCameraForScreenPosition(int mouseX, int mouseY, Ogre::Window* renderWindow) const;
+
 	private:
 		CameraManager(const Ogre::String& appStateName);
 		~CameraManager();
@@ -102,20 +106,22 @@ namespace NOWA
 		};
 
 		struct CameraData
-		{
-			std::vector<BehaviorData> behaviorData;
-			bool isActive;
-			bool forSplitScreen;
+        {
+            std::vector<BehaviorData> behaviorData;
+            bool isActive;
+            bool forSplitScreen;
+            Ogre::Vector4 splitScreenGeometry;
 
-			CameraData()
+            CameraData()
 				: isActive(false),
-				forSplitScreen(false)
-			{
+				forSplitScreen(false),
+				splitScreenGeometry(0.0f, 0.0f, 1.0f, 1.0f)
+            {
+            }
+        };
 
-			}
-		};
+        std::map<Ogre::Camera*, CameraData> cameraDataMap;
 
-		std::map<Ogre::Camera*, CameraData> cameraDataMap;
 		unsigned int cameraBehaviorId;
 	};
 

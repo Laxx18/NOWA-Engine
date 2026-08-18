@@ -299,10 +299,21 @@ namespace NOWA
 		return this->textureSize->getVector2();
 	}
 
-	void SplitScreenComponent::setGeometry(const Ogre::Vector4& geometry)
-	{
-		this->geometry->setValue(geometry);
-	}
+		void SplitScreenComponent::setGeometry(const Ogre::Vector4& geometry)
+    {
+        this->geometry->setValue(geometry);
+
+        // Keeps CameraManager's screen-space lookup rectangle for this split screen camera in sync, so
+        // mouse-based raycasts (CameraManager::getCameraForScreenPosition) immediately use the updated
+        // tile. Relevant when SplitPreset recomputes Geometry while already inside the split screen
+        // simulation. Harmless no-op registration if the camera has not been created yet at design time
+        // (cameraComponent is nullptr then, guarded below); the registration also happens once for real in
+        // setupSplitScreen at simulation start.
+        if (nullptr != this->cameraComponent)
+        {
+            AppStateManager::getSingletonPtr()->getCameraManager()->registerSplitScreenCamera(this->cameraComponent->getCamera(), geometry);
+        }
+    }
 
 	Ogre::Vector4 SplitScreenComponent::getGeometry(void) const
 	{
@@ -466,6 +477,12 @@ namespace NOWA
                 ++it;
             }
 
+            // Registers this split screen camera's screen-space tile at the CameraManager, regardless of
+            // whether it has an optional camera behavior. This is what makes mouse-based raycasts
+            // (CameraManager::getCameraForScreenPosition) find the correct camera for every split screen
+            // camera, including purely statically placed ones that never go through addCamera() below.
+            AppStateManager::getSingletonPtr()->getCameraManager()->registerSplitScreenCamera(this->cameraComponent->getCamera(), this->getGeometry());
+
             // OPTIONAL camera behavior for THIS split screen camera.
             //
             // A split screen camera may be driven by a camera behavior (FirstPersonCamera,
@@ -624,28 +641,12 @@ namespace NOWA
             Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 
             // Stores the own camera before the camera component pointer is reset, because the workspace map
-            // entry of this split screen camera must be removed at the very end.
+            // entry AND the CameraManager registration of this split screen camera must be removed at the
+            // very end, regardless of whether it had an optional camera behavior.
             Ogre::Camera* ownCamera = nullptr;
             if (nullptr != this->cameraComponent)
             {
                 ownCamera = this->cameraComponent->getCamera();
-            }
-
-            // Removes the OPTIONAL camera behavior registration of THIS split screen camera.
-            // Counterpart of the block in setupSplitScreen: it must run for every split screen component,
-            // not only for the one which created the final combined workspace, and it must silently do
-            // nothing if no camera behavior game object id is set.
-            if (0 != this->cameraBehaviorGameObjectId->getULong() && nullptr != ownCamera)
-            {
-                GameObjectPtr cameraBehaviorGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraBehaviorGameObjectId->getULong());
-                if (nullptr != cameraBehaviorGameObjectPtr)
-                {
-                    const auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(cameraBehaviorGameObjectPtr->getComponent<CameraBehaviorComponent>());
-                    if (nullptr != cameraBehaviorCompPtr)
-                    {
-                        AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(ownCamera);
-                    }
-                }
             }
 
             if (nullptr != this->tempCamera)
@@ -661,10 +662,10 @@ namespace NOWA
                     // but fatal here: the tempCamera is destroyed a few lines below, so that freshly created
                     // dummy workspace would keep pointing at a destroyed camera. The render thread then
                     // crashes in CompositorPassScene::execute at mCamera->getSceneManager() with a freed
-                    // camera (0xdddddddd fill pattern).
+                    // camera.
                     //
                     // removeCamera destroys the workspace of the entry and ERASES the map entry without
-                    // creating any replacement, which is exactly what a camera that is about to die needs.
+                    // creating any replacement, which is exactly what a camera about to die needs.
                     WorkspaceModule::getInstance()->removeCamera(this->tempCamera);
 
                     Ogre::String finalRenderingNodeName = "FinalSplitScreenCombineNode_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
@@ -702,21 +703,23 @@ namespace NOWA
                 this->workspaceBaseComponent = nullptr;
             }
 
-            // Removes the stale workspace map entry of this split screen camera. WorkspaceBaseComponent::
-            // removeWorkspace only tears down the component itself, the workspace module would otherwise
-            // keep an entry holding a dangling workspace pointer, which the next setPrimaryWorkspace call
-            // would iterate over. The camera itself stays alive, it belongs to the CameraComponent.
+            // Removes the CameraManager entry of this split screen camera, whether it went through
+            // addCamera() (had an optional behavior) or only through registerSplitScreenCamera() (purely
+            // static split screen camera). removeCamera() correctly handles both an active-with-behaviors
+            // entry and a plain entry with empty behaviorData (the for-loop over behaviorData simply does
+            // not execute in the latter case), and erases the map entry either way. Without this, a
+            // non-behavior split screen camera would stay flagged forSplitScreen forever with stale
+            // geometry, and getCameraForScreenPosition would keep considering it a candidate.
             if (nullptr != ownCamera)
             {
-                WorkspaceModule::getInstance()->removeCamera(ownCamera);
+                WorkspaceModule::getInstance()->getPrimaryCameraComponent();
+                AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(ownCamera);
             }
 
             this->externalChannels.clear();
 
             // Re-activates the main camera at the very END, so that its workspace is created only after
-            // this split screen workspace has been torn down completely. Doing it earlier (as before) meant
-            // the main camera workspace and this split screen workspace existed at the same time.
-            // Note: the primary camera component may be a nullptr, e.g. while the scene is being destroyed.
+            // this split screen workspace has been torn down completely.
             CameraComponent* primaryCameraComponent = WorkspaceModule::getInstance()->getPrimaryCameraComponent();
             if (nullptr != primaryCameraComponent)
             {

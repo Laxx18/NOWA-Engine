@@ -1,6 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "CameraManager.h"
 #include "main/AppStateManager.h"
+#include "utilities/MathHelper.h"
 
 #include "NullCamera.h"
 
@@ -201,106 +202,139 @@ namespace NOWA
 	}
 
 	void CameraManager::addCamera(Ogre::Camera* camera, bool activate, bool forSplitScreen)
-	{
-		bool foundActiveOne = false;
+    {
+        bool foundActiveOne = false;
 
-		Ogre::String cameraName = camera->getName();
-		// Retrieve the camera data for the given camera from the map
-		CameraData& cameraData = this->cameraDataMap[camera];
-		cameraData.isActive = activate;
-		cameraData.forSplitScreen = forSplitScreen;
-		
-		// If activating, we need to deactivate all other cameras first
-		if (true == activate)
-		{
-			// Deactivate all cameras except for the one being activated
-			for (auto& entry : this->cameraDataMap)
-			{
-				if (entry.first != camera && false == entry.second.forSplitScreen)
-				{
-					entry.second.isActive = false;
-					NOWA::GraphicsModule::RenderCommand renderCommand = [this, entry]()
-					{
-						entry.first->setVisible(false);
-					};
-					NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::addCamera1");
+        Ogre::String cameraName = camera->getName();
+        // Retrieve the camera data for the given camera from the map
+        CameraData& cameraData = this->cameraDataMap[camera];
+        cameraData.isActive = activate;
+        cameraData.forSplitScreen = forSplitScreen;
 
-					for (auto it = entry.second.behaviorData.begin(); it != entry.second.behaviorData.end(); ++it)
-					{
-						it->cameraBehavior->onClearData();
-					}
-				}
-			}
+        // If activating, we need to deactivate all other cameras first
+        if (true == activate)
+        {
+            // Deactivate all cameras except for the one being activated
+            for (auto& entry : this->cameraDataMap)
+            {
+                // Really bad case: Camera added, but no behavior is assigned. That is: No CameraBehaviorComponent points via camera gameobject id to this camera. So the camera will be illegal.
+                //
+                // ATTENTION: This check must NEVER fire for (a) the camera THIS call is currently activating
+                // (entry.first == camera) - it may legitimately not have its behavior wired up yet at this exact
+                // point in the call chain, this very call (or the code that called it) is what is setting it up
+                // right now - and (b) any camera flagged forSplitScreen. Split screen cameras registered via
+                // CameraManager::registerSplitScreenCamera are legitimately allowed to have permanently empty
+                // behaviorData (a purely statically placed split screen camera with no CameraBehaviorComponent
+                // at all is an explicitly supported case). Without these two exclusions, this check erroneously
+                // erased a split screen camera's own freshly registered map entry and aborted this entire
+                // addCamera() call before it could set forSplitScreen/isActive correctly - which is exactly what
+                // caused split screen mouse-to-camera lookups to keep resolving to the wrong camera.
+                if (entry.first != camera && false == entry.second.forSplitScreen && true == entry.second.behaviorData.empty())
+                {
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
+                        "[CameraManager] Error in addCamera: no behaviors registered for camera: " + entry.first->getName() + "That is: No CameraBehaviorComponent points via camera gameobject id to this camera. So the camera will be illegal.");
+                    this->removeCamera(entry.first);
+                    return;
+                }
 
-			auto activeBehavior = this->getActiveCameraBehavior(camera);
-			if (nullptr != activeBehavior)
-			{
-				// Ensure the active behavior is at the front of the list
-				for (auto it = cameraData.behaviorData.begin(); it != cameraData.behaviorData.end(); ++it)
-				{
-					if (it != cameraData.behaviorData.begin())
-					{
-						std::swap(*it, cameraData.behaviorData.front());
-					}
-					break;
-				}
+                if (entry.first != camera && false == entry.second.forSplitScreen)
+                {
+                    entry.second.isActive = false;
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, entry]()
+                    {
+                        entry.first->setVisible(false);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::addCamera1");
 
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
+                    for (auto it = entry.second.behaviorData.begin(); it != entry.second.behaviorData.end(); ++it)
+                    {
+                        it->cameraBehavior->onClearData();
+                    }
+                }
+            }
+
+            auto activeBehavior = this->getActiveCameraBehavior(camera);
+            if (nullptr != activeBehavior)
+            {
+                // Ensure the active behavior is at the front of the list
+                for (auto it = cameraData.behaviorData.begin(); it != cameraData.behaviorData.end(); ++it)
+                {
+                    if (it != cameraData.behaviorData.begin())
+                    {
+                        std::swap(*it, cameraData.behaviorData.front());
+                    }
+                    break;
+                }
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
                 {
                     // Now set this camera as active
                     camera->setVisible(true);
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::addCamera2");
 
-				cameraData.behaviorData.begin()->cameraBehavior->postInitialize(camera);
-				cameraData.behaviorData.begin()->cameraBehavior->onSetData();
-			}
-		}
-		else
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
+                cameraData.behaviorData.begin()->cameraBehavior->postInitialize(camera);
+                cameraData.behaviorData.begin()->cameraBehavior->onSetData();
+            }
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, camera]()
             {
                 // If deactivating, just hide the camera and clear its data
                 camera->setVisible(false);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::addCamera3");
 
-			cameraData.behaviorData.begin()->cameraBehavior->onClearData();
-		}
+            // ATTENTION: guarded against empty behaviorData - a split screen camera with no
+            // CameraBehaviorComponent (purely statically placed) has an empty behaviorData vector, and calling
+            // .begin() on that would be undefined behavior / a crash. Previously unguarded, this was never hit
+            // because every addCamera(camera, false, ...) call in the codebase so far happened to target a
+            // camera that already had a behavior - but it is not a safe assumption to keep relying on.
+            if (false == cameraData.behaviorData.empty())
+            {
+                cameraData.behaviorData.begin()->cameraBehavior->onClearData();
+            }
+        }
 
-		// Add the camera to the map (this ensures the camera is part of the map, even if inactive)
-		this->cameraDataMap[camera] = cameraData;
+        // Add the camera to the map (this ensures the camera is part of the map, even if inactive)
+        this->cameraDataMap[camera] = cameraData;
 
-		// If we're deactivating and there was another active camera, find the next one to activate
-		if (!activate)
-		{
-			for (auto& entry : this->cameraDataMap)
-			{
-				if (true == entry.second.isActive)
-				{
-					foundActiveOne = true;
-					break;
-				}
-			}
+        // If we're deactivating and there was another active camera, find the next one to activate
+        if (!activate)
+        {
+            for (auto& entry : this->cameraDataMap)
+            {
+                if (true == entry.second.isActive)
+                {
+                    foundActiveOne = true;
+                    break;
+                }
+            }
 
-			// If no active camera was found, activate the first camera in the map
-			if (false == foundActiveOne && false == this->cameraDataMap.empty())
-			{
-				auto firstCamera = this->cameraDataMap.begin()->first;
-				CameraData& firstCameraData = this->cameraDataMap[firstCamera];
-				firstCameraData.isActive = true;
+            // If no active camera was found, activate the first camera in the map
+            if (false == foundActiveOne && false == this->cameraDataMap.empty())
+            {
+                auto firstCamera = this->cameraDataMap.begin()->first;
+                CameraData& firstCameraData = this->cameraDataMap[firstCamera];
+                firstCameraData.isActive = true;
 
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, firstCamera]()
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, firstCamera]()
                 {
                     firstCamera->setVisible(true);
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::addCamera4");
 
-				firstCameraData.behaviorData.begin()->cameraBehavior->postInitialize(firstCamera);
-				firstCameraData.behaviorData.begin()->cameraBehavior->onSetData();
-			}
-		}
-	}
+                // ATTENTION: same guard as above - firstCameraData may be a split screen camera without any
+                // registered behavior.
+                if (false == firstCameraData.behaviorData.empty())
+                {
+                    firstCameraData.behaviorData.begin()->cameraBehavior->postInitialize(firstCamera);
+                    firstCameraData.behaviorData.begin()->cameraBehavior->onSetData();
+                }
+            }
+        }
+    }
 
 	void CameraManager::addCameraBehavior(Ogre::Camera* camera, BaseCamera* baseCamera)
 	{
@@ -471,19 +505,57 @@ namespace NOWA
 	}
 
 	Ogre::Camera* CameraManager::getActiveCamera(void) const
-	{
-		// Iterates through all cameras in the cameraDataMap
-		for (const auto entry : this->cameraDataMap)
-		{
-			// Check if the camera is active
-			if (true == entry.second.isActive && false == entry.second.forSplitScreen)
-			{
-				Ogre::String cameraName = entry.first->getName();
-				return entry.first;
-			}
-		}
-		return nullptr;
-	}
+    {
+        // Iterates through all cameras in the cameraDataMap
+        for (const auto entry : this->cameraDataMap)
+        {
+            // Check if the camera is active
+            if (true == entry.second.isActive && false == entry.second.forSplitScreen)
+            {
+                return entry.first;
+            }
+        }
+
+        // ATTENTION: getActiveCamera() must NEVER return nullptr as long as at least one non-split-screen
+        // camera is registered - callers throughout the engine assume a valid camera and do not null-check the
+        // result. If no camera is currently flagged active (should not normally happen, but can occur during
+        // scene teardown/reload ordering), fall back to the first non-split-screen camera found in the map,
+        // mark it active, and bring it up exactly like the equivalent fallback paths in addCamera()/
+        // removeCamera() already do (visibility via render thread, behavior postInitialize/onSetData).
+        //
+        // const_cast is used deliberately here: this method stays const from the caller's point of view (it
+        // only ever "discovers and repairs" missing internal state, never changes what the caller asked for),
+        // but cameraDataMap itself must be mutated to record the new active camera.
+        for (auto& entry : const_cast<CameraManager*>(this)->cameraDataMap)
+        {
+            if (false == entry.second.forSplitScreen)
+            {
+                entry.second.isActive = true;
+
+                Ogre::Camera* fallbackCamera = entry.first;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [fallbackCamera]()
+                {
+                    fallbackCamera->setVisible(true);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::getActiveCamera_Fallback");
+
+                if (false == entry.second.behaviorData.empty())
+                {
+                    entry.second.behaviorData.begin()->cameraBehavior->postInitialize(fallbackCamera);
+                    entry.second.behaviorData.begin()->cameraBehavior->onSetData();
+                }
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CameraManager] getActiveCamera: no active camera was flagged, activating fallback camera: " + fallbackCamera->getName());
+
+                return fallbackCamera;
+            }
+        }
+
+        // Truly no camera at all is registered (map empty, or only split-screen cameras exist) - there is
+        // nothing left to fabricate a valid Ogre::Camera* from, so nullptr is unavoidable in this one case.
+        return nullptr;
+    }
 
 	Ogre::String CameraManager::getName(void) const
 	{
@@ -518,7 +590,66 @@ namespace NOWA
 	unsigned int CameraManager::getCameraBehaviorId(void)
 	{
 		return this->cameraBehaviorId++;
-	}
+    }
+
+    void CameraManager::registerSplitScreenCamera(Ogre::Camera* camera, const Ogre::Vector4& geometry)
+    {
+        // Deliberately independent of addCamera(): a split screen camera must be findable for screen-space
+        // lookups (mouse position -> camera) regardless of whether it has an optional CameraBehaviorComponent
+        // attached. addCamera() only registers a camera when a behavior is set (SplitScreenComponent calls it
+        // exclusively inside the "0 != cameraBehaviorGameObjectId" branch), so a purely statically placed split
+        // screen camera would otherwise never appear in cameraDataMap at all.
+        //
+        // This function only touches forSplitScreen and splitScreenGeometry. It never touches isActive or
+        // behaviorData, so calling it does not interfere with addCamera()/removeCamera() bookkeeping for
+        // cameras that DO have a behavior - both paths can run for the same camera without conflict.
+        CameraData& cameraData = this->cameraDataMap[camera];
+        cameraData.forSplitScreen = true;
+        cameraData.splitScreenGeometry = geometry;
+    }
+
+    Ogre::Camera* CameraManager::getCameraForScreenPosition(int mouseX, int mouseY, Ogre::Window* renderWindow) const
+    {
+        bool anySplitScreenCamera = false;
+
+        Ogre::Real normalizedX = 0.0f;
+        Ogre::Real normalizedY = 0.0f;
+
+        // Same normalization MathHelper uses to feed Camera::getCameraToViewportRay, so this lookup uses the
+        // exact same screen-space convention as everything else that turns a mouse position into a world ray.
+        MathHelper::getInstance()->mouseToViewPort(mouseX, mouseY, normalizedX, normalizedY, renderWindow);
+
+        for (const auto& entry : this->cameraDataMap)
+        {
+            if (true == entry.second.forSplitScreen)
+            {
+                anySplitScreenCamera = true;
+
+                const Ogre::Vector4& geometry = entry.second.splitScreenGeometry;
+
+                Ogre::Real left = geometry.x;
+                Ogre::Real top = geometry.y;
+                Ogre::Real right = geometry.x + geometry.z;
+                Ogre::Real bottom = geometry.y + geometry.w;
+
+                if (normalizedX >= left && normalizedX < right && normalizedY >= top && normalizedY < bottom)
+                {
+                    return entry.first;
+                }
+            }
+        }
+
+        if (true == anySplitScreenCamera)
+        {
+            // Split screen cameras exist, but the position matched none of their tiles (e.g. exact border
+            // rounding, or the split screen scenario just ended this very frame) - fall back to the active
+            // camera instead of returning nullptr, so every existing single-camera raycast callsite keeps
+            // working unchanged.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraManager] getCameraForScreenPosition: position did not match any split screen tile, falling back to the active camera.");
+        }
+
+        return this->getActiveCamera();
+    }
 
 	void CameraManager::moveCamera(Ogre::Real dt)
 	{

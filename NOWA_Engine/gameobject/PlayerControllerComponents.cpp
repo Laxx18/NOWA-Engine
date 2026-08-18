@@ -3441,7 +3441,9 @@ namespace NOWA
             // once to fill the CPU cache. All subsequent hits on the same mesh are
             // pure CPU (shared_ptr cache lookup, no GPU access, no fence). The throttle
             // above limits how often this first-hit stall can occur in autoClick mode.
-            bool success = MathHelper::getInstance()->getRaycastForFrame(ms.X.abs, ms.Y.abs, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), Core::getSingletonPtr()->getOgreRenderWindow(), this->raySceneQuery,
+
+			Ogre::Camera* affectedCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getCameraForScreenPosition(ms.X.abs, ms.Y.abs, Core::getSingletonPtr()->getOgreRenderWindow());
+            bool success = MathHelper::getInstance()->getRaycastForFrame(ms.X.abs, ms.Y.abs, affectedCamera, Core::getSingletonPtr()->getOgreRenderWindow(), this->raySceneQuery,
                 excludeObjects, clickedPosition);
 
             if (true == success)
@@ -3454,7 +3456,7 @@ namespace NOWA
                 // http://www.stevefsp.org/projects/rcndoc/prod/classdtNavMeshQuery.html
                 // https://forums.ogre3d.org/viewtopic.php?t=62079
                 // Attention: This line will always find a path, even the user clicked on a non navigable place, so the nearest position to that place is used, which may not be what the user wants for his game
-                if (this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
+                 if (this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
                 {
                     // Check if the result is within an acceptable height range
                     if (std::abs(posOnNavMesh.y - clickedPosition.y) > this->maxHeightDifference)

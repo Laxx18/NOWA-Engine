@@ -1977,7 +1977,21 @@ namespace NOWA
     // 120 degrees around 1 1 1), which then poisoned every world -> skeleton space
     // conversion below. That was the tearing/flicker seen when connect() was called.
     // ============================================================================
-    static int ragdollFirstFrameLogCounter = 0;
+
+    // When true, applyRagdollStateToModel() writes the bone transforms DIRECTLY instead of going
+    // through GraphicsModule::updateBoneTransform().
+    //
+    // The normal path is the interpolated one and stays that way - it is what makes the ragdoll run
+    // smoothly. But at ragdoll START the bones must arrive at their target in ONE go. The interpolated
+    // path delivers only a fraction of the target in the first frame (measured: ~88% of the way, the
+    // remaining 12% still bind pose), and for hierarchical bone LOCAL transforms that is fatal: every
+    // child is computed against a parent that has not arrived yet, and the error multiplies down the
+    // chain. Depth 1 looks almost right, depth 2 is far off - exactly the torn-apart model in the first
+    // frames after connect().
+    //
+    // File scope rather than a member or a parameter, to avoid a header change.
+    static bool ragdollWriteBonesDirectly = false;
+
     void PhysicsRagDollComponentV2::applyRagdollStateToModel(void)
     {
         // This function writes the game object node, so it must never run after the simulation has
@@ -2026,6 +2040,16 @@ namespace NOWA
 
         Ogre::Quaternion invNodeOri = nodeOri.Inverse();
 
+        // Skeleton space transforms of the rag bones processed so far, keyed by Ogre::Bone*.
+        //
+        // A child bone's LOCAL transform is computed against its parent's DERIVED transform. Reading
+        // that from the skeleton cache (extractBoneDerivedTransform) gives the value from the LAST
+        // skeleton update - i.e. the parent's OLD transform - while the local we write is cascaded
+        // against the parent's NEW one a moment later. One link deep that is a small error, two links
+        // deep it is a completely different rotation, and it never converges because every frame starts
+        // from the cache again. That is the model tearing itself apart while the hulls are correct.
+        std::unordered_map<Ogre::Bone*, std::pair<Ogre::Vector3, Ogre::Quaternion>> ragBoneSkelCache;
+
         for (; i < this->ragDataList.size(); i++)
         {
             auto ragBone = this->ragDataList[i].ragBone;
@@ -2043,6 +2067,10 @@ namespace NOWA
             skelPos /= nodeScale;
             Ogre::Quaternion skelOri = invNodeOri * bodyWorldOri;
 
+            // Remember this bone's freshly computed skeleton space transform, so its children below can
+            // use it instead of the stale cache.
+            ragBoneSkelCache[bone] = std::make_pair(skelPos, skelOri);
+
             Ogre::Bone* parentBone = bone->getParent();
             Ogre::Vector3 boneLocalPos;
             Ogre::Quaternion boneLocalOri;
@@ -2050,7 +2078,45 @@ namespace NOWA
             {
                 Ogre::Vector3 parentDerivedPos;
                 Ogre::Quaternion parentDerivedOri;
+
+                // Walk up until an ancestor is found whose NEW skeleton space transform is already
+                // known, then compose back down through the bones in between. Those in-between bones
+                // (clavicle, neck, spine1 ...) are not driven by the ragdoll, so their LOCAL transforms
+                // are unchanged and valid - only their derived values are stale, and composing them
+                // onto a fresh ancestor rebuilds exactly what the skeleton will produce.
+                std::vector<Ogre::Bone*> boneChain;
+                Ogre::Bone* ancestorBone = parentBone;
+                auto ancestorIt = ragBoneSkelCache.find(ancestorBone);
+
+                while (nullptr != ancestorBone && ancestorIt == ragBoneSkelCache.end())
+                {
+                    boneChain.push_back(ancestorBone);
+                    ancestorBone = ancestorBone->getParent();
+                    if (nullptr != ancestorBone)
+                    {
+                        ancestorIt = ragBoneSkelCache.find(ancestorBone);
+                    }
+                }
+
+                if (nullptr != ancestorBone && ancestorIt != ragBoneSkelCache.end())
+                {
+                    parentDerivedPos = ancestorIt->second.first;
+                    parentDerivedOri = ancestorIt->second.second;
+
+                    for (size_t c = boneChain.size(); c > 0; c--)
+                    {
+                        Ogre::Bone* chainBone = boneChain[c - 1];
+
+                        parentDerivedPos = parentDerivedPos + parentDerivedOri * chainBone->getPosition();
+                        parentDerivedOri = parentDerivedOri * chainBone->getOrientation();
+                    }
+                }
+                else
+                {
+                    // No driven ancestor: this bone hangs off the animated part of the skeleton, where
+                    // the cached derived transform is the correct reference.
                 extractBoneDerivedTransform(parentBone, parentDerivedPos, parentDerivedOri);
+                }
 
                 Ogre::Quaternion invParentOri = parentDerivedOri.Inverse();
                 boneLocalPos = invParentOri * (skelPos - parentDerivedPos);
@@ -2072,39 +2138,18 @@ namespace NOWA
                                                                                        " | boneLocalOri: " + Ogre::StringConverter::toString(boneLocalOri));*/
             }
 
-            GraphicsModule::getInstance()->updateBoneTransform(bone, boneLocalPos, boneLocalOri);
-
-            // TEMPORARY DIAGNOSTIC: the first four passes after the process started, for every rag bone.
-            // The point is to see WHICH bones are wrong in those first frames and why:
-            //   - parentDerived*  : the parent transform this bone was computed against. If it still
-            //                       holds the animation pose while the body is already ragdolling, the
-            //                       parent is stale.
-            //   - boneLocal*      : what was written.
-            //   - readBack*       : the bone's derived transform as currently cached. Compare it against
-            //                       skel* - if it does not follow, the write did not take effect.
-            if (ragdollFirstFrameLogCounter < 4)
+            if (true == ragdollWriteBonesDirectly)
             {
-                Ogre::Vector3 readBackPos;
-                Ogre::Quaternion readBackOri;
-                PhysicsRagDollComponentV2::extractBoneDerivedTransform(bone, readBackPos, readBackOri);
-
-                Ogre::String parentName = "NONE";
-                if (nullptr != parentBone)
+                // Ragdoll start: the full target value, immediately, no ring buffer, no interpolation.
+                bone->setPosition(boneLocalPos);
+                bone->setOrientation(boneLocalOri);
+            }
+            else
                 {
-                    parentName = parentBone->getName();
+                // Normal per frame path: interpolated, like every other Ogre write in this engine.
+                NOWA::GraphicsModule::getInstance()->updateBoneTransform(bone, boneLocalPos, boneLocalOri);
                 }
 
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[RAGSTART] pass: " + Ogre::StringConverter::toString(static_cast<int>(ragdollFirstFrameLogCounter)) + " bone: '" + bone->getName() + "' parent: '" + parentName + "' | bodyOri: " + Ogre::StringConverter::toString(bodyWorldOri) +
-                        " | skelOri: " + Ogre::StringConverter::toString(skelOri) + " | boneLocalOri(written): " + Ogre::StringConverter::toString(boneLocalOri) + " | boneDerivedOri(readBack): " + Ogre::StringConverter::toString(readBackOri) +
-                        " | skelPos: " + Ogre::StringConverter::toString(skelPos) + " | boneLocalPos(written): " + Ogre::StringConverter::toString(boneLocalPos) + " | boneDerivedPos(readBack): " + Ogre::StringConverter::toString(readBackPos));
-            }
-        }
-
-        // TEMPORARY DIAGNOSTIC counter, see above.
-        if (ragdollFirstFrameLogCounter < 4)
-        {
-            ragdollFirstFrameLogCounter++;
         }
 
         // Apply bone corrections
@@ -2209,13 +2254,23 @@ namespace NOWA
             }
         }
 
+        // Initial bone pose, written directly and completely - see ragdollWriteBonesDirectly. This runs
+        // inside internalApplyState()'s enqueueAndWait render command, so it is a one-time, blocking
+        // write on the render thread. From the next frame on, update() takes over with the interpolated
+        // path.
+        ragdollWriteBonesDirectly = true;
         this->applyRagdollStateToModel();
+        ragdollWriteBonesDirectly = false;
 
-        // this->skeletonInstance->update();
+        // With the bones now actually AT their target, updating the skeleton makes the derived
+        // transforms correct right away. That matters for the very next frame, because
+        // applyRagdollStateToModel() reads the parent's DERIVED transform as its reference - without
+        // this it would still be the animation pose for one more frame.
+        this->skeletonInstance->update();
 
-        // The node last, placed on the root body - from here on OgreNewt keeps it there via
-        // attachToNode(). Doing this first (in the RagBone constructor, as it used to be) left one frame
-        // with a rotated node and unrotated bones.
+        // The node is placed on the root body here - from here on OgreNewt keeps it there via
+        // attachToNode(). Doing this in the RagBone constructor (as it used to be) left one frame with a
+        // rotated node and unrotated bones.
         if (nullptr != this->ragDataList[0].ragBone && nullptr != this->ragDataList[0].ragBone->getBody())
         {
             Ogre::Vector3 rootBodyPos;

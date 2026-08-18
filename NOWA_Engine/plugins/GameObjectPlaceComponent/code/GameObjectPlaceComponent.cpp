@@ -1014,7 +1014,7 @@ namespace NOWA
         Ogre::Real y = 0.0f;
         MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, x, y, Core::getSingletonPtr()->getOgreRenderWindow());
 
-        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getCameraForScreenPosition(evt.state.X.abs, evt.state.Y.abs, Core::getSingletonPtr()->getOgreRenderWindow());
         if (nullptr == camera)
         {
             return Ogre::Vector3::ZERO;
