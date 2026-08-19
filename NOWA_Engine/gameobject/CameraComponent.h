@@ -153,8 +153,6 @@ namespace NOWA
 
 		void setAspectRatio(Ogre::Real aspectRatio);
 
-		Ogre::String getExcludeRenderCategories(void) const;
-
 		Ogre::Camera* getCamera(void) const;
 
 		Ogre::uint8 getEyeId(void) const;

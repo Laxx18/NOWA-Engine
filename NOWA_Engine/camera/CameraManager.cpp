@@ -651,6 +651,17 @@ namespace NOWA
         return this->getActiveCamera();
     }
 
+    bool CameraManager::getSplitScreenGeometry(Ogre::Camera* camera, Ogre::Vector4& outGeometry) const
+    {
+        auto it = this->cameraDataMap.find(camera);
+        if (it != this->cameraDataMap.end() && true == it->second.forSplitScreen)
+        {
+            outGeometry = it->second.splitScreenGeometry;
+            return true;
+        }
+        return false;
+    }
+
 	void CameraManager::moveCamera(Ogre::Real dt)
 	{
 		// Moves all active cameras using their camera behaviors

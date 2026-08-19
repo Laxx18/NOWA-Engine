@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.03" g="0.03" b="0.04"/>
 			<ambientLightLowerHemisphere r="0.03" g="0.03" b="0.04" a="1"/>
-			<hemisphereDir x="-0.22755" y="-0.0131738" z="-0.973677"/>
+			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -33,7 +33,7 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268268 5056.87 264690"/>
+		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268270 5057.83 264690"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -71,8 +71,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="299.672 -182.798 27853.1"/>
-					<property type="9" name="CameraOrientation" data="-7.64366 -38.4814 -0.083035"/>
+					<property type="9" name="CameraPosition" data="299.208 -182.37 27854"/>
+					<property type="9" name="CameraOrientation" data="-26.8066 -39.5459 -0.028658"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="1e+06"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -80,7 +80,6 @@
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
-					
 					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -109,8 +108,8 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="268267" y="5056.39" z="264690"/>
-			<rotation qw="-0.236583" qx="0.400084" qy="0.224318" qz="0.856529"/>
+			<position x="268269" y="5057.35" z="264690"/>
+			<rotation qw="-0.237327" qx="0.400103" qy="0.226368" qz="0.855775"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -438,6 +437,7 @@
 					<property type="6" name="Acceleration" data="0"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="UseStandUp" data="false"/>
+					<property type="7" name="Wall Separation Mode" data="None"/>
 					<property type="7" name="ComponentCameraBehaviorThirdPersonOcclusionComponent" data="CameraBehaviorThirdPersonOcclusionComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -662,7 +662,7 @@ Alfred has important information!"/>
 			<position x="0" y="5" z="-2"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
+			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -731,7 +731,6 @@ Alfred has important information!"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
-					
 				</userData>
 			</item>
 		</node>
@@ -1115,7 +1114,7 @@ Alfred has important information!"/>
 			<position x="267250" y="26.7088" z="-549984"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_22_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_22_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="247566423"/>
@@ -1123,7 +1122,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1292,7 +1291,7 @@ Alfred has important information!"/>
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_0_PlanetSun" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Sun_0_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3277932005"/>
@@ -1340,7 +1339,7 @@ Alfred has important information!"/>
 			<position x="12235" y="0" z="41682.8"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Eri_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Eri_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2490287205"/>
@@ -1517,7 +1516,7 @@ Alfred has important information!"/>
 			<position x="7759.21" y="0" z="24471.1"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Corba_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Corba_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3104165348"/>
@@ -1630,7 +1629,7 @@ Alfred has important information!"/>
 			<position x="57948.9" y="0" z="101956"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_3_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_3_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="231444901"/>
@@ -1638,7 +1637,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1776,7 +1775,7 @@ Alfred has important information!"/>
 			<position x="49652.9" y="0" z="115773"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_4_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_4_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4137029641"/>
@@ -1784,7 +1783,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1889,7 +1888,7 @@ Alfred has important information!"/>
 			<position x="79301.4" y="0" z="107828"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_5_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_5_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="615049723"/>
@@ -1897,7 +1896,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2002,7 +2001,7 @@ Alfred has important information!"/>
 			<position x="39088.4" y="0" z="82614.9"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_6_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_6_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2130037018"/>
@@ -2010,7 +2009,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2115,7 +2114,7 @@ Alfred has important information!"/>
 			<position x="-131733" y="3.1653" z="120912"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_7_PlanetSun" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Sun_7_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1934544053"/>
@@ -2163,7 +2162,7 @@ Alfred has important information!"/>
 			<position x="-84275.1" y="3.1653" z="143382"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_8_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_8_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2684937537"/>
@@ -2171,7 +2170,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2309,7 +2308,7 @@ Alfred has important information!"/>
 			<position x="-81757" y="3.1653" z="159484"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_9_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_9_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2073204556"/>
@@ -2317,7 +2316,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2422,7 +2421,7 @@ Alfred has important information!"/>
 			<position x="-78836.1" y="3.1653" z="165036"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_10_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_10_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1237236097"/>
@@ -2430,7 +2429,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2535,7 +2534,7 @@ Alfred has important information!"/>
 			<position x="-95410.6" y="3.1653" z="119090"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_11_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_11_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3072332092"/>
@@ -2543,7 +2542,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2648,7 +2647,7 @@ Alfred has important information!"/>
 			<position x="-71862.6" y="3.1653" z="20110.5"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_12_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_12_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2877967791"/>
@@ -2656,7 +2655,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -2825,7 +2824,7 @@ Alfred has important information!"/>
 			<position x="26586.9" y="26.7088" z="-309796"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Sun_13_PlanetSun" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Sun_13_PlanetSun" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4182463336"/>
@@ -2873,7 +2872,7 @@ Alfred has important information!"/>
 			<position x="-6173.89" y="26.7088" z="-278425"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_14_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_14_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="272925929"/>
@@ -2881,7 +2880,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3019,7 +3018,7 @@ Alfred has important information!"/>
 			<position x="-10948.1" y="26.7088" z="-262061"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_15_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_15_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2673943460"/>
@@ -3027,7 +3026,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3132,7 +3131,7 @@ Alfred has important information!"/>
 			<position x="-87030.1" y="26.7088" z="-353103"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_16_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_16_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4211186983"/>
@@ -3140,7 +3139,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3309,7 +3308,7 @@ Alfred has important information!"/>
 			<position x="16542.8" y="26.7088" z="-503808"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_17_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_17_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4017219666"/>
@@ -3317,7 +3316,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3455,7 +3454,7 @@ Alfred has important information!"/>
 			<position x="17782.9" y="26.7088" z="-486736"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_18_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_18_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2773328192"/>
@@ -3463,7 +3462,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3568,7 +3567,7 @@ Alfred has important information!"/>
 			<position x="57737" y="26.7088" z="-575370"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Planet_19_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Planet_19_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2305918419"/>
@@ -3576,7 +3575,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3745,7 +3744,7 @@ Alfred has important information!"/>
 			<position x="63643.7" y="26.7088" z="-591381"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_20_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_20_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3568381581"/>
@@ -3753,7 +3752,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3858,7 +3857,7 @@ Alfred has important information!"/>
 			<position x="76193.8" y="26.7088" z="-591582"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Universum_Moon_21_PlanetItem" meshFile="Procedural.mesh" castShadows="false" visible="true">
+			<item name="Universum_Moon_21_PlanetItem" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1723480900"/>
@@ -3866,7 +3865,7 @@ Alfred has important information!"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -3968,7 +3967,7 @@ Alfred has important information!"/>
 			</item>
 		</node>
 		<node name="Dungeon_0" id="2358939090">
-			<position x="9658.45" y="526.031" z="41306.5"/>
+			<position x="9658.45" y="526.131" z="41306.5"/>
 			<rotation qw="0.736576" qx="-0.0294688" qy="-0.0321596" qz="0.674947"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -4566,7 +4565,7 @@ Alfred has important information!"/>
 			<position x="7635.33" y="524.94" z="24554.5"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="LightPoint.mesh" castShadows="false" visible="false">
+			<item name="DummyItem" meshFile="LightPoint.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>

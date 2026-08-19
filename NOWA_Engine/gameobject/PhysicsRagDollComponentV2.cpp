@@ -1978,20 +1978,6 @@ namespace NOWA
     // conversion below. That was the tearing/flicker seen when connect() was called.
     // ============================================================================
 
-    // When true, applyRagdollStateToModel() writes the bone transforms DIRECTLY instead of going
-    // through GraphicsModule::updateBoneTransform().
-    //
-    // The normal path is the interpolated one and stays that way - it is what makes the ragdoll run
-    // smoothly. But at ragdoll START the bones must arrive at their target in ONE go. The interpolated
-    // path delivers only a fraction of the target in the first frame (measured: ~88% of the way, the
-    // remaining 12% still bind pose), and for hierarchical bone LOCAL transforms that is fatal: every
-    // child is computed against a parent that has not arrived yet, and the error multiplies down the
-    // chain. Depth 1 looks almost right, depth 2 is far off - exactly the torn-apart model in the first
-    // frames after connect().
-    //
-    // File scope rather than a member or a parameter, to avoid a header change.
-    static bool ragdollWriteBonesDirectly = false;
-
     void PhysicsRagDollComponentV2::applyRagdollStateToModel(void)
     {
         // This function writes the game object node, so it must never run after the simulation has
@@ -2138,18 +2124,7 @@ namespace NOWA
                                                                                        " | boneLocalOri: " + Ogre::StringConverter::toString(boneLocalOri));*/
             }
 
-            if (true == ragdollWriteBonesDirectly)
-            {
-                // Ragdoll start: the full target value, immediately, no ring buffer, no interpolation.
-                bone->setPosition(boneLocalPos);
-                bone->setOrientation(boneLocalOri);
-            }
-            else
-                {
-                // Normal per frame path: interpolated, like every other Ogre write in this engine.
-                NOWA::GraphicsModule::getInstance()->updateBoneTransform(bone, boneLocalPos, boneLocalOri);
-                }
-
+            NOWA::GraphicsModule::getInstance()->updateBoneTransform(bone, boneLocalPos, boneLocalOri);
         }
 
         // Apply bone corrections
@@ -2258,9 +2233,7 @@ namespace NOWA
         // inside internalApplyState()'s enqueueAndWait render command, so it is a one-time, blocking
         // write on the render thread. From the next frame on, update() takes over with the interpolated
         // path.
-        ragdollWriteBonesDirectly = true;
         this->applyRagdollStateToModel();
-        ragdollWriteBonesDirectly = false;
 
         // With the bones now actually AT their target, updating the skeleton makes the derived
         // transforms correct right away. That matters for the very next frame, because

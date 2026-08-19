@@ -6,6 +6,7 @@
 #include "Vao/OgreAsyncTicket.h"
 #include "Terra.h"
 #include "planetTerra/PlanetTerra.h"
+#include "main/AppStateManager.h"
 #include "gameobject/PlanetTerraComponentBase.h"
 #include "OgreMeshManager2.h"
 #include "OgreMesh2.h"
@@ -2976,6 +2977,26 @@ namespace NOWA
 		Ogre::Real resultX;
 		Ogre::Real resultY;
 		this->mouseToViewPort(mouseX, mouseY, resultX, resultY, renderWindow);
+
+        // If the given camera is a split screen camera, resultX/resultY from mouseToViewPort are still relative
+        // to the WHOLE render window (e.g. 0.53 for a click just right of screen center), but
+        // getCameraToViewportRay expects coordinates relative to THIS camera's own, un-cropped view (0..1 over
+        // its full frustum). The DynamicSplitMaterial quad pass stretches each split screen camera's ENTIRE
+        // SplitScreenTexture (rendered at full window resolution, see SplitScreenComponent::
+        // createSplitScreenTexture) across only its tile of the window, so window-relative and tile-relative
+        // coordinates are NOT the same once more than one camera shares the screen. Without this remap, a click
+        // near the left edge of the right-hand tile (window-relative x around 0.53) was interpreted as
+        // almost the horizontal CENTER of that camera's own view, producing a raycast far to the right of the
+        // clicked point. Remapping window-relative into tile-relative space here fixes every raycast callsite
+        // uniformly, without touching mouseToViewPort itself (kept exactly as-is, since it is also used
+        // elsewhere for plain window-relative purposes).
+        Ogre::Vector4 splitScreenGeometry;
+        if (true == AppStateManager::getSingletonPtr()->getCameraManager()->getSplitScreenGeometry(camera, splitScreenGeometry))
+        {
+            resultX = (resultX - splitScreenGeometry.x) / splitScreenGeometry.z;
+            resultY = (resultY - splitScreenGeometry.y) / splitScreenGeometry.w;
+        }
+
 		Ogre::Ray ray = camera->getCameraToViewportRay(resultX, resultY);
 		raySceneQuery->setRay(ray);
 		return this->getRaycastFromPoint(raySceneQuery, camera, resultPositionOnModel, targetMovableObject, closestDistance, normalOnModel, excludeMovableObjects, forGizmo);

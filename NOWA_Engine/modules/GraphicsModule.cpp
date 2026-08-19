@@ -8,9 +8,63 @@
 
 #include <sstream>
 
+#define CLOSURE_DEBUG
+
 namespace
 {
     std::chrono::milliseconds g_defaultTimeout(5000); // 5 seconds
+
+#ifdef CLOSURE_DEBUG
+    // --- TEMPORARY closure-flood / slow-render-iteration diagnostics ---
+    // Render thread only, no locking needed. Toggle via DEBUG_CLOSURE above.
+    Ogre::Real g_renderDt = 0.0f;
+
+    struct ClosureCommandDiag
+    {
+        size_t count;
+        size_t adds;
+        size_t updates;
+        size_t fireAndForget;
+        size_t removals;
+
+        ClosureCommandDiag() : count(0), adds(0), updates(0), fireAndForget(0), removals(0)
+        {
+        }
+    };
+
+    std::unordered_map<Ogre::String, ClosureCommandDiag> g_closureCommandDiagnostics;
+
+    void logClosureFloodDiagnostics(void)
+    {
+        std::vector<std::pair<Ogre::String, ClosureCommandDiag>> sorted(g_closureCommandDiagnostics.begin(), g_closureCommandDiagnostics.end());
+
+        std::sort(sorted.begin(), sorted.end(),
+            [](const std::pair<Ogre::String, ClosureCommandDiag>& a, const std::pair<Ogre::String, ClosureCommandDiag>& b)
+            {
+                return a.second.count > b.second.count;
+            });
+
+        Ogre::LogManager::getSingletonPtr()->logMessage("[GraphicsModule] Closure flood diagnostics - distinct names this frame: " + Ogre::StringConverter::toString(sorted.size()) + ", renderDt: " + Ogre::StringConverter::toString(g_renderDt),
+            Ogre::LML_NORMAL);
+
+        const size_t maxNamesToLog = 10;
+        size_t namesLogged = 0;
+        for (const auto& entry : sorted)
+        {
+            if (namesLogged >= maxNamesToLog)
+            {
+                break;
+            }
+
+            std::stringstream ss;
+            ss << "[GraphicsModule]   '" << entry.first << "' count=" << entry.second.count << " (add=" << entry.second.adds << " update=" << entry.second.updates << " fireAndForget=" << entry.second.fireAndForget
+               << " removal=" << entry.second.removals << ")";
+            Ogre::LogManager::getSingletonPtr()->logMessage(ss.str(), Ogre::LML_NORMAL);
+
+            ++namesLogged;
+        }
+    }
+#endif
 }
 
 namespace NOWA
@@ -130,7 +184,7 @@ namespace NOWA
         return this->bRunning;
     }
 
-    void GraphicsModule::renderThreadFunction(void)
+        void GraphicsModule::renderThreadFunction(void)
     {
         // Advertise this thread's identity to Core so enqueueAndWait thread-ownership assertions work correctly.
         Core::getSingletonPtr()->setRenderThreadId(std::this_thread::get_id());
@@ -183,11 +237,25 @@ namespace NOWA
                 continue;
             }
 
+#ifdef CLOSURE_DEBUG
+            // TEMPORARY: per-stage timing to find which stage causes slow render
+            // iterations. Toggle via DEBUG_CLOSURE above.
+            Ogre::Timer stageTimer;
+            Ogre::uint64 tCommands = 0;
+            Ogre::uint64 tTransforms = 0;
+            Ogre::uint64 tRenderOneFrame = 0;
+            Ogre::uint64 tClosures = 0;
+#endif
+
             // -- COMMAND SERVICE -----------------------------------------------------
             // Unconditional and before every early-out below. The logic thread blocks in
             // enqueueAndWait() until these run, so skipping this in ANY branch (stall,
             // scene loading, shutdown drain) deadlocks the logic thread.
             this->processAllCommands();
+
+#ifdef CLOSURE_DEBUG
+            tCommands = stageTimer.getMicroseconds();
+#endif
 
             // -- SHUTDOWN DRAIN ------------------------------------------------------
             // The logic loop has ended and the teardown (state exit, GameObjectController::stop,
@@ -204,6 +272,10 @@ namespace NOWA
             lastFrameTime = currentTime;
             this->currentRenderDt = deltaTime;
 
+#ifdef CLOSURE_DEBUG
+            g_renderDt = deltaTime;
+#endif
+
             GameProgressModule* gameProgressModule = appStateManager->getActiveGameProgressModuleSafe();
             const bool isStalled = appStateManager->bStall.load();
             const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : false;
@@ -218,6 +290,10 @@ namespace NOWA
                 const float alpha = this->consumeInterpolationAlpha();
                 this->setInterpolationWeight(alpha);
                 this->updateAllTransforms();
+
+#ifdef CLOSURE_DEBUG
+                tTransforms = stageTimer.getMicroseconds();
+#endif
 
                 if (++frameCount % 300 == 0)
                 {
@@ -239,11 +315,29 @@ namespace NOWA
             {
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
 
+#ifdef CLOSURE_DEBUG
+                tRenderOneFrame = stageTimer.getMicroseconds();
+#endif
+
                 // Execute closures AFTER renderOneFrame so RenderingMetrics are
                 // populated when closures read them (e.g. DesignState::updateInfo).
                 // Node/bone/datablock interpolation already ran in updateAllTransforms
                 // above before renderOneFrame, so visual correctness is preserved.
                 this->updateAndExecuteClosures();
+
+#ifdef CLOSURE_DEBUG
+                tClosures = stageTimer.getMicroseconds();
+
+                // TEMPORARY: log a stage breakdown whenever the whole iteration took
+                // more than 100ms.
+                if (tClosures > 100000)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage("[GraphicsModule] Slow render iteration - processAllCommands: " + Ogre::StringConverter::toString(tCommands / 1000.0) + "ms, updateAllTransforms: " +
+                                                                        Ogre::StringConverter::toString((tTransforms - tCommands) / 1000.0) + "ms, renderOneFrame: " + Ogre::StringConverter::toString((tRenderOneFrame - tTransforms) / 1000.0) +
+                                                                        "ms, updateAndExecuteClosures: " + Ogre::StringConverter::toString((tClosures - tRenderOneFrame) / 1000.0) + "ms",
+                        Ogre::LML_NORMAL);
+                }
+#endif
             }
         }
 
@@ -2435,6 +2529,33 @@ namespace NOWA
 
         while (processedCount < maxCommandsPerFrame && this->closureQueue.try_dequeue(consumerToken, command))
         {
+#ifdef CLOSURE_DEBUG
+            // Only start tallying once we are trending toward an actual overflow -
+            // keeps normal frames (a few dozen closures) completely free of the
+            // hashmap insert/allocation cost below.
+            if (processedCount >= 500)
+            {
+                ClosureCommandDiag& diag = g_closureCommandDiagnostics[command.uniqueName];
+                ++diag.count;
+                if (true == command.isRemoval)
+                {
+                    ++diag.removals;
+                }
+                else if (true == command.fireAndForget)
+                {
+                    ++diag.fireAndForget;
+                }
+                else if (true == command.isUpdate)
+                {
+                    ++diag.updates;
+                }
+                else
+                {
+                    ++diag.adds;
+                }
+            }
+#endif
+
             this->processSingleCommand(command, this->currentRenderDt);
             ++processedCount;
         }
@@ -2443,7 +2564,17 @@ namespace NOWA
         if (processedCount >= maxCommandsPerFrame)
         {
             Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Warning: Processed maximum closure commands per frame (" + Ogre::StringConverter::toString(maxCommandsPerFrame) + ")", Ogre::LML_NORMAL);
+#ifdef CLOSURE_DEBUG
+            logClosureFloodDiagnostics();
+#endif
         }
+
+#ifdef DEBUG_CLOSURE
+        if (false == g_closureCommandDiagnostics.empty())
+        {
+            g_closureCommandDiagnostics.clear();
+        }
+#endif
     }
 
     void GraphicsModule::executeActiveClosures(void)

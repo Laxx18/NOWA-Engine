@@ -83,6 +83,7 @@ namespace NOWA
 
         Ogre::Camera* getCameraForScreenPosition(int mouseX, int mouseY, Ogre::Window* renderWindow) const;
 
+		bool getSplitScreenGeometry(Ogre::Camera* camera, Ogre::Vector4& outGeometry) const;
 	private:
 		CameraManager(const Ogre::String& appStateName);
 		~CameraManager();

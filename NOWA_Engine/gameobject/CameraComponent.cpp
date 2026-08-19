@@ -444,8 +444,12 @@ namespace NOWA
         if (nullptr == this->camera)
         {
             bool applyStoredTransformToNode = CameraComponent::justCreated;
+            // Read on the calling (main) thread before entering the render-thread
+            // lambda, same reasoning as applyStoredTransformToNode above - avoid
+            // touching Variants from the render thread.
+            bool wasActiveOnLoad = this->active->getBool();
 
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this, applyStoredTransformToNode]()
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, applyStoredTransformToNode, wasActiveOnLoad]()
             {
                 this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName());
 
@@ -461,47 +465,77 @@ namespace NOWA
                 Ogre::Real aspectRatio = windowWidth / windowHeight;
                 this->camera->setAspectRatio(aspectRatio);
 
-                // IMPORTANT: the camera is intentionally kept on its OWN
-                // Ogre-Next auto-created default node (sitting at world
-                // identity) rather than being attached to the GameObject's
-                // node. All existing camera behaviors (FirstPersonCamera etc.)
-                // call camera->setPosition()/setOrientation() directly and
-                // treat those values as WORLD space - that only holds true
-                // because the camera's own node never moves. Re-parenting the
-                // camera to the GameObject node would turn every one of those
-                // calls into a LOCAL offset instead and break every behavior.
+                // -----------------------------------------------------------
+                // Choosing the initial WORLD transform for the camera.
                 //
-                // The GameObject's node is only used here, once, to give a
-                // freshly-placed camera its initial world transform. Ongoing
-                // synchronization between "gizmo moved the node" and "the
-                // actual unparented camera" happens continuously in update()
-                // (design-mode tick) - see there for why a one-shot alignment
-                // here is not enough on its own.
+                // There are two independently-tracked candidates:
+                //   a) this->position / this->orientation - the loaded
+                //      CameraPosition/CameraOrientation XML attributes (or the
+                //      freshly-set spawn value for a brand-new editor camera).
+                //   b) the GameObject's scene node transform - the <node> XML
+                //      tag, i.e. wherever the dummy item / gizmo sits.
                 //
-                // Only push our stored position/orientation onto the node when
-                // the component was freshly added in the editor (no meaningful
-                // node transform exists yet) - never on the load path, where
-                // DotSceneImportModule::processNode() already applied the
-                // correct <node> transform before this ran; overwriting it here
-                // with a stale CameraPosition/CameraOrientation XML value was
-                // the original bug.
-                if (true == applyStoredTransformToNode)
-                {
-                    this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
-                    this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
-                }
+                // update() keeps these in sync in only ONE direction, depending
+                // on active state:
+                //   - INACTIVE camera: node -> camera -> variant (the gizmo
+                //     drives the node; update() pushes that onto the unparented
+                //     camera and mirrors the result into the variant). The node
+                //     is authoritative here.
+                //   - ACTIVE camera: camera -> variant ONLY. A camera behavior
+                //     (BaseCamera free-fly, FirstPersonCamera, ...) drives the
+                //     Ogre::Camera directly in world space every frame; update()
+                //     only reads that back into the variant and deliberately
+                //     never touches the node (writing it back would fight the
+                //     behavior every debounce tick - that caused the earlier
+                //     gizmo jitter). So the node of an active camera is frozen
+                //     at whatever it held at creation time and never updated
+                //     again - trusting it here re-applies a stale, unrelated
+                //     position. The variant is the only continuously-correct
+                //     source for an active camera.
+                //
+                // So: on load, trust the node ONLY if this camera was inactive
+                // when the scene was saved; trust the loaded variant if it was
+                // active. For a brand-new editor camera (applyStoredTransformToNode
+                // == true) always use the variant, and additionally push it onto
+                // the node once so the dummy item spawns in the right place.
+                // -----------------------------------------------------------
+                bool trustVariantOverNode = (true == applyStoredTransformToNode) || (true == wasActiveOnLoad);
 
-                const Ogre::Vector3 worldPos = this->gameObjectPtr->getSceneNode()->getPosition();
-                const Ogre::Quaternion worldOri = this->gameObjectPtr->getSceneNode()->getOrientation();
+                Ogre::Vector3 worldPos;
+                Ogre::Quaternion worldOri;
+
+                if (true == trustVariantOverNode)
+                {
+                    worldPos = this->position->getVector3();
+                    worldOri = MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3());
+
+                    // Keep the node in sync too, so the dummy item / gizmo start
+                    // point is correct if this camera gets deactivated later.
+                    this->gameObjectPtr->getSceneNode()->setPosition(worldPos);
+                    this->gameObjectPtr->getSceneNode()->setOrientation(worldOri);
+                }
+                else
+                {
+                    // Inactive camera on load: the <node> transform (already
+                    // applied by DotSceneImportModule::processNode() before this
+                    // ran) is authoritative - read it back rather than trusting
+                    // a possibly-stale CameraPosition/CameraOrientation value.
+                    worldPos = this->gameObjectPtr->getSceneNode()->getPosition();
+                    worldOri = this->gameObjectPtr->getSceneNode()->getOrientation();
+                }
 
                 if (this->camera->getParentSceneNode())
                 {
                     this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(worldPos));
                     this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(worldOri));
                 }
+                else
+                {
+                    this->camera->setPosition(worldPos);
+                    this->camera->setOrientation(worldOri);
+                }
 
-                // Keep the Variants in sync with the node's actual transform right
-                // away, instead of waiting for the next editor-idle update() tick.
+                // Keep the Variants in sync with whichever source we just used.
                 this->position->setValue(worldPos);
                 this->orientation->setValue(MathHelper::getInstance()->quatToDegrees(worldOri));
 
@@ -511,6 +545,11 @@ namespace NOWA
                 {
                     this->dummyItem->setName("DummyItem");
                     this->dummyItem->setCastShadows(false);
+                }
+
+                if (true == this->orthographic->getBool())
+                {
+                    this->setOrthoWindowSize(this->orthoWindowSize->getVector2());
                 }
 
                 // Register camera
