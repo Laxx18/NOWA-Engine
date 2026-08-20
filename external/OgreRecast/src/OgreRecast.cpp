@@ -621,16 +621,11 @@ int OgreRecast::FindPath(float* pStartPos, float* pEndPos,
     dtStatus status;
     dtPolyRef StartPoly, EndPoly;
     float StartNearest[3], EndNearest[3];
-    dtPolyRef PolyPath[MAX_PATHPOLY];
+    std::vector<dtPolyRef> PolyPath(MAX_PATHPOLY);
     int nPathCount = 0;
-    float StraightPath[MAX_PATHVERT * 3];
+    std::vector<float> StraightPath(MAX_PATHVERT * 3);
     int nVertCount = 0;
 
-    // NOTE: only DT_FAILURE means the query truly failed. The detail bits
-    // (DT_OUT_OF_NODES, DT_PARTIAL_RESULT, ...) can be set together with
-    // DT_SUCCESS and still return a usable, just imperfect, path/result.
-    // Treating every detail bit as an error was rejecting valid long/winding
-    // paths through the maze.
     status = m_navQuery->findNearestPoly(pStartPos, mExtents, mFilter, &StartPoly, StartNearest);
     if (status & DT_FAILURE) return -1;
 
@@ -638,19 +633,47 @@ int OgreRecast::FindPath(float* pStartPos, float* pEndPos,
     if (status & DT_FAILURE) return -2;
 
     status = m_navQuery->findPath(StartPoly, EndPoly, StartNearest, EndNearest,
-        mFilter, PolyPath, &nPathCount, MAX_PATHPOLY);
+        mFilter, PolyPath.data(), &nPathCount, MAX_PATHPOLY);
     if (status & DT_FAILURE) return -3;
     if (nPathCount == 0) return -4;
-    // Optional: log if we hit the search budget, path is still usable.
-    // if (status & DT_OUT_OF_NODES) m_pLog->logMessage("[OgreRecast] FindPath: DT_OUT_OF_NODES, path may be suboptimal.");
+
+    // IMPORTANT: DT_PARTIAL_RESULT alone does not tell us WHY the path is
+    // incomplete. There are two very different cases:
+    //   a) node/poly search budget exhausted before reaching the goal, but
+    //      the goal IS reachable (e.g. a long winding maze corridor) - the
+    //      last polygon in PolyPath is still progressing meaningfully.
+    //   b) the start polygon sits in a navmesh region that is topologically
+    //      disconnected from the goal (e.g. a tiny sliver polygon left over
+    //      at the boundary of an eroded/carved-out obstacle area, like the
+    //      house obstacle here) - no amount of search budget will ever
+    //      reach the goal from here, because there simply is no connecting
+    //      edge. findPath() still returns DT_SUCCESS|DT_PARTIAL_RESULT with
+    //      whatever best-effort (but useless, dead-end) path it found
+    //      within that isolated island.
+    //
+    // Case (b) was previously masked by treating every detail bit as a hard
+    // failure, so the agent just stood still with no visible symptom. Once
+    // that blanket rejection was relaxed (to fix the maze case (a)), case
+    // (b) started being accepted and executed too - the agent visibly
+    // shuffles around inside the tiny isolated patch it's confined to.
+    //
+    // Distinguish them explicitly: if the path actually reaches EndPoly,
+    // accept it (covers case (a), and the normal full-success case).
+    // Otherwise, treat it as a real failure - this agent's current position
+    // is not navmesh-connected to the target at all, and no path exists to
+    // give it, regardless of the reason.
+    if (PolyPath[nPathCount - 1] != EndPoly)
+    {
+        // if (status & DT_PARTIAL_RESULT) m_pLog->logMessage("[OgreRecast] FindPath: start polygon is disconnected from target (isolated navmesh region) - slot " + Ogre::StringConverter::toString(nPathSlot));
+        return -7;
+    }
 
     status = m_navQuery->findStraightPath(StartNearest, EndNearest,
-        PolyPath, nPathCount,
-        StraightPath, nullptr, nullptr,
+        PolyPath.data(), nPathCount,
+        StraightPath.data(), nullptr, nullptr,
         &nVertCount, MAX_PATHVERT);
     if (status & DT_FAILURE) return -5;
     if (nVertCount == 0) return -6;
-    // if (status & DT_PARTIAL_RESULT) m_pLog->logMessage("[OgreRecast] FindPath: DT_PARTIAL_RESULT, straight path may stop short.");
 
     int nIndex = 0;
     for (int nVert = 0; nVert < nVertCount; ++nVert)
@@ -681,13 +704,12 @@ int OgreRecast::FindPathWithQuery(dtNavMeshQuery* query,
 
     dtPolyRef StartPoly, EndPoly;
     float StartNearest[3], EndNearest[3];
-    dtPolyRef PolyPath[MAX_PATHPOLY];
+    std::vector<dtPolyRef> PolyPath(MAX_PATHPOLY);
     int nPathCount = 0;
-    float StraightPath[MAX_PATHVERT * 3];
+    std::vector<float> StraightPath(MAX_PATHVERT * 3);
     int nVertCount = 0;
 
     dtStatus status;
-    // Same fix as FindPath(): only DT_FAILURE is an actual error.
     status = query->findNearestPoly(pStartPos, mExtents, mFilter, &StartPoly, StartNearest);
     if (status & DT_FAILURE) return -1;
 
@@ -695,13 +717,23 @@ int OgreRecast::FindPathWithQuery(dtNavMeshQuery* query,
     if (status & DT_FAILURE) return -2;
 
     status = query->findPath(StartPoly, EndPoly, StartNearest, EndNearest,
-        mFilter, PolyPath, &nPathCount, MAX_PATHPOLY);
+        mFilter, PolyPath.data(), &nPathCount, MAX_PATHPOLY);
     if (status & DT_FAILURE) return -3;
     if (nPathCount == 0) return -4;
 
+    // Same reasoning as FindPath() above: reject a partial result whose
+    // last polygon is not the actual goal - that means the start position
+    // is on a navmesh island disconnected from the target, not just a
+    // search-budget shortfall on an otherwise reachable path.
+    if (PolyPath[nPathCount - 1] != EndPoly)
+    {
+        // m_pLog->logMessage("[OgreRecast] FindPathWithQuery: start polygon is disconnected from target (isolated navmesh region) - slot " + Ogre::StringConverter::toString(nPathSlot));
+        return -7;
+    }
+
     status = query->findStraightPath(StartNearest, EndNearest,
-        PolyPath, nPathCount,
-        StraightPath, nullptr, nullptr,
+        PolyPath.data(), nPathCount,
+        StraightPath.data(), nullptr, nullptr,
         &nVertCount, MAX_PATHVERT);
     if (status & DT_FAILURE) return -5;
     if (nVertCount == 0) return -6;
@@ -894,6 +926,7 @@ Ogre::String OgreRecast::getPathFindErrorMsg(int errorCode)
     case -4: return "-4 -- Couldn't find a path.";
     case -5: return "-5 -- Couldn't create a straight path.";
     case -6: return "-6 -- Couldn't find a straight path.";
+    case -7: return "-7 -- Start position is on a navmesh region disconnected from the target (isolated island).";
     default: return Ogre::StringConverter::toString(errorCode) + " -- Unknown error.";
     }
 }

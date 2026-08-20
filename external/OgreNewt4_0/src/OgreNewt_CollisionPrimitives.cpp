@@ -224,10 +224,11 @@ namespace OgreNewt
             Ogre::Vector3 scale(1, 1, 1);
 
             // Do not apply scale, it will be already extracted out if vertex positions are use. Additional scale, would scale twice!
-            /*if (Ogre::Node* node = obj->getParentNode())
+            if (Ogre::Node* node = obj->getParentNode())
             {
-                scale = node->_getDerivedScaleUpdated();
-            }*/
+                // Must be called to force update with new values
+                node->_getDerivedScaleUpdated();
+            }
 
             if (forceScale != Ogre::Vector3::ZERO)
             {
@@ -411,10 +412,11 @@ namespace OgreNewt
             Ogre::Vector3 scale(1, 1, 1);
 
             // Do not apply scale, it will be already extracted out if vertex positions are use. Additional scale, would scale twice!
-            /*if (Ogre::Node* node = item->getParentNode())
+            if (Ogre::Node* node = item->getParentNode())
             {
-                scale = node->_getDerivedScaleUpdated();
-            }*/
+                // Must be called to force update with new values
+                node->_getDerivedScaleUpdated();
+            }
             if (forceScale != Ogre::Vector3::ZERO)
             {
                 scale = forceScale;
@@ -676,9 +678,11 @@ namespace OgreNewt
         OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(const OgreNewt::World* world, Ogre::v1::Entity* obj, bool optimize, unsigned int id, FaceWinding fw) : Collision(world)
         {
             Ogre::Vector3 scale(1, 1, 1);
+            // Do not apply scale, it will be already extracted out if vertex positions are use. Additional scale, would scale twice!
             if (Ogre::Node* node = obj->getParentNode())
             {
-                scale = node->_getDerivedScaleUpdated();
+                // Must be called to force update with new values
+                node->_getDerivedScaleUpdated();
             }
 
             FaceWinding localFw = fw;
@@ -846,9 +850,11 @@ namespace OgreNewt
             }
 
             Ogre::Vector3 scale(1, 1, 1);
+            // Do not apply scale, it will be already extracted out if vertex positions are use. Additional scale, would scale twice!
             if (Ogre::Node* node = item->getParentNode())
             {
-                scale = node->_getDerivedScaleUpdated();
+                // Must be called to force update with new values
+                node->_getDerivedScaleUpdated();
             }
 
             FaceWinding localFw = fw;

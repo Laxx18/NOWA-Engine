@@ -13447,7 +13447,7 @@ return {
 	GameObjectPlaceComponent =
 	{
 		type = "class",
-		description = "Usage: Enables placing/cloning pre-configured shadow game objects during simulation. Pre-create shadow objects in the editor (set visible=false), configure their IDs here, then call activatePlacement(id) from Lua. Left-click places, right-click/ESC cancels.",
+		description = "Usage: Enables placing/cloning pre-configured template game objects during simulation. Pre-create template objects in the editor (set visible=false), configure their IDs here, then call activatePlacement(id) from Lua. Left-click places, right-click/ESC cancels.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{

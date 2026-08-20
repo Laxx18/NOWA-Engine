@@ -567,6 +567,7 @@ namespace NOWA
                         // if the mesh name is a plane, the tree collision does not work, so use box
                         // Attention: Is this correct?
                         Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
+
                         size.y = 0.001f;
                         staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
                     };

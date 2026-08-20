@@ -725,6 +725,8 @@ protected:
       **/
     bool initTileCache(void);
 
+    void forceFinishPendingObstacles();
+
 
     /**
       * InputGeom from which the tileCache is initially inited (it's bounding box is considered the bounding box

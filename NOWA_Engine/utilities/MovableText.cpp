@@ -509,6 +509,7 @@ namespace NOWA
         {
             mCaption = caption;
             mNeedUpdate = true;
+            this->forceUpdate();
         }
     }
 

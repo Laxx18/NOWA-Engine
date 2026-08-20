@@ -39,7 +39,11 @@ local function activateItemBox(itemBox, isBuilding)
                 isProcessingSlotClick = false
                 return
             end
-            local spawnPos = currentlySelectedBuilding:getPosition() + Vector3(4, 0, 4)
+            local buildingSize = currentlySelectedBuilding:getSize()
+            local margin = 2.0  -- extra clearance beyond the building's own footprint, in meters
+            local offsetX = (buildingSize.x * 0.5) + margin
+            local offsetZ = (buildingSize.z * 0.5) + margin
+            local spawnPos = currentlySelectedBuilding:getPosition() + Vector3(offsetX, 0, offsetZ)
             AppStateManager:getGameObjectController():clone(workerTemplate:getId(), nil, "0", spawnPos, Quaternion.IDENTITY, Vector3.UNIT_SCALE)
             statusText:setCaption("Worker spawned!")
         else

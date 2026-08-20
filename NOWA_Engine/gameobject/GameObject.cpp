@@ -2044,11 +2044,7 @@ namespace NOWA
             return;
         }*/
         this->scale->setValue(scale);
-        auto physicsComponent = NOWA::makeStrongPtr(this->getComponent<NOWA::PhysicsComponent>());
-        if (nullptr == physicsComponent || nullptr == physicsComponent->getBody())
-        {
-            NOWA::GraphicsModule::getInstance()->setNodeScale(this->sceneNode, scale, true);
-        }
+        NOWA::GraphicsModule::getInstance()->setNodeScale(this->sceneNode, scale, false);
         this->oldScale = scale;
     }
 

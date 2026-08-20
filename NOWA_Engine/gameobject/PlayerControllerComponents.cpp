@@ -698,10 +698,10 @@ namespace NOWA
 
             if (true == this->bShowDebugData)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerController-DEBUG] front hit: " + (nullptr != this->hitGameObjectFront ? this->hitGameObjectFront->getName() : Ogre::String("NONE")) +
+                /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerController-DEBUG] front hit: " + (nullptr != this->hitGameObjectFront ? this->hitGameObjectFront->getName() : Ogre::String("NONE")) +
                                                                                         " normal: " + Ogre::StringConverter::toString(this->frontNormal) + " rayDir: " + Ogre::StringConverter::toString(direction) +
                                                                                         " f0: " + (nullptr != contactDataFront[0].getHitGameObject() ? "HIT" : "miss") + " f1: " + (nullptr != contactDataFront[1].getHitGameObject() ? "HIT" : "miss") +
-                                                                                        " f2: " + (nullptr != contactDataFront[2].getHitGameObject() ? "HIT" : "miss"));
+                                                                                        " f2: " + (nullptr != contactDataFront[2].getHitGameObject() ? "HIT" : "miss"));*/
             }
 
 			this->hitGameObjectUp = nullptr;
@@ -3264,7 +3264,7 @@ namespace NOWA
             return;
         }
 
-        if (nullptr == this->playerController->getInputDeviceComponent() || true == this->playerController->getInputDeviceComponent()->isDeviceLocked())
+        if (nullptr != this->playerController->getInputDeviceComponent() && true == this->playerController->getInputDeviceComponent()->isDeviceLocked())
         {
             return;
         }

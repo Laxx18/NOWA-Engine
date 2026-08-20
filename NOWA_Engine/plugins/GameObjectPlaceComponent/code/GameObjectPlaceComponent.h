@@ -20,17 +20,20 @@ namespace NOWA
     class PhysicsComponent;
 
     /**
-     * @brief   Enables placing/cloning pre-configured shadow game objects in the world during simulation.
-     *          Configure shadow game object IDs in the editor. Call activatePlacement(id) from Lua
+     * @brief   Enables placing/cloning pre-configured template game objects in the world during simulation.
+     *          Configure template game object IDs in the editor. Call activatePlacement(id) from Lua
      *          (e.g. on inventory drop event). Move preview with mouse, left-click to place, right-click or ESC to cancel.
      *
      * Workflow:
-     *   1. In NOWA-Design: create the shadow game objects (houses etc.) with all components/config, set visible=false.
-     *   2. Add this component to a manager game object. Configure the shadow IDs in the PlaceObjectCount list.
+     *   1. In NOWA-Design: create the template game objects (houses etc.) with all components/config, set visible=false.
+     *   2. Add this component to a manager game object. Configure the template IDs in the PlaceObjectCount list.
      *   3. In Lua, react to inventory drop: call gameObjectPlaceComp:activatePlacement("12345678")
-     *   4. The shadow object becomes visible and follows the mouse as a preview.
-     *   5. Left-click: clone is created at world position, shadow is hidden again, reactOnGameObjectPlaced fires.
-     *   6. Right-click or ESC: cancel, reactOnPlacementCancelled fires.
+     *   4. A bare, component-less preview (mesh + datablocks copied from the template) becomes visible and
+     *      follows the mouse. The template game object itself is never made visible, moved, or otherwise
+     *      touched during this — it has no involvement in the physics simulation at any point.
+     *   5. Left-click: the template is cloned (with all its components) at the world position, the preview
+     *      is destroyed, reactOnGameObjectPlaced fires.
+     *   6. Right-click or ESC: cancel, preview is destroyed, reactOnPlacementCancelled fires.
      */
     class EXPORTED GameObjectPlaceComponent : public GameObjectComponent, public Ogre::Plugin, public OIS::MouseListener, public OIS::KeyListener
     {
@@ -118,14 +121,14 @@ namespace NOWA
         Ogre::String getForbiddenTerraLayers(void) const;
 
         /**
-         * @brief Sets the number of shadow game object slots.
+         * @brief Sets the number of template game object slots.
          */
         void setPlaceObjectCount(unsigned int count);
 
         unsigned int getPlaceObjectCount(void) const;
 
         /**
-         * @brief Sets the shadow game object id for the given slot index.
+         * @brief Sets the template game object id for the given slot index.
          * @param[in] index  Slot index.
          * @param[in] id     Game object id as string (unsigned long).
          */
@@ -134,9 +137,10 @@ namespace NOWA
         Ogre::String getGameObjectId(unsigned int index) const;
 
         /**
-         * @brief Called from Lua to begin placement mode for the given shadow game object id.
-         *        The shadow object becomes visible and tracks the mouse until placed or cancelled.
-         * @param[in] gameObjectId  Id of the pre-created shadow game object to use as preview and clone source.
+         * @brief Called from Lua to begin placement mode for the given template game object id.
+         *        A bare preview (mesh + datablocks copied from the template) becomes visible and
+         *        tracks the mouse until placed or cancelled. The template itself is never touched.
+         * @param[in] gameObjectId  Id of the pre-created template game object to preview and clone from.
          */
         void activatePlacement(const Ogre::String& gameObjectId);
 
@@ -172,8 +176,8 @@ namespace NOWA
 
         static Ogre::String getStaticInfoText(void)
         {
-            return "Usage: Enables placing/cloning pre-configured shadow game objects during simulation. "
-                   "Pre-create shadow objects in the editor (set visible=false), configure their IDs here, "
+            return "Usage: Enables placing/cloning pre-configured template game objects during simulation. "
+                   "Pre-create template objects in the editor (set visible=false), configure their IDs here, "
                    "then call activatePlacement(id) from Lua. Left-click places, right-click/ESC cancels.";
         }
 
@@ -238,7 +242,7 @@ namespace NOWA
 
     private:
         /**
-         * @brief Hides the shadow object and resets placement state.
+         * @brief Destroys the preview object (if any) and resets placement state.
          */
         void endPlacement(bool cancelled);
 
@@ -248,17 +252,28 @@ namespace NOWA
          */
         Ogre::Vector3 getMouseWorldPosition(const OIS::MouseEvent& evt);
 
-        void resolveShadowPhysicsComponent(void);
+        /**
+         * @brief Builds a bare preview SceneNode + Item (mesh and per-subitem datablocks copied from
+         *        templateGameObjectPtr) on the render thread. No GameObject, no components — in particular
+         *        no PhysicsComponent, so the preview can never participate in collision/physics resolution
+         *        while being dragged around the world. Returns false if the template has no Item movable.
+         */
+        bool createPreviewObject(GameObjectPtr templateGameObjectPtr);
 
-        void applyPreviewTransparency(GameObjectPtr shadowGameObjectPtr);
+        /**
+         * @brief Destroys the preview SceneNode + Item on the render thread, if present.
+         */
+        void destroyPreviewObject(void);
 
-        void resetPreviewTransparency(GameObjectPtr shadowGameObjectPtr);
+        void applyPreviewTransparency(void);
+
+        void resetPreviewTransparency(void);
 
         void parseExcludedCategories(const Ogre::String& categories);
 
-        void applyForbiddenVisual(GameObjectPtr shadowGameObjectPtr);
+        void applyForbiddenVisual(void);
 
-        void resetForbiddenVisual(GameObjectPtr shadowGameObjectPtr);
+        void resetForbiddenVisual(void);
 
         Ogre::Quaternion computeTerrainAlignOrientation(const Ogre::Vector3& hitPoint, const Ogre::Quaternion& baseYRotation);
 
@@ -269,6 +284,7 @@ namespace NOWA
         void checkAndSetForbiddenTerraLayers(const Ogre::String& terraLayers);
 
         bool checkTerraLayerForbidden(const Ogre::Vector3& position) const;
+
     private:
         Ogre::String name;
 
@@ -284,7 +300,7 @@ namespace NOWA
         Variant* placeObjectCount;
         std::vector<Variant*> gameObjectIds;
 
-        unsigned long activeGameObjectId; // shadow game object currently being placed
+        unsigned long activeGameObjectId; // template game object id currently being previewed/placed
         bool isPlacing;
         Ogre::Vector3 currentHitPoint;
 
@@ -295,10 +311,14 @@ namespace NOWA
         luabind::object placedClosureFunction;
         luabind::object cancelledClosureFunction;
 
-       Ogre::uint32 categoryId;
-        
-        PhysicsComponent* shadowPhysicsComponent;
-        bool oldWasDynamic;
+        Ogre::uint32 categoryId;
+
+        // Bare preview object — no GameObject, no components (no PhysicsComponent in particular).
+        // Built fresh from the template's mesh/datablocks in createPreviewObject(), destroyed in
+        // destroyPreviewObject(). This is the entire fix for the physics-push bug: there is nothing
+        // here for Newton to resolve collisions against.
+        Ogre::SceneNode* previewSceneNode;
+        Ogre::Item* previewItem;
 
         Ogre::Real currentRotationDegrees; // accumulated Y rotation via mousewheel
         // Per-subitem cloned datablocks for transparency — key = subitem index

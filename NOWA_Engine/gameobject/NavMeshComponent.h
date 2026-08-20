@@ -163,6 +163,10 @@ namespace NOWA
 
         bool getWalkable(void) const;
 
+        void setObstacleClearance(Ogre::Real obstacleClearance);
+
+        Ogre::Real getObstacleClearance(void) const;
+
     public:
         static const Ogre::String AttrActivated(void)
         {
@@ -176,7 +180,10 @@ namespace NOWA
         {
             return "Walkable";
         }
-
+        static const Ogre::String AttrObstacleClearance(void)
+        {
+            return "Obstacle Clearance";
+        }
     private:
         /**
          * @brief Registers or unregisters this game object as a navmesh obstacle
@@ -199,6 +206,7 @@ namespace NOWA
         Variant* activated;
         Variant* navigationType;
         Variant* walkable;
+        Variant* obstacleClearance;
         Ogre::String oldNavigationType;
         Ogre::Real transformUpdateTimer;
         Ogre::Vector3 oldPosition;

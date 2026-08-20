@@ -268,10 +268,11 @@ namespace NOWA
     //   Optional pre-built geometry (used by NavMeshComponent::update for rotation/
     //   position changes). If provided, ownership is taken — do not delete externally.
     // ─────────────────────────────────────────────────────────────────────────────
-    void OgreRecastModule::addDynamicObstacle(unsigned long id, bool walkable, InputGeom* externalInputGeom, ConvexVolume* externalConvexVolume)
+    void OgreRecastModule::addDynamicObstacle(unsigned long id, bool walkable, InputGeom* externalInputGeom, ConvexVolume* externalConvexVolume, Ogre::Real extraClearance)
     {
         if (nullptr == this->detourTileCache)
         {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DIAG][OgreRecastModule] addDynamicObstacle: EARLY OUT, detourTileCache is null. id=" + Ogre::StringConverter::toString(id));
             return;
         }
 
@@ -280,17 +281,30 @@ namespace NOWA
 
         this->removeStaticObstacle(id);
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, id, walkable, externalInputGeom, externalConvexVolume, &inputGeom, &convexVolume]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, id, walkable, externalInputGeom, externalConvexVolume, extraClearance, &inputGeom, &convexVolume]()
         {
             auto& it = this->dynamicObstacles.find(id);
             if (it == this->dynamicObstacles.end())
             {
                 auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
+                if (nullptr == gameObjectPtr)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DIAG][OgreRecastModule] addDynamicObstacle: gameObjectPtr NULL for id=" + Ogre::StringConverter::toString(id));
+                }
                 if (nullptr != gameObjectPtr)
                 {
                     Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
+                    if (nullptr == item)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DIAG][OgreRecastModule] addDynamicObstacle: item NULL for '" + gameObjectPtr->getName() + "'");
+                    }
                     if (nullptr != item)
                     {
+                        if (nullptr == this->detourTileCache->getInputGeom())
+                        {
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                                "[DIAG][OgreRecastModule] addDynamicObstacle: detourTileCache->getInputGeom() is NULL - tile cache input geom not ready yet, obstacle will be a placeholder only (id=" + Ogre::StringConverter::toString(id) + ")");
+                        }
                         // Only create if there is an input geom for the detour tile cache existing, if not just add nullptr, nullptr as place holders, and when nav mesh is created
                         // detour tile cache input geom does exist, so add them later
                         if (nullptr != this->detourTileCache->getInputGeom())
@@ -299,6 +313,8 @@ namespace NOWA
                             if (nullptr == externalInputGeom)
                             {
                                 inputGeom = new InputGeom(item);
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DIAG][OgreRecastModule] addDynamicObstacle: built InputGeom from item, vertCount=" + Ogre::StringConverter::toString(inputGeom->getVertCount()) +
+                                                                                                        " triCount=" + Ogre::StringConverter::toString(inputGeom->getTriCount()));
                             }
                             else
                             {
@@ -311,36 +327,49 @@ namespace NOWA
                     {
                         if (nullptr == externalConvexVolume)
                         {
-                            convexVolume = inputGeom->getConvexHull(this->ogreRecast->getAgentRadius());
+                            convexVolume = inputGeom->getConvexHull(this->ogreRecast->getAgentRadius() + extraClearance);
                         }
                         else
                         {
                             convexVolume = externalConvexVolume;
                         }
 
-                        if (false == walkable)
+                        if (nullptr == convexVolume)
                         {
-                            convexVolume->area = RC_NULL_AREA; // Set area described by convex polygon to "unwalkable"
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DIAG][OgreRecastModule] addDynamicObstacle: getConvexHull() returned NULL for id=" + Ogre::StringConverter::toString(id));
                         }
                         else
                         {
-                            convexVolume->area = RC_WALKABLE_AREA;
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DIAG][OgreRecastModule] addDynamicObstacle: convexVolume nverts=" + Ogre::StringConverter::toString(convexVolume->nverts) + " bmin=(" +
+                                                                                                    Ogre::StringConverter::toString(convexVolume->bmin[0]) + "," + Ogre::StringConverter::toString(convexVolume->bmin[1]) + "," +
+                                                                                                    Ogre::StringConverter::toString(convexVolume->bmin[2]) + ")" + " bmax=(" + Ogre::StringConverter::toString(convexVolume->bmax[0]) + "," +
+                                                                                                    Ogre::StringConverter::toString(convexVolume->bmax[1]) + "," + Ogre::StringConverter::toString(convexVolume->bmax[2]) + ")");
+
+                            if (false == walkable)
+                            {
+                                convexVolume->area = RC_NULL_AREA; // Set area described by convex polygon to "unwalkable"
+                            }
+                            else
+                            {
+                                convexVolume->area = RC_WALKABLE_AREA;
+                            }
+
+                            int obstacleResult = this->detourTileCache->addConvexShapeObstacle(convexVolume);
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DIAG][OgreRecastModule] addDynamicObstacle: addConvexShapeObstacle returned " + Ogre::StringConverter::toString(obstacleResult));
                         }
-                        // convexVolume->hmin = convexVolume->hmin - 0.1f;    // Extend a bit downwards so it hits the ground (navmesh) for certain. (Maybe this is not necessary)
-                        this->detourTileCache->addConvexShapeObstacle(convexVolume);
-                        // this->detourTileCache->addTempObstacle(gameObjectPtr->getPosition());
                     }
 
-                    // ConvexVolume* convexVolume = new ConvexVolume(InputGeom::getWorldSpaceBoundingBox(entity), this->ogreRecast->getAgentRadius());
-                    // Add in any case dynamic obstacle as placeholder
                     this->dynamicObstacles.emplace(id, std::make_pair(inputGeom, convexVolume));
                 }
             }
             else
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[DIAG][OgreRecastModule] addDynamicObstacle: id=" + Ogre::StringConverter::toString(id) + " ALREADY in dynamicObstacles map, only updating area flag (no rebuild triggered here!).");
+
                 if (false == walkable)
                 {
-                    it->second.second->area = RC_NULL_AREA; // Set area described by convex polygon to "unwalkable"
+                    it->second.second->area = RC_NULL_AREA;
                 }
                 else
                 {

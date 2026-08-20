@@ -26,6 +26,8 @@ namespace NOWA
         this->walkable = new Variant(NavMeshComponent::AttrWalkable(), false, this->attributes);
         this->walkable->setVisible(false);
 
+        this->obstacleClearance = new Variant(NavMeshComponent::AttrObstacleClearance(), 0.0f, this->attributes);
+
         // Set descriptions visible in the properties panel
         this->navigationType->setDescription("Static Obstacle: baked into navmesh geometry at build time, requires full rebuild."
                                              "Dynamic Obstacle: convex hull overlay on tile cache, added/removed in milliseconds."
@@ -37,6 +39,12 @@ namespace NOWA
         this->walkable->setDescription("Only applies to Dynamic Obstacle type."
                                        "false (default): RC_NULL_AREA — agents treat this area as impassable (buildings, walls)."
                                        "true: RC_WALKABLE_AREA — agents can walk through (bridges, ramps, platforms).");
+
+		this->obstacleClearance->setDescription("Only applies to Dynamic Obstacle type."
+                                                "Extra distance (in meters) added ON TOP of the agent radius when inflating "
+                                                "the obstacle's convex hull. Use this to keep agents further away from a "
+                                                "building than the bare agent radius would (e.g. so they don't path right "
+                                                "past a wall corner). 0 = only the agent radius is used, same as before.");
     }
 
 	NavMeshComponent::~NavMeshComponent()
@@ -49,43 +57,48 @@ namespace NOWA
 	}
 
 	bool NavMeshComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		GameObjectComponent::init(propertyElement);
+    {
+        GameObjectComponent::init(propertyElement);
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
-		{
-			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "NavigationType")
-		{
-			this->navigationType->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "Obstacle"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Walkable")
-		{
-			this->walkable->setValue(XMLConverter::getAttribBool(propertyElement, "data", "Obstacle"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		return true;
-	}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
+        {
+            this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "NavigationType")
+        {
+            this->navigationType->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "Obstacle"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Walkable")
+        {
+            this->walkable->setValue(XMLConverter::getAttribBool(propertyElement, "data", "Obstacle"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ObstacleClearance")
+        {
+            this->obstacleClearance->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        return true;
+    }
 
 	GameObjectCompPtr NavMeshComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		NavMeshCompPtr clonedCompPtr(boost::make_shared<NavMeshComponent>());
+    {
+        NavMeshCompPtr clonedCompPtr(boost::make_shared<NavMeshComponent>());
 
-		
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
-		// Must be done after game object is set
-		clonedCompPtr->setNavigationType(this->navigationType->getListSelectedValue());
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+        // Must be done after game object is set
+        clonedCompPtr->setNavigationType(this->navigationType->getListSelectedValue());
 
-		clonedCompPtr->setActivated(this->activated->getBool());
-		clonedCompPtr->setWalkable(this->walkable->getBool());
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setWalkable(this->walkable->getBool());
+        clonedCompPtr->setObstacleClearance(this->obstacleClearance->getReal());
 
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
 
 	bool NavMeshComponent::postInit(void)
     {
@@ -137,30 +150,34 @@ namespace NOWA
 	}
 
 	void NavMeshComponent::manageNavMesh(void)
-	{
-		if (false == this->activated->getBool())
-		{
-			return;
+    {
+        if (false == this->activated->getBool())
+        {
+            return;
         }
 
-		if (this->navigationType->getListSelectedValue() == "Static Obstacle")
-		{
-			if (true == this->activated->getBool())
-			{
+        if (this->navigationType->getListSelectedValue() == "Static Obstacle")
+        {
+            if (true == this->activated->getBool())
+            {
                 AppStateManager::getSingletonPtr()->getOgreRecastModule()->addStaticObstacle(this->gameObjectPtr->getId());
-			}
-			else
-			{
+            }
+            else
+            {
                 AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeStaticObstacle(this->gameObjectPtr->getId());
-			}
-		}
-		else if (this->navigationType->getListSelectedValue() == "Dynamic Obstacle")
-		{
-			AppStateManager::getSingletonPtr()->getOgreRecastModule()->addDynamicObstacle(this->gameObjectPtr->getId(), this->walkable->getBool());
+            }
+        }
+        else if (this->navigationType->getListSelectedValue() == "Dynamic Obstacle")
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[NavMeshComponent] manageNavMesh: calling addDynamicObstacle for id=" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) +
+                                                                                    " name=" + this->gameObjectPtr->getName() + " walkable=" + Ogre::StringConverter::toString(this->walkable->getBool()) +
+                                                                                    " clearance=" + Ogre::StringConverter::toString(this->obstacleClearance->getReal()));
 
-			AppStateManager::getSingletonPtr()->getOgreRecastModule()->activateDynamicObstacle(this->gameObjectPtr->getId(), this->activated->getBool());
-		}
-	}
+            AppStateManager::getSingletonPtr()->getOgreRecastModule()->addDynamicObstacle(this->gameObjectPtr->getId(), this->walkable->getBool(), nullptr, nullptr, this->obstacleClearance->getReal());
+
+            AppStateManager::getSingletonPtr()->getOgreRecastModule()->activateDynamicObstacle(this->gameObjectPtr->getId(), this->activated->getBool());
+        }
+    }
 
     void NavMeshComponent::update(Ogre::Real dt, bool notSimulating)
     {
@@ -213,7 +230,7 @@ namespace NOWA
                     delete convexVolume;
                     convexVolume = nullptr;
 
-                    convexVolume = inputGeom->getConvexHull(AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getAgentRadius());
+                    convexVolume = inputGeom->getConvexHull(AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getAgentRadius() + this->obstacleClearance->getReal());
 
                     if (false == this->walkable->getBool())
                     {
@@ -237,52 +254,55 @@ namespace NOWA
     }
 
 	void NavMeshComponent::actualizeValue(Variant* attribute)
-	{
-		GameObjectComponent::actualizeValue(attribute);
+    {
+        GameObjectComponent::actualizeValue(attribute);
 
-		if (NavMeshComponent::AttrActivated() == attribute->getName())
-		{
-			this->setActivated(attribute->getBool());
-		}
-		else if (NavMeshComponent::AttrNavigationType() == attribute->getName())
-		{
-			this->setNavigationType(attribute->getListSelectedValue());
-		}
-		else if (NavMeshComponent::AttrWalkable() == attribute->getName())
-		{
-			this->setWalkable(attribute->getBool());
-		}
-	}
+        if (NavMeshComponent::AttrActivated() == attribute->getName())
+        {
+            this->setActivated(attribute->getBool());
+        }
+        else if (NavMeshComponent::AttrNavigationType() == attribute->getName())
+        {
+            this->setNavigationType(attribute->getListSelectedValue());
+        }
+        else if (NavMeshComponent::AttrWalkable() == attribute->getName())
+        {
+            this->setWalkable(attribute->getBool());
+        }
+        else if (NavMeshComponent::AttrObstacleClearance() == attribute->getName())
+        {
+            this->setObstacleClearance(attribute->getReal());
+        }
+    }
 
 	void NavMeshComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc);
+    {
+        GameObjectComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "NavigationType"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->navigationType->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "NavigationType"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->navigationType->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Walkable"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->walkable->getBool())));
-		propertiesXML->append_node(propertyXML);
-	}
+        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Walkable"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->walkable->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(rapidxml::node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ObstacleClearance"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->obstacleClearance->getReal())));
+        propertiesXML->append_node(propertyXML);
+    }
 
 	Ogre::String NavMeshComponent::getClassName(void) const
 	{
@@ -340,6 +360,16 @@ namespace NOWA
 	bool NavMeshComponent::getWalkable(void) const
 	{
 		return this->walkable->getBool();
-	}
+    }
+
+    void NavMeshComponent::setObstacleClearance(Ogre::Real obstacleClearance)
+    {
+        this->obstacleClearance->setValue(obstacleClearance);
+    }
+
+    Ogre::Real NavMeshComponent::getObstacleClearance(void) const
+    {
+        return this->obstacleClearance->getReal();
+    }
 
 }; // namespace end

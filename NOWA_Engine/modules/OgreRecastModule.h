@@ -427,8 +427,10 @@ namespace NOWA
 		 * @param[in] walkable				Whether this game object mesh is walk able or not
 		 * @param[in] externalInputGeom		The external input geom to add, instead creating a new one
 		 * @param[in] externalConvexVolume	The external convex volume to add, instead creating a new one
+         * @param[in] extraClearance	    Only applies to Dynamic Obstacle type. Extra distance (in meters) added ON TOP of the agent radius when inflating the obstacle's convex hull. Use this to keep agents further away from a
+                                           building than the bare agent radius would (e.g. so they don't path right past a wall corner). 0 = only the agent radius is used, same as before.
 		 */
-		void addDynamicObstacle(unsigned long id, bool walkable, InputGeom* externalInputGeom = nullptr, ConvexVolume* externalConvexVolume = nullptr);
+        void addDynamicObstacle(unsigned long id, bool walkable, InputGeom* externalInputGeom = nullptr, ConvexVolume* externalConvexVolume = nullptr, Ogre::Real extraClearance = 0.0f);
 
 		/** 
 		 * @brief Removes the dynamic (movable) obstacle mesh from the given game object id.

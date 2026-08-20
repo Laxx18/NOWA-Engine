@@ -22,14 +22,14 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-100 -100 -100" mostRightFarPosition="101.256 101.524 122.721"/>
+		<bounds mostLeftNearPosition="-100 -100 -100" mostRightFarPosition="101.674 102.032 123.229"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
 		<globalGravity x="0" y="-19.8" z="0"/>
 	</OgreNewt>
 	<OgreRecast CellSize="0.2" CellHeight="0.2" AgentMaxSlope="30" AgentMaxClimb="0.5" AgentHeight="0.8" AgentRadius="0.5" EdgeMaxLen="12" EdgeMaxError="1.3" RegionMinSize="20" RegionMergeSize="20" VertsPerPoly="6" DetailSampleDist="6" DetailSampleMaxError="1" KeepInterResults="false">
-		<PointExtends x="2" y="2" z="2"/>
+		<PointExtends x="1" y="1" z="1"/>
 	</OgreRecast>
 	<nodes>
 		<node name="Terra_0" id="612897194">
@@ -269,10 +269,10 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="100.837" y="101.016" z="122.213"/>
-			<rotation qw="0.88088" qx="-0.362811" qy="0.280632" qz="-0.116896"/>
+			<position x="101.256" y="101.524" z="122.721"/>
+			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115916"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -312,9 +312,9 @@
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="-2.49102" y="9.55855" z="46.4896"/>
-			<rotation qw="0.963516" qx="-0.196029" qy="0.178577" qz="0.0363319"/>
+			<rotation qw="0.982205" qx="-0.171649" qy="0.0752317" qz="0.0122306"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -342,7 +342,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
 					<property type="9" name="CameraPosition" data="-2.49102 9.55855 46.4896"/>
-					<property type="9" name="CameraOrientation" data="-19.8177 8.77916 -0.109682"/>
+					<property type="9" name="CameraOrientation" data="-18.0179 11.0012 -0.188055"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -350,7 +350,6 @@
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
-					
 					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -489,8 +488,9 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
-					<property type="7" name="NavigationType" data="Dynamic Obstacle"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
+					<property type="6" name="ObstacleClearance" data="2"/>
 				</userData>
 			</item>
 		</node>
@@ -622,6 +622,7 @@
 					<property type="6" name="Acceleration" data="2"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="UseStandUp" data="false"/>
+					<property type="7" name="Wall Separation Mode" data="None"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="6" name="Range" data="100"/>
 					<property type="2" name="PathSlot" data="0"/>
@@ -696,6 +697,7 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="NavigationType" data="Dynamic Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
+					<property type="6" name="ObstacleClearance" data="2"/>
 					<property type="7" name="ComponentMyGUIItemBoxComponent" data="MyGUIItemBoxComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -747,35 +749,6 @@
 					<property type="8" name="StartEndIndex" data="0 0"/>
 					<property type="12" name="Repeat" data="false"/>
 					<property type="12" name="UsePickingMask" data="true"/>
-				</userData>
-			</item>
-		</node>
-		<node name="Monster01_3" id="2507279256">
-			<position x="3.77322" y="-0.30726" z="33.067"/>
-			<rotation qw="0.681998" qx="0" qy="-0.731354" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="Monster01_3" meshFile="Monster01.mesh" castShadows="true" visible="false">
-				<subitem index="0" datablockName="Monster01"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="732081089"/>
-					<property type="7" name="Category" data="Agent"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="false"/>
-					<property type="9" name="DefaultDirection" data="0 0 1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="true"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="100"/>
-					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="Monster01"/>
 				</userData>
 			</item>
 		</node>
@@ -834,6 +807,7 @@
 					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="NavigationType" data="Dynamic Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
+					<property type="6" name="ObstacleClearance" data="0"/>
 				</userData>
 			</item>
 		</node>

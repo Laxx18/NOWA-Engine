@@ -10,8 +10,8 @@ GPL v3
 #include "gameobject/PhysicsComponent.h"
 #include "gameobject/TerraComponent.h"
 #include "main/AppStateManager.h"
-#include "main/InputDeviceCore.h"
 #include "main/Core.h"
+#include "main/InputDeviceCore.h"
 #include "modules/LuaScriptApi.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
@@ -40,9 +40,8 @@ namespace NOWA
         raySceneQuery(nullptr),
         terrainRayQuery(nullptr),
         categoryId(0),
-        excludedCategoryId(0),
-        shadowPhysicsComponent(nullptr),
-        oldWasDynamic(false),
+        previewSceneNode(nullptr),
+        previewItem(nullptr),
         currentRotationDegrees(0.0f),
         currentPlacementOrientation(Ogre::Quaternion::IDENTITY),
         isOnForbiddenSurface(false),
@@ -260,9 +259,10 @@ namespace NOWA
             this->endPlacement(true);
         }
 
-        // endPlacement already clears shadowPhysicsComponent,
-        // but guard here in case isPlacing was false
-        this->shadowPhysicsComponent = nullptr;
+        // endPlacement already destroys the preview object when isPlacing was true;
+        // guard here in case it was already false. destroyPreviewObject() is a no-op
+        // if there is nothing to destroy.
+        this->destroyPreviewObject();
         this->terra = nullptr;
 
         InputDeviceCore::getSingletonPtr()->removeKeyListener(GameObjectPlaceComponent::getStaticClassName());
@@ -285,7 +285,7 @@ namespace NOWA
             this->endPlacement(true);
         }
 
-        this->shadowPhysicsComponent = nullptr;
+        this->destroyPreviewObject();
 
         InputDeviceCore::getSingletonPtr()->removeKeyListener(GameObjectPlaceComponent::getStaticClassName());
         InputDeviceCore::getSingletonPtr()->removeMouseListener(GameObjectPlaceComponent::getStaticClassName());
@@ -311,20 +311,8 @@ namespace NOWA
 
     void GameObjectPlaceComponent::onOtherComponentRemoved(unsigned int index)
     {
-        // If the physics component of the currently active shadow object was removed,
-        // clear our cached pointer so mouseMoved falls back to node-based movement
-        if (nullptr != this->shadowPhysicsComponent)
-        {
-            auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-            if (nullptr != shadowGameObjectPtr)
-            {
-                auto currentPhysics = NOWA::makeStrongPtr(shadowGameObjectPtr->getComponent<PhysicsComponent>()).get();
-                if (nullptr == currentPhysics)
-                {
-                    this->shadowPhysicsComponent = nullptr;
-                }
-            }
-        }
+        // No-op: the preview object has no components of its own to react to,
+        // and the template game object is never touched during placement.
     }
 
     void GameObjectPlaceComponent::onOtherComponentAdded(unsigned int index)
@@ -595,7 +583,6 @@ namespace NOWA
         return this->maxPlacementGradient->getReal();
     }
 
-   
     void GameObjectPlaceComponent::setTargetTerraId(unsigned long id)
     {
         this->targetTerraId->setValue(id);
@@ -648,22 +635,104 @@ namespace NOWA
         return this->forbiddenTerraLayers->getString();
     }
 
-    void GameObjectPlaceComponent::applyPreviewTransparency(GameObjectPtr shadowGameObjectPtr)
+    bool GameObjectPlaceComponent::createPreviewObject(GameObjectPtr templateGameObjectPtr)
+    {
+        Ogre::Item* templateItem = dynamic_cast<Ogre::Item*>(templateGameObjectPtr->getMovableObject());
+        if (nullptr == templateItem)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectPlaceComponent] createPreviewObject: template game object '" + templateGameObjectPtr->getName() + "' has no Item movable object.");
+            return false;
+        }
+
+        Ogre::MeshPtr mesh = templateItem->getMesh();
+        Ogre::Vector3 scale = templateGameObjectPtr->getScale();
+        bool castShadows = templateItem->getCastShadows();
+
+        // Snapshot the per-subitem datablock pointers here; the actual scene-graph
+        // mutation (createItem/attachObject/setDatablock) still has to run on the
+        // render thread, but reading these pointers is safe from any thread.
+        std::vector<Ogre::HlmsDatablock*> subItemDatablocks;
+        for (unsigned int i = 0; i < templateItem->getNumSubItems(); i++)
+        {
+            subItemDatablocks.emplace_back(templateItem->getSubItem(i)->getDatablock());
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, mesh, scale, castShadows, subItemDatablocks]()
+        {
+            this->previewSceneNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+            this->previewSceneNode->setName("GameObjectPlaceComponent_Preview");
+            this->previewSceneNode->setScale(scale);
+
+            this->previewItem = this->gameObjectPtr->getSceneManager()->createItem(mesh, Ogre::SCENE_DYNAMIC);
+            this->previewItem->setName("GameObjectPlaceComponent_PreviewItem");
+            this->previewSceneNode->attachObject(this->previewItem);
+
+            for (unsigned int i = 0; i < subItemDatablocks.size() && i < this->previewItem->getNumSubItems(); i++)
+            {
+                this->previewItem->getSubItem(i)->setDatablock(subItemDatablocks[i]);
+            }
+
+            this->previewItem->setCastShadows(castShadows);
+
+            this->previewSceneNode->setVisible(true);
+            this->previewItem->setVisible(true);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::createPreviewObject");
+
+        return true;
+    }
+
+    void GameObjectPlaceComponent::destroyPreviewObject(void)
+    {
+        if (nullptr == this->previewItem && nullptr == this->previewSceneNode)
+        {
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            if (nullptr != this->previewItem)
+            {
+                if (nullptr != this->previewItem->getParentSceneNode())
+                {
+                    this->previewItem->getParentSceneNode()->detachObject(this->previewItem);
+                }
+                this->gameObjectPtr->getSceneManager()->destroyItem(this->previewItem);
+                this->previewItem = nullptr;
+            }
+
+            if (nullptr != this->previewSceneNode)
+            {
+                // NOTE: destroySceneNode mirrors destroyItem's ownership pattern (SceneManager
+                // owns everything it creates). Not directly confirmed against this codebase —
+                // please verify against your Ogre-Next version.
+                if (nullptr != this->previewSceneNode->getParentSceneNode())
+                {
+                    this->previewSceneNode->getParentSceneNode()->removeChild(this->previewSceneNode);
+                }
+                this->gameObjectPtr->getSceneManager()->destroySceneNode(this->previewSceneNode);
+                this->previewSceneNode = nullptr;
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::destroyPreviewObject");
+    }
+
+    void GameObjectPlaceComponent::applyPreviewTransparency(void)
     {
         if (false == this->showPreview->getBool())
         {
             return;
         }
 
-        Ogre::Item* item = dynamic_cast<Ogre::Item*>(shadowGameObjectPtr->getMovableObject());
-        if (nullptr == item)
+        if (nullptr == this->previewItem)
         {
             return;
         }
 
-        unsigned long goId = shadowGameObjectPtr->getId();
+        Ogre::Item* item = this->previewItem;
+        unsigned long previewId = this->activeGameObjectId;
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, goId]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, previewId]()
         {
             this->clonedDatablocks.clear();
 
@@ -676,7 +745,7 @@ namespace NOWA
                 }
 
                 Ogre::String originalName = originalDatablock->getName().getFriendlyText();
-                Ogre::HlmsDatablock* cloned = AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(originalDatablock, originalName, goId, static_cast<int>(i));
+                Ogre::HlmsDatablock* cloned = AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(originalDatablock, originalName, previewId, static_cast<int>(i));
 
                 if (nullptr == cloned)
                 {
@@ -700,15 +769,14 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::applyPreviewTransparency");
     }
 
-    void GameObjectPlaceComponent::resetPreviewTransparency(GameObjectPtr shadowGameObjectPtr)
+    void GameObjectPlaceComponent::resetPreviewTransparency(void)
     {
         if (false == this->showPreview->getBool())
         {
             return;
         }
 
-        Ogre::Item* item = dynamic_cast<Ogre::Item*>(shadowGameObjectPtr->getMovableObject());
-        if (nullptr == item)
+        if (nullptr == this->previewItem)
         {
             return;
         }
@@ -717,6 +785,8 @@ namespace NOWA
         {
             return;
         }
+
+        Ogre::Item* item = this->previewItem;
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, item]()
         {
@@ -748,17 +818,17 @@ namespace NOWA
     // Forbidden-zone visual — red emissive tint, independent of showPreview
     // -----------------------------------------------------------------------
 
-    void GameObjectPlaceComponent::applyForbiddenVisual(GameObjectPtr shadowGameObjectPtr)
+    void GameObjectPlaceComponent::applyForbiddenVisual(void)
     {
-        Ogre::Item* item = dynamic_cast<Ogre::Item*>(shadowGameObjectPtr->getMovableObject());
-        if (nullptr == item)
+        if (nullptr == this->previewItem)
         {
             return;
         }
 
-        unsigned long goId = shadowGameObjectPtr->getId();
+        Ogre::Item* item = this->previewItem;
+        unsigned long previewId = this->activeGameObjectId;
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, goId]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, previewId]()
         {
             this->forbiddenClonedDatablocks.clear();
 
@@ -772,7 +842,7 @@ namespace NOWA
 
                 // Clone with a unique name so it is completely independent
                 Ogre::String originalName = originalDatablock->getName().getFriendlyText();
-                Ogre::HlmsDatablock* cloned = AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(originalDatablock, originalName + "_forbidden", goId, static_cast<int>(i));
+                Ogre::HlmsDatablock* cloned = AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(originalDatablock, originalName + "_forbidden", previewId, static_cast<int>(i));
 
                 if (nullptr == cloned)
                 {
@@ -797,10 +867,9 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::applyForbiddenVisual");
     }
 
-    void GameObjectPlaceComponent::resetForbiddenVisual(GameObjectPtr shadowGameObjectPtr)
+    void GameObjectPlaceComponent::resetForbiddenVisual(void)
     {
-        Ogre::Item* item = dynamic_cast<Ogre::Item*>(shadowGameObjectPtr->getMovableObject());
-        if (nullptr == item)
+        if (nullptr == this->previewItem)
         {
             return;
         }
@@ -809,6 +878,8 @@ namespace NOWA
         {
             return;
         }
+
+        Ogre::Item* item = this->previewItem;
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, item]()
         {
@@ -914,15 +985,19 @@ namespace NOWA
             return;
         }
 
-        auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
-        if (nullptr == shadowGameObjectPtr)
+        // Read-only lookup: the template game object is never made visible, moved, or
+        // otherwise touched — only its mesh and datablocks are copied into the preview.
+        auto templateGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
+        if (nullptr == templateGameObjectPtr)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectPlaceComponent] activatePlacement: game object with id " + gameObjectId + " not found.");
             return;
         }
 
-        this->oldWasDynamic = shadowGameObjectPtr->isDynamic();
-        shadowGameObjectPtr->setDynamic(true);
+        if (false == this->createPreviewObject(templateGameObjectPtr))
+        {
+            return;
+        }
 
         this->activeGameObjectId = id;
         this->isPlacing = true;
@@ -932,13 +1007,9 @@ namespace NOWA
         this->isForbiddenVisualActive = false;
         this->lastHitObject = nullptr;
 
-        this->resolveShadowPhysicsComponent();
+        this->applyPreviewTransparency();
 
-        shadowGameObjectPtr->setVisible(true);
-        this->applyPreviewTransparency(shadowGameObjectPtr);
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-            "[GameObjectPlaceComponent] Placement started for game object: " + shadowGameObjectPtr->getName() + (nullptr != this->shadowPhysicsComponent ? " (physics-driven)" : " (node-driven)"));
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectPlaceComponent] Placement started for template game object: " + templateGameObjectPtr->getName());
     }
 
     void GameObjectPlaceComponent::cancelPlacement(void)
@@ -956,27 +1027,21 @@ namespace NOWA
             return;
         }
 
-        auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-        if (nullptr != shadowGameObjectPtr)
+        // Reset whichever visual is currently active before destroying the preview object
+        if (this->isForbiddenVisualActive)
         {
-            // Reset whichever visual is currently active
-            if (this->isForbiddenVisualActive)
-            {
-                this->resetForbiddenVisual(shadowGameObjectPtr);
-            }
-            else
-            {
-                this->resetPreviewTransparency(shadowGameObjectPtr);
-            }
-
-            shadowGameObjectPtr->setVisible(false);
-            shadowGameObjectPtr->setDynamic(this->oldWasDynamic);
+            this->resetForbiddenVisual();
         }
+        else
+        {
+            this->resetPreviewTransparency();
+        }
+
+        this->destroyPreviewObject();
 
         this->isPlacing = false;
         this->activeGameObjectId = 0;
         this->currentHitPoint = Ogre::Vector3::ZERO;
-        this->shadowPhysicsComponent = nullptr;
         this->currentRotationDegrees = 0.0f;
         this->currentPlacementOrientation = Ogre::Quaternion::IDENTITY;
         this->isOnForbiddenSurface = false;
@@ -1028,15 +1093,11 @@ namespace NOWA
         Ogre::Real closestDistance = 0.0f;
         Ogre::Vector3 normal = Ogre::Vector3::UNIT_Y;
 
-        // Exclude the shadow object itself from the ray test so we hit the ground, not the preview
+        // Exclude the preview item itself from the ray test so we hit the ground, not the preview
         std::vector<Ogre::MovableObject*> excludeObjects;
-        if (this->activeGameObjectId != 0)
+        if (nullptr != this->previewItem)
         {
-            auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-            if (nullptr != shadowGameObjectPtr && nullptr != shadowGameObjectPtr->getMovableObject())
-            {
-                excludeObjects.emplace_back(shadowGameObjectPtr->getMovableObject());
-            }
+            excludeObjects.emplace_back(this->previewItem);
         }
 
         MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, hitPoint, (size_t&)hitObject, closestDistance, normal, &excludeObjects);
@@ -1066,26 +1127,18 @@ namespace NOWA
             return baseYRotation;
         }
 
-        // Determine a reasonable sampling radius from the shadow object's bounding sphere.
+        // Determine a reasonable sampling radius from the preview item's bounding sphere.
         Ogre::Real radius = 0.5f;
-        if (this->activeGameObjectId != 0)
+        if (nullptr != this->previewItem)
         {
-            auto shadowGO = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-            if (nullptr != shadowGO && nullptr != shadowGO->getMovableObject())
-            {
-                radius = std::max(0.3f, shadowGO->getMovableObject()->getLocalRadius() * 0.45f);
-            }
+            radius = std::max(0.3f, this->previewItem->getLocalRadius() * 0.45f);
         }
 
-        // Exclude the shadow object from all three sample rays
+        // Exclude the preview item from all three sample rays
         std::vector<Ogre::MovableObject*> excludeObjects;
-        if (this->activeGameObjectId != 0)
+        if (nullptr != this->previewItem)
         {
-            auto shadowGO = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-            if (nullptr != shadowGO && nullptr != shadowGO->getMovableObject())
-            {
-                excludeObjects.push_back(shadowGO->getMovableObject());
-            }
+            excludeObjects.push_back(this->previewItem);
         }
 
         // Three sample positions arranged as an equilateral triangle in the XZ plane:
@@ -1112,7 +1165,14 @@ namespace NOWA
             MathHelper::getInstance()->getRaycastFromPoint(this->terrainRayQuery, camera, sampleHit, (size_t&)obj, dist, sampleNormal, &excludeObjects);
 
             // Fall back to a flat plane at the hit point if no geometry was found
-            pts[i] = (sampleHit != Ogre::Vector3::ZERO) ? sampleHit : (hitPoint + offsets[i]);
+            if (sampleHit != Ogre::Vector3::ZERO)
+            {
+                pts[i] = sampleHit;
+            }
+            else
+            {
+                pts[i] = hitPoint + offsets[i];
+            }
         }
 
         // Compute normal via cross product of two triangle edges
@@ -1139,9 +1199,9 @@ namespace NOWA
     //
     // A single ray only tells us what is directly under the cursor.  A large
     // object (e.g. a building) may extend over an agent even when the cursor
-    // is on open ground.  We build an AABB volume from the shadow object's
+    // is on open ground.  We build an AABB volume from the preview item's
     // local extents, place it at `position`, and run a PlaneBoundedVolumeQuery
-    // restricted to the excluded-category mask.  Any hit (other than the shadow
+    // restricted to the excluded-category mask.  Any hit (other than the preview
     // itself) means placement is forbidden.
     // -----------------------------------------------------------------------
 
@@ -1152,21 +1212,13 @@ namespace NOWA
             return false;
         }
 
-        auto shadowGO = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-        if (nullptr == shadowGO)
+        if (nullptr == this->previewItem || nullptr == this->previewSceneNode)
         {
             return false;
         }
 
-        Ogre::MovableObject* shadowMovable = shadowGO->getMovableObject();
-        if (nullptr == shadowMovable)
-        {
-            return false;
-        }
-
-        Ogre::Aabb localAabb = shadowMovable->getLocalAabb();
-        Ogre::SceneNode* shadowNode = shadowGO->getSceneNode();
-        Ogre::Vector3 scale = (nullptr != shadowNode) ? shadowNode->getScale() : Ogre::Vector3::UNIT_SCALE;
+        Ogre::Aabb localAabb = this->previewItem->getLocalAabb();
+        Ogre::Vector3 scale = this->previewSceneNode->getScale();
 
         Ogre::Vector3 scaledCenter = localAabb.mCenter * scale;
         Ogre::Vector3 scaledHalf = localAabb.mHalfSize * scale;
@@ -1192,8 +1244,9 @@ namespace NOWA
         auto hitFound = std::make_shared<bool>(false);
         auto volCopy = vol;
         auto excludedId = this->excludedCategoryId;
+        Ogre::MovableObject* previewMovable = this->previewItem;
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, hitFound, volCopy, shadowMovable, excludedId]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, hitFound, volCopy, previewMovable, excludedId]()
         {
             Ogre::PlaneBoundedVolumeList volList;
             volList.push_back(volCopy);
@@ -1201,7 +1254,7 @@ namespace NOWA
             Ogre::SceneQueryResult result = this->volumeQuery->execute();
             for (auto* mv : result.movables)
             {
-                if (nullptr == mv || mv == shadowMovable)
+                if (nullptr == mv || mv == previewMovable)
                 {
                     continue;
                 }
@@ -1232,15 +1285,13 @@ namespace NOWA
             return false;
         }
 
-        auto shadowGO = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-        if (nullptr == shadowGO || nullptr == shadowGO->getMovableObject())
+        if (nullptr == this->previewItem || nullptr == this->previewSceneNode)
         {
             return false;
         }
 
-        Ogre::Aabb localAabb = shadowGO->getMovableObject()->getLocalAabb();
-        Ogre::SceneNode* shadowNode = shadowGO->getSceneNode();
-        Ogre::Vector3 scale = (nullptr != shadowNode) ? shadowNode->getScale() : Ogre::Vector3::UNIT_SCALE;
+        Ogre::Aabb localAabb = this->previewItem->getLocalAabb();
+        Ogre::Vector3 scale = this->previewSceneNode->getScale();
 
         Ogre::Vector3 scaledHalf = localAabb.mHalfSize * scale;
 
@@ -1250,9 +1301,9 @@ namespace NOWA
         scaledHalf.z += s;
         // Y expansion not needed for gradient — we only care about XZ footprint
 
-        // Exclude shadow object from rays
+        // Exclude preview item from rays
         std::vector<Ogre::MovableObject*> excludeObjects;
-        excludeObjects.push_back(shadowGO->getMovableObject());
+        excludeObjects.push_back(this->previewItem);
 
         Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
         const Ogre::Real rayStartHeight = 20.0f;
@@ -1267,8 +1318,13 @@ namespace NOWA
             for (int zi = 0; zi < steps; ++zi)
             {
                 // Map [0..steps-1] to [-1..+1] then scale by half extents
-                Ogre::Real tx = (steps > 1) ? ((Ogre::Real)xi / (steps - 1)) * 2.0f - 1.0f : 0.0f;
-                Ogre::Real tz = (steps > 1) ? ((Ogre::Real)zi / (steps - 1)) * 2.0f - 1.0f : 0.0f;
+                Ogre::Real tx = 0.0f;
+                Ogre::Real tz = 0.0f;
+                if (steps > 1)
+                {
+                    tx = ((Ogre::Real)xi / (steps - 1)) * 2.0f - 1.0f;
+                    tz = ((Ogre::Real)zi / (steps - 1)) * 2.0f - 1.0f;
+                }
 
                 Ogre::Vector3 samplePos = position + Ogre::Vector3(tx * scaledHalf.x, 0.0f, tz * scaledHalf.z);
 
@@ -1377,30 +1433,6 @@ namespace NOWA
         return false;
     }
 
-    void GameObjectPlaceComponent::resolveShadowPhysicsComponent(void)
-    {
-        this->shadowPhysicsComponent = nullptr;
-
-        if (0 == this->activeGameObjectId)
-        {
-            return;
-        }
-
-        auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-        if (nullptr == shadowGameObjectPtr)
-        {
-            return;
-        }
-
-       auto physicsCompPtr = NOWA::makeStrongPtr(shadowGameObjectPtr->getComponent<PhysicsComponent>());
-        if (nullptr != physicsCompPtr)
-        {
-            this->shadowPhysicsComponent = physicsCompPtr.get();
-            // Do not collide during placement if physics component is involved.
-            this->shadowPhysicsComponent->setActivated(false);
-        }
-    }
-
     // -----------------------------------------------------------------------
     // Mouse / Key handlers
     // -----------------------------------------------------------------------
@@ -1434,10 +1466,12 @@ namespace NOWA
             Ogre::Vector3 placePosition = this->currentHitPoint;
             Ogre::Quaternion placeOrientation = this->currentPlacementOrientation;
 
-            // Hide shadow and reset state before clone so the clone itself is not hidden
+            // Destroy the preview and reset placement state before cloning. The clone is
+            // built fresh from the untouched template object, so there is no shadow left
+            // to hide/reset — unlike the old live-template-drag approach.
             this->endPlacement(false);
 
-            // Clone the original shadow game object at the world hit position using
+            // Clone the original template game object at the world hit position using
             // the full orientation (includes terrain slope when alignToTerrain is active)
             auto clonedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(originalId, nullptr, 0, placePosition, placeOrientation, Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
 
@@ -1455,7 +1489,7 @@ namespace NOWA
                     physicsCompPtr->setActivated(true);
                 }
             }
-            
+
             // TODO: Just for debugging
             // AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawObstacleBoxes(this->gameObjectPtr->getSceneManager());
 
@@ -1505,7 +1539,14 @@ namespace NOWA
         // Mousewheel rotation — only when rotate is enabled
         if (true == this->rotateEnabled->getBool() && evt.state.Z.rel != 0)
         {
-            this->currentRotationDegrees += (evt.state.Z.rel > 0) ? 15.0f : -15.0f;
+            if (evt.state.Z.rel > 0)
+            {
+                this->currentRotationDegrees += 15.0f;
+            }
+            else
+            {
+                this->currentRotationDegrees -= 15.0f;
+            }
             this->currentRotationDegrees = std::fmod(this->currentRotationDegrees, 360.0f);
             if (this->currentRotationDegrees < 0.0f)
             {
@@ -1529,15 +1570,7 @@ namespace NOWA
             this->currentHitPoint = hitPoint;
         }
 
-        auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-        if (nullptr == shadowGameObjectPtr)
-        {
-            return true;
-        }
-
-        shadowGameObjectPtr->setVisible(true);
-        Ogre::SceneNode* node = shadowGameObjectPtr->getSceneNode();
-        if (nullptr == node)
+        if (nullptr == this->previewSceneNode || nullptr == this->previewItem)
         {
             return true;
         }
@@ -1585,38 +1618,39 @@ namespace NOWA
                 // Normal preview -> Forbidden: undo transparency, apply red tint
                 if (this->showPreview->getBool())
                 {
-                    this->resetPreviewTransparency(shadowGameObjectPtr);
+                    this->resetPreviewTransparency();
                 }
-                this->applyForbiddenVisual(shadowGameObjectPtr);
+                this->applyForbiddenVisual();
                 this->isForbiddenVisualActive = true;
             }
             else
             {
                 // Forbidden -> Normal preview: undo red tint, re-apply transparency
-                this->resetForbiddenVisual(shadowGameObjectPtr);
+                this->resetForbiddenVisual();
                 this->isForbiddenVisualActive = false;
                 if (this->showPreview->getBool())
                 {
-                    this->applyPreviewTransparency(shadowGameObjectPtr);
+                    this->applyPreviewTransparency();
                 }
             }
         }
 
         // ----------------------------------------------------------------
-        // Move shadow object to hit position
+        // Move the bare preview node. This is a pure Ogre scene-node transform —
+        // there is no GameObject/PhysicsComponent attached to the preview, so
+        // there is nothing for Newton to resolve a collision against. Uses the
+        // non-blocking enqueue() (not enqueueAndWait) since this can fire every
+        // mouse-move event; relies on the render command queue preserving FIFO
+        // order relative to destroyPreviewObject()'s enqueueAndWait below — if
+        // that ordering guarantee does not hold, switch this to enqueueAndWait.
         // ----------------------------------------------------------------
-        if (nullptr != this->shadowPhysicsComponent)
+        Ogre::SceneNode* previewNode = this->previewSceneNode;
+        NOWA::GraphicsModule::RenderCommand renderCommand = [previewNode, hitPoint, targetOrientation]()
         {
-            this->shadowPhysicsComponent->setPosition(hitPoint);
-            this->shadowPhysicsComponent->setOrientation(targetOrientation);
-        }
-        else
-        {
-            // NOWA::GraphicsModule::getInstance()->setNodeTransform(node, hitPoint, targetOrientation, Ogre::Vector3::UNIT_SCALE, false);
-            // Note: Must be done via setAttributePosition, because internally the variant position is also updated, and undo redo will work correctly!
-            shadowGameObjectPtr->setAttributePosition(hitPoint);
-            shadowGameObjectPtr->setAttributeOrientation(targetOrientation);
-        }
+            previewNode->setPosition(hitPoint);
+            previewNode->setOrientation(targetOrientation);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObjectPlaceComponent::movePreview");
 
         return true;
     }

@@ -249,6 +249,44 @@ bool OgreDetourTileCache::initTileCache()
     return true;
 }
 
+void OgreDetourTileCache::forceFinishPendingObstacles()
+{
+    if (!m_tileCache || !m_recast->m_navMesh)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[DIAG][OgreDetourTileCache] forceFinishPendingObstacles: EARLY OUT, m_tileCache or m_navMesh null.");
+        return;
+    }
+
+    bool upToDate = false;
+    const int maxIterations = 64;
+    int iterations = 0;
+    while (false == upToDate && iterations < maxIterations)
+    {
+        std::unique_lock<std::shared_mutex> writeLock(m_recast->m_navMeshMutex);
+        m_tileCache->update(0.0f, m_recast->m_navMesh, &upToDate);
+        ++iterations;
+    }
+
+    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+        "[DIAG][OgreDetourTileCache] forceFinishPendingObstacles: finished after "
+        + Ogre::StringConverter::toString(iterations) + " iterations, upToDate=" + Ogre::StringConverter::toString(upToDate));
+
+    if (false == upToDate)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[OgreDetourTileCache] forceFinishPendingObstacles: tile cache did not "
+            "reach upToDate state within " + Ogre::StringConverter::toString(maxIterations) +
+            " iterations - navmesh may still be stale.");
+    }
+    else
+    {
+        m_obstaclesWereUpdating = false;
+        m_pendingObstacles = false;
+        m_pendingObstaclesTimer = 0.0f;
+    }
+}
+
 bool OgreDetourTileCache::TileCacheBuild(const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems)
 {
     InputGeom *inputGeom = new InputGeom(srcMeshes, srcItems);
@@ -1065,7 +1103,6 @@ void OgreDetourTileCache::drawPolyMesh(const Ogre::String tileName, const struct
 }
 
 
-// TODO I need to redraw the changed tiles!!
 int OgreDetourTileCache::addConvexShapeObstacle(ConvexVolume* obstacle)
 {
     if (nullptr == m_tileCache)
@@ -1083,11 +1120,6 @@ int OgreDetourTileCache::addConvexShapeObstacle(ConvexVolume* obstacle)
     }
 
     int result = m_geom->addConvexVolume(obstacle);
-
-    /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-        "[DIAG] m_geom->getConvexVolumeCount()=" + Ogre::StringConverter::toString(m_geom->getConvexVolumeCount())
-        + " mBoxObstacleRefs.size=" + Ogre::StringConverter::toString(mBoxObstacleRefs.size()));*/
-
 
     if (result == -1)
     {
@@ -1108,6 +1140,13 @@ int OgreDetourTileCache::addConvexShapeObstacle(ConvexVolume* obstacle)
 
         dtObstacleRef ref = 0;
         dtStatus status = m_tileCache->addBoxObstacle(bmin, bmax, &ref);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[DIAG][OgreDetourTileCache] addConvexShapeObstacle: addBoxObstacle status="
+            + Ogre::StringConverter::toString(status) + " ref=" + Ogre::StringConverter::toString(ref)
+            + " X=[" + Ogre::StringConverter::toString(bmin[0]) + "," + Ogre::StringConverter::toString(bmax[0]) + "]"
+            + " Z=[" + Ogre::StringConverter::toString(bmin[2]) + "," + Ogre::StringConverter::toString(bmax[2]) + "]");
+
         if (dtStatusFailed(status))
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
@@ -1117,22 +1156,16 @@ int OgreDetourTileCache::addConvexShapeObstacle(ConvexVolume* obstacle)
         }
         mBoxObstacleRefs[obstacle] = ref;
 
-        // Reset the timer when a new obstacle is added so the 2s timeout
-        // counts from the last request, not from the first one in a sequence.
-        // This prevents the timer from expiring mid-sequence and unblocking
-        // pathfinding before all tile rebuilds are complete.
         m_needsRedraw = true;
         m_obstaclesWereUpdating = true;
         m_pendingObstacles = true;
-        m_pendingObstaclesTimer = 0.0f; // ← reset so timeout counts from now
+        m_pendingObstaclesTimer = 0.0f;
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-            "[OgreDetourTileCache] addBoxObstacle queued:"
-            " X=[" + Ogre::StringConverter::toString(bmin[0])
-            + ", " + Ogre::StringConverter::toString(bmax[0]) + "]"
-            " Z=[" + Ogre::StringConverter::toString(bmin[2])
-            + ", " + Ogre::StringConverter::toString(bmax[2]) + "]"
-            " ref=" + Ogre::StringConverter::toString(ref));
+        this->forceFinishPendingObstacles();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[DIAG][OgreDetourTileCache] addConvexShapeObstacle: after forceFinishPendingObstacles, m_pendingObstacles="
+            + Ogre::StringConverter::toString(m_pendingObstacles) + " m_obstaclesWereUpdating=" + Ogre::StringConverter::toString(m_obstaclesWereUpdating));
 
         return result;
     }

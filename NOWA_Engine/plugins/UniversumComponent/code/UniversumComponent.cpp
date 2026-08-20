@@ -9,6 +9,7 @@
 #include "../../PlanetTerraComponent/code/PlanetTerraComponent.h"
 #include "../../ProceduralPlanetComponent/code/ProceduralPlanetComponent.h"
 #include "Compositor/OgreCompositorShadowNodeDef.h"
+#include "gameobject/CameraBehaviorComponents.h"
 #include "gameobject/CameraComponent.h"
 #include "gameobject/DatablockPbsComponent.h"
 #include "gameobject/GameObjectFactory.h"
@@ -18,7 +19,6 @@
 #include "gameobject/PhysicsActiveKinematicComponent.h"
 #include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/PhysicsComponent.h"
-#include "gameobject/CameraBehaviorComponents.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
 #include "modules/LuaScriptApi.h"
@@ -781,7 +781,6 @@ namespace NOWA
         unsigned long playerGoId = this->playerGameObjectId->getULong();
         this->pausePlanetOrbit(2490287205, playerGoId);
 #endif
-
 
         // If the player was already landed on a planet when the scene was saved,
         // restore the paused orbit immediately. The spaceship starts inside the AOI
@@ -1645,9 +1644,6 @@ namespace NOWA
 
         Ogre::MovableObject* movable = bodyGo->getMovableObject();
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-            "[setBodyCastShadows] bodyGoId=" + Ogre::StringConverter::toString(bodyGoId) + " movable=" + (movable ? movable->getName() : "NULL") + " castShadows=" + Ogre::StringConverter::toString(castShadows));
-
         if (nullptr == movable)
         {
             return;
@@ -2033,23 +2029,56 @@ namespace NOWA
                     }
                 }
 
-                // Disable shadow casting on all distant bodies — their geometry
-                // blows out the PSSM frustum even with small farClip on the surface
-                for (SolarSystem& sys : this->solarSystems)
+                // Disable shadow casting on all distant bodies in one batched RenderCommand.
+                // Previously this was one enqueue() per body (~20 calls), each triggering
+                // a separate Hlms shadow-shader permutation lookup/compile on the render thread.
+                // Bundling them into a single lambda eliminates that per-body overhead.
                 {
-                    for (OrbitalBody& otherPlanet : sys.planets)
+                    std::vector<Ogre::MovableObject*> distantCasters;
+                    distantCasters.reserve(32);
+                    for (SolarSystem& sys : this->solarSystems)
                     {
-                        if (otherPlanet.gameObjectId != planetGameObjectId)
+                        for (OrbitalBody& otherPlanet : sys.planets)
                         {
-                            this->setBodyCastShadows(otherPlanet.gameObjectId, false, "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
+                            if (otherPlanet.gameObjectId != planetGameObjectId)
+                            {
+                                GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(otherPlanet.gameObjectId);
+                                if (nullptr != go)
+                                {
+                                    Ogre::MovableObject* movable = go->getMovableObject();
+                                    if (nullptr != movable)
+                                    {
+                                        distantCasters.emplace_back(movable);
+                                    }
+                                }
+                            }
+                        }
+                        for (auto& moonPair : sys.moons)
+                        {
+                            if (moonPair.second.gameObjectId != planetGameObjectId)
+                            {
+                                GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
+                                if (nullptr != go)
+                                {
+                                    Ogre::MovableObject* movable = go->getMovableObject();
+                                    if (nullptr != movable)
+                                    {
+                                        distantCasters.emplace_back(movable);
+                                    }
+                                }
+                            }
                         }
                     }
-                    for (auto& moonPair : sys.moons)
+                    if (false == distantCasters.empty())
                     {
-                        if (moonPair.second.gameObjectId != planetGameObjectId)
+                        NOWA::GraphicsModule::RenderCommand cmd = [distantCasters]()
                         {
-                            this->setBodyCastShadows(moonPair.second.gameObjectId, false, "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
-                        }
+                            for (Ogre::MovableObject* movable : distantCasters)
+                            {
+                                movable->setCastShadows(false);
+                            }
+                        };
+                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
                     }
                 }
 
@@ -2131,19 +2160,50 @@ namespace NOWA
                     }
                 }
 
-                // Disable shadow casting on all distant bodies
-                for (SolarSystem& sys : this->solarSystems)
+                // Disable shadow casting on all distant bodies in one batched RenderCommand.
                 {
-                    for (OrbitalBody& otherPlanet : sys.planets)
+                    std::vector<Ogre::MovableObject*> distantCasters;
+                    distantCasters.reserve(32);
+                    for (SolarSystem& sys : this->solarSystems)
                     {
-                        this->setBodyCastShadows(otherPlanet.gameObjectId, false, "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
-                    }
-                    for (auto& otherMoonPair : sys.moons)
-                    {
-                        if (otherMoonPair.second.gameObjectId != planetGameObjectId)
+                        for (OrbitalBody& otherPlanet : sys.planets)
                         {
-                            this->setBodyCastShadows(otherMoonPair.second.gameObjectId, false, "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
+                            GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(otherPlanet.gameObjectId);
+                            if (nullptr != go)
+                            {
+                                Ogre::MovableObject* movable = go->getMovableObject();
+                                if (nullptr != movable)
+                                {
+                                    distantCasters.emplace_back(movable);
+                                }
+                            }
                         }
+                        for (auto& otherMoonPair : sys.moons)
+                        {
+                            if (otherMoonPair.second.gameObjectId != planetGameObjectId)
+                            {
+                                GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(otherMoonPair.second.gameObjectId);
+                                if (nullptr != go)
+                                {
+                                    Ogre::MovableObject* movable = go->getMovableObject();
+                                    if (nullptr != movable)
+                                    {
+                                        distantCasters.emplace_back(movable);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (false == distantCasters.empty())
+                    {
+                        NOWA::GraphicsModule::RenderCommand cmd = [distantCasters]()
+                        {
+                            for (Ogre::MovableObject* movable : distantCasters)
+                            {
+                                movable->setCastShadows(false);
+                            }
+                        };
+                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "UniversumComponent::pausePlanetOrbit::disableDistantShadows");
                     }
                 }
 
@@ -2201,19 +2261,77 @@ namespace NOWA
             this->landingContactTimer = 0.0f;
         }
 
-        // Restore shadow casting on all bodies and disable surface shadow mode
-        for (SolarSystem& sys : this->solarSystems)
+        // Restore shadow casting on all bodies in one batched RenderCommand.
+        // Sun is kept in a separate command since it always stays false.
         {
-            for (OrbitalBody& planet : sys.planets)
+            std::vector<Ogre::MovableObject*> restoreCasters;
+            restoreCasters.reserve(32);
+            std::vector<Ogre::MovableObject*> sunMovables;
+            sunMovables.reserve(8);
+
+            for (SolarSystem& sys : this->solarSystems)
             {
-                this->setBodyCastShadows(planet.gameObjectId, true, "UniversumComponent::resumePlanetOrbit::restoreShadows");
+                for (OrbitalBody& planet : sys.planets)
+                {
+                    GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(planet.gameObjectId);
+                    if (nullptr != go)
+                    {
+                        Ogre::MovableObject* movable = go->getMovableObject();
+                        if (nullptr != movable)
+                        {
+                            restoreCasters.emplace_back(movable);
+                        }
+                    }
+                }
+                for (auto& moonPair : sys.moons)
+                {
+                    GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(moonPair.second.gameObjectId);
+                    if (nullptr != go)
+                    {
+                        Ogre::MovableObject* movable = go->getMovableObject();
+                        if (nullptr != movable)
+                        {
+                            restoreCasters.emplace_back(movable);
+                        }
+                    }
+                }
+                // Sun never casts shadows — collect separately
+                {
+                    GameObjectPtr sunGo = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(sys.sunId);
+                    if (nullptr != sunGo)
+                    {
+                        Ogre::MovableObject* movable = sunGo->getMovableObject();
+                        if (nullptr != movable)
+                        {
+                            sunMovables.emplace_back(movable);
+                        }
+                    }
+                }
             }
-            for (auto& moonPair : sys.moons)
+
+            if (false == restoreCasters.empty())
             {
-                this->setBodyCastShadows(moonPair.second.gameObjectId, true, "UniversumComponent::resumePlanetOrbit::restoreShadows");
+                NOWA::GraphicsModule::RenderCommand cmd = [restoreCasters]()
+                {
+                    for (Ogre::MovableObject* movable : restoreCasters)
+                    {
+                        movable->setCastShadows(true);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "UniversumComponent::resumePlanetOrbit::restoreShadows");
             }
-            // Sun never casts shadows
-            this->setBodyCastShadows(sys.sunId, false, "UniversumComponent::resumePlanetOrbit::sunNoCastShadows");
+
+            if (false == sunMovables.empty())
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [sunMovables]()
+                {
+                    for (Ogre::MovableObject* movable : sunMovables)
+                    {
+                        movable->setCastShadows(false);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "UniversumComponent::resumePlanetOrbit::sunNoCastShadows");
+            }
         }
 
         // Disable shadows and reset far distance for space mode
@@ -2667,7 +2785,7 @@ namespace NOWA
         surfacePower = nearestSystem->sunLightPower * dayFactor;
 
         // ------------------------------
-        // BLEND SPACE <-> SURFACE 
+        // BLEND SPACE <-> SURFACE
         // ------------------------------
 
         // direction blend (important: prevents lighting snap)

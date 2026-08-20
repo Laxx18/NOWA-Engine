@@ -463,15 +463,6 @@ namespace NOWA
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, tempCaption]()
             {
                 this->movableText->setCaption(tempCaption);
-                // Rebuild geometry immediately, every time the caption changes - not just
-                // on the first call. Callers used to have to remember to invoke
-                // getMovableText()->forceUpdate() themselves after setCaption() (the
-                // typewriter effect in SpeechBubbleComponent forgot to for every
-                // subsequent character, and for the runSpeech "" reset), which left
-                // mNeedUpdate dangling with no guaranteed re-check afterwards. Doing it
-                // here means every caller - present and future - gets a consistent,
-                // immediately-rendered result with no extra step to remember.
-                this->movableText->forceUpdate();
             };
             GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectTitleComponent::setCaption");
         }
