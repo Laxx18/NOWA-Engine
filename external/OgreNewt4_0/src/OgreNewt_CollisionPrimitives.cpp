@@ -854,7 +854,7 @@ namespace OgreNewt
             if (Ogre::Node* node = item->getParentNode())
             {
                 // Must be called to force update with new values
-                node->_getDerivedScaleUpdated();
+                scale = node->_getDerivedScaleUpdated();
             }
 
             FaceWinding localFw = fw;

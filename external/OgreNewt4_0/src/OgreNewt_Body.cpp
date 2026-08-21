@@ -193,6 +193,16 @@ namespace OgreNewt
             node->detachObject(m_debugCollisionLines);
             m_sceneManager->destroyManualObject(m_debugCollisionLines);
             m_debugCollisionLines = nullptr;
+
+            // "node" is the dedicated child scene node created in showDebugCollision() to hold the
+            // debug lines with setInheritScale(false) (NOT m_node itself - see comment there). It is
+            // never stored as a member, only ever reached via m_debugCollisionLines->getParentNode(),
+            // so it must be destroyed here too, otherwise a body destroyed while its debug collision
+            // was still shown would leak this node until m_node itself goes away.
+            if (node && node->getParentSceneNode())
+            {
+                node->getParentSceneNode()->removeAndDestroyChild(node);
+            }
         }
         detachNode();
         m_sceneManager = nullptr;
@@ -1000,6 +1010,15 @@ namespace OgreNewt
                 node->detachObject(m_debugCollisionLines);
                 m_sceneManager->destroyManualObject(m_debugCollisionLines);
                 m_debugCollisionLines = nullptr;
+
+                // "node" here is the dedicated child scene node created below in the "show" branch
+                // (NOT m_node itself, see comment there) - it exists solely to hold these debug lines
+                // with scale inheritance turned off, so it must be destroyed here too, otherwise every
+                // hide/show toggle would leak one extra scene node.
+                if (node && node->getParentSceneNode())
+                {
+                    node->getParentSceneNode()->removeAndDestroyChild(node);
+                }
             }
             return;
         }
@@ -1007,11 +1026,36 @@ namespace OgreNewt
         // create or clear manual object
         if (!m_debugCollisionLines)
         {
+            // ATTENTION: the debug wireframe must NEVER inherit this body's own scene node scale.
+            // Every collision shape in this engine bakes the object's CURRENT scale directly into
+            // the shape's own geometry at construction time (TreeCollision via mesh vertices, Box
+            // via item->getMesh()->getAabb().getSize() * initialScale, etc.) - required because
+            // Newton bodies have no scale component in their own transform at all, so scale has no
+            // other way to reach physics. That means DebugShape()'s vertices are ALREADY in
+            // real-world size.
+            //
+            // Attaching the debug lines directly to m_node (as before) let Ogre's scene graph apply
+            // m_node's own scale a SECOND time on top of that already-scaled geometry, since Ogre
+            // automatically scales every attached MovableObject by its node's scale - for an object
+            // scaled 5x, the wireframe rendered at 5x5=25x. The actual physics collision was always
+            // correct; only this debug visualization doubled the scale.
+            //
+            // Fix: attach to a dedicated CHILD node of m_node instead, created here as a LOCAL
+            // variable only - it is never stored as a member. It still inherits m_node's position
+            // and orientation every frame (normal Ogre parent-child propagation), but
+            // setInheritScale(false) makes it ignore m_node's scale entirely, so the
+            // already-correctly-scaled debug vertices are drawn as-is, exactly once. Whenever this
+            // node needs to be found again later (the hide branch above), it is retrieved via
+            // m_debugCollisionLines->getParentNode() - the manual object itself is the only handle
+            // this class keeps.
+            Ogre::SceneNode* debugLinesNode = static_cast<Ogre::SceneNode*>(m_node)->createChildSceneNode(isStatic ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
+            debugLinesNode->setInheritScale(false);
+
             m_debugCollisionLines = m_sceneManager->createManualObject(isStatic ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
             m_debugCollisionLines->setRenderQueueGroup(200);
             m_debugCollisionLines->setQueryFlags(0);
             m_debugCollisionLines->setCastShadows(false);
-            static_cast<Ogre::SceneNode*>(m_node)->attachObject(m_debugCollisionLines);
+            debugLinesNode->attachObject(m_debugCollisionLines);
         }
         else
         {

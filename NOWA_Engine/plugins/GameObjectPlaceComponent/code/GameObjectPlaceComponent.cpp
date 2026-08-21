@@ -1455,7 +1455,6 @@ namespace NOWA
                 return true;
             }
 
-            // Block placement on forbidden surfaces
             if (this->isOnForbiddenSurface)
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectPlaceComponent] Placement blocked — surface belongs to an excluded category.");
@@ -1466,6 +1465,15 @@ namespace NOWA
             Ogre::Vector3 placePosition = this->currentHitPoint;
             Ogre::Quaternion placeOrientation = this->currentPlacementOrientation;
 
+            // Capture the preview's scale BEFORE endPlacement() destroys previewSceneNode
+            // below - the pointer becomes null the moment destroyPreviewObject() runs, so
+            // reading it after that point crashes. previewSceneNode's scale was set in
+            // createPreviewObject() directly from templateGameObjectPtr->getScale(), so
+            // this is exactly the scale the ghost mesh was shown at during placement -
+            // matching what the designer visually saw (e.g. 0.6/0.6/0.6 for this house),
+            // not a hardcoded UNIT_SCALE guess.
+            Ogre::Vector3 placeScale = (nullptr != this->previewSceneNode) ? this->previewSceneNode->getScale() : Ogre::Vector3::UNIT_SCALE;
+
             // Destroy the preview and reset placement state before cloning. The clone is
             // built fresh from the untouched template object, so there is no shadow left
             // to hide/reset — unlike the old live-template-drag approach.
@@ -1473,7 +1481,10 @@ namespace NOWA
 
             // Clone the original template game object at the world hit position using
             // the full orientation (includes terrain slope when alignToTerrain is active)
-            auto clonedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(originalId, nullptr, 0, placePosition, placeOrientation, Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
+            // and the scale captured above from the preview - NOT a hardcoded 1,1,1,
+            // which silently discarded the template's actual scale (e.g. 0.6) and made
+            // every placed instance's physics/navmesh obstacle come out oversized.
+            auto clonedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(originalId, nullptr, 0, placePosition, placeOrientation, placeScale, true);
 
             if (nullptr == clonedGameObjectPtr)
             {
@@ -1489,9 +1500,6 @@ namespace NOWA
                     physicsCompPtr->setActivated(true);
                 }
             }
-
-            // TODO: Just for debugging
-            // AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawObstacleBoxes(this->gameObjectPtr->getSceneManager());
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectPlaceComponent] Placed game object: " + clonedGameObjectPtr->getName() + " at " + Ogre::StringConverter::toString(placePosition));
 

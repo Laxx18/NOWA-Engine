@@ -635,14 +635,14 @@ namespace NOWA
             clonedSceneNode = parentNode->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
             // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] " + validatedName + ": clone Pos: " + Ogre::StringConverter::toString(position));
             clonedSceneNode->setName(validatedName);
-            clonedSceneNode->setScale(Ogre::Vector3::UNIT_SCALE);
+            clonedSceneNode->setScale(scale);
         }
         else
         {
             clonedSceneNode = sceneManager->getRootSceneNode()->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
             // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] " + validatedName + ": clone Pos : " + Ogre::StringConverter::toString(position));
             clonedSceneNode->setName(validatedName);
-            clonedSceneNode->setScale(Ogre::Vector3::UNIT_SCALE);
+            clonedSceneNode->setScale(scale);
         }
 
         // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName());

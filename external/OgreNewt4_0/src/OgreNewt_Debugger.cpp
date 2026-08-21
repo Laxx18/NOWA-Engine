@@ -359,7 +359,6 @@ namespace OgreNewt
 
         Ogre::Vector3 pos, vel, omega;
         Ogre::Quaternion ori;
-        Ogre::Vector3 scale = bod->getOgreNode()->getScale();
         bod->getPositionOrientation(pos, ori);
 
         vel = bod->getVelocity();
@@ -395,7 +394,16 @@ namespace OgreNewt
         {
             data->m_node->setPosition(pos);
             data->m_node->setOrientation(ori);
-            data->m_node->setScale(scale);
+            // ATTENTION: do NOT setScale here. Every collision shape in this engine bakes the
+            // object's node scale directly into the shape's own geometry at construction time
+            // (TreeCollision vertices, Box dimensions via getAabb().getSize() * initialScale,
+            // etc.) - required because Newton bodies have no scale component of their own.
+            // DebugShape()'s vertices are therefore ALREADY in real-world size. Copying the
+            // body node's scale onto this debug node applied that same scale a SECOND time,
+            // e.g. a 5x-scaled object rendered its debug wireframe at 5x5=25x. This debug node
+            // is a child of m_debugnode (not of the body's own node), so it keeps its default
+            // identity scale, matching the "no scale" comment already present in
+            // buildDebugObjectFromCollision below.
             data->m_updated = 1;
             // Only add if not already a child of m_debugnode
             if (nullptr == data->m_node->getParentSceneNode())
@@ -414,7 +422,7 @@ namespace OgreNewt
                 data->m_node->detachAllObjects();
                 data->m_node->setPosition(pos);
                 data->m_node->setOrientation(ori);
-                data->m_node->setScale(scale);
+                // ATTENTION: see comment above - deliberately no setScale here.
             }
             else
             {

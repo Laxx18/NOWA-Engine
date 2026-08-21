@@ -215,6 +215,9 @@ namespace NOWA
 		this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
 		Ogre::String meshName;
 
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[DIAG][PhysicsArtifactComponent] createStaticBody: node='" + name + "' scale=" + Ogre::StringConverter::toString(this->initialScale) + " pos=" + Ogre::StringConverter::toString(this->initialPosition));
+
 		// Collision for static objects
 		OgreNewt::CollisionPtr staticCollision;
 

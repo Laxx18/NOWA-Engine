@@ -490,7 +490,7 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
-					<property type="6" name="ObstacleClearance" data="2"/>
+					<property type="6" name="ObstacleClearance" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -697,7 +697,7 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="NavigationType" data="Dynamic Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
-					<property type="6" name="ObstacleClearance" data="2"/>
+					<property type="6" name="ObstacleClearance" data="0"/>
 					<property type="7" name="ComponentMyGUIItemBoxComponent" data="MyGUIItemBoxComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
