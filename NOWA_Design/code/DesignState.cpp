@@ -696,15 +696,19 @@ void DesignState::simulate(bool pause, bool withUndo)
 
 void DesignState::generateCategories(void)
 {
-	this->categoriesComboBox->deleteAllItems();
-	std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
-	for (const auto& category : allCategories)
-	{
-		this->categoriesComboBox->addItem(category);
-	}
-	this->categoriesComboBox->addItem("All");
-	Ogre::String selectedCategory = this->categoriesComboBox->getItemNameAt(this->categoriesComboBox->findItemIndexWith("All"));
-	this->categoriesComboBox->setCaption(selectedCategory);
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+		this->categoriesComboBox->deleteAllItems();
+		std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
+		for (const auto& category : allCategories)
+		{
+			this->categoriesComboBox->addItem(category);
+		}
+		this->categoriesComboBox->addItem("All");
+		Ogre::String selectedCategory = this->categoriesComboBox->getItemNameAt(this->categoriesComboBox->findItemIndexWith("All"));
+		this->categoriesComboBox->setCaption(selectedCategory);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::generateCategories");
 }
 
 // Delegates handling

@@ -3382,7 +3382,7 @@ namespace NOWA
 
     void ProceduralCityComponent::updateModificationState(void)
     {
-        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected && this->isEditFocusOwner();
+        const bool shouldBeActive = this->isEditorMeshModifyMode && this->isSelected && this->isEditFocusOwner();
 
         // Only call addInputListener / removeInputListener when the state CHANGES.
         // Calling them every frame causes O(n) map operations in InputDeviceCore.

@@ -9,8 +9,8 @@
 
 namespace NOWA
 {
-    BaseCamera::BaseCamera(unsigned int id, Ogre::Real moveSpeed, Ogre::Real rotateSpeed, Ogre::Real smoothValue, const Ogre::Vector3& defaultDirection)
-        : id(id),
+    BaseCamera::BaseCamera(unsigned int id, Ogre::Real moveSpeed, Ogre::Real rotateSpeed, Ogre::Real smoothValue, const Ogre::Vector3& defaultDirection) :
+        id(id),
         moveSpeed(moveSpeed),
         rotateSpeed(rotateSpeed),
         smoothValue(smoothValue),

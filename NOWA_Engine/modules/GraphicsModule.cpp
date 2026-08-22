@@ -12,7 +12,8 @@
 // Attention: TEMPORARY diagnostic for the suspended-render wait and for the render loop itself.
 // Comment the define out once the measurement is done. Everything it adds is aggregated, never one
 // log line per iteration.
-#define NOWA_SUSPEND_WAIT_TIMING
+// #define NOWA_SUSPEND_WAIT_TIMING
+// #define CLOSURE_DEBUG
 
 #ifdef NOWA_SUSPEND_WAIT_TIMING
 namespace
@@ -26,7 +27,7 @@ namespace
 #include <mutex>
 #include <sstream>
 
-// #define CLOSURE_DEBUG
+
 
 namespace
 {

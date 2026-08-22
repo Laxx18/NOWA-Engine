@@ -4,7 +4,7 @@
 // Comment the define out (or delete this block and every NOWA_SCENE_LOAD_TIMING section
 // below) once the measurement is done - it writes one LML_CRITICAL log line per game object
 // and Ogre flushes the log to disk on every message.
-#define NOWA_SCENE_LOAD_TIMING
+// #define NOWA_SCENE_LOAD_TIMING
 
 #ifdef NOWA_SCENE_LOAD_TIMING
 #include <chrono>
