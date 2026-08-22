@@ -656,7 +656,7 @@ namespace NOWA
             return desiredDistance;
         }
 
-        // Ogre::Timer probeTimer;
+        // NOWA::Timer probeTimer;
 
         Ogre::Real resultDistance = desiredDistance;
         Ogre::String hitName = "none";

@@ -940,6 +940,12 @@ namespace NOWA
          */
         MyGUI::Widget* getMyGUIFocusWidget(void);
 
+        void suspendRendering(bool suspend);
+        bool isRenderingSuspended(void) const;
+
+        void waitForCommandOrSignal(std::chrono::milliseconds timeout);
+        void signalCommandWaiters(void);
+
     public:
         static constexpr size_t NUM_DESTROY_SLOTS = 4;
 
@@ -1181,6 +1187,14 @@ namespace NOWA
 
         std::atomic<bool> stallRequested;
         std::atomic<bool> stallAcknowledged;
+
+        bool wasStalledOrLoading;
+        std::atomic<bool> renderingSuspended;
+
+        std::mutex commandWaitMutex;
+        std::condition_variable commandWaitCondition;
+        std::atomic<bool> commandPending;
+        std::atomic<bool> renderThreadParked;
     };
 
 }; // namespace end

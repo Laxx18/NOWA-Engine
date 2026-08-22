@@ -1,152 +1,162 @@
 #include "NOWAPrecompiled.h"
+
+// Attention: TEMPORARY diagnostic instrumentation for scene load profiling.
+// Comment the define out (or delete this block and every NOWA_SCENE_LOAD_TIMING section
+// below) once the measurement is done - it writes one LML_CRITICAL log line per game object
+// and Ogre flushes the log to disk on every message.
+#define NOWA_SCENE_LOAD_TIMING
+
+#ifdef NOWA_SCENE_LOAD_TIMING
+#include <chrono>
+#endif
 #include "GameObjectFactory.h"
 #include "utilities/XMLConverter.h"
 
 #include "main/Core.h"
 
-#include "PhysicsComponent.h"
-#include "DescriptionComponent.h"
-#include "PhysicsTerrainComponent.h"
-#include "PhysicsArtifactComponent.h"
-#include "PhysicsActiveComponent.h"
-#include "PhysicsCompoundConnectionComponent.h"
-#include "PhysicsRagDollComponentV2.h"
-#include "PhysicsRagDollComponentV3.h"
-#include "AttributesComponent.h"
-#include "NavMeshComponent.h"
-#include "NavMeshTerraComponent.h"
-#include "CrowdComponent.h"
-#include "DistributedComponent.h"
-#include "InputDeviceComponent.h"
-#include "SoundComponent.h"
-#include "SimpleSoundComponent.h"
-#include "GameObjectTitleComponent.h"
-#include "SpawnComponent.h"
-#include "ExitComponent.h"
-#include "AnimationComponentV2.h"
-#include "PhysicsActiveCompoundComponent.h"
-#include "PhysicsActiveDestructableComponent.h"
-#include "PhysicsExplosionComponent.h"
-#include "PhysicsPlayerControllerComponent.h"
-#include "PhysicsTriggerComponent.h"
-#include "PhysicsActiveKinematicComponent.h"
-#include "PhysicsActiveVehicleComponent.h"
-#include "PhysicsActiveVehicleComponentV2.h"
-#include "PhysicsActiveSpiderComponent.h"
-#include "PhysicsActiveComplexVehicleComponent.h"
-#include "PhysicsBuoyancyComponent.h"
+#include "AiComponents.h"
 #include "AiLuaComponent.h"
 #include "AiLuaGoalComponent.h"
-#include "PlaneComponent.h"
-#include "LightDirectionalComponent.h"
-#include "LightSpotComponent.h"
-#include "LightPointComponent.h"
-#include "LightAreaComponent.h"
+#include "AnimationComponentV2.h"
+#include "AttributesComponent.h"
+#include "BackgroundScrollComponent.h"
+#include "CameraBehaviorComponents.h"
+#include "CameraComponent.h"
+#include "CompositorEffectComponents.h"
+#include "CrowdComponent.h"
+#include "DatablockPbsComponent.h"
+#include "DatablockTerraComponent.h"
+#include "DatablockUnlitComponent.h"
+#include "DecalComponent.h"
+#include "DescriptionComponent.h"
+#include "DistributedComponent.h"
+#include "ExitComponent.h"
 #include "FadeComponent.h"
-#include "NodeComponent.h"
-#include "NodeTrackComponent.h"
+#include "GameObjectTitleComponent.h"
+#include "GraphicsConfigurationComponent.h"
+#include "InputDeviceComponent.h"
+#include "JointComponents.h"
+#include "LensFlareComponent.h"
+#include "LightAreaComponent.h"
+#include "LightDirectionalComponent.h"
+#include "LightPointComponent.h"
+#include "LightSpotComponent.h"
 #include "LineComponent.h"
 #include "LinesComponent.h"
-#include "ManualObjectComponent.h"
-#include "RectangleComponent.h"
-#include "ValueBarComponent.h"
-#include "RibbonTrailComponent.h"
-#include "JointComponents.h"
-#include "PhysicsMaterialComponent.h"
-#include "CameraComponent.h"
-#include "ReflectionCameraComponent.h"
-#include "WorkspaceComponents.h"
-#include "CompositorEffectComponents.h"
-#include "DatablockPbsComponent.h"
-#include "DatablockUnlitComponent.h"
-#include "DatablockTerraComponent.h"
-#include "TagPointComponent.h"
-#include "TagChildNodeComponent.h"
-#include "AiComponents.h"
-#include "PlayerControllerComponents.h"
-#include "CameraBehaviorComponents.h"
 #include "LuaScriptComponent.h"
-#include "OceanComponent.h"
-#include "TerraComponent.h"
-#include "DecalComponent.h"
-#include "PlanarReflectionComponent.h"
+#include "ManualObjectComponent.h"
 #include "MoveMathFunctionComponent.h"
-#include "TransformComponent.h"
-#include "LensFlareComponent.h"
 #include "MyGUIComponents.h"
-#include "MyGUIItemBoxComponent.h"
 #include "MyGUIControllerComponents.h"
+#include "MyGUIItemBoxComponent.h"
 #include "MyGUIMiniMapComponent.h"
-#include "BackgroundScrollComponent.h"
+#include "NavMeshComponent.h"
+#include "NavMeshTerraComponent.h"
+#include "NodeComponent.h"
+#include "NodeTrackComponent.h"
+#include "OceanComponent.h"
+#include "PhysicsActiveComplexVehicleComponent.h"
+#include "PhysicsActiveComponent.h"
+#include "PhysicsActiveCompoundComponent.h"
+#include "PhysicsActiveDestructableComponent.h"
+#include "PhysicsActiveKinematicComponent.h"
+#include "PhysicsActiveSpiderComponent.h"
+#include "PhysicsActiveVehicleComponent.h"
+#include "PhysicsActiveVehicleComponentV2.h"
+#include "PhysicsArtifactComponent.h"
+#include "PhysicsBuoyancyComponent.h"
+#include "PhysicsComponent.h"
+#include "PhysicsCompoundConnectionComponent.h"
+#include "PhysicsExplosionComponent.h"
+#include "PhysicsMaterialComponent.h"
+#include "PhysicsPlayerControllerComponent.h"
+#include "PhysicsRagDollComponentV2.h"
+#include "PhysicsRagDollComponentV3.h"
+#include "PhysicsTerrainComponent.h"
+#include "PhysicsTriggerComponent.h"
+#include "PlanarReflectionComponent.h"
+#include "PlaneComponent.h"
+#include "PlayerControllerComponents.h"
+#include "RectangleComponent.h"
+#include "ReflectionCameraComponent.h"
+#include "RibbonTrailComponent.h"
+#include "SimpleSoundComponent.h"
+#include "SoundComponent.h"
+#include "SpawnComponent.h"
+#include "TagChildNodeComponent.h"
+#include "TagPointComponent.h"
+#include "TerraComponent.h"
+#include "TransformComponent.h"
+#include "ValueBarComponent.h"
 #include "WindComponent.h"
-#include "GraphicsConfigurationComponent.h"
+#include "WorkspaceComponents.h"
 
-#include "modules/RakNetModule.h"
-#include "main/Events.h"
 #include "main/AppStateManager.h"
+#include "main/Events.h"
+#include "modules/RakNetModule.h"
 #include "network/ConnectionType.h"
 
 namespace NOWA
 {
-	GameObjectFactory::GameObjectFactory()
-	{
+    GameObjectFactory::GameObjectFactory()
+    {
         // Set before any registerClass call so the pointer is valid throughout.
         this->componentFactory.setGameObjectFactory(this);
 
-		// Component factory is of type: GameObjectComponent and the specific id, register searches for the hashed id and puts it in a map for a later creation
+        // Component factory is of type: GameObjectComponent and the specific id, register searches for the hashed id and puts it in a map for a later creation
 
-		this->componentFactory.registerClass<DescriptionComponent>(DescriptionComponent::getStaticClassId(), DescriptionComponent::getStaticClassName());
-		this->componentFactory.registerClass<AttributesComponent>(AttributesComponent::getStaticClassId(), AttributesComponent::getStaticClassName());
-		this->componentFactory.registerClass<NavMeshComponent>(NavMeshComponent::getStaticClassId(), NavMeshComponent::getStaticClassName());
-		this->componentFactory.registerClass<NavMeshTerraComponent>(NavMeshTerraComponent::getStaticClassId(), NavMeshTerraComponent::getStaticClassName());
-		this->componentFactory.registerClass<CrowdComponent>(CrowdComponent::getStaticClassId(), CrowdComponent::getStaticClassName());
-		this->componentFactory.registerClass<DistributedComponent>(DistributedComponent::getStaticClassId(), DistributedComponent::getStaticClassName());
-		this->componentFactory.registerClass<InputDeviceComponent>(InputDeviceComponent::getStaticClassId(), InputDeviceComponent::getStaticClassName());
-		this->componentFactory.registerClass<SoundComponent>(SoundComponent::getStaticClassId(), SoundComponent::getStaticClassName());
-		this->componentFactory.registerClass<SimpleSoundComponent>(SimpleSoundComponent::getStaticClassId(), SimpleSoundComponent::getStaticClassName());
-		this->componentFactory.registerClass<GameObjectTitleComponent>(GameObjectTitleComponent::getStaticClassId(), GameObjectTitleComponent::getStaticClassName());
-		this->componentFactory.registerClass<SpawnComponent>(SpawnComponent::getStaticClassId(), SpawnComponent::getStaticClassName());
-		this->componentFactory.registerClass<ExitComponent>(ExitComponent::getStaticClassId(), ExitComponent::getStaticClassName());
-		this->componentFactory.registerClass<AnimationComponentV2>(AnimationComponentV2::getStaticClassId(), AnimationComponentV2::getStaticClassName());
-		this->componentFactory.registerClass<PlaneComponent>(PlaneComponent::getStaticClassId(), PlaneComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiLuaComponent>(AiLuaComponent::getStaticClassId(), AiLuaComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiLuaGoalComponent>(AiLuaGoalComponent::getStaticClassId(), AiLuaGoalComponent::getStaticClassName());
+        this->componentFactory.registerClass<DescriptionComponent>(DescriptionComponent::getStaticClassId(), DescriptionComponent::getStaticClassName());
+        this->componentFactory.registerClass<AttributesComponent>(AttributesComponent::getStaticClassId(), AttributesComponent::getStaticClassName());
+        this->componentFactory.registerClass<NavMeshComponent>(NavMeshComponent::getStaticClassId(), NavMeshComponent::getStaticClassName());
+        this->componentFactory.registerClass<NavMeshTerraComponent>(NavMeshTerraComponent::getStaticClassId(), NavMeshTerraComponent::getStaticClassName());
+        this->componentFactory.registerClass<CrowdComponent>(CrowdComponent::getStaticClassId(), CrowdComponent::getStaticClassName());
+        this->componentFactory.registerClass<DistributedComponent>(DistributedComponent::getStaticClassId(), DistributedComponent::getStaticClassName());
+        this->componentFactory.registerClass<InputDeviceComponent>(InputDeviceComponent::getStaticClassId(), InputDeviceComponent::getStaticClassName());
+        this->componentFactory.registerClass<SoundComponent>(SoundComponent::getStaticClassId(), SoundComponent::getStaticClassName());
+        this->componentFactory.registerClass<SimpleSoundComponent>(SimpleSoundComponent::getStaticClassId(), SimpleSoundComponent::getStaticClassName());
+        this->componentFactory.registerClass<GameObjectTitleComponent>(GameObjectTitleComponent::getStaticClassId(), GameObjectTitleComponent::getStaticClassName());
+        this->componentFactory.registerClass<SpawnComponent>(SpawnComponent::getStaticClassId(), SpawnComponent::getStaticClassName());
+        this->componentFactory.registerClass<ExitComponent>(ExitComponent::getStaticClassId(), ExitComponent::getStaticClassName());
+        this->componentFactory.registerClass<AnimationComponentV2>(AnimationComponentV2::getStaticClassId(), AnimationComponentV2::getStaticClassName());
+        this->componentFactory.registerClass<PlaneComponent>(PlaneComponent::getStaticClassId(), PlaneComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiLuaComponent>(AiLuaComponent::getStaticClassId(), AiLuaComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiLuaGoalComponent>(AiLuaGoalComponent::getStaticClassId(), AiLuaGoalComponent::getStaticClassName());
 
-		this->componentFactory.registerClass<NodeComponent>(NodeComponent::getStaticClassId(), NodeComponent::getStaticClassName());
-		this->componentFactory.registerClass<NodeTrackComponent>(NodeTrackComponent::getStaticClassId(), NodeTrackComponent::getStaticClassName());
-		this->componentFactory.registerClass<LineComponent>(LineComponent::getStaticClassId(), LineComponent::getStaticClassName());
-		this->componentFactory.registerClass<LineMeshComponent>(LineMeshComponent::getStaticClassId(), LineMeshComponent::getStaticClassName());
-		this->componentFactory.registerClass<LineMeshScaleComponent>(LineMeshScaleComponent::getStaticClassId(), LineMeshScaleComponent::getStaticClassName());
-		this->componentFactory.registerClass<LinesComponent>(LinesComponent::getStaticClassId(), LinesComponent::getStaticClassName());
-		this->componentFactory.registerClass<ManualObjectComponent>(ManualObjectComponent::getStaticClassId(), ManualObjectComponent::getStaticClassName());
-		this->componentFactory.registerClass<RectangleComponent>(RectangleComponent::getStaticClassId(), RectangleComponent::getStaticClassName());
-		this->componentFactory.registerClass<ValueBarComponent>(ValueBarComponent::getStaticClassId(), ValueBarComponent::getStaticClassName());
-		this->componentFactory.registerClass<CameraComponent>(CameraComponent::getStaticClassId(), CameraComponent::getStaticClassName());
-		this->componentFactory.registerClass<ReflectionCameraComponent>(ReflectionCameraComponent::getStaticClassId(), ReflectionCameraComponent::getStaticClassName());
+        this->componentFactory.registerClass<NodeComponent>(NodeComponent::getStaticClassId(), NodeComponent::getStaticClassName());
+        this->componentFactory.registerClass<NodeTrackComponent>(NodeTrackComponent::getStaticClassId(), NodeTrackComponent::getStaticClassName());
+        this->componentFactory.registerClass<LineComponent>(LineComponent::getStaticClassId(), LineComponent::getStaticClassName());
+        this->componentFactory.registerClass<LineMeshComponent>(LineMeshComponent::getStaticClassId(), LineMeshComponent::getStaticClassName());
+        this->componentFactory.registerClass<LineMeshScaleComponent>(LineMeshScaleComponent::getStaticClassId(), LineMeshScaleComponent::getStaticClassName());
+        this->componentFactory.registerClass<LinesComponent>(LinesComponent::getStaticClassId(), LinesComponent::getStaticClassName());
+        this->componentFactory.registerClass<ManualObjectComponent>(ManualObjectComponent::getStaticClassId(), ManualObjectComponent::getStaticClassName());
+        this->componentFactory.registerClass<RectangleComponent>(RectangleComponent::getStaticClassId(), RectangleComponent::getStaticClassName());
+        this->componentFactory.registerClass<ValueBarComponent>(ValueBarComponent::getStaticClassId(), ValueBarComponent::getStaticClassName());
+        this->componentFactory.registerClass<CameraComponent>(CameraComponent::getStaticClassId(), CameraComponent::getStaticClassName());
+        this->componentFactory.registerClass<ReflectionCameraComponent>(ReflectionCameraComponent::getStaticClassId(), ReflectionCameraComponent::getStaticClassName());
 
-		// Workspace components
-		this->componentFactory.registerClass<WorkspacePbsComponent>(WorkspacePbsComponent::getStaticClassId(), WorkspacePbsComponent::getStaticClassName());
-		this->componentFactory.registerClass<WorkspaceSkyComponent>(WorkspaceSkyComponent::getStaticClassId(), WorkspaceSkyComponent::getStaticClassName());
-		this->componentFactory.registerClass<WorkspaceBackgroundComponent>(WorkspaceBackgroundComponent::getStaticClassId(), WorkspaceBackgroundComponent::getStaticClassName());
-		this->componentFactory.registerClass<WorkspaceCustomComponent>(WorkspaceCustomComponent::getStaticClassId(), WorkspaceCustomComponent::getStaticClassName());
+        // Workspace components
+        this->componentFactory.registerClass<WorkspacePbsComponent>(WorkspacePbsComponent::getStaticClassId(), WorkspacePbsComponent::getStaticClassName());
+        this->componentFactory.registerClass<WorkspaceSkyComponent>(WorkspaceSkyComponent::getStaticClassId(), WorkspaceSkyComponent::getStaticClassName());
+        this->componentFactory.registerClass<WorkspaceBackgroundComponent>(WorkspaceBackgroundComponent::getStaticClassId(), WorkspaceBackgroundComponent::getStaticClassName());
+        this->componentFactory.registerClass<WorkspaceCustomComponent>(WorkspaceCustomComponent::getStaticClassId(), WorkspaceCustomComponent::getStaticClassName());
 
-		this->componentFactory.registerClass<BackgroundScrollComponent>(BackgroundScrollComponent::getStaticClassId(), BackgroundScrollComponent::getStaticClassName());
+        this->componentFactory.registerClass<BackgroundScrollComponent>(BackgroundScrollComponent::getStaticClassId(), BackgroundScrollComponent::getStaticClassName());
         this->componentFactory.registerClass<WindComponent>(WindComponent::getStaticClassId(), WindComponent::getStaticClassName());
 
-		// Compositor Effects Comonents
-		this->componentFactory.registerClass<CompositorEffectBloomComponent>(CompositorEffectBloomComponent::getStaticClassId(), CompositorEffectBloomComponent::getStaticClassName());
-		this->componentFactory.registerClass<CompositorEffectGlassComponent>(CompositorEffectGlassComponent::getStaticClassId(), CompositorEffectGlassComponent::getStaticClassName());
-		this->componentFactory.registerClass<CompositorEffectOldTvComponent>(CompositorEffectOldTvComponent::getStaticClassId(), CompositorEffectOldTvComponent::getStaticClassName());
-		this->componentFactory.registerClass<CompositorEffectBlackAndWhiteComponent>(CompositorEffectBlackAndWhiteComponent::getStaticClassId(), CompositorEffectBlackAndWhiteComponent::getStaticClassName());
-		this->componentFactory.registerClass<CompositorEffectColorComponent>(CompositorEffectColorComponent::getStaticClassId(), CompositorEffectColorComponent::getStaticClassName());
-		this->componentFactory.registerClass<CompositorEffectEmbossedComponent>(CompositorEffectEmbossedComponent::getStaticClassId(), CompositorEffectEmbossedComponent::getStaticClassName());
-		this->componentFactory.registerClass<CompositorEffectSharpenEdgesComponent>(CompositorEffectSharpenEdgesComponent::getStaticClassId(), CompositorEffectSharpenEdgesComponent::getStaticClassName());
+        // Compositor Effects Comonents
+        this->componentFactory.registerClass<CompositorEffectBloomComponent>(CompositorEffectBloomComponent::getStaticClassId(), CompositorEffectBloomComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectGlassComponent>(CompositorEffectGlassComponent::getStaticClassId(), CompositorEffectGlassComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectOldTvComponent>(CompositorEffectOldTvComponent::getStaticClassId(), CompositorEffectOldTvComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectBlackAndWhiteComponent>(CompositorEffectBlackAndWhiteComponent::getStaticClassId(), CompositorEffectBlackAndWhiteComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectColorComponent>(CompositorEffectColorComponent::getStaticClassId(), CompositorEffectColorComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectEmbossedComponent>(CompositorEffectEmbossedComponent::getStaticClassId(), CompositorEffectEmbossedComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectSharpenEdgesComponent>(CompositorEffectSharpenEdgesComponent::getStaticClassId(), CompositorEffectSharpenEdgesComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectCartoonComponent>(CompositorEffectCartoonComponent::getStaticClassId(), CompositorEffectCartoonComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectVolumetricLightComponent>(CompositorEffectVolumetricLightComponent::getStaticClassId(), CompositorEffectVolumetricLightComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectLightShaftsComponent>(CompositorEffectLightShaftsComponent::getStaticClassId(), CompositorEffectLightShaftsComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectDepthOfFieldComponent>(CompositorEffectDepthOfFieldComponent::getStaticClassId(), CompositorEffectDepthOfFieldComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectOutlineComponent>(CompositorEffectOutlineComponent::getStaticClassId(), CompositorEffectOutlineComponent::getStaticClassName());
-		this->componentFactory.registerClass<CompositorEffectMotionBlurComponent>(CompositorEffectMotionBlurComponent::getStaticClassId(), CompositorEffectMotionBlurComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectMotionBlurComponent>(CompositorEffectMotionBlurComponent::getStaticClassId(), CompositorEffectMotionBlurComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectRadialBlurComponent>(CompositorEffectRadialBlurComponent::getStaticClassId(), CompositorEffectRadialBlurComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectAsciiComponent>(CompositorEffectAsciiComponent::getStaticClassId(), CompositorEffectAsciiComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectLaplaceComponent>(CompositorEffectLaplaceComponent::getStaticClassId(), CompositorEffectLaplaceComponent::getStaticClassName());
@@ -156,149 +166,148 @@ namespace NOWA
         this->componentFactory.registerClass<CompositorEffectPosterizeComponent>(CompositorEffectPosterizeComponent::getStaticClassId(), CompositorEffectPosterizeComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectFogComponent>(CompositorEffectFogComponent::getStaticClassId(), CompositorEffectFogComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectStargateTravelComponent>(CompositorEffectStargateTravelComponent::getStaticClassId(), CompositorEffectStargateTravelComponent::getStaticClassName());
-		
-		this->componentFactory.registerClass<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassId(), DatablockPbsComponent::getStaticClassName());
-		this->componentFactory.registerClass<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassId(), DatablockUnlitComponent::getStaticClassName());
-		this->componentFactory.registerClass<DatablockTerraComponent>(DatablockTerraComponent::getStaticClassId(), DatablockTerraComponent::getStaticClassName());
-		this->componentFactory.registerClass<TagPointComponent>(TagPointComponent::getStaticClassId(), TagPointComponent::getStaticClassName());
-		this->componentFactory.registerClass<TagChildNodeComponent>(TagChildNodeComponent::getStaticClassId(), TagChildNodeComponent::getStaticClassName());
-		this->componentFactory.registerClass<RibbonTrailComponent>(RibbonTrailComponent::getStaticClassId(), RibbonTrailComponent::getStaticClassName());
-		this->componentFactory.registerClass<LuaScriptComponent>(LuaScriptComponent::getStaticClassId(), LuaScriptComponent::getStaticClassName());
-		this->componentFactory.registerClass<OceanComponent>(OceanComponent::getStaticClassId(), OceanComponent::getStaticClassName());
-		this->componentFactory.registerClass<TerraComponent>(TerraComponent::getStaticClassId(), TerraComponent::getStaticClassName());
-		this->componentFactory.registerClass<DecalComponent>(DecalComponent::getStaticClassId(), DecalComponent::getStaticClassName());
-		this->componentFactory.registerClass<PlanarReflectionComponent>(PlanarReflectionComponent::getStaticClassId(), PlanarReflectionComponent::getStaticClassName());
-		this->componentFactory.registerClass<MoveMathFunctionComponent>(MoveMathFunctionComponent::getStaticClassId(), MoveMathFunctionComponent::getStaticClassName());
-		this->componentFactory.registerClass<TransformComponent>(TransformComponent::getStaticClassId(), TransformComponent::getStaticClassName());
-		this->componentFactory.registerClass<LensFlareComponent>(LensFlareComponent::getStaticClassId(), LensFlareComponent::getStaticClassName());
-		
-		// Light components
-		this->componentFactory.registerClass<LightDirectionalComponent>(LightDirectionalComponent::getStaticClassId(), LightDirectionalComponent::getStaticClassName());
-		this->componentFactory.registerClass<LightSpotComponent>(LightSpotComponent::getStaticClassId(), LightSpotComponent::getStaticClassName());
-		this->componentFactory.registerClass<LightPointComponent>(LightPointComponent::getStaticClassId(), LightPointComponent::getStaticClassName());
-		this->componentFactory.registerClass<LightAreaComponent>(LightAreaComponent::getStaticClassId(), LightAreaComponent::getStaticClassName());
-		this->componentFactory.registerClass<FadeComponent>(FadeComponent::getStaticClassId(), FadeComponent::getStaticClassName());
 
-		// Physics components
-		this->componentFactory.registerClass<PhysicsArtifactComponent>(PhysicsArtifactComponent::getStaticClassId(), PhysicsArtifactComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsTerrainComponent>(PhysicsTerrainComponent::getStaticClassId(), PhysicsTerrainComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsActiveComponent>(PhysicsActiveComponent::getStaticClassId(), PhysicsActiveComponent::getStaticClassName());
+        this->componentFactory.registerClass<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassId(), DatablockPbsComponent::getStaticClassName());
+        this->componentFactory.registerClass<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassId(), DatablockUnlitComponent::getStaticClassName());
+        this->componentFactory.registerClass<DatablockTerraComponent>(DatablockTerraComponent::getStaticClassId(), DatablockTerraComponent::getStaticClassName());
+        this->componentFactory.registerClass<TagPointComponent>(TagPointComponent::getStaticClassId(), TagPointComponent::getStaticClassName());
+        this->componentFactory.registerClass<TagChildNodeComponent>(TagChildNodeComponent::getStaticClassId(), TagChildNodeComponent::getStaticClassName());
+        this->componentFactory.registerClass<RibbonTrailComponent>(RibbonTrailComponent::getStaticClassId(), RibbonTrailComponent::getStaticClassName());
+        this->componentFactory.registerClass<LuaScriptComponent>(LuaScriptComponent::getStaticClassId(), LuaScriptComponent::getStaticClassName());
+        this->componentFactory.registerClass<OceanComponent>(OceanComponent::getStaticClassId(), OceanComponent::getStaticClassName());
+        this->componentFactory.registerClass<TerraComponent>(TerraComponent::getStaticClassId(), TerraComponent::getStaticClassName());
+        this->componentFactory.registerClass<DecalComponent>(DecalComponent::getStaticClassId(), DecalComponent::getStaticClassName());
+        this->componentFactory.registerClass<PlanarReflectionComponent>(PlanarReflectionComponent::getStaticClassId(), PlanarReflectionComponent::getStaticClassName());
+        this->componentFactory.registerClass<MoveMathFunctionComponent>(MoveMathFunctionComponent::getStaticClassId(), MoveMathFunctionComponent::getStaticClassName());
+        this->componentFactory.registerClass<TransformComponent>(TransformComponent::getStaticClassId(), TransformComponent::getStaticClassName());
+        this->componentFactory.registerClass<LensFlareComponent>(LensFlareComponent::getStaticClassId(), LensFlareComponent::getStaticClassName());
+
+        // Light components
+        this->componentFactory.registerClass<LightDirectionalComponent>(LightDirectionalComponent::getStaticClassId(), LightDirectionalComponent::getStaticClassName());
+        this->componentFactory.registerClass<LightSpotComponent>(LightSpotComponent::getStaticClassId(), LightSpotComponent::getStaticClassName());
+        this->componentFactory.registerClass<LightPointComponent>(LightPointComponent::getStaticClassId(), LightPointComponent::getStaticClassName());
+        this->componentFactory.registerClass<LightAreaComponent>(LightAreaComponent::getStaticClassId(), LightAreaComponent::getStaticClassName());
+        this->componentFactory.registerClass<FadeComponent>(FadeComponent::getStaticClassId(), FadeComponent::getStaticClassName());
+
+        // Physics components
+        this->componentFactory.registerClass<PhysicsArtifactComponent>(PhysicsArtifactComponent::getStaticClassId(), PhysicsArtifactComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsTerrainComponent>(PhysicsTerrainComponent::getStaticClassId(), PhysicsTerrainComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsActiveComponent>(PhysicsActiveComponent::getStaticClassId(), PhysicsActiveComponent::getStaticClassName());
         this->componentFactory.registerClass<PhysicsRagDollComponentV2>(PhysicsRagDollComponentV2::getStaticClassId(), PhysicsRagDollComponentV2::getStaticClassName());
         this->componentFactory.registerClass<PhysicsRagDollComponentV3>(PhysicsRagDollComponentV3::getStaticClassId(), PhysicsRagDollComponentV3::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsActiveCompoundComponent>(PhysicsActiveCompoundComponent::getStaticClassId(), PhysicsActiveCompoundComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsActiveDestructableComponent>(PhysicsActiveDestructableComponent::getStaticClassId(), PhysicsActiveDestructableComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsExplosionComponent>(PhysicsExplosionComponent::getStaticClassId(), PhysicsExplosionComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsMaterialComponent>(PhysicsMaterialComponent::getStaticClassId(), PhysicsMaterialComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsCompoundConnectionComponent>(PhysicsCompoundConnectionComponent::getStaticClassId(), PhysicsCompoundConnectionComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsPlayerControllerComponent>(PhysicsPlayerControllerComponent::getStaticClassId(), PhysicsPlayerControllerComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsTriggerComponent>(PhysicsTriggerComponent::getStaticClassId(), PhysicsTriggerComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsActiveKinematicComponent>(PhysicsActiveKinematicComponent::getStaticClassId(), PhysicsActiveKinematicComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsActiveVehicleComponent>(PhysicsActiveVehicleComponent::getStaticClassId(), PhysicsActiveVehicleComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsActiveCompoundComponent>(PhysicsActiveCompoundComponent::getStaticClassId(), PhysicsActiveCompoundComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsActiveDestructableComponent>(PhysicsActiveDestructableComponent::getStaticClassId(), PhysicsActiveDestructableComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsExplosionComponent>(PhysicsExplosionComponent::getStaticClassId(), PhysicsExplosionComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsMaterialComponent>(PhysicsMaterialComponent::getStaticClassId(), PhysicsMaterialComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsCompoundConnectionComponent>(PhysicsCompoundConnectionComponent::getStaticClassId(), PhysicsCompoundConnectionComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsPlayerControllerComponent>(PhysicsPlayerControllerComponent::getStaticClassId(), PhysicsPlayerControllerComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsTriggerComponent>(PhysicsTriggerComponent::getStaticClassId(), PhysicsTriggerComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsActiveKinematicComponent>(PhysicsActiveKinematicComponent::getStaticClassId(), PhysicsActiveKinematicComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsActiveVehicleComponent>(PhysicsActiveVehicleComponent::getStaticClassId(), PhysicsActiveVehicleComponent::getStaticClassName());
         this->componentFactory.registerClass<PhysicsActiveVehicleComponentV2>(PhysicsActiveVehicleComponentV2::getStaticClassId(), PhysicsActiveVehicleComponentV2::getStaticClassName());
         this->componentFactory.registerClass<PhysicsActiveSpiderComponent>(PhysicsActiveSpiderComponent::getStaticClassId(), PhysicsActiveSpiderComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsActiveComplexVehicleComponent>(PhysicsActiveComplexVehicleComponent::getStaticClassId(), PhysicsActiveComplexVehicleComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsBuoyancyComponent>(PhysicsBuoyancyComponent::getStaticClassId(), PhysicsBuoyancyComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsActiveComplexVehicleComponent>(PhysicsActiveComplexVehicleComponent::getStaticClassId(), PhysicsActiveComplexVehicleComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsBuoyancyComponent>(PhysicsBuoyancyComponent::getStaticClassId(), PhysicsBuoyancyComponent::getStaticClassName());
 
-// Attention: is this correct?, since this component is also in joints now!
-		// this->componentFactory.registerClass<PhysicsMathSliderComponent>(PhysicsMathSliderComponent::getStaticClassId(), PhysicsMathSliderComponent::getStaticClassName());
-		
-		// Joint components
-		this->componentFactory.registerClass<JointComponent>(JointComponent::getStaticClassId(), JointComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointHingeComponent>(JointHingeComponent::getStaticClassId(), JointHingeComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointHingeActuatorComponent>(JointHingeActuatorComponent::getStaticClassId(), JointHingeActuatorComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointPointToPointComponent>(JointPointToPointComponent::getStaticClassId(), JointPointToPointComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointBallAndSocketComponent>(JointBallAndSocketComponent::getStaticClassId(), JointBallAndSocketComponent::getStaticClassName());
-		// this->componentFactory.registerClass<JointControlledBallAndSocketComponent>(JointControlledBallAndSocketComponent::getStaticClassId(), JointControlledBallAndSocketComponent::getStaticClassName());
-		// this->componentFactory.registerClass<RagDollMotorDofComponent>(RagDollMotorDofComponent::getStaticClassId(), RagDollMotorDofComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointPinComponent>(JointPinComponent::getStaticClassId(), JointPinComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointPlaneComponent>(JointPlaneComponent::getStaticClassId(), JointPlaneComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointCorkScrewComponent>(JointCorkScrewComponent::getStaticClassId(), JointCorkScrewComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointPassiveSliderComponent>(JointPassiveSliderComponent::getStaticClassId(), JointPassiveSliderComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointSliderActuatorComponent>(JointSliderActuatorComponent::getStaticClassId(), JointSliderActuatorComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointActiveSliderComponent>(JointActiveSliderComponent::getStaticClassId(), JointActiveSliderComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointMathSliderComponent>(JointMathSliderComponent::getStaticClassId(), JointMathSliderComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointKinematicComponent>(JointKinematicComponent::getStaticClassId(), JointKinematicComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointTargetTransformComponent>(JointTargetTransformComponent::getStaticClassId(), JointTargetTransformComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointPathFollowComponent>(JointPathFollowComponent::getStaticClassId(), JointPathFollowComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointDryRollingFrictionComponent>(JointDryRollingFrictionComponent::getStaticClassId(), JointDryRollingFrictionComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointGearComponent>(JointGearComponent::getStaticClassId(), JointGearComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointWormGearComponent>(JointWormGearComponent::getStaticClassId(), JointWormGearComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointRackAndPinionComponent>(JointRackAndPinionComponent::getStaticClassId(), JointRackAndPinionComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointPulleyComponent>(JointPulleyComponent::getStaticClassId(), JointPulleyComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointSpringComponent>(JointSpringComponent::getStaticClassId(), JointSpringComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointAttractorComponent>(JointAttractorComponent::getStaticClassId(), JointAttractorComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointUniversalComponent>(JointUniversalComponent::getStaticClassId(), JointUniversalComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointUniversalActuatorComponent>(JointUniversalActuatorComponent::getStaticClassId(), JointUniversalActuatorComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointSlidingContactComponent>(JointSlidingContactComponent::getStaticClassId(), JointSlidingContactComponent::getStaticClassName());
-		this->componentFactory.registerClass<Joint6DofComponent>(Joint6DofComponent::getStaticClassId(), Joint6DofComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointMotorComponent>(JointMotorComponent::getStaticClassId(), JointMotorComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointWheelComponent>(JointWheelComponent::getStaticClassId(), JointWheelComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointFlexyPipeHandleComponent>(JointFlexyPipeHandleComponent::getStaticClassId(), JointFlexyPipeHandleComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointFlexyPipeSpinnerComponent>(JointFlexyPipeSpinnerComponent::getStaticClassId(), JointFlexyPipeSpinnerComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointVehicleTireComponent>(JointVehicleTireComponent::getStaticClassId(), JointVehicleTireComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointComplexVehicleTireComponent>(JointComplexVehicleTireComponent::getStaticClassId(), JointComplexVehicleTireComponent::getStaticClassName());
-		
-		// AI Components
-		this->componentFactory.registerClass<AiMoveComponent>(AiMoveComponent::getStaticClassId(), AiMoveComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiMoveRandomlyComponent>(AiMoveRandomlyComponent::getStaticClassId(), AiMoveRandomlyComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiPathFollowComponent>(AiPathFollowComponent::getStaticClassId(), AiPathFollowComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiWanderComponent>(AiWanderComponent::getStaticClassId(), AiWanderComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiFlockingComponent>(AiFlockingComponent::getStaticClassId(), AiFlockingComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiRecastPathNavigationComponent>(AiRecastPathNavigationComponent::getStaticClassId(), AiRecastPathNavigationComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiObstacleAvoidanceComponent>(AiObstacleAvoidanceComponent::getStaticClassId(), AiObstacleAvoidanceComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiHideComponent>(AiHideComponent::getStaticClassId(), AiHideComponent::getStaticClassName());
-		this->componentFactory.registerClass<AiMoveComponent2D>(AiMoveComponent2D::getStaticClassId(), AiMoveComponent2D::getStaticClassName());
-		this->componentFactory.registerClass<AiPathFollowComponent2D>(AiPathFollowComponent2D::getStaticClassId(), AiPathFollowComponent2D::getStaticClassName());
-		this->componentFactory.registerClass<AiWanderComponent2D>(AiWanderComponent2D::getStaticClassId(), AiWanderComponent2D::getStaticClassName());
+        // Attention: is this correct?, since this component is also in joints now!
+        // this->componentFactory.registerClass<PhysicsMathSliderComponent>(PhysicsMathSliderComponent::getStaticClassId(), PhysicsMathSliderComponent::getStaticClassName());
 
-		// Player Controller Components
-		this->componentFactory.registerClass<PlayerControllerComponent>(PlayerControllerComponent::getStaticClassId(), PlayerControllerComponent::getStaticClassName());
-		this->componentFactory.registerClass<PlayerControllerJumpNRunComponent>(PlayerControllerJumpNRunComponent::getStaticClassId(), PlayerControllerJumpNRunComponent::getStaticClassName());
-		this->componentFactory.registerClass<PlayerControllerJumpNRunLuaComponent>(PlayerControllerJumpNRunLuaComponent::getStaticClassId(), PlayerControllerJumpNRunLuaComponent::getStaticClassName());
-		this->componentFactory.registerClass<PlayerControllerClickToPointComponent>(PlayerControllerClickToPointComponent::getStaticClassId(), PlayerControllerClickToPointComponent::getStaticClassName());
+        // Joint components
+        this->componentFactory.registerClass<JointComponent>(JointComponent::getStaticClassId(), JointComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointHingeComponent>(JointHingeComponent::getStaticClassId(), JointHingeComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointHingeActuatorComponent>(JointHingeActuatorComponent::getStaticClassId(), JointHingeActuatorComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointPointToPointComponent>(JointPointToPointComponent::getStaticClassId(), JointPointToPointComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointBallAndSocketComponent>(JointBallAndSocketComponent::getStaticClassId(), JointBallAndSocketComponent::getStaticClassName());
+        // this->componentFactory.registerClass<JointControlledBallAndSocketComponent>(JointControlledBallAndSocketComponent::getStaticClassId(), JointControlledBallAndSocketComponent::getStaticClassName());
+        // this->componentFactory.registerClass<RagDollMotorDofComponent>(RagDollMotorDofComponent::getStaticClassId(), RagDollMotorDofComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointPinComponent>(JointPinComponent::getStaticClassId(), JointPinComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointPlaneComponent>(JointPlaneComponent::getStaticClassId(), JointPlaneComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointCorkScrewComponent>(JointCorkScrewComponent::getStaticClassId(), JointCorkScrewComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointPassiveSliderComponent>(JointPassiveSliderComponent::getStaticClassId(), JointPassiveSliderComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointSliderActuatorComponent>(JointSliderActuatorComponent::getStaticClassId(), JointSliderActuatorComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointActiveSliderComponent>(JointActiveSliderComponent::getStaticClassId(), JointActiveSliderComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointMathSliderComponent>(JointMathSliderComponent::getStaticClassId(), JointMathSliderComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointKinematicComponent>(JointKinematicComponent::getStaticClassId(), JointKinematicComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointTargetTransformComponent>(JointTargetTransformComponent::getStaticClassId(), JointTargetTransformComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointPathFollowComponent>(JointPathFollowComponent::getStaticClassId(), JointPathFollowComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointDryRollingFrictionComponent>(JointDryRollingFrictionComponent::getStaticClassId(), JointDryRollingFrictionComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointGearComponent>(JointGearComponent::getStaticClassId(), JointGearComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointWormGearComponent>(JointWormGearComponent::getStaticClassId(), JointWormGearComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointRackAndPinionComponent>(JointRackAndPinionComponent::getStaticClassId(), JointRackAndPinionComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointPulleyComponent>(JointPulleyComponent::getStaticClassId(), JointPulleyComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointSpringComponent>(JointSpringComponent::getStaticClassId(), JointSpringComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointAttractorComponent>(JointAttractorComponent::getStaticClassId(), JointAttractorComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointUniversalComponent>(JointUniversalComponent::getStaticClassId(), JointUniversalComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointUniversalActuatorComponent>(JointUniversalActuatorComponent::getStaticClassId(), JointUniversalActuatorComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointSlidingContactComponent>(JointSlidingContactComponent::getStaticClassId(), JointSlidingContactComponent::getStaticClassName());
+        this->componentFactory.registerClass<Joint6DofComponent>(Joint6DofComponent::getStaticClassId(), Joint6DofComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointMotorComponent>(JointMotorComponent::getStaticClassId(), JointMotorComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointWheelComponent>(JointWheelComponent::getStaticClassId(), JointWheelComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointFlexyPipeHandleComponent>(JointFlexyPipeHandleComponent::getStaticClassId(), JointFlexyPipeHandleComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointFlexyPipeSpinnerComponent>(JointFlexyPipeSpinnerComponent::getStaticClassId(), JointFlexyPipeSpinnerComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointVehicleTireComponent>(JointVehicleTireComponent::getStaticClassId(), JointVehicleTireComponent::getStaticClassName());
+        this->componentFactory.registerClass<JointComplexVehicleTireComponent>(JointComplexVehicleTireComponent::getStaticClassId(), JointComplexVehicleTireComponent::getStaticClassName());
 
-		// Camera Behavior Components
-		this->componentFactory.registerClass<CameraBehaviorBaseComponent>(CameraBehaviorBaseComponent::getStaticClassId(), CameraBehaviorBaseComponent::getStaticClassName());
-		this->componentFactory.registerClass<CameraBehaviorFirstPersonComponent>(CameraBehaviorFirstPersonComponent::getStaticClassId(), CameraBehaviorFirstPersonComponent::getStaticClassName());
-		this->componentFactory.registerClass<CameraBehaviorThirdPersonComponent>(CameraBehaviorThirdPersonComponent::getStaticClassId(), CameraBehaviorThirdPersonComponent::getStaticClassName());
+        // AI Components
+        this->componentFactory.registerClass<AiMoveComponent>(AiMoveComponent::getStaticClassId(), AiMoveComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiMoveRandomlyComponent>(AiMoveRandomlyComponent::getStaticClassId(), AiMoveRandomlyComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiPathFollowComponent>(AiPathFollowComponent::getStaticClassId(), AiPathFollowComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiWanderComponent>(AiWanderComponent::getStaticClassId(), AiWanderComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiFlockingComponent>(AiFlockingComponent::getStaticClassId(), AiFlockingComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiRecastPathNavigationComponent>(AiRecastPathNavigationComponent::getStaticClassId(), AiRecastPathNavigationComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiObstacleAvoidanceComponent>(AiObstacleAvoidanceComponent::getStaticClassId(), AiObstacleAvoidanceComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiHideComponent>(AiHideComponent::getStaticClassId(), AiHideComponent::getStaticClassName());
+        this->componentFactory.registerClass<AiMoveComponent2D>(AiMoveComponent2D::getStaticClassId(), AiMoveComponent2D::getStaticClassName());
+        this->componentFactory.registerClass<AiPathFollowComponent2D>(AiPathFollowComponent2D::getStaticClassId(), AiPathFollowComponent2D::getStaticClassName());
+        this->componentFactory.registerClass<AiWanderComponent2D>(AiWanderComponent2D::getStaticClassId(), AiWanderComponent2D::getStaticClassName());
+
+        // Player Controller Components
+        this->componentFactory.registerClass<PlayerControllerComponent>(PlayerControllerComponent::getStaticClassId(), PlayerControllerComponent::getStaticClassName());
+        this->componentFactory.registerClass<PlayerControllerJumpNRunComponent>(PlayerControllerJumpNRunComponent::getStaticClassId(), PlayerControllerJumpNRunComponent::getStaticClassName());
+        this->componentFactory.registerClass<PlayerControllerJumpNRunLuaComponent>(PlayerControllerJumpNRunLuaComponent::getStaticClassId(), PlayerControllerJumpNRunLuaComponent::getStaticClassName());
+        this->componentFactory.registerClass<PlayerControllerClickToPointComponent>(PlayerControllerClickToPointComponent::getStaticClassId(), PlayerControllerClickToPointComponent::getStaticClassName());
+
+        // Camera Behavior Components
+        this->componentFactory.registerClass<CameraBehaviorBaseComponent>(CameraBehaviorBaseComponent::getStaticClassId(), CameraBehaviorBaseComponent::getStaticClassName());
+        this->componentFactory.registerClass<CameraBehaviorFirstPersonComponent>(CameraBehaviorFirstPersonComponent::getStaticClassId(), CameraBehaviorFirstPersonComponent::getStaticClassName());
+        this->componentFactory.registerClass<CameraBehaviorThirdPersonComponent>(CameraBehaviorThirdPersonComponent::getStaticClassId(), CameraBehaviorThirdPersonComponent::getStaticClassName());
         this->componentFactory.registerClass<CameraBehaviorThirdPersonOcclusionComponent>(CameraBehaviorThirdPersonOcclusionComponent::getStaticClassId(), CameraBehaviorThirdPersonOcclusionComponent::getStaticClassName());
-		this->componentFactory.registerClass<CameraBehaviorFollow2DComponent>(CameraBehaviorFollow2DComponent::getStaticClassId(), CameraBehaviorFollow2DComponent::getStaticClassName());
-		this->componentFactory.registerClass<CameraBehaviorZoomComponent>(CameraBehaviorZoomComponent::getStaticClassId(), CameraBehaviorZoomComponent::getStaticClassName());
+        this->componentFactory.registerClass<CameraBehaviorFollow2DComponent>(CameraBehaviorFollow2DComponent::getStaticClassId(), CameraBehaviorFollow2DComponent::getStaticClassName());
+        this->componentFactory.registerClass<CameraBehaviorZoomComponent>(CameraBehaviorZoomComponent::getStaticClassId(), CameraBehaviorZoomComponent::getStaticClassName());
 
-		// MYGUI Components
-		this->componentFactory.registerClass<MyGUIWindowComponent>(MyGUIWindowComponent::getStaticClassId(), MyGUIWindowComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUITextComponent>(MyGUITextComponent::getStaticClassId(), MyGUITextComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIButtonComponent>(MyGUIButtonComponent::getStaticClassId(), MyGUIButtonComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUICheckBoxComponent>(MyGUICheckBoxComponent::getStaticClassId(), MyGUICheckBoxComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIImageBoxComponent>(MyGUIImageBoxComponent::getStaticClassId(), MyGUIImageBoxComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIProgressBarComponent>(MyGUIProgressBarComponent::getStaticClassId(), MyGUIProgressBarComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIItemBoxComponent>(MyGUIItemBoxComponent::getStaticClassId(), MyGUIItemBoxComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIListBoxComponent>(MyGUIListBoxComponent::getStaticClassId(), MyGUIListBoxComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIComboBoxComponent>(MyGUIComboBoxComponent::getStaticClassId(), MyGUIComboBoxComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIMessageBoxComponent>(MyGUIMessageBoxComponent::getStaticClassId(), MyGUIMessageBoxComponent::getStaticClassName());
-		
-		this->componentFactory.registerClass<MyGUIPositionControllerComponent>(MyGUIPositionControllerComponent::getStaticClassId(), MyGUIPositionControllerComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIFadeAlphaControllerComponent>(MyGUIFadeAlphaControllerComponent::getStaticClassId(), MyGUIFadeAlphaControllerComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIScrollingMessageControllerComponent>(MyGUIScrollingMessageControllerComponent::getStaticClassId(), MyGUIScrollingMessageControllerComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIEdgeHideControllerComponent>(MyGUIEdgeHideControllerComponent::getStaticClassId(), MyGUIEdgeHideControllerComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIRepeatClickControllerComponent>(MyGUIRepeatClickControllerComponent::getStaticClassId(), MyGUIRepeatClickControllerComponent::getStaticClassName());
-		this->componentFactory.registerClass<MyGUIMiniMapComponent>(MyGUIMiniMapComponent::getStaticClassId(), MyGUIMiniMapComponent::getStaticClassName());
+        // MYGUI Components
+        this->componentFactory.registerClass<MyGUIWindowComponent>(MyGUIWindowComponent::getStaticClassId(), MyGUIWindowComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUITextComponent>(MyGUITextComponent::getStaticClassId(), MyGUITextComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIButtonComponent>(MyGUIButtonComponent::getStaticClassId(), MyGUIButtonComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUICheckBoxComponent>(MyGUICheckBoxComponent::getStaticClassId(), MyGUICheckBoxComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIImageBoxComponent>(MyGUIImageBoxComponent::getStaticClassId(), MyGUIImageBoxComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIProgressBarComponent>(MyGUIProgressBarComponent::getStaticClassId(), MyGUIProgressBarComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIItemBoxComponent>(MyGUIItemBoxComponent::getStaticClassId(), MyGUIItemBoxComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIListBoxComponent>(MyGUIListBoxComponent::getStaticClassId(), MyGUIListBoxComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIComboBoxComponent>(MyGUIComboBoxComponent::getStaticClassId(), MyGUIComboBoxComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIMessageBoxComponent>(MyGUIMessageBoxComponent::getStaticClassId(), MyGUIMessageBoxComponent::getStaticClassName());
+
+        this->componentFactory.registerClass<MyGUIPositionControllerComponent>(MyGUIPositionControllerComponent::getStaticClassId(), MyGUIPositionControllerComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIFadeAlphaControllerComponent>(MyGUIFadeAlphaControllerComponent::getStaticClassId(), MyGUIFadeAlphaControllerComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIScrollingMessageControllerComponent>(MyGUIScrollingMessageControllerComponent::getStaticClassId(), MyGUIScrollingMessageControllerComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIEdgeHideControllerComponent>(MyGUIEdgeHideControllerComponent::getStaticClassId(), MyGUIEdgeHideControllerComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIRepeatClickControllerComponent>(MyGUIRepeatClickControllerComponent::getStaticClassId(), MyGUIRepeatClickControllerComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIMiniMapComponent>(MyGUIMiniMapComponent::getStaticClassId(), MyGUIMiniMapComponent::getStaticClassName());
         this->componentFactory.registerClass<GraphicsConfigurationComponent>(GraphicsConfigurationComponent::getStaticClassId(), GraphicsConfigurationComponent::getStaticClassName());
-	}
+    }
 
-	GameObjectFactory::~GameObjectFactory()
-	{
-		
-	}
+    GameObjectFactory::~GameObjectFactory()
+    {
+    }
 
     GameObjectFactory* GameObjectFactory::getInstance()
-	{
-		static GameObjectFactory instance;
+    {
+        static GameObjectFactory instance;
 
-		return &instance;
-	}
+        return &instance;
+    }
 
-	void GameObjectFactory::registerGameObjectType(unsigned int id, GameObjectTypeDescriptor descriptor)
+    void GameObjectFactory::registerGameObjectType(unsigned int id, GameObjectTypeDescriptor descriptor)
     {
         if (this->registeredTypes.find(id) == this->registeredTypes.end())
         {
@@ -323,211 +332,227 @@ namespace NOWA
 
     GameObjectPtr GameObjectFactory::createOrSetGameObjectFromXML(rapidxml::xml_node<>* xmlNode, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, NOWA::eType type, const Ogre::String& filename,
         bool forceCreation, bool sceneParsed, GameObjectPtr existingGameObjectPtr)
-	{
-		rapidxml::xml_node<>* propertyElement = xmlNode->first_node("property");
-		Ogre::String gameObjectName;
-		Ogre::String category = "Default";
-		Ogre::String renderCategory = "All";
-		Ogre::String tagName;
-		Ogre::String startPoseName;
-		int controlledByClientID = 0;
-		Ogre::Vector3 defaultDirection = Ogre::Vector3::UNIT_Z;
-		bool dynamic = true;
-		bool useReflection = false;
-		bool visible = true;
-		bool global = false;
-		bool clampY = false;
-		unsigned long id = 0L;
-		unsigned long referenceId = 0L;
-		unsigned int renderQueueIndex = 10;
-		bool renderQueueIndexSet = false;
-		unsigned int renderDistance = 0;
-		Ogre::Real lodDistance = 0.0f;
-		unsigned int lodLevels = 0;
-		unsigned int shadowRenderingDistance = 0;
-		bool renderDistanceSet = false;
-		bool shadowRenderingDistanceSet = false;
+    {
+        rapidxml::xml_node<>* propertyElement = xmlNode->first_node("property");
+        Ogre::String gameObjectName;
+        Ogre::String category = "Default";
+        Ogre::String renderCategory = "All";
+        Ogre::String tagName;
+        Ogre::String startPoseName;
+        int controlledByClientID = 0;
+        Ogre::Vector3 defaultDirection = Ogre::Vector3::UNIT_Z;
+        bool dynamic = true;
+        bool useReflection = false;
+        bool visible = true;
+        bool global = false;
+        bool clampY = false;
+        unsigned long id = 0L;
+        unsigned long referenceId = 0L;
+        unsigned int renderQueueIndex = 10;
+        bool renderQueueIndexSet = false;
+        unsigned int renderDistance = 0;
+        Ogre::Real lodDistance = 0.0f;
+        unsigned int lodLevels = 0;
+        unsigned int shadowRenderingDistance = 0;
+        bool renderDistanceSet = false;
+        bool shadowRenderingDistanceSet = false;
 
-		// Attention: IMPORTANT: All those attributes must also be set in GameObjectController::internalClone function!
+        // Attention: IMPORTANT: All those attributes must also be set in GameObjectController::internalClone function!
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Object")
-		{
-			gameObjectName = XMLConverter::getAttrib(propertyElement, "data", "GameObject");
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		// Check if there is an id for the game object (maybe from undo/redo) then use that id, to recover the game object with the same id
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Id")
-		{
-			id = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Category")
-		{
-			category = XMLConverter::getAttrib(propertyElement, "data", "Default");
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RenderCategory")
-		{
-			renderCategory = XMLConverter::getAttrib(propertyElement, "data", "All");
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TagName")
-		{
-			tagName = XMLConverter::getAttrib(propertyElement, "data", "Default");
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ControlledByClient")
-		{
-			controlledByClientID = XMLConverter::getAttribInt(propertyElement, "data", 0);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
-		{
-			dynamic = ! XMLConverter::getAttribBool(propertyElement, "data", false);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseReflection")
-		{
-			useReflection = XMLConverter::getAttribBool(propertyElement, "data", false);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Visible")
-		{
-			visible = XMLConverter::getAttribBool(propertyElement, "data", false);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DefaultDirection")
-		{
-			defaultDirection = XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3::UNIT_Z);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Global")
-		{
-			global = XMLConverter::getAttribBool(propertyElement, "data", false);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ClampY")
-		{
-			clampY = XMLConverter::getAttribBool(propertyElement, "data", false);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ReferenceId")
-		{
-			referenceId = XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RenderQueueIndex")
-		{
-			renderQueueIndex = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 10);
-			propertyElement = propertyElement->next_sibling("property");
-			renderQueueIndexSet = true;
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RenderDistance")
-		{
-			renderDistance = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 1000);
-			propertyElement = propertyElement->next_sibling("property");
-			renderDistanceSet = true;
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LodDistance")
-		{
-			lodDistance = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 0);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LodLevels")
-		{
-			lodLevels = XMLConverter::getAttribReal(propertyElement, "data", 0.0f);
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShadowRenderingDistance")
-		{
-			shadowRenderingDistance = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 300);
-			propertyElement = propertyElement->next_sibling("property");
-			shadowRenderingDistanceSet = true;
-		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Object")
+        {
+            gameObjectName = XMLConverter::getAttrib(propertyElement, "data", "GameObject");
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        // Check if there is an id for the game object (maybe from undo/redo) then use that id, to recover the game object with the same id
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Id")
+        {
+            id = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Category")
+        {
+            category = XMLConverter::getAttrib(propertyElement, "data", "Default");
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RenderCategory")
+        {
+            renderCategory = XMLConverter::getAttrib(propertyElement, "data", "All");
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TagName")
+        {
+            tagName = XMLConverter::getAttrib(propertyElement, "data", "Default");
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ControlledByClient")
+        {
+            controlledByClientID = XMLConverter::getAttribInt(propertyElement, "data", 0);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
+        {
+            dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseReflection")
+        {
+            useReflection = XMLConverter::getAttribBool(propertyElement, "data", false);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Visible")
+        {
+            visible = XMLConverter::getAttribBool(propertyElement, "data", false);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DefaultDirection")
+        {
+            defaultDirection = XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3::UNIT_Z);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Global")
+        {
+            global = XMLConverter::getAttribBool(propertyElement, "data", false);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ClampY")
+        {
+            clampY = XMLConverter::getAttribBool(propertyElement, "data", false);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ReferenceId")
+        {
+            referenceId = XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RenderQueueIndex")
+        {
+            renderQueueIndex = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 10);
+            propertyElement = propertyElement->next_sibling("property");
+            renderQueueIndexSet = true;
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RenderDistance")
+        {
+            renderDistance = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 1000);
+            propertyElement = propertyElement->next_sibling("property");
+            renderDistanceSet = true;
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LodDistance")
+        {
+            lodDistance = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 0);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LodLevels")
+        {
+            lodLevels = XMLConverter::getAttribReal(propertyElement, "data", 0.0f);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShadowRenderingDistance")
+        {
+            shadowRenderingDistance = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 300);
+            propertyElement = propertyElement->next_sibling("property");
+            shadowRenderingDistanceSet = true;
+        }
 
-		// Read all datablocks, this is necessary e.g. for plane component, because its mesh is created at runtime and never saved as resource
-		// But the datablock does exist on disk, so in order not to have always a data block with the name 'Missing', get the data block name from game object
-		std::vector<Ogre::String> dataBlocks;
-		unsigned int i = 0;
-		while (nullptr != propertyElement)
-		{
-			if (XMLConverter::getAttrib(propertyElement, "name") == "DataBlock" + Ogre::StringConverter::toString(i++))
-			{
-				Ogre::String dataBlockName = XMLConverter::getAttrib(propertyElement, "data");
-				dataBlocks.emplace_back(dataBlockName);
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			else
-			{
-				break;
-			}
-		}
+        // Read all datablocks, this is necessary e.g. for plane component, because its mesh is created at runtime and never saved as resource
+        // But the datablock does exist on disk, so in order not to have always a data block with the name 'Missing', get the data block name from game object
+        std::vector<Ogre::String> dataBlocks;
+        unsigned int i = 0;
+        while (nullptr != propertyElement)
+        {
+            if (XMLConverter::getAttrib(propertyElement, "name") == "DataBlock" + Ogre::StringConverter::toString(i++))
+            {
+                Ogre::String dataBlockName = XMLConverter::getAttrib(propertyElement, "data");
+                dataBlocks.emplace_back(dataBlockName);
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            else
+            {
+                break;
+            }
+        }
 
-		GameObjectPtr gameObjectPtr = nullptr;
+        GameObjectPtr gameObjectPtr = nullptr;
 
-		if (gameObjectName == "GameObject")
-		{
-			// skip the creation if this is a network scenario, the game object is controlled by a client
-			// forceParse: a game object can be created manually too, so forceCreation must be on, so that it will be created and not skipped again
-			if (AppStateManager::getSingletonPtr()->getRakNetModule()->isNetworkSzenario() && controlledByClientID != 0 && !forceCreation)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectFactory] Skipping creation for game object: " + sceneNode->getName() +
-					" because it will be replicated later.");
-				
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, movableObject, &sceneNode]()
-				{
-					// also delete the already created entity, and node etc.
-					if (movableObject != nullptr && sceneManager->hasMovableObject(movableObject))
-					{
-						sceneManager->destroyMovableObject(movableObject);
-					}
+#ifdef NOWA_SCENE_LOAD_TIMING
+        // Attention: std::chrono::steady_clock on purpose and NOT Ogre::Timer - the latter wraps
+        // every QueryPerformanceCounter read in two SetThreadAffinityMask syscalls and would
+        // distort exactly the measurement we are taking here.
+        const auto timingStart = std::chrono::steady_clock::now();
+        auto timingAfterConstruct = timingStart;
+        auto timingAfterSetters = timingStart;
+        auto timingAfterBatch = timingStart;
+        auto timingAfterInit = timingStart;
+        auto timingAfterComponents = timingStart;
+        Ogre::String timingComponentBreakdown;
+#endif
 
-					auto nodeIt = sceneNode->getChildIterator();
-					while (nodeIt.hasMoreElements())
-					{
-						//go through all scenenodes in the scene
-						Ogre::Node* subNode = nodeIt.getNext();
-						subNode->removeAllChildren();
-						//add them to the tree as parents
-					}
-					sceneNode->detachAllObjects();
-					NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
-					sceneManager->destroySceneNode(sceneNode);
-					sceneNode = nullptr;
-				};
-				NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectFactory::createOrSetGameObjectFromXML destroy");
+        if (gameObjectName == "GameObject")
+        {
+            // skip the creation if this is a network scenario, the game object is controlled by a client
+            // forceParse: a game object can be created manually too, so forceCreation must be on, so that it will be created and not skipped again
+            if (AppStateManager::getSingletonPtr()->getRakNetModule()->isNetworkSzenario() && controlledByClientID != 0 && !forceCreation)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectFactory] Skipping creation for game object: " + sceneNode->getName() + " because it will be replicated later.");
 
-				return nullptr;
-			}
-			else
-			{
-				// Upgrade functionality of old projects: force setting global ids for those game objects
-				if (sceneNode->getName() == "MainGameObject")
-				{
-					id = NOWA::GameObjectController::MAIN_GAMEOBJECT_ID;
-				}
-				else if (sceneNode->getName() == "MainCamera")
-				{
-					id = NOWA::GameObjectController::MAIN_CAMERA_ID;
-				}
-				else if (sceneNode->getName() == "SunLight")
-				{
-					id = NOWA::GameObjectController::MAIN_LIGHT_ID;
-				}
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, movableObject, &sceneNode]()
+                {
+                    // also delete the already created entity, and node etc.
+                    if (movableObject != nullptr && sceneManager->hasMovableObject(movableObject))
+                    {
+                        sceneManager->destroyMovableObject(movableObject);
+                    }
 
-				// attention with: no ref by category, since each attribute, that is no reference must use boost::ref
-				if (nullptr == existingGameObjectPtr)
-				{
-					gameObjectPtr = boost::make_shared<GameObject>(sceneManager, sceneNode, movableObject, category, renderCategory, dynamic, type, id);
-				}
-				else
-				{
-					gameObjectPtr = existingGameObjectPtr;
-				}
+                    auto nodeIt = sceneNode->getChildIterator();
+                    while (nodeIt.hasMoreElements())
+                    {
+                        // go through all scenenodes in the scene
+                        Ogre::Node* subNode = nodeIt.getNext();
+                        subNode->removeAllChildren();
+                        // add them to the tree as parents
+                    }
+                    sceneNode->detachAllObjects();
+                    NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
+                    sceneManager->destroySceneNode(sceneNode);
+                    sceneNode = nullptr;
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectFactory::createOrSetGameObjectFromXML destroy");
 
-				// If this is a global game object, and in the local scene the same game object does already exist, the global one cannot be used, because the local one has already been registered
-				// Note: First all local scene game objects are loaded and after that all global ones
-				// If its a snapshot (saved game loaded, only values are set, hence its not necessary to check if the game object does exist, because it does and just the values are set...
+                return nullptr;
+            }
+            else
+            {
+                // Upgrade functionality of old projects: force setting global ids for those game objects
+                if (sceneNode->getName() == "MainGameObject")
+                {
+                    id = NOWA::GameObjectController::MAIN_GAMEOBJECT_ID;
+                }
+                else if (sceneNode->getName() == "MainCamera")
+                {
+                    id = NOWA::GameObjectController::MAIN_CAMERA_ID;
+                }
+                else if (sceneNode->getName() == "SunLight")
+                {
+                    id = NOWA::GameObjectController::MAIN_LIGHT_ID;
+                }
+
+                // attention with: no ref by category, since each attribute, that is no reference must use boost::ref
+                if (nullptr == existingGameObjectPtr)
+                {
+                    gameObjectPtr = boost::make_shared<GameObject>(sceneManager, sceneNode, movableObject, category, renderCategory, dynamic, type, id);
+                }
+                else
+                {
+                    gameObjectPtr = existingGameObjectPtr;
+                }
+
+#ifdef NOWA_SCENE_LOAD_TIMING
+                timingAfterConstruct = std::chrono::steady_clock::now();
+#endif
+
+                // If this is a global game object, and in the local scene the same game object does already exist, the global one cannot be used, because the local one has already been registered
+                // Note: First all local scene game objects are loaded and after that all global ones
+                // If its a snapshot (saved game loaded, only values are set, hence its not necessary to check if the game object does exist, because it does and just the values are set...
 #if 0
 				if (true == global)
 				{
@@ -545,21 +570,30 @@ namespace NOWA
 #endif
                 gameObjectPtr->bIsLoadingFromFile = sceneParsed;
 
-				gameObjectPtr->setName(sceneNode->getName());
-				gameObjectPtr->setTagName(tagName);
-				gameObjectPtr->setControlledByClientID(controlledByClientID);
-				gameObjectPtr->setDefaultDirection(defaultDirection);
-				gameObjectPtr->setUseReflection(useReflection);
-				gameObjectPtr->setLoadedVisible(visible);
-				gameObjectPtr->setGlobal(global);
-				gameObjectPtr->setClampY(clampY);
-				gameObjectPtr->setReferenceId(referenceId);
+                // Attention: All setters below dispatch their own blocking render command. Loading one
+                // game object therefore cost about nine separate round trips to the render thread, and
+                // each round trip waits for the running renderOneFrame() to finish (~16 ms with VSync).
+                // The batch collects them and runs them in ONE command in endRenderCommandBatch().
+                //
+                // Attention: The batch MUST be closed before gameObjectPtr->init(), because init()
+                // dispatches its own render command which calls back into setRenderQueueIndex().
+                gameObjectPtr->beginRenderCommandBatch();
 
-				if (true == renderQueueIndexSet)
-				{
-					gameObjectPtr->setRenderQueueIndex(renderQueueIndex);
-				}
-                
+                gameObjectPtr->setName(sceneNode->getName());
+                gameObjectPtr->setTagName(tagName);
+                gameObjectPtr->setControlledByClientID(controlledByClientID);
+                gameObjectPtr->setDefaultDirection(defaultDirection);
+                gameObjectPtr->setUseReflection(useReflection);
+                gameObjectPtr->setLoadedVisible(visible);
+                gameObjectPtr->setGlobal(global);
+                gameObjectPtr->setClampY(clampY);
+                gameObjectPtr->setReferenceId(referenceId);
+
+                if (true == renderQueueIndexSet)
+                {
+                    gameObjectPtr->setRenderQueueIndex(renderQueueIndex);
+                }
+
                 if (true == renderDistanceSet)
                 {
                     gameObjectPtr->setRenderDistance(renderDistance);
@@ -571,168 +605,197 @@ namespace NOWA
                 gameObjectPtr->lodLevels->setValue(lodLevels);
                 gameObjectPtr->lodDistance->setValue(lodDistance);
                 gameObjectPtr->setDataBlocks(dataBlocks);
-			}
-			if (!gameObjectPtr->init())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Failed to initialize GameObject '" + gameObjectPtr->getName() + "'");
-				// Do not destroy any scene here, because its done automatically when this local gameObjectPtr is running out of scope!
-				return nullptr;
-			}
+            }
 
-			// A static game object cannot be moved for performance reasons, so set it dynamic for a short time, move it and reset to static again
-			bool noneDynamicGameObject = false;
-			if (false == gameObjectPtr->isDynamic())
-			{
-				noneDynamicGameObject = true;
-				gameObjectPtr->setDynamic(true);
-			}
-			if (true == noneDynamicGameObject)
-			{
-				gameObjectPtr->setDynamic(false);
-			}
+#ifdef NOWA_SCENE_LOAD_TIMING
+            timingAfterSetters = std::chrono::steady_clock::now();
+#endif
 
-			gameObjectPtr->bIsLoadingFromFile = false;
+            // Runs everything the setters above collected in a single render round trip.
+            gameObjectPtr->endRenderCommandBatch();
 
-			unsigned int index = 0;
-			// Loop through each property element and load the component
-			while (nullptr != propertyElement)
-			{
-				Ogre::String componentName = XMLConverter::getAttrib(propertyElement, "name");
+#ifdef NOWA_SCENE_LOAD_TIMING
+            timingAfterBatch = std::chrono::steady_clock::now();
+#endif
 
-				if (Ogre::StringUtil::match(componentName, "Componen*", true))
-				{
-					GameObjectCompPtr existingGameObjectCompPtr = nullptr;
-					if (nullptr != existingGameObjectPtr)
-					{
-						existingGameObjectCompPtr = NOWA::makeStrongPtr(existingGameObjectPtr->getComponentByIndex(index++));
-					}
+            if (!gameObjectPtr->init())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Failed to initialize GameObject '" + gameObjectPtr->getName() + "'");
+                // Do not destroy any scene here, because its done automatically when this local gameObjectPtr is running out of scope!
+                return nullptr;
+            }
 
-					GameObjectCompPtr componentPtr(this->createComponent(propertyElement, filename, gameObjectPtr, existingGameObjectCompPtr));
-					if (nullptr != componentPtr)
-					{
-						if (nullptr == existingGameObjectCompPtr)
-						{
-							// Add circular association in order, that a component can call the owner gameobject and over that, another component to use its functionality
-							gameObjectPtr->addComponent(componentPtr);
-							componentPtr->setOwner(gameObjectPtr);
-						}
-					}
-					else if (nullptr != sceneNode)
-					{
-						NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, &sceneNode, gameObjectPtr, componentName]()
-						{
-								// If an error occurs, we kill the game obect and bail. We could keep going, but the game object is will only be 
-								// partially complete so it is not worth it. Note that the game object instance will be destroyed because it
-								// will fall out of scope with nothing else pointing to it.
-								sceneNode->removeAndDestroyAllChildren();
-								NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
-								sceneManager->destroySceneNode(sceneNode);
-								Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: "
-									+ componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
-								sceneNode = nullptr;
-								return nullptr;
-						};
-						NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectFactory::createOrSetGameObjectFromXML destroy2");
-					}
-				}
-				else
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + gameObjectPtr->getName()
-						+ "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "' in component: '" + componentName + "'.");
+#ifdef NOWA_SCENE_LOAD_TIMING
+            timingAfterInit = std::chrono::steady_clock::now();
+#endif
 
-					propertyElement = propertyElement->next_sibling("property");
-				}
-			}
+            // Attention: The former code set a static game object dynamic and immediately static again.
+            // The comment claimed the object is moved in between - it is not, nothing happens between
+            // the two calls. The pair was a no-op that cost TWO blocking render round trips per static
+            // game object. If a move is ever needed here again, wrap it in
+            // beginRenderCommandBatch()/endRenderCommandBatch() so it stays a single round trip.
 
-			if (nullptr == existingGameObjectPtr)
-			{
-				const auto existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
+            gameObjectPtr->bIsLoadingFromFile = false;
 
-				// If naming collision: Somehow a local scene has the game object and the global one, kill the first one and register the second one.
-				if (nullptr != existingGameObjectNamePtr)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + existingGameObjectNamePtr->getName()
-						+ "' already exists. It will be deleted and the newer one registered. This scenario may haben if "
-						"somehow a local scene has the game object and the global one, kill the first one and register the second one.");
-					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(existingGameObjectNamePtr->getId());
-				}
-				// Registers the game object to the controller, but do it before postInit to set a categoryID for the component
-				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
-			}
-			else
-			{
-				gameObjectPtr->resetVariants();
-			}
+            unsigned int index = 0;
+            // Loop through each property element and load the component
+            while (nullptr != propertyElement)
+            {
+                Ogre::String componentName = XMLConverter::getAttrib(propertyElement, "name");
 
-			if (nullptr != existingGameObjectPtr)
-			{
-				boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(gameObjectPtr->getId()));
-				AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(newGameObjectEvent);
-			}
-		}
-		else
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, &sceneNode]()
-			{
-				// If game object could not be initialized, destroy ogre data
-				sceneNode->removeAndDestroyAllChildren();
-				NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
-				sceneManager->destroySceneNode(sceneNode);
-				sceneNode = nullptr;
-			};
-			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectFactory::createOrSetGameObjectFromXML destroy3");
+                if (Ogre::StringUtil::match(componentName, "Componen*", true))
+                {
+                    GameObjectCompPtr existingGameObjectCompPtr = nullptr;
+                    if (nullptr != existingGameObjectPtr)
+                    {
+                        existingGameObjectCompPtr = NOWA::makeStrongPtr(existingGameObjectPtr->getComponentByIndex(index++));
+                    }
 
-			return nullptr;
-		}
+#ifdef NOWA_SCENE_LOAD_TIMING
+                    const auto timingComponentStart = std::chrono::steady_clock::now();
+                    const Ogre::String timingComponentClassName = XMLConverter::getAttrib(propertyElement, "data");
+#endif
 
-		if (false == Core::getSingletonPtr()->getIsGame() && nullptr != existingGameObjectPtr)
-		{
-			// Resets all attribute changes flag
-			gameObjectPtr->resetChanges();
-		}
+                    GameObjectCompPtr componentPtr(this->createComponent(propertyElement, filename, gameObjectPtr, existingGameObjectCompPtr));
 
-		return gameObjectPtr;
-	}
+#ifdef NOWA_SCENE_LOAD_TIMING
+                    timingComponentBreakdown += " " + timingComponentClassName + "=" + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - timingComponentStart).count());
+#endif
+                    if (nullptr != componentPtr)
+                    {
+                        if (nullptr == existingGameObjectCompPtr)
+                        {
+                            // Add circular association in order, that a component can call the owner gameobject and over that, another component to use its functionality
+                            gameObjectPtr->addComponent(componentPtr);
+                            componentPtr->setOwner(gameObjectPtr);
+                        }
+                    }
+                    else if (nullptr != sceneNode)
+                    {
+                        NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, &sceneNode, gameObjectPtr, componentName]()
+                        {
+                            // If an error occurs, we kill the game obect and bail. We could keep going, but the game object is will only be
+                            // partially complete so it is not worth it. Note that the game object instance will be destroyed because it
+                            // will fall out of scope with nothing else pointing to it.
+                            sceneNode->removeAndDestroyAllChildren();
+                            NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
+                            sceneManager->destroySceneNode(sceneNode);
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                                "[GameObjectFactory] Error: Could not create component: " + componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
+                            sceneNode = nullptr;
+                            return nullptr;
+                        };
+                        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectFactory::createOrSetGameObjectFromXML destroy2");
+                    }
+                }
+                else
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                        "[GameObjectFactory] Error: GameObject '" + gameObjectPtr->getName() + "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "' in component: '" + componentName + "'.");
 
-	GameObjectCompPtr GameObjectFactory::createComponent(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName, bool newComponent)
-	{
-		GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(componentClassName)));
+                    propertyElement = propertyElement->next_sibling("property");
+                }
+            }
 
-		if (nullptr != componentPtr)
-		{
-			componentPtr->setOwner(gameObjectPtr);
+#ifdef NOWA_SCENE_LOAD_TIMING
+            timingAfterComponents = std::chrono::steady_clock::now();
 
-			// Adds bi-directional association in order, that a component can call the owner gameobject and over that, another component to use its functionality
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[TIMING-GO] " + gameObjectPtr->getName() + " total=" + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(timingAfterComponents - timingStart).count()) +
+                    " construct=" + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(timingAfterConstruct - timingStart).count()) +
+                    " setters=" + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(timingAfterSetters - timingAfterConstruct).count()) +
+                    " batch=" + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(timingAfterBatch - timingAfterSetters).count()) +
+                    " init=" + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(timingAfterInit - timingAfterBatch).count()) +
+                    " components=" + Ogre::StringConverter::toString(std::chrono::duration<double, std::milli>(timingAfterComponents - timingAfterInit).count()) + " |" + timingComponentBreakdown);
+#endif
 
-			// First adds (because occurence index will be increased, if x-times the same components has been added and can be used in post init, if post init failes, remove the component again 
-			gameObjectPtr->addComponent(componentPtr);
-			if (true == newComponent)
-			{
-				componentPtr->onAddComponent();
-			}
-			if (false == componentPtr->postInit())
-			{
-				gameObjectPtr->deleteComponent(componentPtr->getClassName());
+            if (nullptr == existingGameObjectPtr)
+            {
+                const auto existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
 
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not post-init component: "
-					+ componentClassName + " for GameObject '" + gameObjectPtr->getName() + "'.");
+                // If naming collision: Somehow a local scene has the game object and the global one, kill the first one and register the second one.
+                if (nullptr != existingGameObjectNamePtr)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + existingGameObjectNamePtr->getName() +
+                                                                                            "' already exists. It will be deleted and the newer one registered. This scenario may haben if "
+                                                                                            "somehow a local scene has the game object and the global one, kill the first one and register the second one.");
+                    AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(existingGameObjectNamePtr->getId());
+                }
+                // Registers the game object to the controller, but do it before postInit to set a categoryID for the component
+                AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+            }
+            else
+            {
+                gameObjectPtr->resetVariants();
+            }
 
-				return nullptr;
-			}
+            if (nullptr != existingGameObjectPtr)
+            {
+                boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(gameObjectPtr->getId()));
+                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(newGameObjectEvent);
+            }
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, &sceneNode]()
+            {
+                // If game object could not be initialized, destroy ogre data
+                sceneNode->removeAndDestroyAllChildren();
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
+                sceneManager->destroySceneNode(sceneNode);
+                sceneNode = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectFactory::createOrSetGameObjectFromXML destroy3");
 
-			// Sends event, that component has been created
-			boost::shared_ptr<EventDataNewComponent> eventDataNewComponent(new EventDataNewComponent(gameObjectPtr->getId(), componentClassName));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNewComponent);
+            return nullptr;
+        }
 
-			return componentPtr;
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: "
-				+ componentClassName + " for GameObject '" + gameObjectPtr->getName() + "'.");
-			return nullptr;
-		}
-	}
+        if (false == Core::getSingletonPtr()->getIsGame() && nullptr != existingGameObjectPtr)
+        {
+            // Resets all attribute changes flag
+            gameObjectPtr->resetChanges();
+        }
+
+        return gameObjectPtr;
+    }
+
+    GameObjectCompPtr GameObjectFactory::createComponent(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName, bool newComponent)
+    {
+        GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(componentClassName)));
+
+        if (nullptr != componentPtr)
+        {
+            componentPtr->setOwner(gameObjectPtr);
+
+            // Adds bi-directional association in order, that a component can call the owner gameobject and over that, another component to use its functionality
+
+            // First adds (because occurence index will be increased, if x-times the same components has been added and can be used in post init, if post init failes, remove the component again
+            gameObjectPtr->addComponent(componentPtr);
+            if (true == newComponent)
+            {
+                componentPtr->onAddComponent();
+            }
+            if (false == componentPtr->postInit())
+            {
+                gameObjectPtr->deleteComponent(componentPtr->getClassName());
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not post-init component: " + componentClassName + " for GameObject '" + gameObjectPtr->getName() + "'.");
+
+                return nullptr;
+            }
+
+            // Sends event, that component has been created
+            boost::shared_ptr<EventDataNewComponent> eventDataNewComponent(new EventDataNewComponent(gameObjectPtr->getId(), componentClassName));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNewComponent);
+
+            return componentPtr;
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: " + componentClassName + " for GameObject '" + gameObjectPtr->getName() + "'.");
+            return nullptr;
+        }
+    }
 
     GameObjectCompPtr GameObjectFactory::createComponentDeferred(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName)
     {
@@ -761,88 +824,98 @@ namespace NOWA
         }
     }
 
-	GameObjectCompPtr GameObjectFactory::createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr)
-	{
-		Ogre::String name = XMLConverter::getAttrib(propertyElement, "data", "");
+    GameObjectCompPtr GameObjectFactory::createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr)
+    {
+        Ogre::String name = XMLConverter::getAttrib(propertyElement, "data", "");
 
-		// This will hold the resulting component
-		GameObjectCompPtr resultComp = nullptr;
+        // This will hold the resulting component
+        GameObjectCompPtr resultComp = nullptr;
 
-		if (nullptr == existingGameObjectCompPtr)
-		{
-			GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(name)));
-			if (nullptr != componentPtr)
-			{
-				if (!componentPtr->init(propertyElement))
-				{
-					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
-						"[GameObjectFactory] Error: Failed to initialize component: " + name);
-				}
-			}
-			else
-			{
-				Ogre::String message = "[GameObjectFactory] Error: Could not find GameObjectComponent named: '" + name + "'. If its a plugin component, see your application folders plugin.cfg";
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, message);
-				auto feedback = boost::make_shared<EventDataFeedback>(false, message);
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(feedback);
-				// done->set_value();
-				// return;
-			}
+        if (nullptr == existingGameObjectCompPtr)
+        {
+            GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(name)));
+            if (nullptr != componentPtr)
+            {
+                // Attention: init() runs the component's setters, and many of those dispatch their
+                // own blocking render command - DatablockPbsComponent alone routes 16 texture
+                // setters through internalSetTextureName(). The batch collects them and runs them
+                // in ONE round trip in endRenderCommandBatch().
+                componentPtr->beginRenderCommandBatch();
+                const bool initSucceeded = componentPtr->init(propertyElement);
+                componentPtr->endRenderCommandBatch();
 
-			auto createdEvent = boost::make_shared<EventDataNewComponent>(gameObjectPtr->getId(), name);
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(createdEvent);
+                if (false == initSucceeded)
+                {
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Failed to initialize component: " + name);
+                }
+            }
+            else
+            {
+                Ogre::String message = "[GameObjectFactory] Error: Could not find GameObjectComponent named: '" + name + "'. If its a plugin component, see your application folders plugin.cfg";
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, message);
+                auto feedback = boost::make_shared<EventDataFeedback>(false, message);
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(feedback);
+                // done->set_value();
+                // return;
+            }
 
-			resultComp = componentPtr;
-		}
-		else
-		{
-			existingGameObjectCompPtr->init(propertyElement);
-			resultComp = existingGameObjectCompPtr;
-		}
+            auto createdEvent = boost::make_shared<EventDataNewComponent>(gameObjectPtr->getId(), name);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(createdEvent);
 
-		// Return the created or initialized component
-		return resultComp;
-	}
+            resultComp = componentPtr;
+        }
+        else
+        {
+            existingGameObjectCompPtr->beginRenderCommandBatch();
+            existingGameObjectCompPtr->init(propertyElement);
+            existingGameObjectCompPtr->endRenderCommandBatch();
 
-	GameObjectPtr GameObjectFactory::createGameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, NOWA::eType type, const unsigned long id)
-	{
-		Ogre::String category = "Default";
-		Ogre::String renderCategory = "All";
-		bool dynamic = true;
+            resultComp = existingGameObjectCompPtr;
+        }
 
-		GameObjectPtr gameObjectPtr = boost::make_shared<GameObject>(sceneManager, sceneNode, movableObject, category, renderCategory, dynamic, type, id);
-		gameObjectPtr->setControlledByClientID(0);
-		gameObjectPtr->setName(sceneNode->getName());
+        // Return the created or initialized component
+        return resultComp;
+    }
 
-		if (false == gameObjectPtr->init())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Failed to initialize GameObject '" + gameObjectPtr->getName() + "'");
-			return nullptr;
-		}
-		else
-		{
-			const auto existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
+    GameObjectPtr GameObjectFactory::createGameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, NOWA::eType type, const unsigned long id)
+    {
+        Ogre::String category = "Default";
+        Ogre::String renderCategory = "All";
+        bool dynamic = true;
 
-			// If naming collision: Somehow a local scene has the game object and the global one, kill the first one and register the second one.
-			if (nullptr != existingGameObjectNamePtr)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + existingGameObjectNamePtr->getName()
-																+ "' already exists. It will be deleted and the newer one registered. This scenario may haben if "
-																"somehow a local scene has the game object and the global one, kill the first one and register the second one.");
-				AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(existingGameObjectNamePtr->getId());
-			}
-			// Registers the game object to the controller, but do it before postInit to set a categoryID for the component
-			AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+        GameObjectPtr gameObjectPtr = boost::make_shared<GameObject>(sceneManager, sceneNode, movableObject, category, renderCategory, dynamic, type, id);
+        gameObjectPtr->setControlledByClientID(0);
+        gameObjectPtr->setName(sceneNode->getName());
 
-			boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(gameObjectPtr->getId()));
-			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(newGameObjectEvent);
-			return gameObjectPtr;
-		}
-	}
+        if (false == gameObjectPtr->init())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Failed to initialize GameObject '" + gameObjectPtr->getName() + "'");
+            return nullptr;
+        }
+        else
+        {
+            const auto existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
 
-	GenericObjectFactory<GameObjectComponent, unsigned int>* GameObjectFactory::getComponentFactory(void)
-	{
-		return &this->componentFactory;
-	}
+            // If naming collision: Somehow a local scene has the game object and the global one, kill the first one and register the second one.
+            if (nullptr != existingGameObjectNamePtr)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + existingGameObjectNamePtr->getName() +
+                                                                                        "' already exists. It will be deleted and the newer one registered. This scenario may haben if "
+                                                                                        "somehow a local scene has the game object and the global one, kill the first one and register the second one.");
+                AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(existingGameObjectNamePtr->getId());
+            }
+            // Registers the game object to the controller, but do it before postInit to set a categoryID for the component
+            AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 
-}; //namespace end
+            boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(gameObjectPtr->getId()));
+            AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(newGameObjectEvent);
+            return gameObjectPtr;
+        }
+    }
+
+    GenericObjectFactory<GameObjectComponent, unsigned int>* GameObjectFactory::getComponentFactory(void)
+    {
+        return &this->componentFactory;
+    }
+
+}; // namespace end

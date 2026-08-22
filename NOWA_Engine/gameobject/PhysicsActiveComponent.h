@@ -3,6 +3,7 @@
 
 #include "PhysicsComponent.h"
 #include "main/Events.h"
+#include "utilities/Timer.h"
 #include <unordered_map>
 #include <atomic>
 
@@ -613,7 +614,7 @@ namespace NOWA
 
 		double lastTime;
 		Ogre::Real dt;
-		Ogre::Timer timer;
+		NOWA::Timer timer;
 		bool usesBounds;
 		Ogre::Vector3 minBounds;
 		Ogre::Vector3 maxBounds;

@@ -28,6 +28,7 @@
 #include "Base/StatisticInfo.h"
 #include "EngineResourceListener.h"
 #include "shader/HlmsBaseListenerContainer.h"
+#include "utilities/Timer.h"
 #include "utilities/rapidxml.hpp"
 #include "ProjectParameter.h"
 
@@ -942,7 +943,10 @@ namespace NOWA
 
 		Ogre::Real getGlobalRenderDistance(void) const { return this->globalRenderDistance; }
 
-		inline Ogre::Timer* getOgreTimer(void) const { return this->timer; }
+		inline NOWA::Timer* getOgreTimer(void) const
+        {
+            return &this->timer;
+        }
 
 		/**
 		 * @brief Get names of all available texture resources optionally filtered by extensions.
@@ -1208,7 +1212,7 @@ namespace NOWA
 		Ogre::Window* renderWindow;
 		Ogre::CompositorWorkspace* myGuiWorkspace;
 		PluginFactory* pluginFactory;
-		Ogre::Timer* timer;
+        mutable NOWA::Timer timer;
 		std::thread::id renderThreadId;
 
 		bool hlmsRegistered;

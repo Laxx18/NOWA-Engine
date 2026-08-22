@@ -924,9 +924,6 @@
     <ClCompile Include="utilities\SkeletonVisualizer.cpp">
       <Filter>utilities</Filter>
     </ClCompile>
-    <ClCompile Include="utilities\Timer.cpp">
-      <Filter>utilities</Filter>
-    </ClCompile>
     <ClCompile Include="editor\ViewportGrid.cpp">
       <Filter>editor</Filter>
     </ClCompile>

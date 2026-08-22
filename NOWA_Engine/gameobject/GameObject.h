@@ -787,6 +787,9 @@ namespace NOWA
          * @param states Snapshot previously returned by captureComponentActivationStates().
          */
         void restoreComponentActivationStates(const std::vector<std::pair<Ogre::String, bool>>& states);
+
+		void beginRenderCommandBatch(void);
+        void endRenderCommandBatch(void);
 	public:
 
 		/**
@@ -1101,6 +1104,8 @@ namespace NOWA
 		 * @brief		Sets whether this game object should be visible during loading the game object. This is necessary because camera component has dummy entity, which else would always be visible on undo etc.
 		 */
 		void setLoadedVisible(bool visible);
+
+		void enqueueRenderCommand(NOWA::GraphicsModule::RenderCommand&& renderCommand, const char* commandName);
 	protected:
 		Ogre::SceneManager* sceneManager;
 		Ogre::SceneNode* sceneNode;
@@ -1164,6 +1169,9 @@ namespace NOWA
 		Ogre::Real timeSinceLastUpdate;
 
 		bool bIsLoadingFromFile;
+
+		bool bBatchRenderCommands;
+        std::vector<NOWA::GraphicsModule::RenderCommand> batchedRenderCommands;
 	};
 
 }; // namespace end

@@ -50,6 +50,7 @@ namespace NOWA
         clampObjectQuery(nullptr),
         centerOffset(Ogre::Vector3::ZERO),
         boundingBoxDraw(nullptr),
+        bBatchRenderCommands(false),
         priorId(0),
         oldScale(Ogre::Vector3::UNIT_SCALE),
         selected(false),
@@ -150,6 +151,10 @@ namespace NOWA
                 visible = this->movableObject->getVisible();
             }
         };
+        // Attention: This one deliberately stays a direct enqueueAndWait and is NOT batched.
+        // The command writes castShadows and visible back into this stack frame and the two
+        // Variants below are constructed from them immediately, so the command must have run
+        // before this line returns.
         GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::GameObject setStatic");
 
         this->castShadows = new Variant(GameObject::AttrCastShadows(), castShadows, this->attributes);
@@ -317,6 +322,68 @@ namespace NOWA
         }
     }
 
+    void GameObject::beginRenderCommandBatch(void)
+    {
+        // Attention: Opens a batch. Every enqueueRenderCommand() call after this point is only
+        // collected instead of being dispatched, until endRenderCommandBatch() runs them all in
+        // ONE enqueueAndWait. Without this, loading a game object costs about nine separate
+        // blocking round trips to the render thread, and every round trip waits for the current
+        // renderOneFrame() to finish (~16 ms with VSync). That alone was ~14 s for 100 objects.
+        //
+        // Attention: A batch must never stay open across a call that itself dispatches a render
+        // command which then calls back into a batched setter (GameObject::init does exactly
+        // that with setRenderQueueIndex). Close the batch before such a call - see
+        // GameObjectFactory::createOrSetGameObjectFromXML.
+        this->bBatchRenderCommands = true;
+        this->batchedRenderCommands.clear();
+    }
+
+    void GameObject::endRenderCommandBatch(void)
+    {
+        this->bBatchRenderCommands = false;
+
+        if (true == this->batchedRenderCommands.empty())
+        {
+            return;
+        }
+
+        // Attention: The vector is moved out first. The commands run on the render thread and may
+        // (indirectly) call enqueueRenderCommand again; with bBatchRenderCommands already false
+        // those go through the normal path, but the local copy also guarantees we are never
+        // iterating a vector that someone else could still touch.
+        std::vector<NOWA::GraphicsModule::RenderCommand> commandsToRun;
+        commandsToRun.swap(this->batchedRenderCommands);
+
+        NOWA::GraphicsModule::RenderCommand batchedCommand = [commandsToRun]()
+        {
+            for (const auto& singleCommand : commandsToRun)
+            {
+                if (nullptr != singleCommand)
+                {
+                    singleCommand();
+                }
+            }
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(batchedCommand), "GameObject::endRenderCommandBatch");
+    }
+
+    void GameObject::enqueueRenderCommand(NOWA::GraphicsModule::RenderCommand&& renderCommand, const char* commandName)
+    {
+        // Attention: Order is preserved, because the batch executes the commands in insertion
+        // order inside a single render command. Anything that must read a result back on the
+        // calling thread must NOT use this function, because a batched command has not run yet
+        // when this returns (see the constructor, which reads castShadows/visible back and
+        // therefore still uses enqueueAndWait directly).
+        if (true == this->bBatchRenderCommands)
+        {
+            this->batchedRenderCommands.emplace_back(std::move(renderCommand));
+            return;
+        }
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), commandName);
+    }
+
     bool GameObject::init(Ogre::MovableObject* newMovableObject)
     {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, newMovableObject]()
@@ -478,8 +545,10 @@ namespace NOWA
             }
             this->sceneNode->getUserObjectBindings().setUserAny(Ogre::Any(this));
 
-            this->boundingBoxDraw = sceneManager->createWireAabb();
-            this->boundingBoxDraw->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+            // Attention: The debug wire AABB is NOT created here anymore. It is only ever used by
+            // showBoundingBox(), i.e. when the user selects the object in the editor. Creating one
+            // per game object at load time showed up in the profiler with 3.6% self time for a
+            // feature that most objects never use. It is now created lazily in showBoundingBox().
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::init");
 
@@ -799,7 +868,7 @@ namespace NOWA
                     this->meshName->setVisible(false);
                 }
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeDatablocks");
+            this->enqueueRenderCommand(std::move(renderCommand), "GameObject::actualizeDatablocks");
         }
 
         this->meshName->setReadOnly(true);
@@ -2136,7 +2205,7 @@ namespace NOWA
                 }
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setDynamic");
+        this->enqueueRenderCommand(std::move(cmd), "GameObject::setDynamic");
     }
 
     const Ogre::Vector3 GameObject::getSize(void) const
@@ -2287,7 +2356,7 @@ namespace NOWA
                 }
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setLoadedVisible1");
+        this->enqueueRenderCommand(std::move(cmd), "GameObject::setLoadedVisible1");
     }
 
     bool GameObject::isVisible(void) const
@@ -2447,7 +2516,7 @@ namespace NOWA
                     }
                 }
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setUseReflection1");
+            this->enqueueRenderCommand(std::move(cmd), "GameObject::setUseReflection1");
         }
         else if (NOWA::OCEAN == this->type)
         {
@@ -2493,7 +2562,7 @@ namespace NOWA
                     }
                 }
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setUseReflection3");
+            this->enqueueRenderCommand(std::move(renderCommand), "GameObject::setUseReflection3");
         }
     }
 
@@ -2618,7 +2687,7 @@ namespace NOWA
             {
                 this->movableObject->setRenderQueueGroup(queueIndex);
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setRenderQueueIndex");
+            this->enqueueRenderCommand(std::move(renderCommand), "GameObject::setRenderQueueIndex");
         }
     }
 
@@ -2635,7 +2704,7 @@ namespace NOWA
             {
                 this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setRenderDistance");
+            this->enqueueRenderCommand(std::move(renderCommand), "GameObject::setRenderDistance");
         }
     }
 
@@ -2647,7 +2716,7 @@ namespace NOWA
             {
                 this->movableObject->setShadowRenderingDistance(static_cast<Ogre::Real>(shadowRenderingDistance));
             };
-            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setShadowRenderingDistance");
+            this->enqueueRenderCommand(std::move(renderCommand), "GameObject::setShadowRenderingDistance");
         }
     }
 
@@ -2745,7 +2814,7 @@ namespace NOWA
             {
                 this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setRenderDistance");
+            this->enqueueRenderCommand(std::move(renderCommand), "GameObject::setRenderDistance");
         }
     }
 
@@ -3014,7 +3083,7 @@ namespace NOWA
             {
                 this->movableObject->setShadowRenderingDistance(static_cast<Ogre::Real>(shadowRenderingDistance));
             };
-            GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setShadowRenderingDistance");
+            this->enqueueRenderCommand(std::move(renderCommand), "GameObject::setShadowRenderingDistance");
         }
     }
 
@@ -3086,9 +3155,23 @@ namespace NOWA
 
     void GameObject::showBoundingBox(bool show)
     {
+        // Attention: Nothing to hide if the wire AABB was never created. This is the normal case
+        // for every object that has not been selected yet - see the note in init().
+        if (false == show && nullptr == this->boundingBoxDraw)
+        {
+            return;
+        }
+
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(
             [this, show]()
             {
+                // Created lazily on first use instead of once per game object at load time.
+                if (nullptr == this->boundingBoxDraw)
+                {
+                    this->boundingBoxDraw = this->sceneManager->createWireAabb();
+                    this->boundingBoxDraw->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+                }
+
                 if (show)
                 {
                     this->boundingBoxDraw->track(this->movableObject);

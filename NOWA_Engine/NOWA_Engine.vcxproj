@@ -603,7 +603,6 @@
     <ClCompile Include="utilities\ObjectTextDisplay.cpp" />
     <ClCompile Include="utilities\ObjectTitle.cpp" />
     <ClCompile Include="utilities\SkeletonVisualizer.cpp" />
-    <ClCompile Include="utilities\Timer.cpp" />
     <ClCompile Include="utilities\XMLConverter.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>

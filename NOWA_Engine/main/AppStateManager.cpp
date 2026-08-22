@@ -1,4 +1,5 @@
 #include "NOWAPrecompiled.h"
+
 #include "AppStateManager.h"
 #include "Core.h"
 #include "Events.h"
@@ -8,6 +9,7 @@
 #include "modules/GameProgressModule.h"
 #include "modules/GraphicsModule.h"
 #include "modules/InputDeviceModule.h"
+#include <chrono>
 
 namespace
 {
@@ -23,26 +25,6 @@ namespace
 
 namespace NOWA
 {
-
-    class Timer
-    {
-    public:
-        Timer() : lastTime(std::chrono::high_resolution_clock::now())
-        {
-        }
-
-        // Get delta time between the last frame and the current one
-        Ogre::Real getDeltaTime(void)
-        {
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<Ogre::Real> delta = currentTime - lastTime;
-            lastTime = currentTime;
-            return delta.count(); // Return the delta time in seconds
-        }
-
-    private:
-        std::chrono::high_resolution_clock::time_point lastTime;
-    };
 
     //////////////////////////////////////////////////////////////
 
@@ -328,6 +310,11 @@ namespace NOWA
             }
 
             done.store(true, std::memory_order_release);
+
+            // Attention: Wakes a render thread that is parked in the CASE 2 pump loop below.
+            // Without this it would only notice that we are finished when its wait times out,
+            // which costs one more scheduler tick for every single logic command.
+            NOWA::GraphicsModule::getInstance()->signalCommandWaiters();
         };
 
         // Enqueue command for the logic thread
@@ -379,8 +366,21 @@ namespace NOWA
             // 2) Pump window events so OS stays happy
             Ogre::WindowEventUtilities::messagePump();
 
-            // 3) Don't burn 100% CPU
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            // 3) Park until the next render command arrives or the logic thread signals that our
+            //    command is done - instead of polling.
+            //
+            //    Attention: This used to be std::this_thread::sleep_for(1ms). On Windows the
+            //    default scheduler granularity is ~15.6 ms, so that call parked this thread for a
+            //    full timer tick. Every GraphicsModule::enqueueAndWait issued by the logic thread
+            //    had to wait for the next pass of THIS loop, so each one cost ~15.6 ms. With about
+            //    four render round trips per game object that was ~63 ms per object and 13 seconds
+            //    for a 133 object scene - all of it spent sleeping, not working.
+            //
+            //    This is also the loop the render thread sits in for the whole scene import, which
+            //    is why it never reaches renderThreadFunction's own loop during a load: no
+            //    [RENDER-LOOP] heartbeat, no suspend branch, and every optimisation applied there
+            //    was without effect.
+            graphics->waitForCommandOrSignal(std::chrono::milliseconds(2));
         }
 
         if (exceptionPtr)

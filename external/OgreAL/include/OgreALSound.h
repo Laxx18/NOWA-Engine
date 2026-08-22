@@ -37,6 +37,7 @@
 #define _OGREAL_SOUND_H_
 
 #include "OgreALPrereqs.h"
+#include "Timer.h"
 #include "OgreALMemberFunctionPointer.h"
 #include "../audio_processing/AudioProcessor.h"
 
@@ -606,7 +607,7 @@ namespace OgreAL {
 		AudioProcessor::SpectrumPreparationType mSpectrumPreparationType;
 		AudioProcessor* mAudioProcessor;
 
-		Ogre::Timer mTimer;
+		OgreAL::Timer mTimer;
 		Ogre::Real mFractionSum;
 		unsigned int mTargetDeltaMS;
 		unsigned int mRenderDelta;

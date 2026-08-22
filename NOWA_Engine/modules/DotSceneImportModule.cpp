@@ -31,6 +31,54 @@
 
 #include <filesystem>
 
+namespace
+{
+    // Attention: Sets AppStateManager::bStall for the duration of the import. While the flag is
+    // set, the render thread skips renderOneFrame() and only services the command queue. That
+    // turns an enqueueAndWait round trip from a full VSync frame (~16 ms) into microseconds.
+    // Without it EVERY round trip waits for the running frame to finish - at roughly a dozen
+    // round trips per game object and 100 objects that alone was well over 15 seconds of pure
+    // waiting, which is what the [TIMING] measurements showed as 'enqueueWait=15.9'.
+    //
+    // Attention: bStall is also set and cleared by AppStateManager::internalChangeAppState,
+    // internalPushAppState and the shutdown path. The guard therefore writes back the PREVIOUS
+    // value instead of a blind false - otherwise an import that happens during a state change
+    // would release that state's stall too early.
+    //
+    // Note on what bStall additionally disables while it is set:
+    //   - isSafeToDispatchEvents() returns false, so events queued during the import are only
+    //     dispatched afterwards. That is the intended behaviour here.
+    //   - The main loop skips renderUpdate() and update(). Irrelevant, because the logic thread
+    //     is blocked inside the import anyway and does not turn the loop.
+    //   - advanceFrameAndDestroyOld() and updateAllTransforms() do not run, so deferred destroy
+    //     commands pile up until the import finishes. Harmless for a load, but worth knowing
+    //     when reloading a scene over an existing one.
+    //   - No input capture and no MyGUI redraw: the window visibly freezes during the import.
+    class SceneLoadingStallGuard
+    {
+    public:
+        SceneLoadingStallGuard()
+        {
+            // Attention: This uses GraphicsModule's own suspend flag, NOT
+            // AppStateManager::bStall and NOT GameProgressModule::bSceneLoading. Both of those
+            // were tried first and neither reliably reached the render loop, so every
+            // enqueueAndWait kept waiting for the running renderOneFrame(). The [TIMING-GO]
+            // measurements showed this as a flat ~16 ms per round trip - four round trips per
+            // game object, 63 ms each, 13 seconds for 100 objects.
+            NOWA::GraphicsModule::getInstance()->suspendRendering(true);
+        }
+
+        ~SceneLoadingStallGuard()
+        {
+            NOWA::GraphicsModule::getInstance()->suspendRendering(false);
+        }
+
+        SceneLoadingStallGuard(const SceneLoadingStallGuard&) = delete;
+        SceneLoadingStallGuard& operator=(const SceneLoadingStallGuard&) = delete;
+
+    };
+}
+
 namespace NOWA
 {
     DotSceneImportModule::DotSceneImportModule(Ogre::SceneManager* sceneManager) :
@@ -277,10 +325,18 @@ namespace NOWA
 
     bool DotSceneImportModule::internalParseScene(const Ogre::String& filePathName, bool crypted)
     {
+        // Attention: MUST come before anything that uses enqueueAndWait, and the guard has to
+        // outlive the whole function - including postInitData(), which dispatches further render
+        // commands per game object. See the class comment for what it does and what it disables.
+        SceneLoadingStallGuard sceneLoadingStallGuard;
+
         float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
 
         Core::getSingletonPtr()->preLoadSceneTextures(filePathName);
-        Ogre::LogManager::getSingleton().logMessage("[DotSceneImportModule] Texture preload: " + Ogre::StringConverter::toString(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) + "ms");
+        // Attention: This used to log getMilliseconds() directly, which is the timer's ABSOLUTE
+        // value since engine start, not a duration. It now logs the actual elapsed time.
+        Ogre::LogManager::getSingleton().logMessage("[DotSceneImportModule] Texture preload: " +
+            Ogre::StringConverter::toString((static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime) + " seconds");
 
         Core::getSingletonPtr()->createFolders(this->scenePath);
         Core::getSingletonPtr()->setCurrentScenePath(this->scenePath);
@@ -1584,11 +1640,6 @@ namespace NOWA
         {
             tempMeshFile = "Missing.mesh";
         }
-
-        // Attention: the two Ogre::Timer::getMilliseconds() calls that used to bracket this function
-        // are gone. The resulting 'dt' was never logged or used, and on Windows Ogre's Timer may wrap
-        // QueryPerformanceCounter in two SetThreadAffinityMask syscalls - so this was two syscalls and
-        // a thread migration per item, for a value nobody read.
 
         Ogre::Item* item = nullptr;
 

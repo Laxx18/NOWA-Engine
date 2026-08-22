@@ -302,6 +302,7 @@
     <ClInclude Include="..\include\OgreALSound.h" />
     <ClInclude Include="..\include\OgreALSoundManager.h" />
     <ClInclude Include="..\include\OgreALWavSound.h" />
+    <ClInclude Include="..\include\Timer.h" />
     <ClInclude Include="..\kiss_fft130\kissfft.hh" />
     <ClInclude Include="..\kiss_fft130\kiss_fft.h" />
     <ClInclude Include="..\kiss_fft130\_kiss_fft_guts.h" />

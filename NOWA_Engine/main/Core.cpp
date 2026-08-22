@@ -301,7 +301,6 @@ namespace NOWA
         defaultEngineResourceListener(nullptr),
         pluginFactory(nullptr),
         hlmsRegistered(false),
-        timer(nullptr),
         optionLODBias(2.0f),
         optionTextureFiltering(2),
         optionAnisotropyLevel(4),
@@ -471,12 +470,6 @@ namespace NOWA
         if (true == this->optionUseLuaScript)
         {
             LuaScriptApi::getInstance()->destroyContent();
-        }
-
-        if (nullptr != this->timer)
-        {
-            delete this->timer;
-            this->timer = nullptr;
         }
 
         if (nullptr != this->root)
@@ -848,10 +841,7 @@ namespace NOWA
 
         // Register ALL HLMS types before any resource group initialisation.
         // Material scripts need HLMS types present when they are parsed.
-        this->setupHlms();
-
-        this->timer = new Ogre::Timer();
-        this->timer->reset();
+        this->setupHlms();;
 
         new InputDeviceCore();
 
@@ -1237,7 +1227,7 @@ namespace NOWA
 
         Ogre::LogManager::getSingleton().logMessage("[Core] Starting texture preload for " + Ogre::StringConverter::toString(config.resourceGroups.size()) + " resource groups");
 
-        Ogre::Timer timer;
+        NOWA::Timer timer;
         size_t textureCount = 0;
         size_t skippedCount = 0;
 

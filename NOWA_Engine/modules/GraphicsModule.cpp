@@ -6,6 +6,24 @@
 
 #include "Animation/OgreBone.h"
 
+#include <chrono>
+#include <condition_variable>
+
+// Attention: TEMPORARY diagnostic for the suspended-render wait and for the render loop itself.
+// Comment the define out once the measurement is done. Everything it adds is aggregated, never one
+// log line per iteration.
+#define NOWA_SUSPEND_WAIT_TIMING
+
+#ifdef NOWA_SUSPEND_WAIT_TIMING
+namespace
+{
+    // Render thread only - no synchronisation needed.
+    size_t g_renderLoopIterations = 0;
+    size_t g_renderLoopParkedIterations = 0;
+    std::chrono::steady_clock::time_point g_renderLoopLastHeartbeat = std::chrono::steady_clock::now();
+}
+#endif
+#include <mutex>
 #include <sstream>
 
 // #define CLOSURE_DEBUG
@@ -91,7 +109,11 @@ namespace NOWA
         producerToken(closureQueue),
         consumerToken(closureQueue),
         stallRequested(false),
-        stallAcknowledged(false)
+        stallAcknowledged(false),
+        wasStalledOrLoading(false),
+        renderingSuspended(false),
+        commandPending(false),
+        renderThreadParked(false)
     {
         // Note: nodePool and its five siblings are std::deque, not std::vector - they
         // grow only via push_back/emplace_back under their category mutex (see the
@@ -184,7 +206,7 @@ namespace NOWA
         return this->bRunning;
     }
 
-        void GraphicsModule::renderThreadFunction(void)
+    void GraphicsModule::renderThreadFunction(void)
     {
         // Advertise this thread's identity to Core so enqueueAndWait thread-ownership assertions work correctly.
         Core::getSingletonPtr()->setRenderThreadId(std::this_thread::get_id());
@@ -207,8 +229,19 @@ namespace NOWA
 
         static int frameCount = 0;
 
-        Ogre::Timer timer;
-        Ogre::uint64 lastFrameTime = timer.getMicroseconds();
+        // Attention: std::chrono::steady_clock instead of Ogre::Timer. Ogre's Win32 Timer wraps
+        // EVERY QueryPerformanceCounter read in a SetThreadAffinityMask() pair, pinning this
+        // thread to a single core (usually core 0) and unpinning it again - two kernel
+        // transitions plus, whenever the thread was not already on that core, a real thread
+        // migration with the corresponding cache and TLB loss. That happens once per loop
+        // iteration, which during a suspended scene import is about a thousand times per second,
+        // and in normal operation on the very thread that also runs renderOneFrame().
+        //
+        // Ogre's Timer additionally MUTATES member state on every read (mStartTime / mLastTime,
+        // for its GetTickCount based leap compensation), so sharing one instance across threads
+        // is a data race that can make the returned time jump - and a jumping deltaTime is a
+        // classic cause of visual stutter.
+        auto lastFrameTime = std::chrono::steady_clock::now();
 
         Ogre::Window* renderWindow = NOWA::Core::getSingletonPtr()->getOgreRenderWindow();
         const auto appStateManager = NOWA::AppStateManager::getSingletonPtr();
@@ -240,11 +273,18 @@ namespace NOWA
 #ifdef CLOSURE_DEBUG
             // TEMPORARY: per-stage timing to find which stage causes slow render
             // iterations. Toggle via DEBUG_CLOSURE above.
-            Ogre::Timer stageTimer;
+            // Attention: steady_clock here too - see the note on lastFrameTime above. The stage
+            // timings are in microseconds as before, so the log formatting below is unchanged.
+            const auto stageTimerStart = std::chrono::steady_clock::now();
             Ogre::uint64 tCommands = 0;
             Ogre::uint64 tTransforms = 0;
             Ogre::uint64 tRenderOneFrame = 0;
             Ogre::uint64 tClosures = 0;
+
+            auto stageElapsedMicroseconds = [&stageTimerStart]() -> Ogre::uint64
+            {
+                return static_cast<Ogre::uint64>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - stageTimerStart).count());
+            };
 #endif
 
             // -- COMMAND SERVICE -----------------------------------------------------
@@ -254,7 +294,7 @@ namespace NOWA
             this->processAllCommands();
 
 #ifdef CLOSURE_DEBUG
-            tCommands = stageTimer.getMicroseconds();
+            tCommands = stageElapsedMicroseconds();
 #endif
 
             // -- SHUTDOWN DRAIN ------------------------------------------------------
@@ -267,8 +307,8 @@ namespace NOWA
                 continue;
             }
 
-            Ogre::uint64 currentTime = timer.getMicroseconds();
-            Ogre::Real deltaTime = (currentTime - lastFrameTime) * 0.000001f;
+            const auto currentTime = std::chrono::steady_clock::now();
+            const Ogre::Real deltaTime = std::chrono::duration<Ogre::Real>(currentTime - lastFrameTime).count();
             lastFrameTime = currentTime;
             this->currentRenderDt = deltaTime;
 
@@ -277,11 +317,43 @@ namespace NOWA
 #endif
 
             GameProgressModule* gameProgressModule = appStateManager->getActiveGameProgressModuleSafe();
-            const bool isStalled = appStateManager->bStall.load();
+            // Attention: renderingSuspended is GraphicsModule's OWN flag, set by
+            // suspendRendering() resp. the ScopedRenderSuspend guard around scene loading. It is
+            // deliberately independent of AppStateManager::bStall, whose ownership is shared with
+            // internalChangeAppState / internalPushAppState / the shutdown path, and independent
+            // of GameProgressModule::bSceneLoading, which only the game side maintains. Both were
+            // tried first and neither reliably reached this loop, so every enqueueAndWait kept
+            // waiting for the running renderOneFrame() - about 16 ms per round trip.
+            // Folding it into isStalled here makes BOTH branches below honour it.
+            const bool isStalled = appStateManager->bStall.load() || this->renderingSuspended.load(std::memory_order_acquire);
             const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : false;
+
+#ifdef NOWA_SUSPEND_WAIT_TIMING
+            // Attention: TEMPORARY. Unconditional heartbeat so we can see WHERE the render thread
+            // actually spends the import, instead of inferring it. Render thread only, so plain
+            // file-scope statics are fine.
+            {
+                ++g_renderLoopIterations;
+
+                const auto heartbeatNow = std::chrono::steady_clock::now();
+                if (heartbeatNow - g_renderLoopLastHeartbeat >= std::chrono::milliseconds(500))
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                        "[RENDER-LOOP] iterations=" + Ogre::StringConverter::toString(g_renderLoopIterations) + " parked=" + Ogre::StringConverter::toString(g_renderLoopParkedIterations) + " isStalled=" + Ogre::StringConverter::toString(isStalled) +
+                            " isSceneLoading=" + Ogre::StringConverter::toString(isSceneLoading) + " renderingSuspended=" + Ogre::StringConverter::toString(this->renderingSuspended.load(std::memory_order_acquire)) +
+                            " workspaceTransitioning=" + Ogre::StringConverter::toString(this->isWorkspaceTransitioning()) + " queueSize=" + Ogre::StringConverter::toString(this->queue.size_approx()));
+
+                    g_renderLoopLastHeartbeat = heartbeatNow;
+                    g_renderLoopIterations = 0;
+                    g_renderLoopParkedIterations = 0;
+                }
+            }
+#endif
 
             if (false == isStalled && false == isSceneLoading)
             {
+                this->wasStalledOrLoading = false;
+
                 WorkspaceModule::getInstance()->updateAdaptiveQuality(deltaTime);
 
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
@@ -292,7 +364,7 @@ namespace NOWA
                 this->updateAllTransforms();
 
 #ifdef CLOSURE_DEBUG
-                tTransforms = stageTimer.getMicroseconds();
+                tTransforms = stageElapsedMicroseconds();
 #endif
 
                 if (++frameCount % 300 == 0)
@@ -308,7 +380,65 @@ namespace NOWA
                 // Vector clears are now exclusively the logic thread's job,
                 // done safely inside requestStall()/clearSceneResources()/releaseStall().
                 // Only clear closure state here -- it is render-thread-owned.
-                this->clearAllClosures();
+                //
+                // Attention: clearAllClosures() must NOT run on every spin. This branch has no
+                // renderOneFrame() to pace it, so during a scene load it executes thousands of
+                // times per second, and each pass drains the closure queue and walks
+                // persistentClosures for nothing. Worse, whenever it does clear something it
+                // writes an Ogre log line, and Ogre's LogManager flushes to disk per message -
+                // which turns the spin into a disk I/O storm exactly while the logic thread is
+                // trying to load. Clear ONCE on entering the state instead.
+                if (false == this->wasStalledOrLoading)
+                {
+                    this->clearAllClosures();
+                    this->wasStalledOrLoading = true;
+                }
+
+                // Attention: This MUST NOT be a plain sleep_for(1ms). On Windows the default
+                // scheduler granularity is ~15.6 ms, so sleep_for(1ms) actually parks the thread
+                // for a full tick - and every enqueueAndWait round trip then costs those ~15.6 ms
+                // instead of microseconds. That is indistinguishable from waiting for a VSync
+                // frame and completely defeats the point of suspending the rendering.
+                //
+                // The condition variable is notified by enqueue(), so a new command wakes this
+                // thread immediately. The short timeout only bounds how long it takes to notice
+                // that the suspend flag was cleared again; the commandPending predicate closes
+                // the race where enqueue() notifies between processAllCommands() above and the
+                // wait below.
+                // Attention: renderThreadParked is published BEFORE the lock is taken, so the
+                // window in which enqueue() could miss the notify is as small as possible. Should
+                // it still happen, the commandPending predicate makes the very next wait_for
+                // return immediately, and the 2 ms timeout is the hard upper bound.
+#ifdef NOWA_SUSPEND_WAIT_TIMING
+                const auto suspendWaitStart = std::chrono::steady_clock::now();
+                ++g_renderLoopParkedIterations;
+#endif
+
+                this->waitForCommandOrSignal(std::chrono::milliseconds(2));
+
+#ifdef NOWA_SUSPEND_WAIT_TIMING
+                {
+                    // Attention: render thread only, so plain statics are fine here.
+                    static double suspendWaitAccumulatedMillis = 0.0;
+                    static size_t suspendWaitCount = 0;
+                    static size_t suspendCommandsSeen = 0;
+
+                    suspendWaitAccumulatedMillis += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - suspendWaitStart).count();
+                    ++suspendWaitCount;
+                    suspendCommandsSeen += static_cast<size_t>(this->queue.size_approx());
+
+                    if (suspendWaitCount >= 20)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SUSPEND-WAIT] waits=" + Ogre::StringConverter::toString(suspendWaitCount) +
+                                                                                                " avgMillis=" + Ogre::StringConverter::toString(suspendWaitAccumulatedMillis / static_cast<double>(suspendWaitCount)) +
+                                                                                                " queuedOnWake=" + Ogre::StringConverter::toString(suspendCommandsSeen));
+
+                        suspendWaitAccumulatedMillis = 0.0;
+                        suspendWaitCount = 0;
+                        suspendCommandsSeen = 0;
+                    }
+                }
+#endif
             }
 
             if (false == isStalled && false == this->isWorkspaceTransitioning() && false == isSceneLoading)
@@ -316,7 +446,7 @@ namespace NOWA
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
 
 #ifdef CLOSURE_DEBUG
-                tRenderOneFrame = stageTimer.getMicroseconds();
+                tRenderOneFrame = stageElapsedMicroseconds();
 #endif
 
                 // Execute closures AFTER renderOneFrame so RenderingMetrics are
@@ -326,7 +456,7 @@ namespace NOWA
                 this->updateAndExecuteClosures();
 
 #ifdef CLOSURE_DEBUG
-                tClosures = stageTimer.getMicroseconds();
+                tClosures = stageElapsedMicroseconds();
 
                 // TEMPORARY: log a stage breakdown whenever the whole iteration took
                 // more than 100ms.
@@ -787,6 +917,21 @@ namespace NOWA
         entry.completionPromise = promise;
         this->queue.enqueue(std::move(entry));
 
+        // Attention: Wakes the render thread when it is parked in the suspended / stalled branch
+        // of renderThreadFunction. Without this, a suspended render thread only notices the new
+        // command when its sleep expires - and on Windows the default scheduler granularity is
+        // ~15.6 ms, NOT the 1 ms that std::this_thread::sleep_for(1ms) suggests. Every
+        // enqueueAndWait round trip then costs a full scheduler tick, which looks exactly like
+        // waiting for a VSync frame and is what made scene loading appear unchanged after the
+        // rendering was already suspended.
+        //
+        // COST IN THE NORMAL PATH: no mutex is taken here, ever. While the render thread is
+        // rendering (the overwhelmingly common case) this is one relaxed atomic store plus one
+        // acquire load of renderThreadParked, i.e. a couple of nanoseconds and no kernel call.
+        // notify_one() - the only part that reaches the OS - runs ONLY while the render thread is
+        // actually parked, which happens exclusively during a suspend or a stall.
+        this->signalCommandWaiters();
+
         this->logCommandEvent("Command " + Ogre::String(commandName) + " enqueued, queue size: " + Ogre::StringConverter::toString(this->queue.size_approx()), Ogre::LML_TRIVIAL);
     }
 
@@ -906,7 +1051,7 @@ namespace NOWA
         return this->queue.size_approx() > 0;
     }
 
-        void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
+    void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
     {
         // Attention: g_insideWaitClosure is thread_local and must be saved and restored, not
         // blindly cleared on exit. A nested call would otherwise clear it while the outer
@@ -1292,6 +1437,70 @@ namespace NOWA
 
             std::this_thread::yield();
         }
+    }
+
+    void GraphicsModule::waitForCommandOrSignal(std::chrono::milliseconds timeout)
+    {
+        // Parks the calling thread until a new render command arrives (enqueue() signals), until
+        // someone calls signalCommandWaiters() explicitly, or until the timeout expires.
+        //
+        // Attention: This exists because std::this_thread::sleep_for(1ms) does NOT sleep for 1 ms
+        // on Windows. The default scheduler granularity is ~15.6 ms, so a polling loop built on
+        // sleep_for wakes only once per timer tick. Any thread waiting for that loop to service
+        // the command queue therefore pays ~15.6 ms PER round trip - which is exactly what made
+        // scene loading take 13 seconds for 133 objects.
+        //
+        // Attention: renderThreadParked is published BEFORE the lock is taken, so the window in
+        // which a signaller could miss us is as small as possible. Should it still happen, the
+        // commandPending predicate makes this return immediately, and the timeout is the hard
+        // upper bound.
+        this->renderThreadParked.store(true, std::memory_order_release);
+
+        {
+            std::unique_lock<std::mutex> commandWaitLock(this->commandWaitMutex);
+            this->commandWaitCondition.wait_for(commandWaitLock, timeout,
+                [this]()
+                {
+                    return this->commandPending.load(std::memory_order_acquire);
+                });
+            this->commandPending.store(false, std::memory_order_release);
+        }
+
+        this->renderThreadParked.store(false, std::memory_order_release);
+    }
+
+    void GraphicsModule::signalCommandWaiters(void)
+    {
+        // COST IN THE NORMAL PATH: no mutex is taken here, ever. When nobody is parked this is one
+        // release store plus one acquire load, i.e. a couple of nanoseconds and no kernel call.
+        // notify_one() - the only part that reaches the OS - runs ONLY while someone is parked.
+        this->commandPending.store(true, std::memory_order_release);
+
+        if (true == this->renderThreadParked.load(std::memory_order_acquire))
+        {
+            this->commandWaitCondition.notify_one();
+        }
+    }
+
+    void GraphicsModule::suspendRendering(bool suspend)
+    {
+        // Attention: This only stops renderOneFrame() and the transform interpolation. The
+        // command queue keeps being serviced, which is the whole point: while suspended, an
+        // enqueueAndWait round trip costs microseconds instead of a full frame.
+        //
+        // Attention: NOT reentrant. Use ScopedRenderSuspend for nesting-safe usage, or make sure
+        // suspend/resume are strictly paired.
+        const bool wasSuspended = this->renderingSuspended.exchange(suspend, std::memory_order_release);
+
+        if (wasSuspended != suspend)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, Ogre::String("[GraphicsModule] Rendering ") + (suspend ? "SUSPENDED" : "RESUMED"));
+        }
+    }
+
+    bool GraphicsModule::isRenderingSuspended(void) const
+    {
+        return this->renderingSuspended.load(std::memory_order_acquire);
     }
 
     void GraphicsModule::requestStall()

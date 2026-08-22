@@ -902,6 +902,9 @@ namespace NOWA
             return false;
         }
 
+        // Attention: This one MUST stay a direct enqueueAndWait and must NOT be batched. The
+        // lambda writes 'success' back into this stack frame and it is evaluated immediately
+        // below, so the command has to have run before this call returns.
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(
             [this, &success]()
             {
@@ -929,16 +932,18 @@ namespace NOWA
     bool DatablockPbsComponent::readDatablockItem(Ogre::Item* item)
     {
         if (nullptr == item)
-
-        // Two data block components with the same item index can not exist
-        for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
         {
-            auto priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
-            if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
+
+            // Two data block components with the same item index can not exist
+            for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
             {
-                if (this->subItemIndex->getUInt() == priorPbsComponent->getSubItemIndex())
+                auto priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
+                if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
                 {
-                    this->subItemIndex->setValue(priorPbsComponent->getSubItemIndex() + 1);
+                    if (this->subItemIndex->getUInt() == priorPbsComponent->getSubItemIndex())
+                    {
+                        this->subItemIndex->setValue(priorPbsComponent->getSubItemIndex() + 1);
+                    }
                 }
             }
         }
@@ -1868,7 +1873,12 @@ namespace NOWA
             this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
         };
 
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::internalSetTextureName");
+        // Attention: enqueueRenderCommand instead of enqueueAndWait. init() routes 16 texture
+        // setters (diffuse, normal, specular, metallic, roughness, detail weight, detail 0-3,
+        // detail NM 0-3, reflection, emissive) through this function. With a direct enqueueAndWait
+        // that is 16 blocking round trips to the render thread for ONE component - measured as
+        // 253 ms per game object while the render thread was parked.
+        this->enqueueRenderCommand(std::move(renderCommand), "DatablockPbsComponent::internalSetTextureName");
     }
 
     void DatablockPbsComponent::setTextureDirectly(Ogre::PbsTextureTypes pbsTextureType, Ogre::TextureGpu* texture)

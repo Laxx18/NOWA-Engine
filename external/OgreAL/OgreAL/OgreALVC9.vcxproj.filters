@@ -101,5 +101,8 @@
     <ClInclude Include="..\audio_processing\SpectrumPreparation.h">
       <Filter>AudioProcessing</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\Timer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
