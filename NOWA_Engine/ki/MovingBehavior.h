@@ -327,6 +327,8 @@ namespace NOWA
 
 			// This behavior moves the GameObject towards a target position and delivers stuck, if position is unreachable
 			Ogre::Vector3 seek(Ogre::Vector3 targetPosition, Ogre::Real dt);
+
+			Ogre::Vector3 seekPure(Ogre::Vector3 targetPosition);
 			
 			Ogre::Vector3 seek2D(Ogre::Vector3 targetPosition, Ogre::Real dt);
 
@@ -404,6 +406,9 @@ namespace NOWA
 
 			void detectAgentMotionChange(Ogre::Real dt);
 
+			Ogre::Real getTurnRate(void) const;
+
+			void updateOrientation(const Ogre::Vector3& forward, const Ogre::Vector3& gravityDir, Ogre::Real dt);
 		private:
 			// Owner of this instance
 			PhysicsActiveComponent* agent;
@@ -485,6 +490,8 @@ namespace NOWA
 			bool jumpAtObstacle;
 
 			Ogre::Vector3 offsetPosition;
+            Ogre::Real velocityAccumulationTweaker;
+            Ogre::Real currentBankAngle;
 		};
 
 	}; //end namespace KI

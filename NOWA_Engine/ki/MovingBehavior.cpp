@@ -31,9 +31,9 @@ namespace NOWA
 			oldGravity(Ogre::Vector3::ZERO),
 			rotationSpeed(1.0f),
 			deceleration(FAST),
-			wanderJitter(2.0f),
+			wanderJitter(0.1f),
 			wanderRadius(2.0f),
-			wanderDistance(16.0f),
+			wanderDistance(8.0f),
 			wanderAngle(0.0f),
 			goalRadius(0.2f),
 			decelerationTweaker(0.3f),
@@ -73,7 +73,9 @@ namespace NOWA
 			oldAgentPositionForStuck(Ogre::Vector3::ZERO),
 			jumpAtObstacle(true),
 			isStuck(false),
-			offsetPosition(Ogre::Vector3::ZERO)
+			offsetPosition(Ogre::Vector3::ZERO),
+            velocityAccumulationTweaker(2.0f),
+            currentBankAngle(0.0f)
 		{
 			GameObjectPtr agentGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(agentId);
 			if (nullptr != agentGameObjectPtr)
@@ -130,42 +132,39 @@ namespace NOWA
 			return (this->mask & behaviorType) == behaviorType;
 		}
 
-		void MovingBehavior::setTargetAgentId(unsigned long targetAgentId)
-		{
-			if (0 == targetAgentId)
-			{
-				this->targetAgent = nullptr;
-				return;
-			}
+				void MovingBehavior::setTargetAgentId(unsigned long targetAgentId)
+        {
+            if (0 == targetAgentId)
+            {
+                this->targetAgent = nullptr;
+                return;
+            }
 
-			GameObjectPtr targetAgentGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(targetAgentId);
-			if (nullptr != targetAgentGameObjectPtr)
-			{
-				auto physicsActiveComponent = NOWA::makeStrongPtr(targetAgentGameObjectPtr->getComponent<PhysicsActiveComponent>());
-				if (nullptr != physicsActiveComponent)
-				{
-					this->targetAgent = physicsActiveComponent.get();
-				}
-				else
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Could not get target agent from id: " + Ogre::StringConverter::toString(targetAgentId)
-					+ " for game object: " + this->agent->getOwner()->getName() + ", so several behaviors will not work correctly!");
-				}
+            GameObjectPtr targetAgentGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(targetAgentId);
+            if (nullptr != targetAgentGameObjectPtr)
+            {
+                auto physicsActiveComponent = NOWA::makeStrongPtr(targetAgentGameObjectPtr->getComponent<PhysicsActiveComponent>());
+                if (nullptr != physicsActiveComponent)
+                {
+                    this->targetAgent = physicsActiveComponent.get();
+                }
+                else
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Could not get target agent from id: " + Ogre::StringConverter::toString(targetAgentId) +
+                                                                                            " for game object: " + this->agent->getOwner()->getName() + ", so several behaviors will not work correctly!");
+                }
 
-				auto crowdComponent = NOWA::makeStrongPtr(targetAgentGameObjectPtr->getComponent<CrowdComponent>());
-				if (nullptr != crowdComponent)
-				{
-					this->crowdComponent = crowdComponent.get();
-					this->crowdComponent->setGoalRadius(this->goalRadius);
-				}
+                // Attention: The crowd component of the TARGET must never be assigned here. this->crowdComponent
+                // belongs to the agent itself and is set in the constructor resp. in setAgentId. Overwriting it
+                // makes this agent steer the crowd agent of its target.
 
-				if (nullptr != targetAgent)
+                if (nullptr != this->targetAgent)
                 {
                     // Store the current position of the target for path actualization check
-                    this->oldTargetPosition = targetAgent->getPosition();
+                    this->oldTargetPosition = this->targetAgent->getPosition();
                 }
-			}
-		}
+            }
+        }
 
 		void MovingBehavior::setTargetAgentId2(unsigned long targetAgentId2)
 		{
@@ -280,25 +279,18 @@ namespace NOWA
 		}
 
 		void MovingBehavior::setFlyMode(bool flyMode)
-		{
-			this->flyMode = flyMode;
-#if 0
-			// Only if there is gravity use getVelocity, else if in the force equation no gravity is used, y of velocty value may go up to 2233 m per seconds!
-			// Hence if fly mode is set, deactivate gravity!
-			if (nullptr != this->agent)
-			{
-				if (true == flyMode)
-				{
-					this->oldGravity = this->agent->getGravity();
-					this->agent->setGravity(Ogre::Vector3::ZERO);
-				}
-				else
-				{
-					this->agent->setGravity(this->oldGravity);
-				}
-			}
-#endif
-		}
+        {
+            this->flyMode = flyMode;
+
+            // Attention: The wander target must start CENTERED (straight ahead), not on the rim of the
+            // wander circle. Seeding it with a random point on the circle means a maximum lateral offset
+            // in the very first frame, which makes the agent start off in a tight circle.
+            this->wanderTarget = Ogre::Vector3(0.0f, 0.0f, this->wanderRadius);
+            this->wanderAngle = 0.0f;
+
+            // The gravity is NOT touched here. A flying agent must have its gravity set to zero in the
+            // scene resp. via PhysicsActiveComponent, else the force equation fights the steering.
+        }
 
 		bool MovingBehavior::isInFlyMode(void) const
 		{
@@ -587,65 +579,65 @@ namespace NOWA
 		}
 
 		Ogre::Vector3 MovingBehavior::moveRandomly(Ogre::Real dt)
-		{
-			// this function is later called moveRandom or wander
-			//getContactAhead goes to physicsObject
-			if (this->timeUntilNextRandomTurn >= 0.0)
-				this->timeUntilNextRandomTurn -= dt;
+        {
+            if (this->timeUntilNextRandomTurn >= 0.0f)
+            {
+                this->timeUntilNextRandomTurn -= dt;
+            }
 
-			if (this->timeUntilNextRandomTurn <= 0.0)
-			{
-				auto contact = this->agent->getContactAhead(10, Ogre::Vector3(0.0f, 0.4f, 0.0f), 1.5f);
-				if (contact.getHitGameObject())
-				{
-					//this->rotY = 20.0;
-					Ogre::Real rnd = Ogre::Math::RangeRandom(-3.0, 3.0);
-					Ogre::Quaternion quat = Ogre::Quaternion::IDENTITY;
-					// Turn agent 70 oder -70 drehen on threaten collision
-					if (rnd > 0.0f)
-					{
-						quat = this->agent->getOrientation() * Ogre::Quaternion(Ogre::Degree(70.0f), Ogre::Vector3::UNIT_Y);
-					}
-					else
-					{
-						quat = this->agent->getOrientation() * Ogre::Quaternion(Ogre::Degree(-70.0f), Ogre::Vector3::UNIT_Y);
-					}
-					// this->agent->setOrientation(quat);
-					//Ogre::LogManager::getSingletonPtr()->logMessage("collision dir: " + Ogre::StringConverter::toString(this->getOrientation().getYaw().valueDegrees()));
-					this->timeUntilNextRandomTurn = 3.0f;
-					//Fehler:  quat = this->pPhysicsBody->getOrientation() * Ogre::Quaternion(Ogre::Degree(45), Ogre::Vector3::UNIT_Y);
-					//Es muss relativ gedreht werden!!!!!!!
-				}
-				else
-				{
-					// Rotate agent randomly
-					Ogre::Real rotation = Ogre::Math::RangeRandom(-70.0f, 70.0f);
-					// this->agent->applyOmegaForce(Ogre::Vector3(0.0f, angularVelocity, 0.0f));
-					// this->agent->setOrientation(Ogre::Quaternion(Ogre::Degree(rotation), Ogre::Vector3::UNIT_Y));
-					this->timeUntilNextRandomTurn = 3.0f;
-				}
-			}
+            if (this->timeUntilNextRandomTurn <= 0.0f)
+            {
+                Ogre::Real turnDegrees = 0.0f;
 
-			Ogre::Vector3 resultVelocity((this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()) * this->agent->getSpeed());
+                auto contact = this->agent->getContactAhead(10, Ogre::Vector3(0.0f, 0.4f, 0.0f), 1.5f);
+                if (nullptr != contact.getHitGameObject())
+                {
+                    // Turns away hard on a threatening collision
+                    turnDegrees = (Ogre::Math::RangeRandom(-3.0f, 3.0f) > 0.0f) ? 70.0f : -70.0f;
+                }
+                else
+                {
+                    turnDegrees = Ogre::Math::RangeRandom(-70.0f, 70.0f);
+                }
 
-			return resultVelocity;
-		}
+                // Attention: The former version computed the quaternion but never applied it, both
+                // setOrientation calls were commented out. Hence the whole random turn was dead code and
+                // the function just returned the current facing direction forever.
+                Ogre::Quaternion targetOrientation = this->agent->getOrientation() * Ogre::Quaternion(Ogre::Degree(turnDegrees), Ogre::Vector3::UNIT_Y);
+                this->agent->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, this->getTurnRate());
+
+                this->timeUntilNextRandomTurn = 3.0f;
+            }
+
+            return (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()) * this->agent->getSpeed();
+        }
 
 		Ogre::Vector3 MovingBehavior::seek(Ogre::Vector3 targetPosition, Ogre::Real dt)
-		{
-			if (nullptr != this->crowdComponent)
-			{
-				this->crowdComponent->updateDestination(targetPosition, true);
-			}
+        {
+            // Attention: Only the real seek behavior may drive the crowd agent. Flocking rules must use
+            // seekPure, else the detour destination is overwritten with e.g. the center of mass each frame.
+            if (nullptr != this->crowdComponent)
+            {
+                this->crowdComponent->updateDestination(targetPosition, true);
+            }
 
-			Ogre::Vector3 desiredVelocity = targetPosition - this->agent->getPosition();
+            return this->seekPure(targetPosition);
+        }
 
-			desiredVelocity.normalise();
-			desiredVelocity *= this->agent->getSpeed();
+		Ogre::Vector3 MovingBehavior::seekPure(Ogre::Vector3 targetPosition)
+        {
+            Ogre::Vector3 desiredVelocity = targetPosition - this->agent->getPosition();
 
-			// Moves to the calculated direction
-			return std::move(desiredVelocity);
-		}
+            if (desiredVelocity.squaredLength() < 0.0001f)
+            {
+                return Ogre::Vector3::ZERO;
+            }
+
+            desiredVelocity.normalise();
+            desiredVelocity *= this->agent->getSpeed();
+
+            return desiredVelocity;
+        }
 		
 		Ogre::Vector3 MovingBehavior::seek2D(Ogre::Vector3 targetPosition, Ogre::Real dt)
 		{
@@ -1024,165 +1016,161 @@ namespace NOWA
 			return this->arrive(midPoint, FAST, dt);
 		}
 
-#if 0
-		Ogre::Vector3 MovingBehavior::wander(Ogre::Real dt)
-		{
-			// http://www.red3d.com/cwr/steer/Wander.html
-			//this behavior is dependent on the update rate, so this line must
-			//be included when using time independent framerate.
-			Ogre::Real jitterThisTimeSlice = this->wanderJitter * dt;
+				Ogre::Vector3 MovingBehavior::wander(Ogre::Real dt)
+        {
+            if (nullptr != this->crowdComponent)
+            {
+                // Navmesh based wandering. Note: This is only sensible for ground agents,
+                // because detour crowd projects everything onto the navigation mesh.
+                if (true == this->crowdComponent->destinationReached())
+                {
+                    Ogre::Vector3 randomPosition = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getRandomNavMeshPoint();
+                    this->crowdComponent->updateDestination(randomPosition);
+                    return this->seek(randomPosition, dt);
+                }
+                return Ogre::Vector3::ZERO;
+            }
 
-			//first, add a small random vector to the target's position
-			this->wanderTarget += Ogre::Vector3(Ogre::Math::RangeRandom(-0.99f, 0.99f) * jitterThisTimeSlice, 0.0f, Ogre::Math::RangeRandom(-0.99f, 0.99f) * jitterThisTimeSlice);
+            // Guards against a zero or a huge dt (breakpoint, loading spike)
+            if (dt <= 0.0f)
+            {
+                dt = 1.0f / 60.0f;
+            }
+            else if (dt > 0.1f)
+            {
+                dt = 0.1f;
+            }
 
-			//reproject this new vector back on to a unit circle
-			this->wanderTarget.normalise();
+            const Ogre::Real radius = (this->wanderRadius > 0.01f) ? this->wanderRadius : 0.01f;
+            const Ogre::Real distance = (this->wanderDistance > 0.01f) ? this->wanderDistance : 0.01f;
 
-			//increase the length of the vector to the same as the radius
-			//of the wander circle
-			this->wanderTarget *= this->wanderRadius;
+            // 1) Determines the current heading. The velocity is preferred, because it is the direction the
+            //    agent really moves to. If the agent stands still, the facing direction is used.
+            Ogre::Vector3 heading = this->agent->getVelocity();
+            if (false == this->flyMode)
+            {
+                heading.y = 0.0f;
+            }
 
-			//move the target into a position WanderDist in front of the agent
-			Ogre::Vector3 target = this->wanderTarget + Ogre::Vector3(this->wanderDistance, 0.0f, 0.0f);
+            if (heading.squaredLength() < 0.0001f)
+            {
+                heading = this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection();
+                if (false == this->flyMode)
+                {
+                    heading.y = 0.0f;
+                }
+            }
 
-			return (target - this->agent->getPosition()) * Ogre::Vector3(this->agent->getSpeed(), 0.0f, this->agent->getSpeed()); // same as the two lines below
+            if (heading.squaredLength() < 0.0001f)
+            {
+                heading = Ogre::Vector3::UNIT_Z;
+            }
+            heading.normalise();
 
-			// project the target into world space
-			//Ogre::Vector3 newTarget = this->agent->getOrientation() * target + this->agent->getPosition();
+            // 2) Builds an orthonormal frame (side, up, heading) around the heading, so that the wander
+            //    offset can be applied in agent local space. This also works if the agent flies straight up.
+            Ogre::Vector3 side = heading.crossProduct(Ogre::Vector3::UNIT_Y);
+            if (side.squaredLength() < 0.0001f)
+            {
+                side = heading.crossProduct(Ogre::Vector3::UNIT_X);
+            }
+            side.normalise();
 
-			// // Ogre::Vector3 newTarget = this->agent->getPosition() + (this->agent->getOrientation() * target);
+            Ogre::Vector3 up = side.crossProduct(heading);
+            up.normalise();
 
-			// // and steer towards it
-			// return (newTarget - this->agent->getPosition()) * Ogre::Vector3(1.0f, 0.0f, 1.0f);
-		}
-#endif
+            // 3) Random walk of the wander offset.
+            //
+            //    Attention: Two things are essential here and both were wrong before:
+            //
+            //    a) The increment scales with SQRT(dt), not with dt. A random walk accumulates variance
+            //       linearly in time, so a linear dt scaling makes the whole behavior frame rate dependent
+            //       (the agent gets lazier the higher the frame rate).
+            //
+            //    b) The mean reversion term is mandatory. The offset lives in the LOCAL frame of the agent
+            //       and that frame rotates with the agent. A permanent lateral offset therefore means a
+            //       permanent turn rate, which is a perfect circle. Without a pull back towards straight
+            //       ahead, an unbiased random walk parks on one side for many seconds and the agent just
+            //       circles. This is exactly the bug that made wandering useless.
+            const Ogre::Real jitterThisFrame = this->wanderJitter * radius * Ogre::Math::Sqrt(dt);
+            const Ogre::Real meanReversion = 1.5f; // 1/s, roughly the time the agent holds a turn direction
 
-#if 0
-		Ogre::Vector3 MovingBehavior::wander(Ogre::Real dt)
-		{
-			// Calculate the circle center
-			Ogre::Vector3 circleCenter = this->agent->getVelocity();
-			circleCenter.normalise();
-			circleCenter *= this->wanderDistance;
-			//
-			// Calculate the displacement force
-			Ogre::Vector3 displacement(this->defaultDirection);
-			displacement *= this->wanderRadius;
+            this->wanderTarget.x += Ogre::Math::RangeRandom(-1.0f, 1.0f) * jitterThisFrame;
+            this->wanderTarget.x -= this->wanderTarget.x * meanReversion * dt;
 
-			//
-			// Randomly change the vector direction
-			// by making it change its current angle
-			Ogre::Real len = 1.0f * displacement.length();
-			Ogre::Vector3 angle(Ogre::Math::Cos(this->wanderAngle) * len, 0.0f, Ogre::Math::Sin(this->wanderAngle) * len);
-			
-			displacement = angle;
+            if (true == this->flyMode)
+            {
+                // The vertical part is deliberately calmer and reverts faster, so the agent does not
+                // slowly drift away in height.
+                this->wanderTarget.y += Ogre::Math::RangeRandom(-1.0f, 1.0f) * jitterThisFrame * 0.4f;
+                this->wanderTarget.y -= this->wanderTarget.y * meanReversion * 2.0f * dt;
+            }
+            else
+            {
+                this->wanderTarget.y = 0.0f;
+            }
 
-			// Change wanderAngle just a bit, so it
-			// won't have the same value in the
-			// next game frame.
-			this->wanderAngle += (Ogre::Math::RangeRandom(0.0f, 1.0f) * this->wanderJitter) - (this->wanderJitter * 0.5f);
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] circleCenter: " + Ogre::StringConverter::toString(circleCenter));
-			//
-			// Finally calculate and return the wander force
-			Ogre::Vector3 wanderForce = circleCenter + displacement;
-			return wanderForce *= this->agent->getSpeed();
-		}
-#endif
+            // Keeps the offset inside the wander circle
+            Ogre::Real lateralSquared = (this->wanderTarget.x * this->wanderTarget.x) + (this->wanderTarget.y * this->wanderTarget.y);
+            if (lateralSquared > radius * radius)
+            {
+                const Ogre::Real scale = radius / Ogre::Math::Sqrt(lateralSquared);
+                this->wanderTarget.x *= scale;
+                this->wanderTarget.y *= scale;
+                lateralSquared = radius * radius;
+            }
 
-#if 0
-		Ogre::Vector3 MovingBehavior::wander(Ogre::Real dt)
-		{
-			if (nullptr == this->crowdComponent)
-			{
-				// Calculates the circle center
-				Ogre::Vector3 circleCenter = this->agent->getVelocity().normalisedCopy();
-				circleCenter *= this->wanderDistance;
+            // The forward component is derived, so the target always stays on the front half of the sphere.
+            // This limits the maximum steering angle to atan(radius / (distance + z)) and the agent can
+            // never be told to turn backwards in a single frame.
+            this->wanderTarget.z = Ogre::Math::Sqrt(std::max(0.0f, (radius * radius) - lateralSquared));
 
-				// Calculates the displacement force
-				Ogre::Vector3 displacement(this->agent->getOwner()->getDefaultDirection());
-				displacement *= this->wanderRadius;
+            // 4) Circle center in front of the agent plus the local space offset
+            Ogre::Vector3 wanderDirection = (heading * (distance + this->wanderTarget.z)) + (side * this->wanderTarget.x) + (up * this->wanderTarget.y);
 
-				// Randomly changes the vector direction by making it change its current angle
-				Ogre::Real len = displacement.length();
-				displacement = (Ogre::Math::Cos(this->wanderAngle) * len, 0.0f /*Ogre::Math::Sin(this->wanderAngle) * len*/, Ogre::Math::Sin(this->wanderAngle) * len);
+            if (wanderDirection.squaredLength() < 0.0001f)
+            {
+                wanderDirection = heading;
+            }
+            wanderDirection.normalise();
 
-				// Changes wanderAngle just a bit, so it will not have the same value in the next game frame.
+            // 5) Clamps the pitch in fly mode, so the agent never climbs or dives vertically,
+            //    which looks unnatural for a flying creature.
+            if (true == this->flyMode)
+            {
+                const Ogre::Degree maxPitch(20.0f);
+                const Ogre::Real maxPitchSin = Ogre::Math::Sin(maxPitch);
 
-				Ogre::Real theta = Ogre::Math::RangeRandom(0.0f, 1.0f) * 2.0f * Ogre::Math::PI;
-				this->wanderAngle += (theta * this->wanderJitter) - (this->wanderJitter * 0.5f);
+                if (Ogre::Math::Abs(wanderDirection.y) > maxPitchSin)
+                {
+                    Ogre::Vector3 horizontal(wanderDirection.x, 0.0f, wanderDirection.z);
+                    if (horizontal.squaredLength() < 0.0001f)
+                    {
+                        horizontal = Ogre::Vector3(heading.x, 0.0f, heading.z);
+                    }
+                    if (horizontal.squaredLength() < 0.0001f)
+                    {
+                        horizontal = Ogre::Vector3::UNIT_Z;
+                    }
+                    horizontal.normalise();
 
-				// Finally calculate and return the wander force
-				Ogre::Vector3 wanderForce = (circleCenter + displacement) * this->agent->getSpeed();
+                    const Ogre::Real ySign = (wanderDirection.y >= 0.0f) ? 1.0f : -1.0f;
+                    wanderDirection = (horizontal * Ogre::Math::Cos(maxPitch)) + (Ogre::Vector3::UNIT_Y * (ySign * maxPitchSin));
+                    wanderDirection.normalise();
+                }
+            }
+            else
+            {
+                wanderDirection.y = 0.0f;
+                if (wanderDirection.squaredLength() < 0.0001f)
+                {
+                    wanderDirection = Ogre::Vector3::UNIT_Z;
+                }
+                wanderDirection.normalise();
+            }
 
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] wanderForce: " + Ogre::StringConverter::toString(wanderForce.y));
-
-				return wanderForce;
-			}
-			else
-			{
-				// If destination reached: Set new random destination
-				if (true == this->crowdComponent->destinationReached())
-				{
-					Ogre::Vector3 randomPosition = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getRandomNavMeshPoint();
-					this->crowdComponent->updateDestination(randomPosition);
-					return this->seek(randomPosition, dt);
-				}
-			}
-			return Ogre::Vector3::ZERO;
-		}
-#endif
-
-		Ogre::Vector3 MovingBehavior::wander(Ogre::Real dt)
-		{
-			if (nullptr == this->crowdComponent)
-			{
-				// Calculates the circle center
-				Ogre::Vector3 circleCenter = this->agent->getVelocity().normalisedCopy();
-				circleCenter *= this->wanderDistance;
-
-				// Calculates the displacement force
-				Ogre::Vector3 displacement(this->agent->getOwner()->getDefaultDirection());
-				displacement *= this->wanderRadius;
-
-				// Randomly changes the vector direction by making it change its current angle
-				Ogre::Real len = displacement.length();
-				displacement = Ogre::Vector3(
-					Ogre::Math::Cos(this->wanderAngle) * len,
-					0.0f, // Default Y is unchanged unless flyMode is active
-					Ogre::Math::Sin(this->wanderAngle) * len
-				);
-
-				// Changes wanderAngle slightly so the direction varies
-				Ogre::Real theta = Ogre::Math::RangeRandom(0.0f, 1.0f) * 2.0f * Ogre::Math::PI;
-				this->wanderAngle += (theta * this->wanderJitter) - (this->wanderJitter * 0.5f);
-
-				// If fly mode is enabled, allow Y-axis wandering
-				if (true == this->flyMode)
-				{
-					Ogre::Real wanderY = Ogre::Math::RangeRandom(-this->wanderDistance, this->wanderDistance);
-					displacement.y = wanderY;
-				}
-
-				// Finally, calculate and return the wander force
-				Ogre::Vector3 wanderForce = (circleCenter + displacement);
-				wanderForce.normalise();
-				wanderForce *= this->agent->getSpeed();
-
-				return wanderForce;
-			}
-			else
-			{
-				// If destination reached: Set new random destination
-				if (true == this->crowdComponent->destinationReached())
-				{
-					Ogre::Vector3 randomPosition = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getRandomNavMeshPoint();
-					this->crowdComponent->updateDestination(randomPosition);
-					return this->seek(randomPosition, dt);
-				}
-			}
-			return Ogre::Vector3::ZERO;
-		}
-
+            return wanderDirection * this->agent->getSpeed();
+        }
 		
 		Ogre::Vector3 MovingBehavior::wander2D(Ogre::Real dt)
 		{
@@ -1420,89 +1408,87 @@ namespace NOWA
 		//	return worldPosition;
 		//}
 
-		Ogre::Vector3 MovingBehavior::flocking(Ogre::Real dt)
-		{
-			bool valid = false;
-			Ogre::Vector3 sumVector = Ogre::Vector3::ZERO;
+				Ogre::Vector3 MovingBehavior::flocking(Ogre::Real dt)
+        {
+            bool valid = false;
+            Ogre::Vector3 sumVector = Ogre::Vector3::ZERO;
 
-			if (true == this->isSwitchOn(FLOCKING_FORMATION_V_SHAPE))
-			{
-				auto result = this->flockingFormationVShape();
-				sumVector = result.second * this->weightSeparation;
-				valid |= result.first;
-			}
-			else
-			{
-				Ogre::Vector3 v1 = Ogre::Vector3::ZERO;
-				Ogre::Vector3 v2 = Ogre::Vector3::ZERO;
-				Ogre::Vector3 v3 = Ogre::Vector3::ZERO;
-				Ogre::Vector3 v4 = Ogre::Vector3::ZERO;
-				Ogre::Vector3 v5 = Ogre::Vector3::ZERO;
-				Ogre::Vector3 v6 = Ogre::Vector3::ZERO;
-				Ogre::Vector3 v7 = Ogre::Vector3::ZERO;
+            if (true == this->isSwitchOn(FLOCKING_FORMATION_V_SHAPE))
+            {
+                // Attention: The formation already returns a desired velocity, so it must not be scaled
+                // by weightSeparation, which has nothing to do with a formation slot.
+                auto result = this->flockingFormationVShape();
+                sumVector = result.second;
+                valid |= result.first;
 
-				if (true == this->isSwitchOn(FLOCKING_COHESION))
-				{
-					auto result = this->flockingRuleCohesion();
-					v1 = result.second * this->weightCohesion;
-					valid |= result.first;
-				}
-				if (true == this->isSwitchOn(FLOCKING_SEPARATION))
-				{
-					auto result = this->flockingRuleSeparation();
-					v2 = result.second * this->weightSeparation;
-					valid |= result.first;
-				}
-				else if (true == this->isSwitchOn(FLOCKING_SPREAD))
-				{
-					auto result = this->flockingRuleSpread();
-					v2 = result.second * this->weightSeparation;
-					valid |= result.first;
-				}
-				if (true == this->isSwitchOn(FLOCKING_ALIGNMENT))
-				{
-					auto result = this->flockingRuleAlignment();
-					v3 = result.second * this->weightAlignment;
-					valid |= result.first;
-				}
-				if (true == this->isSwitchOn(FLOCKING_FLEE))
-				{
-					auto result = this->flockingRuleFlee();
-					v4 = result.second * this->weightFlee;
-					valid |= result.first;
-				}
-				if (true == this->isSwitchOn(FLOCKING_SEEK))
-				{
-					auto result = this->flockingRuleSeek();
-					v5 = result.second * this->weightSeek;
-					valid |= result.first;
-				}
-				// if (true == this->isSwitchOn(FLOCKING_OBSTACLE_AVOIDANCE))
-				// {
-				//	auto result = ...
-				// 	v7 = this->weightObstacleAvoidance;
-				// valid |= result.first;
-				// }
+                return sumVector;
+            }
 
-				sumVector = v1 + v2 + v3 + v4 + v5 + v6 + v7;
-				sumVector *= this->agent->getSpeed();
-			}
+            Ogre::Vector3 v1 = Ogre::Vector3::ZERO;
+            Ogre::Vector3 v2 = Ogre::Vector3::ZERO;
+            Ogre::Vector3 v3 = Ogre::Vector3::ZERO;
+            Ogre::Vector3 v4 = Ogre::Vector3::ZERO;
+            Ogre::Vector3 v5 = Ogre::Vector3::ZERO;
 
-			if (false == valid && this->neighborDistance > 0.0f)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use flocking behavior, because the agents are not close enough to each other. "
-																" Their position is bigger as the specified neighbor distance of " + Ogre::StringConverter::toString(this->neighborDistance) + " In game object : '"
-																+ this->agent->getOwner()->getName() + "'");
-				this->setBehavior(NONE);
+            if (true == this->isSwitchOn(FLOCKING_COHESION))
+            {
+                auto result = this->flockingRuleCohesion();
+                v1 = result.second * this->weightCohesion;
+                valid |= result.first;
+            }
+            if (true == this->isSwitchOn(FLOCKING_SEPARATION))
+            {
+                auto result = this->flockingRuleSeparation();
+                v2 = result.second * this->weightSeparation;
+                valid |= result.first;
+            }
+            else if (true == this->isSwitchOn(FLOCKING_SPREAD))
+            {
+                auto result = this->flockingRuleSpread();
+                v2 = result.second * this->weightSeparation;
+                valid |= result.first;
+            }
+            if (true == this->isSwitchOn(FLOCKING_ALIGNMENT))
+            {
+                auto result = this->flockingRuleAlignment();
+                v3 = result.second * this->weightAlignment;
+                valid |= result.first;
+            }
+            if (true == this->isSwitchOn(FLOCKING_FLEE))
+            {
+                auto result = this->flockingRuleFlee();
+                v4 = result.second * this->weightFlee;
+                valid |= result.first;
+            }
+            if (true == this->isSwitchOn(FLOCKING_SEEK))
+            {
+                auto result = this->flockingRuleSeek();
+                v5 = result.second * this->weightSeek;
+                valid |= result.first;
+            }
 
-				if (nullptr != this->agentStuckObserver)
-				{
-					this->agentStuckObserver->onAgentStuck();
-				}
-			}
+            sumVector = v1 + v2 + v3 + v4 + v5;
 
-			return sumVector;
-		}
+            if (false == valid)
+            {
+                // Attention: Do NOT call setBehavior(NONE) here. The agents may simply be spread out at
+                // spawn time and would come together again as soon as one of them moves into range.
+                // Disabling the behavior here makes flocking silently dead for the rest of the level.
+                if (this->neighborDistance > 0.0f && nullptr != this->agentStuckObserver)
+                {
+                    this->agentStuckObserver->onAgentStuck();
+                }
+                return Ogre::Vector3::ZERO;
+            }
+
+            if (sumVector.squaredLength() < 0.0001f)
+            {
+                return Ogre::Vector3::ZERO;
+            }
+
+            sumVector.normalise();
+            return sumVector * this->agent->getSpeed();
+        }
 
 #if 0 // Seperation in circle effect ^^
 		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSeparation(void)
@@ -1638,90 +1624,93 @@ namespace NOWA
 		}
 
 		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSpread(void)
-		{
-			bool valid = false;
-			if (this->flockingAgents.empty())
-			{
-				return std::make_pair(valid, Ogre::Vector3::ZERO);
-			}
+        {
+            // Spread: Constant outward push, independent of the distance. This produces a loose, evenly
+            // distributed group, whereas separation only reacts when neighbors get really close.
+            if (true == this->flockingAgents.empty())
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
 
-			Ogre::Vector3 separationForce = Ogre::Vector3::ZERO;
-			unsigned int neighborCount = 0;
+            Ogre::Vector3 spreadForce = Ogre::Vector3::ZERO;
+            unsigned int neighborCount = 0;
+            const Ogre::Real neighborDistSquared = this->neighborDistance * this->neighborDistance;
 
-			const Ogre::Real separationStrength = 2.5f;
-			const Ogre::Real maxSeparationForce = 3.0f;
+            for (const auto& flockingAgent : this->flockingAgents)
+            {
+                if (flockingAgent == this->agent)
+                {
+                    continue;
+                }
 
-			for (auto it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
-			{
-				if (*it == this->agent) continue; // Skip the current agent
+                Ogre::Vector3 toAgent = this->agent->getPosition() - flockingAgent->getPosition();
+                Ogre::Real distanceSquared = toAgent.squaredLength();
 
-				Ogre::Vector3 toAgent = this->agent->getPosition() - (*it)->getPosition();
-				Ogre::Real distanceSquared = toAgent.squaredLength();
+                if (this->neighborDistance == 0.0f || (distanceSquared > 0.0f && distanceSquared < neighborDistSquared))
+                {
+                    spreadForce += toAgent;
+                    neighborCount++;
+                }
+            }
 
-				if (this->neighborDistance == 0.0f || (distanceSquared > 0.0f && distanceSquared < this->neighborDistance * this->neighborDistance))
-				{
-					Ogre::Real distance = Ogre::Math::Sqrt(distanceSquared);
-					if (distance > 0.01f)
-					{
-						Ogre::Vector3 repulsion = (toAgent / distance) * (separationStrength / distance);
-						separationForce += repulsion;
-						neighborCount++;
-					}
-				}
-			}
+            if (0 == neighborCount || spreadForce.squaredLength() < 0.0001f)
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
 
-			if (neighborCount > 0 && separationForce.squaredLength() > 0.0f)
-			{
-				// separationForce /= static_cast<Ogre::Real>(neighborCount) * 0.3f;
-
-				if (separationForce.squaredLength() > maxSeparationForce * maxSeparationForce)
-				{
-					separationForce.normalise();
-					separationForce *= maxSeparationForce;
-				}
-
-				valid = true;
-			}
-
-			return std::make_pair(valid, separationForce);
-		}
+            spreadForce /= static_cast<Ogre::Real>(neighborCount);
+            return {true, spreadForce.normalisedCopy()};
+        }
 
 		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSeparation(void)
-		{
-			if (this->flockingAgents.empty())
-			{
-				return { false, Ogre::Vector3::ZERO };
-			}
+        {
+            // Separation: Steers away from neighbors. The closer a neighbor, the stronger the repulsion.
+            if (true == this->flockingAgents.empty())
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
 
-			Ogre::Vector3 spreadForce = Ogre::Vector3::ZERO;
-			unsigned int neighborCount = 0;
-			Ogre::Real neighborDistSquared = this->neighborDistance * this->neighborDistance;
+            Ogre::Vector3 separationForce = Ogre::Vector3::ZERO;
+            unsigned int neighborCount = 0;
 
-			for (const auto& agent : this->flockingAgents)
-			{
-				if (agent == this->agent)
-				{
-					continue;
-				}
+            const Ogre::Real separationStrength = 2.5f;
+            const Ogre::Real maxSeparationForce = 3.0f;
+            const Ogre::Real neighborDistSquared = this->neighborDistance * this->neighborDistance;
 
-				Ogre::Vector3 toAgent = this->agent->getPosition() - agent->getPosition();
-				Ogre::Real distanceSquared = toAgent.squaredLength();
+            for (const auto& flockingAgent : this->flockingAgents)
+            {
+                if (flockingAgent == this->agent)
+                {
+                    continue;
+                }
 
-				if ((this->neighborDistance == 0.0f) || (distanceSquared > 0.0f && distanceSquared < neighborDistSquared))
-				{
-					spreadForce += toAgent;  // Simply sum the vectors without normalization
-					neighborCount++;
-				}
-			}
+                Ogre::Vector3 toAgent = this->agent->getPosition() - flockingAgent->getPosition();
+                Ogre::Real distanceSquared = toAgent.squaredLength();
 
-			if (neighborCount == 0)
-			{
-				return { false, Ogre::Vector3::ZERO };
-			}
+                if (this->neighborDistance == 0.0f || (distanceSquared > 0.0f && distanceSquared < neighborDistSquared))
+                {
+                    Ogre::Real distance = Ogre::Math::Sqrt(distanceSquared);
+                    if (distance > 0.01f)
+                    {
+                        separationForce += (toAgent / distance) * (separationStrength / distance);
+                        neighborCount++;
+                    }
+                }
+            }
 
-			spreadForce /= static_cast<Ogre::Real>(neighborCount);
-			return { true, spreadForce.normalisedCopy() };
-		}
+            if (0 == neighborCount || separationForce.squaredLength() < 0.0001f)
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
+
+            if (separationForce.squaredLength() > maxSeparationForce * maxSeparationForce)
+            {
+                separationForce.normalise();
+                separationForce *= maxSeparationForce;
+            }
+
+            return {true, separationForce};
+        }
 
 #if 0
 		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingFormationVShape()
@@ -1899,113 +1888,158 @@ namespace NOWA
 
 #if 1
 
-		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingFormationVShape()
-		{
-			if (this->flockingAgents.empty()) {
-				return { false, Ogre::Vector3::ZERO };
-			}
+				std::pair<bool, Ogre::Vector3> MovingBehavior::flockingFormationVShape(void)
+        {
+            if (true == this->flockingAgents.empty())
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
 
-			PhysicsActiveComponent* leader = this->targetAgent ? this->targetAgent : this->flockingAgents.front();
-			if (this->agent == leader) {
-				return { false, Ogre::Vector3::ZERO }; // Leader stays in place
-			}
+            PhysicsActiveComponent* leader = (nullptr != this->targetAgent) ? this->targetAgent : this->flockingAgents.front();
+            if (this->agent == leader)
+            {
+                return {false, Ogre::Vector3::ZERO}; // The leader does not follow the formation
+            }
 
-			Ogre::Vector3 leaderPos = leader->getPosition();
-			Ogre::Vector3 leaderVel = leader->getBody()->getVelocity().normalisedCopy();
+            Ogre::Vector3 leaderPosition = leader->getPosition();
 
-			if (leaderVel.squaredLength() < 0.01f) {
-				return { false, Ogre::Vector3::ZERO }; // Avoid division by zero
-			}
+            Ogre::Vector3 leaderDirection = leader->getVelocity();
+            if (false == this->flyMode)
+            {
+                leaderDirection.y = 0.0f;
+            }
 
-			// Get perpendicular direction for V-shape
-			Ogre::Vector3 sideDir = leaderVel.crossProduct(Ogre::Vector3::UNIT_Y).normalisedCopy();
+            if (leaderDirection.squaredLength() < 0.01f)
+            {
+                // Attention: If the leader stands still, its velocity is useless. Fall back to its facing
+                // direction, else the whole formation collapses onto the leader.
+                leaderDirection = leader->getOrientation() * leader->getOwner()->getDefaultDirection();
+            }
 
-			// Find this agents index in the flock
-			auto it = std::find(this->flockingAgents.begin(), this->flockingAgents.end(), this->agent);
-			if (it == this->flockingAgents.end()) {
-				return { false, Ogre::Vector3::ZERO }; // Should not happen
-			}
+            if (leaderDirection.squaredLength() < 0.0001f)
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
+            leaderDirection.normalise();
 
-			size_t index = std::distance(this->flockingAgents.begin(), it) - 1; // -1 because leader is skipped
-			if (index >= this->flockingAgents.size()) {
-				return { false, Ogre::Vector3::ZERO }; // Out of bounds
-			}
+            Ogre::Vector3 sideDirection = leaderDirection.crossProduct(Ogre::Vector3::UNIT_Y);
+            if (sideDirection.squaredLength() < 0.0001f)
+            {
+                sideDirection = leaderDirection.crossProduct(Ogre::Vector3::UNIT_X);
+            }
+            sideDirection.normalise();
 
-			// Compute this agent's position in the V-formation
-			const Ogre::Real neighborDistance = this->agent->getOwner()->getSize().squaredLength();
+            // Determines the slot index. Attention: Only the followers BEFORE this agent are counted and the
+            // leader is skipped explicitly. The former 'distance(begin, it) - 1' underflowed the size_t when
+            // the leader was the target agent and therefore not part of the flocking agents at all.
+            size_t slot = 0;
+            bool found = false;
+            for (const auto& flockingAgent : this->flockingAgents)
+            {
+                if (flockingAgent == this->agent)
+                {
+                    found = true;
+                    break;
+                }
+                if (flockingAgent == leader)
+                {
+                    continue;
+                }
+                slot++;
+            }
 
-			int row = (index / 2) + 1; // Every two agents, move to the next row
-			Ogre::Real depthOffset = row * neighborDistance * 2.5f;
-			Ogre::Real sideOffset = row * neighborDistance * (index % 2 == 0 ? -1.0f : 1.0f) * 2.0f;
+            if (false == found)
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
 
-			// Compute target position
-			Ogre::Vector3 targetPos = leaderPos + (-leaderVel * depthOffset) + (sideDir * sideOffset);
+            Ogre::Real spacing = this->neighborDistance;
+            if (spacing <= 0.0f)
+            {
+                spacing = this->agent->getOwner()->getSize().length();
+            }
+            if (spacing <= 0.0f)
+            {
+                spacing = 2.0f;
+            }
 
-			// Seek behavior to move toward target
-			Ogre::Vector3 toTarget = targetPos - this->agent->getPosition();
-			Ogre::Real distance = toTarget.length();
+            const int row = static_cast<int>(slot / 2) + 1;
+            const Ogre::Real depthOffset = static_cast<Ogre::Real>(row) * spacing * 1.5f;
+            const Ogre::Real sideOffset = static_cast<Ogre::Real>(row) * spacing * ((0 == slot % 2) ? -1.0f : 1.0f);
 
-			Ogre::Vector3 desiredVelocity = toTarget.normalisedCopy() * this->agent->getSpeed();
-			Ogre::Vector3 velocityChange = (desiredVelocity - this->agent->getBody()->getVelocity()) * 0.1f;
-			this->agent->applyForce(velocityChange);
+            Ogre::Vector3 targetPosition = leaderPosition - (leaderDirection * depthOffset) + (sideDirection * sideOffset);
 
-			// Rotate smoothly
-			Ogre::Quaternion targetOrientation = this->agent->getBody()->getVelocity().getRotationTo(desiredVelocity);
-			this->agent->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, 0.05f);
+            if (false == this->flyMode)
+            {
+                targetPosition.y = this->agent->getPosition().y;
+            }
 
-			return { true, velocityChange };
-		}
+            Ogre::Vector3 toTarget = targetPosition - this->agent->getPosition();
+            Ogre::Real distance = toTarget.length();
+
+            if (distance < 0.0001f)
+            {
+                return {true, Ogre::Vector3::ZERO};
+            }
+
+            // Arrive like damping, so the agent does not oscillate around its slot
+            Ogre::Real speedFactor = distance / (spacing * 0.5f);
+            if (speedFactor > 1.0f)
+            {
+                speedFactor = 1.0f;
+            }
+
+            // Attention: No applyForce / applyOmegaForceRotateTo here! This function must be free of side
+            // effects, because update() applies the returned velocity exactly once. Doing both doubles it.
+            return {true, (toTarget / distance) * (speedFactor * this->agent->getSpeed())};
+        }
 
 
 #endif
 
 		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleFlee(void)
-		{
-			if(0 == this->flockingAgents.size() || nullptr == this->targetAgent)
-			{
-				return std::make_pair(false, Ogre::Vector3::ZERO);
-			}
+        {
+            if (true == this->flockingAgents.empty() || nullptr == this->targetAgent)
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
 
-			// Agents shall flee from another agent
-			Ogre::Vector3 fleeVec = Ogre::Vector3::ZERO;
+            Ogre::Vector3 awayFromTarget = this->agent->getPosition() - this->targetAgent->getPosition();
+            Ogre::Real distance = awayFromTarget.length();
 
-			// Calculates the distance from agent to the target agent
-			Ogre::Real distance = (this->agent->getPosition() - this->targetAgent->getPosition()).squaredLength();
-			if (Ogre::Math::RealEqual(distance, 0.0f))
-				distance = 0.1f;
-			//Wenn der andere Agent zu Nahe von einem Schaaf ist, soll der Swarm-Agent ein gerausch machen, lua?
-			// if (distance < 4.0f)
-			// 	dynamic_cast<Sheep *>(currentSheep)->baaHelp();
+            if (distance < 0.0001f)
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
 
-			// Moves in inverse direction of the target agent, the more the distance the less the inverted direction comes into account
-			fleeVec = -(1.0f / distance) * this->targetAgent->getPosition();
+            if (distance < 0.5f)
+            {
+                distance = 0.5f;
+            }
 
-			return std::make_pair(true, fleeVec);
-		}
+            // The panic is strongest when the hunter is close and fades out with the distance
+            return {true, (awayFromTarget / distance) * (1.0f / distance)};
+        }
 
-		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSeek(void)
-		{
-			if (0 == this->flockingAgents.size() || nullptr == this->targetAgent)
-			{
-				return std::make_pair(false, Ogre::Vector3::ZERO);
-			}
+				std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSeek(void)
+        {
+            if (true == this->flockingAgents.empty() || nullptr == this->targetAgent)
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
 
-			// Agents shall seek the target agent
-			Ogre::Vector3 seekVec = Ogre::Vector3::ZERO;
+            // Attention: The former version returned '(1/distance) * targetPosition', which is an absolute
+            // WORLD POSITION scaled down. The resulting force therefore depended on how far the level is
+            // away from the world origin. It must be a direction from the agent to the target.
+            Ogre::Vector3 toTarget = this->targetAgent->getPosition() - this->agent->getPosition();
 
-			// Calculates the distance from agent to the target agent
-			Ogre::Real distance = (this->agent->getPosition() - this->targetAgent->getPosition()).squaredLength();
-			if (distance < 0.5f)
-				distance = 0.5f;
-			//Wenn der andere Agent zu Nahe von einem Schaaf ist, soll der Swarm-Agent ein gerausch machen, lua?
-			// if (distance < 4.0f)
-			// 	dynamic_cast<Sheep *>(currentSheep)->baaHelp();
+            if (toTarget.squaredLength() < 0.0001f)
+            {
+                return {false, Ogre::Vector3::ZERO};
+            }
 
-			// Moves in direction of the target agent, the more the distance the less the direction comes into account
-			seekVec = (1.0f / distance) * this->targetAgent->getPosition();
-
-			return std::make_pair(true, seekVec);
-		}
+            return {true, toTarget.normalisedCopy()};
+        }
 
 		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleBorder(void)
 		{
@@ -2309,19 +2343,13 @@ namespace NOWA
 
 		void MovingBehavior::setBehavior(MovingBehavior::BehaviorType behaviorType)
 		{
-			/*if ((FLEE == behaviorType || SEEK == behaviorType || ARRIVE == behaviorType || PURSUIT == behaviorType || EVADE == behaviorType)
-				&& nullptr == this->targetAgent)
+            if (NONE == behaviorType || STOP == behaviorType)
 			{
-				throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND,
-					"[MovingBehavior]: Cannot switch behavior type: '" + Ogre::StringConverter::toString(behaviorType) + "' on, since there is no target PhysicsActiveComponent specified. Call setTargetAgent(...) first.", "MovingBehavior::setBehavior");
-			}*/
-
-			/*this->pathSlot = -1;
-			this->targetSlot = -1;
-			this->drawPath = false;
-			this->actualizePathDelay = -1.0f;*/
-			/*if (nullptr != this->pPath)
-				this->pPath->clear();*/
+                if (nullptr != this->agent)
+                {
+                    this->agent->clearLatchedVelocity();
+                }
+			}
 
 			this->mask = 0;
 			this->mask |= behaviorType;
@@ -2420,245 +2448,356 @@ namespace NOWA
 			this->agentStuckObserver = agentStuckObserver;
 		}
 
+		Ogre::Real MovingBehavior::getTurnRate(void) const
+        {
+            // setRotationSpeed stores the value multiplied by 60, because the player controller branch
+            // works in degrees per frame. The dynamic body branch needs the raw user value back.
+            Ogre::Real turnRate = this->rotationSpeed / 60.0f;
+
+            if (turnRate < 0.1f)
+            {
+                turnRate = 0.1f;
+            }
+
+            return turnRate;
+        }
+
+        void MovingBehavior::updateOrientation(const Ogre::Vector3& forward, const Ogre::Vector3& gravityDir, Ogre::Real dt)
+        {
+            if (nullptr == this->agent)
+            {
+                return;
+            }
+
+            if (false == this->autoOrientation)
+            {
+                this->agent->applyOmegaForceRotateTo(this->agent->getOrientation(), gravityDir);
+                return;
+            }
+
+            Ogre::Vector3 worldUp = -gravityDir;
+            if (worldUp.squaredLength() < 0.0001f)
+            {
+                worldUp = Ogre::Vector3::UNIT_Y;
+            }
+            worldUp.normalise();
+
+            if (false == this->flyMode)
+            {
+                // Ground agent: Keep upright, only correct pitch and roll, never the yaw
+                Ogre::Vector3 currentAgentUp = this->agent->getOrientation() * Ogre::Vector3::UNIT_Y;
+                Ogre::Real angleDeviation = Ogre::Math::ACos(Ogre::Math::Clamp(currentAgentUp.dotProduct(worldUp), -1.0f, 1.0f)).valueDegrees();
+
+                const Ogre::Real tiltThresholdAngle = 20.0f;
+
+                if (angleDeviation > tiltThresholdAngle)
+                {
+                    Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(worldUp);
+                    Ogre::Vector3 correctionAxes(1.0f, 0.0f, 1.0f);
+                    this->agent->applyOmegaForceRotateTo(uprightRotation, correctionAxes, this->getTurnRate());
+                }
+                else
+                {
+                    this->agent->applyOmegaForceRotateToDirection(forward, this->getTurnRate());
+                }
+                return;
+            }
+
+            // Fly mode.
+            //
+            // Attention: applyOmegaForceRotateToDirection alone is NOT enough here. It only aligns the
+            // forward axis and leaves the rotation AROUND that axis completely free, so the creature
+            // slowly tumbles around its own roll axis. A full target orientation must be built from the
+            // forward direction plus an explicitly chosen up vector.
+            Ogre::Vector3 currentForward = this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection();
+
+            // Signed horizontal turn amount, used to bank into the curve
+            Ogre::Vector3 currentFlat = currentForward - worldUp * currentForward.dotProduct(worldUp);
+            Ogre::Vector3 targetFlat = forward - worldUp * forward.dotProduct(worldUp);
+
+            Ogre::Real targetBank = 0.0f;
+            if (currentFlat.squaredLength() > 0.0001f && targetFlat.squaredLength() > 0.0001f)
+            {
+                currentFlat.normalise();
+                targetFlat.normalise();
+
+                // Positive when the agent has to turn to its left
+                const Ogre::Real sinTurn = worldUp.dotProduct(currentFlat.crossProduct(targetFlat));
+
+                const Ogre::Radian maxBank(Ogre::Degree(15.0f));
+                targetBank = -sinTurn * maxBank.valueRadians() * 3.0f;
+
+                targetBank = Ogre::Math::Clamp(targetBank, -maxBank.valueRadians(), maxBank.valueRadians());
+            }
+
+            // Smooths the bank, so the creature rolls into and out of the curve instead of snapping
+            const Ogre::Real bankSmoothing = Ogre::Math::Clamp(4.0f * dt, 0.0f, 1.0f);
+            this->currentBankAngle += (targetBank - this->currentBankAngle) * bankSmoothing;
+
+            Ogre::Vector3 desiredUp = Ogre::Quaternion(Ogre::Radian(this->currentBankAngle), forward) * worldUp;
+
+            Ogre::Vector3 zAxis = forward;
+            Ogre::Vector3 xAxis = desiredUp.crossProduct(zAxis);
+            if (xAxis.squaredLength() < 0.0001f)
+            {
+                // Flying almost straight up or down: any perpendicular axis will do
+                xAxis = Ogre::Vector3::UNIT_X.crossProduct(zAxis);
+            }
+            if (xAxis.squaredLength() < 0.0001f)
+            {
+                xAxis = Ogre::Vector3::UNIT_Z.crossProduct(zAxis);
+            }
+            xAxis.normalise();
+
+            Ogre::Vector3 yAxis = zAxis.crossProduct(xAxis);
+            yAxis.normalise();
+
+            Ogre::Quaternion targetOrientation(xAxis, yAxis, zAxis);
+
+            // Compensates the default direction of the mesh. The axis frame above assumes the mesh looks
+            // along +Z in local space. Attention: If applyOmegaForceRotateTo already accounts for the
+            // default direction internally, remove this correction, else the agent is rotated twice.
+            const Ogre::Vector3 defaultDirection = this->agent->getOwner()->getDefaultDirection();
+            if (false == defaultDirection.positionEquals(Ogre::Vector3::UNIT_Z, 0.001f))
+            {
+                Ogre::Quaternion defaultCorrection = Ogre::Vector3::UNIT_Z.getRotationTo(defaultDirection);
+                targetOrientation = targetOrientation * defaultCorrection.Inverse();
+            }
+
+            this->agent->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_SCALE, this->getTurnRate());
+        }
+
 		void MovingBehavior::update(Ogre::Real dt)
-		{
-			// If none is on, add no force, so that other behaviors can still move the agent! Only stop adds force, even if its null
-			if (true == this->isSwitchOn(NONE))
-			{
-				return;
-			}
+        {
+            // If none is on, add no force, so that other behaviors can still move the agent! Only stop adds force, even if its null
+            if (true == this->isSwitchOn(NONE))
+            {
+                return;
+            }
 
-			if (nullptr == this->agent)
-			{
-				return;
-			}
+            if (nullptr == this->agent)
+            {
+                return;
+            }
 
-			// Apply the physics velocity according to the resulting behavior
-			Ogre::Vector3 resultVelocity = this->calculate(dt);
-			Ogre::Vector3 gravityDir = this->agent->getGravityDirection();
+            // Apply the physics velocity according to the resulting behavior
+            Ogre::Vector3 resultVelocity = this->calculate(dt);
+            Ogre::Vector3 gravityDir = this->agent->getGravityDirection();
 
-			if (nullptr != this->crowdComponent)
-			{
-				if (Ogre::Vector3::ZERO != resultVelocity)
-				{
-					// TODO: gravityDir for planets movement
-					this->crowdComponent->setVelocity(resultVelocity);
-					resultVelocity = this->crowdComponent->beginUpdateVelocity();
-				}
-			}
+            if (nullptr != this->crowdComponent)
+            {
+                if (Ogre::Vector3::ZERO != resultVelocity)
+                {
+                    // TODO: gravityDir for planets movement
+                    this->crowdComponent->setVelocity(resultVelocity);
+                    resultVelocity = this->crowdComponent->beginUpdateVelocity();
+                }
+            }
 
-			// Ensures resultVelocity is perpendicular to gravityDir
-			Ogre::Vector3 forward = resultVelocity - gravityDir * resultVelocity.dotProduct(gravityDir);
-			forward.normalise();
+            // Determines the direction the agent shall face.
+            // In fly mode the full 3d velocity is used, so that the agent may pitch up and down,
+            // else the velocity is projected onto the plane perpendicular to the gravity direction.
+            Ogre::Vector3 forward = Ogre::Vector3::ZERO;
+            if (true == this->flyMode)
+            {
+                forward = resultVelocity;
+            }
+            else
+            {
+                forward = resultVelocity - gravityDir * resultVelocity.dotProduct(gravityDir);
+            }
 
+            if (forward.squaredLength() > 0.0001f)
+            {
+                forward.normalise();
+            }
+            else
+            {
+                // Attention: Ogre does not normalise a zero length vector, so it would stay zero and the agent
+                // would be rotated to an undefined direction. Hence keep the current facing direction.
+                forward = this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection();
+            }
 
-			Ogre::Real velocityLength = this->agent->getVelocity().length();
-			// Ogre::Real velocityLength = (this->agent->getPosition() - this->oldAgentPositionForStuck).length();
-			if (true == Ogre::Math::RealEqual(velocityLength, 0.0f))
-			{
+            Ogre::Real velocityLength = this->agent->getVelocity().length();
+            if (true == Ogre::Math::RealEqual(velocityLength, 0.0f))
+            {
+                this->motionDistanceChange = 0.1f;
+            }
+            else
+            {
+                this->motionDistanceChange = velocityLength / this->agent->getSpeed();
+                if (this->motionDistanceChange < 0.1f)
+                {
+                    this->motionDistanceChange = 0.1f;
+                }
 
-			}
-			else
-			{
-				this->motionDistanceChange = velocityLength / this->agent->getSpeed();
-				if (this->motionDistanceChange < 0.1f)
-				{
-					this->motionDistanceChange = 0.1f;
-				}
+                this->motionDistanceChange = NOWA::MathHelper::getInstance()->lowPassFilter(this->motionDistanceChange, this->lastMotionDistanceChange, 0.5f);
+            }
 
-				this->motionDistanceChange = NOWA::MathHelper::getInstance()->lowPassFilter(this->motionDistanceChange, this->lastMotionDistanceChange, 0.5f);
-			}
+            if (this->motionDistanceChange > 1.0f)
+            {
+                this->motionDistanceChange = 1.0f;
+            }
 
-			if (this->motionDistanceChange > 1.0f)
-			{
-				this->motionDistanceChange = 1.0f;
-			}
+            // Apply animation speed
+            if (nullptr != this->animationBlender)
+            {
+                this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange, "MovingBehavior");
+            }
 
-			// Apply animation speed
-			if (nullptr != this->animationBlender)
-			{
-				this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange /* / this->animationBlender->getLength()*/, "MovingBehavior");
-			}
+            this->lastMotionDistanceChange = this->motionDistanceChange;
 
-			this->lastMotionDistanceChange = this->motionDistanceChange;
-			
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] velocityLength: " + Ogre::StringConverter::toString(velocityLength) + " lastMotionDistanceChange: " + Ogre::StringConverter::toString(lastMotionDistanceChange));
+            this->detectAgentMotionChange(dt);
 
-			this->detectAgentMotionChange(dt);
+            // Velocity should not be used for dynamic bodies, player controller is a kinematic body.
+            // Kinematic bodies are rigid bodies that do not part of the dynamic resolution, they are only part of the collision.
+            // Kinematic bodies should be controlled via velocity!
+            PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->agent);
 
-			// Velocity should not be used for dynamic bodies, player controller is a kinematic body.
-			// Kinematic bodies are rigid bodies that do not part of the dynamic resolution, they are only part of the collision.
-			// Kinematic bodies should be controlled via velocity!
-			PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->agent);
+            if (nullptr != physicsPlayerControllerComponent)
+            {
+                if (false == this->flyMode)
+                {
+                    resultVelocity.y = 0.0f;
+                }
 
-			if (nullptr != physicsPlayerControllerComponent)
-			{
-				if (false == this->flyMode)
-				{ 
-					resultVelocity.y = 0.0f;
-				}
+                Ogre::Radian heading = this->agent->getOrientation().getYaw();
 
-				Ogre::Radian heading = this->agent->getOrientation().getYaw();
+                // If there is a ai movement going on, set the new orientation
+                if (Ogre::Vector3::ZERO != resultVelocity)
+                {
+                    if (true == this->autoOrientation)
+                    {
+                        this->updateOrientation(forward, gravityDir, dt);
+                    }
+                }
 
-				// If there is a ai movement going on, set the new orientation
-				if (Ogre::Vector3::ZERO != resultVelocity)
-				{
-					// Ogre::Quaternion newOrientation = ((this->agent->getInitialOrientation() /** this->agent->getOrientation()*/) * this->agent->getOwner()->getDefaultDirection()).getRotationTo(this->resultVelocity);
+                // TODO: gravityDir for planet movement
+                physicsPlayerControllerComponent->move(this->agent->getSpeed() * resultVelocity.length(), 0.0f, heading);
+            }
+            else
+            {
+                // Kinematic
+                PhysicsActiveKinematicComponent* physicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(this->agent);
+                if (nullptr != physicsActiveKinematicComponent)
+                {
+                    Ogre::Vector3 targetVelocity = resultVelocity;
 
-					if (true == this->autoOrientation)
-					{
-						
-						// faceDirectionSlerp is corrupt, debug it!
-						Ogre::Quaternion resultOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), 1.0f / 60.0f, this->rotationSpeed);
-						heading = resultOrientation.getYaw();
-					}
-				}
+                    physicsActiveKinematicComponent->setVelocity(targetVelocity);
 
-				// CrowdComponent -> setGoalRadius!
+                    if (false == resultVelocity.isZeroLength())
+                    {
+                        // Attention: newOrientation must be initialized, else the else branch would rotate to identity
+                        Ogre::Quaternion newOrientation = this->agent->getOrientation();
+                        if (true == this->autoOrientation)
+                        {
+                            newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+                            this->agent->setOmegaVelocity(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
+                        }
+                        else
+                        {
+                            this->agent->setOmegaVelocityRotateTo(newOrientation, Ogre::Vector3(0.0f, 1.0f, 0.0f));
+                        }
+                    }
+                }
+                // Usual force
+                else
+                {
+                    Ogre::Vector3 forceForVelocity = Ogre::Vector3::ZERO;
 
-				/*
-				moveForward hnlich wie mit nlerp oben!
-				Ogre::Vector3 lookDirection = getLookingDirection();
-				lookDirection.normalise();
+                    if (false == this->flyMode)
+                    {
+                        // Compute vertical velocity along the gravity direction
+                        Ogre::Vector3 verticalVelocity = gravityDir * this->agent->getVelocity().dotProduct(gravityDir);
 
-				setVelocity(getMaxSpeed() * lookDirection);
+                        // Compute movement direction (excluding vertical component)
+                        Ogre::Vector3 directionMove = resultVelocity - (resultVelocity.dotProduct(gravityDir) * gravityDir);
 
-				*/
+                        // Combine vertical velocity with movement direction
+                        forceForVelocity = verticalVelocity + directionMove;
+                    }
+                    else
+                    {
+                        // In fly mode, use resultVelocity directly
+                        forceForVelocity = resultVelocity;
+                    }
 
-				// TODO: gravityDir for planet movement
-				physicsPlayerControllerComponent->move(this->agent->getSpeed() * resultVelocity.length(), 0.0f, heading);
-			}
-			else
-			{
-				// Kinematic
-				PhysicsActiveKinematicComponent* physicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(this->agent);
-				if (nullptr != physicsActiveKinematicComponent)
-				{
-					Ogre::Vector3 targetVelocity = Ogre::Vector3::ZERO;
+                    // Apply the calculated force
+                    this->agent->applyRequiredForceForVelocity(forceForVelocity);
 
-					if (false == this->flyMode)
-					{
-						targetVelocity = /*physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) +*/ resultVelocity;
-					}
-					else
-					{
-						// In fly mode, use resultVelocity directly
-						targetVelocity = resultVelocity;
-					}
+                    if (true == this->autoOrientation)
+                    {
+                        if (true == this->flyMode)
+                        {
+                            // Attention: No upright correction in fly mode! It would immediately fight against
+                            // any pitch of the agent, so the flying creature could never look up or down.
+                            this->agent->applyOmegaForceRotateToDirection(forward, this->getTurnRate());
+                        }
+                        else
+                        {
+                            // Get the player's current up vector based on the current orientation
+                            Ogre::Vector3 currentPlayerUp = this->agent->getOrientation() * Ogre::Vector3::UNIT_Y;
 
-					physicsActiveKinematicComponent->setVelocity(targetVelocity);
+                            // Compute angle deviation between player's up and gravity up
+                            Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(-gravityDir)).valueDegrees();
 
-					if (false == resultVelocity.isZeroLength())
-					{
-						Ogre::Quaternion newOrientation;
-						if (this->autoOrientation)
-						{
-							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
-							// newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
-							this->agent->setOmegaVelocity(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
-						}
-						else
-						{
-							this->agent->setOmegaVelocityRotateTo(newOrientation, Ogre::Vector3(0.0f, 1.0f, 0.0f));
-						}
-					}
-				}
-				// Usual force
-				else
-				{
-					Ogre::Vector3 forceForVelocity = Ogre::Vector3::ZERO;
+                            // Prevents fall over
+                            const Ogre::Real tiltThresholdAngle = Ogre::Degree(20.0f).valueDegrees();
 
-					if (false == this->flyMode)
-					{
-						// Compute vertical velocity along the gravity direction
-						Ogre::Vector3 verticalVelocity = gravityDir * this->agent->getVelocity().dotProduct(gravityDir);
+                            if (angleDeviation > tiltThresholdAngle)
+                            {
+                                // Apply corrective force to upright the player
+                                Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-gravityDir);
 
-						// Compute movement direction (excluding vertical component)
-						Ogre::Vector3 directionMove = resultVelocity - (resultVelocity.dotProduct(gravityDir) * gravityDir);
+                                // Only correct pitch & roll, not yaw
+                                Ogre::Vector3 correctionAxes(1.0f, 0.0f, 1.0f);
+                                this->agent->applyOmegaForceRotateTo(uprightRotation, correctionAxes, this->getTurnRate());
+                            }
+                            else
+                            {
+                                this->agent->applyOmegaForceRotateToDirection(forward, this->getTurnRate());
+                            }
+                        }
+                    }
+                    else
+                    {
+                        this->agent->applyOmegaForceRotateTo(this->agent->getOrientation(), gravityDir);
+                    }
+                }
+            }
 
-						// Combine vertical velocity with movement direction
-						forceForVelocity = verticalVelocity + directionMove;
-					}
-					else
-					{
-						// In fly mode, use resultVelocity directly
-						forceForVelocity = resultVelocity;
-					}
+            if (this->actualizePathDelay != -1.0f)
+            {
+                // Update path finding, if enabled
+                if (this->timeSinceLastPathActualization > 0.0f)
+                {
+                    this->timeSinceLastPathActualization -= dt;
+                }
+                else
+                {
+                    this->timeSinceLastPathActualization = this->actualizePathDelay;
 
-					// Apply the calculated force
-					this->agent->applyRequiredForceForVelocity(forceForVelocity);
+                    if (this->isSwitchOn(FOLLOW_PATH) && nullptr != this->targetAgent)
+                    {
+                        if (false == this->oldTargetPosition.positionEquals(this->targetAgent->getPosition(), 0.2f))
+                        {
+                            this->findPath();
+                        }
 
-				
-					Ogre::Quaternion newOrientation = this->agent->getOrientation();
+                        this->oldTargetPosition = this->targetAgent->getPosition();
+                    }
+                }
+            }
+            else if (this->isSwitchOn(PATH_FINDING_WANDER) && this->pPath->isFinished())
+            {
+                this->findRandomPath();
+            }
 
-					if (true == this->autoOrientation)
-					{
-						// Get the player's current up vector based on the current orientation
-						Ogre::Vector3 currentPlayerUp = this->agent->getOrientation() * Ogre::Vector3::UNIT_Y;
-
-						// Compute angle deviation between player's up and gravity up
-						Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(-gravityDir)).valueDegrees();
-
-						// Prevents fall over
-						// Set the threshold for when to apply correction
-						const Ogre::Real tiltThresholdAngle = Ogre::Degree(20.0f).valueDegrees(); // Adjust the threshold as needed
-
-						// Only trigger correction if the angle deviation is significant and not near 180 degrees
-						if (angleDeviation > tiltThresholdAngle)
-						{
-							// Apply corrective force to upright the player
-							Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-gravityDir);
-
-							// Only correct pitch & roll, not yaw
-							Ogre::Vector3 correctionAxes(1.0f, 0.0f, 1.0f);
-							this->agent->applyOmegaForceRotateTo(uprightRotation, correctionAxes, 5.0f);
-						}
-						else
-						{
-							this->agent->applyOmegaForceRotateToDirection(forward, 5.0f);
-						}
-					}
-					else
-					{
-						this->agent->applyOmegaForceRotateTo(newOrientation, gravityDir);
-					}
-				}
-			}
-			
-			if (this->actualizePathDelay != -1.0f)
-			{
-				// Update path finding, if enabled
-				if (this->timeSinceLastPathActualization > 0.0f)
-				{
-					this->timeSinceLastPathActualization -= dt;
-				}
-				else
-				{
-					this->timeSinceLastPathActualization = this->actualizePathDelay;
-
-					if (this->isSwitchOn(FOLLOW_PATH) && nullptr != this->targetAgent)
-					{
-						// Check if the target moved and actualize the path (0.2 is correct, higher values like 1 meter would lead to strange behavior, as the path may be calculated
-						// right, after the object was over an obstacle and set behind, but when one meter is set, it was not enough to actualize the path)
-						if (false == this->oldTargetPosition.positionEquals(this->targetAgent->getPosition(), 0.2f))
-						{
-							this->findPath();
-						}
-
-						this->oldTargetPosition = this->targetAgent->getPosition();
-					}
-				}
-			}
-			else if (this->isSwitchOn(PATH_FINDING_WANDER) && this->pPath->isFinished())
-			{
-				this->findRandomPath();
-			}
-
-			if (nullptr != this->crowdComponent)
-			{
-				this->crowdComponent->endUpdateVelocity();
-			}
-		}
+            if (nullptr != this->crowdComponent)
+            {
+                this->crowdComponent->endUpdateVelocity();
+            }
+        }
 
 		void MovingBehavior::detectAgentMotionChange(Ogre::Real dt)
 		{
@@ -3087,162 +3226,118 @@ namespace NOWA
 		}
 
 		bool MovingBehavior::accumulateVelocity(Ogre::Vector3& runningTotal, Ogre::Vector3 velocityToAdd)
-		{
+        {
+            if (nullptr == this->agent)
+            {
+                return false;
+            }
 
-			// Calculate how much steering velocity the vehicle has used so far
-			Ogre::Real magnitudeSoFar = runningTotal.length();
+            // Attention: The former hardcoded budget of '2 * 20' was completely decoupled from the agent.
+            // With a max speed of 5 no behavior could ever saturate it, so the priority truncation never
+            // triggered and calculatePrioritized silently degraded to a plain sum of all behaviors.
+            const Ogre::Real magnitudeBudget = this->agent->getMaxSpeed() * this->velocityAccumulationTweaker;
 
-			// Calculate how much steering velocity remains to be used by this vehicle
-			// this->agent->getBody()->MaxForce() --> SteeringForceTweaker     200.0 * SteeringForce            2.0 see: ParamLoader.h and params.ini
-			Ogre::Real magnitudeRemaining = 2.0f * 20.0f - magnitudeSoFar;
+            const Ogre::Real magnitudeSoFar = runningTotal.length();
+            const Ogre::Real magnitudeRemaining = magnitudeBudget - magnitudeSoFar;
 
-			// Return false if there is no more velocity left to use
-			if (magnitudeRemaining <= 0.0)
-			{
-				return false;
-			}
-			// Calculate the magnitude of the velocity we want to add
-			Ogre::Real magnitudeToAdd = velocityToAdd.length();
+            if (magnitudeRemaining <= 0.0f)
+            {
+                return false;
+            }
 
-			// If the magnitude of the sum of ForceToAdd and the running total does not exceed the maximum velocity available to this vehicle, just
-			// add together. Otherwise add as much of the ForceToAdd vector is possible without going over the max.
-			if (magnitudeToAdd < magnitudeRemaining)
-			{
-				runningTotal += velocityToAdd;
-			}
+            const Ogre::Real magnitudeToAdd = velocityToAdd.length();
 
-			else
-			{
-				//add it to the steering velocity
-				runningTotal += (velocityToAdd.normalisedCopy() * magnitudeRemaining);
-			}
-			// runningTotal.y = 0.0f;
+            if (magnitudeToAdd < magnitudeRemaining)
+            {
+                runningTotal += velocityToAdd;
+            }
+            else
+            {
+                runningTotal += (velocityToAdd.normalisedCopy() * magnitudeRemaining);
+            }
 
-			return true;
-		}
+            return true;
+        }
 
 		Ogre::Vector3 MovingBehavior::limitVelocity(const Ogre::Vector3& totalVelocity)
-		{
-			//// https://physics.stackexchange.com/questions/17049/how-does-force-relate-to-velocity
-			Ogre::Vector3 velocity = totalVelocity;
-			Ogre::Vector3 resultVelocity = totalVelocity;
+        {
+            // https://physics.stackexchange.com/questions/17049/how-does-force-relate-to-velocity
+            if (nullptr == this->agent)
+            {
+                return Ogre::Vector3::ZERO;
+            }
 
-			if (nullptr == this->agent)
-			{
-				return Ogre::Vector3::ZERO;
-			}
-			const auto sq = velocity.squaredLength();
-			if (velocity.squaredLength() > this->agent->getMaxSpeed() * this->agent->getMaxSpeed())
-			{
-				velocity = velocity.normalisedCopy() * this->agent->getMaxSpeed();
-			}
-			else if (velocity.squaredLength() < this->agent->getMinSpeed() * this->agent->getMinSpeed())
-			{
-				velocity = velocity.normalisedCopy() * this->agent->getMinSpeed();
-			}
+            Ogre::Vector3 velocity = totalVelocity;
 
-			if (false == this->flyMode)
-			{
-				velocity.y = 0.0f;
-			}
+            // In walk mode the vertical part is handled by gravity resp. by the player controller,
+            // hence it must not be part of the steering velocity at all.
+            if (false == this->flyMode)
+            {
+                velocity.y = 0.0f;
+            }
 
-			resultVelocity.x = velocity.x;
-			resultVelocity.y = totalVelocity.y;
-			resultVelocity.z = velocity.z;
+            const Ogre::Real maxSpeed = this->agent->getMaxSpeed();
+            const Ogre::Real minSpeed = this->agent->getMinSpeed();
+            const Ogre::Real squaredLength = velocity.squaredLength();
 
-			return resultVelocity;
-		}
+            if (squaredLength < 0.0001f)
+            {
+                // No steering at all: Do not push the agent to min speed in an undefined direction
+                return Ogre::Vector3::ZERO;
+            }
 
-		Ogre::Vector3 MovingBehavior::limitFlockingVelocity(const Ogre::Vector3& totalVelocity)
-		{
-			if (nullptr == this->agent)
-			{
-				return Ogre::Vector3::ZERO;
-			}
+            if (squaredLength > maxSpeed * maxSpeed)
+            {
+                velocity = velocity.normalisedCopy() * maxSpeed;
+            }
+            else if (squaredLength < minSpeed * minSpeed)
+            {
+                velocity = velocity.normalisedCopy() * minSpeed;
+            }
 
-			// https://physics.stackexchange.com/questions/17049/how-does-force-relate-to-velocity
-			Ogre::Vector3 resultVelocity = totalVelocity/* / this->agent->getMass()*/;
-			
-			Ogre::Vector3 velocity = /*this->agent->getVelocity() +*/ resultVelocity;
-			
-			// Only if there is gravity use getVelocity, else if in the force equation no gravity is used, y of velocty value may go up to 2233 m per seconds!
-			// Hence if fly mode is set, deactivate gravity!
+            // Attention: The y component must be clamped together with x and z, else in fly mode the agent
+            // would accelerate vertically up to the accumulation budget while x/z stay limited to max speed.
+            return velocity;
+        }
 
-			if (velocity.squaredLength() > this->agent->getMaxSpeed() * this->agent->getMaxSpeed())
-			{
-				velocity = velocity.normalisedCopy() * this->agent->getMaxSpeed();
-			}
-			else if (velocity.squaredLength() < this->agent->getMinSpeed() * this->agent->getMinSpeed())
-			{
-				velocity = velocity.normalisedCopy() * this->agent->getMinSpeed();
-			}
+				Ogre::Vector3 MovingBehavior::limitFlockingVelocity(const Ogre::Vector3& totalVelocity)
+        {
+            if (nullptr == this->agent)
+            {
+                return Ogre::Vector3::ZERO;
+            }
 
-			if (false == this->flyMode)
-			{
-				velocity.y = 0.0f;
-			}
-			/*else if (true == hasGravity)
-			{
-				Ogre::Vector3 tempGravity = gravity;
-				if (true == Ogre::Math::RealEqual(gravity.x, 0.0f))
-				{
-					tempGravity.x += 1.0f;
-				}
-				if (true == Ogre::Math::RealEqual(gravity.y, 0.0f))
-				{
-					tempGravity.y += 1.0f;
-				}
-				if (true == Ogre::Math::RealEqual(gravity.z, 0.0f))
-				{
-					tempGravity.z += 1.0f;
-				}
-				velocity /= tempGravity;
-			}*/
+            Ogre::Vector3 velocity = totalVelocity;
 
-			return velocity;
-		}
+            if (false == this->flyMode)
+            {
+                velocity.y = 0.0f;
+            }
 
-		//void MovingBehavior::tagNeighbors(Ogre::Real radius)
-		//{
-		//	// Iterate through all game objects checking for range
-		//	for (auto it = this->obstacles.cbegin(); it != this->obstacles.cend(); ++it)
-		//	{
-		//		GameObjectPtr gameObjectPtr = *it;
-		//		// First clear any current tag
-		//		gameObjectPtr->unTag();
+            const Ogre::Real squaredLength = velocity.squaredLength();
 
-		//		Ogre::Vector3 distance = gameObjectPtr->getPosition() - this->agent->getPosition();
+            // Attention: Never force min speed onto a zero vector. normalisedCopy of a zero length vector
+            // stays zero in Ogre, but the intent is wrong anyway: A resting agent would be pushed into an
+            // arbitrary direction as soon as numerical noise appears.
+            if (squaredLength < 0.0001f)
+            {
+                return Ogre::Vector3::ZERO;
+            }
 
-		//		//the bounding radius of the other is taken into account by adding it 
-		//		//to the range
-		//		double range = radius + gameObjectPtr->getEntity()->getBoundingRadius();
+            const Ogre::Real maxSpeed = this->agent->getMaxSpeed();
+            const Ogre::Real minSpeed = this->agent->getMinSpeed();
 
-		//		// If the game object within range, tag for further consideration. (working in distance-squared space to avoid sqrts)
-		//		if ((gameObjectPtr != this->agent->getOwner()) && (distance.squaredLength() < range*range))
-		//		{
-		//			gameObjectPtr->tag();
-		//		}
-		//	}
-		//}
+            if (squaredLength > maxSpeed * maxSpeed)
+            {
+                velocity = velocity.normalisedCopy() * maxSpeed;
+            }
+            else if (squaredLength < minSpeed * minSpeed)
+            {
+                velocity = velocity.normalisedCopy() * minSpeed;
+            }
 
-		//void MovingBehavior::tagNeighbor(PhysicsActiveComponent* otherPhysicsComponent, Ogre::Real offset)
-		//{
-		//	//pOtherPhysicsObject->unTag();
-		//	this->pPhysicsObject->getTaggedList()->remove(pOtherPhysicsObject);
-		//	Ogre::Vector3 distance = pOtherPhysicsObject->getPosition() - this->pPhysicsObject->getPosition();
-
-		//	//the bounding radius of the other is taken into account by adding it
-		//	//to the range
-		//	Ogre::Real range = offset + pOtherPhysicsObject->getVisualRange();
-
-		//	//if GameObject within range, tag for further consideration. (working in
-		//	//distance-squared space to avoid sqrts)
-		//	if (distance.squaredLength() < range*range)
-		//	{
-		//	//pOtherPhysicsObject->tag();
-		//	this->pPhysicsObject->getTaggedList()->push_back(pOtherPhysicsObject);
-		//	}
-		//}
+            return velocity;
+        }
 
 		Ogre::String MovingBehavior::getCurrentBehavior(void) const
 		{

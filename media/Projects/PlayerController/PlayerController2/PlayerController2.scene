@@ -33,7 +33,7 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-259.181 -0.1615 -263.329" mostRightFarPosition="256.291 24.2629 253.335"/>
+		<bounds mostLeftNearPosition="-259.181 -0.1615 -263.329" mostRightFarPosition="256.712 24.7254 253.848"/>
 	</environment>
 	<OgreNewt solverModel="1" threadCount="4" desiredFps="60" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -461,8 +461,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-4.13666 1.06167 11.0288"/>
-					<property type="9" name="CameraOrientation" data="2.35372 25.823 0.22167"/>
+					<property type="9" name="CameraPosition" data="-4.4146 2.31747 11.1484"/>
+					<property type="9" name="CameraOrientation" data="-17.8847 13.1703 0.323887"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -470,7 +470,6 @@
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
-					
 					<property type="7" name="ComponentWorkspaceBackgroundComponent" data="WorkspaceBackgroundComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -559,7 +558,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="255.87" y="23.8004" z="252.822"/>
+			<position x="256.291" y="24.2629" z="253.335"/>
 			<rotation qw="0.76995" qx="-0.462633" qy="0.226352" qz="0.376713"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -1285,9 +1284,9 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="6" name="Speed" data="3"/>
+					<property type="6" name="Speed" data="10"/>
 					<property type="6" name="MinSpeed" data="1"/>
-					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="6" name="MaxSpeed" data="15"/>
 					<property type="7" name="CollisionType" data="ConvexHull"/>
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
@@ -1297,15 +1296,15 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="RotationSpeed" data="5"/>
-					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="RotationSpeed" data="1"/>
+					<property type="12" name="FlyMode" data="true"/>
 					<property type="6" name="StuckTime" data="0"/>
 					<property type="12" name="AutoOrientation" data="true"/>
 					<property type="12" name="AutoAnimation" data="true"/>
 					<property type="6" name="AgentId" data="0"/>
-					<property type="6" name="WanderJitter" data="2"/>
+					<property type="6" name="WanderJitter" data="0.1"/>
 					<property type="6" name="WanderRadius" data="2"/>
-					<property type="6" name="WanderDistance" data="16"/>
+					<property type="6" name="WanderDistance" data="8"/>
 				</userData>
 			</item>
 		</node>

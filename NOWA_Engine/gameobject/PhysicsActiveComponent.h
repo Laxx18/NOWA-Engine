@@ -529,6 +529,10 @@ namespace NOWA
 
         bool isGhost(void) const;
 
+		/*
+		* @brief Releases the latched steering velocity. Must be called whenever the agent shall stop being driven, e.g. from resetForce() and when MovingBehavior switches to NONE / STOP.
+		*/
+		void clearLatchedVelocity(void);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrForce(void) { return "Force"; }
@@ -630,6 +634,9 @@ namespace NOWA
 		Ogre::Real savedMass;
         Ogre::Vector3 savedInertia;
         bool ghostActive;
+
+		Ogre::Vector3 latchedVelocity;
+        bool hasLatchedVelocity;  
 	};
 
 }; //namespace end

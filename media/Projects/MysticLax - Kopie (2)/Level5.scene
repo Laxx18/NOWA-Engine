@@ -927,7 +927,7 @@
 					<property type="7" name="AnimationName" data="run-02"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
@@ -1694,7 +1694,7 @@
 					<property type="7" name="AnimationName" data="run-03"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="SubItemIndex" data="0"/>
@@ -2136,7 +2136,7 @@
 					<property type="7" name="AnimationName" data="run-01"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="SubItemIndex" data="0"/>
@@ -2242,7 +2242,7 @@
 					<property type="7" name="AnimationName" data="run-02"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="SubItemIndex" data="0"/>
@@ -2348,7 +2348,7 @@
 					<property type="7" name="AnimationName" data="run-01"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="SubItemIndex" data="0"/>
@@ -2809,7 +2809,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -2874,7 +2874,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -2939,7 +2939,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3004,7 +3004,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3069,7 +3069,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3134,7 +3134,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3199,7 +3199,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3264,7 +3264,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3329,7 +3329,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3394,7 +3394,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3459,7 +3459,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3524,7 +3524,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3589,7 +3589,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3654,7 +3654,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3719,7 +3719,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>
@@ -3784,7 +3784,7 @@
 					<property type="7" name="AnimationName" data="flap"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 				</userData>
 			</item>
 		</node>

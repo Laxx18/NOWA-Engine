@@ -60,7 +60,9 @@ namespace NOWA
         right(Ogre::Vector3::ZERO),
         savedMass(0.0f),
         savedInertia(Ogre::Vector3::ZERO),
-        ghostActive(false)
+        ghostActive(false),
+        latchedVelocity(Ogre::Vector3::ZERO),
+        hasLatchedVelocity(false)
     {
         this->forceCommand.vectorValue = Ogre::Vector3::ZERO;
         this->forceCommand.pending.store(false);
@@ -1168,6 +1170,7 @@ namespace NOWA
         {
             this->physicsBody->setVelocity(Ogre::Vector3::ZERO);
             this->physicsBody->setOmega(Ogre::Vector3::ZERO);
+            this->clearLatchedVelocity();
         }
     }
 
@@ -2925,6 +2928,14 @@ namespace NOWA
         this->drawLineMap.clear();
     }
 
+    void PhysicsActiveComponent::clearLatchedVelocity(void)
+    {
+        // Releases the latched steering velocity. Must be called whenever the agent shall stop being driven,
+        // e.g. from resetForce() and when MovingBehavior switches to NONE / STOP.
+        this->hasLatchedVelocity = false;
+        this->latchedVelocity = Ogre::Vector3::ZERO;
+    }
+
     Ogre::Vector3 PhysicsActiveComponent::getUp(void) const
     {
         return this->up;
@@ -2945,36 +2956,80 @@ namespace NOWA
         // This moveCallback is called in the physics thread!
 
         // Clear stale force and torque from previous substep FIRST.
-        // Without this, if no command is pending this substep, Newton reuses
-        // the previous substep's force/torque -- causing the body to keep
-        // accelerating even when Lua has stopped sending commands.
         body->setForce(Ogre::Vector3::ZERO);
         body->setTorque(Ogre::Vector3::ZERO);
 
-        /////////////////////Standard gravity force/////////////////////////////////////
-        Ogre::Vector3 wholeForce = body->getGravity();
         Ogre::Real mass = 0.0f;
         Ogre::Vector3 inertia = Ogre::Vector3::ZERO;
+        body->getMassMatrix(mass, inertia);
+
         this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
 
-        Ogre::Real strongestGravity = 0.0f;
-        Ogre::Real nearestPlanetDistance = std::numeric_limits<Ogre::Real>::max();
-        GameObjectPtr nearestGravitySourceObject;
+        /////////////////Magnetic attraction behaviour//////////////////////////////////////
+        // Attention: This must run BEFORE the gravity block. 'hasAttraction' decides whether the gravity is
+        // scaled by mass, and it is written here. Evaluating gravity first used the state of the PREVIOUS
+        // substep, so the gravity magnitude lagged one substep behind the attraction state.
 
-        body->getMassMatrix(mass, inertia);
+        Ogre::Vector3 attractionForce = Ogre::Vector3::ZERO;
+        bool anyAttraction = false;
+
+        for (auto it = this->physicsAttractors.cbegin(); it != this->physicsAttractors.cend(); ++it)
+        {
+            boost::shared_ptr<JointAttractorComponent> jointAttractorCompPtr = boost::dynamic_pointer_cast<JointAttractorComponent>(NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
+
+            // Attention: The former code dereferenced this pointer unconditionally
+            if (nullptr == jointAttractorCompPtr)
+            {
+                continue;
+            }
+
+            Ogre::Vector3 attractorDirection = body->getPosition() - jointAttractorCompPtr->getOwner()->getPosition();
+            Ogre::Real squaredDistance = attractorDirection.squaredLength();
+
+            if (squaredDistance < 0.0001f)
+            {
+                continue;
+            }
+            attractorDirection.normalise();
+
+            if (squaredDistance <= jointAttractorCompPtr->getAttractionDistance() * jointAttractorCompPtr->getAttractionDistance())
+            {
+                if (squaredDistance < 5.0f * 5.0f)
+                {
+                    squaredDistance = 5.0f * 5.0f;
+                }
+
+                anyAttraction = true;
+                Ogre::Real attractorForce = (-1.0f * jointAttractorCompPtr->getMagneticStrength()) / squaredDistance;
+                attractionForce += attractorDirection * attractorForce;
+            }
+        }
+
+        // Attention: 'hasAttraction' must reflect ALL attractors, not just the last one of the loop.
+        // The former code overwrote it in every iteration, so only the last attractor decided.
+        this->hasAttraction = anyAttraction;
+
+        /////////////////////Standard gravity force/////////////////////////////////////
+
+        Ogre::Vector3 wholeForce = body->getGravity();
 
         if (false == this->hasAttraction)
         {
             wholeForce *= mass;
         }
 
-
         if (false == this->gravitySourceGameObjects.empty())
         {
+            Ogre::Real nearestPlanetDistance = std::numeric_limits<Ogre::Real>::max();
+            GameObjectPtr nearestGravitySourceObject;
+
             for (size_t i = 0; i < this->gravitySourceGameObjects.size(); i++)
             {
-                wholeForce = this->getPosition() - this->gravitySourceGameObjects[i]->getPosition();
-                Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();
+                // Attention: Do not abuse 'wholeForce' as a scratch variable here. If no physics component is
+                // found below, the leftover direction vector was added to the body as an actual force.
+                Ogre::Vector3 toGravitySource = this->getPosition() - this->gravitySourceGameObjects[i]->getPosition();
+                Ogre::Real squaredDistanceToGravitySource = toGravitySource.squaredLength();
+
                 if (squaredDistanceToGravitySource < nearestPlanetDistance)
                 {
                     nearestPlanetDistance = squaredDistanceToGravitySource;
@@ -2982,24 +3037,32 @@ namespace NOWA
                 }
             }
 
+            bool gravitySourceApplied = false;
+
             if (nullptr != nearestGravitySourceObject)
             {
                 auto gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
                 if (nullptr != gravitySourcePhysicsComponentPtr)
                 {
                     Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
-                    directionToPlanet.normalise();
 
-                    Ogre::Real gravityAcceleration = -this->gravity->getVector3().length();
+                    if (directionToPlanet.squaredLength() > 0.0001f)
+                    {
+                        directionToPlanet.normalise();
 
-                    this->gravityDirection = -directionToPlanet;
-                    wholeForce = directionToPlanet * (mass * gravityAcceleration);
+                        Ogre::Real gravityAcceleration = -this->gravity->getVector3().length();
 
-                    this->currentGravityStrength = gravityAcceleration;
-                    this->gravityUpdated.test_and_set();
+                        this->gravityDirection = -directionToPlanet;
+                        wholeForce = directionToPlanet * (mass * gravityAcceleration);
+
+                        this->currentGravityStrength = gravityAcceleration;
+                        this->gravityUpdated.test_and_set();
+                        gravitySourceApplied = true;
+                    }
                 }
             }
-            else
+
+            if (false == gravitySourceApplied)
             {
                 this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
                 this->currentGravityStrength = 0.0f;
@@ -3012,6 +3075,8 @@ namespace NOWA
             this->currentGravityStrength = 0.0f;
             this->gravityUpdated.clear();
         }
+
+        wholeForce += attractionForce;
 
         // Checks if a force command is pending.
         if (this->forceCommand.pending.load())
@@ -3034,16 +3099,21 @@ namespace NOWA
             bool expected = false;
             if (this->requiredVelocityForForceCommand.inProgress.compare_exchange_strong(expected, true))
             {
-                Ogre::Vector3 velocityToApply = this->requiredVelocityForForceCommand.vectorValue;
-                Ogre::Vector3 currentVelocity = body->getVelocity();
-                Ogre::Vector3 velocityError = velocityToApply - currentVelocity;
-                Ogre::Vector3 moveForce = velocityError * mass / timeStep;
-
-                body->setForce(moveForce);
+                // Latches the target velocity, so that additional physics substeps between two logic frames
+                // keep steering instead of coasting on damping only. This removes the micro stutter of flying
+                // and walking agents when the physics runs at a higher rate than the logic loop.
+                this->latchedVelocity = this->requiredVelocityForForceCommand.vectorValue;
+                this->hasLatchedVelocity = true;
 
                 this->requiredVelocityForForceCommand.pending.store(false);
                 this->requiredVelocityForForceCommand.inProgress.store(false);
             }
+        }
+
+        if (true == this->hasLatchedVelocity && false == this->jumpForceCommand.pending.load())
+        {
+            Ogre::Vector3 velocityError = this->latchedVelocity - body->getVelocity();
+            body->setForce(velocityError * mass / timeStep);
         }
 
         // Checks if a jump force command is pending.
@@ -3068,17 +3138,10 @@ namespace NOWA
             if (this->omegaForceCommand.inProgress.compare_exchange_strong(expected, true))
             {
                 Ogre::Vector3 desiredOmega = this->omegaForceCommand.vectorValue;
-                // body->setTorqueFromOmega(desiredOmega, timeStep);
                 body->setBodyAngularVelocity(desiredOmega, timeStep);
 
                 this->omegaForceCommand.pending.store(false);
                 this->omegaForceCommand.inProgress.store(false);
-
-                /*ndVector omegaAfterSet = body->getNewtonBody()->GetOmega();
-                bool isSleeping = 0 != body->getNewtonBody()->GetSleepState();
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Omega-DEBUG] GO: " + this->gameObjectPtr->getName() + " desired=" + Ogre::StringConverter::toString(desiredOmega) + " afterSet=(" + Ogre::StringConverter::toString((float)omegaAfterSet.m_x) + "," +
-                                                                                        Ogre::StringConverter::toString((float)omegaAfterSet.m_y) + "," + Ogre::StringConverter::toString((float)omegaAfterSet.m_z) + ")" +
-                                                                                        " sleeping=" + Ogre::StringConverter::toString(isSleeping));*/
             }
         }
 
@@ -3099,40 +3162,16 @@ namespace NOWA
             obs->onForceAdd(body, timeStep, threadIndex);
         }
 
-        /////////////////Magnetic attraction behaviour//////////////////////////////////////
-
-        for (auto it = this->physicsAttractors.cbegin(); it != this->physicsAttractors.cend(); ++it)
-        {
-            boost::shared_ptr<JointAttractorComponent> jointAttractorCompPtr = boost::dynamic_pointer_cast<JointAttractorComponent>(NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
-
-            {
-                Ogre::Vector3 attractorDirection = body->getPosition() - jointAttractorCompPtr->getOwner()->getPosition();
-                Ogre::Real squaredDistance = attractorDirection.squaredLength();
-                attractorDirection.normalise();
-
-                if (squaredDistance <= jointAttractorCompPtr->getAttractionDistance() * jointAttractorCompPtr->getAttractionDistance())
-                {
-                    if (squaredDistance < 5.0f * 5.0f)
-                    {
-                        squaredDistance = 5.0f * 5.0f;
-                    }
-                    this->hasAttraction = true;
-                    Ogre::Real attractorForce = (-1 * jointAttractorCompPtr->getMagneticStrength()) / (squaredDistance);
-                    attractorDirection *= attractorForce;
-                    wholeForce += attractorDirection;
-                }
-                else
-                {
-                    this->hasAttraction = false;
-                }
-            }
-        }
-
         /////////////////////Spring Joint behaviour/////////////////////////////////////
 
         for (auto it = this->springs.cbegin(); it != this->springs.cend(); ++it)
         {
             boost::shared_ptr<JointSpringComponent> jointSpringCompPtr = boost::dynamic_pointer_cast<JointSpringComponent>(NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
+
+            if (nullptr == jointSpringCompPtr)
+            {
+                continue;
+            }
 
             auto predecessorJointSpringCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointSpringCompPtr->getPredecessorId()));
             if (nullptr != predecessorJointSpringCompPtr)
@@ -3152,7 +3191,6 @@ namespace NOWA
         }
 
         // addForce accumulates on top of whatever setForce placed (thrust or zero).
-        // Gravity, springs, attractors, and one-shot forces all land here correctly.
         body->addForce(wholeForce);
     }
 

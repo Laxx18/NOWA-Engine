@@ -501,7 +501,7 @@
 					<property type="7" name="AnimationName" data="jump_down"/>
 					<property type="6" name="AnimationSpeed" data="0.5"/>
 					<property type="12" name="AnimationRepeat" data="false"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -651,7 +651,7 @@
 					<property type="7" name="AnimationName" data="jump_down"/>
 					<property type="6" name="AnimationSpeed" data="0.5"/>
 					<property type="12" name="AnimationRepeat" data="false"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

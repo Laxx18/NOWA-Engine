@@ -8,7 +8,7 @@
 
 #include <sstream>
 
-#define CLOSURE_DEBUG
+// #define CLOSURE_DEBUG
 
 namespace
 {
@@ -906,7 +906,7 @@ namespace NOWA
         return this->queue.size_approx() > 0;
     }
 
-    void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
+        void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
     {
         // Attention: g_insideWaitClosure is thread_local and must be saved and restored, not
         // blindly cleared on exit. A nested call would otherwise clear it while the outer
@@ -942,21 +942,21 @@ namespace NOWA
 
                 command();
 
-                this->flushDeferredDestroyCommands(); // <- flush before restoring flag
+                this->flushDeferredDestroyCommands();
                 g_insideWaitClosure = previousInsideWaitClosure;
                 return;
             }
             catch (const std::exception& e)
             {
                 this->logCommandEvent(std::string("Exception in direct execution of '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
-                this->flushDeferredDestroyCommands(); // <- flush even on exception
+                this->flushDeferredDestroyCommands();
                 g_insideWaitClosure = previousInsideWaitClosure;
                 throw;
             }
             catch (...)
             {
                 this->logCommandEvent(std::string("Unknown exception in direct execution of '") + commandName + "'", Ogre::LML_CRITICAL);
-                this->flushDeferredDestroyCommands(); // <- flush even on exception
+                this->flushDeferredDestroyCommands();
                 g_insideWaitClosure = previousInsideWaitClosure;
                 throw;
             }
@@ -970,19 +970,11 @@ namespace NOWA
             auto promise = std::make_shared<std::promise<void>>();
             auto future = promise->get_future();
 
-            this->logCommandEvent(std::string("Enqueueing '") + commandName + "' with **WAIT**", Ogre::LML_NORMAL);
+            this->logCommandEvent(std::string("Enqueueing '") + commandName + "' with **WAIT**", Ogre::LML_TRIVIAL);
 
             // Attention: with the thread-identity guard above in place this must not happen
             // anymore. g_waitDepth is thread_local, the render thread returns before
-            // incrementWaitDepth(), and the logic thread cannot re-enter while it is blocked
-            // - so the depth can no longer exceed 1. This branch used to be the emergency
-            // brake against the self-deadlock the old 'isRenderThread() &&
-            // g_renderCommandDepth > 0' condition left open.
-            //
-            // It is dangerous, because it returns WITHOUT having executed the command: any
-            // caller capturing stack variables by reference then reads garbage, and the
-            // render thread later writes into a dead frame. Logged as CRITICAL now - if this
-            // never fires in practice, delete the branch.
+            // incrementWaitDepth(), and the logic thread cannot re-enter while it is blocked.
             const bool isNested = this->isInNestedWait() && g_waitDepth > 1;
 
             if (true == isNested)
@@ -994,16 +986,28 @@ namespace NOWA
 
             if (false == isNested)
             {
-                // Attention: never wait unbounded, not even when the timeout is disabled.
-                // We poll in slices so that a render thread which dies or stops servicing
-                // the queue while we are waiting cannot hang the logic thread forever.
-                const std::chrono::milliseconds sliceDuration(1);
+                // Attention: this waits in BLOCKING slices, it does not spin. The former
+                // 1ms-slice + std::this_thread::yield() loop burned a full core while the
+                // render thread was busy, which on a loaded machine actively starved the
+                // very thread we are waiting for. A promise/future wait_for wakes on notify,
+                // so a long slice costs no extra latency - it only bounds how often we get
+                // to re-check liveness.
+                const std::chrono::milliseconds sliceDuration(50);
+
+                // Attention: a timeout must NEVER abandon the wait while the render thread is
+                // alive. A render thread that is compiling an Hlms shader or loading a 2.5 MB
+                // skeleton is WORKING, not hung - and returning here without having executed
+                // the command leaves it to run later against a dead caller stack frame. The
+                // timeout is now only a diagnostic: it logs that we are waiting unusually
+                // long and keeps waiting. The ONLY exit without execution is a render thread
+                // that has really ended.
                 const auto waitStart = std::chrono::steady_clock::now();
                 const bool timeoutIsEnabled = this->isTimeoutEnabled();
                 const auto timeoutValue = this->getTimeoutDuration();
 
                 bool isReady = false;
                 bool hasGivenUp = false;
+                bool hasWarned = false;
 
                 while (false == isReady && false == hasGivenUp)
                 {
@@ -1024,34 +1028,15 @@ namespace NOWA
                         break;
                     }
 
-                    if (true == timeoutIsEnabled)
+                    if (true == timeoutIsEnabled && false == hasWarned)
                     {
                         if ((std::chrono::steady_clock::now() - waitStart) >= timeoutValue)
                         {
-                            // Attention: do NOT drain the queue here. The render thread is
-                            // still alive, it is just slow or blocked, and touching the
-                            // device from this thread would make things much worse.
-                            this->logCommandEvent(std::string("Timeout waiting for '") + commandName + "'. The render thread is alive but did not service the queue in time", Ogre::LML_CRITICAL);
-                            hasGivenUp = true;
-                            break;
+                            this->logCommandEvent(std::string("Still waiting for '") + commandName + "' after " + Ogre::StringConverter::toString(static_cast<int>(timeoutValue.count())) +
+                                                      "ms. The render thread is alive but slow (shader compilation, resource load, long frame). Continuing to wait",
+                                Ogre::LML_CRITICAL);
+                            hasWarned = true;
                         }
-                    }
-
-                    std::this_thread::yield();
-                }
-
-                // Verify once more, because the caller may hold references to stack objects
-                // the command uses. If it is still pending, this is a hard correctness
-                // problem and must be visible in the log.
-                if (false == isReady)
-                {
-                    if (std::future_status::ready == future.wait_for(sliceDuration))
-                    {
-                        isReady = true;
-                    }
-                    else
-                    {
-                        this->logCommandEvent(std::string("Command '") + commandName + "' was NOT executed. The caller continues with a command still pending, which may access dead stack objects", Ogre::LML_CRITICAL);
                     }
                 }
             }
@@ -1060,7 +1045,7 @@ namespace NOWA
         {
             this->logCommandEvent(std::string("Exception waiting for '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
             this->decrementWaitDepth();
-            this->flushDeferredDestroyCommands(); // <- flush even on exception
+            this->flushDeferredDestroyCommands();
             g_insideWaitClosure = previousInsideWaitClosure;
             throw;
         }
@@ -1068,7 +1053,7 @@ namespace NOWA
         {
             this->logCommandEvent(std::string("Unknown exception waiting for '") + commandName + "'", Ogre::LML_CRITICAL);
             this->decrementWaitDepth();
-            this->flushDeferredDestroyCommands(); // <- flush even on exception
+            this->flushDeferredDestroyCommands();
             g_insideWaitClosure = previousInsideWaitClosure;
             throw;
         }
@@ -1076,7 +1061,7 @@ namespace NOWA
         this->decrementWaitDepth();
         this->logCommandEvent(std::string("Command '") + commandName + "' completed", Ogre::LML_TRIVIAL);
 
-        this->flushDeferredDestroyCommands(); // <- flush on normal completion
+        this->flushDeferredDestroyCommands();
         g_insideWaitClosure = previousInsideWaitClosure;
     }
 
@@ -3182,15 +3167,20 @@ namespace NOWA
 
     void GraphicsModule::logCommandEvent(const Ogre::String& message, Ogre::LogMessageLevel level) const
     {
-        // if (level >= this->logLevel)
-
-        if (level == Ogre::LML_CRITICAL)
+        // Attention: the early-out must come FIRST. The caller has already paid for building
+        // the message string, but everything below (stringstream construction, formatting,
+        // the isRenderThread() atomic load) was executed for every TRIVIAL call too. During
+        // scene import this runs thousands of times and shows up in the profile as
+        // StringConverter::toString.
+        if (level != Ogre::LML_CRITICAL)
         {
-            std::stringstream ss;
-            ss << "[RenderCommandQueue] " << message << " (Thread: " << (this->isRenderThread() ? "RENDER" : "MAIN") << ", Depth: " << g_renderCommandDepth << ", WaitDepth: " << g_waitDepth << ")";
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(level, ss.str());
+            return;
         }
+
+        std::stringstream ss;
+        ss << "[RenderCommandQueue] " << message << " (Thread: " << (this->isRenderThread() ? "RENDER" : "MAIN") << ", Depth: " << g_renderCommandDepth << ", WaitDepth: " << g_waitDepth << ")";
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(level, ss.str());
     }
 
     void GraphicsModule::logCommandState(const char* commandName, bool willWait) const

@@ -298,7 +298,7 @@
 					<property type="7" name="AnimationName" data="walk-01"/>
 					<property type="6" name="AnimationSpeed" data="2"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
-					<property type="12" name="ShowSkeleton" data="false"/>
+					
 					<property type="7" name="ComponentGameObjectTitleComponent" data="GameObjectTitleComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

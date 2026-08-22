@@ -1,39 +1,189 @@
-22:44:39: XMLSkeletonSerializer: reading XML data from _rootmotion_tmp\Deer.skeleton.xml...
-22:44:39: XMLSkeletonSerializer: Reading Bones name...
-22:44:39: XMLSkeletonSerializer: Reading Hierarchy data...
-22:44:39: XMLSkeletonSerializer: Reading Bones data...
-22:44:39: XMLSkeletonSerializer: Reading Animations data...
-22:44:39: XMLSkeletonSerializer: Finished. Running SkeletonSerializer...
-22:44:39: Exporting bones..
-22:44:39: Bones exported.
-22:44:39: Exporting animations, count=15
-22:44:39: Exporting animation: Failure
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Fall
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Idle
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Idle_2
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Jump_Up
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Land
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Roll
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Roll_In_Place
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Run
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Run_In_Place
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Sleep
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Success
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Talk
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Walk
-22:44:39: Animation exported.
-22:44:39: Exporting animation: Walk_In_Place
-22:44:39: Animation exported.
+22:50:06: Exporting bones..
+22:50:06: Bones exported.
+22:50:06: Exporting animations, count=93
+22:50:06: Exporting animation:  hit-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: T-pose
+22:50:06: Animation exported.
+22:50:06: Exporting animation: attack-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: attack-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: attack-03
+22:50:06: Animation exported.
+22:50:06: Exporting animation: attack-04
+22:50:06: Animation exported.
+22:50:06: Exporting animation: attack-05
+22:50:06: Animation exported.
+22:50:06: Exporting animation: attack-06
+22:50:06: Animation exported.
+22:50:06: Exporting animation: attack-07
+22:50:06: Animation exported.
+22:50:06: Exporting animation: attack-08
+22:50:06: Animation exported.
+22:50:06: Exporting animation: bow_shoot
+22:50:06: Animation exported.
+22:50:06: Exporting animation: braking
+22:50:06: Animation exported.
+22:50:06: Exporting animation: carry_sack
+22:50:06: Animation exported.
+22:50:06: Exporting animation: carry_wood
+22:50:06: Animation exported.
+22:50:06: Exporting animation: cast-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: cast-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: cast-03
+22:50:06: Animation exported.
+22:50:06: Exporting animation: choping
+22:50:06: Animation exported.
+22:50:06: Exporting animation: cooking
+22:50:06: Animation exported.
+22:50:06: Exporting animation: crying
+22:50:06: Animation exported.
+22:50:06: Exporting animation: death-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: death-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: death-03
+22:50:06: Animation exported.
+22:50:06: Exporting animation: death-04
+22:50:06: Animation exported.
+22:50:06: Exporting animation: digging
+22:50:06: Animation exported.
+22:50:06: Exporting animation: dodge-left
+22:50:06: Animation exported.
+22:50:06: Exporting animation: dodge-right
+22:50:06: Animation exported.
+22:50:06: Exporting animation: dragging
+22:50:06: Animation exported.
+22:50:06: Exporting animation: drinking
+22:50:06: Animation exported.
+22:50:06: Exporting animation: drop-obj
+22:50:06: Animation exported.
+22:50:06: Exporting animation: eating
+22:50:06: Animation exported.
+22:50:06: Exporting animation: fixing
+22:50:06: Animation exported.
+22:50:06: Exporting animation: frying
+22:50:06: Animation exported.
+22:50:06: Exporting animation: get-up
+22:50:06: Animation exported.
+22:50:06: Exporting animation: hit-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: hit-03
+22:50:06: Animation exported.
+22:50:06: Exporting animation: hit-fall
+22:50:06: Animation exported.
+22:50:06: Exporting animation: idle-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: idle-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: idle-03
+22:50:06: Animation exported.
+22:50:06: Exporting animation: idle-04
+22:50:06: Animation exported.
+22:50:06: Exporting animation: idle-05
+22:50:06: Animation exported.
+22:50:06: Exporting animation: idle-06
+22:50:06: Animation exported.
+22:50:06: Exporting animation: joke
+22:50:06: Animation exported.
+22:50:06: Exporting animation: joy-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: joy-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: joy-03
+22:50:06: Animation exported.
+22:50:06: Exporting animation: jump-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: jump-0p
+22:50:06: Animation exported.
+22:50:06: Exporting animation: jump-pose
+22:50:06: Animation exported.
+22:50:06: Exporting animation: knock_ground
+22:50:06: Animation exported.
+22:50:06: Exporting animation: knock_shield
+22:50:06: Animation exported.
+22:50:06: Exporting animation: lay-down
+22:50:06: Animation exported.
+22:50:06: Exporting animation: mining
+22:50:06: Animation exported.
+22:50:06: Exporting animation: no
+22:50:06: Animation exported.
+22:50:06: Exporting animation: pick-obj
+22:50:06: Animation exported.
+22:50:06: Exporting animation: roll-backward
+22:50:06: Animation exported.
+22:50:06: Exporting animation: roll-forward
+22:50:06: Animation exported.
+22:50:06: Exporting animation: roll-left
+22:50:06: Animation exported.
+22:50:06: Exporting animation: roll-right
+22:50:06: Animation exported.
+22:50:06: Exporting animation: rollout
+22:50:06: Animation exported.
+22:50:06: Exporting animation: run-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: run-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: run-03
+22:50:06: Animation exported.
+22:50:06: Exporting animation: run-left-45
+22:50:06: Animation exported.
+22:50:06: Exporting animation: run-left-90
+22:50:06: Animation exported.
+22:50:06: Exporting animation: run-right-45
+22:50:06: Animation exported.
+22:50:06: Exporting animation: run-right-90
+22:50:06: Animation exported.
+22:50:06: Exporting animation: sit
+22:50:06: Animation exported.
+22:50:06: Exporting animation: sitting
+22:50:06: Animation exported.
+22:50:06: Exporting animation: sleep
+22:50:06: Animation exported.
+22:50:06: Exporting animation: spell-00
+22:50:06: Animation exported.
+22:50:06: Exporting animation: spell-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: spell-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: spell-03
+22:50:06: Animation exported.
+22:50:06: Exporting animation: talk-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: talk-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: throw
+22:50:06: Animation exported.
+22:50:06: Exporting animation: throw-obj
+22:50:06: Animation exported.
+22:50:06: Exporting animation: throw_bomb
+22:50:06: Animation exported.
+22:50:06: Exporting animation: walk-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: walk-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: walk-03
+22:50:06: Animation exported.
+22:50:06: Exporting animation: walk-back
+22:50:06: Animation exported.
+22:50:06: Exporting animation: walk-left-45
+22:50:06: Animation exported.
+22:50:06: Exporting animation: walk-left-90
+22:50:06: Animation exported.
+22:50:06: Exporting animation: walk-right-45
+22:50:06: Animation exported.
+22:50:06: Exporting animation: walk-right-90
+22:50:06: Animation exported.
+22:50:06: Exporting animation: warcry-01
+22:50:06: Animation exported.
+22:50:06: Exporting animation: warcry-02
+22:50:06: Animation exported.
+22:50:06: Exporting animation: woodcut_above
+22:50:06: Animation exported.
+22:50:06: Exporting animation: woodcut_side
+22:50:06: Animation exported.
+22:50:06: Exporting animation: yes
+22:50:06: Animation exported.
