@@ -23,6 +23,8 @@
 
 namespace NOWA
 {
+    class ILoadingIndicator;
+
     namespace RenderGlobals
     {
         // Marked as inline (C++17), so each translation unit gets its own copy, but all copies are treated as one entity by the linker.
@@ -90,7 +92,7 @@ namespace NOWA
      * Only one thread owns and modifies a slot at any time.
      *
      * IMPORTANT - Threading model for the tracked-resource containers (nodePool, cameraPool,
-     * oldBonePool, bonePool, datablockPool) and their *ToIndexMap siblings:
+     * bonePool, datablockPool) and their *ToIndexMap siblings:
      *
      * This mirrors how Ogre-Next's own Tutorial06_Multithreading sample (GameEntityManager)
      * does it: a tracked object is resolved into a stable storage slot EXACTLY ONCE per
@@ -135,7 +137,7 @@ namespace NOWA
      *    Where advanceTransformBuffer's eviction sweep needs to tombstone a slot, it does so
      *    inline (under the lock it already holds) rather than calling the public
      *    removeTracked*() function, specifically to avoid needing a recursive mutex.
-     * 4. acquireNode/Camera/OldBone/Bone/Pass/DatablockSlot() are the lock-free fast path used
+     * 4. acquireNode/Camera/Bone() are the lock-free fast path used
      *    by every update*() function. They consult a thread_local cache first; only a cache
      *    miss (first contact for this (thread, object) pair, or a stale/recycled entry) falls
      *    through to the locked resolve function.
@@ -271,44 +273,6 @@ namespace NOWA
                 if (this != &other)
                 {
                     camera.store(other.camera.load(std::memory_order_relaxed), std::memory_order_relaxed);
-                    for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-                    {
-                        transforms[i] = other.transforms[i];
-                    }
-                    active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
-                    isNew = other.isNew;
-                }
-                return *this;
-            }
-        };
-
-        struct OldBoneTransforms
-        {
-            std::atomic<Ogre::v1::OldBone*> oldBone{nullptr};
-            TransformData transforms[NUM_TRANSFORM_BUFFERS];
-            std::atomic<bool> active{false};
-            bool isNew = false;
-
-            OldBoneTransforms() = default;
-            OldBoneTransforms(const OldBoneTransforms&) = delete;
-            OldBoneTransforms& operator=(const OldBoneTransforms&) = delete;
-
-            OldBoneTransforms(OldBoneTransforms&& other) noexcept
-            {
-                oldBone.store(other.oldBone.load(std::memory_order_relaxed), std::memory_order_relaxed);
-                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-                {
-                    transforms[i] = other.transforms[i];
-                }
-                active.store(other.active.load(std::memory_order_relaxed), std::memory_order_relaxed);
-                isNew = other.isNew;
-            }
-
-            OldBoneTransforms& operator=(OldBoneTransforms&& other) noexcept
-            {
-                if (this != &other)
-                {
-                    oldBone.store(other.oldBone.load(std::memory_order_relaxed), std::memory_order_relaxed);
                     for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
                     {
                         transforms[i] = other.transforms[i];
@@ -779,33 +743,6 @@ namespace NOWA
         // Update full transform for a Camera in the current buffer
         void setCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
-        // Add a OldBone to be tracked and transformed
-        void addTrackedOldBone(Ogre::v1::OldBone* oldBone);
-
-        // Remove a OldBone from tracking
-        void removeTrackedOldBone(Ogre::v1::OldBone* oldBone);
-
-        // Update position for a OldBone in the current buffer
-        // use setOldBonePosition() instead if you need an instant warp.
-        void updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position);
-
-        // Update orientation for a OldBone in the current buffer. Always interpolated -
-        // use setOldBoneOrientation() instead if you need an instant warp.
-        void updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation);
-
-        // Update full transform for a OldBone in the current buffer. Always interpolated -
-        // use setOldBoneTransform() instead if you need an instant warp.
-        void updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
-
-        // Instant warp - see setNodePosition() for the full contract.
-        void setOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position);
-
-        // Update orientation for a OldBone in the current buffer
-        void setOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation);
-
-        // Update full transform for a OldBone in the current buffer
-        void setOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
-
         // Add a Bone to be tracked and transformed
         void addTrackedBone(Ogre::Bone* bone);
 
@@ -869,8 +806,6 @@ namespace NOWA
         size_t getPreviousTransformNodeIdx(void) const;
 
         size_t getPreviousTransformCameraIdx(void) const;
-
-        size_t getPreviousTransformOldBoneIdx(void) const;
 
         size_t getPreviousTransformBoneIdx(void) const;
 
@@ -946,6 +881,10 @@ namespace NOWA
         void waitForCommandOrSignal(std::chrono::milliseconds timeout);
         void signalCommandWaiters(void);
 
+        void setLoadingIndicator(ILoadingIndicator* indicator);
+        void setLoadingFrameRate(Ogre::Real framesPerSecond);
+        void renderLoadingFrameThrottled(void);
+
     public:
         static constexpr size_t NUM_DESTROY_SLOTS = 4;
 
@@ -978,9 +917,6 @@ namespace NOWA
         CameraTransforms* resolveCameraSlotLocked(Ogre::Camera* camera);
         CameraTransforms* acquireCameraSlot(Ogre::Camera* camera);
 
-        OldBoneTransforms* resolveOldBoneSlotLocked(Ogre::v1::OldBone* oldBone);
-        OldBoneTransforms* acquireOldBoneSlot(Ogre::v1::OldBone* oldBone);
-
         BoneTransforms* resolveBoneSlotLocked(Ogre::Bone* bone);
         BoneTransforms* acquireBoneSlot(Ogre::Bone* bone);
 
@@ -1005,10 +941,6 @@ namespace NOWA
         void setCameraPositionOnRenderThread(Ogre::Camera* camera, const Ogre::Vector3& position);
         void setCameraOrientationOnRenderThread(Ogre::Camera* camera, const Ogre::Quaternion& orientation);
         void setCameraTransformOnRenderThread(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
-
-        void setOldBonePositionOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position);
-        void setOldBoneOrientationOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation);
-        void setOldBoneTransformOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
         void setBonePositionOnRenderThread(Ogre::Bone* bone, const Ogre::Vector3& position);
         void setBoneOrientationOnRenderThread(Ogre::Bone* bone, const Ogre::Quaternion& orientation);
@@ -1105,7 +1037,6 @@ namespace NOWA
         // interpolate until something frees up a real slot.
         NodeTransforms nodeOverflowSink;
         CameraTransforms cameraOverflowSink;
-        OldBoneTransforms oldBoneOverflowSink;
         BoneTransforms boneOverflowSink;
         TrackedDatablock datablockOverflowSink;
 
@@ -1134,11 +1065,6 @@ namespace NOWA
         std::unordered_map<Ogre::Camera*, size_t> cameraToIndexMap;
         std::vector<size_t> freeCameraSlots;
         mutable std::mutex cameraRegistrationMutex;
-
-        std::vector<OldBoneTransforms> oldBonePool;
-        std::unordered_map<Ogre::v1::OldBone*, size_t> oldBoneToIndexMap;
-        std::vector<size_t> freeOldBoneSlots;
-        mutable std::mutex oldBoneRegistrationMutex;
 
         std::vector<BoneTransforms> bonePool;
         std::unordered_map<Ogre::Bone*, size_t> boneToIndexMap;
@@ -1169,7 +1095,6 @@ namespace NOWA
 
         std::atomic<size_t> currentTransformNodeIdx;
         std::atomic<size_t> currentTransformCameraIdx;
-        std::atomic<size_t> currentTransformOldBoneIdx;
         std::atomic<size_t> currentTransformBoneIdx;
         std::atomic<size_t> currentTrackedDatablockIdx;
         Ogre::Real interpolationWeight;
@@ -1195,6 +1120,10 @@ namespace NOWA
         std::condition_variable commandWaitCondition;
         std::atomic<bool> commandPending;
         std::atomic<bool> renderThreadParked;
+
+        ILoadingIndicator* loadingIndicator;
+        Ogre::Real loadingFrameIntervalSeconds;
+        std::chrono::steady_clock::time_point lastLoadingFrameTime;
     };
 
 }; // namespace end

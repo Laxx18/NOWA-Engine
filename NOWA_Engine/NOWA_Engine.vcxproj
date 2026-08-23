@@ -381,6 +381,7 @@
     <ClInclude Include="utilities\IAnimationBlender.h" />
     <ClInclude Include="utilities\Interpolator.h" />
     <ClInclude Include="utilities\LensFlare.h" />
+    <ClInclude Include="utilities\LoadingIndicator.h" />
     <ClInclude Include="utilities\LowPassAngleFilter.h" />
     <ClInclude Include="utilities\LuaObserver.h" />
     <ClInclude Include="utilities\MathHelper.h" />
@@ -593,6 +594,7 @@
     <ClCompile Include="utilities\DrawDynamicLines.cpp" />
     <ClCompile Include="utilities\Interpolator.cpp" />
     <ClCompile Include="utilities\LensFlare.cpp" />
+    <ClCompile Include="utilities\LoadingIndicator.cpp" />
     <ClCompile Include="utilities\LowPassAngleFilter.cpp" />
     <ClCompile Include="utilities\LuaObserver.cpp" />
     <ClCompile Include="utilities\MathHelper.cpp" />

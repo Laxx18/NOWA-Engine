@@ -9,6 +9,7 @@
 #include "modules/GameProgressModule.h"
 #include "modules/GraphicsModule.h"
 #include "modules/InputDeviceModule.h"
+#include "utilities/Timer.h"
 #include <chrono>
 
 namespace
@@ -25,9 +26,6 @@ namespace
 
 namespace NOWA
 {
-
-    //////////////////////////////////////////////////////////////
-
     class ChangeAppStateProcess : public NOWA::Process
     {
     public:
@@ -365,6 +363,15 @@ namespace NOWA
 
             // 2) Pump window events so OS stays happy
             Ogre::WindowEventUtilities::messagePump();
+
+            // 2b) Draw the loading indicator, if one is set. Throttled internally to a low frame
+            //     rate, and a no-op when no indicator is active - so this costs nothing outside a
+            //     scene load.
+            //
+            //     Attention: this loop is where the render thread actually IS during a scene load,
+            //     which is why the indicator has to be driven from here and not from
+            //     renderThreadFunction.
+            graphics->renderLoadingFrameThrottled();
 
             // 3) Park until the next render command arrives or the logic thread signals that our
             //    command is done - instead of polling.

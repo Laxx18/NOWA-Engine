@@ -19,7 +19,7 @@ Logo["connect"] = function(gameObject)
     gameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
     physicsActiveComponent = gameObject:getPhysicsActiveComponent();
     soundComponent = gameObject:getSimpleSoundComponent();
-    particleComponent = gameObject:getParticleUniverseComponentFromName("Smoke1");
+    particleComponent = gameObject:getParticleFxComponentFromName("Smoke1");
     fadeComponent = gameObject:getFadeComponent();
     
     cameraComponent = AppStateManager:getGameObjectController():getGameObjectFromName("IntroCamera"):getCameraComponent();

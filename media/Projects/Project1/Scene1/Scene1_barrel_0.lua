@@ -64,7 +64,7 @@ Scene1_barrel_0["onContactOnce"] = function(gameObject0, gameObject1, contact)
      playerController = prehistoricLax:getPlayerControllerJumpNRunLuaComponent();
      walkSound = playerController:getOwner():getSimpleSoundComponentFromIndex(0);
      jumpSound = playerController:getOwner():getSimpleSoundComponentFromIndex(1);
-     smokeParticle = playerController:getOwner():getParticleUniverseComponentFromIndex(0);
+     smokeParticle = playerController:getOwner():getParticleFxComponentFromIndex(0);
     
     if (a == Vector3) then
     

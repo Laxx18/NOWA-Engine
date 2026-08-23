@@ -422,7 +422,7 @@ main["OnEnemyWeaponCharacterContact"] = function(gameObject0, gameObject1, conta
        
        local data = contactData:getPositionAndNormal();
        local contactPosition = data[0];
-       local hitParticle = mainGameObject:getParticleUniverseComponentFromName("HitParticle");
+       local hitParticle = mainGameObject:getParticleFxComponentFromName("HitParticle");
        
        hitParticle:setGlobalPosition(contactPosition);
        if (hitParticle:isPlaying() == false or hitParticle:isActivated() == false) then

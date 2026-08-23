@@ -162,7 +162,7 @@ WalkState["enter"] = function(gameObject)
      playerController = prehistoricLax:getPlayerControllerJumpNRunLuaComponent();
      walkSound = playerController:getOwner():getSimpleSoundComponent(0);
      jumpSound = playerController:getOwner():getSimpleSoundComponent(1);
-     smokeParticle = playerController:getOwner():getParticleUniverseComponent(0);
+     smokeParticle = playerController:getOwner():getParticleFxComponent(0);
      smokeParticle:setActivated(false);
      --smokeParticle:setPlaySpeed(10);
      smokeParticle:setPlayTimeMS(50);

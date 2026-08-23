@@ -49,32 +49,6 @@ namespace NOWA
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class EXPORTED EngineResourceFadeListener : public EngineResourceListener
-    {
-    public:
-        EngineResourceFadeListener(Ogre::Window* renderWindow);
-        virtual ~EngineResourceFadeListener();
-        virtual void showLoadingBar(unsigned int numGroupsInit = 1, unsigned int numGroupsLoad = 1, Ogre::Real initProportion = 0.7) override;
-        virtual std::pair<Ogre::Real, Ogre::Real> hideLoadingBar(void) override;
-        virtual void resourceGroupScriptingStarted(const Ogre::String& resourceGroupName, size_t scriptCount) override;
-        virtual void scriptParseStarted(const Ogre::String& scriptName, bool& skipThisScript) override;
-        virtual void scriptParseEnded(const Ogre::String& scriptName, bool skipped) override;
-        virtual void resourceGroupScriptingEnded(const Ogre::String& resourceGroupName) override;
-        virtual void resourceGroupLoadStarted(const Ogre::String& resourceGroupName, size_t resourceCount) override;
-        virtual void resourceLoadStarted(const Ogre::ResourcePtr& resource) override;
-        virtual void resourceLoadEnded() override;
-        virtual void resourceGroupLoadEnded(const Ogre::String& resourceGroupName) override;
-
-    private:
-        Ogre::Window* renderWindow;
-        Ogre::Real groupInitProportion;
-        Ogre::Real groupLoadProportion;
-        Ogre::Real loadInc;
-        FaderProcess* faderProcess;
-    };
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     /**
      * @brief Pure UI widget manager for scene loading progress.
      * DotSceneImportModule registers itself as ResourceGroupListener and calls

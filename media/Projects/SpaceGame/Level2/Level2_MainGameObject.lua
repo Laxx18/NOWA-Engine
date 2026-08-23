@@ -34,7 +34,7 @@ end
 function checkGameOver()
     if (energy:getValueNumber() <= 0) then
         gameOverText:setActivated(true);
-        fighterJet:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(true);
+        fighterJet:getParticleFxComponentFromName("ExplosionParticle"):setActivated(true);
         fighterJet:setVisible(false);
         fighterJet:getPhysicsComponent():setCollidable(false);
     end
@@ -130,7 +130,7 @@ level2_MainGameObject["onEnemyLaserContactOnce"] = function(gameObject0, gameObj
     thisEnemy:setVisible(false);
     thisEnemy:getPhysicsActiveComponent():translate(Vector3(0, -5, 0));
     thisEnemy:getSimpleSoundComponent():setActivated(true);
-    thisEnemy:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(true);
+    thisEnemy:getParticleFxComponentFromName("ExplosionParticle"):setActivated(true);
     thisEnemy:getPhysicsActiveComponent():setActivated(false);
     AppStateManager:getGameObjectController():deleteDelayedGameObject(thisEnemy:getId(), 3);
 
@@ -162,14 +162,14 @@ level2_MainGameObject["onPlayerEnemyContactOnce"] = function(gameObject0, gameOb
     energyProgress:setValue(energy:getValueNumber());
     
     if (energy:getValueNumber() < 50 and energy:getValueNumber() > 20) then
-        thisPlayer:getParticleUniverseComponentFromName("SmokeParticle"):setActivated(true);
+        thisPlayer:getParticleFxComponentFromName("SmokeParticle"):setActivated(true);
     else
-        thisPlayer:getParticleUniverseComponentFromName("SmokeParticle"):setPlaySpeed(20);
+        thisPlayer:getParticleFxComponentFromName("SmokeParticle"):setPlaySpeed(20);
     end
 
     if (energy:getValueNumber() <= 0) then
         gameOverText:setActivated(true);
-        thisPlayer:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(true);
+        thisPlayer:getParticleFxComponentFromName("ExplosionParticle"):setActivated(true);
         thisPlayer:setVisible(false);
     end
 
@@ -178,7 +178,7 @@ level2_MainGameObject["onPlayerEnemyContactOnce"] = function(gameObject0, gameOb
     thisEnemy:getPhysicsActiveComponent():translate(Vector3(0, -5, 0));
     --thisEnemy:setScale(Vector3(0.1, 0.1, 0.1));
     thisEnemy:getSimpleSoundComponent():setActivated(true);
-    thisEnemy:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(true);
+    thisEnemy:getParticleFxComponentFromName("ExplosionParticle"):setActivated(true);
     thisEnemy:getPhysicsActiveComponent():setActivated(false);
     -- Do not delete directly, because a particle effect needs time to play
     AppStateManager:getGameObjectController():deleteDelayedGameObject(thisEnemy:getId(), 3);

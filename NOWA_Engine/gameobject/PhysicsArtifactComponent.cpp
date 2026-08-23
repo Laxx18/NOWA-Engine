@@ -1,33 +1,30 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "PhysicsArtifactComponent.h"
-#include "utilities/XMLConverter.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
+#include "utilities/XMLConverter.h"
 
 namespace NOWA
 {
-	using namespace rapidxml;
-	using namespace luabind;
+    using namespace rapidxml;
+    using namespace luabind;
 
-	PhysicsArtifactComponent::PhysicsArtifactComponent()
-		: PhysicsComponent(),
-		collisionMode(COLLISION_TREE),
-		serialize(new Variant(PhysicsArtifactComponent::AttrSerialize(), false, this->attributes))
-	{
-		this->collisionType->setVisible(false);
-		this->mass->setValue(10000.0f);
-		this->mass->setDescription("Mass for physics artifact component can be used, when this component is the gravity source, else mass has no meaning and can be anything.");
+    PhysicsArtifactComponent::PhysicsArtifactComponent() : PhysicsComponent(), collisionMode(COLLISION_TREE), serialize(new Variant(PhysicsArtifactComponent::AttrSerialize(), false, this->attributes))
+    {
+        this->collisionType->setVisible(false);
+        this->mass->setValue(10000.0f);
+        this->mass->setDescription("Mass for physics artifact component can be used, when this component is the gravity source, else mass has no meaning and can be anything.");
 
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsArtifactComponent::handleGameObjectChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
-	}
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsArtifactComponent::handleGameObjectChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
+    }
 
-	PhysicsArtifactComponent::~PhysicsArtifactComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsArtifactComponent] Destructor physics artifact component for game object: " + this->gameObjectPtr->getName());
+    PhysicsArtifactComponent::~PhysicsArtifactComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsArtifactComponent] Destructor physics artifact component for game object: " + this->gameObjectPtr->getName());
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsArtifactComponent::handleGameObjectChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
-	}
+    }
 
-	void PhysicsArtifactComponent::handleGameObjectChanged(NOWA::EventDataPtr eventData)
+    void PhysicsArtifactComponent::handleGameObjectChanged(NOWA::EventDataPtr eventData)
     {
         boost::shared_ptr<NOWA::EventDataGeometryChanged> castEventData = boost::static_pointer_cast<NOWA::EventDataGeometryChanged>(eventData);
 
@@ -47,157 +44,157 @@ namespace NOWA
         this->reCreateCollision(true);
     }
 
-	bool PhysicsArtifactComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		GameObjectComponent::init(propertyElement);
+    bool PhysicsArtifactComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        GameObjectComponent::init(propertyElement);
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Mass")
-		{
-			this->mass->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Serialize")
-		{
-			this->serialize->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Mass")
+        {
+            this->mass->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Serialize")
+        {
+            this->serialize->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == PhysicsComponent::AttrCollidable())
         {
             this->collidable->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
             propertyElement = propertyElement->next_sibling("property");
         }
-		
-		// Snapshot loaded, game object pointer should exist, set transform
-		if (nullptr != this->gameObjectPtr)
-		{
-			bool oldIsDynamic = this->gameObjectPtr->isDynamic();
-			this->gameObjectPtr->setDynamic(true);
-			Ogre::Vector3 position = this->gameObjectPtr->getPosition();
-			Ogre::Quaternion orientation = this->gameObjectPtr->getOrientation();
-			// This must be done this way, because pos, orientation must be set at once, else orientation will be the old one
-			if (nullptr != this->physicsBody)
-			{
-				this->setPosition(position);
-				this->setOrientation(orientation);
-			}
-			this->gameObjectPtr->setDynamic(oldIsDynamic);
-		}
 
-		return true;
-	}
+        // Snapshot loaded, game object pointer should exist, set transform
+        if (nullptr != this->gameObjectPtr)
+        {
+            bool oldIsDynamic = this->gameObjectPtr->isDynamic();
+            this->gameObjectPtr->setDynamic(true);
+            Ogre::Vector3 position = this->gameObjectPtr->getPosition();
+            Ogre::Quaternion orientation = this->gameObjectPtr->getOrientation();
+            // This must be done this way, because pos, orientation must be set at once, else orientation will be the old one
+            if (nullptr != this->physicsBody)
+            {
+                this->setPosition(position);
+                this->setOrientation(orientation);
+            }
+            this->gameObjectPtr->setDynamic(oldIsDynamic);
+        }
 
-	GameObjectCompPtr PhysicsArtifactComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		PhysicsArtifactCompPtr clonedCompPtr(boost::make_shared<PhysicsArtifactComponent>());
+        return true;
+    }
 
-		// clonedCompPtr->setCollisionType(this->collisionType->getListSelectedValue());
-		clonedCompPtr->setMass(this->mass->getReal());
-		// Bug in newton, setting afterwards collidable to true, will not work, hence do not clone this property
-		// clonedCompPtr->setCollidable(this->collidable->getBool());
+    GameObjectCompPtr PhysicsArtifactComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        PhysicsArtifactCompPtr clonedCompPtr(boost::make_shared<PhysicsArtifactComponent>());
 
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
+        // clonedCompPtr->setCollisionType(this->collisionType->getListSelectedValue());
+        clonedCompPtr->setMass(this->mass->getReal());
+        // Bug in newton, setting afterwards collidable to true, will not work, hence do not clone this property
+        // clonedCompPtr->setCollidable(this->collidable->getBool());
 
-		clonedCompPtr->setCollidable(this->collidable->getBool());
-		clonedCompPtr->setSerialize(this->serialize->getBool());
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
+        clonedCompPtr->setCollidable(this->collidable->getBool());
+        clonedCompPtr->setSerialize(this->serialize->getBool());
 
-	bool PhysicsArtifactComponent::postInit(void)
-	{
-		bool success = PhysicsComponent::postInit();
-		
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsArtifactComponent] Init physics artifact component for game object: " + this->gameObjectPtr->getName());
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
 
-		if (!this->createStaticBody())
-		{
-			return false;
-		}
+    bool PhysicsArtifactComponent::postInit(void)
+    {
+        bool success = PhysicsComponent::postInit();
 
-		this->physicsBody->setType(gameObjectPtr->getCategoryId());
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsArtifactComponent] Init physics artifact component for game object: " + this->gameObjectPtr->getName());
 
-		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
-		this->physicsBody->setMaterialGroupID(materialId);
+        if (!this->createStaticBody())
+        {
+            return false;
+        }
 
-		return success;
-	}
+        this->physicsBody->setType(gameObjectPtr->getCategoryId());
 
-	void PhysicsArtifactComponent::actualizeValue(Variant* attribute)
-	{
-		PhysicsComponent::actualizeValue(attribute);
+        const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
+        this->physicsBody->setMaterialGroupID(materialId);
 
-		if (GameObject::AttrClampY() == attribute->getName())
-		{
-			// Clamp physics y coordinate, if activated and something to clamp to
-			this->setPosition(this->physicsBody->getPosition().x, this->gameObjectPtr->getSceneNode()->getPosition().y, this->physicsBody->getPosition().z);
-		}
-		else if (PhysicsComponent::AttrMass() == attribute->getName())
-		{
-			this->mass->setValue(attribute->getReal());
-		}
-		else if (PhysicsArtifactComponent::AttrSerialize() == attribute->getName())
-		{
-			this->setSerialize(attribute->getBool());
-		}
-	}
+        return success;
+    }
 
-	void PhysicsArtifactComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc);
+    void PhysicsArtifactComponent::actualizeValue(Variant* attribute)
+    {
+        PhysicsComponent::actualizeValue(attribute);
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Mass"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->mass->getReal())));
-		propertiesXML->append_node(propertyXML);
+        if (GameObject::AttrClampY() == attribute->getName())
+        {
+            // Clamp physics y coordinate, if activated and something to clamp to
+            this->setPosition(this->physicsBody->getPosition().x, this->gameObjectPtr->getSceneNode()->getPosition().y, this->physicsBody->getPosition().z);
+        }
+        else if (PhysicsComponent::AttrMass() == attribute->getName())
+        {
+            this->mass->setValue(attribute->getReal());
+        }
+        else if (PhysicsArtifactComponent::AttrSerialize() == attribute->getName())
+        {
+            this->setSerialize(attribute->getBool());
+        }
+    }
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Serialize"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->serialize->getBool())));
-		propertiesXML->append_node(propertyXML);
+    void PhysicsArtifactComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        // 2 = int
+        // 6 = real
+        // 7 = string
+        // 8 = vector2
+        // 9 = vector3
+        // 10 = vector4 -> also quaternion
+        // 12 = bool
+        GameObjectComponent::writeXML(propertiesXML, doc);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc,PhysicsComponent::AttrCollidable())));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collidable->getBool())));
-		propertiesXML->append_node(propertyXML);
-	}
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Mass"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->mass->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-	void PhysicsArtifactComponent::showDebugData(void)
-	{
-		GameObjectComponent::showDebugData();
-		if (nullptr != this->physicsBody)
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Serialize"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->serialize->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, PhysicsComponent::AttrCollidable())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collidable->getBool())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    void PhysicsArtifactComponent::showDebugData(void)
+    {
+        GameObjectComponent::showDebugData();
+        if (nullptr != this->physicsBody)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->physicsBody->showDebugCollision(!this->gameObjectPtr->isDynamic(), this->bShowDebugData);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::showDebugData");
-		}
-	}
+        }
+    }
 
-	Ogre::String PhysicsArtifactComponent::getClassName(void) const
-	{
-		return "PhysicsArtifactComponent";
-	}
+    Ogre::String PhysicsArtifactComponent::getClassName(void) const
+    {
+        return "PhysicsArtifactComponent";
+    }
 
-	Ogre::String PhysicsArtifactComponent::getParentClassName(void) const
-	{
-		return "PhysicsComponent";
-	}
+    Ogre::String PhysicsArtifactComponent::getParentClassName(void) const
+    {
+        return "PhysicsComponent";
+    }
 
-	bool PhysicsArtifactComponent::createStaticBody(void)
-	{
+    bool PhysicsArtifactComponent::createStaticBody(void)
+    {
         Ogre::String name = this->gameObjectPtr->getName();
         // Body has already been created, do not do it twice!
         if (nullptr != this->physicsBody)
@@ -210,27 +207,26 @@ namespace NOWA
             this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
         }
 
-		this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
-		this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
-		this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
-		Ogre::String meshName;
+        this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
+        this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
+        this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+        Ogre::String meshName;
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-            "[DIAG][PhysicsArtifactComponent] createStaticBody: node='" + name + "' scale=" + Ogre::StringConverter::toString(this->initialScale) + " pos=" + Ogre::StringConverter::toString(this->initialPosition));
+        // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+        //     "[DIAG][PhysicsArtifactComponent] createStaticBody: node='" + name + "' scale=" + Ogre::StringConverter::toString(this->initialScale) + " pos=" + Ogre::StringConverter::toString(this->initialPosition));
 
-		// Collision for static objects
-		OgreNewt::CollisionPtr staticCollision;
+        // Collision for static objects
+        OgreNewt::CollisionPtr staticCollision;
 
-		if (false == this->serialize->getBool())
-		{
-			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr != item)
-			{
-				meshName = item->getMesh()->getName();
-				if (Ogre::StringUtil::match(meshName, "Plane*", true))
-				{
-
-					NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
+        if (false == this->serialize->getBool())
+        {
+            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+            if (nullptr != item)
+            {
+                meshName = item->getMesh()->getName();
+                if (Ogre::StringUtil::match(meshName, "Plane*", true))
+                {
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, &staticCollision]()
                     {
                         // if the mesh name is a plane, the tree collision does not work, so use box
                         Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
@@ -238,11 +234,11 @@ namespace NOWA
                         staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
                     };
                     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::createBoxCollision");
-					// Causes crash, when deleted all bodies!, something is wrong with that!
-					// this->ogreNewt->AddSceneCollision(staticCollision, 0);
-				}
-				else
-				{
+                    // Causes crash, when deleted all bodies!, something is wrong with that!
+                    // this->ogreNewt->AddSceneCollision(staticCollision, 0);
+                }
+                else
+                {
                     // Build TreeCollision on the render thread so that all pending
                     // immutable buffer uploads (e.g. from PlanetTerraComponent) are
                     // committed before vao->mapAsyncTickets() is called inside the
@@ -256,56 +252,56 @@ namespace NOWA
                     };
                     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::createTreeCollision");
                     // this->ogreNewt->AddSceneCollision(staticCollision, 0);
-				}
-			}
-			else
-			{
-				// Foliage type?
-			}
-		}
-		else
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, &staticCollision]()
+                }
+            }
+            else
+            {
+                // Foliage type?
+            }
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, &staticCollision]()
             {
                 Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
                 staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId()));
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::serializeTreeCollision");
-		}
+        }
 
-		if (nullptr == staticCollision)
-		{
+        if (nullptr == staticCollision)
+        {
             // Foliage type, it uses this component later and set compound stuff
             staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Null(this->ogreNewt));
-		}
+        }
 
-		// Non movable bodies are kinematic!
-		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision, true);
-		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
+        // Non movable bodies are kinematic!
+        this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision, true);
+        NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
-		// Its prohibited to set mass for non movable bodies!
+        // Its prohibited to set mass for non movable bodies!
 
-		this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
+        this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
         this->physicsBody->setCollidable(this->collidable->getBool());
-		this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
+        this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
-		this->setPosition(this->initialPosition);
-		this->setOrientation(this->initialOrientation);
+        this->setPosition(this->initialPosition);
+        this->setOrientation(this->initialOrientation);
 
-		// Artifact body should always sleep?
-		this->physicsBody->setAutoSleep(1);
-		// Not required, since artifact does not move
+        // Artifact body should always sleep?
+        this->physicsBody->setAutoSleep(1);
+        // Not required, since artifact does not move
 
-		// Object will not be moved frequently
-		// this->gameObjectPtr->setDynamic(false); // Am I shit? Let the designer choose, because else an object with artifact collision can be no more moved!
+        // Object will not be moved frequently
+        // this->gameObjectPtr->setDynamic(false); // Am I shit? Let the designer choose, because else an object with artifact collision can be no more moved!
 
-		this->gameObjectPtr->setDynamic(false);
-		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+        this->gameObjectPtr->setDynamic(false);
+        this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
-		return true;
-	}
+        return true;
+    }
 
-	bool PhysicsArtifactComponent::reCreateBodyForItem(Ogre::Item* item)
+    bool PhysicsArtifactComponent::reCreateBodyForItem(Ogre::Item* item)
     {
         if (nullptr == item)
         {
@@ -409,15 +405,15 @@ namespace NOWA
     }
 
     void PhysicsArtifactComponent::changeCollisionFaceId(unsigned int id)
-	{
-		if (nullptr != this->collisionPtr)
-		{
-			auto treeCollision = std::dynamic_pointer_cast<OgreNewt::CollisionPrimitives::TreeCollision>(this->collisionPtr);
-			if (nullptr != treeCollision)
-			{
-				treeCollision->setFaceId(id);
-			}
-		}
+    {
+        if (nullptr != this->collisionPtr)
+        {
+            auto treeCollision = std::dynamic_pointer_cast<OgreNewt::CollisionPrimitives::TreeCollision>(this->collisionPtr);
+            if (nullptr != treeCollision)
+            {
+                treeCollision->setFaceId(id);
+            }
+        }
     }
 
     bool PhysicsArtifactComponent::createCompoundBody(const std::vector<OgreNewt::CollisionPtr>& childCollisions, const Ogre::String& collisionName)
@@ -445,7 +441,7 @@ namespace NOWA
         OgreNewt::CollisionPtr compoundCollision;
 
         // Serialize compound collision
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, childCollisions, collisionName, & compoundCollision]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, childCollisions, collisionName, &compoundCollision]()
         {
             Ogre::String scenePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
             compoundCollision = this->serializeCompoundCollision(scenePath, childCollisions, collisionName, this->gameObjectPtr->getCategoryId(), true);
@@ -462,7 +458,7 @@ namespace NOWA
         this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), compoundCollision, true);
         NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
-		this->physicsBody->setCollidable(this->collidable->getBool());
+        this->physicsBody->setCollidable(this->collidable->getBool());
         this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
@@ -478,7 +474,7 @@ namespace NOWA
         return true;
     }
 
-	void PhysicsArtifactComponent::reCreateCollision(bool overwrite)
+    void PhysicsArtifactComponent::reCreateCollision(bool overwrite)
     {
         if (nullptr == this->physicsBody)
         {
@@ -638,31 +634,30 @@ namespace NOWA
         this->physicsBody->setMaterialGroupID(materialId);
     }
 
-	void PhysicsArtifactComponent::setSerialize(bool serialize)
-	{
-		this->serialize->setValue(serialize);
-		if (true == serialize)
-		{
-			this->reCreateCollision(true);
-		}
-		else
-		{
-			Ogre::String meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->getMesh()->getName();
-			Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".ply";
-			try
-			{
-				DeleteFile(sourceCollisionFilePathName.c_str());
-			}
-			catch (...)
-			{
+    void PhysicsArtifactComponent::setSerialize(bool serialize)
+    {
+        this->serialize->setValue(serialize);
+        if (true == serialize)
+        {
+            this->reCreateCollision(true);
+        }
+        else
+        {
+            Ogre::String meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->getMesh()->getName();
+            Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".ply";
+            try
+            {
+                DeleteFile(sourceCollisionFilePathName.c_str());
+            }
+            catch (...)
+            {
+            }
+        }
+    }
 
-			}
-		}
-	}
-
-	bool PhysicsArtifactComponent::getSerialize(void) const
-	{
-		return this->serialize->getBool();
-	}
+    bool PhysicsArtifactComponent::getSerialize(void) const
+    {
+        return this->serialize->getBool();
+    }
 
 }; // namespace end

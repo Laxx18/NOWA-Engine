@@ -94,10 +94,10 @@ namespace NOWA
             // Capture the authored frame rate before anything modifies it
             this->baseFrameRates.insert(std::make_pair(anim.getName().getFriendlyText(), anim.mFrameRate));
 
-            if (false == skipLogging)
+            /*if (false == skipLogging)
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] Animation name: " + anim.getName().getFriendlyText() + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
-            }
+            }*/
         }
 
         return animationNames;

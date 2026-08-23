@@ -39,32 +39,9 @@ namespace NOWA
 			auto* gameProgressModule = appStateMgr->getGameProgressModule(this->appStateName);
 			gameProgressModule->resetContent();
 
-			// TODO: Another (threadsafe) implementation of ThreadSafeEngineResourceFadeListener is required first!, because the default one is used in Core on main thread!
-			/*EngineResourceFadeListener* engineResourceListener = nullptr;
-			std::pair<Ogre::Real, Ogre::Real> continueData(0.0f, 0.0f);
-
-			if (this->showProgress)
-			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Show loading bar", _3(core, &engineResourceListener, &continueData),
-				{
-					engineResourceListener = new EngineResourceFadeListener(core->getOgreRenderWindow());
-					core->setEngineResourceListener(engineResourceListener);
-					engineResourceListener->showLoadingBar();
-				});
-			}*/
-
 			// Run parsing scene on render thread
-            this->dotSceneImportModule->setShowLoadingDetails(this->showProgress);
-            this->dotSceneImportModule->setShowProgressBar(this->showProgress); 
-			bool success = this->dotSceneImportModule->parseScene(core->getProjectName(), this->nextSceneName, "Projects", nullptr, nullptr);
-
-			/*if (this->showProgress && engineResourceListener)
-			{
-				continueData = engineResourceListener->hideLoadingBar();
-				core->resetEngineResourceListener();
-				delete engineResourceListener;
-				engineResourceListener = nullptr;
-			}*/
+            this->dotSceneImportModule->setShowLoadingIndicator(true);
+			bool success = this->dotSceneImportModule->parseScene(core->getProjectName(), this->nextSceneName, "Projects", nullptr);
 
 			if (false == success)
 			{
@@ -155,18 +132,7 @@ namespace NOWA
 
 				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->resetContent();
 
-				EngineResourceFadeListener* engineResourceListener = nullptr;
-
-				if (true == this->showProgress)
-				{
-					engineResourceListener = new EngineResourceFadeListener(Core::getSingletonPtr()->getOgreRenderWindow());
-					Core::getSingletonPtr()->setEngineResourceListener(engineResourceListener);
-
-					engineResourceListener->showLoadingBar();
-				}
-
-				this->dotSceneImportModule->setShowLoadingDetails(this->showProgress);
-                this->dotSceneImportModule->setShowProgressBar(this->showProgress); 
+                this->dotSceneImportModule->setShowLoadingIndicator(this->showProgress);
 				bool success = this->dotSceneImportModule->parseSceneSnapshot(snapshotProjectAndSceneName.first, snapshotProjectAndSceneName.second, "Projects", openFilePathName, this->crypted);
 
 				if (false == success)
@@ -176,15 +142,6 @@ namespace NOWA
 				}
 
 				std::pair<Ogre::Real, Ogre::Real> continueData(0.0f, 0.0f);
-
-				if (true == this->showProgress)
-				{
-					continueData = engineResourceListener->hideLoadingBar();
-					Core::getSingletonPtr()->resetEngineResourceListener();
-
-					delete engineResourceListener;
-					engineResourceListener = nullptr;
-				}
 
 				// Continue fading after loading scene, if there is enough time left
 				/*if (continueData.second > 1.0f)

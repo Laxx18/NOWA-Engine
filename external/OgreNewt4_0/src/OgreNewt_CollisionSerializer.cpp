@@ -412,12 +412,12 @@ namespace OgreNewt
 
         auto parseFinish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> parseElapsed = parseFinish - parseStart;
-        if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+       /* if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
         {
             lm->logMessage("[CollisionSerializer][importPLY] Parsed " + Ogre::StringConverter::toString((unsigned int)vertexCount) + " vertices and " + Ogre::StringConverter::toString((unsigned int)faceCount) + " faces in " +
                                Ogre::StringConverter::toString(parseElapsed.count() * 0.001) + "s",
                 Ogre::LML_TRIVIAL);
-        }
+        }*/
 
         if (verts.empty() || indices.empty())
         {
@@ -468,10 +468,10 @@ namespace OgreNewt
 
         auto soupFinish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> soupElapsed = soupFinish - soupStart;
-        if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+       /* if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
         {
             lm->logMessage("[CollisionSerializer][importPLY] Built BVH from " + Ogre::StringConverter::toString((unsigned int)totalFacesAdded) + " faces in " + Ogre::StringConverter::toString(soupElapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
-        }
+        }*/
 
         return dest;
     }

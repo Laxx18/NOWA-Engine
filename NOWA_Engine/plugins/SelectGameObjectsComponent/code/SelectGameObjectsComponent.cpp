@@ -4,6 +4,7 @@
 #include "utilities/Outline.h"
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
+#include "main/ProcessManager.h"
 #include "main/AppStateManager.h"
 #include "main/InputDeviceCore.h"
 #include "gameobject/GameObjectFactory.h"

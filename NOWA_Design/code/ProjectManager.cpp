@@ -250,10 +250,7 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
         // This file will be parsed and below also again exported along with the new scene file.
         // Mandatory game objects are only created below, if they do not exist already via the parsed globa.scene
         // So now no new scene creation does kill a valid valueable global.scene anymore!
-
-        this->dotSceneImportModule->setShowLoadingDetails(true);
-        this->dotSceneImportModule->setShowProgressBar(true);
-        this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr);
+        this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr);
     }
     catch (const std::runtime_error& e)
     {
@@ -417,9 +414,8 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 
             // Internally calls invalidate cache, so that all newton data is set to default for deterministic simulations, when started again
             // Causes crash in release mode
-            // this->dotSceneImportModule->setShowLoadingDetails(true);
-            // this->dotSceneImportModule->setShowProgressBar(true);
-            success = this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr);
+            this->dotSceneImportModule->setShowLoadingIndicator(true);
+            success = this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr);
         };
         NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 

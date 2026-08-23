@@ -696,6 +696,9 @@
     <ClInclude Include="main\ConfigurationState.h">
       <Filter>main</Filter>
     </ClInclude>
+    <ClInclude Include="utilities\LoadingIndicator.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1265,6 +1268,9 @@
     </ClCompile>
     <ClCompile Include="main\ConfigurationState.cpp">
       <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\LoadingIndicator.cpp">
+      <Filter>utilities</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

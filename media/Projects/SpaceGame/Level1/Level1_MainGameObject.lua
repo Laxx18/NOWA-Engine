@@ -64,7 +64,7 @@ end
 function checkGameOver()
     if (energy:getValueNumber() <= 0) then
         gameOverText:setActivated(true);
-        fighterJet:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(true);
+        fighterJet:getParticleFxComponentFromName("ExplosionParticle"):setActivated(true);
         fighterJet:setVisible(false);
         fighterJet:getPhysicsComponent():setCollidable(false);
     end
@@ -269,7 +269,7 @@ Level1_MainGameObject["onEnemyLaserContactOnce"] = function(gameObject0, gameObj
             valueBarComponent:setActivated(false);
             thisEnemy:getPhysicsActiveComponent():translate(Vector3(0, -50, 0));
             shockwaveSound:setActivated(true);
-            thisEnemy:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(true);
+            thisEnemy:getParticleFxComponentFromName("ExplosionParticle"):setActivated(true);
             thisEnemy:getPhysicsActiveComponent():setActivated(false);
             --thisEnemy:disconnect();
             levelCleared();
@@ -279,7 +279,7 @@ Level1_MainGameObject["onEnemyLaserContactOnce"] = function(gameObject0, gameObj
         thisEnemy:setVisible(false);
         thisEnemy:getPhysicsActiveComponent():translate(Vector3(0, -5, 0));
         shockwaveSound:setActivated(true);
-        thisEnemy:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(true);
+        thisEnemy:getParticleFxComponentFromName("ExplosionParticle"):setActivated(true);
         thisEnemy:getPhysicsActiveComponent():setActivated(false);
         AppStateManager:getGameObjectController():deleteDelayedGameObject(thisEnemy:getId(), 3);
     end
@@ -312,14 +312,14 @@ Level1_MainGameObject["onPlayerEnemyContactOnce"] = function(gameObject0, gameOb
     energyProgress:setValue(energy:getValueNumber());
     
     if (energy:getValueNumber() < 50 and energy:getValueNumber() > 20) then
-        thisPlayer:getParticleUniverseComponentFromName("SmokeParticle"):setActivated(true);
+        thisPlayer:getParticleFxComponentFromName("SmokeParticle"):setActivated(true);
     else
-        thisPlayer:getParticleUniverseComponentFromName("SmokeParticle"):setPlaySpeed(20);
+        thisPlayer:getParticleFxComponentFromName("SmokeParticle"):setPlaySpeed(20);
     end
 
     if (energy:getValueNumber() <= 0) then
         gameOverText:setActivated(true);
-        thisPlayer:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(true);
+        thisPlayer:getParticleFxComponentFromName("ExplosionParticle"):setActivated(true);
         thisPlayer:setVisible(false);
     end
     
@@ -331,7 +331,7 @@ Level1_MainGameObject["onPlayerEnemyContactOnce"] = function(gameObject0, gameOb
         thisEnemy:getPhysicsActiveComponent():translate(Vector3(0, -5, 0));
         --thisEnemy:setScale(Vector3(0.1, 0.1, 0.1));
         shockwaveSound:setActivated(true);
-        thisEnemy:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(true);
+        thisEnemy:getParticleFxComponentFromName("ExplosionParticle"):setActivated(true);
         thisEnemy:getPhysicsActiveComponent():setActivated(false);
         -- Do not delete directly, because a particle effect needs time to play
         AppStateManager:getGameObjectController():deleteDelayedGameObject(thisEnemy:getId(), 3);
@@ -354,7 +354,7 @@ Level1_MainGameObject["onPlayerEnemyLaserContactOnce"] = function(gameObject0, g
     end
     
     thisEnemyLaser:getPhysicsComponent():setCollidable(false);
-    thisEnemyLaser:getParticleUniverseComponentFromName("FireParticle"):setActivated(true);
+    thisEnemyLaser:getParticleFxComponentFromName("FireParticle"):setActivated(true);
     thisEnemyLaser:setVisible(false);
     thisEnemyLaser:getPhysicsActiveKinematicComponent():translate(Vector3(0, -5, 0));
     
@@ -363,9 +363,9 @@ Level1_MainGameObject["onPlayerEnemyLaserContactOnce"] = function(gameObject0, g
     end
     
     if (energy:getValueNumber() < 50 and energy:getValueNumber() > 20) then
-        thisPlayer:getParticleUniverseComponentFromName("SmokeParticle"):setActivated(true);
+        thisPlayer:getParticleFxComponentFromName("SmokeParticle"):setActivated(true);
     else
-        thisPlayer:getParticleUniverseComponentFromName("SmokeParticle"):setPlaySpeed(20);
+        thisPlayer:getParticleFxComponentFromName("SmokeParticle"):setPlaySpeed(20);
     end
 
     energyProgress:setValue(energy:getValueNumber());

@@ -30,6 +30,7 @@
 #include "OgreNewtModule.h"
 
 #include <filesystem>
+#include <functional>
 
 namespace
 {
@@ -57,7 +58,10 @@ namespace
     class SceneLoadingStallGuard
     {
     public:
-        SceneLoadingStallGuard()
+        // Attention: the two callbacks are the loading indicator's begin/end. They run inside the
+        // constructor resp. the destructor, so the indicator is torn down even if parsing throws.
+        // Passing nullptr for either is allowed.
+        SceneLoadingStallGuard(const std::function<void()>& onBegin, const std::function<void()>& onEnd) : onEnd(onEnd)
         {
             // Attention: This uses GraphicsModule's own suspend flag, NOT
             // AppStateManager::bStall and NOT GameProgressModule::bSceneLoading. Both of those
@@ -66,16 +70,33 @@ namespace
             // measurements showed this as a flat ~16 ms per round trip - four round trips per
             // game object, 63 ms each, 13 seconds for 100 objects.
             NOWA::GraphicsModule::getInstance()->suspendRendering(true);
+
+            // Attention: AFTER suspendRendering, because beginLoadingIndicator dispatches a render
+            // command and the render thread has to be servicing the queue for that to complete.
+            if (nullptr != onBegin)
+            {
+                onBegin();
+            }
         }
 
         ~SceneLoadingStallGuard()
         {
+            // Attention: BEFORE suspendRendering(false), so the indicator's widgets and its
+            // temporary camera are gone before the normal render loop resumes and starts
+            // interpolating and rendering again.
+            if (nullptr != this->onEnd)
+            {
+                this->onEnd();
+            }
+
             NOWA::GraphicsModule::getInstance()->suspendRendering(false);
         }
 
         SceneLoadingStallGuard(const SceneLoadingStallGuard&) = delete;
         SceneLoadingStallGuard& operator=(const SceneLoadingStallGuard&) = delete;
 
+    private:
+        std::function<void()> onEnd;
     };
 }
 
@@ -87,7 +108,6 @@ namespace NOWA
         mainCamera(nullptr),
         pagesCount(0),
         needCollisionRebuild(false),
-        sceneLoaderCallback(nullptr),
         forceCreation(false),
         bSceneParsed(false),
         bIsSnapshot(false),
@@ -95,11 +115,10 @@ namespace NOWA
         mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
         mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY)),
         sunLight(nullptr),
-        showLoadingDetails(false),
-        showProgressBar(false),
-        sceneListener(nullptr),
-        sceneLoadCurrentObject(0),
-        sceneLoadTotalObjects(0)
+        showLoadingIndicator(false),
+        loadingIndicator(nullptr),
+        ownedLoadingIndicator(nullptr),
+        temporaryLoadingCamera(nullptr)
     {
     }
 
@@ -110,18 +129,16 @@ namespace NOWA
         sunLight(nullptr),
         pagesCount(0),
         needCollisionRebuild(false),
-        sceneLoaderCallback(nullptr),
         forceCreation(false),
         bSceneParsed(false),
         bIsSnapshot(false),
         bNewScene(false),
         mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
         mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY)),
-        showLoadingDetails(false),
-        showProgressBar(false),
-        sceneListener(nullptr),
-        sceneLoadCurrentObject(0),
-        sceneLoadTotalObjects(0)
+        showLoadingIndicator(false),
+        loadingIndicator(nullptr),
+        ownedLoadingIndicator(nullptr),
+        temporaryLoadingCamera(nullptr)
     {
         // Add delegates to be called when the corresponding event had fired
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DotSceneImportModule::parseGameObjectDelegate), EventDataParseGameObject::getStaticEventType());
@@ -142,18 +159,16 @@ namespace NOWA
         sunLight(nullptr),
         pagesCount(0),
         needCollisionRebuild(false),
-        sceneLoaderCallback(nullptr),
         forceCreation(false),
         bSceneParsed(false),
         bIsSnapshot(false),
         bNewScene(false),
         mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
         mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY)),
-        showLoadingDetails(false),
-        showProgressBar(false),
-        sceneListener(nullptr),
-        sceneLoadCurrentObject(0),
-        sceneLoadTotalObjects(0)
+        showLoadingIndicator(false),
+        loadingIndicator(nullptr),
+        ownedLoadingIndicator(nullptr),
+        temporaryLoadingCamera(nullptr)
     {
         // Remove .scene
         Ogre::String tempSceneName = sceneName;
@@ -279,10 +294,10 @@ namespace NOWA
         return true;
     }
 
-    bool DotSceneImportModule::parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight, DotSceneImportModule::IsceneLoaderCallback* sceneLoaderCallback)
+    bool DotSceneImportModule::parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight)
     {
         GraphicsModule::getInstance()->clearAllClosures();
-        
+
         // Note: No crypted flag used, because if its a usual scene and shall be crypted, the whole project and all scene files will be crypted from the outside at once and also decoded at once.
         bool success = true;
 
@@ -298,7 +313,6 @@ namespace NOWA
         this->projectParameter.sceneName = tempSceneName;
         this->resourceGroupName = resourceGroupName;
         this->sunLight = sunLight;
-        this->sceneLoaderCallback = sceneLoaderCallback;
         this->parsedGameObjectIds.clear();
 
         if (true == this->resourceGroupName.empty())
@@ -328,15 +342,23 @@ namespace NOWA
         // Attention: MUST come before anything that uses enqueueAndWait, and the guard has to
         // outlive the whole function - including postInitData(), which dispatches further render
         // commands per game object. See the class comment for what it does and what it disables.
-        SceneLoadingStallGuard sceneLoadingStallGuard;
+        SceneLoadingStallGuard sceneLoadingStallGuard(
+            [this]()
+            {
+                this->beginLoadingIndicator();
+            },
+            [this]()
+            {
+                this->endLoadingIndicator();
+            });
 
         float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
 
         Core::getSingletonPtr()->preLoadSceneTextures(filePathName);
         // Attention: This used to log getMilliseconds() directly, which is the timer's ABSOLUTE
         // value since engine start, not a duration. It now logs the actual elapsed time.
-        Ogre::LogManager::getSingleton().logMessage("[DotSceneImportModule] Texture preload: " +
-            Ogre::StringConverter::toString((static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime) + " seconds");
+        Ogre::LogManager::getSingleton().logMessage("[DotSceneImportModule] Texture preload: " + Ogre::StringConverter::toString((static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime) +
+                                                    " seconds");
 
         Core::getSingletonPtr()->createFolders(this->scenePath);
         Core::getSingletonPtr()->setCurrentScenePath(this->scenePath);
@@ -410,9 +432,7 @@ namespace NOWA
         Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Scene node count: " + Ogre::StringConverter::toString(totalObjects));
 
         // Creates MyGUI widgets on the render thread (enqueueAndWait from main thread — safe during game loop)
-        // this->createSceneLoadUI(totalObjects);
 
-        // Sequential parse — notifySceneLoadProgress is called per node in processNode
         this->processScene(xmlRoot);
 
         if (false == this->projectParameter.ignoreGlobalScene)
@@ -420,7 +440,6 @@ namespace NOWA
             this->parseGlobalScene(crypted);
         }
 
-        // postInitData must run on the render thread — notifyPostInitPhase is called directly there
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
@@ -428,9 +447,6 @@ namespace NOWA
             this->postInitData();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::waitForStreamingCompletion");
-
-        // Destroy progress UI on render thread
-        // this->destroySceneLoadUI();
 
         this->bSceneParsed = false;
         this->savedGameFilePathName.clear();
@@ -476,11 +492,6 @@ namespace NOWA
 
     void DotSceneImportModule::postInitData()
     {
-        // Count total game objects for postInit progress
-        size_t totalGO = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size();
-        size_t currentGO = 0;
-
-        this->notifyPostInitPhase("MainCamera postInit", ++currentGO, totalGO);
         auto mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_CAMERA_ID);
         if (nullptr == mainCameraGameObject && false == this->bNewScene)
         {
@@ -496,7 +507,6 @@ namespace NOWA
             }
         }
 
-        this->notifyPostInitPhase("MainLight postInit", ++currentGO, totalGO);
         auto mainLightGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_LIGHT_ID);
         if (nullptr == mainLightGameObject && false == this->bNewScene)
         {
@@ -512,7 +522,6 @@ namespace NOWA
             }
         }
 
-        this->notifyPostInitPhase("MainGameObject postInit", ++currentGO, totalGO);
         auto mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
         if (nullptr == mainGameObject && false == this->bNewScene)
         {
@@ -532,10 +541,17 @@ namespace NOWA
         // Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
         for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
         {
+            // Attention: postInitData() runs entirely inside ONE render command, so the render
+            // thread never returns to the command pump loop while it is running - and that loop is
+            // what normally drives the loading indicator. On a scene with many planets this phase
+            // alone takes several seconds, during which the indicator visibly froze.
+            // We are already ON the render thread here, so we can draw a frame directly. The call
+            // throttles itself and is a no-op when no indicator is active.
+            NOWA::GraphicsModule::getInstance()->renderLoadingFrameThrottled();
+
             const auto gameObjectPtr = it->second;
             if (gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID && gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
             {
-                this->notifyPostInitPhase(gameObjectPtr->getName(), ++currentGO, totalGO);
                 if (false == gameObjectPtr->postInit())
                 {
                     AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
@@ -565,18 +581,11 @@ namespace NOWA
             AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
         }
 
-        if (nullptr != this->sceneLoaderCallback)
-        {
-            delete this->sceneLoaderCallback;
-            this->sceneLoaderCallback = nullptr;
-        }
-
         // Set the bounds, to have it in core for public access
         Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
 
         if (false == NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->loadNavigationMesh())
         {
-            this->notifyPostInitPhase("NavMesh / RecastModule", totalGO, totalGO);
             // No .nav file yet — build from scratch and auto-save
             NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
         }
@@ -1414,11 +1423,10 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end nodes duration: " + Ogre::StringConverter::toString(dt) + " seconds.");
     }
 
-        void DotSceneImportModule::processNode(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+    void DotSceneImportModule::processNode(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
     {
         Ogre::String nodeName = XMLConverter::getAttrib(xmlNode, "name", "unknown");
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Processing node: " + nodeName);
-        this->notifySceneLoadProgress(nodeName);
 
         Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
 
@@ -1534,12 +1542,6 @@ namespace NOWA
             return;
         }
 
-        // Callback to react on postload
-        if (nullptr != this->sceneLoaderCallback)
-        {
-            this->sceneLoaderCallback->onPostLoadSceneNode(pNode);
-        }
-
         rapidxml::xml_node<>* pElement;
 
         // Process node (*)
@@ -1641,6 +1643,11 @@ namespace NOWA
             tempMeshFile = "Missing.mesh";
         }
 
+        // Attention: the two Ogre::Timer::getMilliseconds() calls that used to bracket this function
+        // are gone. The resulting 'dt' was never logged or used, and on Windows Ogre's Timer may wrap
+        // QueryPerformanceCounter in two SetThreadAffinityMask syscalls - so this was two syscalls and
+        // a thread migration per item, for a value nobody read.
+
         Ogre::Item* item = nullptr;
 
         unsigned long missingGameObjectId = 0;
@@ -1701,12 +1708,6 @@ namespace NOWA
                     item->setVisible(visible);
                 }
 
-                // Callback
-                if (nullptr != this->sceneLoaderCallback)
-                {
-                    this->sceneLoaderCallback->onPostLoadMovableObject(item);
-                }
-
                 // Set datablocks
                 if (false == justSetValues || missingGameObjectId != 0)
                 {
@@ -1746,10 +1747,6 @@ namespace NOWA
                                 break;
                             }
 
-                            if (nullptr != this->sceneLoaderCallback)
-                            {
-                                this->sceneLoaderCallback->onPostLoadMovableObject(item);
-                            }
                             subItemIndexCount++;
                         }
                         pElement = pElement->next_sibling("subitem");
@@ -2202,107 +2199,122 @@ namespace NOWA
         }
     }
 
-    void DotSceneImportModule::createSceneLoadUI(size_t totalObjects)
-    {
-        if (false == this->showLoadingDetails && false == this->showProgressBar)
-        {
-            return;
-        }
-
-        this->sceneLoadTotalObjects = totalObjects;
-        this->sceneLoadCurrentObject = 0;
-
-        this->sceneListener = new EngineResourceSceneListener(Core::getSingletonPtr()->getOgreRenderWindow(), this->showProgressBar, this->showLoadingDetails);
-
-        Ogre::ResourceGroupManager::getSingleton().addResourceGroupListener(this);
-        MyGUI::PointerManager::getInstancePtr()->setVisible(false);
-
-        this->sceneListener->showLoadingBar();
-    }
-
-    void DotSceneImportModule::destroySceneLoadUI()
-    {
-        if (nullptr == this->sceneListener)
-        {
-            return;
-        }
-
-        Ogre::ResourceGroupManager::getSingleton().removeResourceGroupListener(this);
-        MyGUI::PointerManager::getInstancePtr()->setVisible(true);
-
-        this->sceneListener->hideLoadingBar();
-        delete this->sceneListener;
-        this->sceneListener = nullptr;
-    }
-
-    void DotSceneImportModule::notifySceneLoadProgress(const Ogre::String& objectName)
-    {
-        if (nullptr == this->sceneListener)
-        {
-            return;
-        }
-
-        ++this->sceneLoadCurrentObject;
-        // this->sceneListener->updateProgress(objectName, this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
-    }
-
-    void DotSceneImportModule::notifyPostInitPhase(const Ogre::String& phase, size_t current, size_t total)
-    {
-        if (nullptr == this->sceneListener)
-        {
-            return;
-        }
-
-        // this->sceneListener->updatePostInitPhase(phase, current, total);
-    }
-
-    void DotSceneImportModule::resourceGroupScriptingStarted(const Ogre::String& resourceGroupName, size_t scriptCount)
-    {
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Scripting started: " + resourceGroupName + " (" + Ogre::StringConverter::toString(scriptCount) + " scripts)");
-    }
-
-    void DotSceneImportModule::scriptParseStarted(const Ogre::String& scriptName, bool& skipThisScript)
-    {
-        // Causes in release sudden crashes during scene load
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parsing script: " + scriptName);
-        /*if (nullptr != this->sceneListener)
-        {
-            this->sceneListener->updateProgress(scriptName, this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
-        }*/
-    }
-
-    void DotSceneImportModule::scriptParseEnded(const Ogre::String& scriptName, bool skipped)
-    {
-    }
-
-    void DotSceneImportModule::resourceGroupScriptingEnded(const Ogre::String& resourceGroupName)
-    {
-    }
-
-    void DotSceneImportModule::resourceGroupLoadStarted(const Ogre::String& resourceGroupName, size_t resourceCount)
-    {
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Resource group load started: " + resourceGroupName + " (" + Ogre::StringConverter::toString(resourceCount) + " resources)");
-    }
-
-    void DotSceneImportModule::resourceLoadStarted(const Ogre::ResourcePtr& resource)
-    {
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Loading resource: " + resource->getName());
-        /*if (nullptr != this->sceneListener)
-        {
-            this->sceneListener->updateProgress(resource->getName(), this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
-        }*/
-    }
-
-    void DotSceneImportModule::resourceLoadEnded()
-    {
-    }
-
-    void DotSceneImportModule::resourceGroupLoadEnded(const Ogre::String& resourceGroupName)
-    {
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Resource group load ended: " + resourceGroupName);
-    }
-
     // ── Accessors ─────────────────────────────────────────────────────────────
+
+    void DotSceneImportModule::setShowLoadingIndicator(bool show)
+    {
+        this->showLoadingIndicator = show;
+    }
+
+    void DotSceneImportModule::setLoadingIndicator(ILoadingIndicator* indicator)
+    {
+        this->loadingIndicator = indicator;
+    }
+
+    void DotSceneImportModule::beginLoadingIndicator(void)
+    {
+        if (false == this->showLoadingIndicator)
+        {
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            // Attention: A workspace is mandatory. In the editor ProjectManager::loadProject
+            // destroys the scene BEFORE parsing, and in the game GameProgressModule tears the old
+            // scene down the same way - so in the normal case there is nothing to render into and
+            // renderOneFrame() would draw nothing at all. That is why every earlier attempt at a
+            // loading screen failed.
+            //
+            // A camera is created only to give the dummy workspace something to render from. It is
+            // deliberately NOT registered with the CameraManager: that would also pull in a camera
+            // behavior, and this camera exists for a few hundred milliseconds.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-BEGIN] command entered, hasAnyWorkspace=" + Ogre::StringConverter::toString(WorkspaceModule::getInstance()->hasAnyWorkspace()));
+
+            if (false == WorkspaceModule::getInstance()->hasAnyWorkspace())
+            {
+                if (nullptr == this->sceneManager)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Cannot show the loading indicator, there is no scene manager.");
+                    return;
+                }
+
+                this->temporaryLoadingCamera = this->sceneManager->createCamera("NOWA_LoadingIndicatorCamera");
+                this->temporaryLoadingCamera->setFOVy(Ogre::Degree(90.0f));
+                this->temporaryLoadingCamera->setNearClipDistance(0.1f);
+                this->temporaryLoadingCamera->setFarClipDistance(100.0f);
+                this->temporaryLoadingCamera->setQueryFlags(0 << 0);
+
+                // nullptr as the component means: dummy workspace.
+                WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->temporaryLoadingCamera, nullptr);
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-BEGIN] dummy workspace created, hasAnyWorkspace=" + Ogre::StringConverter::toString(WorkspaceModule::getInstance()->hasAnyWorkspace()));
+            }
+
+            // Fall back to the cheapest indicator if the caller did not provide one.
+            if (nullptr == this->loadingIndicator)
+            {
+                this->ownedLoadingIndicator = new DotsTextLoadingIndicator();
+                // this->ownedLoadingIndicator = new RotatingImageLoadingIndicator();
+                this->loadingIndicator = this->ownedLoadingIndicator;
+            }
+
+            this->loadingIndicator->onShow();
+
+            NOWA::GraphicsModule::getInstance()->setLoadingIndicator(this->loadingIndicator);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-BEGIN] indicator active");
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::beginLoadingIndicator");
+    }
+
+    void DotSceneImportModule::endLoadingIndicator(void)
+    {
+        if (false == this->showLoadingIndicator)
+        {
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-END] command entered");
+
+            // Stop driving it BEFORE the widgets are destroyed, otherwise the next loading frame
+            // could still call onUpdate() on a dead widget.
+            NOWA::GraphicsModule::getInstance()->setLoadingIndicator(nullptr);
+
+            if (nullptr != this->loadingIndicator)
+            {
+                this->loadingIndicator->onHide();
+            }
+
+            if (nullptr != this->ownedLoadingIndicator)
+            {
+                delete this->ownedLoadingIndicator;
+                this->ownedLoadingIndicator = nullptr;
+                this->loadingIndicator = nullptr;
+            }
+
+            if (nullptr != this->temporaryLoadingCamera)
+            {
+                // Attention: removeCamera() also removes the dummy workspace and erases the map
+                // entry. By now the parsed WorkspaceBaseComponent has usually replaced the dummy
+                // already, in which case there is nothing left to find - that is fine, but the
+                // camera itself still has to go.
+                WorkspaceModule::getInstance()->removeCamera(this->temporaryLoadingCamera);
+
+                if (nullptr != this->sceneManager)
+                {
+                    this->sceneManager->destroyCamera(this->temporaryLoadingCamera);
+                }
+
+                this->temporaryLoadingCamera = nullptr;
+            }
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::endLoadingIndicator");
+    }
 
     Ogre::SceneManager* DotSceneImportModule::getSceneManager(void) const
     {
@@ -2374,16 +2386,6 @@ namespace NOWA
         }
         ifs.close();
         return std::make_pair(projectName, sceneName);
-    }
-
-    void DotSceneImportModule::setShowLoadingDetails(bool show)
-    {
-        this->showLoadingDetails = show;
-    }
-
-    void DotSceneImportModule::setShowProgressBar(bool show)
-    {
-        this->showProgressBar = show;
     }
 
 }; // Namespace end

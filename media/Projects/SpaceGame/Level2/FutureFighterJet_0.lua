@@ -42,8 +42,8 @@ FutureFighterJet_0["connect"] = function(gameObject)
     cameraComponent:setCameraDegreeOrientation(Vector3(-90, 180, 180));
     cameraComponent:setActivated(true);
     
-    thisGameObject:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(false);
-    thisGameObject:getParticleUniverseComponentFromName("SmokeParticle"):setActivated(false);
+    thisGameObject:getParticleFxComponentFromName("ExplosionParticle"):setActivated(false);
+    thisGameObject:getParticleFxComponentFromName("SmokeParticle"):setActivated(false);
     laserSpawnComponent:reactOnSpawn(function(spawnedGameObject, originGameObject)
             spawnedGameObject:getPhysicsComponent():setCollidable(true);
             local laserBillboard = spawnedGameObject:getBillboardComponent();
@@ -66,10 +66,10 @@ FutureFighterJet_0["disconnect"] = function()
     laserSpawnComponent:setActivated(false);
     originLaser:setVisible(true);
     
-    thisGameObject:getParticleUniverseComponentFromName("SmokeParticle"):setActivated(false);
-    thisGameObject:getParticleUniverseComponentFromName("SmokeParticle"):setPlaySpeed(10);
+    thisGameObject:getParticleFxComponentFromName("SmokeParticle"):setActivated(false);
+    thisGameObject:getParticleFxComponentFromName("SmokeParticle"):setPlaySpeed(10);
     
-    thisGameObject:getParticleUniverseComponentFromName("ExplosionParticle"):setActivated(false);
+    thisGameObject:getParticleFxComponentFromName("ExplosionParticle"):setActivated(false);
     thisGameObject:setVisible(true);
 
     cameraComponent:setActivated(false);

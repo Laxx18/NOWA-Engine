@@ -37,7 +37,7 @@ Level1_MotherShip2_0["disconnect"] = function()
     --energy:setValueNumber(100);
     --boss1:getGameObjectTitleComponent():setCaption("100%");
     --boss1:getSimpleSoundComponent():setActivated(false);
-    --boss1:getParticleUniverseComponent():setActivated(false);
+    --boss1:getParticleFxComponent():setActivated(false);
     --boss1:getGameObjectTitleComponent():setActivated(false);
 end
 

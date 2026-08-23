@@ -3,9 +3,12 @@
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/InputDeviceCore.h"
+#include "utilities/LoadingIndicator.h"
 
-#include "Animation/OgreBone.h"
+// Attention: TEMPORARY diagnostic for the loading indicator. Comment out when done.
+#define NOWA_LOADING_INDICATOR_TIMING
 
+#include <Animation/OgreBone.h>
 #include <chrono>
 #include <condition_variable>
 
@@ -16,6 +19,7 @@
 // #define CLOSURE_DEBUG
 
 #ifdef NOWA_SUSPEND_WAIT_TIMING
+
 namespace
 {
     // Render thread only - no synchronisation needed.
@@ -26,8 +30,6 @@ namespace
 #endif
 #include <mutex>
 #include <sstream>
-
-
 
 namespace
 {
@@ -97,7 +99,6 @@ namespace NOWA
         logLevel(Ogre::LML_NORMAL),
         currentTransformNodeIdx(0),
         currentTransformCameraIdx(0),
-        currentTransformOldBoneIdx(0),
         currentTransformBoneIdx(0),
         currentTrackedDatablockIdx(0),
         interpolationWeight(0.0f),
@@ -114,7 +115,9 @@ namespace NOWA
         wasStalledOrLoading(false),
         renderingSuspended(false),
         commandPending(false),
-        renderThreadParked(false)
+        renderThreadParked(false),
+        loadingIndicator(nullptr),
+        loadingFrameIntervalSeconds(1.0f / 20.0f)
     {
         // Note: nodePool and its five siblings are std::deque, not std::vector - they
         // grow only via push_back/emplace_back under their category mutex (see the
@@ -134,13 +137,6 @@ namespace NOWA
         for (size_t i = 0; i < GraphicsModule::CAMERA_POOL_CAPACITY; ++i)
         {
             this->freeCameraSlots.push_back(i);
-        }
-
-        this->oldBonePool.resize(GraphicsModule::OLD_BONE_POOL_CAPACITY);
-        this->freeOldBoneSlots.reserve(GraphicsModule::OLD_BONE_POOL_CAPACITY);
-        for (size_t i = 0; i < GraphicsModule::OLD_BONE_POOL_CAPACITY; ++i)
-        {
-            this->freeOldBoneSlots.push_back(i);
         }
 
         this->bonePool.resize(GraphicsModule::BONE_POOL_CAPACITY);
@@ -532,10 +528,6 @@ namespace NOWA
         this->cameraToIndexMap.clear();
         this->freeCameraSlots.clear();
 
-        this->oldBonePool.clear();
-        this->oldBoneToIndexMap.clear();
-        this->freeOldBoneSlots.clear();
-
         this->bonePool.clear();
         this->boneToIndexMap.clear();
         this->freeBoneSlots.clear();
@@ -551,7 +543,6 @@ namespace NOWA
         this->logLevel = Ogre::LML_NORMAL;
         this->currentTransformNodeIdx = 0;
         this->currentTransformCameraIdx = 0;
-        this->currentTransformOldBoneIdx = 0;
         this->currentTransformBoneIdx = 0;
         this->currentTrackedDatablockIdx = 0;
 
@@ -759,21 +750,6 @@ namespace NOWA
         }
 
         {
-            std::lock_guard<std::mutex> lock(this->oldBoneRegistrationMutex);
-            for (auto& slot : this->oldBonePool)
-            {
-                slot.oldBone.store(nullptr, std::memory_order_relaxed);
-                slot.active.store(false, std::memory_order_relaxed);
-            }
-            this->oldBoneToIndexMap.clear();
-            this->freeOldBoneSlots.clear();
-            for (size_t i = 0; i < this->oldBonePool.size(); ++i)
-            {
-                this->freeOldBoneSlots.push_back(i);
-            }
-        }
-
-        {
             std::lock_guard<std::mutex> lock(this->boneRegistrationMutex);
             for (auto& slot : this->bonePool)
             {
@@ -805,7 +781,6 @@ namespace NOWA
 
         this->currentTransformNodeIdx = 0;
         this->currentTransformCameraIdx = 0;
-        this->currentTransformOldBoneIdx = 0;
         this->currentTransformBoneIdx = 0;
         this->currentTrackedDatablockIdx = 0;
         this->interpolationWeight = 0.0f;
@@ -1440,6 +1415,137 @@ namespace NOWA
         }
     }
 
+    void GraphicsModule::setLoadingIndicator(ILoadingIndicator* indicator)
+    {
+        // Attention: Ownership stays with the caller. This only stores the pointer, and the caller
+        // must keep the object alive until it passes nullptr here again.
+        this->loadingIndicator = indicator;
+    }
+
+    void GraphicsModule::setLoadingFrameRate(Ogre::Real framesPerSecond)
+    {
+        if (framesPerSecond < 1.0f)
+        {
+            framesPerSecond = 1.0f;
+        }
+
+        this->loadingFrameIntervalSeconds = 1.0f / framesPerSecond;
+    }
+
+    void GraphicsModule::renderLoadingFrameThrottled(void)
+    {
+        // Attention: RE-ENTRANCY GUARD. renderOneFrame() below can run listeners, MyGUI callbacks
+        // and compositor passes, and any of those may end up calling AppStateManager::enqueueAndWait
+        // again. That lands in the very command pump loop we are called from, which would call this
+        // function a second time. thread_local, so it guards the render thread without any
+        // synchronisation.
+        static thread_local bool insideLoadingFrame = false;
+
+        if (true == insideLoadingFrame)
+        {
+            return;
+        }
+
+#ifdef NOWA_LOADING_INDICATOR_TIMING
+        // Attention: TEMPORARY. Counts why this function returns without rendering. Aggregated and
+        // logged once per second, so a silent early-out cannot hide.
+        static size_t reasonNoIndicator = 0;
+        static size_t reasonNotRenderThread = 0;
+        static size_t reasonNoWorkspace = 0;
+        static size_t reasonThrottled = 0;
+        static size_t framesRendered = 0;
+        static auto lastReasonLog = std::chrono::steady_clock::now();
+
+        const auto reasonNow = std::chrono::steady_clock::now();
+        if (reasonNow - lastReasonLog >= std::chrono::seconds(1))
+        {
+            lastReasonLog = reasonNow;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-FRAME] rendered=" + Ogre::StringConverter::toString(framesRendered) + " noIndicator=" + Ogre::StringConverter::toString(reasonNoIndicator) +
+                                                                                    " notRenderThread=" + Ogre::StringConverter::toString(reasonNotRenderThread) + " noWorkspace=" + Ogre::StringConverter::toString(reasonNoWorkspace) +
+                                                                                    " throttled=" + Ogre::StringConverter::toString(reasonThrottled));
+
+            reasonNoIndicator = 0;
+            reasonNotRenderThread = 0;
+            reasonNoWorkspace = 0;
+            reasonThrottled = 0;
+            framesRendered = 0;
+        }
+#endif
+
+        // Attention: This is the ONLY place that renders anything while a scene is loading.
+        // renderThreadFunction's own loop is not running then - the render thread sits in the
+        // command pump loop of AppStateManager::enqueueAndWait, which is where this is called
+        // from. Putting a renderOneFrame() into renderThreadFunction has no effect during a load.
+        if (nullptr == this->loadingIndicator)
+        {
+#ifdef NOWA_LOADING_INDICATOR_TIMING
+            ++reasonNoIndicator;
+#endif
+            return;
+        }
+
+        if (false == this->isRenderThread())
+        {
+#ifdef NOWA_LOADING_INDICATOR_TIMING
+            ++reasonNotRenderThread;
+#endif
+            return;
+        }
+
+        // Attention: A workspace is required. ProjectManager::loadProject destroys the scene before
+        // parsing, so unless a dummy workspace was created for the load there is nothing to render
+        // into and renderOneFrame would draw nothing (or worse). Bail out quietly - logging here
+        // would spam, because this runs many times per second.
+        if (false == WorkspaceModule::getInstance()->hasAnyWorkspace())
+        {
+#ifdef NOWA_LOADING_INDICATOR_TIMING
+            ++reasonNoWorkspace;
+#endif
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const Ogre::Real secondsSinceLastFrame = std::chrono::duration<Ogre::Real>(now - this->lastLoadingFrameTime).count();
+
+        if (secondsSinceLastFrame < this->loadingFrameIntervalSeconds)
+        {
+#ifdef NOWA_LOADING_INDICATOR_TIMING
+            ++reasonThrottled;
+#endif
+            return;
+        }
+
+        this->lastLoadingFrameTime = now;
+
+        insideLoadingFrame = true;
+
+        try
+        {
+            this->loadingIndicator->onUpdate(secondsSinceLastFrame);
+            Ogre::Root::getSingletonPtr()->renderOneFrame();
+
+#ifdef NOWA_LOADING_INDICATOR_TIMING
+            ++framesRendered;
+#endif
+        }
+        catch (const Ogre::Exception& e)
+        {
+            // Attention: a failure here must never abort the scene load. Drop the indicator so we
+            // do not retry every frame and flood the log.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule] Loading frame failed, disabling the loading indicator: " + e.getDescription());
+            this->loadingIndicator = nullptr;
+        }
+        catch (...)
+        {
+            // Attention: MyGUI throws its own exception type, which the handler above would not
+            // catch - it would have propagated straight through the command pump loop.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule] Loading frame threw an unknown exception, disabling the loading indicator.");
+            this->loadingIndicator = nullptr;
+        }
+
+        insideLoadingFrame = false;
+    }
+
     void GraphicsModule::waitForCommandOrSignal(std::chrono::milliseconds timeout)
     {
         // Parks the calling thread until a new render command arrives (enqueue() signals), until
@@ -1673,64 +1779,6 @@ namespace NOWA
 
         CameraTransforms* slot = this->resolveCameraSlotLocked(camera);
         tlsCache[camera] = slot;
-        return slot;
-    }
-
-    GraphicsModule::OldBoneTransforms* GraphicsModule::resolveOldBoneSlotLocked(Ogre::v1::OldBone* oldBone)
-    {
-        std::lock_guard<std::mutex> lock(this->oldBoneRegistrationMutex);
-
-        auto it = this->oldBoneToIndexMap.find(oldBone);
-        if (it != this->oldBoneToIndexMap.end())
-        {
-            return &this->oldBonePool[it->second];
-        }
-
-        size_t index;
-        if (true == this->freeOldBoneSlots.empty())
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GraphicsModule] OldBone pool exhausted (capacity " + Ogre::StringConverter::toString(GraphicsModule::OLD_BONE_POOL_CAPACITY) + "). Raise OLD_BONE_POOL_CAPACITY.");
-            return &this->oldBoneOverflowSink;
-        }
-        index = this->freeOldBoneSlots.back();
-        this->freeOldBoneSlots.pop_back();
-
-        OldBoneTransforms& slot = this->oldBonePool[index];
-
-        GraphicsModule::TransformData baseline;
-        baseline.position = oldBone->getPosition();
-        baseline.orientation = oldBone->getOrientation();
-        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-        {
-            slot.transforms[i] = baseline;
-        }
-
-        slot.isNew = true;
-        slot.active.store(true, std::memory_order_relaxed);
-        slot.oldBone.store(oldBone, std::memory_order_release);
-
-        this->oldBoneToIndexMap[oldBone] = index;
-
-        return &slot;
-    }
-
-    GraphicsModule::OldBoneTransforms* GraphicsModule::acquireOldBoneSlot(Ogre::v1::OldBone* oldBone)
-    {
-        thread_local std::unordered_map<Ogre::v1::OldBone*, OldBoneTransforms*> tlsCache;
-
-        auto cacheIt = tlsCache.find(oldBone);
-        if (cacheIt != tlsCache.end())
-        {
-            OldBoneTransforms* slot = cacheIt->second;
-            if (slot->oldBone.load(std::memory_order_acquire) == oldBone)
-            {
-                return slot;
-            }
-            tlsCache.erase(cacheIt);
-        }
-
-        OldBoneTransforms* slot = this->resolveOldBoneSlotLocked(oldBone);
-        tlsCache[oldBone] = slot;
         return slot;
     }
 
@@ -2292,148 +2340,6 @@ namespace NOWA
         cameraTransforms->active.store(false, std::memory_order_relaxed);*/
     }
 
-    void GraphicsModule::addTrackedOldBone(Ogre::v1::OldBone* oldBone)
-    {
-        this->acquireOldBoneSlot(oldBone);
-    }
-
-    void GraphicsModule::removeTrackedOldBone(Ogre::v1::OldBone* oldBone)
-    {
-        std::lock_guard<std::mutex> lock(this->oldBoneRegistrationMutex);
-
-        auto it = this->oldBoneToIndexMap.find(oldBone);
-        if (it == this->oldBoneToIndexMap.end())
-        {
-            return;
-        }
-
-        size_t index = it->second;
-        OldBoneTransforms& slot = this->oldBonePool[index];
-
-        slot.oldBone.store(nullptr, std::memory_order_release);
-        slot.active.store(false, std::memory_order_relaxed);
-
-        this->oldBoneToIndexMap.erase(it);
-        this->freeOldBoneSlots.push_back(index);
-    }
-
-    void GraphicsModule::updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position)
-    {
-        // Always interpolated - call setOldBonePosition() instead for an instant warp.
-        GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
-
-        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
-        oldBoneTransforms->active.store(true, std::memory_order_relaxed);
-    }
-
-    void GraphicsModule::updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation)
-    {
-        // Always interpolated - call setOldBoneOrientation() instead for an instant warp.
-        GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
-
-        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
-        oldBoneTransforms->active.store(true, std::memory_order_relaxed);
-    }
-
-    void GraphicsModule::updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
-    {
-        GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
-
-        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
-        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
-        oldBoneTransforms->active.store(true, std::memory_order_relaxed);
-    }
-
-    // Instant warp - see the contract comment on setNodePosition() in the header.
-    void GraphicsModule::setOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position)
-    {
-        if (true == this->isRenderThread())
-        {
-            this->setOldBonePositionOnRenderThread(oldBone, position);
-        }
-        else
-        {
-            NOWA::GraphicsModule::RenderCommand command = [this, oldBone, position]()
-            {
-                this->setOldBonePositionOnRenderThread(oldBone, position);
-            };
-            this->enqueueAndWait(std::move(command), "GraphicsModule::setOldBonePosition");
-        }
-    }
-
-    void GraphicsModule::setOldBonePositionOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position)
-    {
-        oldBone->setPosition(position);
-
-        /*GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
-        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-        {
-            oldBoneTransforms->transforms[i].position = position;
-        }
-
-        oldBoneTransforms->active.store(false, std::memory_order_relaxed);*/
-    }
-
-    void GraphicsModule::setOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation)
-    {
-        if (true == this->isRenderThread())
-        {
-            this->setOldBoneOrientationOnRenderThread(oldBone, orientation);
-        }
-        else
-        {
-            NOWA::GraphicsModule::RenderCommand command = [this, oldBone, orientation]()
-            {
-                this->setOldBoneOrientationOnRenderThread(oldBone, orientation);
-            };
-            this->enqueueAndWait(std::move(command), "GraphicsModule::setOldBoneOrientation");
-        }
-    }
-
-    void GraphicsModule::setOldBoneOrientationOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation)
-    {
-        oldBone->setOrientation(orientation);
-
-        /*GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
-        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-        {
-            oldBoneTransforms->transforms[i].orientation = orientation;
-        }
-
-        oldBoneTransforms->active.store(false, std::memory_order_relaxed);*/
-    }
-
-    void GraphicsModule::setOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
-    {
-        if (true == this->isRenderThread())
-        {
-            this->setOldBoneTransformOnRenderThread(oldBone, position, orientation);
-        }
-        else
-        {
-            NOWA::GraphicsModule::RenderCommand command = [this, oldBone, position, orientation]()
-            {
-                this->setOldBoneTransformOnRenderThread(oldBone, position, orientation);
-            };
-            this->enqueueAndWait(std::move(command), "GraphicsModule::setOldBoneTransform");
-        }
-    }
-
-    void GraphicsModule::setOldBoneTransformOnRenderThread(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
-    {
-        oldBone->setPosition(position);
-        oldBone->setOrientation(orientation);
-
-        /*GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->acquireOldBoneSlot(oldBone);
-        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-        {
-            oldBoneTransforms->transforms[i].position = position;
-            oldBoneTransforms->transforms[i].orientation = orientation;
-        }
-
-        oldBoneTransforms->active.store(false, std::memory_order_relaxed);*/
-    }
-
     void GraphicsModule::addTrackedBone(Ogre::Bone* bone)
     {
         this->acquireBoneSlot(bone);
@@ -2896,11 +2802,6 @@ namespace NOWA
         return (this->currentTransformCameraIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
     }
 
-    size_t GraphicsModule::getPreviousTransformOldBoneIdx(void) const
-    {
-        return (this->currentTransformOldBoneIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
-    }
-
     size_t GraphicsModule::getPreviousTransformBoneIdx(void) const
     {
         return (this->currentTransformBoneIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
@@ -3039,42 +2940,6 @@ namespace NOWA
                 else if (true == cameraTransform.active.load(std::memory_order_relaxed))
                 {
                     cameraTransform.transforms[this->currentTransformCameraIdx] = cameraTransform.transforms[prevCameraIdx];
-                }
-            }
-        }
-
-        // =========================================================================
-        // OldBone transforms
-        // =========================================================================
-        {
-            size_t prevOldBoneIdx = this->currentTransformOldBoneIdx;
-            this->currentTransformOldBoneIdx = (this->currentTransformOldBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-            for (auto& oldBoneTransform : this->oldBonePool)
-            {
-                Ogre::v1::OldBone* oldBone = oldBoneTransform.oldBone.load(std::memory_order_acquire);
-
-                if (true == oldBoneTransform.isNew)
-                {
-                    if (nullptr == oldBone)
-                    {
-                        continue;
-                    }
-
-                    GraphicsModule::TransformData currentTransform;
-                    currentTransform.position = oldBone->getPosition();
-                    currentTransform.orientation = oldBone->getOrientation();
-
-                    for (size_t b = 0; b < NUM_TRANSFORM_BUFFERS; ++b)
-                    {
-                        oldBoneTransform.transforms[b] = currentTransform;
-                    }
-
-                    oldBoneTransform.isNew = false;
-                }
-                else if (true == oldBoneTransform.active.load(std::memory_order_relaxed))
-                {
-                    oldBoneTransform.transforms[this->currentTransformOldBoneIdx] = oldBoneTransform.transforms[prevOldBoneIdx];
                 }
             }
         }
@@ -3219,40 +3084,6 @@ namespace NOWA
                     // Apply to scene camera
                     camera->setOrientation(interpRot);
                     camera->setPosition(interpPos);
-                }
-            }
-        }
-
-        // Update oldBone transforms
-
-        // Get the previous buffer index
-        size_t prevOldBoneIdx = this->getPreviousTransformOldBoneIdx();
-
-        // Update all active oldBones
-        {
-            for (const auto& oldBoneTransform : this->oldBonePool)
-            {
-                if (true == oldBoneTransform.active.load(std::memory_order_relaxed))
-                {
-                    Ogre::v1::OldBone* oldBone = oldBoneTransform.oldBone.load(std::memory_order_relaxed);
-                    if (nullptr == oldBone)
-                    {
-                        continue;
-                    }
-
-                    // Get previous and current transforms
-                    const GraphicsModule::TransformData& prevTransform = oldBoneTransform.transforms[prevOldBoneIdx];
-                    const GraphicsModule::TransformData& currTransform = oldBoneTransform.transforms[this->currentTransformOldBoneIdx];
-
-                    // Interpolate position
-                    Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
-
-                    // Interpolate orientation
-                    Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
-
-                    // Apply to scene oldBone
-                    oldBone->setOrientation(interpRot);
-                    oldBone->setPosition(interpPos);
                 }
             }
         }
