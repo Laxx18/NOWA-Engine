@@ -749,6 +749,9 @@ namespace NOWA
        std::vector<RoadControlPoint> resamplePathUniformly(const std::vector<RoadControlPoint>& densePath, Ogre::Real stepMeters);
 
        bool isEditFocusOwner(void) const;
+
+       bool roadDataLayoutFits(const std::vector<unsigned char>& buffer, size_t fileSize, size_t offsetAfterHeader, uint32_t numSegments, uint32_t numCenterVerts, uint32_t numCenterIdx, uint32_t numEdgeVerts, uint32_t numEdgeIdx,
+           uint32_t numJunctionVerts, uint32_t numJunctionIdx) const;
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;

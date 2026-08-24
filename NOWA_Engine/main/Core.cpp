@@ -518,50 +518,32 @@ namespace NOWA
             // Capture sceneManager by value, so we can reset the reference after destruction
             auto sceneMgrToDestroy = sceneManager;
 
-            // Null out on logic thread only after render thread finished destroying
-            // GraphicsModule::RenderCommand renderCommand = [myGuiOgrePlatform, root, sceneMgrToDestroy]()
-            // {
             myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying all cameras");
             sceneMgrToDestroy->destroyAllCameras();
 
-            /* Optionally:
-            sceneMgrToDestroy->destroyAllLights();
-            sceneMgrToDestroy->destroyAllAnimations();
-            sceneMgrToDestroy->destroyAllAnimationStates();
-            sceneMgrToDestroy->destroyAllBillboardChains();
-            sceneMgrToDestroy->destroyAllBillboardSets();
-            sceneMgrToDestroy->destroyAllInstancedGeometry();
-            */
-
-            Ogre::SceneManagerEnumerator::SceneManagerIterator it = root->getSceneManagerIterator();
-
-            while (it.hasMoreElements())
-            {
-                Ogre::SceneManager* sm = it.getNext();
-                if (nullptr != sm)
-                {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Pre-cleaning particles from SceneManager: " + sm->getName());
-
-                    // Get particle manager
-                    Ogre::ParticleSystemManager2* particleManager = sm->getParticleSystemManager2();
-                    if (nullptr != particleManager)
-                    {
-                        try
-                        {
-                            // Destroy all particle systems manually
-                            particleManager->destroyAllParticleSystems();
-
-                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] All particles destroyed for SceneManager: " + sm->getName());
-                        }
-                        catch (const Ogre::Exception& e)
-                        {
-                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Error destroying particles: " + e.getFullDescription());
-                        }
-                    }
-                }
-            }
+            // Attention: The particle "pre-cleaning" that used to be here is GONE, deliberately.
+            //
+            // Both particleManager->destroyAllParticleSystems() and the seemingly safer
+            // sceneManager->destroyAllParticleSystems2() end up in
+            // ParticleSystemDef::_destroyAllParticleSystems(), which after deleting the instances does:
+            //
+            //     ArrayReal *timeToLive = mParticleCpuData.mTimeToLive + getActiveParticlesPackOffset();
+            //     for( i = 0; i < getNumSimdActiveParticles(); i += ARRAY_PACKED_REALS )
+            //         *timeToLive++ = ARRAY_REAL_ZERO;
+            //
+            // getActiveParticlesPackOffset() is mFirstParticleIdx / ARRAY_PACKED_REALS WITHOUT a modulo
+            // against the quota, while mFirstParticleIdx is a monotonically growing counter into a ring
+            // buffer. For an effect that has been running long enough this writes past the end of
+            // mTimeToLive and corrupts the heap right at that block - which then blows up much later in
+            // ParticleSystemDef::_destroy at OGRE_FREE_SIMD( mParticleCpuData.mTimeToLive ) during
+            // ~SceneManager, at a place that looks completely innocent.
+            //
+            // None of this is necessary: clearScene(true) below destroys the ParticleSystem2 instances
+            // through ParticleSystem2Factory::destroyInstance() -> _destroyParticleSystem(), which is
+            // the correct path, and ~ParticleSystemManager2 then calls _destroy() on every def to free
+            // the buffers. _destroy() does NOT contain that write. Ogre cleans up correctly on its own.
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Clearing scene");
             sceneMgrToDestroy->clearScene(true);
@@ -570,8 +552,6 @@ namespace NOWA
             root->destroySceneManager(sceneMgrToDestroy);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] SceneManager destruction finished");
-            // };
-            // NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::destroyScene");
 
             // Reset the pointer on the logic thread after the render thread finished the destruction
             sceneManager = nullptr;

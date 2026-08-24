@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -30,6 +31,57 @@ namespace
 {
     const char kMagic[8] = {'O', 'N', 'C', 'O', 'L', 'L', '4', '\0'};
     const ndUnsigned32 kVersion = 1u;
+
+    // Attention: Format for a PREBUILT BVH. The .ply path stores raw geometry, which means every
+    // load has to parse ASCII numbers AND rebuild the whole bounding volume hierarchy - the
+    // expensive half. ndShapeStatic_bvh can be constructed straight from the three serialized
+    // arrays (points / indices / nodes) WITHOUT calling Create() or CalculateAdjacent(), so this
+    // format turns "import" into what it always claimed to be: a load.
+    const char kBvhMagic[8] = {'O', 'N', 'B', 'V', 'H', '1', '0', '\0'};
+    const ndUnsigned32 kBvhVersion = 1u;
+
+    inline bool hasBvhHeader(const char* data, size_t size)
+    {
+        return (size >= sizeof(kBvhMagic)) && (0 == std::memcmp(data, kBvhMagic, sizeof(kBvhMagic)));
+    }
+
+    template <class T> void writeArray(std::ostream& os, const ndArray<T>& values)
+    {
+        const ndUnsigned32 count = static_cast<ndUnsigned32>(values.GetCount());
+        os.write(reinterpret_cast<const char*>(&count), sizeof(count));
+
+        if (count > 0)
+        {
+            // Attention: raw byte dump. All three types are trivially copyable PODs, but that also
+            // makes the format compiler and platform specific - it is a cache, not an interchange
+            // format. kBvhVersion must be bumped whenever a Newton update changes their layout.
+            os.write(reinterpret_cast<const char*>(&values[0]), std::streamsize(sizeof(T) * count));
+        }
+    }
+
+    template <class T> bool readArray(std::istream& is, ndArray<T>& values)
+    {
+        ndUnsigned32 count = 0;
+        is.read(reinterpret_cast<char*>(&count), sizeof(count));
+
+        if (!is.good() && 0 != count)
+        {
+            return false;
+        }
+
+        values.SetCount(ndInt32(count));
+
+        if (count > 0)
+        {
+            is.read(reinterpret_cast<char*>(&values[0]), std::streamsize(sizeof(T) * count));
+            if (!is.good())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     inline void logCritical(const Ogre::String& where, const Ogre::String& text)
     {
@@ -328,6 +380,272 @@ namespace OgreNewt
     }
 
     // ── PLY importer ──────────────────────────────────────────────────────────
+    Ogre::String CollisionSerializer::getBvhSidecarPath(const Ogre::String& filePath)
+    {
+        const size_t dotPosition = filePath.find_last_of('.');
+        const size_t slashPosition = filePath.find_last_of("/\\");
+
+        // Only treat it as an extension if the dot comes after the last path separator.
+        if (Ogre::String::npos != dotPosition && (Ogre::String::npos == slashPosition || dotPosition > slashPosition))
+        {
+            return filePath.substr(0, dotPosition) + ".bvh";
+        }
+
+        return filePath + ".bvh";
+    }
+
+    CollisionPtr CollisionSerializer::importCollisionCached(const Ogre::String& filePath, World* world)
+    {
+        // Attention: This is the generic accelerator for EVERY collision that ends up as an
+        // ndShapeStatic_bvh - which includes compounds. A compound is written with SavePLY(), and
+        // that bakes all child shapes into a single polygon soup, so loading it produces one large
+        // tree collision. The expensive part of that load is not reading the file, it is rebuilding
+        // the bounding volume hierarchy (measured at ~100 ms for 35k points).
+        //
+        // So: on the first load the .ply is read as before and a .bvh sidecar is written next to
+        // it. Every later load takes the sidecar and skips the rebuild entirely.
+        //
+        // Attention: the original file is NEVER deleted or modified. It stays the source of truth,
+        // the sidecar is a derived cache that can be deleted at any time.
+        const Ogre::String bvhPath = getBvhSidecarPath(filePath);
+
+        // 1) Try the prebuilt sidecar first.
+        {
+            std::ifstream bvhFile(bvhPath.c_str(), std::ios::binary);
+            if (bvhFile.good())
+            {
+                bvhFile.seekg(0, std::ios::end);
+                const std::streamoff bvhSize = bvhFile.tellg();
+                bvhFile.seekg(0, std::ios::beg);
+
+                if (bvhSize > 0)
+                {
+                    std::vector<char> bvhBuffer(static_cast<size_t>(bvhSize));
+                    bvhFile.read(bvhBuffer.data(), bvhSize);
+                    bvhFile.close();
+
+                    std::stringbuf sb;
+                    sb.sputn(bvhBuffer.data(), std::streamsize(bvhBuffer.size()));
+                    std::istream is(&sb);
+
+                    CollisionPtr cached = this->importBvh(is, world);
+                    if (cached)
+                    {
+                        return cached;
+                    }
+
+                    // Attention: a stale or corrupt sidecar must not block loading. Fall through to
+                    // the original file and overwrite the sidecar below.
+                    logCritical("importCollisionCached", "Prebuilt BVH '" + bvhPath + "' could not be used, falling back to '" + filePath + "'.");
+                }
+            }
+        }
+
+        // 2) Load the original file.
+        std::ifstream sourceFile(filePath.c_str(), std::ios::binary);
+        if (false == sourceFile.good())
+        {
+            logCritical("importCollisionCached", "Cannot open '" + filePath + "'.");
+            return CollisionPtr();
+        }
+
+        sourceFile.seekg(0, std::ios::end);
+        const std::streamoff sourceSize = sourceFile.tellg();
+        sourceFile.seekg(0, std::ios::beg);
+
+        if (sourceSize <= 0)
+        {
+            logCritical("importCollisionCached", "'" + filePath + "' is empty.");
+            return CollisionPtr();
+        }
+
+        std::vector<unsigned char> sourceBuffer(static_cast<size_t>(sourceSize));
+        sourceFile.read(reinterpret_cast<char*>(sourceBuffer.data()), sourceSize);
+        sourceFile.close();
+
+        Ogre::MemoryDataStream sourceStream(sourceBuffer.data(), sourceBuffer.size(), false, true);
+        CollisionPtr result = this->importCollision(sourceStream, world);
+
+        if (!result)
+        {
+            return result;
+        }
+
+        // 3) Write the sidecar, but only if the result really is a BVH shape. Heightfields and
+        //    other shapes legitimately are not, and simply keep loading the normal way.
+        ndShapeInstance* const instance = result->getShapeInstance();
+        if (nullptr != instance)
+        {
+            ndShape* const shape = instance->GetShape();
+            if (nullptr != shape && nullptr != shape->GetAsShapeStaticBVH())
+            {
+                if (true == this->exportBvh(result, bvhPath))
+                {
+                    if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+                    {
+                        lm->logMessage("[CollisionSerializer][importCollisionCached] Wrote prebuilt BVH sidecar '" + bvhPath + "' - subsequent loads will skip the hierarchy rebuild.", Ogre::LML_CRITICAL);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    CollisionPtr CollisionSerializer::importBvh(std::istream& is, World* world)
+    {
+        CollisionPtr dest;
+
+        char magic[8];
+        is.read(magic, sizeof(magic));
+        if (0 != std::memcmp(magic, kBvhMagic, sizeof(kBvhMagic)))
+        {
+            logCritical("importBvh", "Bad magic.");
+            return dest;
+        }
+
+        ndUnsigned32 version = 0;
+        readVal(is, version);
+        if (version != kBvhVersion)
+        {
+            // Attention: NOT an error. The caller is expected to fall back to the .ply file and
+            // write a fresh .bvh afterwards. That is the migration path after a Newton update.
+            logCritical("importBvh", "Version mismatch, the prebuilt BVH cache is stale.");
+            return dest;
+        }
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        ndArray<ndVector> points;
+        ndArray<ndInt32> indices;
+        ndArray<ndAabbPolygonSoup::ndNode> nodes;
+
+        if (false == readArray(is, points) || false == readArray(is, indices) || false == readArray(is, nodes))
+        {
+            logCritical("importBvh", "Truncated or corrupt prebuilt BVH file.");
+            return dest;
+        }
+
+        if (0 == points.GetCount() || 0 == indices.GetCount() || 0 == nodes.GetCount())
+        {
+            logCritical("importBvh", "Prebuilt BVH file is empty.");
+            return dest;
+        }
+
+        // No Create(), no CalculateAdjacent() - the hierarchy is taken as is.
+        ndShape* shape = new ndShapeStatic_bvh(points, indices, nodes);
+        dest = CollisionPtr(new Collision(world, ndSharedPtr<ndShapeInstance>(new ndShapeInstance(shape))));
+
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+        if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+        {
+            lm->logMessage("[CollisionSerializer][importBvh] Loaded prebuilt BVH with " + Ogre::StringConverter::toString((unsigned int)points.GetCount()) + " points and " + Ogre::StringConverter::toString((unsigned int)nodes.GetCount()) +
+                               " nodes in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s",
+                Ogre::LML_CRITICAL);
+        }
+
+        return dest;
+    }
+
+    bool CollisionSerializer::exportBvh(const CollisionPtr& collision, const Ogre::String& filename)
+    {
+        if (!collision)
+        {
+            logCritical("exportBvh", "Argument collision is NULL.");
+            return false;
+        }
+
+        ndShapeInstance* const instance = collision->getShapeInstance();
+        if (nullptr == instance)
+        {
+            logCritical("exportBvh", "Collision has no shape instance.");
+            return false;
+        }
+
+        ndShape* const shape = instance->GetShape();
+        if (nullptr == shape)
+        {
+            logCritical("exportBvh", "Collision has no shape.");
+            return false;
+        }
+
+        // Attention: Use Newton's OWN typed downcast, never a static_cast based on
+        // Collision::getCollisionPrimitiveType(). That helper reports TreeCollisionPrimitiveType
+        // for other static meshes as well - a heightfield terrain among them. ndShapeHeightfield
+        // derives from ndShapeStaticMesh but NOT from ndAabbPolygonSoup, so the static_cast chain
+        // produced a bogus pointer (the second base is at a non-zero offset that simply does not
+        // exist there) and Serialize() crashed. GetAsShapeStaticBVH() returns nullptr for anything
+        // that is not a real BVH shape.
+        //
+        // Note on access: the override in ndShapeStatic_bvh is protected, but access is checked
+        // against the STATIC type of the expression - and the declaration in ndShape is public, so
+        // calling it through an ndShape* is fine.
+        const ndShapeStatic_bvh* const bvhShape = shape->GetAsShapeStaticBVH();
+
+        if (nullptr == bvhShape)
+        {
+            // Not an error: heightfields and other static meshes legitimately end up here. They
+            // have to be written through the generic ONCOLL4 path instead, i.e. with a filename
+            // that does not end in ".bvh".
+            logCritical("exportBvh", "Shape is not an ndShapeStatic_bvh (heightfield or other static mesh?), no prebuilt BVH written.");
+            return false;
+        }
+
+        // ndShapeStatic_bvh inherits ndAabbPolygonSoup publicly, and GetMeshShape() - which is
+        // protected - does nothing else than call Serialize() on itself. We take the same route
+        // directly. Requires D_CORE_API on the array overload of ndAabbPolygonSoup::Serialize.
+        const ndAabbPolygonSoup* const soup = static_cast<const ndAabbPolygonSoup*>(bvhShape);
+
+        ndArray<ndVector> points;
+        ndArray<ndInt32> indices;
+        ndArray<ndAabbPolygonSoup::ndNode> nodes;
+
+        soup->Serialize(points, indices, nodes);
+
+        if (0 == points.GetCount() || 0 == indices.GetCount() || 0 == nodes.GetCount())
+        {
+            logCritical("exportBvh", "Serialize produced an empty hierarchy, nothing written.");
+            return false;
+        }
+
+        std::ofstream os(filename.c_str(), std::ios::binary);
+        if (!os.good())
+        {
+            logCritical("exportBvh", "Unable to open file '" + filename + "' for writing.");
+            return false;
+        }
+
+        os.write(kBvhMagic, sizeof(kBvhMagic));
+        writeVal(os, kBvhVersion);
+
+        writeArray(os, points);
+        writeArray(os, indices);
+        writeArray(os, nodes);
+
+        const bool succeeded = os.good();
+        os.close();
+
+        if (false == succeeded)
+        {
+            // Attention: a half written cache file is worse than none - it would be detected as
+            // valid by the magic and then load a truncated hierarchy. Remove it.
+            std::remove(filename.c_str());
+            logCritical("exportBvh", "Writing failed, removed the incomplete file '" + filename + "'.");
+            return false;
+        }
+
+        if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+        {
+            lm->logMessage("[CollisionSerializer][exportBvh] Wrote prebuilt BVH with " + Ogre::StringConverter::toString((unsigned int)points.GetCount()) + " points, " + Ogre::StringConverter::toString((unsigned int)indices.GetCount()) +
+                               " indices and " + Ogre::StringConverter::toString((unsigned int)nodes.GetCount()) + " nodes to '" + filename + "'",
+                Ogre::LML_CRITICAL);
+        }
+
+        return true;
+    }
+
     CollisionPtr CollisionSerializer::importPLY(std::istream& is, World* world)
     {
         CollisionPtr dest;
@@ -412,12 +730,15 @@ namespace OgreNewt
 
         auto parseFinish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> parseElapsed = parseFinish - parseStart;
-       /* if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+        // Attention: LML_CRITICAL on purpose while measuring - LML_TRIVIAL is filtered out by the
+        // default log detail level, which is why this line never appeared. Set it back to
+        // LML_TRIVIAL once the split between parsing and BVH build is known.
+        if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
         {
             lm->logMessage("[CollisionSerializer][importPLY] Parsed " + Ogre::StringConverter::toString((unsigned int)vertexCount) + " vertices and " + Ogre::StringConverter::toString((unsigned int)faceCount) + " faces in " +
                                Ogre::StringConverter::toString(parseElapsed.count() * 0.001) + "s",
-                Ogre::LML_TRIVIAL);
-        }*/
+                Ogre::LML_CRITICAL);
+        }
 
         if (verts.empty() || indices.empty())
         {
@@ -468,10 +789,10 @@ namespace OgreNewt
 
         auto soupFinish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> soupElapsed = soupFinish - soupStart;
-       /* if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+        if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
         {
-            lm->logMessage("[CollisionSerializer][importPLY] Built BVH from " + Ogre::StringConverter::toString((unsigned int)totalFacesAdded) + " faces in " + Ogre::StringConverter::toString(soupElapsed.count() * 0.001) + "s", Ogre::LML_TRIVIAL);
-        }*/
+            lm->logMessage("[CollisionSerializer][importPLY] Built BVH from " + Ogre::StringConverter::toString((unsigned int)totalFacesAdded) + " faces in " + Ogre::StringConverter::toString(soupElapsed.count() * 0.001) + "s", Ogre::LML_CRITICAL);
+        }
 
         return dest;
     }
@@ -494,6 +815,42 @@ namespace OgreNewt
         Ogre::String lower = filename;
         std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
         const bool writePly = Ogre::StringUtil::endsWith(lower, ".ply");
+        const bool writeBvh = Ogre::StringUtil::endsWith(lower, ".bvh");
+
+        // Attention: A ".bvh" filename MUST go through exportBvh(). Without this branch it fell
+        // through to the generic primitive path below, which writes the kMagic header and then
+        // calls exportPrimitive() - and that has no serializer for tree collisions. The result was
+        // a 1 KB file containing nothing but "ONCOLL4", which on load yields an EMPTY collision:
+        // no error, no crash, the object simply has no collision at all.
+        if (false == writeBvh)
+        {
+            // Attention: INVALIDATE the sidecar. importCollisionCached() writes a <name>.bvh next
+            // to the source file, and that cache is derived from the geometry as it was at the
+            // time. Rewriting the source here means the geometry changed - a regenerated foliage
+            // distribution, an edited road - so a stale sidecar would silently keep serving the
+            // OLD collision while the visible mesh is the new one. There is no error and no crash,
+            // just physics that no longer matches what you see.
+            const Ogre::String staleSidecar = getBvhSidecarPath(filename);
+
+            if (0 == std::remove(staleSidecar.c_str()))
+            {
+                if (Ogre::LogManager* lm = Ogre::LogManager::getSingletonPtr())
+                {
+                    lm->logMessage("[CollisionSerializer][exportCollision] Removed stale prebuilt BVH '" + staleSidecar + "', it will be rebuilt on the next load.", Ogre::LML_TRIVIAL);
+                }
+            }
+        }
+
+        if (writeBvh)
+        {
+            if (false == this->exportBvh(collision, filename))
+            {
+                logCritical("exportCollision", "Could not write the prebuilt BVH to '" + filename +
+                                                   "'. No file was written - delete any leftover file, otherwise a later load "
+                                                   "would silently produce a collision without geometry.");
+            }
+            return;
+        }
 
         if (writePly)
         {
@@ -537,6 +894,16 @@ namespace OgreNewt
 
         std::vector<char> buffer(size);
         stream.read(buffer.data(), size);
+
+        if (hasBvhHeader(buffer.data(), buffer.size()))
+        {
+            std::stringbuf bvhBuffer;
+            bvhBuffer.sputn(buffer.data(), std::streamsize(buffer.size()));
+            std::istream bvhStream(&bvhBuffer);
+            dest = importBvh(bvhStream, world);
+            stream.close();
+            return dest;
+        }
 
         if (hasPlyHeader(buffer.data(), buffer.size()))
         {

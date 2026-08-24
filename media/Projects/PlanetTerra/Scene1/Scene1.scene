@@ -33,7 +33,7 @@
 			<renderDistance distance="500"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268270 5057.83 264690"/>
+		<bounds mostLeftNearPosition="-136735 -5002 -592092" mostRightFarPosition="268272 5058.79 264690"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="9657.91" y="559.136" z="41325.9"/>
-			<rotation qw="0.720392" qx="-0.155089" qy="0.0760131" qz="0.671718"/>
+			<position x="299.208" y="-182.37" z="27854"/>
+			<rotation qw="0.915389" qx="-0.218055" qy="-0.329134" qz="-0.0786467"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -108,7 +108,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="268269" y="5057.35" z="264690"/>
+			<position x="268271" y="5058.31" z="264690"/>
 			<rotation qw="-0.237327" qx="0.400103" qy="0.226368" qz="0.855775"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -3967,7 +3967,7 @@ Alfred has important information!"/>
 			</item>
 		</node>
 		<node name="Dungeon_0" id="2358939090">
-			<position x="9658.45" y="526.131" z="41306.5"/>
+			<position x="9658.45" y="526.231" z="41306.5"/>
 			<rotation qw="0.736576" qx="-0.0294688" qy="-0.0321596" qz="0.674947"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">

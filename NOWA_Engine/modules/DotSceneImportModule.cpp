@@ -587,7 +587,9 @@ namespace NOWA
         if (false == NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->loadNavigationMesh())
         {
             // No .nav file yet — build from scratch and auto-save
+            NOWA::GraphicsModule::getInstance()->renderLoadingFrameThrottled();
             NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
+            NOWA::GraphicsModule::getInstance()->renderLoadingFrameThrottled();
         }
 
         // After scene loading, when all initial GameObjects are registered.
@@ -597,7 +599,9 @@ namespace NOWA
             AppStateManager::getSingletonPtr()->getGameObjectController()->reserveGameObjectCapacity(gameObjectCount);
         }
 
+        NOWA::GraphicsModule::getInstance()->renderLoadingFrameThrottled();
         Core::getSingletonPtr()->setSettings(this->sceneManager, this->sunLight, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->projectParameter);
+        NOWA::GraphicsModule::getInstance()->renderLoadingFrameThrottled();
     }
 
     std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)

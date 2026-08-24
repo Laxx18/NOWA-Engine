@@ -855,8 +855,8 @@ namespace NOWA
 
         serializeCollisionPath += "/";
         serializeCollisionPath += meshName;
-        //"../media/TestWorld/Meshname.ply"
-        serializeCollisionPath += ".ply";
+        //"../media/TestWorld/Meshname.bvh"
+        serializeCollisionPath += ".bvh";
 
         // Check if serialized collision file does exist
         FILE* file;
@@ -1243,7 +1243,7 @@ namespace NOWA
     {
         // Physics collision doesn't need render-mesh resolution. Sampling every
         // world unit produces millions of heightfield points for a large terrain,
-        // which dominates both the .ply file size and the BVH build cost. A coarser
+        // which dominates both the .ply file size and the ply build cost. A coarser
         // sample spacing is visually indistinguishable for gameplay physics and
         // cuts point count (and therefore file size / parse time / build time) by
         // the square of this factor. Tune per-terrain if you have very jagged

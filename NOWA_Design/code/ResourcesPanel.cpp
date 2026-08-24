@@ -1499,15 +1499,11 @@ void ResourcesPanelProject::shutdown(void)
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataResourceCreated), NOWA::EventDataResourceCreated::getStaticEventType());
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-    {
-        this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
-        this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
-        this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
+    this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
+    this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
+    this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
 
-        BaseLayout::shutdown();
-    };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelProject::shutdown");
+    BaseLayout::shutdown();
 }
 
 void ResourcesPanelProject::clear(void)
@@ -1792,11 +1788,7 @@ void ResourcesPanelLuaScript::shutdown(void)
 {
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelLuaScript::handleLuaScriptModified), NOWA::EventDataLuaScriptModfied::getStaticEventType());
 
-    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-    {
-        BaseLayout::shutdown();
-    };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelLuaScript::shutdown");
+    BaseLayout::shutdown();
 }
 
 void ResourcesPanelLuaScript::clear(void)
@@ -1936,12 +1928,8 @@ void ResourcesPanelPlugins::initialise(void)
 
 void ResourcesPanelPlugins::shutdown(void)
 {
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-    {
-        this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
-        BaseLayout::shutdown();
-    };
-    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelPlugins::shutdown");
+    this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
+    BaseLayout::shutdown();
 }
 
 void ResourcesPanelPlugins::clear(void)

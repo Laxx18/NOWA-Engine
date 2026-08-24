@@ -644,7 +644,16 @@ namespace NOWA
         else
         {
             Ogre::String meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->getMesh()->getName();
-            Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".ply";
+            Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".bvh";
+            try
+            {
+                DeleteFile(sourceCollisionFilePathName.c_str());
+            }
+            catch (...)
+            {
+            }
+
+            sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".ply";
             try
             {
                 DeleteFile(sourceCollisionFilePathName.c_str());

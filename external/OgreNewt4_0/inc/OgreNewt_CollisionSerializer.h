@@ -44,12 +44,21 @@ namespace OgreNewt
         */
         //   OgreNewt::CollisionPtr importCollision(Ogre::DataStreamPtr& stream, OgreNewt::World* world);
         OgreNewt::CollisionPtr importCollision(Ogre::DataStream& stream, OgreNewt::World* world);
+
+        bool exportBvh(const CollisionPtr& collision, const Ogre::String& filename);
+
+        CollisionPtr importCollisionCached(const Ogre::String& filePath, World* world);
     private:
         void exportPrimitive(std::ostream& os, const CollisionPtr& col);
 
         CollisionPtr importPrimitive(std::istream& is, World* world);
 
         CollisionPtr importPLY(std::istream& is, World* world);
+
+        CollisionPtr importBvh(std::istream& is, World* world);
+
+    private:
+        static Ogre::String getBvhSidecarPath(const Ogre::String& filePath);
     };
 }   // end NAMESPACE OgreNewt
 

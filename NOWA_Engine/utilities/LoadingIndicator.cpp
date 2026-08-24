@@ -9,7 +9,12 @@ namespace NOWA
     // DotsTextLoadingIndicator
     // =============================================================================================
 
-    DotsTextLoadingIndicator::DotsTextLoadingIndicator(const Ogre::String& captionKey, Ogre::Real secondsPerDot) : captionKey(captionKey), secondsPerDot(secondsPerDot), elapsedSeconds(0.0f), dotCount(0), label(nullptr)
+    DotsTextLoadingIndicator::DotsTextLoadingIndicator(const Ogre::String& captionKey, Ogre::Real secondsPerDot)
+        : captionKey(captionKey),
+        secondsPerDot(secondsPerDot),
+        elapsedSeconds(0.0f),
+        dotCount(0),
+        label(nullptr)
     {
         if (this->secondsPerDot < 0.05f)
         {
@@ -38,7 +43,7 @@ namespace NOWA
         this->elapsedSeconds = 0.0f;
         this->dotCount = 0;
 
-        this->label = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("EditBoxEmpty", 0.42f, 0.90f, 0.30f, 0.06f, MyGUI::Align::Default, "Overlapped", "LoadingIndicator_DotsLabel");
+        this->label = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("EditBoxEmpty", 0.92f, 0.95f, 0.30f, 0.06f, MyGUI::Align::Default, "Overlapped", "LoadingIndicator_DotsLabel");
 
         if (nullptr == this->label)
         {
@@ -48,7 +53,7 @@ namespace NOWA
 
         this->label->setEditStatic(true);
         MyGUIUtilities::getInstance()->setFontSize(this->label, 18);
-        this->label->setCaptionWithReplacing("#0044FF" + this->captionKey);
+        this->label->setCaptionWithReplacing("#EEEEFF" + this->captionKey);
         this->label->setVisible(true);
     }
 
@@ -69,7 +74,7 @@ namespace NOWA
         this->elapsedSeconds = 0.0f;
         this->dotCount = (this->dotCount + 1) % 4;
 
-        Ogre::String caption = "#0044FF" + this->captionKey;
+        Ogre::String caption = "#EEEEFF" + this->captionKey;
         for (int i = 0; i < this->dotCount; i++)
         {
             caption += ".";

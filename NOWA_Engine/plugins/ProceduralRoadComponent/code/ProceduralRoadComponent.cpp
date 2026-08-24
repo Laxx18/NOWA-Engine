@@ -12,8 +12,8 @@ GPL v3
 #include "gameobject/GameObjectTitleComponent.h"
 #include "gameobject/NodeComponent.h"
 #include "gameobject/PhysicsArtifactComponent.h"
-#include "gameobject/TerraComponent.h"
 #include "gameobject/PlanetTerraComponentBase.h"
+#include "gameobject/TerraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/InputDeviceCore.h"
@@ -361,37 +361,37 @@ namespace NOWA
 
     GameObjectCompPtr ProceduralRoadComponent::clone(GameObjectPtr clonedGameObjectPtr)
     {
-        //ProceduralRoadComponentPtr clonedCompPtr(boost::make_shared<ProceduralRoadComponent>());
+        // ProceduralRoadComponentPtr clonedCompPtr(boost::make_shared<ProceduralRoadComponent>());
 
-        //clonedCompPtr->setActivated(this->activated->getBool());
-        //clonedCompPtr->setRoadWidth(this->roadWidth->getReal());
-        //clonedCompPtr->setEdgeWidth(this->edgeWidth->getReal());
-        //clonedCompPtr->setRoadStyle(this->roadStyle->getListSelectedValue());
-        //clonedCompPtr->setSnapToGrid(this->snapToGrid->getBool());
-        //clonedCompPtr->setGridSize(this->gridSize->getReal());
-        //clonedCompPtr->setAdaptToGround(this->adaptToGround->getBool());
-        //clonedCompPtr->setHeightOffset(this->heightOffset->getReal());
-        //clonedCompPtr->setMaxGradient(this->maxGradient->getReal());
-        //clonedCompPtr->setSmoothingFactor(this->smoothingFactor->getReal());
-        //clonedCompPtr->setEnableBanking(this->enableBanking->getBool());
-        //clonedCompPtr->setBankingAngle(this->bankingAngle->getReal());
-        //clonedCompPtr->setCurveSubdivisions(this->curveSubdivisions->getInt());
-        //clonedCompPtr->setCenterDatablock(this->centerDatablock->getString());
-        //clonedCompPtr->setEdgeDatablock(this->edgeDatablock->getString());
-        //clonedCompPtr->setCenterUVTiling(this->centerUVTiling->getVector2());
-        //clonedCompPtr->setEdgeUVTiling(this->edgeUVTiling->getVector2());
-        //clonedCompPtr->setCurbHeight(this->curbHeight->getReal());
-        //clonedCompPtr->setTerrainSampleInterval(this->terrainSampleInterval->getReal());
-        //clonedCompPtr->setSourceTerraLayer(this->sourceTerraLayer->getUInt());
-        //clonedCompPtr->setTraceStepMeters(this->traceStepMeters->getReal());
-        //clonedCompPtr->setTraceThreshold(this->traceThreshold->getUInt());
+        // clonedCompPtr->setActivated(this->activated->getBool());
+        // clonedCompPtr->setRoadWidth(this->roadWidth->getReal());
+        // clonedCompPtr->setEdgeWidth(this->edgeWidth->getReal());
+        // clonedCompPtr->setRoadStyle(this->roadStyle->getListSelectedValue());
+        // clonedCompPtr->setSnapToGrid(this->snapToGrid->getBool());
+        // clonedCompPtr->setGridSize(this->gridSize->getReal());
+        // clonedCompPtr->setAdaptToGround(this->adaptToGround->getBool());
+        // clonedCompPtr->setHeightOffset(this->heightOffset->getReal());
+        // clonedCompPtr->setMaxGradient(this->maxGradient->getReal());
+        // clonedCompPtr->setSmoothingFactor(this->smoothingFactor->getReal());
+        // clonedCompPtr->setEnableBanking(this->enableBanking->getBool());
+        // clonedCompPtr->setBankingAngle(this->bankingAngle->getReal());
+        // clonedCompPtr->setCurveSubdivisions(this->curveSubdivisions->getInt());
+        // clonedCompPtr->setCenterDatablock(this->centerDatablock->getString());
+        // clonedCompPtr->setEdgeDatablock(this->edgeDatablock->getString());
+        // clonedCompPtr->setCenterUVTiling(this->centerUVTiling->getVector2());
+        // clonedCompPtr->setEdgeUVTiling(this->edgeUVTiling->getVector2());
+        // clonedCompPtr->setCurbHeight(this->curbHeight->getReal());
+        // clonedCompPtr->setTerrainSampleInterval(this->terrainSampleInterval->getReal());
+        // clonedCompPtr->setSourceTerraLayer(this->sourceTerraLayer->getUInt());
+        // clonedCompPtr->setTraceStepMeters(this->traceStepMeters->getReal());
+        // clonedCompPtr->setTraceThreshold(this->traceThreshold->getUInt());
         //// clonedCompPtr->setGenerateFromLayer(this->generateFromLayer->getString());
 
-        //clonedGameObjectPtr->addComponent(clonedCompPtr);
-        //clonedCompPtr->setOwner(clonedGameObjectPtr);
+        // clonedGameObjectPtr->addComponent(clonedCompPtr);
+        // clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-        //GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-        //return clonedCompPtr;
+        // GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        // return clonedCompPtr;
 
         return nullptr;
     }
@@ -5491,7 +5491,7 @@ namespace NOWA
 
             this->previewItem = this->gameObjectPtr->getSceneManager()->createItem(this->previewMesh, Ogre::SCENE_DYNAMIC);
 
-             // previewPosition is ROAD-LOCAL (absolute) —
+            // previewPosition is ROAD-LOCAL (absolute) —
             // transform to world and carry the frame on the node so the
             // origin-relative preview verts rotate with it.
             this->previewNode->setPosition(this->roadFrame * previewPosition);
@@ -5712,6 +5712,56 @@ namespace NOWA
         }
     }
 
+    bool ProceduralRoadComponent::roadDataLayoutFits(const std::vector<unsigned char>& buffer, size_t fileSize, size_t offsetAfterHeader, uint32_t numSegments, uint32_t numCenterVerts, uint32_t numCenterIdx, uint32_t numEdgeVerts,
+        uint32_t numEdgeIdx, uint32_t numJunctionVerts, uint32_t numJunctionIdx) const
+    {
+        // Walks the segment block WITHOUT storing anything and then checks whether the mesh block
+        // that follows ends exactly at the end of the file. Used to decide between the 41 byte and
+        // the 49 byte header layout - see the note in loadRoadDataFromFile.
+        //
+        // Attention: "exactly" is the point. A layout that merely fits would also be satisfied by
+        // the wrong one; only the correct layout consumes the file to the last byte.
+        const size_t floatsPerVertex = 8;
+
+        size_t offset = offsetAfterHeader;
+
+        for (uint32_t i = 0; i < numSegments; ++i)
+        {
+            // isCurved (1) + curvature (4) + numCPs (4)
+            if ((offset + 9) > fileSize)
+            {
+                return false;
+            }
+
+            offset += 5;
+
+            uint32_t numControlPoints = 0;
+            memcpy(&numControlPoints, &buffer[offset], 4);
+            offset += 4;
+
+            // Attention: sanity limit. Without it a shifted read produces counts in the billions,
+            // and offset + numControlPoints * 20 overflows size_t instead of failing the check.
+            const uint32_t maxReasonableControlPoints = 1000u * 1000u;
+            if (numControlPoints > maxReasonableControlPoints)
+            {
+                return false;
+            }
+
+            const size_t controlPointBytes = static_cast<size_t>(numControlPoints) * 20;
+            if ((offset + controlPointBytes) > fileSize)
+            {
+                return false;
+            }
+
+            offset += controlPointBytes;
+        }
+
+        const size_t meshBytes = (static_cast<size_t>(numCenterVerts) * floatsPerVertex * sizeof(float)) + (static_cast<size_t>(numCenterIdx) * sizeof(uint32_t)) + (static_cast<size_t>(numEdgeVerts) * floatsPerVertex * sizeof(float)) +
+                                 (static_cast<size_t>(numEdgeIdx) * sizeof(uint32_t)) + (static_cast<size_t>(numJunctionVerts) * floatsPerVertex * sizeof(float)) + (static_cast<size_t>(numJunctionIdx) * sizeof(uint32_t));
+
+        return (offset + meshBytes) == fileSize;
+    }
+
     bool ProceduralRoadComponent::loadRoadDataFromFile(void)
     {
         Ogre::String filePath = this->getRoadDataFilePath();
@@ -5786,14 +5836,82 @@ namespace NOWA
             off += 4;
             memcpy(&numEdgeIdx, &buffer[off], 4);
             off += 4;
-            // >>> NEW
-            uint32_t numJunctionVerts, numJunctionIdx;
-            memcpy(&numJunctionVerts, &buffer[off], 4);
-            off += 4;
-            memcpy(&numJunctionIdx, &buffer[off], 4);
-            off += 4;
+            // Attention: LAYOUT DETECTION, not a version check.
+            //
+            // The header grew from 41 to 49 bytes when the two junction counts were added, but
+            // ROADDATA_VERSION was NOT bumped. So an old 41 byte file passes the version check
+            // above and is then read with the new layout: the reader consumes 8 bytes too many,
+            // and from that point on EVERY following value is shifted. That is exactly how a road
+            // with 14 valid segments ended up reporting numCPs = 2797676928 and crashing with
+            // "vector subscript out of range".
+            //
+            // Bumping the version now would not help either, because files written after the
+            // change also carry version 1 - old and new are indistinguishable by version alone.
+            // So the layout is decided by which one makes the arithmetic add up: parse both ways
+            // and keep the one whose computed total matches the actual file size exactly.
+            //
+            // Attention: this must NOT be replaced by "just bump the version". That would make
+            // every existing road file unreadable, and a road file is user data, not a cache.
+            uint32_t numJunctionVerts = 0;
+            uint32_t numJunctionIdx = 0;
+            uint8_t posSet = 0;
+            bool hasJunctionHeader = false;
 
-            uint8_t posSet = buffer[off++];
+            {
+                const size_t offsetAfterEdgeCounts = off;
+
+                // Candidate A: new layout (49 byte header, junction counts present)
+                uint32_t candidateJunctionVerts = 0;
+                uint32_t candidateJunctionIdx = 0;
+                bool candidateNewFits = false;
+
+                if ((offsetAfterEdgeCounts + 9) <= fileSize)
+                {
+                    memcpy(&candidateJunctionVerts, &buffer[offsetAfterEdgeCounts], 4);
+                    memcpy(&candidateJunctionIdx, &buffer[offsetAfterEdgeCounts + 4], 4);
+
+                    const uint8_t candidatePosSet = buffer[offsetAfterEdgeCounts + 8];
+                    candidateNewFits = this->roadDataLayoutFits(buffer, fileSize, offsetAfterEdgeCounts + 9, numSegments, numCenterVerts, numCenterIdx, numEdgeVerts, numEdgeIdx, candidateJunctionVerts, candidateJunctionIdx);
+
+                    if (true == candidateNewFits)
+                    {
+                        numJunctionVerts = candidateJunctionVerts;
+                        numJunctionIdx = candidateJunctionIdx;
+                        posSet = candidatePosSet;
+                        off = offsetAfterEdgeCounts + 9;
+                        hasJunctionHeader = true;
+                    }
+                }
+
+                // Candidate B: old layout (41 byte header, no junction data at all)
+                if (false == hasJunctionHeader)
+                {
+                    if ((offsetAfterEdgeCounts + 1) > fileSize)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] Truncated header in: " + filePath);
+                        return false;
+                    }
+
+                    const uint8_t candidatePosSet = buffer[offsetAfterEdgeCounts];
+
+                    if (false == this->roadDataLayoutFits(buffer, fileSize, offsetAfterEdgeCounts + 1, numSegments, numCenterVerts, numCenterIdx, numEdgeVerts, numEdgeIdx, 0, 0))
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] Neither the 49 byte nor the 41 byte header layout matches the size of '" + filePath + "' (" +
+                                                                                                Ogre::StringConverter::toString(fileSize) +
+                                                                                                " bytes). The file is corrupt or written by an unknown version - NOT loading it, so it does not get overwritten with regenerated data.");
+                        return false;
+                    }
+
+                    numJunctionVerts = 0;
+                    numJunctionIdx = 0;
+                    posSet = candidatePosSet;
+                    off = offsetAfterEdgeCounts + 1;
+
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                        "[ProceduralRoadComponent] '" + filePath + "' uses the old 41 byte header without junction data. Reading it with the legacy layout; it will be written in the current format on the next save.");
+                }
+            }
+
             this->originPositionSet = (posSet != 0);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Loading: " + Ogre::StringConverter::toString(numSegments) + " segments, " + Ogre::StringConverter::toString(numCenterVerts) +
@@ -5819,6 +5937,15 @@ namespace NOWA
                 uint32_t numCPs;
                 memcpy(&numCPs, &buffer[off], 4);
                 off += 4;
+
+                // Attention: the layout was validated before, but a bounds check here costs
+                // nothing and turns any future format change from a crash into a log line.
+                if ((off + static_cast<size_t>(numCPs) * 20) > fileSize)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] Segment " + Ogre::StringConverter::toString(i) + " claims " + Ogre::StringConverter::toString(numCPs) +
+                                                                                            " control points, which does not fit into the remaining " + Ogre::StringConverter::toString(fileSize - off) + " bytes of '" + filePath + "'. Not loading.");
+                    return false;
+                }
 
                 for (uint32_t j = 0; j < numCPs; ++j)
                 {

@@ -309,7 +309,14 @@ namespace NOWA
         if (false == isRotating)
         {
             rotationValue = Ogre::Vector2::ZERO;
-            dynamicSmoothValue = this->smoothValue * dt * 1000.0f; // Faster deceleration
+
+            // Clamp dt so load spikes (scene doing heavy calculations) can't blow up the factor.
+            // 0.033 corresponds to a ~30 FPS floor for the decay calculation.
+            Ogre::Real clampedDt = std::min(dt, 0.033f);
+            dynamicSmoothValue = this->smoothValue * clampedDt * 1000.0f;
+
+            // Safety net in case smoothValue itself is already large
+            dynamicSmoothValue = Ogre::Math::Clamp(dynamicSmoothValue, 0.0f, 1.0f);
         }
 
         // Apply low-pass filter exactly as in moveCamera
