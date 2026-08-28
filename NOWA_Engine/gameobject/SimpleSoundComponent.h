@@ -299,6 +299,8 @@ namespace NOWA
 		Ogre::Vector3 getDirection(void) const;
 	private:
 		void setupSound(void);
+
+		Ogre::Real calculateEffectiveGain(void) const;
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrSoundName(void) { return "Sound Name"; }

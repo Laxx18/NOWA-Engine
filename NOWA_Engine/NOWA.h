@@ -33,6 +33,7 @@ extern "C"
 
 // core
 #include "main/Core.h"
+#include "RenderQueueEnums.h"
 
 // Boost interface
 #include <boost/shared_ptr.hpp>
@@ -152,6 +153,7 @@ extern "C"
 #include "gameobject/CrowdComponent.h"
 #include "gameobject/WindComponent.h"
 #include "gameobject/GraphicsConfigurationComponent.h"
+#include "gameobject/VehicleDrivingManipulation.h"
 
 namespace NOWA
 {

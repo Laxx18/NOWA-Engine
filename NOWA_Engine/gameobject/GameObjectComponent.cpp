@@ -180,6 +180,21 @@ namespace NOWA
 
     bool GameObjectComponent::connect(void)
     {
+        // Guard against being connected twice. This happens in practice: GameObject::connect()
+        // deliberately skips LuaScriptComponent/AiLuaComponent/AiLuaGoalComponent (they are
+        // connected separately via GameObjectController's managedLuaScripts loop to control
+        // execution order), but every derived component's own connect() override still calls
+        // this base function first. Without this early-out, a component whose connect() gets
+        // triggered from two different call sites (e.g. GameObject::setActivated() reacting to
+        // a runtime clone, plus the normal managedLuaScripts pass) would run its full connect
+        // logic twice — for LuaScriptComponent this meant its "connect" Lua closure firing
+        // twice per game object, and everything registered inside it (reactOnFadeCompleted
+        // closures, event listeners, etc.) getting duplicated.
+        if (true == this->bConnected)
+        {
+            return true;
+        }
+
         // Use the cached raw pointer set in postInit() — no component scan, no atomic refcount lock.
         // If this game object has a lua script component, and it could not be compiled, its dangerous to connect this game object
         LuaScriptComponent* luaScriptRaw = this->gameObjectPtr->getCachedLuaScriptComponent();
@@ -198,6 +213,15 @@ namespace NOWA
 
     bool GameObjectComponent::disconnect(void)
     {
+        // Symmetric guard — a component that was never connected (or already disconnected)
+        // must not run disconnect logic again. Derived disconnect() overrides call this base
+        // function too, so this is the single place that makes double-disconnect harmless
+        // engine-wide, the same way the guard above does for connect().
+        if (false == this->bConnected)
+        {
+            return true;
+        }
+
         this->bConnected = false;
         return true;
     }

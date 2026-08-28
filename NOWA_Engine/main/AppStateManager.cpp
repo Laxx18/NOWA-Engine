@@ -268,17 +268,43 @@ namespace NOWA
 
     void AppStateManager::enqueue(LogicCommand&& command)
     {
+        // Guard against being called during engine teardown. MyGUI fires widget
+        // callbacks (e.g. eventRootMouseChangeFocus) during Core::~Core() ->
+        // myGui->shutdown() -> _destroyAllChildWidget(). If any MyGUIComponent
+        // delegate is still registered at that point, it calls enqueue() which
+        // then crashes inside isLogicThread() because the logicThreadId atomic
+        // member (at offset 0x390) is already freed memory. Once bShutdown is
+        // true, the logic queue is gone and there is nothing left to enqueue into.
+        if (true == this->bShutdown)
+        {
+            return;
+        }
+
         if (true == this->isLogicThread())
         {
             command();
-            return;
         }
-        this->queue.enqueue(std::move(command));
+        else
+        {
+            this->queue.enqueue(std::move(command));
+        }
     }
 
     void AppStateManager::enqueueAndWait(LogicCommand&& command)
     {
         // With this code its possible to call from render thread logic stuff with wait and from logic thread commands, which have inside other commands for render thread with wait!
+
+        // Guard against being called during engine teardown. MyGUI fires widget
+        // callbacks (e.g. eventRootMouseChangeFocus) during Core::~Core() ->
+        // myGui->shutdown() -> _destroyAllChildWidget(). If any MyGUIComponent
+        // delegate is still registered at that point, it calls enqueue() which
+        // then crashes inside isLogicThread() because the logicThreadId atomic
+        // member (at offset 0x390) is already freed memory. Once bShutdown is
+        // true, the logic queue is gone and there is nothing left to enqueue into.
+        if (true == this->bShutdown)
+        {
+            return;
+        }
 
         // If we are already on the logic thread, just run it directly
         if (this->isLogicThread())
@@ -906,13 +932,10 @@ namespace NOWA
         if (true == Core::getSingletonPtr()->getIsGame())
         {
             this->bStall = true;
-            // NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
-            // Creates the delay process and changes the scene at another tick. Note, this is necessary
+            // Creates the process and changes the scene at another tick. Note, this is necessary
             // because changing the scene destroys all game objects and its components.
             // So changing the state directly inside a component would create a mess, since everything will be destroyed
             // and the game object map in update loop becomes invalid while its iterating
-            // delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::ChangeAppState)));
-            // NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
             NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::ChangeAppState)));
         }
     }
@@ -1112,6 +1135,20 @@ namespace NOWA
     void AppStateManager::setSlowMotion(unsigned int slowMotionMS)
     {
         this->slowMotionMS = slowMotionMS;
+    }
+
+    void AppStateManager::reloadCurrentState(void)
+    {
+        if (true == this->activeStateStack.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] reloadCurrentState: no active state to reload.");
+            return;
+        }
+
+        // Re-use the existing changeAppState path: passing the SAME pointer causes
+        // internalChangeAppState to call exit() then enter() on the same object,
+        // which destroys all MyGUI widgets and recreates them at the new viewport size.
+        this->changeAppState(this->activeStateStack.back());
     }
 
     void AppStateManager::shutdown(void)

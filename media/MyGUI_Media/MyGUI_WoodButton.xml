@@ -6,47 +6,46 @@
            y =   0 .. 63   normal
            y =  64 .. 127  highlighted (mouse over)
            y = 128 .. 191  pressed
-         Text is drawn centred on the wooden face, with a dark drop shadow
-         so it stays readable on the light grain. -->
+
+         Attention: only ONE SimpleText basis skin may be declared. MyGUI assigns the
+         widget caption to the FIRST ISubWidgetText it finds in the skin; every further
+         SimpleText is created but never receives any text. A two layer "text + drop
+         shadow" setup therefore does not work - the caption would end up on the shadow
+         layer and the visible layer would stay empty forever.
+         Use the widget's own text shadow instead (setTextShadow / setTextShadowColour)
+         if a shadow is wanted.
+
+         Attention: FontName must be declared, otherwise no font is resolved at all and
+         the button renders completely without text. -->
 
     <Resource type="ResourceSkin" name="WoodButton" size="192 64" texture="wood_button_atlas.png">
 
         <BasisSkin type="MainSkin" offset="0 0 192 64">
-            <State name="normal"            offset="0 0 192 64"/>
-            <State name="highlighted"       offset="0 64 192 64"/>
-            <State name="pushed"            offset="0 128 192 64"/>
-            <State name="disabled"          offset="0 0 192 64"/>
-            <State name="normal_checked"    offset="0 128 192 64"/>
+            <State name="normal"              offset="0 0 192 64"/>
+            <State name="highlighted"         offset="0 64 192 64"/>
+            <State name="pushed"              offset="0 128 192 64"/>
+            <State name="disabled"            offset="0 0 192 64"/>
+            <State name="normal_checked"      offset="0 128 192 64"/>
             <State name="highlighted_checked" offset="0 128 192 64"/>
-            <State name="pushed_checked"    offset="0 128 192 64"/>
-            <State name="disabled_checked"  offset="0 128 192 64"/>
-        </BasisSkin>
-
-        <!-- shadow layer, one pixel down/right -->
-        <BasisSkin type="SimpleText" offset="1 1 192 64" align="Stretch">
-            <State name="normal"            colour="0.08 0.05 0.02"/>
-            <State name="highlighted"       colour="0.08 0.05 0.02"/>
-            <State name="pushed"            colour="0.08 0.05 0.02"/>
-            <State name="disabled"          colour="0.20 0.17 0.14"/>
-            <State name="normal_checked"    colour="0.08 0.05 0.02"/>
-            <State name="highlighted_checked" colour="0.08 0.05 0.02"/>
-            <State name="pushed_checked"    colour="0.08 0.05 0.02"/>
-            <State name="disabled_checked"  colour="0.20 0.17 0.14"/>
+            <State name="pushed_checked"      offset="0 128 192 64"/>
+            <State name="disabled_checked"    offset="0 128 192 64"/>
         </BasisSkin>
 
         <BasisSkin type="SimpleText" offset="0 0 192 64" align="Stretch">
-            <State name="normal"            colour="0.97 0.92 0.80"/>
-            <State name="highlighted"       colour="1.00 0.98 0.90"/>
-            <State name="pushed"            colour="0.86 0.79 0.66"/>
-            <State name="disabled"          colour="0.55 0.50 0.44"/>
-            <State name="normal_checked"    colour="0.97 0.92 0.80"/>
-            <State name="highlighted_checked" colour="1.00 0.98 0.90"/>
-            <State name="pushed_checked"    colour="0.86 0.79 0.66"/>
-            <State name="disabled_checked"  colour="0.55 0.50 0.44"/>
+            <Property key="FontName" value="DejaVuSans12"/>
+            <Property key="TextAlign" value="Center"/>
+            <State name="normal"              colour="0.20 0.11 0.04"/>
+            <State name="highlighted"         colour="0.10 0.05 0.01"/>
+            <State name="pushed"              colour="0.32 0.20 0.10"/>
+            <State name="disabled"            colour="0.45 0.38 0.32"/>
+            <State name="normal_checked"      colour="0.20 0.11 0.04"/>
+            <State name="highlighted_checked" colour="0.10 0.05 0.01"/>
+            <State name="pushed_checked"      colour="0.32 0.20 0.10"/>
+            <State name="disabled_checked"    colour="0.45 0.38 0.32"/>
         </BasisSkin>
 
+        <Property key="FontName" value="DejaVuSans12"/>
         <Property key="TextAlign" value="Center"/>
-        <Property key="FontHeight" value="20"/>
 
     </Resource>
 

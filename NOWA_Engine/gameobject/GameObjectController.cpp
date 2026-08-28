@@ -1107,8 +1107,12 @@ namespace NOWA
 
             this->destroyAllSharedWidgets();
 
-            // Attention since GameObjectController is a singleton and the lifecycle is beyond the AppState's lifecycle
-            // That means, if an AppState is exited and started and GameObjects are created
+            // All GameObject destructors have run by now, so every DestroyCommand they enqueued
+            // sits in the destroy ring buffer. Those are deferred by NUM_DESTROY_SLOTS rendered
+            // frames by design - but the app state is about to destroy its scene manager, and no
+            // further frames will be rendered with it. Drain them here so they still run while
+            // their captured scene nodes, movable objects and scene manager are alive.
+            NOWA::GraphicsModule::getInstance()->drainAllDestroyCommands();
 
             this->alreadyDestroyed = true;
         }

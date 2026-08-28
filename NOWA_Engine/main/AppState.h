@@ -131,6 +131,21 @@ namespace NOWA
 		 * @note	This can be used to ask from another AppState like a MenuState, whether a GameState has already started, so that e.g. a continue button can be shown in the Menu.
 		 */
 		bool getHasStarted(void) const;
+
+		/**
+         * @brief	Applies all render queue modes and sort modes to the current scene manager.
+         * @note	Must be called on the render thread, and again after every workspace
+         *			(re-)creation. The modes live on the scene manager's RenderQueue instance,
+         *			so they are lost whenever the scene manager is exchanged or a workspace is
+         *			rebuilt. Ogre only asks ParticleSystemManager2 for render queue ids whose
+         *			mode is PARTICLE_SYSTEM (OgreSceneManager.cpp, cullFrustum: the
+         *			_addToRenderQueue call is guarded by
+         *			getRenderQueueMode(currRqId) == RenderQueue::PARTICLE_SYSTEM). If the mode
+         *			is lost, particles simulate correctly but no draw call is ever submitted.
+         */
+        void applyRenderQueueModes(void);
+
+		Ogre::SceneManager* getSceneManager(void) const;
 	protected:
 		AppState();
 
@@ -207,6 +222,10 @@ namespace NOWA
 		void destroyModules(void);
 	private:
 		void handleSceneLoaded(NOWA::EventDataPtr eventData);
+
+		void reserveRenderQueueSlots(void);
+
+		void destroyRenderQueueSlots(void);
 	protected:
 		AppStateListener* appStateManager;
 		Ogre::String nextAppStateName;
@@ -218,6 +237,7 @@ namespace NOWA
 		OgreNewt::World* ogreNewt;
 		bool bQuit;
 		bool canUpdate;
+        std::vector<Ogre::Item*> renderQueueAnchorItems;
 		Ogre::String currentSceneName;
 		GameObjectController* gameObjectController;
 		GameProgressModule* gameProgressModule;

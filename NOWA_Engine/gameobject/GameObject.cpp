@@ -1080,14 +1080,32 @@ namespace NOWA
                     continue;
                 }
 
-                // Connect all components except LuaScriptComponent and AiLuaComponent —
-                // those are handled separately in GameObjectController @managedLuaScripts.
-                // Raw pointer comparison replaces the old shared_ptr != shared_ptr comparison,
-                // which internally did two atomic loads. This is a plain pointer compare.
-                if (gameObjectCompPtr.get() != luaScriptRaw && gameObjectCompPtr.get() != aiLuaRaw && gameObjectCompPtr.get() != aiLuaGoalRaw)
+                // Connect all components except LuaScriptComponent, AiLuaComponent and
+                // AiLuaGoalComponent — those are connected exclusively by GameObjectController
+                // via its managedLuaScripts loop, which controls their execution order.
+                //
+                // Attention: this MUST be a real type test, not a comparison against the cached
+                // raw pointers. If a cache is still nullptr at this point (it is only filled in
+                // postInit(), and a component added at runtime or an early connect can leave it
+                // unset), then "gameObjectCompPtr.get() != nullptr" evaluates to true and the
+                // component slips through the filter. It then gets connected here AND a second
+                // time in the managedLuaScripts loop — which made every Lua "connect" function
+                // run twice, duplicating everything registered inside it (reactOnFadeCompleted
+                // closures, event listeners, ...).
+                if (nullptr != boost::dynamic_pointer_cast<LuaScriptComponent>(gameObjectCompPtr))
                 {
-                    gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
+                    continue;
                 }
+                if (nullptr != boost::dynamic_pointer_cast<AiLuaComponent>(gameObjectCompPtr))
+                {
+                    continue;
+                }
+                if (nullptr != boost::dynamic_pointer_cast<AiLuaGoalComponent>(gameObjectCompPtr))
+                {
+                    continue;
+                }
+
+                gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
             }
         }
 

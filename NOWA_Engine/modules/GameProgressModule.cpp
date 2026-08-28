@@ -37,6 +37,7 @@ namespace NOWA
 			auto* appStateMgr = AppStateManager::getSingletonPtr();
 			auto* core = Core::getSingletonPtr();
 			auto* gameProgressModule = appStateMgr->getGameProgressModule(this->appStateName);
+
 			gameProgressModule->resetContent();
 
 			// Run parsing scene on render thread
@@ -279,6 +280,7 @@ namespace NOWA
 
 	void GameProgressModule::resetContent(void)
 	{
+		// Note: For an AppState one scene after another can be loaded, so at least some resources must be stopped and cleared
 		boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(0L, ""));
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
 
@@ -287,6 +289,12 @@ namespace NOWA
 		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->stop();
 		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->destroyContent(/*excludeGameObjects*/);
 		AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->destroyContent();
+        AppStateManager::getSingletonPtr()->getLuaScriptModule(this->appStateName)->destroyContent();
+		// Must not be destroyed! else no particle effect etc.
+        // AppStateManager::getSingletonPtr()->getParticleFxModule(this->appStateName)->destroyContent();
+        // AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->destroyContent();
+
+		// TODO what else must be deleted?
 		WorkspaceModule::getInstance()->destroyContent();
 	}
 	

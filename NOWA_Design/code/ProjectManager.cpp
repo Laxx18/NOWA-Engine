@@ -500,7 +500,7 @@ void ProjectManager::internalApplySettings(void)
 {
     NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
-        NOWA::Core::getSingletonPtr()->setSettings(this->sceneManager, this->sunLight, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->projectParameter);
+        NOWA::Core::getSingletonPtr()->setSettings(this->sceneManager, this->sunLight, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->projectParameter, true);
 
         if (true == this->projectParameter.hasRecast)
         {

@@ -11,16 +11,16 @@ void GameState::enter(void)
 {
 	this->currentSceneName = "ProjectTemplate/Scene1/Scene1.scene";
 	
-	NOWA::AppState::enter();
+	NOWA::FaderProcess::showBlackScreenImmediate();
 	
-	// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
+	NOWA::AppState::enter();
 }
 
 void GameState::start(const NOWA::SceneParameter& sceneParameter)
 {
 	// Scene loaded finished. Get scene manager, camera, ogrenewt etc. from scene parameter here for custom functionality
 	
-	// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
+	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 2.0f, NOWA::Interpolator::Linear)));
 }
 
 void GameState::exit(void)
@@ -49,15 +49,8 @@ void GameState::renderUpdate(Ogre::Real dt)
 {
 	this->processUnbufferedKeyInput(dt);
 	this->processUnbufferedMouseInput(dt);
-	
-	NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->update(dt);
-	
-	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-	
-	if (ms.buttonDown(OIS::MB_Right))
-	{
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->rotateCamera(dt, false);
-	}
+
+	NOWA::AppState::renderUpdate(dt);
 }
 
 bool GameState::keyPressed(const OIS::KeyEvent &keyEventRef)

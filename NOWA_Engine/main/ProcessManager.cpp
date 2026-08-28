@@ -32,20 +32,30 @@ namespace NOWA
             }
         }
 
-        // Now update all processes (no threading issues here - single thread access)
         unsigned short int successCount = 0;
         unsigned short int failCount = 0;
 
-        ProcessList::iterator it = this->processList.begin();
+        // Attention: iterate over a SNAPSHOT, never over live iterators of processList.
+        // A process callback may re-enter this manager and modify processList while we are
+        // iterating it: ChangeAppStateProcess::onSuccess() runs internalChangeAppState(),
+        // which calls abortAllProcesses(true) / clearAllProcesses(). Both erase from
+        // processList, which invalidates any iterator held here (crash: "list iterators
+        // incompatible", with the iterator reading as 0xdddddddddddddddd).
+        ProcessList snapshot(this->processList);
 
-        while (it != this->processList.end())
+        for (const auto& currProcessPtr : snapshot)
         {
-            // grab the next process
-            ProcessPtr currProcessPtr = (*it);
+            if (nullptr == currProcessPtr)
+            {
+                continue;
+            }
 
-            // save the iterator and increment the old one in case we need to remove this process from the list
-            ProcessList::iterator thisIt = it;
-            ++it;
+            // The process may have been removed in the meantime by a re-entrant call from a
+            // previous process in this same snapshot. Skip it, it is no longer managed.
+            if (std::find(this->processList.begin(), this->processList.end(), currProcessPtr) == this->processList.end())
+            {
+                continue;
+            }
 
             // process is uninitialized, so initialize it
             if (currProcessPtr->getState() == Process::UNINITIALIZED)
@@ -94,8 +104,10 @@ namespace NOWA
                 }
                 }
 
-                // remove the process and destroy it
-                this->processList.erase(thisIt);
+                // Remove by value, not by iterator. onSuccess()/onFail()/onAbort() above may
+                // already have cleared or reordered processList, so a stored iterator would be
+                // dangling here. remove() is a no-op if the entry is gone already.
+                this->processList.remove(currProcessPtr);
             }
         }
 

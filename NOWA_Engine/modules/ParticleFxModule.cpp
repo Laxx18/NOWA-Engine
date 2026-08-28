@@ -388,6 +388,65 @@ namespace NOWA
     // Called from logic thread (ParticleFxComponent::update or AppState::update)
     void ParticleFxModule::update(Ogre::Real dt)
     {
+#ifdef NOWA_PARTICLE_FX_DIAGNOSTIC
+        // How much time this module actually consumes per second and how often it is called.
+        // If these numbers differ between the game and NOWA-Design, the update path is the
+        // difference - the particle definitions are identical in both.
+        static Ogre::Real diagAccumDt = 0.0f;
+        static int diagCallCount = 0;
+        static Ogre::Real diagTimer = 0.0f;
+
+        diagAccumDt += dt;
+        diagCallCount++;
+        diagTimer += dt;
+
+        if (diagTimer >= 1.0f)
+        {
+            diagTimer = 0.0f;
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxDiag] update stats: appState='" + this->appStateName + "' calls=" + Ogre::StringConverter::toString(diagCallCount) +
+                                                                                    " accumDt=" + Ogre::StringConverter::toString(diagAccumDt) + " lastDt=" + Ogre::StringConverter::toString(dt));
+
+            diagCallCount = 0;
+            diagAccumDt = 0.0f;
+
+            for (const auto& pair : this->particles)
+            {
+                const ParticleFxData& data = pair.second;
+
+                Ogre::Camera* diagCamera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+                if (nullptr != diagCamera)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxDiag] camera='" + diagCamera->getName() + "'" + " camVisibilityFlags=" + Ogre::StringConverter::toString(diagCamera->getVisibilityFlags()) +
+                                                                                            " sceneVisibilityMask=" + Ogre::StringConverter::toString(this->sceneManager->getVisibilityMask()) +
+                                                                                            " camPos=" + Ogre::StringConverter::toString(diagCamera->getDerivedPosition()));
+                }
+
+                // Also log entries that have no instance yet, otherwise it looks as if the
+                // diagnostic never runs at all while the effect simply has not been played.
+                if (nullptr == data.particleSystem || nullptr == data.particleNode)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxDiag] '" + pair.first + "' NOT INSTANCED activated=" + Ogre::StringConverter::toString(data.activated) +
+                                                                                            " isEmitting=" + Ogre::StringConverter::toString(data.isEmitting) + " playTime=" + Ogre::StringConverter::toString(data.particlePlayTime) +
+                                                                                            " playSpeed=" + Ogre::StringConverter::toString(data.particlePlaySpeed) + " globalPos=" + Ogre::StringConverter::toString(data.particleGlobalPosition));
+                    continue;
+                }
+
+                const Ogre::ParticleSystemDef* def = data.particleSystem->getParticleSystemDef();
+                const size_t activeParticles = (nullptr != def) ? def->getNumSimdActiveParticles() : 0;
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ParticleFxDiag] '" + pair.first + "' activated=" + Ogre::StringConverter::toString(data.activated) + " isEmitting=" + Ogre::StringConverter::toString(data.isEmitting) + " playTime=" +
+                        Ogre::StringConverter::toString(data.particlePlayTime) + " playSpeed=" + Ogre::StringConverter::toString(data.particlePlaySpeed) + " activeParticles=" + Ogre::StringConverter::toString(static_cast<int>(activeParticles)) +
+                        " visible=" + Ogre::StringConverter::toString(data.particleSystem->getVisible()) + " visibilityFlags=" + Ogre::StringConverter::toString(data.particleSystem->getVisibilityFlags()) +
+                        " rq=" + Ogre::StringConverter::toString(data.particleSystem->getRenderQueueGroup()) + " nodePos=" + Ogre::StringConverter::toString(data.particleNode->_getDerivedPositionUpdated()));
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxDiag] update final def RQ=" + Ogre::StringConverter::toString(static_cast<int>(data.particleSystem->getParticleSystemDef()->getRenderQueueGroup())) +
+                                                                                        " instance RQ=" + Ogre::StringConverter::toString(static_cast<int>(data.particleSystem->getRenderQueueGroup())));
+            }
+        }
+#endif
+
         if (this->particles.empty())
         {
             return;
@@ -442,6 +501,10 @@ namespace NOWA
                 Ogre::Real& playTime = particleData.particlePlayTime;
                 if (playTime > 0.0f)
                 {
+                    // Attention: particlePlaySpeed shortens the lifetime here AND speeds up the
+                    // emitter velocities in createParticleEffect. A play speed of 10 therefore
+                    // turns a configured play time of 1000 ms into an effective 100 ms, which
+                    // can cut the effect off long before its particles ever became visible.
                     playTime -= dt * 1000.0f * particleData.particlePlaySpeed;
                 }
                 else
@@ -519,7 +582,19 @@ namespace NOWA
     void ParticleFxModule::setGlobalPosition(const Ogre::String& name, const Ogre::Vector3& position)
     {
         auto it = this->particles.find(name);
-        if (it != this->particles.end() && nullptr != it->second.particleNode)
+        if (it == this->particles.end())
+        {
+            return;
+        }
+
+        // Always store, even while particleNode is still null. createParticleEffect() creates
+        // the node lazily on the first play. Without storing here, the world transform the
+        // component computed during connect() would simply be dropped and the node would be
+        // created at the world origin, making the effect invisible wherever the camera looks.
+        it->second.particleGlobalPosition = position;
+        it->second.hasGlobalTransform = true;
+
+        if (nullptr != it->second.particleNode)
         {
             NOWA::GraphicsModule::getInstance()->updateNodePosition(it->second.particleNode, position);
         }
@@ -528,7 +603,15 @@ namespace NOWA
     void ParticleFxModule::setGlobalOrientation(const Ogre::String& name, const Ogre::Quaternion& orientation)
     {
         auto it = this->particles.find(name);
-        if (it != this->particles.end() && nullptr != it->second.particleNode)
+        if (it == this->particles.end())
+        {
+            return;
+        }
+
+        it->second.particleGlobalOrientation = orientation;
+        it->second.hasGlobalTransform = true;
+
+        if (nullptr != it->second.particleNode)
         {
             NOWA::GraphicsModule::getInstance()->updateNodeOrientation(it->second.particleNode, orientation);
         }
@@ -670,7 +753,7 @@ namespace NOWA
 
                 try
                 {
-                    particleSystemDefInstance = baseDef->clone(cloneName, particleManager);
+                    particleSystemDefInstance = baseDef->clone(cloneName, this->particleManager);
                 }
                 catch (...)
                 {
@@ -731,6 +814,15 @@ namespace NOWA
             particleData.particleNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
             particleData.particleNode->attachObject(particleData.particleSystem);
 
+            // Apply the world transform that was computed before this node existed.
+            // The node is created here for the very first time, so without this it stays at
+            // the world origin no matter where the owning game object actually is.
+            if (true == particleData.hasGlobalTransform)
+            {
+                particleData.particleNode->setPosition(particleData.particleGlobalPosition);
+                particleData.particleNode->setOrientation(particleData.particleGlobalOrientation);
+            }
+
             particleData.particleSystem->setCastShadows(false);
 
             // Apply blending mode (existing)
@@ -758,10 +850,6 @@ namespace NOWA
 
             if (particleData.particleSystem)
             {
-                // Log the actual render queue group ParticleSystem2 uses
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "[ParticleFxModule] ParticleSystem2 '" + particleData.particleSystem->getName() + "' render queue group: " + Ogre::StringConverter::toString(particleData.particleSystem->getRenderQueueGroup()));
-
                 // Log the material/datablock being used
                 const Ogre::ParticleSystemDef* def = particleData.particleSystem->getParticleSystemDef();
                 if (def)
@@ -769,6 +857,7 @@ namespace NOWA
                     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] Material: " + def->getMaterialName());
                 }
             }
+
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] createParticleEffect END: particleSystem=" + Ogre::String(particleData.particleSystem ? "VALID" : "NULL"));
         };

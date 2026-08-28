@@ -237,6 +237,10 @@ void DesignState::createScene(void)
 
 	NOWA::GraphicsModule::RenderCommand renderCommand = [this, numThreads]()
     {
+        // Loads textures in background in multiple threads
+        Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+        hlmsTextureManager->setMultiLoadPool(numThreads);
+
         // Create the SceneManager, in this case a generic one
         this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "NOWA_SceneManager");
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
@@ -839,7 +843,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
             auto sceneBoundsRightFar = NOWA::Core::getSingletonPtr()->getCurrentSceneBoundRightFar();
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[NOWADesign]: Scene bounds left near: " + Ogre::StringConverter::toString(sceneBoundsLeftNear) + " right far: " + Ogre::StringConverter::toString(sceneBoundsRightFar));
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleProjectManipulation");
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleProjectManipulation");
 
 		this->hasSceneChanges = false;
 
@@ -1827,8 +1831,8 @@ void DesignState::update(Ogre::Real dt)
 
         if (true == isSimulating)
         {
-            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->update(dt);
-            NOWA::AppStateManager::getSingletonPtr()->getParticleFxModule()->update(dt);
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->update(dt);
+            NOWA::AppStateManager::getSingletonPtr()->getParticleFxModule(this->appStateName)->update(dt);
         }
 
 		bool altKeyIsDown = (0 != (GetAsyncKeyState(VK_LMENU) & 0x8000));
@@ -1842,7 +1846,7 @@ void DesignState::update(Ogre::Real dt)
         // Lua reads m_curRotation via physComp:getOrientation() here.
         // At this point m_curRotation reflects the result of the PREVIOUS
         // Newton step — one frame behind, but consistent.
-        NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->update(dt);
+        NOWA::AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->update(dt);
 
         if (true == isSimulating)
         {
@@ -1857,7 +1861,7 @@ void DesignState::update(Ogre::Real dt)
             // Camera reads the correct interpolated position and writes
             // into the transform buffer. Render thread lerps it at 400fps.
 			// So if simulating (almost in any case a physics object is involved for tracking, so it must be done on max 144hz updaterate to stay in sync with physics).
-            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
+            NOWA::AppStateManager::getSingletonPtr()->getCameraManager(this->appStateName)->moveCamera(dt);
         }
 
         if (nullptr != this->editorManager)

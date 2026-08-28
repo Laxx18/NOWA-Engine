@@ -833,6 +833,15 @@ namespace NOWA
 
         bool hasPendingDestroyCommands(void) const;
 
+        /**
+         * @brief	Executes all pending destroy commands in every ring buffer slot immediately.
+         *			Blocks until they have run on the render thread.
+         * @note	Needed when the scene manager is about to be destroyed (app state change).
+         *			enqueueDestroy() normally defers a command by NUM_DESTROY_SLOTS rendered
+         *			frames, which is unsafe if the scene manager dies before those frames happen.
+         */
+        void drainAllDestroyCommands(void);
+
         /*
          * // Example of persistent closure (non-fire-and-forget)
          *    void SomeClass::setupPersistentEffect()

@@ -127,41 +127,12 @@ namespace
 
         return ch;
     }
-
-    void normalizeMouseEventCoords(const OIS::MouseEvent& e)
-    {
-        HWND hwnd = nullptr;
-        NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &hwnd);
-
-        if (!hwnd)
-        {
-            return;
-        }
-
-        POINT p;
-        if (!GetCursorPos(&p))
-        {
-            return;
-        }
-
-        if (!ScreenToClient(hwnd, &p))
-        {
-            return;
-        }
-
-        // We want everyone to see client coords in e.state.X.abs / Y.abs,
-        // so we overwrite them (OIS is not particularly const-correct anyway).
-        auto state = const_cast<OIS::MouseState&>(e.state);
-        state.X.abs = p.x;
-        state.Y.abs = p.y;
-    }
-
 }
 
 namespace NOWA
 {
-    InputDeviceCore::InputDeviceCore() :
-        mouse(nullptr),
+    InputDeviceCore::InputDeviceCore()
+        : mouse(nullptr),
         keyboard(nullptr),
         inputSystem(nullptr),
         mainInputDeviceModule(nullptr),
@@ -749,23 +720,20 @@ namespace NOWA
 
     bool InputDeviceCore::mouseMoved(const OIS::MouseEvent& e)
     {
-        // Normalize OIS coords once:
-        normalizeMouseEventCoords(e);
+        const OIS::MouseState& state = e.state;
 
-        int mX = e.state.X.abs;
-        int mY = e.state.Y.abs;
-        int mZ = e.state.Z.abs;
-
-        if (auto* inputMgr = MyGUI::InputManager::getInstancePtr())
+        if (MyGUI::InputManager::getInstancePtr())
         {
-            inputMgr->injectMouseMove(mX, mY, mZ);
+            MyGUI::InputManager::getInstancePtr()->injectMouseMove(state.X.abs, state.Y.abs, state.Z.abs);
         }
 
+        // Deine bestehende Listener-Dispatch-Logik unverändert
         this->mouseDispatchDepth++;
 
         for (size_t i = this->mouseListenerStack.size(); i-- > 0;)
         {
             OIS::MouseListener* listener = this->mouseListenerStack[i].second;
+
             if (nullptr == listener)
             {
                 continue;
@@ -773,16 +741,12 @@ namespace NOWA
 
             if (!listener->mouseMoved(e))
             {
-                this->mouseDispatchDepth--;
-                if (0 == this->mouseDispatchDepth)
-                {
-                    this->flushPendingMouseRemovals();
-                }
-                return true;
+                break;
             }
         }
 
         this->mouseDispatchDepth--;
+
         if (0 == this->mouseDispatchDepth)
         {
             this->flushPendingMouseRemovals();
@@ -793,9 +757,6 @@ namespace NOWA
 
     bool InputDeviceCore::mousePressed(const OIS::MouseEvent& e, OIS::MouseButtonID id)
     {
-        // Normalize coordinates first
-        normalizeMouseEventCoords(e);
-
         this->bSelectDown = this->getKeyboard()->isKeyDown(NOWA_K_SELECT);
 
         int mX = e.state.X.abs;
@@ -838,9 +799,6 @@ namespace NOWA
 
     bool InputDeviceCore::mouseReleased(const OIS::MouseEvent& e, OIS::MouseButtonID id)
     {
-        // Normalize coordinates first
-        normalizeMouseEventCoords(e);
-
         int mX = e.state.X.abs;
         int mY = e.state.Y.abs;
 
@@ -1189,6 +1147,43 @@ namespace NOWA
     bool InputDeviceCore::isSelectDown(void) const
     {
         return this->bSelectDown;
+    }
+
+    void InputDeviceCore::setMousePosition(int x, int y)
+    {
+        if (nullptr == this->mouse)
+        {
+            return;
+        }
+
+        HWND hwnd = nullptr;
+        NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &hwnd);
+
+        if (nullptr == hwnd)
+        {
+            return;
+        }
+
+        POINT screenPosition{x, y};
+
+        if (!ClientToScreen(hwnd, &screenPosition))
+        {
+            return;
+        }
+
+        SetCursorPos(screenPosition.x, screenPosition.y);
+
+        // OIS-Absolute-Position synchronisieren.
+        // Nicht GetCursorPos() im nächsten Event verwenden.
+        OIS::MouseState& state = const_cast<OIS::MouseState&>(this->mouse->getMouseState());
+
+        state.X.abs = x;
+        state.Y.abs = y;
+
+        if (MyGUI::InputManager::getInstancePtr())
+        {
+            MyGUI::InputManager::getInstancePtr()->injectMouseMove(x, y, 0);
+        }
     }
 
 } // namespace end

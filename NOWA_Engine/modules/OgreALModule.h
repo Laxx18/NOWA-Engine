@@ -103,6 +103,10 @@ namespace NOWA
 
 		OgreAL::SoundManager* getSoundManager(void) const;
 
+		void setSoundVolume(int soundVolume);
+
+        void setMusicVolume(int musicVolume);
+
 		int getSoundVolume(void) const;
 
 		int getMusicVolume(void) const;

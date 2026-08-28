@@ -98,12 +98,27 @@ namespace NOWA
         this->canUpdate = false;
         this->hasStarted = false;
 
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
+        // Guard against the shutdown case: the EventManager may already have been
+        // destroyed by the time AppState::exit() runs (bShutdown = true in AppStateManager).
+        // Calling removeListener on a null pointer crashes inside lock_guard's constructor.
+        NOWA::EventManager* eventManager = NOWA::AppStateManager::getSingletonPtr()->getEventManager();
+        if (nullptr != eventManager)
+        {
+            eventManager->removeListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
+        }
+
         // Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
         NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->stop();
-        NOWA::AppStateManager::getSingletonPtr()->getScriptEventManager(this->appStateName)->destroyContent();
-        NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->stopSimulation();
-        NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
+        auto* ogreRecastModule = NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName);
+        if (nullptr != ogreRecastModule)
+        {
+            ogreRecastModule->stopSimulation();
+        }
+        auto* gameObjectController = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController();
+        if (nullptr != gameObjectController)
+        {
+            gameObjectController->stop();
+        }
         this->destroyModules();
     }
 
@@ -111,16 +126,18 @@ namespace NOWA
     {
         boost::shared_ptr<NOWA::EventDataSceneLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataSceneLoaded>(eventData);
 
+        // Event not for this state
+        if (castEventData->getSceneParameter().appStateName != this->appStateName)
+        {
+            return;
+        }
+
         this->sceneManager = castEventData->getSceneParameter().sceneManager;
         this->camera = castEventData->getSceneParameter().mainCamera;
         this->ogreNewt = castEventData->getSceneParameter().ogreNewt;
-
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-        {
-            // Start game
-            NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->start();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::handleSceneLoaded");
+        
+        // Start game
+        NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->start();
 
         // Set the start position for the player
         NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->determinePlayerStartLocation(castEventData->getProjectParameter().sceneName);
@@ -131,7 +148,100 @@ namespace NOWA
             NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, player->getId(), true);
         }
 
+        // Sets mouse to 0 0 to prevent sudden hover on mygui elements
+        InputDeviceCore::getSingletonPtr()->setMousePosition(0, 0);
+
         this->start(castEventData->getSceneParameter());
+    }
+
+        // -----------------------------------------------------------------------------------
+    // Reserves a permanent, invisible slot in the ObjectMemoryManager for a high-numbered
+    // render queue, so ObjectMemoryManager::getNumRenderQueues() - and therefore
+    // Ogre::SceneManager::cullFrustum()'s loop bound - reaches far enough to cover NOWA's
+    // particle render queues, regardless of what the scene actually contains.
+    //
+    // Root cause: cullFrustum() only iterates render queue ids up to the highest slot
+    // actually occupied by a real MovableObject, and ParticleSystemManager2::
+    // _addToRenderQueue() is called from inside that very loop. RENDER_QUEUE_PARTICLE_STUFF
+    // (155) and RENDER_QUEUE_PARTICLE_TRANSPARENT (214) were therefore silently skipped in
+    // the standalone game, where the highest occupied slot was 110 (v1 default). The editor
+    // only worked by accident: its gizmo geometry at RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_
+    // FOREGROUND (220) is a real Item on a SceneNode and stretched the iterated range.
+    // RENDER_QUEUE_GIZMO (252) and RENDER_QUEUE_MAX (254) never do this - they are only ever
+    // configured via setRenderQueueMode(), never populated with a MovableObject, and MyGUI
+    // draws through its own compositor pass entirely outside the cull path.
+    //
+    // The anchor MUST be an Item (v2) in a queue whose mode is FAST. Render queue ids in
+    // [100; 200) are v1 territory - putting an Item there throws in SubItem::
+    // getRenderOperation. Ids configured as PARTICLE_SYSTEM never collect Items at all.
+    // RENDER_QUEUE_GIZMO (252) satisfies both constraints and sits above every particle
+    // queue in use.
+    // -----------------------------------------------------------------------------------
+    void AppState::reserveRenderQueueSlots(void)
+    {
+        if (nullptr == this->sceneManager)
+        {
+            return;
+        }
+
+        // Never reserve twice for the same scene manager - this would leak one Item plus one
+        // SceneNode per call, and applyRenderQueueModes() may run more than once.
+        if (false == this->renderQueueAnchorItems.empty())
+        {
+            return;
+        }
+
+        const Ogre::SceneMemoryMgrTypes sceneType = Ogre::SCENE_STATIC;
+
+        static const Ogre::uint8 queuesToReserve[] = {NOWA::RENDER_QUEUE_GIZMO};
+
+        for (Ogre::uint8 rqId : queuesToReserve)
+        {
+            // "Node.mesh" is NOWA's existing empty utility v2 mesh, already used for invisible
+            // dummy game objects - no new resource needed.
+            Ogre::Item* anchorItem = this->sceneManager->createItem("Node.mesh", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, sceneType);
+            anchorItem->setName("RenderQueueAnchor_" + Ogre::StringConverter::toString(rqId));
+            anchorItem->setRenderQueueGroup(rqId);
+            anchorItem->setVisible(false);
+            anchorItem->setQueryFlags(0);
+            anchorItem->setCastShadows(false);
+
+            this->sceneManager->getRootSceneNode(sceneType)->createChildSceneNode(sceneType)->attachObject(anchorItem);
+
+            this->renderQueueAnchorItems.emplace_back(anchorItem);
+        }
+    }
+
+    // -----------------------------------------------------------------------------------
+    // Destroys the anchor items created by reserveRenderQueueSlots(), including the scene
+    // nodes they were attached to. Must run before the scene manager itself is destroyed.
+    // -----------------------------------------------------------------------------------
+    void AppState::destroyRenderQueueSlots(void)
+    {
+        if (nullptr == this->sceneManager)
+        {
+            this->renderQueueAnchorItems.clear();
+            return;
+        }
+
+        for (Ogre::Item* anchorItem : this->renderQueueAnchorItems)
+        {
+            if (nullptr == anchorItem)
+            {
+                continue;
+            }
+
+            Ogre::SceneNode* anchorNode = anchorItem->getParentSceneNode();
+            if (nullptr != anchorNode)
+            {
+                anchorNode->detachObject(anchorItem);
+                this->sceneManager->destroySceneNode(anchorNode);
+            }
+
+            this->sceneManager->destroyItem(anchorItem);
+        }
+
+        this->renderQueueAnchorItems.clear();
     }
 
     void AppState::destroy(void)
@@ -209,10 +319,13 @@ namespace NOWA
 
     void AppState::renderUpdate(Ogre::Real dt)
     {
-        bool isSimulating = this->gameObjectController->getIsSimulating();
-        if (true == isSimulating)
+        NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->update(dt);
+
+        const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+
+        if (ms.buttonDown(OIS::MB_Right))
         {
-            this->cameraManager->rotateCamera(dt, false);
+            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->rotateCamera(dt, false);
         }
     }
 
@@ -286,16 +399,13 @@ namespace NOWA
 
         if (true == initSceneManager)
         {
-            // http://www.ogre3d.org/2016/01/01/ogre-progress-report-december-2015
-            // Longer loading times, but faster, test it
-            // Ogre::v1::Mesh::msOptimizeForShadowMapping = true;
-            // constexpr size_t numThreads = 1;
-#if OGRE_DEBUG_MODE
+            size_t numThreads = 1;
+#ifdef _DEBUG
             // Debugging multithreaded code is a PITA, disable it.
-            const size_t numThreads = 1;
+            numThreads = 1;
 #else
             // getNumLogicalCores() may return 0 if couldn't detect
-            const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
+            numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
 #endif
 
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, numThreads]()
@@ -307,6 +417,8 @@ namespace NOWA
                 // Create the SceneManager, in this case a generic one
                 this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, this->appStateName + "_SceneManager");
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[AppState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
+
+                Ogre::Root::getSingletonPtr()->getRenderSystem()->setMetricsRecordingEnabled(true);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::initializeModules sceneManager");
         }
@@ -316,11 +428,11 @@ namespace NOWA
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->camera = this->sceneManager->createCamera(this->appStateName + "_Camera");
-                this->camera->setFOVy(Ogre::Degree(90.0f));
+                Ogre::Vector3 position = this->camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f));
+                this->camera->setPosition(position);
                 this->camera->setNearClipDistance(0.1f);
                 this->camera->setFarClipDistance(500.0f);
                 this->camera->setQueryFlags(0 << 0);
-                this->camera->setPosition(0.0f, 5.0f, -2.0f);
 
                 // this->cameraManager->destroyContent();
                 this->cameraManager->init("CameraManager1", this->camera);
@@ -352,53 +464,7 @@ namespace NOWA
             {
                 Core::getSingletonPtr()->setSceneManagerForMyGuiPlatform(this->sceneManager);
 
-                Ogre::RenderQueue::RqSortMode sortMode = Ogre::RenderQueue::RqSortMode::StableSort;
-
-                // http://www.ogre3d.org/forums/viewtopic.php?f=25&t=88607 important to choose what to render in what render queue!
-                // Really important to set the renderqueue mode to 250 (overlay), and then setting the wished manual objects render queue group to that number
-                // so that they are always visible
-
-                /*
-                RenderQueue ID range [0; 100) & [200; 225) default to FAST (i.e. for v2 objects, like Items)
-                RenderQueue ID range [100; 200) & [225; 256) default to V1_FAST (i.e. for v1 objects, like v1::Entity)
-                By default new Items and other v2 objects are placed in RenderQueue ID 10
-                By default new v1::Entity and other v1 objects are placed in RenderQueue ID 110
-                */
-
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_EARLY_FIRST, Ogre::RenderQueue::Modes::FAST);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_EARLY_FIRST, sortMode);
-
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V2_MESH, Ogre::RenderQueue::Modes::FAST);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_MESH, sortMode);
-
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_DISTORTION, Ogre::RenderQueue::Modes::FAST);
-
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_PARTICLE_STUFF, Ogre::RenderQueue::Modes::PARTICLE_SYSTEM);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_PARTICLE_STUFF, sortMode);
-
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT, Ogre::RenderQueue::Modes::PARTICLE_SYSTEM);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT, sortMode);
-
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_LEGACY, Ogre::RenderQueue::Modes::V1_LEGACY);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_LEGACY, sortMode);
-
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND, Ogre::RenderQueue::Modes::FAST);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND, sortMode);
-
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V2_TRANSPARENT, Ogre::RenderQueue::Modes::FAST);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_TRANSPARENT, sortMode);
-
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_GIZMO, Ogre::RenderQueue::Modes::FAST);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_GIZMO, sortMode);
-
-                // MyGUI's Ogre2RenderManager already sets this queue to FAST + DisableSort
-                // internally (see setSceneManager(), called via setSceneManagerForMyGuiPlatform
-                // above). Repeated here explicitly so this file stays the single source of
-                // truth for every queue's mode and doesn't rely on init-order luck.
-                // IMPORTANT: DisableSort, not `sortMode` (StableSort) — MyGUI relies on strict
-                // painter's/submission order for correct widget layering.
-                this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_MAX, Ogre::RenderQueue::Modes::FAST);
-                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_MAX, Ogre::RenderQueue::RqSortMode::DisableSort);
+                this->applyRenderQueueModes();
 
                 // LuaScriptApi::getInstance()->destroyAllScripts();
 
@@ -409,15 +475,19 @@ namespace NOWA
                 // WorkspaceModule::getInstance()->destroyContent();
                 // Create dummy workspace, since there is no one yet created
                 WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
-
-                OgreALModule::getInstance()->init(this->sceneManager);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::initializeModules renderqueue and init");
+
+            OgreALModule::getInstance()->init(this->sceneManager);
         }
     }
 
     void AppState::destroyModules(void)
     {
+        // Must run while the scene manager is still alive.
+        this->destroyRenderQueueSlots();
+        AppStateManager::getSingletonPtr()->clearLogicQueue();
+
         bool canDestroy = true;
         if (nullptr == this->sceneManager)
         {
@@ -472,7 +542,7 @@ namespace NOWA
             WorkspaceModule::getInstance()->destroyContent();
 
             // If another states continues, do not destroy sounds
-            if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 1)
+            if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 1 && true == OgreALModule::getInstance()->getIsContinued())
             {
                 OgreALModule::getInstance()->destroySounds(this->sceneManager);
             }
@@ -489,16 +559,84 @@ namespace NOWA
             this->scriptEventManager->destroyContent();
             delete this->scriptEventManager;
             this->scriptEventManager = nullptr;
-        }
 
-        this->ogreNewtModule->destroyContent();
-        delete this->ogreNewtModule;
-        this->ogreNewtModule = nullptr;
+            this->ogreNewtModule->destroyContent();
+            delete this->ogreNewtModule;
+            this->ogreNewtModule = nullptr;
+        }
     }
 
     bool AppState::getHasStarted(void) const
     {
         return this->hasStarted;
+    }
+
+    void AppState::applyRenderQueueModes(void)
+    {
+        if (nullptr == this->sceneManager)
+        {
+            return;
+        }
+
+        Ogre::RenderQueue::RqSortMode sortMode = Ogre::RenderQueue::RqSortMode::StableSort;
+
+        /*
+        RenderQueue ID range [0; 100) & [200; 225) default to FAST (i.e. for v2 objects, like Items)
+        RenderQueue ID range [100; 200) & [225; 256) default to V1_FAST (i.e. for v1 objects, like v1::Entity)
+        By default new Items and other v2 objects are placed in RenderQueue ID 10
+        By default new v1::Entity and other v1 objects are placed in RenderQueue ID 110
+        */
+
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_EARLY_FIRST, Ogre::RenderQueue::Modes::FAST);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_EARLY_FIRST, sortMode);
+
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V2_MESH, Ogre::RenderQueue::Modes::FAST);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_MESH, sortMode);
+
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_DISTORTION, Ogre::RenderQueue::Modes::FAST);
+
+        // Ogre places every ParticleSystemDef on kParticleSystemDefaultRenderQueueId (15) until
+        // something moves it. Registering that id as a particle queue as well means a definition
+        // that kept its default still renders instead of silently disappearing.
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(15, Ogre::RenderQueue::Modes::PARTICLE_SYSTEM);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(15, sortMode);
+
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_PARTICLE_STUFF, Ogre::RenderQueue::Modes::PARTICLE_SYSTEM);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_PARTICLE_STUFF, sortMode);
+
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT, Ogre::RenderQueue::Modes::PARTICLE_SYSTEM);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT, sortMode);
+
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_LEGACY, Ogre::RenderQueue::Modes::V1_LEGACY);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_LEGACY, sortMode);
+
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND, Ogre::RenderQueue::Modes::FAST);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND, sortMode);
+
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V2_TRANSPARENT, Ogre::RenderQueue::Modes::FAST);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_TRANSPARENT, sortMode);
+
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_GIZMO, Ogre::RenderQueue::Modes::FAST);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_GIZMO, sortMode);
+
+        // MyGUI's Ogre2RenderManager already sets this queue to FAST + DisableSort internally
+        // (see setSceneManager(), called via setSceneManagerForMyGuiPlatform). Repeated here so
+        // this function stays the single source of truth for every queue's mode and doesn't rely
+        // on init-order luck.
+        // IMPORTANT: DisableSort, not sortMode (StableSort) - MyGUI relies on strict
+        // painter's/submission order for correct widget layering.
+        this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_MAX, Ogre::RenderQueue::Modes::FAST);
+        this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_MAX, Ogre::RenderQueue::RqSortMode::DisableSort);
+
+        // FIX: guarantee ObjectMemoryManager::getNumRenderQueues() covers the particle queues
+        // regardless of scene content - see reserveRenderQueueSlots() comment above for the
+        // full root-cause explanation (cullFrustum()'s loop bound problem).
+        this->reserveRenderQueueSlots();
+    }
+
+    Ogre::SceneManager* AppState::getSceneManager(void) const
+    {
+        return this->sceneManager;
     }
 
 }; // namespace end

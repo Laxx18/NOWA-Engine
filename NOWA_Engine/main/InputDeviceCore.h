@@ -99,6 +99,7 @@ namespace NOWA
 
         bool isSelectDown(void) const;
 
+        void setMousePosition(int x, int y);
     private:
         InputDeviceCore();
 
@@ -123,6 +124,7 @@ namespace NOWA
 
         void flushPendingJoystickRemovals(void);
 
+        void addDevice(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject);
     private:
         OIS::Mouse* mouse;
         OIS::Keyboard* keyboard;
@@ -159,8 +161,6 @@ namespace NOWA
 
         bool bSelectDown;
         bool bLock;
-
-        void addDevice(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject);
     };
 
 }; // namespace end

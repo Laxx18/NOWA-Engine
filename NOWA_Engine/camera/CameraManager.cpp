@@ -103,7 +103,7 @@ namespace NOWA
 					cameraBehavior->onClearData();
 
 					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(mainIt->first));
-					AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataRemoveCamera);
+					AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
 
 					delete cameraBehavior;
 

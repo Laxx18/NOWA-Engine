@@ -59,6 +59,14 @@ namespace NOWA
 		void popAppState(void);
 		void popAllAndPushAppState(AppState* state);
 
+		/**
+         * @brief  Exits the current app state and immediately re-enters it.
+         *         Use this after a resolution or fullscreen change to force MyGUI
+         *         to recreate all widgets with the new viewport dimensions.
+         *         Safe to call from any logic-thread context, including buttonHit handlers.
+         */
+        void reloadCurrentState(void);
+
 		void shutdown(void);
 
 		void changeAppState(const Ogre::String& stateName);

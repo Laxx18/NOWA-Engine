@@ -1767,6 +1767,7 @@ namespace NOWA
         MyGUI::ResourceManager::getInstancePtr()->load("WoodWindowSkin.xml");
         MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_WoodButton.xml");
         MyGUI::ResourceManager::getInstancePtr()->load("WoodSliderSkin.xml");
+        MyGUI::ResourceManager::getInstancePtr()->load("WoodButtonSkin.xml");
     }
 
     void Core::setSceneManagerForMyGuiPlatform(Ogre::SceneManager* sceneManager)
@@ -2534,7 +2535,7 @@ namespace NOWA
         return this->pluginFactory;
     }
 
-    void Core::setSettings(Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::Camera* camera, const ProjectParameter& projectParameter)
+    void Core::setSettings(Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::Camera* camera, const ProjectParameter& projectParameter, bool recreateWorkspace)
     {
         if (nullptr != light)
         {
@@ -2599,7 +2600,7 @@ namespace NOWA
         }
 
         sceneManager->setShadowColour(Ogre::ColourValue(projectParameter.shadowColor.r, projectParameter.shadowColor.g, projectParameter.shadowColor.b, 1.0f));
-        NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(projectParameter.shadowQualityIndex), true);
+        NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(projectParameter.shadowQualityIndex), recreateWorkspace);
         NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(projectParameter.ambientLightModeIndex));
 
         // The player configured quality overrides win over the values the level designer authored in the ProjectParameter.

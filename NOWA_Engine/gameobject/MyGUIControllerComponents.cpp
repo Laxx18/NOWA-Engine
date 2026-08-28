@@ -7,6 +7,112 @@
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
 
+namespace
+{
+    // -----------------------------------------------------------------------------------
+    // File-local helper (no header change needed) shared by connect(), setActivated()
+    // and setSourceId(). Searches this component's owning GameObject for the MyGUIComponent
+    // whose id matches wantedId and returns its widget + component pointer.
+    // -----------------------------------------------------------------------------------
+    void resolveMyGUISourceWidget(NOWA::GameObjectPtr gameObjectPtr, unsigned long wantedId, MyGUI::Widget*& outWidget, NOWA::MyGUIComponent*& outComponent)
+    {
+        outWidget = nullptr;
+        outComponent = nullptr;
+
+        if (nullptr == gameObjectPtr)
+        {
+            return;
+        }
+
+        for (unsigned int i = 0; i < gameObjectPtr->getComponents()->size(); i++)
+        {
+            auto gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentByIndex(i));
+            if (nullptr == gameObjectCompPtr)
+            {
+                continue;
+            }
+
+            auto myGuiCompPtr = boost::dynamic_pointer_cast<NOWA::MyGUIComponent>(gameObjectCompPtr);
+            if (nullptr != myGuiCompPtr && myGuiCompPtr->getId() == wantedId && nullptr != myGuiCompPtr->getWidget())
+            {
+                outWidget = myGuiCompPtr->getWidget();
+                outComponent = myGuiCompPtr.get();
+                return;
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------------------
+    // Registry tracking which MyGUIPositionControllerComponent instance currently
+    // owns the running MyGUI position animation on a given widget (see rationale in the
+    // previous message: two components can legitimately target the same widget).
+    //
+    // Touched from both the logic thread (setActivated()/onActivatedChanged(), driven by
+    // Lua/AppStateManager) and the render thread (MyGUI's eventPostAction ->
+    // controllerFinished(), fired as part of MyGUI's own per-frame update on the render
+    // thread) - so SOME synchronization is required. Per request: no std::mutex. This uses
+    // a tiny atomic_flag spinlock instead - no OS scheduler / futex path, just a couple of
+    // atomic ops. Safe because the critical section is only ever a plain map lookup/insert/
+    // erase, NEVER held across a render dispatch (enqueueAndWait) or any other blocking
+    // call - and because this only fires a handful of times per second (hover enter/leave,
+    // disconnect, animation completion), never per-frame, so it's essentially always
+    // uncontended in practice.
+    // -----------------------------------------------------------------------------------
+    std::atomic_flag activePositionOwnersLock = ATOMIC_FLAG_INIT;
+    std::unordered_map<MyGUI::Widget*, NOWA::MyGUIPositionControllerComponent*> activePositionOwners;
+
+    struct SpinLockGuard
+    {
+        std::atomic_flag& flag;
+
+        explicit SpinLockGuard(std::atomic_flag& f) : flag(f)
+        {
+            while (flag.test_and_set(std::memory_order_acquire))
+            {
+                // Busy-wait. Critical section is trivially short (map ops only), so this
+                // essentially never actually spins in practice.
+            }
+        }
+
+        ~SpinLockGuard()
+        {
+            flag.clear(std::memory_order_release);
+        }
+    };
+
+    void claimPositionOwnership(MyGUI::Widget* widget, NOWA::MyGUIPositionControllerComponent* newOwner)
+    {
+        NOWA::MyGUIPositionControllerComponent* previousOwner = nullptr;
+        {
+            SpinLockGuard lock(activePositionOwnersLock);
+            auto it = activePositionOwners.find(widget);
+            if (it != activePositionOwners.end() && it->second != newOwner)
+            {
+                previousOwner = it->second;
+            }
+            activePositionOwners[widget] = newOwner;
+        }
+
+        // Notify outside the lock: setActivated() enqueues/waits on a render command and
+        // must never be called while the spinlock is held (would hold the lock across a
+        // blocking cross-thread call - exactly what we want to avoid).
+        if (nullptr != previousOwner)
+        {
+            previousOwner->setActivated(false);
+        }
+    }
+
+    void releasePositionOwnership(MyGUI::Widget* widget, NOWA::MyGUIPositionControllerComponent* owner)
+    {
+        SpinLockGuard lock(activePositionOwnersLock);
+        auto it = activePositionOwners.find(widget);
+        if (it != activePositionOwners.end() && it->second == owner)
+        {
+            activePositionOwners.erase(it);
+        }
+    }
+}
+
 namespace NOWA
 {
     using namespace rapidxml;
@@ -70,34 +176,17 @@ namespace NOWA
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIControllerComponent::connect");
         }
 
-        // Always resolve sourceWidget regardless of activated state so that:
-        // a) activated=false at connect can hide the widget immediately
-        // b) Lua-triggered setActivated(true) later finds the widget without lazy lookup
-        for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
-        {
-            auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
-            if (nullptr != gameObjectCompPtr)
-            {
-                auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
-                if (nullptr != myGuiCompPtr && myGuiCompPtr->getId() == this->sourceId->getULong())
-                {
-                    if (nullptr != myGuiCompPtr->getWidget())
-                    {
-                        this->sourceWidget = myGuiCompPtr->getWidget();
-                        this->sourceMyGUIComponent = myGuiCompPtr.get();
-                        break;
-                    }
-                }
-            }
-        }
+        this->sourceWidget = nullptr;
+        this->sourceMyGUIComponent = nullptr;
+        resolveMyGUISourceWidget(this->gameObjectPtr, this->sourceId->getULong(), this->sourceWidget, this->sourceMyGUIComponent);
 
-        if (false == this->activated->getBool())
-        {
-            return true;
-        }
-
-        this->activateController(this->activated->getBool());
-
+        //  no longer calls activateController() here. That call is Position-controller
+        // geometry logic (save/restore oldCoordinate) and was previously invoked for EVERY
+        // controller subtype. For Position it was redundant AND thread-unsafe (read
+        // sourceWidget->getCoord() on the calling thread instead of the render thread) -
+        // MyGUIPositionControllerComponent::onActivatedChanged() already (re-)captures
+        // oldCoordinate correctly, on the render thread, every time an animation actually
+        // starts. For every other subtype it never made sense at all.
         return true;
     }
 
@@ -107,7 +196,17 @@ namespace NOWA
 
         this->isSimulating = false;
 
-        this->activateController(false);
+        //  no longer calls activateController(false) here - see connect() comment.
+        // Unconditionally "restoring" oldCoordinate here corrupted the widgets of every
+        // NON-Position controller (Alpha/ScrollingMessage/EdgeHide/RepeatClick): if such a
+        // controller was only ever activated later via Lua (not already active at connect()),
+        // oldCoordinate stayed at the constructor default Vector4::ZERO, so disconnecting
+        // forced the widget's coord to (0,0,0,0) - i.e. moved and shrank it to nothing.
+        // Position-specific restore now lives exclusively in
+        // MyGUIPositionControllerComponent::disconnect(), where it belongs.
+        this->sourceWidget = nullptr;
+        this->sourceMyGUIComponent = nullptr;
+
         return true;
     }
 
@@ -210,37 +309,21 @@ namespace NOWA
             return;
         }
 
-        // In editor mode (not simulating) only store the value — never run any controller
+        // In editor mode (not simulating) only store the value - never run any controller
         // or render operations. connect() handles the real startup when simulation begins.
         if (false == this->isSimulating)
         {
             return;
         }
 
-        // Fallback lazy resolution: connect() now always resolves sourceWidget, but guard
-        // here in case setActivated() is ever called before connect() during simulation.
+        // Fallback lazy resolution: connect() and setSourceId() now resolve sourceWidget
+        // eagerly, so this should normally be a no-op - kept as a defensive guard only.
         if (nullptr == this->sourceWidget)
         {
-            for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
-            {
-                auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
-                if (nullptr != gameObjectCompPtr)
-                {
-                    auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
-                    if (nullptr != myGuiCompPtr && myGuiCompPtr->getId() == this->sourceId->getULong())
-                    {
-                        if (nullptr != myGuiCompPtr->getWidget())
-                        {
-                            this->sourceWidget = myGuiCompPtr->getWidget();
-                            this->sourceMyGUIComponent = myGuiCompPtr.get();
-                            break;
-                        }
-                    }
-                }
-            }
+            resolveMyGUISourceWidget(this->gameObjectPtr, this->sourceId->getULong(), this->sourceWidget, this->sourceMyGUIComponent);
         }
 
-        // Notify subclass — only reached during simulation with a valid sourceWidget
+        // Notify subclass - only reached during simulation with a valid sourceWidget
         if (nullptr != this->sourceWidget)
         {
             this->onActivatedChanged(activated);
@@ -295,7 +378,33 @@ namespace NOWA
 
     void MyGUIControllerComponent::setSourceId(unsigned long sourceId)
     {
+        // Nothing to do if it did not actually change (Lua re-applies the same id often,
+        // e.g. re-entering the same button) - avoids pointless re-resolves.
+        if (this->sourceId->getULong() == sourceId)
+        {
+            return;
+        }
+
         this->sourceId->setValue(sourceId);
+
+        // Previously only the Variant was
+        // updated here, while sourceWidget/sourceMyGUIComponent kept pointing at whatever
+        // widget had been resolved before. Since LeftController/RightController are SHARED
+        // between all menu buttons (SourceId="0" in Menu.scene, redirected per-button via
+        // Lua on hover), the controller kept animating the PREVIOUS button's widget while
+        // using the NEW button's target coordinate - "NewButton jumps to LoadButton's spot".
+        // We now re-resolve the cached widget/component pointers immediately, so the very
+        // next setActivated()/onActivatedChanged() call operates on the correct widget.
+        if (nullptr == this->gameObjectPtr || false == this->isSimulating)
+        {
+            // Not simulating (e.g. editor mode) - just store the value, connect() will
+            // resolve it once simulation actually starts.
+            this->sourceWidget = nullptr;
+            this->sourceMyGUIComponent = nullptr;
+            return;
+        }
+
+        resolveMyGUISourceWidget(this->gameObjectPtr, sourceId, this->sourceWidget, this->sourceMyGUIComponent);
     }
 
     unsigned long MyGUIControllerComponent::getSourceId(void) const
@@ -386,6 +495,32 @@ namespace NOWA
         return true;
     }
 
+    bool MyGUIPositionControllerComponent::disconnect(void)
+    {
+        if (nullptr != this->controllerItem)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+                this->controllerItem = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIPositionControllerComponent::disconnect");
+        }
+
+        //  release ownership while sourceWidget is still valid (the base class disconnect()
+        // below nulls it) - prevents a dangling pointer lingering in the registry after this
+        // component instance is torn down.
+        // releasePositionOwnership(this->sourceWidget, this);
+
+        // Position restore is Position-controller-specific, so it lives here rather than in
+        // the generic base class disconnect().
+        this->activateController(false);
+
+        // Call the base class disconnect exactly ONCE, and only after we're done using
+        // sourceWidget - the base disconnect() clears it.
+        return MyGUIControllerComponent::disconnect();
+    }
+
     void MyGUIPositionControllerComponent::onActivatedChanged(bool activated)
     {
         if (nullptr == this->sourceWidget)
@@ -395,6 +530,12 @@ namespace NOWA
 
         if (true == activated)
         {
+            //  claim exclusive ownership of this widget's animation BEFORE touching
+            // MyGUI. If another MyGUIPositionControllerComponent instance is currently
+            // animating the same widget, this stops it cleanly via its own setActivated(false)
+            // instead of us silently ripping its controllerItem out via removeItem() below.
+            // claimPositionOwnership(this->sourceWidget, this);
+
             NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
                 // Store old coordinate on the render thread where sourceWidget is safe to read
@@ -450,6 +591,9 @@ namespace NOWA
         }
         else
         {
+            //  release ownership - a no-op if someone else already took it over via claim().
+            // releasePositionOwnership(this->sourceWidget, this);
+
             NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
                 MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
@@ -462,30 +606,16 @@ namespace NOWA
         }
     }
 
-    bool MyGUIPositionControllerComponent::disconnect(void)
-    {
-        MyGUIControllerComponent::disconnect();
-
-        if (nullptr != this->controllerItem)
-        {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-            {
-                MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
-                this->controllerItem = nullptr;
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIPositionControllerComponent::disconnect");
-        }
-        this->activateController(false);
-
-        return MyGUIControllerComponent::disconnect();
-    }
-
     void MyGUIPositionControllerComponent::controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller)
     {
         // MyGUI deletes the item internally after this callback — just null our pointer
         this->controllerItem = nullptr;
         // Reset activated so Lua can re-trigger the animation next time
         this->activated->setValue(false);
+
+        //  release ownership on natural completion too, so a later animation on this
+        // widget doesn't unnecessarily "preempt" an already-finished controller.
+        // releasePositionOwnership(sender, this);
     }
 
     void MyGUIPositionControllerComponent::onFrameUpdate(MyGUI::Widget* widget, MyGUI::ControllerItem* controller)
@@ -666,8 +796,10 @@ namespace NOWA
 
     bool MyGUIFadeAlphaControllerComponent::disconnect(void)
     {
-        MyGUIControllerComponent::disconnect();
-
+        // Subclass-specific cleanup now runs FIRST, while sourceWidget/controllerItem
+        // are still valid. MyGUIControllerComponent::disconnect() (called once, at the very
+        // end) now clears both, and it used to be called a second time here too (duplicate
+        // GameObjectComponent bookkeeping) - both issues fixed.
         if (nullptr != this->controllerItem)
         {
             // If the controller succeeded, it will be deleted internally!
@@ -679,7 +811,7 @@ namespace NOWA
             NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
                 MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
-                // Set widget to old alpha
+                // Restore original alpha
                 this->sourceWidget->setAlpha(this->oldAlpha);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIFadeAlphaControllerComponent::disconnect");
@@ -1343,8 +1475,9 @@ namespace NOWA
 
     bool MyGUIEdgeHideControllerComponent::disconnect(void)
     {
-        MyGUIControllerComponent::disconnect();
-
+        // Widget cleanup now runs BEFORE the (single) base disconnect() call - with
+        // the base-class fix, that call nulls sourceWidget immediately, so the block below
+        // would otherwise never execute. Also removed the duplicate base disconnect() call.
         if (nullptr != this->controllerItem)
         {
             // If the controller succeeded, it will be deleted internally!
@@ -1561,9 +1694,10 @@ namespace NOWA
 
     bool MyGUIRepeatClickControllerComponent::disconnect(void)
     {
-        MyGUIControllerComponent::disconnect();
-
-        if (nullptr != this->sourceWidget)
+        // Same reordering/double-base-disconnect issue as the other controllers.
+        // Also fixed a pre-existing typo: the controllerItem-null check tested
+        // "this->sourceWidget" instead of "this->controllerItem".
+        if (nullptr != this->controllerItem)
         {
             // If the controller succeeded, it will be deleted internally!
             this->controllerItem = nullptr;

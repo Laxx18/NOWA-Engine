@@ -713,7 +713,7 @@ namespace NOWA
 		* @brief Apply user-configured menu quality settings to a scene (LOD bias, light, shadows etc.).
 		* @note  Is not threadsafe!
 		*/
-        void setSettings(Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::Camera* camera, const ProjectParameter& projectParameter);
+        void setSettings(Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::Camera* camera, const ProjectParameter& projectParameter, bool recreateWorkspace);
 
 		void applyGlobalGraphicsQuality(Ogre::SceneManager* sceneManager);
 

@@ -49,9 +49,6 @@ namespace NOWA
         protected:
             virtual void prepareItem(MyGUI::Widget* _widget) override
             {
-                // Start fully opaque for FadeIn (about to reveal), fully
-                // transparent for FadeOut (about to cover) — same starting
-                // point as FaderProcess's initial currentAlpha.
                 _widget->setAlpha(this->isFadeIn ? 1.0f : 0.0f);
             }
 
@@ -72,11 +69,18 @@ namespace NOWA
                 if (t >= 1.0f)
                 {
                     _widget->setAlpha(this->isFadeIn ? 0.0f : 1.0f);
-                    return false; // MyGUI fires eventPostAction, then removes this item
+
+                    // eventPostAction is NOT fired automatically by MyGUI's ControllerManager
+                    // when addTime() returns false — it must be invoked explicitly by the item
+                    // itself, exactly as MyGUI::ControllerFadeAlpha::addTime() does in the engine
+                    // source. Without this call, returning false still correctly removes the item
+                    // internally, but eventPostAction (and therefore FadeComponent::controllerFinished)
+                    // is never invoked — the fade plays out visually with no way to know it finished.
+                    eventPostAction(_widget, this);
+
+                    return false; // ControllerManager removes this item after this update
                 }
 
-                // FadeIn: eased input goes 1 -> 0 as time progresses.
-                // FadeOut: eased input goes 0 -> 1 as time progresses.
                 Ogre::Real easeInput = this->isFadeIn ? (1.0f - t) : t;
                 Ogre::Real alpha = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, easeInput);
                 _widget->setAlpha(alpha);
@@ -157,6 +161,14 @@ namespace NOWA
     bool FadeComponent::connect(void)
     {
         GameObjectComponent::connect();
+
+        // Always start with a clean slate. If connect() is ever called more than
+        // once without an intervening disconnect() (scene reload, double-hookup,
+        // whatever the exact trigger), stale closures from the previous connect
+        // must not survive — otherwise reactOnFadeCompleted() accumulates one
+        // more entry per extra connect() call, and every one of them fires when
+        // the fade finishes (e.g. AppStateManager:changeAppState called N times).
+        this->fadeCompletedClosureFunctions.clear();
 
         // Create the full-screen fade widget once, up front — mirrors the
         // lazy-but-eager creation pattern used by
@@ -326,38 +338,40 @@ namespace NOWA
         // FadeOut: leave the widget visible and opaque — it is now covering
         // the screen, same end state the old v1 Overlay was left in.
 
-        if (nullptr != this->getOwner()->getLuaScript())
+        // REMOVED: getOwner()->getLuaScript() null check — closures are independent
+        // of whether a LuaScriptComponent is currently present/active on the owner.
+        // Same fix as MyGUIItemBoxComponent::notifyNotifyItem — this guard silently
+        // swallowed the callback whenever getLuaScript() returned nullptr for any
+        // reason, with no log line to indicate why reactOnFadeCompleted never fired.
+        auto* closureListPtr = &this->fadeCompletedClosureFunctions;
+
+        if (false == closureListPtr->empty())
         {
-            auto* closureListPtr = &this->fadeCompletedClosureFunctions;
-
-            if (false == closureListPtr->empty())
+            NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
-                {
-                    // Copy happens HERE on the logic thread — safe for luabind::object
-                    auto closures = *closureListPtr;
+                // Copy happens HERE on the logic thread — safe for luabind::object
+                auto closures = *closureListPtr;
 
-                    for (const auto& closure : closures)
+                for (const auto& closure : closures)
+                {
+                    if (false == closure.is_valid())
                     {
-                        if (false == closure.is_valid())
-                        {
-                            continue;
-                        }
-                        try
-                        {
-                            luabind::call_function<void>(closure);
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FadeComponent] Caught error in 'reactOnFadeCompleted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                        }
+                        continue;
                     }
-                };
-                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-            }
+                    try
+                    {
+                        luabind::call_function<void>(closure);
+                    }
+                    catch (luabind::error& error)
+                    {
+                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                        std::stringstream msg;
+                        msg << errorMsg;
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FadeComponent] Caught error in 'reactOnFadeCompleted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                    }
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
         }
     }
 

@@ -637,7 +637,6 @@
     <ClInclude Include="gameobject\PhysicsRagDollComponentV3.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\VehicleDrivingManipulation.h" />
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponentV2.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -698,6 +697,9 @@
     </ClInclude>
     <ClInclude Include="utilities\LoadingIndicator.h">
       <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\VehicleDrivingManipulation.h">
+      <Filter>gameobject</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1235,7 +1237,6 @@
     <ClCompile Include="gameobject\PhysicsRagDollComponentV3.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
-    <ClCompile Include="gameobject\VehicleDrivingManipulation.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponentV2.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
@@ -1271,6 +1272,9 @@
     </ClCompile>
     <ClCompile Include="utilities\LoadingIndicator.cpp">
       <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\VehicleDrivingManipulation.cpp">
+      <Filter>gameobject</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

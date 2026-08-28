@@ -3307,4 +3307,41 @@ namespace NOWA
         return false == this->destroySlots[this->currentDestroySlot].empty();
     }
 
+    void GraphicsModule::drainAllDestroyCommands(void)
+    {
+        // Flush anything that is still sitting in the deferred list first, otherwise those
+        // commands would be moved into the ring buffer after we already emptied it.
+        this->flushDeferredDestroyCommands();
+
+        // Execute every slot, not just the one that is two frames behind. This is the whole
+        // point: normally advanceFrameAndDestroyOld() only drains one slot per rendered frame,
+        // which is correct while rendering continues, but fatal if the scene manager is about
+        // to be destroyed - the captured Ogre pointers would dangle by the time the render
+        // thread gets around to those slots.
+        auto drainCommand = [this]()
+        {
+            for (size_t slot = 0; slot < GraphicsModule::NUM_DESTROY_SLOTS; slot++)
+            {
+                for (auto& destroyCommand : this->destroySlots[slot])
+                {
+                    destroyCommand();
+                }
+                this->destroySlots[slot].clear();
+            }
+        };
+
+        if (true == this->isRenderThread())
+        {
+            // Already on the render thread - run directly, an enqueueAndWait would deadlock.
+            drainCommand();
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [drainCommand]()
+        {
+            drainCommand();
+        };
+        this->enqueueAndWait(std::move(renderCommand), "GraphicsModule::drainAllDestroyCommands");
+    }
+
 }; // namespace end

@@ -156,24 +156,21 @@ namespace NOWA
 
         if (nullptr == this->sound)
         {
-            this->sound = OgreALModule::getInstance()->createSound(this->gameObjectPtr->getSceneManager(), Ogre::StringConverter::toString(NOWA::makeUniqueID()), this->soundName->getString(), loop, this->stream->getBool());
+            Ogre::String soundName = this->gameObjectPtr->getName() + "_" + this->soundName->getString();
+            this->sound = OgreALModule::getInstance()->createSound(this->gameObjectPtr->getSceneManager(), soundName, this->soundName->getString(), loop, this->stream->getBool());
             if (nullptr == this->sound)
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SimpleSoundComponent] Error: Could not create sound: " + this->soundName->getString());
                 return false;
             }
             this->sound->setStatic(!this->gameObjectPtr->isDynamic());
-            this->sound->setGain(this->volume->getReal() * 0.01f);
+            this->sound->setGain(this->calculateEffectiveGain());
+            this->sound->setStream(this->stream->getBool());
+            this->sound->setLoop(loop);
             this->sound->setRelativeToListener(this->relativeToListener->getBool());
             this->sound->setQueryFlags(0);
             this->gameObjectPtr->getSceneNode()->attachObject(this->sound);
         }
-
-        this->sound->setStream(this->stream->getBool());
-        this->sound->setLoop(loop);
-        this->sound->setGain(this->volume->getReal() * 0.01f);
-        this->sound->setRelativeToListener(this->relativeToListener->getBool());
-        this->sound->setQueryFlags(0);
 
         this->setOnSpectrumAnalysisFunctionName(this->onSpectrumAnalysisFunctionName->getString());
 
@@ -550,7 +547,7 @@ namespace NOWA
         this->volume->setValue(volume);
         if (nullptr != this->sound)
         {
-            this->sound->setGain(volume * 0.01f);
+            this->sound->setGain(this->calculateEffectiveGain());
         }
     }
 
@@ -881,6 +878,18 @@ namespace NOWA
                 this->destroySound();
             }
         }
+    }
+
+    Ogre::Real SimpleSoundComponent::calculateEffectiveGain(void) const
+    {
+        // stream == true  -> this component plays a streamed track, treated as music
+        // stream == false -> this component plays a buffered sound effect
+        int globalVolumePercent = true == this->stream->getBool() ? OgreALModule::getInstance()->getMusicVolume() : OgreALModule::getInstance()->getSoundVolume();
+
+        Ogre::Real localVolumeFraction = this->volume->getReal() * 0.01f;
+        Ogre::Real globalVolumeFraction = static_cast<Ogre::Real>(globalVolumePercent) * 0.01f;
+
+        return localVolumeFraction * globalVolumeFraction;
     }
 
     OgreAL::Sound* SimpleSoundComponent::getSound(void) const

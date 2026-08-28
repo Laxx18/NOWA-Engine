@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+ï»¿#include "NOWAPrecompiled.h"
 #include "PhysicsComponent.h"
 #include "JointComponents.h"
 #include "main/AppStateManager.h"
@@ -21,8 +21,8 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    PhysicsComponent::PhysicsComponent()
-        : GameObjectComponent(),
+    PhysicsComponent::PhysicsComponent() :
+        GameObjectComponent(),
         ogreNewt(nullptr), // really important line of code, ogrenewt must be not null, when using it
         physicsBody(nullptr),
         initialPosition(Ogre::Vector3::ZERO),
@@ -33,7 +33,6 @@ namespace NOWA
         mass(new Variant(PhysicsComponent::AttrMass(), Ogre::Real(10.0f), this->attributes)),
         collidable(new Variant(PhysicsComponent::AttrCollidable(), true, this->attributes))
     {
-
     }
 
     bool PhysicsComponent::postInit(void)
@@ -61,14 +60,12 @@ namespace NOWA
 
     PhysicsComponent::~PhysicsComponent()
     {
-        
     }
 
     bool PhysicsComponent::connect(void)
     {
         GameObjectComponent::connect();
 
-        
         return true;
     }
 
@@ -120,8 +117,8 @@ namespace NOWA
 
             if (nullptr == col)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsComponent] Mesh does not exist for: " + this->gameObjectPtr->getName() 
-                    + ". This will cause a crash! Check your scene file if the gameobject has a mesh which does exist!");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[PhysicsComponent] Mesh does not exist for: " + this->gameObjectPtr->getName() + ". This will cause a crash! Check your scene file if the gameobject has a mesh which does exist!");
                 return OgreNewt::CollisionPtr();
             }
 
@@ -137,8 +134,7 @@ namespace NOWA
         }
         else if (this->collisionType->getListSelectedValue() == "ConcaveHull")
         {
-            OgreNewt::CollisionPrimitives::ConcaveHull* col =
-                new OgreNewt::CollisionPrimitives::ConcaveHull(this->ogreNewt, this->gameObjectPtr->getMovableObject<Ogre::Item>(), categoryId, 0.001, this->gameObjectPtr->getSceneNode()->getScale());
+            OgreNewt::CollisionPrimitives::ConcaveHull* col = new OgreNewt::CollisionPrimitives::ConcaveHull(this->ogreNewt, this->gameObjectPtr->getMovableObject<Ogre::Item>(), categoryId, 0.001, this->gameObjectPtr->getSceneNode()->getScale());
 
             if (Ogre::Vector3::ZERO != collisionSize)
             {
@@ -267,8 +263,7 @@ namespace NOWA
         }
         else if (this->collisionType->getListSelectedValue() == "ConcaveHull")
         {
-            OgreNewt::CollisionPrimitives::ConcaveHull* col =
-                new OgreNewt::CollisionPrimitives::ConcaveHull(this->ogreNewt, this->gameObjectPtr->getMovableObject<Ogre::Item>(), categoryId, 0.001, this->gameObjectPtr->getSceneNode()->getScale());
+            OgreNewt::CollisionPrimitives::ConcaveHull* col = new OgreNewt::CollisionPrimitives::ConcaveHull(this->ogreNewt, this->gameObjectPtr->getMovableObject<Ogre::Item>(), categoryId, 0.001, this->gameObjectPtr->getSceneNode()->getScale());
             this->volume = col->calculateVolume();
             this->collisionPtr = OgreNewt::CollisionPtr(col);
             // calculate interia and mass center of the body
@@ -576,7 +571,7 @@ namespace NOWA
             return;
         }
 
-        // Cast away const — readRequests/mapAsyncTickets are non-const but only create
+        // Cast away const ï¿½ readRequests/mapAsyncTickets are non-const but only create
         // temporary read tickets, so this is safe.
         Ogre::VertexArrayObject* mutableVao = const_cast<Ogre::VertexArrayObject*>(vao);
 
@@ -768,27 +763,79 @@ namespace NOWA
 
         Ogre::String boneName = bone->getName();
 
+        // resetToPose() throws the current pose away, and this function is called PER rag bone. Without
+        // saving it, the RagBone constructor of the next bone reads a skeleton whose pose the previous
+        // hull has reset to bind - including the 'Pose' entry from the .rag file. So: save the local
+        // transforms of all bones, go to bind pose, compute, restore.
+        const size_t numBones = skelInstance->getNumBones();
+
+        std::vector<Ogre::Vector3> savedBonePositions;
+        std::vector<Ogre::Quaternion> savedBoneOrientations;
+        std::vector<Ogre::Vector3> savedBoneScales;
+
+        savedBonePositions.reserve(numBones);
+        savedBoneOrientations.reserve(numBones);
+        savedBoneScales.reserve(numBones);
+
+        for (size_t idx = 0; idx < numBones; idx++)
+        {
+            Ogre::Bone* savedBone = skelInstance->getBone(idx);
+
+            savedBonePositions.push_back(savedBone->getPosition());
+            savedBoneOrientations.push_back(savedBone->getOrientation());
+            savedBoneScales.push_back(savedBone->getScale());
+        }
+
         // Bind pose
         skelInstance->resetToPose();
         skelInstance->update();
 
-        // Full bone transform at bind pose (affine 3x4)
-        Ogre::Matrix4 fullBindPoseMat4;
-        bone->_getFullTransform().store(&fullBindPoseMat4);
+        // Do NOT use _getFullTransform() here. In Ogre-Next that is the SKINNING matrix
+        // (derived * inverseBindPose), which right after resetToPose() is the identity matrix by
+        // definition - invMatrix would then not transform into bone space at all and the hull would
+        // cover half the model instead of the bone.
+        // _getLocalSpaceTransform() returns the accumulated bone transform in SKELETON space and is the
+        // V2 counterpart of v1 _getDerivedPosition/Orientation, which is what v1 builds its
+        // _getBindingPoseInverse* from. extractBoneDerivedTransform uses the same function.
+        Ogre::Matrix4 bindPoseMat4;
+        bone->_getLocalSpaceTransform().store(&bindPoseMat4);
 
-        // Inverse bind pose matrix
-        Ogre::Matrix4 invBindPoseMat4 = fullBindPoseMat4.inverse();
+        // Decompose the bind pose transform DIRECTLY - do not invert the matrix first.
+        //
+        // v1 looks like it works on an inverse, but its _getBindingPoseInverse* values are stored
+        // COMPONENT WISE, not as a real matrix inverse:
+        //     mBindDerivedInversePosition    = -_getDerivedPosition();
+        //     mBindDerivedInverseScale       = Vector3::UNIT_SCALE / _getDerivedScale();
+        //     mBindDerivedInverseOrientation = _getDerivedOrientation().Inverse();
+        // so v1's -_getBindingPoseInversePosition() is exactly derivedPos and
+        // _getBindingPoseInverseOrientation().Inverse() is exactly derivedOri. v1 therefore simply uses
+        // the bind pose DERIVED transform.
+        //
+        // Inverting the matrix and taking its translation gives -R^-1 * t instead of t, so every hull
+        // ends up displaced by its own rotated position - the shapes are right, the places are not.
+        Ogre::Vector3 bindPos;
+        Ogre::Vector3 bindScale;
+        Ogre::Quaternion bindOrient;
+        bindPoseMat4.decomposition(bindPos, bindScale, bindOrient);
 
-        // Decompose inverse bind pose (matches v1's *_getBindingPoseInverseX)
-        Ogre::Vector3 invPos;
-        Ogre::Vector3 invScale;
-        Ogre::Quaternion invOrient;
-        invBindPoseMat4.decomposition(invPos, invScale, invOrient);
+        // Restore the pose, see above
+        for (size_t idx = 0; idx < numBones; idx++)
+        {
+            Ogre::Bone* savedBone = skelInstance->getBone(idx);
 
-        // Replicate v1 math exactly
-        Ogre::Vector3 bonePosition = (-invPos) - offsetPosition;
-        Ogre::Vector3 boneScale = Ogre::Vector3::UNIT_SCALE / (invScale * scale);
-        Ogre::Quaternion boneOrientation = offsetOrientation * invOrient.Inverse();
+            savedBone->setPosition(savedBonePositions[idx]);
+            savedBone->setOrientation(savedBoneOrientations[idx]);
+            savedBone->setScale(savedBoneScales[idx]);
+        }
+        skelInstance->update();
+
+        // offsetPosition/offsetOrientation do NOT belong in this transform. v1 deliberately commented
+        // them out here and passes them to the ConvexHull constructor instead - the V2 version did the
+        // opposite on both counts. From here on this is exactly the v1 math.
+        // Same three values v1 ends up with: derivedPos, derivedScale / scale, derivedOri.
+        Ogre::Vector3 bonePosition = bindPos;
+        Ogre::Vector3 boneScale = bindScale / scale;
+        Ogre::Quaternion boneOrientation = bindOrient;
 
         Ogre::Matrix4 invMatrix;
         invMatrix.makeInverseTransform(bonePosition, boneScale, boneOrientation);
@@ -823,7 +870,8 @@ namespace NOWA
             verts[i] = vertexVector[i];
         }
 
-        OgreNewt::CollisionPrimitives::ConvexHull* tempCol = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, verts, numVerts, categoryId);
+        // Apply the offsets here, like v1 does
+        OgreNewt::CollisionPrimitives::ConvexHull* tempCol = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, verts, numVerts, categoryId, offsetOrientation, offsetPosition);
         tempCol->calculateInertialMatrix(inertia, massOrigin);
         OgreNewt::CollisionPtr col = OgreNewt::CollisionPtr(tempCol);
 
@@ -1309,7 +1357,7 @@ namespace NOWA
 
     void PhysicsComponent::destroyBody(void)
     {
-        // Re-entry guard — prevents infinite recursion when getComponentWithOccurrence
+        // Re-entry guard ï¿½ prevents infinite recursion when getComponentWithOccurrence
         // releases a shared_ptr whose destructor calls destroyBody() again
         if (nullptr == this->physicsBody)
         {
@@ -1322,11 +1370,11 @@ namespace NOWA
         Ogre::Node* node = this->gameObjectPtr ? this->gameObjectPtr->getSceneNode() : nullptr;
 
         // CRITICAL: nil out physicsBody FIRST before any component iteration
-        // This is the re-entry guard — if we get called again, we exit immediately above
+        // This is the re-entry guard ï¿½ if we get called again, we exit immediately above
         OgreNewt::Body* bodyToDestroy = this->physicsBody;
         this->physicsBody = nullptr;
 
-        // Now safely iterate joints — even if a shared_ptr destructor triggers
+        // Now safely iterate joints ï¿½ even if a shared_ptr destructor triggers
         // ~PhysicsComponent again, physicsBody is already nullptr so we return early
         unsigned int i = 0;
         boost::shared_ptr<JointComponent> jointCompPtr = nullptr;
