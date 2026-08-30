@@ -93,8 +93,15 @@ namespace NOWA
         }
     }
 
-    void AppState::exit(void)
+        void AppState::exit(void)
     {
+        // Guard against a second exit(): destroyModules() has already nulled every module
+        // pointer, so running through here again would dereference null.
+        if (false == this->hasStarted)
+        {
+            return;
+        }
+
         this->canUpdate = false;
         this->hasStarted = false;
 
@@ -107,18 +114,26 @@ namespace NOWA
             eventManager->removeListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
         }
 
-        // Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
-        NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->stop();
+        // Same guard as for the other modules below - during shutdown this can be null too.
+        auto* gameProgressModule = NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName);
+        if (nullptr != gameProgressModule)
+        {
+            // Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
+            gameProgressModule->stop();
+        }
+
         auto* ogreRecastModule = NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName);
         if (nullptr != ogreRecastModule)
         {
             ogreRecastModule->stopSimulation();
         }
+
         auto* gameObjectController = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController();
         if (nullptr != gameObjectController)
         {
             gameObjectController->stop();
         }
+
         this->destroyModules();
     }
 
@@ -252,7 +267,10 @@ namespace NOWA
 
     bool AppState::pause(void)
     {
-        this->gameObjectController->pause();
+        if (nullptr != this->gameObjectController)
+        {
+            this->gameObjectController->pause();
+        }
         // Remember the active workspace
         this->workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
         this->canUpdate = false;
@@ -270,20 +288,27 @@ namespace NOWA
         }
         else
         {
-            Ogre::String message = "[WorkspaceModule] Error: Cannot resume AppState there is no active workspace set!";
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, message + "\n", "NOWA");
+            // Attention: do NOT throw here. pause() caches whatever WorkspaceModule reported as
+            // primary workspace at that moment. If this state was pushed away before its scene
+            // had finished loading, or if it simply has no workspace component, the cached
+            // pointer is null - and killing the application on the way back out of a pause menu
+            // is far worse than continuing without restoring a workspace.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState] Warning: Cannot restore a workspace on resume, because none was active when this state was paused. App state: " + this->appStateName);
         }
+
         this->canUpdate = true;
         ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderProcess(FaderProcess::FadeOperation::FADE_IN, 2.5f)));
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppState] Resuming State...");
 
-        // Attention: is this correct?
         Core::getSingletonPtr()->setSceneManagerForMyGuiPlatform(this->sceneManager);
         OgreALModule::getInstance()->init(this->sceneManager);
 
         this->bQuit = false;
-        this->gameObjectController->resume();
+
+        if (nullptr != this->gameObjectController)
+        {
+            this->gameObjectController->resume();
+        }
     }
 
     void AppState::update(Ogre::Real dt)
@@ -482,88 +507,119 @@ namespace NOWA
         }
     }
 
-    void AppState::destroyModules(void)
+        void AppState::destroyModules(void)
     {
         // Must run while the scene manager is still alive.
         this->destroyRenderQueueSlots();
         AppStateManager::getSingletonPtr()->clearLogicQueue();
 
-        bool canDestroy = true;
         if (nullptr == this->sceneManager)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState]: Could not destroy modules, because the scene manager is null");
-            canDestroy = false;
-        }
+            // Attention: without the cleanup below every module pointer would stay non-null.
+            // initializeModules() only creates the modules when gameObjectController is null,
+            // so on the next enter() this state would silently keep running with the modules
+            // of the previous run, all of them bound to a scene manager that no longer exists.
+            // Deleting them without their destroyContent() is not clean either, but it is far
+            // better than handing out dangling modules.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState]: Could not destroy modules properly, because the scene manager is null. Deleting modules without content cleanup for app state: " + this->appStateName);
 
-        if (true == canDestroy)
-        {
-            // Internally destroys all datablocks and movable objects (lines)
-            this->ogreNewtModule->showOgreNewtCollisionLines(false);
-
-            this->gameObjectController->destroyContent();
             delete this->gameObjectController;
             this->gameObjectController = nullptr;
-
-            this->cameraManager->destroyContent();
             delete this->cameraManager;
             this->cameraManager = nullptr;
-
-            this->ogreRecastModule->destroyContent();
             delete this->ogreRecastModule;
             this->ogreRecastModule = nullptr;
-
-            this->particleFxModule->destroyContent();
             delete this->particleFxModule;
             this->particleFxModule = nullptr;
-
-            this->gameProgressModule->destroyContent();
             delete this->gameProgressModule;
             this->gameProgressModule = nullptr;
-
-            this->miniMapModule->destroyContent();
             delete this->miniMapModule;
             this->miniMapModule = nullptr;
-
             delete this->decalsModule;
             this->decalsModule = nullptr;
-
-            // Destroy all scripts for just this AppState
-            this->luaScriptModule->destroyContent();
             delete this->luaScriptModule;
             this->luaScriptModule = nullptr;
-
-            if (nullptr != this->rakNetModule)
-            {
-                this->rakNetModule->destroyContent();
-                delete this->rakNetModule;
-                this->rakNetModule = nullptr;
-            }
-
-            WorkspaceModule::getInstance()->destroyContent();
-
-            // If another states continues, do not destroy sounds
-            if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 1 && true == OgreALModule::getInstance()->getIsContinued())
-            {
-                OgreALModule::getInstance()->destroySounds(this->sceneManager);
-            }
-            else
-            {
-                OgreALModule::getInstance()->destroyContent();
-            }
-
-            Core::getSingletonPtr()->destroyScene(this->sceneManager);
-
+            delete this->rakNetModule;
+            this->rakNetModule = nullptr;
             delete this->eventManager;
             this->eventManager = nullptr;
-
-            this->scriptEventManager->destroyContent();
             delete this->scriptEventManager;
             this->scriptEventManager = nullptr;
-
-            this->ogreNewtModule->destroyContent();
             delete this->ogreNewtModule;
             this->ogreNewtModule = nullptr;
+
+            return;
         }
+
+        // Internally destroys all datablocks and movable objects (lines)
+        this->ogreNewtModule->showOgreNewtCollisionLines(false);
+
+        this->gameObjectController->destroyContent();
+        delete this->gameObjectController;
+        this->gameObjectController = nullptr;
+
+        this->cameraManager->destroyContent();
+        delete this->cameraManager;
+        this->cameraManager = nullptr;
+
+        this->ogreRecastModule->destroyContent();
+        delete this->ogreRecastModule;
+        this->ogreRecastModule = nullptr;
+
+        this->particleFxModule->destroyContent();
+        delete this->particleFxModule;
+        this->particleFxModule = nullptr;
+
+        this->gameProgressModule->destroyContent();
+        delete this->gameProgressModule;
+        this->gameProgressModule = nullptr;
+
+        this->miniMapModule->destroyContent();
+        delete this->miniMapModule;
+        this->miniMapModule = nullptr;
+
+        delete this->decalsModule;
+        this->decalsModule = nullptr;
+
+        // Destroy all scripts for just this AppState
+        this->luaScriptModule->destroyContent();
+        delete this->luaScriptModule;
+        this->luaScriptModule = nullptr;
+
+        if (nullptr != this->rakNetModule)
+        {
+            this->rakNetModule->destroyContent();
+            delete this->rakNetModule;
+            this->rakNetModule = nullptr;
+        }
+
+        WorkspaceModule::getInstance()->destroyContent();
+
+        // If another states continues, do not destroy sounds.
+        // Attention: this relies on exit() being called BEFORE the state is popped from the
+        // stack, so the count still includes this state. One remaining state means "this is
+        // the last one" and the sounds go away completely.
+        if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 1 && true == OgreALModule::getInstance()->getIsContinued())
+        {
+            OgreALModule::getInstance()->destroySounds(this->sceneManager);
+        }
+        else
+        {
+            OgreALModule::getInstance()->destroyContent();
+        }
+
+        Core::getSingletonPtr()->destroyScene(this->sceneManager);
+
+        delete this->eventManager;
+        this->eventManager = nullptr;
+
+        this->scriptEventManager->destroyContent();
+        delete this->scriptEventManager;
+        this->scriptEventManager = nullptr;
+
+        this->ogreNewtModule->destroyContent();
+        delete this->ogreNewtModule;
+        this->ogreNewtModule = nullptr;
     }
 
     bool AppState::getHasStarted(void) const

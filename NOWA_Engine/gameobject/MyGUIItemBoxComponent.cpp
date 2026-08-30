@@ -1235,8 +1235,13 @@ namespace NOWA
 
             if (false == closureListPtr->empty())
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, dragDropDataCopy]()
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, dragDropDataCopy]()
                 {
+                    if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                    {
+                        return;
+                    }
+
                     // Copy happens HERE on the logic thread — safe for luabind::object
                     auto closures = *closureListPtr;
 
@@ -1276,8 +1281,13 @@ namespace NOWA
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, dragDropDataCopy]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, dragDropDataCopy]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -1339,8 +1349,13 @@ namespace NOWA
 
                 if (false == closureListPtr->empty())
                 {
-                    NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, dragDropDataCopy]()
+                    NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, dragDropDataCopy]()
                     {
+                        if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                        {
+                            return;
+                        }
+
                         // Copy happens HERE on the logic thread — safe for luabind::object
                         auto closures = *closureListPtr;
 
@@ -1381,8 +1396,13 @@ namespace NOWA
 
                         if (false == closureListPtr->empty())
                         {
-                            NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, dragDropDataCopy]()
+                            NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, dragDropDataCopy]()
                             {
+                                if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                                {
+                                    return;
+                                }
+
                                 // Copy happens HERE on the logic thread — safe for luabind::object
                                 auto closures = *closureListPtr;
 
@@ -1668,8 +1688,13 @@ namespace NOWA
                             }
                         }
 
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, resourceName, slotGameObjectId, buttonId]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, resourceName, slotGameObjectId, buttonId]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+                            
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -1703,6 +1728,11 @@ namespace NOWA
             {
                 NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
                 {
+                    if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                    {
+                        return;
+                    }
+
                     try
                     {
                         luabind::call_function<void>(this->mouseButtonReleasedClosureFunction, slotIndex, resourceName, buttonId);
@@ -3298,8 +3328,13 @@ namespace NOWA
             if (false == closureListPtr->empty())
             {
                 // Capture the pending values — they are resolved before the lambda runs
-                NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, resourceName, slotGameObjectId, buttonId]()
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, resourceName, slotGameObjectId, buttonId]()
                 {
+                    if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                    {
+                        return;
+                    }
+
                     auto closures = *closureListPtr;
 
                     for (const auto& closure : closures)
@@ -3330,6 +3365,11 @@ namespace NOWA
         {
             NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
             {
+                if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                {
+                    return;
+                }
+
                 try
                 {
                     luabind::call_function<void>(this->mouseButtonPressedClosureFunction, slotIndex, resourceName, buttonId);

@@ -309,64 +309,85 @@ namespace NOWA
 
     void MyGUIComponent::rootMouseChangeFocus(MyGUI::Widget* sender, bool focus)
     {
-        if (true == this->isSimulating)
+        if (false == this->isSimulating)
         {
-            if (sender == this->widget)
+            return;
+        }
+
+        if (sender != this->widget)
+        {
+            return;
+        }
+
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->enabled->getBool())
+        {
+            return;
+        }
+
+        if (true == focus)
+        {
+            if (false == this->mouseEnterClosureFunction.is_valid())
             {
-                // this->widget->_setRootMouseFocus(focus);
-                // Call mouse enter event
-                if (true == focus)
-                {
-                    if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-                    {
-                        if (this->mouseEnterClosureFunction.is_valid())
-                        {
-                            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                            {
-                                try
-                                {
-                                    luabind::call_function<void>(this->mouseEnterClosureFunction);
-                                }
-                                catch (luabind::error& error)
-                                {
-                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                    std::stringstream msg;
-                                    msg << errorMsg;
-
-                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComponent] Caught error in 'reactOnMouseEnter' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                                }
-                            };
-                            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                        }
-                    }
-                }
-                else
-                {
-                    // Call mouse leave event
-                    if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-                    {
-                        if (this->mouseLeaveClosureFunction.is_valid())
-                        {
-                            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                            {
-                                try
-                                {
-                                    luabind::call_function<void>(this->mouseLeaveClosureFunction);
-                                }
-                                catch (luabind::error& error)
-                                {
-                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                    std::stringstream msg;
-                                    msg << errorMsg;
-
-                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComponent] Caught error in 'reactOnMouseLeave' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                                }
-                            };
-                            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                        }
-                    }
-                }
+                return;
             }
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+            {
+                // Attention: re-check here, not only before enqueueing. This command runs one
+                // or more frames later on the logic thread. A mouse enter/leave that happens
+                // while a MyGUI button triggers an app state change is enqueued while the state
+                // is still simulating, but executed after disconnect() has already run - the
+                // lua module's locals (clickSound, controllers, ...) are nil by then and the
+                // closure fails with "attempt to index local 'clickSound' (a nil value)".
+                if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                {
+                    return;
+                }
+
+                try
+                {
+                    luabind::call_function<void>(this->mouseEnterClosureFunction);
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComponent] Caught error in 'reactOnMouseEnter' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        }
+        else
+        {
+            if (false == this->mouseLeaveClosureFunction.is_valid())
+            {
+                return;
+            }
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+            {
+                // Same re-check as above: the state may have been torn down in between.
+                if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                {
+                    return;
+                }
+
+                try
+                {
+                    luabind::call_function<void>(this->mouseLeaveClosureFunction);
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComponent] Caught error in 'reactOnMouseLeave' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
         }
     }
 
@@ -1654,8 +1675,13 @@ namespace NOWA
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+                            
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -2033,8 +2059,12 @@ namespace NOWA
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -2219,6 +2249,11 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+
                             try
                             {
                                 luabind::call_function<void>(this->editTextChangedClosureFunction);
@@ -2254,6 +2289,11 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+
                             try
                             {
                                 luabind::call_function<void>(this->editAcceptedClosureFunction);
@@ -2669,8 +2709,12 @@ namespace NOWA
                         // other listener does in response.
                         const Ogre::String clickedCaption = button->getCaption().asUTF8();
 
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr, clickedCaption]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, clickedCaption]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -3098,8 +3142,12 @@ namespace NOWA
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -3618,8 +3666,12 @@ namespace NOWA
 
             if (false == closureListPtr->empty())
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                 {
+                    if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                    {
+                        return;
+                    }
                     // Copy happens HERE on the logic thread — safe for luabind::object
                     auto closures = *closureListPtr;
 
@@ -4106,8 +4158,12 @@ namespace NOWA
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -4594,8 +4650,12 @@ namespace NOWA
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -4639,6 +4699,11 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+
                             try
                             {
                                 luabind::call_function<void>(this->selectedClosureFunction, index);
@@ -4673,6 +4738,11 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+
                             try
                             {
                                 luabind::call_function<void>(this->acceptClosureFunction, index);
@@ -5451,8 +5521,12 @@ namespace NOWA
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -5496,6 +5570,11 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+
                             try
                             {
                                 luabind::call_function<void>(this->selectedClosureFunction, index);

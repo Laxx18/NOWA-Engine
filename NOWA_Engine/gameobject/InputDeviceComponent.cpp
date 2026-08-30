@@ -36,6 +36,18 @@ namespace NOWA
 
     InputDeviceComponent::~InputDeviceComponent(void)
     {
+        // FIX: onRemoveComponent() is not guaranteed to run for every component instance -
+        // a full level/scene teardown typically destroys GameObjects and their components
+        // directly, without going through the explicit "remove component" API path. Since
+        // the constructor registers this instance's handleInputDeviceOccupied() with the
+        // global EventManager, failing to unregister it here would leave a dangling
+        // delegate pointing at freed memory - the next EventDataInputDeviceOccupied fired
+        // by ANY other InputDeviceComponent in the game would then call into destroyed
+        // memory. Safe to call even if onRemoveComponent() already removed it, assuming
+        // removeListener() on an already-removed delegate is a no-op in your EventManager
+        // (typical for FastDelegate-based implementations) - worth a quick check if you are
+        // not certain.
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &InputDeviceComponent::handleInputDeviceOccupied), EventDataInputDeviceOccupied::getStaticEventType());
     }
 
     bool InputDeviceComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -62,7 +74,15 @@ namespace NOWA
 
     GameObjectCompPtr InputDeviceComponent::clone(GameObjectPtr clonedGameObjectPtr)
     {
-        return nullptr;
+        boost::shared_ptr<InputDeviceComponent> clonedCompPtr(boost::make_shared<InputDeviceComponent>());
+
+        clonedCompPtr->setIsExcluse(this->isExclusive->getBool());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
     }
 
     bool InputDeviceComponent::postInit(void)
@@ -250,13 +270,29 @@ namespace NOWA
     {
         this->bValidDevice = false;
 
-        boost::shared_ptr<EventDataInputDeviceOccupied> eventDataInputDeviceOccupied(new EventDataInputDeviceOccupied(gameObjectPtr->getId(), activated, this->deviceName->getListSelectedValue()));
-        AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataInputDeviceOccupied);
-
         Ogre::String oldDeviceName = this->deviceName->getListSelectedOldValue();
-        bool valid = oldDeviceName != "Choose Device" && oldDeviceName != "No Device Available" && oldDeviceName != "";
-        if (oldDeviceName != deviceName && true == valid)
+        bool oldWasValid = oldDeviceName != "Choose Device" && oldDeviceName != "No Device Available" && oldDeviceName != "";
+
+        // FIX: previously a single EventDataInputDeviceOccupied was fired unconditionally
+        // right here, BEFORE the new selection was applied below, using the OLD device name
+        // (this->deviceName->getListSelectedValue() at this point still holds the previous
+        // selection) paired with the CURRENT activated flag. That meant switching control to
+        // a different non-exclusive unit sharing the same device name (e.g. picking a new
+        // worker with the keyboard while another worker already holds it) never actually
+        // told the PREVIOUSLY active unit to let go - the announced device name never
+        // matched what the other component's handleInputDeviceOccupied() was comparing
+        // against, since that comparison needs the NEW device name, not the old one.
+        //
+        // We now announce the release of the OLD device here (if it was a real, previously
+        // held device and is actually changing), and separately announce the NEW device as
+        // occupied further below, once it has actually been assigned - so every other
+        // component's handleInputDeviceOccupied() gets a chance to react to both halves of
+        // the switch.
+        if (true == oldWasValid && oldDeviceName != deviceName)
         {
+            boost::shared_ptr<EventDataInputDeviceOccupied> eventDataDeviceReleased(new EventDataInputDeviceOccupied(this->gameObjectPtr->getId(), false, oldDeviceName));
+            AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeviceReleased);
+
             InputDeviceCore::getSingletonPtr()->releaseDevice(this->gameObjectPtr->getId());
             this->inputDeviceModule = nullptr;
             this->bValidDevice = false;
@@ -271,6 +307,17 @@ namespace NOWA
                 this->inputDeviceModule = InputDeviceCore::getSingletonPtr()->assignDevice(deviceName, this->gameObjectPtr->getId());
                 this->deviceName->setListSelectedValue(deviceName);
                 this->bValidDevice = this->checkDevice(deviceName);
+
+                // FIX: announce the NEWLY assigned device as occupied, so any OTHER
+                // InputDeviceComponent that is currently active with this same device name
+                // (the whole point of the non-exclusive "switch active unit" mode) gets
+                // deactivated via handleInputDeviceOccupied() - this was previously never
+                // fired for the new device at all, only ever (incorrectly) for the old one.
+                if (true == this->bValidDevice && true == this->activated->getBool())
+                {
+                    boost::shared_ptr<EventDataInputDeviceOccupied> eventDataDeviceOccupied(new EventDataInputDeviceOccupied(this->gameObjectPtr->getId(), true, deviceName));
+                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeviceOccupied);
+                }
                 break;
             }
         }
@@ -577,6 +624,18 @@ namespace NOWA
 
     void InputDeviceComponent::handleInputDeviceOccupied(NOWA::EventDataPtr eventData)
     {
+        // FIX: guard against firing before this component is fully attached to its owning
+        // GameObject. The constructor registers this handler with the EventManager BEFORE
+        // setOwner()/postInit() run, so if several InputDeviceComponents are constructed
+        // together (e.g. spawning multiple worker units at once) and one of them activates
+        // a device before another one in that batch has been wired up to its GameObject
+        // yet, this callback could fire with gameObjectPtr still null - dereferencing it
+        // below would crash.
+        if (nullptr == this->gameObjectPtr)
+        {
+            return;
+        }
+
         boost::shared_ptr<EventDataInputDeviceOccupied> castEventData = boost::static_pointer_cast<EventDataInputDeviceOccupied>(eventData);
 
         if (castEventData->getGameObjectId() == this->gameObjectPtr->getId())
@@ -650,42 +709,45 @@ namespace NOWA
 
     void InputDeviceComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<InputDeviceComponent, GameObjectComponent>("InputDeviceComponent")
-                .def("setActivated", &InputDeviceComponent::setActivated)
-                .def("isActivated", &InputDeviceComponent::isActivated)
-                .def("setDeviceName", &InputDeviceComponent::setDeviceName)
-                .def("getDeviceName", &InputDeviceComponent::getDeviceName)
-                .def("getActualizedDeviceList", &InputDeviceComponent::getLuaActualizedDeviceList)
-                .def("getInputDeviceModule", &InputDeviceComponent::getInputDeviceModule)
-                .def("checkDevice", &InputDeviceComponent::checkDevice)
-                .def("hasValidDevice", &InputDeviceComponent::hasValidDevice)
-                .def("lockDevice", &InputDeviceComponent::lockDevice)
-                .def("isDeviceLocked", &InputDeviceComponent::isDeviceLocked)
-                .def("isKeyboardDevice", &InputDeviceComponent::isKeyboardDevice)
-                .def("getMappedKey", &InputDeviceComponent::getMappedKey)
-                .def("getStringFromMappedKey", &InputDeviceComponent::getStringFromMappedKey)
-                .def("getMappedKeyFromString", &InputDeviceComponent::getMappedKeyFromString)
-                .def("getMappedButton", &InputDeviceComponent::getMappedButton)
-                .def("getStringFromMappedButton", &InputDeviceComponent::getStringFromMappedButton)
-                .def("setJoyStickDeadZone", &InputDeviceComponent::setJoyStickDeadZone)
-                .def("hasActiveJoyStick", &InputDeviceComponent::hasActiveJoyStick)
-                .def("getLeftStickHorizontalMovingStrength", &InputDeviceComponent::getLeftStickHorizontalMovingStrength)
-                .def("getLeftStickVerticalMovingStrength", &InputDeviceComponent::getLeftStickVerticalMovingStrength)
-                .def("getRightStickHorizontalMovingStrength", &InputDeviceComponent::getRightStickHorizontalMovingStrength)
-                .def("getRightStickVerticalMovingStrength", &InputDeviceComponent::getRightStickVerticalMovingStrength)
-                .def("isKeyDown", &InputDeviceComponent::isKeyDown)
-                .def("isButtonDown", &InputDeviceComponent::isButtonDown)
-                .def("isActionDown", &InputDeviceComponent::isActionDown)
-                .def("isActionDownAmount", &InputDeviceComponent::isActionDownAmount)
-                .def("isActionDownPressed", &InputDeviceComponent::isActionDownPressed)
-                .def("areButtonsDown2", &InputDeviceComponent::areButtonsDown2)
-                .def("areButtonsDown3", &InputDeviceComponent::areButtonsDown3)
-                .def("areButtonsDown4", &InputDeviceComponent::areButtonsDown4)
-                .def("getPressedButton", &InputDeviceComponent::getPressedButton)
-                .def("getPressedButtons", &InputDeviceComponent::getLuaPressedButtons)
-                .def("setAnalogActionThreshold", &InputDeviceComponent::setAnalogActionThreshold)
-                .def("getAnalogActionThreshold", &InputDeviceComponent::getAnalogActionThreshold)
-                .def("getSteerAxis", &InputDeviceComponent::getSteerAxis)];
+        module(lua)
+        [
+            class_<InputDeviceComponent, GameObjectComponent>("InputDeviceComponent")
+            .def("setActivated", &InputDeviceComponent::setActivated)
+            .def("isActivated", &InputDeviceComponent::isActivated)
+            .def("setDeviceName", &InputDeviceComponent::setDeviceName)
+            .def("getDeviceName", &InputDeviceComponent::getDeviceName)
+            .def("getActualizedDeviceList", &InputDeviceComponent::getLuaActualizedDeviceList)
+            .def("getInputDeviceModule", &InputDeviceComponent::getInputDeviceModule)
+            .def("checkDevice", &InputDeviceComponent::checkDevice)
+            .def("hasValidDevice", &InputDeviceComponent::hasValidDevice)
+            .def("lockDevice", &InputDeviceComponent::lockDevice)
+            .def("isDeviceLocked", &InputDeviceComponent::isDeviceLocked)
+            .def("isKeyboardDevice", &InputDeviceComponent::isKeyboardDevice)
+            .def("getMappedKey", &InputDeviceComponent::getMappedKey)
+            .def("getStringFromMappedKey", &InputDeviceComponent::getStringFromMappedKey)
+            .def("getMappedKeyFromString", &InputDeviceComponent::getMappedKeyFromString)
+            .def("getMappedButton", &InputDeviceComponent::getMappedButton)
+            .def("getStringFromMappedButton", &InputDeviceComponent::getStringFromMappedButton)
+            .def("setJoyStickDeadZone", &InputDeviceComponent::setJoyStickDeadZone)
+            .def("hasActiveJoyStick", &InputDeviceComponent::hasActiveJoyStick)
+            .def("getLeftStickHorizontalMovingStrength", &InputDeviceComponent::getLeftStickHorizontalMovingStrength)
+            .def("getLeftStickVerticalMovingStrength", &InputDeviceComponent::getLeftStickVerticalMovingStrength)
+            .def("getRightStickHorizontalMovingStrength", &InputDeviceComponent::getRightStickHorizontalMovingStrength)
+            .def("getRightStickVerticalMovingStrength", &InputDeviceComponent::getRightStickVerticalMovingStrength)
+            .def("isKeyDown", &InputDeviceComponent::isKeyDown)
+            .def("isButtonDown", &InputDeviceComponent::isButtonDown)
+            .def("isActionDown", &InputDeviceComponent::isActionDown)
+            .def("isActionDownAmount", &InputDeviceComponent::isActionDownAmount)
+            .def("isActionDownPressed", &InputDeviceComponent::isActionDownPressed)
+            .def("areButtonsDown2", &InputDeviceComponent::areButtonsDown2)
+            .def("areButtonsDown3", &InputDeviceComponent::areButtonsDown3)
+            .def("areButtonsDown4", &InputDeviceComponent::areButtonsDown4)
+            .def("getPressedButton", &InputDeviceComponent::getPressedButton)
+            .def("getPressedButtons", &InputDeviceComponent::getLuaPressedButtons)
+            .def("setAnalogActionThreshold", &InputDeviceComponent::setAnalogActionThreshold)
+            .def("getAnalogActionThreshold", &InputDeviceComponent::getAnalogActionThreshold)
+            .def("getSteerAxis", &InputDeviceComponent::getSteerAxis)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "class inherits GameObjectComponent", InputDeviceComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("InputDeviceComponent", "void setActivated(bool activated)",

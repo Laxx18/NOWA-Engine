@@ -53,10 +53,10 @@ namespace OgreAL {
 	{
 		if (error != AL_NO_ERROR)
 		{
-			std::stringstream ss;
+			/*std::stringstream ss;
 			ss << description << ": OpenAL Error: " << getErrorDescription(error);
 			Ogre::Exception exception(error, ss.str(), source);
-			Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription());
+			Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription());*/
 			// Deactivated because, the listener will not hear, that buffers could not be upated and throwing here, will interrupt the whole application!
 			// throw exception;
 		}

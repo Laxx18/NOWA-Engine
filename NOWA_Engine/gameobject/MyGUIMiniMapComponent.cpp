@@ -649,8 +649,13 @@ namespace NOWA
 
                     if (false == closureListPtr->empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [closureListPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
+                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 

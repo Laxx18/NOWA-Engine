@@ -918,6 +918,20 @@ namespace NOWA
 
     void AppStateManager::changeAppState(AppState* state)
     {
+        // Guard against a second transition being requested while the first one is still
+        // in flight (e.g. reloadCurrentState() immediately followed by changeAppState() in
+        // the same call/turn, before the ChangeAppStateProcess attached by the first call
+        // has actually run and reset bStall). Without this, the second call would attach
+        // ANOTHER ChangeAppStateProcess; ProcessManager::updateProcesses() runs both in the
+        // same pass, so the second transition starts tearing down a half-built state from
+        // the first - the crash this was reported for. Silently dropping it here is safe:
+        // the caller gets exactly what a normal double-click would have gotten, one transition.
+        if (true == this->bStall)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] changeAppState ignored: a state transition is already in progress.");
+            return;
+        }
+
         if (nullptr == state)
         {
             if (true == Core::getSingletonPtr()->getIsGame())
@@ -942,6 +956,13 @@ namespace NOWA
 
     bool AppStateManager::pushAppState(AppState* state)
     {
+        // See changeAppState() for why this guard exists.
+        if (true == this->bStall)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] pushAppState ignored: a state transition is already in progress.");
+            return false;
+        }
+
         if (nullptr == state)
         {
             if (true == Core::getSingletonPtr()->getIsGame())
@@ -971,6 +992,13 @@ namespace NOWA
 
     void AppStateManager::popAppState(void)
     {
+        // See changeAppState() for why this guard exists.
+        if (true == this->bStall)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] popAppState ignored: a state transition is already in progress.");
+            return;
+        }
+
         if (true == Core::getSingletonPtr()->getIsGame())
         {
             this->bStall = true;
@@ -987,6 +1015,13 @@ namespace NOWA
 
     void AppStateManager::popAllAndPushAppState(AppState* state)
     {
+        // See changeAppState() for why this guard exists.
+        if (true == this->bStall)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] popAllAndPushAppState ignored: a state transition is already in progress.");
+            return;
+        }
+
         if (nullptr == state)
         {
             if (true == Core::getSingletonPtr()->getIsGame())
@@ -1014,6 +1049,13 @@ namespace NOWA
 
     void AppStateManager::exitGame(void)
     {
+        // See changeAppState() for why this guard exists.
+        if (true == this->bStall)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] exitGame ignored: a state transition is already in progress.");
+            return;
+        }
+
         if (true == Core::getSingletonPtr()->getIsGame())
         {
             this->bStall = true;
@@ -1149,6 +1191,63 @@ namespace NOWA
         // internalChangeAppState to call exit() then enter() on the same object,
         // which destroys all MyGUI widgets and recreates them at the new viewport size.
         this->changeAppState(this->activeStateStack.back());
+    }
+
+    void AppStateManager::reloadCurrentStateThenChangeAppState(AppState* nextState)
+    {
+        // Same guard as every other transition entry point - see changeAppState() for why.
+        if (true == this->bStall)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] reloadCurrentStateThenChangeAppState ignored: a state transition is already in progress.");
+            return;
+        }
+
+        if (true == this->activeStateStack.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] reloadCurrentStateThenChangeAppState: no active state to reload.");
+            return;
+        }
+
+        if (nullptr == nextState)
+        {
+            if (true == Core::getSingletonPtr()->getIsGame())
+            {
+                Ogre::String errorMessage = "[AppStateManager] Error: Cannot reload and then change appstate, because the new app state is null!";
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, errorMessage);
+                throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, errorMessage, "NOWA");
+            }
+            return;
+        }
+
+        if (true == Core::getSingletonPtr()->getIsGame())
+        {
+            this->bStall = true;
+
+            // Two use cases (reloadCurrentState() followed by changeAppState()) used to be
+            // fired as two independent top-level calls in the same turn - e.g. apply a new
+            // resolution (needs a reload of the CURRENT state so MyGUI picks up the new
+            // viewport size), then leave to MenuState. Both attached their own
+            // ChangeAppStateProcess; ProcessManager ran them in the same pass, and the second
+            // one started tearing down a state the first one had only half rebuilt. The
+            // bStall guard above now stops that outright - but it also means the second call
+            // is simply dropped, so the state never actually changes (the ordering problem
+            // reported after adding the guard).
+            //
+            // Chain them properly instead: attach the "switch to nextState" step as a CHILD
+            // of the "reload current state" step. ChangeAppStateProcess::onInit() runs
+            // internalChangeAppState() synchronously to completion (including resetting
+            // bStall) before calling succeed() - so by the time the child process starts, the
+            // reload is fully finished, MyGUI included. One caller-visible call, one
+            // guaranteed order, no manual sequencing needed from Lua/component code.
+            NOWA::ProcessPtr reloadProcess(new ChangeAppStateProcess(this->activeStateStack.back(), eAppStateOperation::ChangeAppState));
+            reloadProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(nextState, eAppStateOperation::ChangeAppState)));
+            NOWA::ProcessManager::getInstance()->attachProcess(reloadProcess);
+        }
+    }
+
+    void AppStateManager::reloadCurrentStateThenChangeAppState(const Ogre::String& nextStateName)
+    {
+        this->reloadCurrentStateThenChangeAppState(this->findByName(nextStateName));
     }
 
     void AppStateManager::shutdown(void)

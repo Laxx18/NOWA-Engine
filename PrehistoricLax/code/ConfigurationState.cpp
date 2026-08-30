@@ -20,6 +20,7 @@ void ConfigurationState::enter(void)
     this->controlsPanel = nullptr;
     this->restartRequiredLabel = nullptr;
     this->applyButton = nullptr;
+    this->okButton = nullptr;
     this->cancelButton = nullptr;
     this->currentTabIndex = 0;
 
@@ -123,7 +124,8 @@ void ConfigurationState::createBackgroundMusic(void)
     // Use scenemanager from menu state in which the music has been created and setContinue(true) was set to play to manipulate that music with volume here
     AppState* menuState = AppStateManager::getSingletonPtr()->findByName("MenuState");
     Ogre::SceneManager* menuSceneManager = menuState->getSceneManager();
-    this->menuMusic = OgreALModule::getInstance()->getSound(menuSceneManager, "MainGameObject_Menu - Mossgate Sanctuary.ogg");
+    // this->menuMusic = OgreALModule::getInstance()->getSound(menuSceneManager, "MainGameObject_Menu - Mossgate Sanctuary.ogg");
+    this->menuMusic = OgreALModule::getInstance()->getSound(menuSceneManager, "MainGameObject_Menu - The Great Paper Airplane.ogg");
     this->soundMusic = OgreALModule::getInstance()->createSound(this->sceneManager, "Click", "Click.wav");
 }
 
@@ -165,11 +167,22 @@ void ConfigurationState::setupWidgets(void)
     this->restartRequiredLabel->setVisible(false);
 
     this->applyButton = this->rootWindow->createWidgetReal<MyGUI::Button>("WoodButton", 0.04f, 0.90f, 0.26f, 0.07f, MyGUI::Align::Left | MyGUI::Align::Bottom, "configApplyButton");
+    this->applyButton->setFontHeight(20);
+    MyGUIUtilities::getInstance()->setFontSize(this->applyButton->castType<MyGUI::Button>(false), 20);
     this->applyButton->setCaption("Apply");
+    this->applyButton->setTextColour(MyGUI::Colour(0.85f, 0.85f, 0.85f, 1.0f));
     this->applyButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ConfigurationState::buttonHit);
 
+    this->okButton = this->rootWindow->createWidgetReal<MyGUI::Button>("WoodButton", 0.36f, 0.90f, 0.26f, 0.07f, MyGUI::Align::Left | MyGUI::Align::Bottom, "configOkButton");
+    MyGUIUtilities::getInstance()->setFontSize(this->okButton->castType<MyGUI::Button>(false), 20);
+    this->okButton->setCaptionWithReplacing("Ok");
+    this->okButton->setTextColour(MyGUI::Colour(0.85f, 0.85f, 0.85f, 1.0f));
+    this->okButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ConfigurationState::buttonHit);
+
     this->cancelButton = this->rootWindow->createWidgetReal<MyGUI::Button>("WoodButton", 0.68f, 0.90f, 0.26f, 0.07f, MyGUI::Align::Left | MyGUI::Align::Bottom, "configCancelButton");
+    MyGUIUtilities::getInstance()->setFontSize(this->cancelButton->castType<MyGUI::Button>(false), 20);
     this->cancelButton->setCaption("Cancel");
+    this->cancelButton->setTextColour(MyGUI::Colour(0.85f, 0.85f, 0.85f, 1.0f));
     this->cancelButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ConfigurationState::buttonHit);
 
     this->populateGraphicsOptions();
@@ -711,6 +724,14 @@ void ConfigurationState::buttonHit(MyGUI::Widget* sender)
         this->applyControlsSettings();
         AppStateManager::getSingletonPtr()->reloadCurrentState();
     }
+    if ("configOkButton" == sender->getName())
+    {
+        this->applyGraphicsSettings();
+        this->applySoundSettings();
+        this->applyControlsSettings();
+
+        AppStateManager::getSingletonPtr()->reloadCurrentStateThenChangeAppState(this->findByName("MenuState"));
+    }
     else if ("configCancelButton" == sender->getName())
     {
         // Revert widgets to the values captured when the menu was opened
@@ -750,6 +771,15 @@ bool ConfigurationState::keyPressed(const OIS::KeyEvent& keyEventRef)
     {
         this->bQuit = true;
         return true;
+    }
+
+    if (keyEventRef.key == OIS::KC_TAB)
+    {
+        if (GetAsyncKeyState(KF_ALTDOWN))
+        {
+            NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
+            return true;
+        }
     }
 
     auto keyboardModule = InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule();

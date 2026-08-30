@@ -91,6 +91,7 @@ private:
     MyGUI::Widget* controlsPanel;
     MyGUI::EditBox* restartRequiredLabel;
     MyGUI::Button* applyButton;
+    MyGUI::Button* okButton;
     MyGUI::Button* cancelButton;
     unsigned short currentTabIndex;
 

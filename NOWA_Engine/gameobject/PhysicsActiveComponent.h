@@ -4,302 +4,315 @@
 #include "PhysicsComponent.h"
 #include "main/Events.h"
 #include "utilities/Timer.h"
-#include <unordered_map>
 #include <atomic>
+#include <unordered_map>
 
 namespace NOWA
 {
-	class IPicker;
-	class LuaScript;
+    class IPicker;
+    class LuaScript;
 
-	class EXPORTED PhysicsActiveComponent : public PhysicsComponent
-	{
-	public:
-		typedef boost::shared_ptr<PhysicsActiveComponent> PhysicsActiveCompPtr;
-	public:
-	
-		/**
-		* @class ContactData
-		* @brief This class holds the contact data after a physics ray has been shot
-		*/
-		class EXPORTED ContactData
-		{
-		public:
-			ContactData()
-				: hitGameObject(nullptr),
-				height(500.0f), // 500 is set to be invalid
-				normal(Ogre::Vector3::UNIT_SCALE * 100.0f) // 100, 100, 100 is set to be invalid
-			{
+    class EXPORTED PhysicsActiveComponent : public PhysicsComponent
+    {
+    public:
+        typedef boost::shared_ptr<PhysicsActiveComponent> PhysicsActiveCompPtr;
 
-			}
-			
-			ContactData(GameObject* hitGameObject, Ogre::Real height, const Ogre::Vector3& normal, Ogre::Real slope)
-				: hitGameObject(hitGameObject),
-				height(height),
-				normal(normal),
-				slope(slope)
-			{
+    public:
+        /**
+         * @class ContactData
+         * @brief This class holds the contact data after a physics ray has been shot
+         */
+        class EXPORTED ContactData
+        {
+        public:
+            ContactData() :
+                hitGameObject(nullptr),
+                height(500.0f),                            // 500 is set to be invalid
+                normal(Ogre::Vector3::UNIT_SCALE * 100.0f) // 100, 100, 100 is set to be invalid
+            {
+            }
 
-			}
+            ContactData(GameObject* hitGameObject, Ogre::Real height, const Ogre::Vector3& normal, Ogre::Real slope) : hitGameObject(hitGameObject), height(height), normal(normal), slope(slope)
+            {
+            }
 
-			~ContactData()
-			{
-			}
-			
-			GameObject* getHitGameObject(void) const
-			{
-				return this->hitGameObject;
-			}
-			
-			Ogre::Real getHeight(void) const
-			{
-				return this->height;
-			}
-			
-			Ogre::Vector3 getNormal(void) const
-			{
-				return this->normal;
-			}
+            ~ContactData()
+            {
+            }
 
-			Ogre::Real getSlope(void) const
-			{
-				return this->slope;
-			}
-		private:
-			GameObject* hitGameObject;
-			Ogre::Real height;
-			Ogre::Vector3 normal;
-			Ogre::Real slope;
-		};
+            GameObject* getHitGameObject(void) const
+            {
+                return this->hitGameObject;
+            }
 
-		/**
-		* @class IForceObserver
-		* @brief This interface can be implemented to react when an external object wants to add its force in the force and torque callback of this component
-		*/
-		class EXPORTED IForceObserver
-		{
-		public:
-			IForceObserver()
-			{
+            Ogre::Real getHeight(void) const
+            {
+                return this->height;
+            }
 
-			}
+            Ogre::Vector3 getNormal(void) const
+            {
+                return this->normal;
+            }
 
-			virtual ~IForceObserver()
-			{
-			}
+            Ogre::Real getSlope(void) const
+            {
+                return this->slope;
+            }
 
-			void setPicker(IPicker* picker)
-			{
-				this->picker.store(picker, std::memory_order_release);
-			}
+        private:
+            GameObject* hitGameObject;
+            Ogre::Real height;
+            Ogre::Vector3 normal;
+            Ogre::Real slope;
+        };
 
-			IPicker* getPicker() const
-			{
-				return this->picker.load(std::memory_order_acquire);
-			}
+        /**
+         * @class IForceObserver
+         * @brief This interface can be implemented to react when an external object wants to add its force in the force and torque callback of this component
+         */
+        class EXPORTED IForceObserver
+        {
+        public:
+            IForceObserver()
+            {
+            }
 
-			void setName(const Ogre::String& name)
-			{
-				this->name = name;
-			}
+            virtual ~IForceObserver()
+            {
+            }
 
-			const Ogre::String& getName(void)
-			{
-				return this->name;
-			}
+            void setPicker(IPicker* picker)
+            {
+                this->picker.store(picker, std::memory_order_release);
+            }
 
-			void deactivate()
-			{
-				this->picker.store(nullptr, std::memory_order_release);
-			}
+            IPicker* getPicker() const
+            {
+                return this->picker.load(std::memory_order_acquire);
+            }
 
-			/**
-			* @brief		Called in the force and torque callback of the physics active component
-			* @param[in]	body		The body to add the force
-			* @param[in]	timeStep	The time since last force calculation
-			* @param[in]	threadIndex	The thread id
-			*/
-			virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) = 0;
-		protected:
-			std::atomic<IPicker*> picker{ nullptr };
-		private:
-			Ogre::String name;
-		};
+            void setName(const Ogre::String& name)
+            {
+                this->name = name;
+            }
 
-		PhysicsActiveComponent();
+            const Ogre::String& getName(void)
+            {
+                return this->name;
+            }
 
-		virtual ~PhysicsActiveComponent();
+            void deactivate()
+            {
+                this->picker.store(nullptr, std::memory_order_release);
+            }
 
-		/**
-		* @see		GameObjectComponent::init
-		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+            /**
+             * @brief		Called in the force and torque callback of the physics active component
+             * @param[in]	body		The body to add the force
+             * @param[in]	timeStep	The time since last force calculation
+             * @param[in]	threadIndex	The thread id
+             */
+            virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) = 0;
 
-		/**
-		* @see		GameObjectComponent::postInit
-		*/
-		virtual bool postInit(void) override;
+        protected:
+            std::atomic<IPicker*> picker{nullptr};
 
-		/**
-		* @see		GameObjectComponent::connect
-		*/
-		virtual bool connect(void) override;
+        private:
+            Ogre::String name;
+        };
 
-		/**
-		* @see		GameObjectComponent::disconnect
-		*/
-		virtual bool disconnect(void) override;
+        PhysicsActiveComponent();
 
-		/**
+        virtual ~PhysicsActiveComponent();
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
+
+        /**
+         * @see		GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
+
+        /**
          * @see		GameObjectComponent::onRemoveComponent
          */
         virtual void onRemoveComponent(void) override;
-		
-		/**
-		* @see		GameObjectComponent::update
-		*/
-		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
-		/**
-		* @see		GameObjectComponent::getClassName
-		*/
-		virtual Ogre::String getClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::update
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
-		/**
-		* @see		GameObjectComponent::getParentClassName
-		*/
-		virtual Ogre::String getParentClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
 
-		/**
-		* @see		GameObjectComponent::clone
-		*/
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
 
-		virtual bool isMovable(void) const override
-		{
-			return true;
-		}
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("PhysicsActiveComponent");
-		}
+        virtual bool isMovable(void) const override
+        {
+            return true;
+        }
 
-		static Ogre::String getStaticClassName(void)
-		{
-			return "PhysicsActiveComponent";
-		}
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("PhysicsActiveComponent");
+        }
 
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
+        static Ogre::String getStaticClassName(void)
+        {
+            return "PhysicsActiveComponent";
+        }
 
-		/**
-		 * @see  GameObjectComponent::canStaticAddComponent
-		 */
-		static bool canStaticAddComponent(GameObject* gameObject);
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+        {
+        }
 
-		/**
-		* @see	GameObjectComponent::getStaticInfoText
-		*/
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: This Component is used for physics motion. Forces to act on this component. Hence velocity of any kind must only be used for initial settings!" 
-				"Not during simulation! If a component with just velocity with no forces, that can act on that component, is required, the PhysicsActiveKinematicComponent is the correct one!"; ;
-		}
+        /**
+         * @see  GameObjectComponent::canStaticAddComponent
+         */
+        static bool canStaticAddComponent(GameObject* gameObject);
 
-		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: This Component is used for physics motion. Forces to act on this component. Hence velocity of any kind must only be used for initial settings!"
+                   "Not during simulation! If a component with just velocity with no forces, that can act on that component, is required, the PhysicsActiveKinematicComponent is the correct one!";
+            ;
+        }
 
-		/**
-		* @see		GameObjectComponent::writeXML
-		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
 
-		/**
-		* @see		GameObjectComponent::showDebugData
-		*/
-		virtual void showDebugData(void) override;
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		/**
-		* @see		GameObjectComponent::setActivated
-		*/
-		virtual void setActivated(bool activated) override;
+        /**
+         * @see		GameObjectComponent::showDebugData
+         */
+        virtual void showDebugData(void) override;
 
-		virtual bool isActivated(void) const override;
+        /**
+         * @see		GameObjectComponent::setActivated
+         */
+        virtual void setActivated(bool activated) override;
 
-		void setLinearDamping(Ogre::Real linearDamping);
+        virtual bool isActivated(void) const override;
 
-		Ogre::Real getLinearDamping(void) const;
+        void setLinearDamping(Ogre::Real linearDamping);
 
-		void setAngularDamping(const Ogre::Vector3& angularDamping);
+        Ogre::Real getLinearDamping(void) const;
 
-		const Ogre::Vector3 getAngularDamping(void) const;
+        void setAngularDamping(const Ogre::Vector3& angularDamping);
 
-		virtual void setSpeed(Ogre::Real speed);
+        const Ogre::Vector3 getAngularDamping(void) const;
 
-		Ogre::Real getSpeed(void) const;
+        /**
+         * @brief		Sets the density of this game object, relative to water (water = 1.0).
+         * @param[in]	density		The relative density to set
+         * @note		Used together with a PhysicsBuoyancyComponent: a body with density < 1
+         *				floats (and sits higher in the water the smaller the value), a body with
+         *				density > 1 sinks (and does so faster the larger the value), and a body
+         *				with density == 1 floats fully submerged, neither rising nor sinking.
+         *				This value does NOT affect normal gravity/falling behavior outside of a
+         *				buoyancy volume - it is only evaluated while this object is inside one.
+         */
+        void setDensity(Ogre::Real density);
 
-		void setMaxSpeed(Ogre::Real maxSpeed);
+        Ogre::Real getDensity(void) const;
 
-		Ogre::Real getMaxSpeed(void) const;
+        virtual void setSpeed(Ogre::Real speed);
 
-		void setMinSpeed(Ogre::Real minSpeed);
+        Ogre::Real getSpeed(void) const;
 
-		Ogre::Real getMinSpeed(void) const;
+        void setMaxSpeed(Ogre::Real maxSpeed);
 
-		/**
-		 * @brief		Sets the omega velocity
-		 * @param[in]	omegaVelocity The omega velocity vector to apply
-		 * @Note		This should only be set for initialization and not during simulation, as It could break physics calculation. Use @applyAngularVelocity instead
-		 *				Or it may be called if its a physics active kinematic body.
-		 */
-		virtual void setOmegaVelocity(const Ogre::Vector3& omegaVelocity);
+        Ogre::Real getMaxSpeed(void) const;
 
-		/**
-		 * @brief		Applies the omega velocity in order to rotate the game object to the given orientation.
-		 * @param[in]	resultOrientation The result orientation to which the game object should be rotated via omega to.
-		 * @param[in]	axes The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.)
-		 * @param[in]	strength The strength at which the rotation should occur
-		 * @Note		This should only be used for kinematic bodies.
-		 */
-		virtual void setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
+        void setMinSpeed(Ogre::Real minSpeed);
 
-		/**
-		 * @brief		Applies the omega velocity in order to rotate the game object to the given result direction.
-		 * @param[in]	resultDirection The result direction to which the game object should be rotated via omega to.
-		 * @param[in]	strength The strength at which the rotation should occur
-		 */
-		virtual void setOmegaVelocityRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength = 10.0f);
+        Ogre::Real getMinSpeed(void) const;
 
-		/**
-		 * @brief		Applies the omega force in move callback function
-		 * @param[in]	omegaForce The omega force vector to apply
-		 * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
-		 */
-		virtual void applyOmegaForce(const Ogre::Vector3& omegaForce);
+        /**
+         * @brief		Sets the omega velocity
+         * @param[in]	omegaVelocity The omega velocity vector to apply
+         * @Note		This should only be set for initialization and not during simulation, as It could break physics calculation. Use @applyAngularVelocity instead
+         *				Or it may be called if its a physics active kinematic body.
+         */
+        virtual void setOmegaVelocity(const Ogre::Vector3& omegaVelocity);
 
-		/**
-		 * @brief		Applies the omega force in move callback function in order to rotate the game object to the given orientation.
-		 * @param[in]	resultOrientation The result orientation to which the game object should be rotated via omega to.
-		 * @param[in]	axes The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.)
-		 * @param[in]	strength The strength at which the rotation should occur
-		 * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
-		 */
-		virtual void applyOmegaForceRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
+        /**
+         * @brief		Applies the omega velocity in order to rotate the game object to the given orientation.
+         * @param[in]	resultOrientation The result orientation to which the game object should be rotated via omega to.
+         * @param[in]	axes The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.)
+         * @param[in]	strength The strength at which the rotation should occur
+         * @Note		This should only be used for kinematic bodies.
+         */
+        virtual void setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
 
-		/**
-		 * @brief		Applies the omega force in move callback function in order to rotate the game object to the given result direction.
-		 * @param[in]	resultDirection The result direction to which the game object should be rotated via omega to.
-		 * @param[in]	strength The strength at which the rotation should occur
-		 * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
-		 */
-		virtual void applyOmegaForceRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength = 10.0f);
+        /**
+         * @brief		Applies the omega velocity in order to rotate the game object to the given result direction.
+         * @param[in]	resultDirection The result direction to which the game object should be rotated via omega to.
+         * @param[in]	strength The strength at which the rotation should occur
+         */
+        virtual void setOmegaVelocityRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength = 10.0f);
 
-		/**
+        /**
+         * @brief		Applies the omega force in move callback function
+         * @param[in]	omegaForce The omega force vector to apply
+         * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
+         */
+        virtual void applyOmegaForce(const Ogre::Vector3& omegaForce);
+
+        /**
+         * @brief		Applies the omega force in move callback function in order to rotate the game object to the given orientation.
+         * @param[in]	resultOrientation The result orientation to which the game object should be rotated via omega to.
+         * @param[in]	axes The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.)
+         * @param[in]	strength The strength at which the rotation should occur
+         * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
+         */
+        virtual void applyOmegaForceRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
+
+        /**
+         * @brief		Applies the omega force in move callback function in order to rotate the game object to the given result direction.
+         * @param[in]	resultDirection The result direction to which the game object should be rotated via omega to.
+         * @param[in]	strength The strength at which the rotation should occur
+         * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
+         */
+        virtual void applyOmegaForceRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength = 10.0f);
+
+        /**
          * @brief   Applies omega force to keep the body upright on a planet surface,
          *          correcting yaw, pitch AND roll every frame.
          *          Call this instead of applyOmegaForceRotateToDirection when the body
@@ -307,222 +320,218 @@ namespace NOWA
          * @param[in]   strength    The correction strength (default 10.0f)
          */
         virtual void applyOmegaForceKeepUpright(Ogre::Real strength = 10.0f);
-		
-		Ogre::Vector3 getOmegaVelocity(void) const;
 
-		/**
-		 * @brief		Gets the normalized gravity direction vector, if a gravity source game objects are (like planets) are involved.
-		 * @return		The gravity direction, or Ogre::VECTOR3_ZERO if no gravity source game objects are involved.
-		 */
-		virtual Ogre::Vector3 getGravityDirection(void) override;
+        Ogre::Vector3 getOmegaVelocity(void) const;
 
-		/**
-		 * @brief		Gets the current gravity direction strength for e.g. player jumps on a planet, if a gravity source game objects are (like planets) are involved.
-		 * @return		The gravity strngth, or 0 if no gravity source game objects are involved.
-		 */
-		Ogre::Real getCurrentGravityStrength(void) const;
+        /**
+         * @brief		Gets the normalized gravity direction vector, if a gravity source game objects are (like planets) are involved.
+         * @return		The gravity direction, or Ogre::VECTOR3_ZERO if no gravity source game objects are involved.
+         */
+        virtual Ogre::Vector3 getGravityDirection(void) override;
 
-		void setGyroscopicTorqueEnabled(bool enable);
+        /**
+         * @brief		Gets the current gravity direction strength for e.g. player jumps on a planet, if a gravity source game objects are (like planets) are involved.
+         * @return		The gravity strngth, or 0 if no gravity source game objects are involved.
+         */
+        Ogre::Real getCurrentGravityStrength(void) const;
 
-		bool getGyroscopicTorqueEnabled(void) const;
+        void setGyroscopicTorqueEnabled(bool enable);
 
-		void resetForce(void);
+        bool getGyroscopicTorqueEnabled(void) const;
 
-		/**
-		 * @brief	Applies the required force in order move by the given velocity.
-		 * @param[in]	velocity The velocity vector
-		 */
-		virtual void applyRequiredForceForVelocity(const Ogre::Vector3& velocity);
+        void resetForce(void);
 
-		/**
-		 * @brief	Applies the required jump force in order to jump by the given velocity.
-		 * @Note	@applyRequiredForceForJumpVelocity has been separated from @applyRequiredForceForVelocity, because using applyRequiredForceForVelocity with movement and jump did bite itself.
-		 * @param[in]	velocity The velocity vector
-		 */
-		virtual void applyRequiredForceForJumpVelocity(const Ogre::Vector3& velocity);
+        /**
+         * @brief	Applies the required force in order move by the given velocity.
+         * @param[in]	velocity The velocity vector
+         */
+        virtual void applyRequiredForceForVelocity(const Ogre::Vector3& velocity);
 
-		/**
-		 * @brief	Applies force for the given body.
-		 * @param[in]	force The force vector to apply
-		 */
-		virtual void applyForce(const Ogre::Vector3& force);
+        /**
+         * @brief	Applies the required jump force in order to jump by the given velocity.
+         * @Note	@applyRequiredForceForJumpVelocity has been separated from @applyRequiredForceForVelocity, because using applyRequiredForceForVelocity with movement and jump did bite itself.
+         * @param[in]	velocity The velocity vector
+         */
+        virtual void applyRequiredForceForJumpVelocity(const Ogre::Vector3& velocity);
 
-		virtual Ogre::Vector3 getForce(void) const;
+        /**
+         * @brief	Applies force for the given body.
+         * @param[in]	force The force vector to apply
+         */
+        virtual void applyForce(const Ogre::Vector3& force);
 
-		virtual void setGravity(const Ogre::Vector3& gravity);
+        virtual Ogre::Vector3 getForce(void) const;
 
-		virtual const Ogre::Vector3 getGravity(void) const;
+        virtual void setGravity(const Ogre::Vector3& gravity);
 
-		virtual void addImpulse(const Ogre::Vector3& deltaVector);
+        virtual const Ogre::Vector3 getGravity(void) const;
 
-		/**
-		 * @brief	Sets the velocity.
-		 * @param[in]	velocity The velocity vector to apply
-		 * @Note		This should only be set for initialization and not during simulation, as It could break physics calculation. Use @applyRequiredForceForVelocity instead.
-		 *				Or it may be called if its a physics active kinematic body.
-		 */
-		virtual void setVelocity(const Ogre::Vector3& velocity);
+        virtual void addImpulse(const Ogre::Vector3& deltaVector);
 
-		/**
-		 * @brief	Sets the velocity speed for the current direction.
-		 * @param[in]	speed The speed for the current direction to apply.
-		 * @Note		The default direction axis is applied. See: @GameObject::getDefaultDirection(). This should only be set for initialization and not during simulation, as It could break physics calculation, or it may be called if its a physics active kinematic body.
-		 */
-		virtual void setDirectionVelocity(Ogre::Real speed);
+        /**
+         * @brief	Sets the velocity.
+         * @param[in]	velocity The velocity vector to apply
+         * @Note		This should only be set for initialization and not during simulation, as It could break physics calculation. Use @applyRequiredForceForVelocity instead.
+         *				Or it may be called if its a physics active kinematic body.
+         */
+        virtual void setVelocity(const Ogre::Vector3& velocity);
 
-		/**
-		 * @brief	Applies the force speed for the current direction.
-		 * @param[in]	speed The speed for the current direction to apply.
-		 * @Note		The default direction axis is applied. See: @GameObject::getDefaultDirection(). This should be used for any kind of physics active component, not for kinematic components."
-		 */
-		virtual void applyDirectionForce(Ogre::Real speed);
+        /**
+         * @brief	Sets the velocity speed for the current direction.
+         * @param[in]	speed The speed for the current direction to apply.
+         * @Note		The default direction axis is applied. See: @GameObject::getDefaultDirection(). This should only be set for initialization and not during simulation, as It could break physics calculation, or it may be called if its a physics
+         * active kinematic body.
+         */
+        virtual void setDirectionVelocity(Ogre::Real speed);
 
-		virtual Ogre::Vector3 getVelocity(void) const;
+        /**
+         * @brief	Applies the force speed for the current direction.
+         * @param[in]	speed The speed for the current direction to apply.
+         * @Note		The default direction axis is applied. See: @GameObject::getDefaultDirection(). This should be used for any kind of physics active component, not for kinematic components."
+         */
+        virtual void applyDirectionForce(Ogre::Real speed);
 
-		virtual void setMass(Ogre::Real mass) override;
+        virtual Ogre::Vector3 getVelocity(void) const;
 
-		virtual bool reCreateBodyForItem(Ogre::Item* item) override;
+        virtual void setMass(Ogre::Real mass) override;
 
-		Ogre::Real getMass(void) const;
+        virtual bool reCreateBodyForItem(Ogre::Item* item) override;
 
-		void setMassOrigin(const Ogre::Vector3& massOrigin);
+        Ogre::Real getMass(void) const;
 
-		const Ogre::Vector3 getMassOrigin(void) const;
+        void setMassOrigin(const Ogre::Vector3& massOrigin);
 
-		void setCollisionDirection(const Ogre::Vector3& collisionPosition);
+        const Ogre::Vector3 getMassOrigin(void) const;
 
-		const Ogre::Vector3 getCollisionDirection(void) const;
+        void setCollisionDirection(const Ogre::Vector3& collisionPosition);
 
-		virtual void setCollisionPosition(const Ogre::Vector3& collisionPosition);
+        const Ogre::Vector3 getCollisionDirection(void) const;
 
-		const Ogre::Vector3 getCollisionPosition(void) const;
+        virtual void setCollisionPosition(const Ogre::Vector3& collisionPosition);
 
-		void setCollisionSize(const Ogre::Vector3& collisionSize);
+        const Ogre::Vector3 getCollisionPosition(void) const;
 
-		const Ogre::Vector3 getCollisionSize(void) const;
+        void setCollisionSize(const Ogre::Vector3& collisionSize);
 
-		const Ogre::Vector3 getConstraintAxis(void) const;
+        const Ogre::Vector3 getCollisionSize(void) const;
 
-		void releaseConstraintAxis(void);
+        const Ogre::Vector3 getConstraintAxis(void) const;
 
-		void releaseConstraintAxisPin(void);
+        void releaseConstraintAxis(void);
 
-	    void setConstraintDirection(const Ogre::Vector3& constraintDirection);
+        void releaseConstraintAxisPin(void);
 
-		void setConstraintAxis(const Ogre::Vector3& constraintAxis);
+        void setConstraintDirection(const Ogre::Vector3& constraintDirection);
 
-		const Ogre::Vector3 getConstraintDirection(void) const;
+        void setConstraintAxis(const Ogre::Vector3& constraintAxis);
 
-		void releaseConstraintDirection(void);
+        const Ogre::Vector3 getConstraintDirection(void) const;
 
-		void setAsSoftBody(bool asSoftBody);
+        void releaseConstraintDirection(void);
 
-		bool getIsSoftBody(void) const;
+        void setAsSoftBody(bool asSoftBody);
 
-		void setGravitySourceCategory(const Ogre::String& gravitySourceCategory);
+        bool getIsSoftBody(void) const;
 
-		Ogre::String getGravitySourceCategory(void) const;
+        void setGravitySourceCategory(const Ogre::String& gravitySourceCategory);
 
-		/*void setDefaultPoseName(const Ogre::String& defaultPoseName);
+        Ogre::String getGravitySourceCategory(void) const;
 
-		const Ogre::String getDefaultPoseName(void) const;*/
+        /*void setDefaultPoseName(const Ogre::String& defaultPoseName);
 
-		// can be overwritten
-		virtual void moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
+        const Ogre::String getDefaultPoseName(void) const;*/
 
-		virtual void contactCallback(OgreNewt::Body* otherBody, OgreNewt::Contact* contact);
+        // can be overwritten
+        virtual void moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
 
-		void updateCallback(OgreNewt::Body* body);
+        virtual void contactCallback(OgreNewt::Body* otherBody, OgreNewt::Contact* contact);
 
-		virtual void reCreateCollision(bool overwrite = false) override;
+        void updateCallback(OgreNewt::Body* body);
 
-		// Query scene what is ahead of an object
-		ContactData getContactAhead(int index, const Ogre::Vector3& offset = Ogre::Vector3(0.0f, 0.4f, 0.0f), Ogre::Real length = 1.0f, 
-			bool forceDrawLine = false, unsigned int categoryIds = 0xFFFFFFFF);
+        virtual void reCreateCollision(bool overwrite = false) override;
 
-		// Query scene to a given direction
-		ContactData getContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset = Ogre::Vector3(0.0f, 0.4f, 0.0f), Ogre::Real from = 0.0f, Ogre::Real to = 1.0f, 
-			bool forceDrawLine = false, unsigned int categoryIds = 0xFFFFFFFF);
+        // Query scene what is ahead of an object
+        ContactData getContactAhead(int index, const Ogre::Vector3& offset = Ogre::Vector3(0.0f, 0.4f, 0.0f), Ogre::Real length = 1.0f, bool forceDrawLine = false, unsigned int categoryIds = 0xFFFFFFFF);
 
-		GameObject* getContact(int index, const Ogre::Vector3& direction = Ogre::Vector3::NEGATIVE_UNIT_Z, const Ogre::Vector3& offset = Ogre::Vector3(0.0f, 0.4f, 0.0f),
-			Ogre::Real from = 0.0f, Ogre::Real to = 1.0f, bool forceDrawLine = false, unsigned int categoryIds = 0xFFFFFFFF);
+        // Query scene to a given direction
+        ContactData getContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset = Ogre::Vector3(0.0f, 0.4f, 0.0f), Ogre::Real from = 0.0f, Ogre::Real to = 1.0f, bool forceDrawLine = false,
+            unsigned int categoryIds = 0xFFFFFFFF);
 
-		bool getFixedContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset, Ogre::Real scale, 
-			unsigned int categoryIds = 0xFFFFFFFF);
+        GameObject* getContact(int index, const Ogre::Vector3& direction = Ogre::Vector3::NEGATIVE_UNIT_Z, const Ogre::Vector3& offset = Ogre::Vector3(0.0f, 0.4f, 0.0f), Ogre::Real from = 0.0f, Ogre::Real to = 1.0f, bool forceDrawLine = false,
+            unsigned int categoryIds = 0xFFFFFFFF);
 
-		ContactData getContactBelow(int index, const Ogre::Vector3& offset, bool forceDrawLine = false,
-			unsigned int categoryIds = 0xFFFFFFFF, bool useLocalOrientation = false);
+        bool getFixedContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset, Ogre::Real scale, unsigned int categoryIds = 0xFFFFFFFF);
 
-		ContactData getContactAbove(int index, const Ogre::Vector3& offset, bool forceDrawLine = false,
-									unsigned int categoryIds = 0xFFFFFFFF, bool useLocalOrientation = false);
+        ContactData getContactBelow(int index, const Ogre::Vector3& offset, bool forceDrawLine = false, unsigned int categoryIds = 0xFFFFFFFF, bool useLocalOrientation = false);
 
-		Ogre::Real determineGameObjectHeight(const Ogre::Vector3& positionOffset1, const Ogre::Vector3& positionOffset2, 
-			unsigned int categoryIds = 0xFFFFFFFF);
+        ContactData getContactAbove(int index, const Ogre::Vector3& offset, bool forceDrawLine = false, unsigned int categoryIds = 0xFFFFFFFF, bool useLocalOrientation = false);
 
-		void setBounds(const Ogre::Vector3& minBounds, const Ogre::Vector3& maxBounds);
+        Ogre::Real determineGameObjectHeight(const Ogre::Vector3& positionOffset1, const Ogre::Vector3& positionOffset2, unsigned int categoryIds = 0xFFFFFFFF);
 
-		void removeBounds(void);
+        void setBounds(const Ogre::Vector3& minBounds, const Ogre::Vector3& maxBounds);
 
-		void createCompoundBody(const std::vector<PhysicsActiveComponent*>& physicsComponentList);
+        void removeBounds(void);
 
-		void destroyCompoundBody(const std::vector<PhysicsActiveComponent*>& physicsComponentList);
+        void createCompoundBody(const std::vector<PhysicsActiveComponent*>& physicsComponentList);
 
-		bool getHasAttraction(void) const;
+        void destroyCompoundBody(const std::vector<PhysicsActiveComponent*>& physicsComponentList);
 
-		bool getHasSpring(void) const;
+        bool getHasAttraction(void) const;
 
-		Ogre::Vector3 getCurrentForceForVelocity(void) const;
+        bool getHasSpring(void) const;
 
-		/**
-		* @brief		Attaches a force observer to react at the moment when a game object has been picked or released.
-		* @param[in]	pickObserver	The pick observer to attach
-		* @note		The pick observer must be created on heap, but will be destroy either by calling @detachAndDestroyPickObserver or @detachAndDestroyAllPickObserver or will be destroyed
-		*				at last automatically.
-		*/
-		void attachForceObserver(IForceObserver* forceObserver);
+        Ogre::Vector3 getCurrentForceForVelocity(void) const;
 
-		/**
-		* @brief		Detaches and destroys a pick observer
-		* @param[in]	name	The pick observer name to detach and destroy
-		*/
-		void detachAndDestroyForceObserver(const Ogre::String& name);
+        /**
+         * @brief		Attaches a force observer to react at the moment when a game object has been picked or released.
+         * @param[in]	pickObserver	The pick observer to attach
+         * @note		The pick observer must be created on heap, but will be destroy either by calling @detachAndDestroyPickObserver or @detachAndDestroyAllPickObserver or will be destroyed
+         *				at last automatically.
+         */
+        void attachForceObserver(IForceObserver* forceObserver);
 
-		/**
-		* @brief		Enables contact solving, so that in a lua script onContactSolving(otherGameObject, contact) will be called, when two bodies are colliding.
-		* @param[in]	enable	If set to true, contact solving callback will be enabled.
-		*/
-		void setContactSolvingEnabled(bool enable);
+        /**
+         * @brief		Detaches and destroys a pick observer
+         * @param[in]	name	The pick observer name to detach and destroy
+         */
+        void detachAndDestroyForceObserver(const Ogre::String& name);
 
-		/**
+        /**
+         * @brief		Enables contact solving, so that in a lua script onContactSolving(otherGameObject, contact) will be called, when two bodies are colliding.
+         * @param[in]	enable	If set to true, contact solving callback will be enabled.
+         */
+        void setContactSolvingEnabled(bool enable);
+
+        /**
          * @brief Registers a Lua closure called when a game object collides with another one.
          * @param closureFunction  Lua function receiving
          */
         void reactOnContactSolving(luabind::object closureFunction);
 
-		/**
-		* @brief		Detaches and destroys all force observer
-		*/
-		void detachAndDestroyAllForceObserver(void);
+        /**
+         * @brief		Detaches and destroys all force observer
+         */
+        void detachAndDestroyAllForceObserver(void);
 
-		void addJointSpringComponent(unsigned long id);
+        void addJointSpringComponent(unsigned long id);
 
-		void removeJointSpringComponent(unsigned long id);
+        void removeJointSpringComponent(unsigned long id);
 
-		void addJointAttractorComponent(unsigned long id);
+        void addJointAttractorComponent(unsigned long id);
 
-		void removeJointAttractorComponent(unsigned long id);
+        void removeJointAttractorComponent(unsigned long id);
 
         void setCppContactCallback(std::function<void(GameObjectPtr, const OgreNewt::ContactSnapshot&)> callback);
 
         void removeCppContactCallback(void);
 
-		Ogre::Vector3 getUp(void) const;
+        Ogre::Vector3 getUp(void) const;
 
-		Ogre::Vector3 getRight(void) const;
+        Ogre::Vector3 getRight(void) const;
 
-		Ogre::Vector3 getForward(void) const;
+        Ogre::Vector3 getForward(void) const;
 
-		// Makes the body a ghost: zero mass, no force callback, no solver cost.
+        // Makes the body a ghost: zero mass, no force callback, no solver cost.
         // Unlike setActivated(false) it keeps the body in the world so contact
         // detection still works — e.g. player touching ship triggers takeoff.
         // Safe to call from contact solving callbacks.
@@ -530,116 +539,179 @@ namespace NOWA
 
         bool isGhost(void) const;
 
-		/*
-		* @brief Releases the latched steering velocity. Must be called whenever the agent shall stop being driven, e.g. from resetForce() and when MovingBehavior switches to NONE / STOP.
-		*/
-		void clearLatchedVelocity(void);
-	public:
-		static const Ogre::String AttrActivated(void) { return "Activated"; }
-		static const Ogre::String AttrForce(void) { return "Force"; }
-		static const Ogre::String AttrGravity(void) { return "Gravity"; }
-		static const Ogre::String AttrGravitySourceCategory(void) { return "Gravity Source Category"; }
-		static const Ogre::String AttrMassOrigin(void) { return "Mass Origin"; }
-		static const Ogre::String AttrSpeed(void) { return "Speed"; }
-		static const Ogre::String AttrMinSpeed(void) { return "Min Speed"; }
-		static const Ogre::String AttrMaxSpeed(void) { return "Max Speed"; }
-		static const Ogre::String AttrSleep(void) { return "Sleep"; }
-		static const Ogre::String AttrLinearDamping(void) { return "Linear Damping"; }
-		static const Ogre::String AttrAngularDamping(void) { return "Angular Damping"; }
-		static const Ogre::String AttrCollisionSize(void) { return "Collision Size"; }
-		static const Ogre::String AttrCollisionPosition(void) { return "Collision Pos"; }
-		static const Ogre::String AttrCollisionDirection(void) { return "Collision Dir"; }
-		static const Ogre::String AttrConstraintDirection(void) { return "Constraint Dir"; }
-		static const Ogre::String AttrConstraintAxis(void) { return "Constraint Axis"; }
-		static const Ogre::String AttrAsSoftBody(void) { return "As Softbody"; }
-		static const Ogre::String AttrEnableGyroscopicTorque(void) { return "Enable Gyroscopic Torque"; }
-	protected:
-		void parseCommonProperties(rapidxml::xml_node<>*& propertyElement);
+        /*
+         * @brief Releases the latched steering velocity. Must be called whenever the agent shall stop being driven, e.g. from resetForce() and when MovingBehavior switches to NONE / STOP.
+         */
+        void clearLatchedVelocity(void);
 
-		void writeCommonProperties(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc);
+    public:
+        static const Ogre::String AttrActivated(void)
+        {
+            return "Activated";
+        }
+        static const Ogre::String AttrForce(void)
+        {
+            return "Force";
+        }
+        static const Ogre::String AttrGravity(void)
+        {
+            return "Gravity";
+        }
+        static const Ogre::String AttrGravitySourceCategory(void)
+        {
+            return "Gravity Source Category";
+        }
+        static const Ogre::String AttrMassOrigin(void)
+        {
+            return "Mass Origin";
+        }
+        static const Ogre::String AttrSpeed(void)
+        {
+            return "Speed";
+        }
+        static const Ogre::String AttrMinSpeed(void)
+        {
+            return "Min Speed";
+        }
+        static const Ogre::String AttrMaxSpeed(void)
+        {
+            return "Max Speed";
+        }
+        static const Ogre::String AttrSleep(void)
+        {
+            return "Sleep";
+        }
+        static const Ogre::String AttrLinearDamping(void)
+        {
+            return "Linear Damping";
+        }
+        static const Ogre::String AttrAngularDamping(void)
+        {
+            return "Angular Damping";
+        }
+        static const Ogre::String AttrDensity(void)
+        {
+            return "Density";
+        }
+        static const Ogre::String AttrCollisionSize(void)
+        {
+            return "Collision Size";
+        }
+        static const Ogre::String AttrCollisionPosition(void)
+        {
+            return "Collision Pos";
+        }
+        static const Ogre::String AttrCollisionDirection(void)
+        {
+            return "Collision Dir";
+        }
+        static const Ogre::String AttrConstraintDirection(void)
+        {
+            return "Constraint Dir";
+        }
+        static const Ogre::String AttrConstraintAxis(void)
+        {
+            return "Constraint Axis";
+        }
+        static const Ogre::String AttrAsSoftBody(void)
+        {
+            return "As Softbody";
+        }
+        static const Ogre::String AttrEnableGyroscopicTorque(void)
+        {
+            return "Enable Gyroscopic Torque";
+        }
 
-		void actualizeCommonValue(Variant* attribute);
+    protected:
+        void parseCommonProperties(rapidxml::xml_node<>*& propertyElement);
 
-		virtual bool createDynamicBody(void);
+        void writeCommonProperties(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc);
 
-		void createSoftBody(void);
-	private:
-		void destroyLineMap(void);
+        void actualizeCommonValue(Variant* attribute);
 
-		struct Command
-		{
-			Ogre::Vector3 vectorValue;
-			std::atomic<bool> pending;
-			std::atomic<bool> inProgress;
-		};
-	protected:
-		Ogre::Real height;
-		Ogre::Real rise;
+        virtual bool createDynamicBody(void);
 
-		Command forceCommand;
-		Command requiredVelocityForForceCommand;
+        void createSoftBody(void);
+
+    private:
+        void destroyLineMap(void);
+
+        struct Command
+        {
+            Ogre::Vector3 vectorValue;
+            std::atomic<bool> pending;
+            std::atomic<bool> inProgress;
+        };
+
+    protected:
+        Ogre::Real height;
+        Ogre::Real rise;
+
+        Command forceCommand;
+        Command requiredVelocityForForceCommand;
         Command jumpForceCommand;
-		Command omegaForceCommand;
+        Command omegaForceCommand;
 
-		Variant* activated;
-		Variant* gravity;
-		Variant* gravitySourceCategory;
-		Variant* massOrigin;
-		Variant* speed;
-		Variant* minSpeed;
-		Variant* maxSpeed;
-		Variant* collisionSize;
-		Variant* collisionPosition;
-		Variant* collisionDirection;
-		OgreNewt::UpVector* upVector;
-		OgreNewt::PlaneConstraint* planeConstraint;
-		Variant* constraintDirection;
-		Variant* linearDamping;
-		Variant* angularDamping;
-		Variant* constraintAxis;
-		Variant* gyroscopicTorque;
-		Variant* asSoftBody;
+        Variant* activated;
+        Variant* gravity;
+        Variant* gravitySourceCategory;
+        Variant* massOrigin;
+        Variant* speed;
+        Variant* minSpeed;
+        Variant* maxSpeed;
+        Variant* collisionSize;
+        Variant* collisionPosition;
+        Variant* collisionDirection;
+        OgreNewt::UpVector* upVector;
+        OgreNewt::PlaneConstraint* planeConstraint;
+        Variant* constraintDirection;
+        Variant* linearDamping;
+        Variant* angularDamping;
+        Variant* density;
+        Variant* constraintAxis;
+        Variant* gyroscopicTorque;
+        Variant* asSoftBody;
 
-		// Ogre::String defaultPoseName;
+        // Ogre::String defaultPoseName;
 
-		bool hasAttraction;
-		std::vector<unsigned long> physicsAttractors;
+        bool hasAttraction;
+        std::vector<unsigned long> physicsAttractors;
 
-		std::vector<unsigned long> springs;
-		bool hasSpring;
+        std::vector<unsigned long> springs;
+        bool hasSpring;
 
-		std::unordered_map<Ogre::String, std::pair<Ogre::SceneNode*, Ogre::ManualObject*>> drawLineMap;
-		std::unordered_map<Ogre::String, std::shared_ptr<IForceObserver>> forceObservers;
-		mutable std::shared_mutex forceObserversMutex;
+        std::unordered_map<Ogre::String, std::pair<Ogre::SceneNode*, Ogre::ManualObject*>> drawLineMap;
+        std::unordered_map<Ogre::String, std::shared_ptr<IForceObserver>> forceObservers;
+        mutable std::shared_mutex forceObserversMutex;
 
-		double lastTime;
-		Ogre::Real dt;
-		NOWA::Timer timer;
-		bool usesBounds;
-		Ogre::Vector3 minBounds;
-		Ogre::Vector3 maxBounds;
-		
-		Ogre::Vector3 gravityDirection;
-		Ogre::Real currentGravityStrength;
-		std::atomic_flag gravityUpdated = ATOMIC_FLAG_INIT;
+        double lastTime;
+        Ogre::Real dt;
+        NOWA::Timer timer;
+        bool usesBounds;
+        Ogre::Vector3 minBounds;
+        Ogre::Vector3 maxBounds;
+
+        Ogre::Vector3 gravityDirection;
+        Ogre::Real currentGravityStrength;
+        std::atomic_flag gravityUpdated = ATOMIC_FLAG_INIT;
         std::vector<GameObjectPtr> gravitySourceGameObjects;
 
-		std::function<void(GameObjectPtr /*otherGo*/, const OgreNewt::ContactSnapshot& /*contact*/)> cppContactCallback;
+        std::function<void(GameObjectPtr /*otherGo*/, const OgreNewt::ContactSnapshot& /*contact*/)> cppContactCallback;
 
-		luabind::object contactSolvingClosureFunction;
+        luabind::object contactSolvingClosureFunction;
 
-		Ogre::Vector3 up;
-		Ogre::Vector3 forward;
-		Ogre::Vector3 right;
+        Ogre::Vector3 up;
+        Ogre::Vector3 forward;
+        Ogre::Vector3 right;
 
-		Ogre::Real savedMass;
+        Ogre::Real savedMass;
         Ogre::Vector3 savedInertia;
         bool ghostActive;
 
-		Ogre::Vector3 latchedVelocity;
-        bool hasLatchedVelocity;  
-	};
+        Ogre::Vector3 latchedVelocity;
+        bool hasLatchedVelocity;
+    };
 
-}; //namespace end
+}; // namespace end
 
 #endif

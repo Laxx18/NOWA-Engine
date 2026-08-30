@@ -25,18 +25,23 @@ void MenuState::start(const NOWA::SceneParameter& sceneParameter)
 	this->sceneManager = sceneParameter.sceneManager;
 	this->camera = sceneParameter.mainCamera;
 
-    this->menuMusic = NOWA::OgreALModule::getInstance()->getSound(this->sceneManager, "MainGameObject_Menu - Mossgate Sanctuary.ogg");
+    // this->menuMusic = NOWA::OgreALModule::getInstance()->getSound(this->sceneManager, "MainGameObject_Menu - Mossgate Sanctuary.ogg");
+	this->menuMusic = NOWA::OgreALModule::getInstance()->getSound(this->sceneManager, "MainGameObject_Menu - The Great Paper Airplane.ogg");
 	if (nullptr == this->menuMusic)
 	{
-		this->menuMusic = NOWA::OgreALModule::getInstance()->createSound(this->sceneManager, "MainGameObject_Menu - Mossgate Sanctuary.ogg", "Menu - Mossgate Sanctuary.ogg", true, true);
+		// this->menuMusic = NOWA::OgreALModule::getInstance()->createSound(this->sceneManager, "MainGameObject_Menu - Mossgate Sanctuary.ogg", "Menu - Mossgate Sanctuary.ogg", true, true);
+		this->menuMusic = NOWA::OgreALModule::getInstance()->createSound(this->sceneManager, "MainGameObject_Menu - The Great Paper Airplane.ogg", "Menu - The Great Paper Airplane.ogg", true, true);
 		this->menuMusic->play();
 	}
 }
 
 void MenuState::exit(void)
 {
-	this->menuMusic->stop();
-	NOWA::OgreALModule::getInstance()->deleteSound(this->sceneManager, this->menuMusic);
+	if (nullptr != this->menuMusic)
+	{
+		this->menuMusic->stop();
+		NOWA::OgreALModule::getInstance()->deleteSound(this->sceneManager, this->menuMusic);
+	}
 
 	NOWA::AppState::exit();
 }

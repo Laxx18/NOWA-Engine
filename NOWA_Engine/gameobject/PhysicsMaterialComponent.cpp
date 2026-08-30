@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "PhysicsMaterialComponent.h"
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
@@ -705,6 +705,7 @@ namespace NOWA
 		return 0;
 	}
 
+#if 0
 	void ConveyorContactCallback::contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
 	{
 		if (0.0f == this->speed)
@@ -767,6 +768,86 @@ namespace NOWA
 			}
 		}
 	}
+#else
+    void ConveyorContactCallback::contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
+    {
+        if (0.0f == this->speed)
+        {
+            return;
+        }
+
+        OgreNewt::ContactJoint& mutableJoint = const_cast<OgreNewt::ContactJoint&>(contactJoint);
+        const OgreNewt::Body* body0 = mutableJoint.getBody0();
+        const OgreNewt::Body* body1 = mutableJoint.getBody1();
+
+        // Welcher Body ist das Förderband?
+        const OgreNewt::Body* conveyor = nullptr;
+        const OgreNewt::Body* object = nullptr;
+        if (body0->getType() == this->conveyorCategoryId)
+        {
+            conveyor = body0;
+            object = body1;
+        }
+        else if (body1->getType() == this->conveyorCategoryId)
+        {
+            conveyor = body1;
+            object = body0;
+        }
+
+        if (nullptr == conveyor || nullptr == object)
+        {
+            return;
+        }
+
+        // Belt-Richtung in Weltkoordinaten (dreht mit dem Förderband-Objekt)
+        Ogre::Vector3 beltDir = conveyor->getOgreNode()->_getDerivedOrientation() * this->direction;
+        beltDir.normalise();
+
+        if (this->forPlayer)
+        {
+            // Spieler: nur den Belt-Anteil der aktuellen Velocity ersetzen,
+            // nicht addieren — sonst unbegrenzte Beschleunigung pro Frame
+            Ogre::Vector3 currentVel = object->getVelocity();
+            Ogre::Real currentBeltComp = currentVel.dotProduct(beltDir);
+            Ogre::Real delta = this->speed - currentBeltComp;
+
+            // Sanfte Angleichung (0.3 = ca. 3 Frames zum Einpendeln)
+            const_cast<OgreNewt::Body*>(object)->setVelocity(currentVel + beltDir * delta * 0.3f);
+        }
+        else
+        {
+            // Objekte: Kontaktpunkt-Beschleunigung über Newton-Solver
+            Ogre::Vector3 objectPos;
+            Ogre::Quaternion objectOri;
+            object->getPositionOrientation(objectPos, objectOri);
+
+            for (OgreNewt::Contact contact = mutableJoint.getFirstContact(); contact; contact = contact.getNext())
+            {
+                // Tangenten auf Belt-Richtung ausrichten
+                contact.setRotateTangentDirections(beltDir);
+
+                // Kontaktpunkt-Position holen
+                Ogre::Vector3 contactPos;
+                Ogre::Vector3 contactNormal;
+                contact.getPositionAndNormal(contactPos, contactNormal);
+
+                // Korrekte Kontaktpunkt-Geschwindigkeit:
+                // v_kontakt = v_cm + ω x r
+                // (früher: (v + r * omega) * direction — beides falsch)
+                Ogre::Vector3 r = contactPos - objectPos;
+                Ogre::Vector3 pointVel = object->getVelocity() + object->getOmega().crossProduct(r);
+
+                // Differenz zwischen gewünschter Belt-Geschwindigkeit und
+                // aktueller Objektgeschwindigkeit in Belt-Richtung
+                Ogre::Real currentBeltSpeed = beltDir.dotProduct(pointVel);
+                Ogre::Real resultAcceleration = (this->speed - currentBeltSpeed) * 10.0f;
+
+                contact.setTangentAcceleration(resultAcceleration, 0);
+            }
+        }
+    }
+
+#endif
 
 	void ConveyorContactCallback::setContactSpeed(Ogre::Real contactSpeed)
 	{
@@ -894,7 +975,7 @@ namespace NOWA
         {
             if (false == this->contactFunctionName.empty())
             {
-                // Snapshot NOW � contact ptr is dangling by logic thread execution time
+                // Snapshot NOW — contact ptr is dangling by logic thread execution time
                 OgreNewt::ContactSnapshot snap = contact->createSnapshot();
                 NOWA::AppStateManager::LogicCommand logicCommand = [this, snap]()
                 {
@@ -913,7 +994,7 @@ namespace NOWA
                 if (contact->getNormalSpeed() > 3.0f && abs(normalSpeedDiff) > 3.0f)
                 {
                     // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "hit: " + Ogre::StringConverter::toString(normalSpeedDiff));
-                    // Snapshot NOW � contact ptr is dangling by logic thread execution time
+                    // Snapshot NOW — contact ptr is dangling by logic thread execution time
                     OgreNewt::ContactSnapshot contactSnapshot = contact->createSnapshot();
                     NOWA::AppStateManager::LogicCommand logicCommand = [this, contactSnapshot]()
                     {

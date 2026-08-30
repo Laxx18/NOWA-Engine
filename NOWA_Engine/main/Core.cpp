@@ -2090,6 +2090,14 @@ namespace NOWA
         else
         {
             renderSystem->setConfigOption("Full Screen", "No");
+#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
+            HWND hwnd = nullptr;
+            this->renderWindow->getCustomAttribute("WINDOW", &hwnd);
+            if (nullptr != hwnd)
+            {
+                SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            }
+#endif
         }
 
         std::pair<unsigned int, unsigned int> resolution = this->getCurrentVideoModeResolution();

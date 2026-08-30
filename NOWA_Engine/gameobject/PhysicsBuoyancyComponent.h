@@ -1,236 +1,264 @@
 #ifndef PHYSICS_BUOYANCY_COMPONENT_H
 #define PHYSICS_BUOYANCY_COMPONENT_H
 
-#include "PhysicsComponent.h"
 #include "OgreNewt_BuoyancyBody.h"
+#include "PhysicsComponent.h"
 
 namespace NOWA
 {
-	class LuaScript;
+    class LuaScript;
 
-	class EXPORTED PhysicsBuoyancyComponent : public PhysicsComponent
-	{
-	public:
-		class PhysicsBuoyancyTriggerCallback : public OgreNewt::BuoyancyForceTriggerCallback
-		{
-		public:
-			PhysicsBuoyancyTriggerCallback(GameObject* owner,
-				Ogre::Real waterToSolidVolumeRatio,
-				Ogre::Real viscosity,
-				LuaScript* luaScript,
-				luabind::object& enterClosureFunction,
-				luabind::object& insideClosureFunction,
-				luabind::object& leaveClosureFunction);
+    class EXPORTED PhysicsBuoyancyComponent : public PhysicsComponent
+    {
+    public:
+        class PhysicsBuoyancyTriggerCallback : public OgreNewt::BuoyancyForceTriggerCallback
+        {
+        public:
+            PhysicsBuoyancyTriggerCallback(GameObject* owner, Ogre::Real waterToSolidVolumeRatio, Ogre::Real viscosity, LuaScript* luaScript, luabind::object& enterClosureFunction, luabind::object& insideClosureFunction,
+                luabind::object& leaveClosureFunction);
 
-			virtual ~PhysicsBuoyancyTriggerCallback();
+            virtual ~PhysicsBuoyancyTriggerCallback();
 
-			virtual void OnEnter(const OgreNewt::Body* visitor) override;
-			virtual void OnInside(const OgreNewt::Body* visitor) override;
-			virtual void OnExit(const OgreNewt::Body* visitor) override;
+            virtual void OnEnter(const OgreNewt::Body* visitor) override;
+            virtual void OnInside(const OgreNewt::Body* visitor) override;
+            virtual void OnExit(const OgreNewt::Body* visitor) override;
 
-			void setLuaScript(LuaScript* luaScript);
-			void setCategoryId(unsigned int categoryId);
-			void setTriggerFunctions(luabind::object& enterClosureFunction,
-				luabind::object& insideClosureFunction,
-				luabind::object& leaveClosureFunction);
-		private:
-			GameObject* owner;
-			LuaScript* luaScript;
-			bool           onInsideFunctionAvailable;
-			unsigned int   categoryId;
-			luabind::object enterClosureFunction;
-			luabind::object insideClosureFunction;
-			luabind::object leaveClosureFunction;
-		};
+            /**
+             * @brief Supplies true per-body density for buoyancy: if the visiting GameObject
+             *        has a PhysicsActiveComponent, its Density value is used instead of this
+             *        buoyancy volume's own WaterToSolidVolumeRatio.
+             * @see   OgreNewt::BuoyancyForceTriggerCallback::getDensityOverride
+             */
+            virtual bool getDensityOverride(const OgreNewt::Body* visitor, Ogre::Real& outDensity) const override;
 
-	public:
-		typedef boost::shared_ptr<GameObject> GameObjectPtr;
-		typedef boost::shared_ptr<PhysicsBuoyancyComponent> PhysicsBuoyancyCompPtr;
-	public:
+            void setLuaScript(LuaScript* luaScript);
+            void setCategoryId(unsigned int categoryId);
+            void setTriggerFunctions(luabind::object& enterClosureFunction, luabind::object& insideClosureFunction, luabind::object& leaveClosureFunction);
 
-		PhysicsBuoyancyComponent();
+        private:
+            GameObject* owner;
+            LuaScript* luaScript;
+            bool onInsideFunctionAvailable;
+            unsigned int categoryId;
+            luabind::object enterClosureFunction;
+            luabind::object insideClosureFunction;
+            luabind::object leaveClosureFunction;
+        };
 
-		virtual ~PhysicsBuoyancyComponent();
+    public:
+        typedef boost::shared_ptr<GameObject> GameObjectPtr;
+        typedef boost::shared_ptr<PhysicsBuoyancyComponent> PhysicsBuoyancyCompPtr;
 
-		/**
-		 * @see		GameObjectComponent::init
-		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+    public:
+        PhysicsBuoyancyComponent();
 
-		/**
-		 * @see		GameObjectComponent::postInit
-		 */
-		virtual bool postInit(void) override;
+        virtual ~PhysicsBuoyancyComponent();
 
-		/**
-		* @see		GameObjectComponent::connect
-		*/
-		virtual bool connect(void) override;
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
-		/**
-		* @see		GameObjectComponent::showDebugData
-		*/
-		virtual void showDebugData(void) override;
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
 
-		/**
-		 * @see		GameObjectComponent::getClassName
-		 */
-		virtual Ogre::String getClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
 
-		/**
-		 * @see		GameObjectComponent::getParentClassName
-		 */
-		virtual Ogre::String getParentClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::showDebugData
+         */
+        virtual void showDebugData(void) override;
 
-		/**
-		 * @see		GameObjectComponent::update
-		 */
-		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
 
-		/**
-		 * @see		GameObjectComponent::clone
-		 */
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
 
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("PhysicsBuoyancyComponent");
-		}
+        /**
+         * @see		GameObjectComponent::update
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
-		static Ogre::String getStaticClassName(void)
-		{
-			return "PhysicsBuoyancyComponent";
-		}
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) {}
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("PhysicsBuoyancyComponent");
+        }
 
-		/**
-		* @see	GameObjectComponent::getStaticInfoText
-		*/
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: This Component is used for fluid simulation of physics active components. "
-				"Requirements: A PhysicsArtifactComponent, which acts as the fluid container.";
-		}
+        static Ogre::String getStaticClassName(void)
+        {
+            return "PhysicsBuoyancyComponent";
+        }
 
-		static Ogre::String getStaticRequiredCategory(void)
-		{
-			return "Buoyancy";
-		}
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+        {
+        }
 
-		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: This Component is used for fluid simulation of physics active components. "
+                   "Requirements: A PhysicsArtifactComponent, which acts as the fluid container.";
+        }
 
-		/**
-		 * @see		PhysicsComponent::isMovable
-		 */
-		virtual bool isMovable(void) const override
-		{
-			return false;
-		}
+        static Ogre::String getStaticRequiredCategory(void)
+        {
+            return "Buoyancy";
+        }
 
-		virtual void reCreateCollision(bool overwrite = false) override;
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
 
-		/**
-		 * @see		GameObjectComponent::writeXML
-		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        /**
+         * @see		PhysicsComponent::isMovable
+         */
+        virtual bool isMovable(void) const override
+        {
+            return false;
+        }
 
-		void setWaterToSolidVolumeRatio(Ogre::Real waterToSolidVolumeRatio);
+        virtual void reCreateCollision(bool overwrite = false) override;
 
-		Ogre::Real getWaterToSolidVolumeRatio(void) const;
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		void setViscosity(Ogre::Real viscosity);
+        void setWaterToSolidVolumeRatio(Ogre::Real waterToSolidVolumeRatio);
 
-		Ogre::Real getViscosity(void) const;
+        Ogre::Real getWaterToSolidVolumeRatio(void) const;
 
-		void setBuoyancyGravity(const Ogre::Vector3& buoyancyGravity);
+        void setViscosity(Ogre::Real viscosity);
 
-		const Ogre::Vector3 getBuoyancyGravity(void) const;
+        Ogre::Real getViscosity(void) const;
 
-		void setOffsetHeight(Ogre::Real offsetHeight);
+        void setBuoyancyGravity(const Ogre::Vector3& buoyancyGravity);
 
-		Ogre::Real getOffsetHeight(void) const;
+        const Ogre::Vector3 getBuoyancyGravity(void) const;
 
-		void setCategories(const Ogre::String& categories);
+        void setOffsetHeight(Ogre::Real offsetHeight);
 
-		Ogre::String getCategories(void) const;
+        Ogre::Real getOffsetHeight(void) const;
 
-		void setWaveAmplitude(Ogre::Real waveAmplitude);
+        void setCategories(const Ogre::String& categories);
 
-		Ogre::Real getWaveAmplitude(void) const;
+        Ogre::String getCategories(void) const;
 
-		void setWaveFrequency(Ogre::Real waveFrequency);
+        void setWaveAmplitude(Ogre::Real waveAmplitude);
 
-		Ogre::Real getWaveFrequency(void) const;
+        Ogre::Real getWaveAmplitude(void) const;
 
-		/**
-		 * @brief Sets the lua function name, to react when a game object enters the buoyancy area.
-		 * @param[in]	onEnterFunctionName		The function name to set
-		 */
-		void setOnEnterFunctionName(const Ogre::String& onEnterFunctionName);
+        void setWaveFrequency(Ogre::Real waveFrequency);
 
-		/**
-		 * @brief Gets the lua function name.
-		 * @return lua function name to get
-		 */
-		Ogre::String getOnEnterFunctionName(void) const;
+        Ogre::Real getWaveFrequency(void) const;
 
-		/**
-		 * @brief Sets the lua function name, to react when a game object is inside the buoyancy area.
-		 * @param[in]	onInsideFunctionName		The function name to set
-		 */
-		void setOnInsideFunctionName(const Ogre::String& onInsideFunctionName);
+        /**
+         * @brief Sets the lua function name, to react when a game object enters the buoyancy area.
+         * @param[in]	onEnterFunctionName		The function name to set
+         */
+        void setOnEnterFunctionName(const Ogre::String& onEnterFunctionName);
 
-		/**
-		 * @brief Lua closure function gets called in order to react when a game object enters the trigger area.
-		 * @param[in] closureFunction The closure function set.
-		 */
-		void reactOnEnter(luabind::object closureFunction);
+        /**
+         * @brief Gets the lua function name.
+         * @return lua function name to get
+         */
+        Ogre::String getOnEnterFunctionName(void) const;
 
-		/**
-		 * @brief Lua closure function gets called in order to react when a game object is inside the trigger area.
-		 * @param[in] closureFunction The closure function set.
-		 * @note: This function should only be used if really necessary, because this function gets triggered permanently.
-		 */
-		void reactOnInside(luabind::object closureFunction);
+        /**
+         * @brief Sets the lua function name, to react when a game object is inside the buoyancy area.
+         * @param[in]	onInsideFunctionName		The function name to set
+         */
+        void setOnInsideFunctionName(const Ogre::String& onInsideFunctionName);
 
-		/**
-		 * @brief Lua closure function gets called in order to react when a game object leaves the trigger area.
-		 * @param[in] closureFunction The closure function set.
-		 */
-		void reactOnLeave(luabind::object closureFunction);
-	public:
-		static const Ogre::String AttrWaterToSolidVolumeRatio(void) { return "Water To Solid Volume Ratio"; }
-		static const Ogre::String AttrViscosity(void) { return "Viscosity"; }
-		static const Ogre::String AttrBuoyancyGravity(void) { return "Buoyancy Gravity"; }
-		static const Ogre::String AttrOffsetHeight(void) { return "OffsetHeight"; }
-		static const Ogre::String AttrCategories(void) { return "Categories"; }
-		static const Ogre::String AttrWaveAmplitude(void) { return "Wave Amplitude"; }
-		static const Ogre::String AttrWaveFrequency(void) { return "Wave Frequency"; }
-	private:
-		bool createStaticBody(void);
-	protected:
-		Variant* waterToSolidVolumeRatio;
-		Variant* viscosity;
-		Variant* buoyancyGravity;
-		Variant* offsetHeight;
-		Variant* categories;
-		Variant* waveAmplitude;
-		Variant* waveFrequency;
-		PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback* physicsBuoyancyTriggerCallback;
-		bool newleyCreated;
-		unsigned int categoriesId;
-		luabind::object enterClosureFunction;
-		luabind::object insideClosureFunction;
-		luabind::object leaveClosureFunction;
-	};
+        /**
+         * @brief Lua closure function gets called in order to react when a game object enters the trigger area.
+         * @param[in] closureFunction The closure function set.
+         */
+        void reactOnEnter(luabind::object closureFunction);
 
-}; //namespace end
+        /**
+         * @brief Lua closure function gets called in order to react when a game object is inside the trigger area.
+         * @param[in] closureFunction The closure function set.
+         * @note: This function should only be used if really necessary, because this function gets triggered permanently.
+         */
+        void reactOnInside(luabind::object closureFunction);
+
+        /**
+         * @brief Lua closure function gets called in order to react when a game object leaves the trigger area.
+         * @param[in] closureFunction The closure function set.
+         */
+        void reactOnLeave(luabind::object closureFunction);
+
+    public:
+        static const Ogre::String AttrWaterToSolidVolumeRatio(void)
+        {
+            return "Water To Solid Volume Ratio";
+        }
+        static const Ogre::String AttrViscosity(void)
+        {
+            return "Viscosity";
+        }
+        static const Ogre::String AttrBuoyancyGravity(void)
+        {
+            return "Buoyancy Gravity";
+        }
+        static const Ogre::String AttrOffsetHeight(void)
+        {
+            return "OffsetHeight";
+        }
+        static const Ogre::String AttrCategories(void)
+        {
+            return "Categories";
+        }
+        static const Ogre::String AttrWaveAmplitude(void)
+        {
+            return "Wave Amplitude";
+        }
+        static const Ogre::String AttrWaveFrequency(void)
+        {
+            return "Wave Frequency";
+        }
+
+    private:
+        bool createStaticBody(void);
+
+    protected:
+        Variant* waterToSolidVolumeRatio;
+        Variant* viscosity;
+        Variant* buoyancyGravity;
+        Variant* offsetHeight;
+        Variant* categories;
+        Variant* waveAmplitude;
+        Variant* waveFrequency;
+        PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback* physicsBuoyancyTriggerCallback;
+        bool newleyCreated;
+        unsigned int categoriesId;
+        luabind::object enterClosureFunction;
+        luabind::object insideClosureFunction;
+        luabind::object leaveClosureFunction;
+    };
+
+}; // namespace end
 
 #endif

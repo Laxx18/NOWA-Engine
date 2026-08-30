@@ -1,8 +1,8 @@
-#include "NOWAPrecompiled.h"
+ï»¿#include "NOWAPrecompiled.h"
 #include "PhysicsBuoyancyComponent.h"
-#include "utilities/XMLConverter.h"
-#include "main/AppStateManager.h"
 #include "PhysicsActiveComponent.h"
+#include "main/AppStateManager.h"
+#include "utilities/XMLConverter.h"
 
 namespace NOWA
 {
@@ -12,22 +12,16 @@ namespace NOWA
     // ============================================================
     // PhysicsBuoyancyTriggerCallback (Lua/event layer)
     // ============================================================
-    PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::PhysicsBuoyancyTriggerCallback(
-        GameObject* owner,
-        Ogre::Real waterToSolidVolumeRatio,
-        Ogre::Real viscosity,
-        LuaScript* luaScript,
-        luabind::object& enterClosureFunction,
-        luabind::object& insideClosureFunction,
-        luabind::object& leaveClosureFunction)
-        : OgreNewt::BuoyancyForceTriggerCallback(waterToSolidVolumeRatio, viscosity)
-        , owner(owner)
-        , luaScript(luaScript)
-        , onInsideFunctionAvailable(true)
-        , categoryId(0)
-        , enterClosureFunction(enterClosureFunction)
-        , insideClosureFunction(insideClosureFunction)
-        , leaveClosureFunction(leaveClosureFunction)
+    PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::PhysicsBuoyancyTriggerCallback(GameObject* owner, Ogre::Real waterToSolidVolumeRatio, Ogre::Real viscosity, LuaScript* luaScript, luabind::object& enterClosureFunction,
+        luabind::object& insideClosureFunction, luabind::object& leaveClosureFunction) :
+        OgreNewt::BuoyancyForceTriggerCallback(waterToSolidVolumeRatio, viscosity),
+        owner(owner),
+        luaScript(luaScript),
+        onInsideFunctionAvailable(true),
+        categoryId(0),
+        enterClosureFunction(enterClosureFunction),
+        insideClosureFunction(insideClosureFunction),
+        leaveClosureFunction(leaveClosureFunction)
     {
         if (false == this->insideClosureFunction.is_valid())
         {
@@ -45,17 +39,17 @@ namespace NOWA
         OgreNewt::BuoyancyForceTriggerCallback::OnEnter(visitor);
 
         // Note: visitor is the body ENTERING the volume (not the body that owns this trigger).
-        PhysicsComponent* visitorPhysicsComponent =
-            OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
         if (nullptr != visitorPhysicsComponent)
         {
             GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
 
             // Only allow for physics active components
-            auto physicsActiveComponent =
-                NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
+            auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
             if (nullptr == physicsActiveComponent)
+            {
                 return;
+            }
 
             // Check for correct category
             unsigned int type = visitorGameObjectPtr->getCategoryId();
@@ -66,27 +60,23 @@ namespace NOWA
                 {
                     if (this->enterClosureFunction.is_valid())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand =
-                            [this, visitorGameObjectPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObjectPtr]()
+                        {
+                            try
                             {
-                                try
-                                {
-                                    luabind::call_function<void>(this->enterClosureFunction,
-                                        visitorGameObjectPtr.get());
-                                }
-                                catch (luabind::error& error)
-                                {
-                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                    std::stringstream msg;
-                                    msg << errorMsg;
+                                luabind::call_function<void>(this->enterClosureFunction, visitorGameObjectPtr.get());
+                            }
+                            catch (luabind::error& error)
+                            {
+                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                std::stringstream msg;
+                                msg << errorMsg;
 
-                                    Ogre::LogManager::getSingleton().logMessage(
-                                        Ogre::LML_CRITICAL,
-                                        "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
-                                        "Caught error in 'reactOnEnter' Error: " +
-                                        Ogre::String(error.what()) + " details: " + msg.str());
-                                }
-                            };
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
+                                                                                                "Caught error in 'reactOnEnter' Error: " +
+                                                                                                    Ogre::String(error.what()) + " details: " + msg.str());
+                            }
+                        };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
                     }
                 }
@@ -96,22 +86,24 @@ namespace NOWA
 
     void PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::OnInside(const OgreNewt::Body* visitor)
     {
-        // Base does nothing (no physics) – we only use this for Lua callbacks.
+        // Base does nothing (no physics) ï¿½ we only use this for Lua callbacks.
         OgreNewt::BuoyancyForceTriggerCallback::OnInside(visitor);
 
         if (false == this->onInsideFunctionAvailable)
+        {
             return;
+        }
 
-        PhysicsComponent* visitorPhysicsComponent =
-            OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
         if (nullptr != visitorPhysicsComponent)
         {
             GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
 
-            auto physicsActiveComponent =
-                NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
+            auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
             if (nullptr == physicsActiveComponent)
+            {
                 return;
+            }
 
             unsigned int type = visitorGameObjectPtr->getCategoryId();
             unsigned int finalType = type & this->categoryId;
@@ -121,27 +113,23 @@ namespace NOWA
                 {
                     if (this->insideClosureFunction.is_valid())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand =
-                            [this, visitorGameObjectPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObjectPtr]()
+                        {
+                            try
                             {
-                                try
-                                {
-                                    luabind::call_function<void>(this->insideClosureFunction,
-                                        visitorGameObjectPtr.get());
-                                }
-                                catch (luabind::error& error)
-                                {
-                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                    std::stringstream msg;
-                                    msg << errorMsg;
+                                luabind::call_function<void>(this->insideClosureFunction, visitorGameObjectPtr.get());
+                            }
+                            catch (luabind::error& error)
+                            {
+                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                std::stringstream msg;
+                                msg << errorMsg;
 
-                                    Ogre::LogManager::getSingleton().logMessage(
-                                        Ogre::LML_CRITICAL,
-                                        "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
-                                        "Caught error in 'reactOnInside' Error: " +
-                                        Ogre::String(error.what()) + " details: " + msg.str());
-                                }
-                            };
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
+                                                                                                "Caught error in 'reactOnInside' Error: " +
+                                                                                                    Ogre::String(error.what()) + " details: " + msg.str());
+                            }
+                        };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
                     }
                 }
@@ -154,16 +142,16 @@ namespace NOWA
         // Base does nothing (no physics).
         OgreNewt::BuoyancyForceTriggerCallback::OnExit(visitor);
 
-        PhysicsComponent* visitorPhysicsComponent =
-            OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
         if (nullptr != visitorPhysicsComponent)
         {
             GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
 
-            auto physicsActiveComponent =
-                NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
+            auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
             if (nullptr == physicsActiveComponent)
+            {
                 return;
+            }
 
             unsigned int type = visitorGameObjectPtr->getCategoryId();
             unsigned int finalType = type & this->categoryId;
@@ -173,32 +161,60 @@ namespace NOWA
                 {
                     if (this->leaveClosureFunction.is_valid())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand =
-                            [this, visitorGameObjectPtr]()
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObjectPtr]()
+                        {
+                            try
                             {
-                                try
-                                {
-                                    luabind::call_function<void>(this->leaveClosureFunction,
-                                        visitorGameObjectPtr.get());
-                                }
-                                catch (luabind::error& error)
-                                {
-                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                    std::stringstream msg;
-                                    msg << errorMsg;
+                                luabind::call_function<void>(this->leaveClosureFunction, visitorGameObjectPtr.get());
+                            }
+                            catch (luabind::error& error)
+                            {
+                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                std::stringstream msg;
+                                msg << errorMsg;
 
-                                    Ogre::LogManager::getSingleton().logMessage(
-                                        Ogre::LML_CRITICAL,
-                                        "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
-                                        "Caught error in 'reactOnLeave' Error: " +
-                                        Ogre::String(error.what()) + " details: " + msg.str());
-                                }
-                            };
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
+                                                                                                "Caught error in 'reactOnLeave' Error: " +
+                                                                                                    Ogre::String(error.what()) + " details: " + msg.str());
+                            }
+                        };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
                     }
                 }
             }
         }
+    }
+
+    bool PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::getDensityOverride(const OgreNewt::Body* visitor, Ogre::Real& outDensity) const
+    {
+        if (nullptr == visitor)
+        {
+            return false;
+        }
+
+        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+        if (nullptr == visitorPhysicsComponent)
+        {
+            return false;
+        }
+
+        GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
+        if (nullptr == visitorGameObjectPtr)
+        {
+            return false;
+        }
+
+        // Only bodies with a PhysicsActiveComponent carry a per-object Density - anything
+        // else (e.g. static geometry that somehow ended up inside the water volume) has no
+        // override, so the trigger volume's own WaterToSolidVolumeRatio is used instead.
+        auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
+        if (nullptr == physicsActiveComponent)
+        {
+            return false;
+        }
+
+        outDensity = physicsActiveComponent->getDensity();
+        return true;
     }
 
     void PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::setLuaScript(LuaScript* luaScript)
@@ -215,10 +231,7 @@ namespace NOWA
         this->categoryId = categoryId;
     }
 
-    void PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::setTriggerFunctions(
-        luabind::object& enterClosureFunction,
-        luabind::object& insideClosureFunction,
-        luabind::object& leaveClosureFunction)
+    void PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::setTriggerFunctions(luabind::object& enterClosureFunction, luabind::object& insideClosureFunction, luabind::object& leaveClosureFunction)
     {
         this->enterClosureFunction = enterClosureFunction;
         this->insideClosureFunction = insideClosureFunction;
@@ -232,11 +245,19 @@ namespace NOWA
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    PhysicsBuoyancyComponent::PhysicsBuoyancyComponent()
-        : PhysicsComponent(),
+    PhysicsBuoyancyComponent::PhysicsBuoyancyComponent() :
+        PhysicsComponent(),
         waterToSolidVolumeRatio(new Variant(PhysicsBuoyancyComponent::AttrWaterToSolidVolumeRatio(), 0.9f, this->attributes)),
         viscosity(new Variant(PhysicsBuoyancyComponent::AttrViscosity(), 0.995f, this->attributes)),
-        buoyancyGravity(new Variant(PhysicsBuoyancyComponent::AttrBuoyancyGravity(), Ogre::Vector3(0.0f, -19.8f, 0.0f), this->attributes)),
+        // FIX: was -19.8 - exactly double real gravity (-9.81), and double
+        // OgreNewtBuoyancyTriggerVolume's own internal default. Since buoyant force is
+        // computed directly from this value (force = gravity * -displacedMass) while the
+        // body's actual fall is governed by the real physics world gravity, a doubled
+        // value here meant the buoyant force was calculated roughly twice as strong
+        // relative to gravity as it should be - floating objects would shoot out of the
+        // water / bob far too violently / sit far too high. Almost certainly a 9.8 -> 19.8
+        // typo.
+        buoyancyGravity(new Variant(PhysicsBuoyancyComponent::AttrBuoyancyGravity(), Ogre::Vector3(0.0f, -9.81f, 0.0f), this->attributes)),
         offsetHeight(new Variant(PhysicsBuoyancyComponent::AttrOffsetHeight(), 6, this->attributes)),
         categories(new Variant(PhysicsBuoyancyComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
         waveAmplitude(new Variant(PhysicsBuoyancyComponent::AttrWaveAmplitude(), 0.0f, this->attributes)),
@@ -390,10 +411,7 @@ namespace NOWA
         GameObjectComponent::showDebugData();
         if (nullptr != this->physicsBody)
         {
-            ENQUEUE_RENDER_COMMAND_WAIT("PhysicsBuoyancyComponent::showDebugData",
-                {
-                    this->physicsBody->showDebugCollision(false, this->bShowDebugData);
-                });
+            ENQUEUE_RENDER_COMMAND_WAIT("PhysicsBuoyancyComponent::showDebugData", { this->physicsBody->showDebugCollision(false, this->bShowDebugData); });
         }
     }
 
@@ -434,20 +452,16 @@ namespace NOWA
 
         if (nullptr == collision)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Could not create collision file for game object: " + this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.");
-            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsTriggerComponent] Could not create collision file for game object: " + this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.\n", "NOWA");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[PhysicsTriggerComponent] Could not create collision file for game object: " + this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsTriggerComponent] Could not create collision file for game object: " + this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.\n",
+                "NOWA");
         }
 
         if (nullptr == this->physicsBuoyancyTriggerCallback)
         {
-            this->physicsBuoyancyTriggerCallback = new PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback(
-                this->gameObjectPtr.get(),
-                this->waterToSolidVolumeRatio->getReal(),
-                this->viscosity->getReal(),
-                this->gameObjectPtr->getLuaScript(),
-                this->enterClosureFunction,
-                this->insideClosureFunction,
-                this->leaveClosureFunction);
+            this->physicsBuoyancyTriggerCallback = new PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback(this->gameObjectPtr.get(), this->waterToSolidVolumeRatio->getReal(), this->viscosity->getReal(), this->gameObjectPtr->getLuaScript(),
+                this->enterClosureFunction, this->insideClosureFunction, this->leaveClosureFunction);
         }
 
         if (nullptr == this->physicsBody)
@@ -594,12 +608,16 @@ namespace NOWA
         this->waterToSolidVolumeRatio->setValue(waterToSolidVolumeRatio);
 
         if (nullptr != this->physicsBuoyancyTriggerCallback)
+        {
             this->physicsBuoyancyTriggerCallback->setWaterToSolidVolumeRatio(waterToSolidVolumeRatio);
+        }
 
         if (this->physicsBody)
         {
             if (auto* body = dynamic_cast<OgreNewt::BuoyancyBody*>(this->physicsBody))
+            {
                 body->setWaterToSolidVolumeRatio(waterToSolidVolumeRatio);
+            }
         }
     }
 
@@ -613,12 +631,16 @@ namespace NOWA
         this->viscosity->setValue(viscosity);
 
         if (nullptr != this->physicsBuoyancyTriggerCallback)
+        {
             this->physicsBuoyancyTriggerCallback->setViscosity(viscosity);
+        }
 
         if (this->physicsBody)
         {
             if (auto* body = dynamic_cast<OgreNewt::BuoyancyBody*>(this->physicsBody))
+            {
                 body->setViscosity(viscosity);
+            }
         }
     }
 
@@ -634,7 +656,9 @@ namespace NOWA
         if (this->physicsBody)
         {
             if (auto* body = dynamic_cast<OgreNewt::BuoyancyBody*>(this->physicsBody))
+            {
                 body->setGravity(buoyancyGravity);
+            }
         }
     }
 
@@ -673,9 +697,7 @@ namespace NOWA
     void PhysicsBuoyancyComponent::setCategories(const Ogre::String& categories)
     {
         this->categories->setValue(categories);
-        this->categoriesId =
-            AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(
-                categories);
+        this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
     }
 
     Ogre::String PhysicsBuoyancyComponent::getCategories(void) const
@@ -690,7 +712,9 @@ namespace NOWA
         if (this->physicsBody)
         {
             if (auto* body = dynamic_cast<OgreNewt::BuoyancyBody*>(this->physicsBody))
+            {
                 body->setWaveAmplitude(waveAmplitude);
+            }
         }
     }
 
@@ -706,7 +730,9 @@ namespace NOWA
         if (this->physicsBody)
         {
             if (auto* body = dynamic_cast<OgreNewt::BuoyancyBody*>(this->physicsBody))
+            {
                 body->setWaveFrequency(waveFrequency);
+            }
         }
     }
 

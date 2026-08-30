@@ -67,6 +67,10 @@ namespace NOWA
          */
         void reloadCurrentState(void);
 
+		void reloadCurrentStateThenChangeAppState(AppState* nextState);
+
+        void reloadCurrentStateThenChangeAppState(const Ogre::String& nextStateName);
+
 		void shutdown(void);
 
 		void changeAppState(const Ogre::String& stateName);

@@ -35,6 +35,7 @@ namespace NOWA
         gravitySourceCategory(new Variant(PhysicsActiveComponent::AttrGravitySourceCategory(), Ogre::String(), this->attributes)),
         linearDamping(new Variant(PhysicsActiveComponent::AttrLinearDamping(), Ogre::Real(0.1f), this->attributes)),
         angularDamping(new Variant(PhysicsActiveComponent::AttrAngularDamping(), Ogre::Vector3(0.1f, 0.1f, 0.1f), this->attributes)),
+        density(new Variant(PhysicsActiveComponent::AttrDensity(), Ogre::Real(1.0f), this->attributes)),
         maxSpeed(new Variant(PhysicsActiveComponent::AttrMaxSpeed(), Ogre::Real(5.0f), this->attributes)),
         speed(new Variant(PhysicsActiveComponent::AttrSpeed(), Ogre::Real(1.0f), this->attributes)),
         minSpeed(new Variant(PhysicsActiveComponent::AttrMinSpeed(), Ogre::Real(1.0f), this->attributes)),
@@ -105,6 +106,35 @@ namespace NOWA
         this->angularDamping->setDescription("Range [0, 1]");
         // Constraints, 3 sliders?? How to do that?
 
+        /*
+            Density is relative to water (water = 1.0) and is only evaluated while this
+            game object is inside a PhysicsBuoyancyComponent's water volume - it has no
+            effect on normal gravity/falling outside of one. It controls how the object
+            floats or sinks there:
+              density < 1.0  -> floats, sitting higher in the water the smaller the value
+              density == 1.0 -> floats fully submerged, neither rising nor sinking
+              density > 1.0  -> sinks, faster the larger the value
+
+            Typical real-world reference values (specific gravity, i.e. relative to water):
+              - Wooden crate (pine/oak):         ~0.5 - 0.7   (floats well)
+              - Cork / styrofoam packaging:       ~0.1 - 0.3   (floats a lot, bobs high)
+              - Ice:                              ~0.9         (floats, mostly submerged)
+              - Human / player character:         ~0.9 - 1.0   (floats with a bit of body above water)
+              - Rubber:                           ~1.1 - 1.5   (sinks slowly)
+              - Plastic crate (sealed):            ~0.9 - 1.2   (floats or barely sinks)
+              - Stone / rock:                     ~2.5 - 3.0   (sinks quickly)
+              - Car (solid convex-hull approximation): ~1.2 - 1.5 (sinks - a real car can
+                briefly float due to a sealed, air-filled cabin, which this simplified
+                per-object density does not model; use a lower value like 0.3 - 0.5 here if
+                you specifically want a car to float for gameplay reasons)
+              - Aluminium crate/part:             ~2.7
+              - Steel / metal crate:              ~7.8 - 7.9   (sinks fast)
+        */
+        this->density->setDescription("Relative density (specific gravity, water = 1.0). Only evaluated while this object is inside a PhysicsBuoyancyComponent's water volume - determines whether/how it floats or sinks there. < 1.0 floats, == 1.0 "
+                                      "floats fully submerged, > 1.0 sinks. Typical values: cork/styrofoam ~0.1-0.3, wooden crate ~0.5-0.7, ice ~0.9, player/human ~0.9-1.0, plastic crate ~0.9-1.2, rubber ~1.1-1.5, car (solid approximation) "
+                                      "~1.2-1.5, stone ~2.5-3.0, aluminium ~2.7, steel/metal crate ~7.8-7.9.");
+        this->density->setConstraints(0.01f, 30.0f);
+
         this->gravitySourceCategory->setDescription("The gravity source category, to which this game object should be attracted. Planetary systems builds are possible.");
         this->collisionPosition->setDescription("Sets an offset to the collision position of the collision hull. This may be necessary when e.g. capsule is used and the origin point of the mesh is not in the middle of geometry.");
         this->collisionDirection->setDescription("Sets an offset collision direction for the collision hull. The collision hull will be rotated according to the given direction.");
@@ -116,7 +146,6 @@ namespace NOWA
 
     PhysicsActiveComponent::~PhysicsActiveComponent()
     {
-        
     }
 
     bool PhysicsActiveComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -170,6 +199,11 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AngularDamping")
         {
             this->angularDamping->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3(0.01f, 0.01f, 0.01f)));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Density")
+        {
+            this->density->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Gravity")
@@ -266,6 +300,7 @@ namespace NOWA
         clonedCompPtr->setMassOrigin(this->massOrigin->getVector3());
         clonedCompPtr->setLinearDamping(this->linearDamping->getReal());
         clonedCompPtr->setAngularDamping(this->angularDamping->getVector3());
+        clonedCompPtr->setDensity(this->density->getReal());
         clonedCompPtr->setGravity(this->gravity->getVector3());
         clonedCompPtr->setGravitySourceCategory(this->gravitySourceCategory->getString());
         clonedCompPtr->setConstraintDirection(this->constraintDirection->getVector3());
@@ -966,6 +1001,16 @@ namespace NOWA
     const Ogre::Vector3 PhysicsActiveComponent::getAngularDamping(void) const
     {
         return this->angularDamping->getVector3();
+    }
+
+    void PhysicsActiveComponent::setDensity(Ogre::Real density)
+    {
+        this->density->setValue(density);
+    }
+
+    Ogre::Real PhysicsActiveComponent::getDensity(void) const
+    {
+        return this->density->getReal();
     }
 
     Ogre::Real PhysicsActiveComponent::getCurrentGravityStrength(void) const
@@ -1735,6 +1780,10 @@ namespace NOWA
                 this->physicsBody->setAngularDamping(attribute->getVector3());
             }
         }
+        else if (PhysicsActiveComponent::AttrDensity() == attribute->getName())
+        {
+            this->setDensity(attribute->getReal());
+        }
         else if (PhysicsActiveComponent::AttrGravity() == attribute->getName())
         {
             this->setGravity(attribute->getVector3());
@@ -1852,6 +1901,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "AngularDamping"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->angularDamping->getVector3())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Density"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->density->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");

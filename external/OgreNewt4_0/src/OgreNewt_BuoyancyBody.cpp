@@ -26,6 +26,10 @@ namespace OgreNewt
             m_cb(cb),
             m_gravity(0.0f, -9.81f, 0.0f, 0.0f),
             m_viscosity(0.99f),
+            // FIX: density now lives directly on the trigger (like gravity/viscosity/waves
+            // below) instead of being smuggled through the visiting body's collision shape
+            // material - see SetDensity() and applyBuoyancy() for the full rationale.
+            m_density(0.9f),
             m_plane(ndVector::m_zero),
             m_hasPlane(false),
             m_time(0.0f),
@@ -44,6 +48,11 @@ namespace OgreNewt
         void SetViscosity(ndFloat32 v)
         {
             m_viscosity = v;
+        }
+
+        void SetDensity(ndFloat32 density)
+        {
+            m_density = density;
         }
 
         void SetPlane(const ndPlane& plane)
@@ -221,11 +230,32 @@ namespace OgreNewt
             ndVector cog(body->GetCentreOfMass());
             centerOfPressure -= matrix.TransformVector(cog);
 
-            // Use per-body density from material userParam[0], like ND4 demo.
-            ndShapeMaterial material(collision.GetMaterial());
-            body->GetCollisionShape().SetMaterial(material);
+            // Density resolution order:
+            // 1) per-body override, if the callback layer supplies one (e.g. NOWA's
+            //    PhysicsBuoyancyTriggerCallback reads it off the visiting GameObject's own
+            //    PhysicsActiveComponent, if it has one) - lets a wooden crate float and a
+            //    metal crate sink in the very same water volume.
+            // 2) this trigger's own m_density (set via
+            //    BuoyancyBody::setWaterToSolidVolumeRatio(), pushed to the trigger exactly
+            //    like gravity/viscosity/wave params already were) - used for any body with
+            //    no per-body override.
+            // Neither path reads from the visitor's own (commonly shared/cached) collision
+            // shape material anymore - see BuoyancyForceTriggerCallback::OnEnter() /
+            // getDensityOverride() for why that used to be fragile.
+            ndFloat32 density = m_density;
 
-            ndFloat32 density = material.m_userParam[0].m_floatData;
+            if (m_cb)
+            {
+                if (Body* visitorOgre = bodyToOgre(kinBody))
+                {
+                    Ogre::Real overrideDensity = 0.0f;
+                    if (true == m_cb->getDensityOverride(visitorOgre, overrideDensity))
+                    {
+                        density = static_cast<ndFloat32>(overrideDensity);
+                    }
+                }
+            }
+
             if (density <= 0.0f)
             {
                 density = 0.7f; // "light-ish" default
@@ -287,6 +317,7 @@ namespace OgreNewt
 
         ndVector m_gravity;
         ndFloat32 m_viscosity;
+        ndFloat32 m_density;
         ndPlane m_plane;
         bool m_hasPlane;
 
@@ -304,22 +335,22 @@ namespace OgreNewt
 
     void BuoyancyForceTriggerCallback::OnEnter(const Body* visitor)
     {
-        if (!visitor)
-        {
-            return;
-        }
-
-        ndShapeInstance* shape = visitor->getNewtonCollision();
-        if (!shape)
-        {
-            return;
-        }
-
-        ndShapeMaterial mat(shape->GetMaterial());
-
-        // Use waterToSolidVolumeRatio as "density factor" for ND4.
-        mat.m_userParam[0].m_floatData = static_cast<ndFloat32>(m_waterToSolidVolumeRatio);
-        shape->SetMaterial(mat);
+        // FIX: no longer mutates the visiting body's own collision shape material.
+        // Density now lives directly on the trigger volume
+        // (OgreNewtBuoyancyTriggerVolume::m_density, set via
+        // BuoyancyBody::setWaterToSolidVolumeRatio() - see there), exactly like
+        // gravity/viscosity/wave parameters already did. The old approach wrote
+        // m_waterToSolidVolumeRatio into the VISITOR's shape material (userParam[0]) - that
+        // shape is commonly SHARED/cached across every GameObject using the same mesh, so
+        // one object entering water silently overwrote the density for every other object
+        // sharing that shape, even ones not currently in any water at all. With two water
+        // volumes configured with different WaterToSolidVolumeRatio values and shared
+        // shapes, whichever OnEnter() fired last would win for both bodies, for as long as
+        // both stayed submerged.
+        //
+        // Derived classes (PhysicsBuoyancyTriggerCallback) still use OnEnter() purely for
+        // the Lua "reactOnEnter" callback - see there.
+        (void)visitor;
     }
 
     void BuoyancyForceTriggerCallback::OnInside(const Body* /*visitor*/)
@@ -331,6 +362,14 @@ namespace OgreNewt
     void BuoyancyForceTriggerCallback::OnExit(const Body* /*visitor*/)
     {
         // No physics here either; pure event.
+    }
+
+    bool BuoyancyForceTriggerCallback::getDensityOverride(const Body* /*visitor*/, Ogre::Real& /*outDensity*/) const
+    {
+        // Base: no per-body override available - the trigger volume falls back to its own
+        // m_density (WaterToSolidVolumeRatio). Derived classes (e.g. NOWA's
+        // PhysicsBuoyancyTriggerCallback) override this to supply true per-body density.
+        return false;
     }
 
     void BuoyancyForceTriggerCallback::update(Ogre::Real)
@@ -406,6 +445,12 @@ namespace OgreNewt
         // capture config values
         const Ogre::Vector3 gravity = m_gravity;
         const Ogre::Real viscosity = m_viscosity;
+        // FIX: m_waterToSolidVolumeRatio was previously never captured/reapplied here, so a
+        // freshly (re-)created trigger (e.g. via reCreateCollision()) fell back to
+        // OgreNewtBuoyancyTriggerVolume's constructor default (0.9) instead of whatever
+        // density had actually been configured, until something else happened to call
+        // setWaterToSolidVolumeRatio() again afterwards.
+        const Ogre::Real waterToSolidVolumeRatio = m_waterToSolidVolumeRatio;
         const Ogre::Real waveAmplitude = m_waveAmplitude;
         const Ogre::Real waveFrequency = m_waveFrequency;
         const bool useRaycast = m_useRaycastPlane;
@@ -421,7 +466,7 @@ namespace OgreNewt
         m_triggerBody = newTrigger;
 
         m_world->enqueuePhysicsAndWait(
-            [this, newTrigger, oldBodyPtr, shapeCopy, gravity, viscosity, waveAmplitude, waveFrequency, useRaycast, fluidPlane](World& w) mutable
+            [this, newTrigger, oldBodyPtr, shapeCopy, gravity, viscosity, waterToSolidVolumeRatio, waveAmplitude, waveFrequency, useRaycast, fluidPlane](World& w) mutable
             {
                 if (oldBodyPtr)
                 {
@@ -431,6 +476,7 @@ namespace OgreNewt
 
                 newTrigger->SetGravity(ndVector((ndFloat32)gravity.x, (ndFloat32)gravity.y, (ndFloat32)gravity.z, 0.0f));
                 newTrigger->SetViscosity((ndFloat32)viscosity);
+                newTrigger->SetDensity((ndFloat32)waterToSolidVolumeRatio);
                 newTrigger->SetWaveAmplitude((ndFloat32)waveAmplitude);
                 newTrigger->SetWaveFrequency((ndFloat32)waveFrequency);
                 if (!useRaycast)
@@ -505,6 +551,21 @@ namespace OgreNewt
         if (m_buoyancyForceTriggerCallback)
         {
             m_buoyancyForceTriggerCallback->setWaterToSolidVolumeRatio(waterToSolidVolumeRatio);
+        }
+
+        // FIX: this was previously the only setter among setViscosity/setGravity/
+        // setWaveAmplitude/setWaveFrequency below that did NOT also push its value
+        // straight to m_triggerBody. As a result, the value actually used in the physics
+        // calculation (OgreNewtBuoyancyTriggerVolume::applyBuoyancy(), via m_density) only
+        // ever got set indirectly through BuoyancyForceTriggerCallback::OnEnter() writing
+        // into the visiting body's own (commonly shared/cached) collision shape material -
+        // fragile, and wrong whenever that shape is shared across multiple GameObjects, or
+        // multiple water volumes with different ratios are in play. Pushing directly here
+        // matches every sibling setter and makes the value correct immediately, even
+        // before any body has ever entered the trigger.
+        if (auto* trigger = static_cast<OgreNewtBuoyancyTriggerVolume*>(m_triggerBody))
+        {
+            trigger->SetDensity((ndFloat32)waterToSolidVolumeRatio);
         }
     }
 

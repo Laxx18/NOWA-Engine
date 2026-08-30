@@ -1,4 +1,4 @@
-#ifndef _OGRENEWT_BUOYANCYBODY_H_
+ï»¿#ifndef _OGRENEWT_BUOYANCYBODY_H_
 #define _OGRENEWT_BUOYANCYBODY_H_
 
 #include "OgreNewt_Stdafx.h"
@@ -15,15 +15,13 @@ namespace OgreNewt
     class World;
 
     /// High-level callback used by PhysicsBuoyancyComponent for Lua/event handling.
-    /// It NO LONGER applies any forces – pure event layer + per-body density setup.
+    /// It NO LONGER applies any forces ï¿½ pure event layer + per-body density setup.
     class _OgreNewtExport BuoyancyForceTriggerCallback
     {
     public:
         /// @param waterToSolidVolumeRatio  Density factor for bodies entering this volume (<1 = floats, >1 = sinks).
         /// @param viscosity                 Additional damping factor (0..1).
-        BuoyancyForceTriggerCallback(
-            Ogre::Real waterToSolidVolumeRatio,
-            Ogre::Real viscosity);
+        BuoyancyForceTriggerCallback(Ogre::Real waterToSolidVolumeRatio, Ogre::Real viscosity);
 
         virtual ~BuoyancyForceTriggerCallback() = default;
 
@@ -31,6 +29,19 @@ namespace OgreNewt
         virtual void OnEnter(const Body* visitor);
         virtual void OnInside(const Body* visitor);
         virtual void OnExit(const Body* visitor);
+
+        /// Allows a derived callback to override the density used for a specific visiting
+        /// body, instead of falling back to this trigger volume's own
+        /// WaterToSolidVolumeRatio. Base implementation declines (returns false), so the
+        /// trigger volume's own density is used - override to plug in true per-body density
+        /// (e.g. NOWA's PhysicsBuoyancyComponent reads it from the visiting GameObject's
+        /// own PhysicsActiveComponent, if it has one).
+        /// @param visitor      The body currently being evaluated for buoyancy.
+        /// @param outDensity   Receives the per-body density (specific gravity, water = 1.0)
+        ///                     if this returns true; left untouched otherwise.
+        /// @return true if outDensity was set and should be used, false to fall back to the
+        ///         trigger volume's own density.
+        virtual bool getDensityOverride(const Body* visitor, Ogre::Real& outDensity) const;
 
         /// Per-frame update hook (currently no ND4 trigger-manager, so usually noop)
         virtual void update(Ogre::Real dt);
@@ -52,11 +63,7 @@ namespace OgreNewt
     class _OgreNewtExport BuoyancyBody : public Body
     {
     public:
-        BuoyancyBody(
-            World* world,
-            Ogre::SceneManager* sceneManager,
-            const CollisionPtr& col,
-            BuoyancyForceTriggerCallback* buoyancyForceTriggerCallback);
+        BuoyancyBody(World* world, Ogre::SceneManager* sceneManager, const CollisionPtr& col, BuoyancyForceTriggerCallback* buoyancyForceTriggerCallback);
 
         virtual ~BuoyancyBody();
 
@@ -93,14 +100,14 @@ namespace OgreNewt
         bool getUseRaycastPlane() const;
 
     private:
-        Ogre::Plane   m_fluidPlane;
-        Ogre::Real    m_waterToSolidVolumeRatio;
-        Ogre::Real    m_viscosity;
+        Ogre::Plane m_fluidPlane;
+        Ogre::Real m_waterToSolidVolumeRatio;
+        Ogre::Real m_viscosity;
         Ogre::Vector3 m_gravity;
-        bool          m_useRaycastPlane;
+        bool m_useRaycastPlane;
 
-        Ogre::Real    m_waveAmplitude;
-        Ogre::Real    m_waveFrequency;
+        Ogre::Real m_waveAmplitude;
+        Ogre::Real m_waveFrequency;
 
         ndBodyTriggerVolume* m_triggerBody;
         BuoyancyForceTriggerCallback* m_buoyancyForceTriggerCallback;
