@@ -1618,7 +1618,7 @@ namespace NOWA
     // Restore PSSM lambda to compositor defaults (space mode).
     void UniversumComponent::restoreSpaceShadowSettings()
     {
-        const Ogre::String& shadowNodeName = WorkspaceModule::getInstance()->shadowNodeName;
+        const Ogre::String& shadowNodeName = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
         Ogre::CompositorShadowNodeDef* shadowDef = Ogre::Root::getSingleton().getCompositorManager2()->getShadowNodeDefinitionNonConst(shadowNodeName);
         if (nullptr == shadowDef)
         {
@@ -1707,7 +1707,7 @@ namespace NOWA
             Ogre::Light* light = this->cachedSunLight;
             NOWA::GraphicsModule::RenderCommand shadowCmd = [light]
             {
-                const Ogre::String& shadowNodeName = WorkspaceModule::getInstance()->shadowNodeName;
+                const Ogre::String& shadowNodeName = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                 Ogre::CompositorShadowNodeDef* shadowDef = Ogre::Root::getSingleton().getCompositorManager2()->getShadowNodeDefinitionNonConst(shadowNodeName);
                 if (nullptr != shadowDef)
                 {

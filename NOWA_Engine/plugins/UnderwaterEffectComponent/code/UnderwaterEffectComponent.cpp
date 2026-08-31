@@ -299,7 +299,7 @@ namespace NOWA
 	void UnderwaterEffectComponent::handleSwitchCamera(EventDataPtr eventData)
 	{
 		// When camera changed event must be triggered, to set the new camera for the ocean
-		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+		WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent)
 		{
 			boost::shared_ptr<EventDataSwitchCamera> castEventData = boost::static_pointer_cast<EventDataSwitchCamera>(eventData);

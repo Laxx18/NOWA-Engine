@@ -2503,7 +2503,7 @@ namespace NOWA
                         {
                             if (true == this->useReflection->getBool())
                             {
-                                WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+                                WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
                                 if (nullptr != workspaceBaseComponent)
                                 {
                                     Ogre::TextureGpu* cubemapTex = workspaceBaseComponent->getDynamicCubemapTexture();
@@ -2543,7 +2543,7 @@ namespace NOWA
                 // Ocean uses HlmsOcean, not PBS datablocks
                 if (true == this->useReflection->getBool())
                 {
-                    WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+                    WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 
                     if (nullptr != workspaceBaseComponent)
                     {

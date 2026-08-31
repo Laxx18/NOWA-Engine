@@ -14,6 +14,7 @@ namespace NOWA
 	public:
 	
 		friend class WorkspaceBaseComponent;
+        friend class CameraComponent;
 
 		CompositorEffectBaseComponent();
 

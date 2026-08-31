@@ -2,6 +2,8 @@
 #include "AtmosphereComponent.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/LightDirectionalComponent.h"
+#include "gameobject/CameraComponent.h"
+#include "gameobject/WorkspaceComponents.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
 #include "modules/LuaScriptApi.h"
@@ -975,7 +977,7 @@ namespace NOWA
             this->azimuth += this->timeMultiplicator->getReal() * dt;
             this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
-            auto closureFunction = [atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(), lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(),
+            auto closureFunction = [gameObjectPtr = this->gameObjectPtr, atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(), lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(),
                                        defaultDir = this->lightDirectionalComponent->getOwner()->getDefaultDirection(), externalLightMode = this->externalLightMode, cachedSunDir = this->cachedExternalSunDir, timeOfDay = this->timeOfDay,
                                        azimuth = this->azimuth](Ogre::Real renderDt) mutable
             {
@@ -1012,10 +1014,14 @@ namespace NOWA
                 // regardless of the actual time of day.
                 atmosphereNpr->updatePreset(sd, timeOfDay);
 
-                Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-                if (nullptr != camera)
+                auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+                if (nullptr != cameraCompPtr)
                 {
-                    atmosphereNpr->_update(sceneManager, camera);
+                    Ogre::Camera* camera = cameraCompPtr->getCamera(); 
+                    if (nullptr != camera)
+                    {
+                        atmosphereNpr->_update(sceneManager, camera);
+                    }
                 }
             };
 
@@ -1480,7 +1486,8 @@ namespace NOWA
     bool AtmosphereComponent::canStaticAddComponent(GameObject* gameObject)
     {
         auto atmosphereCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<AtmosphereComponent>());
-        if (nullptr == atmosphereCompPtr)
+        auto workspaceBaseCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<WorkspaceBaseComponent>());
+        if (nullptr == atmosphereCompPtr && nullptr != workspaceBaseCompPtr)
         {
             return true;
         }

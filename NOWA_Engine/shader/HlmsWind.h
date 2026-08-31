@@ -325,6 +325,12 @@ namespace NOWA
         HlmsWindListener windListener;                   ///< Owned listener instance.
         Ogre::HlmsSamplerblock const* noiseSamplerBlock; ///< Sampler for the noise texture.
         Ogre::TextureGpu* noiseTexture;                  ///< 3-D Perlin noise volume.
+        // Number of workspaces currently holding the shared wind resources. The noise texture
+        // and samplerblock are global (one HlmsWind exists), but setup()/shutdown() are called
+        // per workspace - and during a camera switch two workspaces overlap in time. Without
+        // counting, the workspace being torn down destroys resources the newly created one is
+        // already using. See setup()/shutdown().
+        int setupRefCount;
     };
 
 } // namespace NOWA

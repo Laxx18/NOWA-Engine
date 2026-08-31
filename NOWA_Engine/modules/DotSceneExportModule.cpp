@@ -635,14 +635,14 @@ namespace NOWA
 			// shadowQuality
 			{
 				xml_node<>* shadowQualityXML = doc.allocate_node(node_element, "shadowQuality");
-				shadowQualityXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, static_cast<unsigned char>(WorkspaceModule::getInstance()->getShadowQuality()))));
+				shadowQualityXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, static_cast<unsigned char>(AppStateManager::getSingletonPtr()->getWorkspaceModule()->getShadowQuality()))));
 				// Note a is used for envmapscale in ogre
 				shadows->append_node(shadowQualityXML);
 			}
 			// ambientLightMode
 			{
 				xml_node<>* ambientLightModeXML = doc.allocate_node(node_element, "ambientLightMode");
-				ambientLightModeXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, static_cast<unsigned char>(WorkspaceModule::getInstance()->getAmbientLightMode()))));
+				ambientLightModeXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, static_cast<unsigned char>(AppStateManager::getSingletonPtr()->getWorkspaceModule()->getAmbientLightMode()))));
 				// Note a is used for envmapscale in ogre
 				shadows->append_node(ambientLightModeXML);
 			}

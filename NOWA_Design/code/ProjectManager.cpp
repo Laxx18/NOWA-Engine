@@ -292,9 +292,9 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
     }
 
     // No workspace created during scene loading, create a dummy one
-    if (false == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
+    if (false == NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace())
     {
-        NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
+        NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
     }
 
     if (nullptr == NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("SunLight"))
@@ -451,9 +451,9 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
         }
 
         // No workspace created during scene loading, create a dummy one
-        if (false == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
+        if (false == NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace())
         {
-            NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
+            NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
         }
 
         // Internally, OgreNewt has maybe been parsed, so get it here
@@ -604,7 +604,7 @@ void ProjectManager::destroyScene(void)
 
     NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
     NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->destroyContent();
-    NOWA::WorkspaceModule::getInstance()->destroyContent();
+    NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->destroyContent();
     NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
 
     if (nullptr != this->dotSceneExportModule)
@@ -637,7 +637,7 @@ void ProjectManager::createDummyCamera(void)
         NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, baseCamera);
         NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(camera, baseCamera->getBehaviorType());
         // Create dummy workspace
-        NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, camera, nullptr);
+        NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace(this->sceneManager, camera, nullptr);
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::createDummyCamera");
 }

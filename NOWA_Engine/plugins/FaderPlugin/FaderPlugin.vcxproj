@@ -116,7 +116,7 @@
       <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
       <AdditionalDependencies>OgreMain.lib;OgreOverlay.lib;OgreHLMS.lib;OgreHlmsUnlit.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ProgramDatabaseFile />
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
       <Command>

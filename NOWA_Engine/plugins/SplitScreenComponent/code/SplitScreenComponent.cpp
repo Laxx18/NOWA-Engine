@@ -428,7 +428,7 @@ namespace NOWA
                 return;
             }
 
-            WorkspaceModule::getInstance()->setSplitScreenScenarioActive(true);
+            AppStateManager::getSingletonPtr()->getWorkspaceModule()->setSplitScreenScenarioActive(true);
             this->cameraComponent->applySplitScreen(true, splitScreenIndex);
 
             this->workspaceBaseComponent = workspaceBaseCompPtr.get();
@@ -447,7 +447,7 @@ namespace NOWA
             this->externalChannels.clear();
             this->workspaceBaseComponent->setCustomExternalChannels(this->externalChannels);
 
-            Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = WorkspaceModule::getInstance()->getCompositorManager()->getNodeDefinitions();
+            Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->getNodeDefinitions();
 
             // Iterate through Compositor Managers resources
             auto it = nodeDefs.begin();
@@ -554,7 +554,7 @@ namespace NOWA
                     }
                 }
 
-                Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+                Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
                 Ogre::String finalRenderingNodeName = "FinalSplitScreenCombineNode_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
                 Ogre::CompositorNodeDef* finalNodeDef = compositorManager->addNodeDefinition(finalRenderingNodeName);
@@ -626,7 +626,7 @@ namespace NOWA
 
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceSplitComponent] Creating final combined workspace: " + finalWorkspaceName);
 
-                WorkspaceModule::getInstance()->setPrimaryWorkspace2(this->gameObjectPtr->getSceneManager(), this->tempCamera, this->finalCombinedWorkspace);
+                AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace2(this->gameObjectPtr->getSceneManager(), this->tempCamera, this->finalCombinedWorkspace);
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SplitScreenComponent::setupSplitScreen");
@@ -634,11 +634,11 @@ namespace NOWA
 
 	void SplitScreenComponent::cleanupSplitScreen(void)
     {
-        WorkspaceModule::getInstance()->setSplitScreenScenarioActive(false);
+        AppStateManager::getSingletonPtr()->getWorkspaceModule()->setSplitScreenScenarioActive(false);
 
         GraphicsModule::RenderCommand renderCommand = [this]()
         {
-            Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+            Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
             // Stores the own camera before the camera component pointer is reset, because the workspace map
             // entry AND the CameraManager registration of this split screen camera must be removed at the
@@ -666,7 +666,7 @@ namespace NOWA
                     //
                     // removeCamera destroys the workspace of the entry and ERASES the map entry without
                     // creating any replacement, which is exactly what a camera about to die needs.
-                    WorkspaceModule::getInstance()->removeCamera(this->tempCamera);
+                    AppStateManager::getSingletonPtr()->getWorkspaceModule()->removeCamera(this->tempCamera);
 
                     Ogre::String finalRenderingNodeName = "FinalSplitScreenCombineNode_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
                     if (true == compositorManager->hasNodeDefinition(finalRenderingNodeName))
@@ -712,7 +712,7 @@ namespace NOWA
             // geometry, and getCameraForScreenPosition would keep considering it a candidate.
             if (nullptr != ownCamera)
             {
-                WorkspaceModule::getInstance()->getPrimaryCameraComponent();
+                AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryCameraComponent();
                 AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(ownCamera);
             }
 
@@ -720,7 +720,7 @@ namespace NOWA
 
             // Re-activates the main camera at the very END, so that its workspace is created only after
             // this split screen workspace has been torn down completely.
-            CameraComponent* primaryCameraComponent = WorkspaceModule::getInstance()->getPrimaryCameraComponent();
+            CameraComponent* primaryCameraComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryCameraComponent();
             if (nullptr != primaryCameraComponent)
             {
                 primaryCameraComponent->setActivated(true);

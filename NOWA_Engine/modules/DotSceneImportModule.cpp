@@ -2240,9 +2240,9 @@ namespace NOWA
             // A camera is created only to give the dummy workspace something to render from. It is
             // deliberately NOT registered with the CameraManager: that would also pull in a camera
             // behavior, and this camera exists for a few hundred milliseconds.
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-BEGIN] command entered, hasAnyWorkspace=" + Ogre::StringConverter::toString(WorkspaceModule::getInstance()->hasAnyWorkspace()));
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-BEGIN] command entered, hasAnyWorkspace=" + Ogre::StringConverter::toString(AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace()));
 
-            if (false == WorkspaceModule::getInstance()->hasAnyWorkspace())
+            if (false == AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace())
             {
                 if (nullptr == this->sceneManager)
                 {
@@ -2257,9 +2257,9 @@ namespace NOWA
                 this->temporaryLoadingCamera->setQueryFlags(0 << 0);
 
                 // nullptr as the component means: dummy workspace.
-                WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->temporaryLoadingCamera, nullptr);
+                AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace(this->sceneManager, this->temporaryLoadingCamera, nullptr);
 
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-BEGIN] dummy workspace created, hasAnyWorkspace=" + Ogre::StringConverter::toString(WorkspaceModule::getInstance()->hasAnyWorkspace()));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-BEGIN] dummy workspace created, hasAnyWorkspace=" + Ogre::StringConverter::toString(AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace()));
             }
 
             // Fall back to the cheapest indicator if the caller did not provide one.
@@ -2313,7 +2313,7 @@ namespace NOWA
                 // entry. By now the parsed WorkspaceBaseComponent has usually replaced the dummy
                 // already, in which case there is nothing left to find - that is fine, but the
                 // camera itself still has to go.
-                WorkspaceModule::getInstance()->removeCamera(this->temporaryLoadingCamera);
+                AppStateManager::getSingletonPtr()->getWorkspaceModule()->removeCamera(this->temporaryLoadingCamera);
 
                 if (nullptr != this->sceneManager)
                 {

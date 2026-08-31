@@ -210,7 +210,7 @@ namespace NOWA
         if (nullptr != cameraCompPtr)
         {
             // Note: If its a camera, e.g. MainCamera and hdr effect shall be set, but there is split screen scenario active, the hdr effect may not be set for a camera, which is not involved in split screen scenario
-            if ((true == cameraCompPtr->isActivated() && false == WorkspaceModule::getInstance()->getSplitScreenScenarioActive()) || true == this->workspaceBaseComponent->getInvolvedInSplitScreen())
+            if ((true == cameraCompPtr->isActivated() && false == AppStateManager::getSingletonPtr()->getWorkspaceModule()->getSplitScreenScenarioActive()) || true == this->workspaceBaseComponent->getInvolvedInSplitScreen())
             {
                 this->postApplySunPower();
 

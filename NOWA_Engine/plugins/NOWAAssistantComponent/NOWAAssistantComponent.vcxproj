@@ -163,7 +163,7 @@ echo Done.</Command>
       <AdditionalDependencies>NOWA_Engine.lib;OgreMain.lib;OIS.lib;OgreMeshLodGenerator.lib;OgreHlmsPbs.lib;OgreHlmsUnlit.lib;OgrePlanarReflections.lib;OgreAtmosphere.lib;OgreNewt4_0.lib;RakNet_vc9.lib;Lua.lib;LuaBind.lib;OgreRecast.lib;OgreALVC9.lib;OgreOverlay.lib;FParser.lib;MeshSplitter.lib;MyGuiEngine.lib;Ogre2Platform.lib;Rpcrt4.lib;ndNewton.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/plugins/$(TargetName).pdb</ProgramDatabaseFile>
       <OutputFile>$(TargetDir)$(TargetName)$(TargetExt)</OutputFile>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <AssemblyDebug>
       </AssemblyDebug>
     </Link>

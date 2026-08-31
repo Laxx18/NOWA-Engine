@@ -42,7 +42,7 @@ namespace NOWA
 			//Ogre::Real(Core::getSingletonPtr()->getOgreViewport()->getActualHeight()));
 			this->camera->setAutoAspectRatio(true);
 
-			WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
+			AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
 
 			this->initializeModules(false, false);
 

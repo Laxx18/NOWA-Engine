@@ -351,7 +351,11 @@ namespace NOWA
             {
                 this->wasStalledOrLoading = false;
 
-                WorkspaceModule::getInstance()->updateAdaptiveQuality(deltaTime);
+                auto* workspaceModule = AppStateManager::getSingletonPtr()->getWorkspaceModule();
+                if (nullptr != workspaceModule)
+                {
+                    workspaceModule->updateAdaptiveQuality(deltaTime);
+                }
 
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
                 this->advanceFrameAndDestroyOld();
@@ -1496,7 +1500,7 @@ namespace NOWA
         // parsing, so unless a dummy workspace was created for the load there is nothing to render
         // into and renderOneFrame would draw nothing (or worse). Bail out quietly - logging here
         // would spam, because this runs many times per second.
-        if (false == WorkspaceModule::getInstance()->hasAnyWorkspace())
+        if (false == AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace())
         {
 #ifdef NOWA_LOADING_INDICATOR_TIMING
             ++reasonNoWorkspace;

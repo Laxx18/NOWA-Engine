@@ -495,7 +495,7 @@ namespace NOWA
 			/*if (nullptr == this->datablock)
 			{
 				this->datablock = static_cast<Ogre::HlmsTerraDatablock*>(
-						WorkspaceModule::getInstance()->getHlmsManager()->getHlms(Ogre::HLMS_USER3)->createDatablock(this->gameObjectPtr->getName(), this->gameObjectPtr->getName(),
+						AppStateManager::getSingletonPtr()->getWorkspaceModule()->getHlmsManager()->getHlms(Ogre::HLMS_USER3)->createDatablock(this->gameObjectPtr->getName(), this->gameObjectPtr->getName(),
 							Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
 				it->setDatablock(this->datablock);
 			}*/
@@ -526,7 +526,7 @@ namespace NOWA
 	{
 		if (nullptr == this->datablock)
 		{
-			this->datablock = static_cast<Ogre::HlmsTerraDatablock*>(WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraExampleMaterial"));
+			this->datablock = static_cast<Ogre::HlmsTerraDatablock*>(AppStateManager::getSingletonPtr()->getWorkspaceModule()->getHlmsManager()->getDatablock("TerraExampleMaterial"));
 			this->alreadyCloned = true;
 
 			this->postReadDatablock();

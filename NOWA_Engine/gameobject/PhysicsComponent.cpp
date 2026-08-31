@@ -112,7 +112,7 @@ namespace NOWA
 
             if (nullptr != item)
             {
-                col = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, categoryId, collisionOrientation, collisionPosition, 0.001f /*, this->gameObjectPtr->getSceneNode()->getScale()*/);
+                col = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, categoryId, collisionOrientation, collisionPosition, 0.001f , this->gameObjectPtr->getSceneNode()->getScale());
             }
 
             if (nullptr == col)
@@ -249,7 +249,7 @@ namespace NOWA
             Ogre::Item* item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
             OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
 
-            col = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, categoryId, collisionOrientation, collisionPosition, 0.001f /*, this->gameObjectPtr->getSceneNode()->getScale()*/);
+            col = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, categoryId, collisionOrientation, collisionPosition, 0.001f, this->gameObjectPtr->getSceneNode()->getScale());
 
             if (nullptr == col)
             {

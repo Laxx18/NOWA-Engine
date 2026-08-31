@@ -295,7 +295,7 @@ namespace NOWA
 	void OceanComponent::handleSwitchCamera(EventDataPtr eventData)
 	{
 		// When camera changed event must be triggered, to set the new camera for the ocean
-		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+		WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent)
 		{
 			boost::shared_ptr<EventDataSwitchCamera> castEventData = boost::static_pointer_cast<EventDataSwitchCamera>(eventData);
@@ -406,8 +406,8 @@ namespace NOWA
 				hlmsOcean->setOceanDataTextureName("oceanData.dds");
 				hlmsOcean->setWeightTextureName("weight.dds");
 
-				hlmsOcean->setAmbientLightMode(this->mapPbsLightModeToOceanMapMode(NOWA::WorkspaceModule::getInstance()->getAmbientLightMode()));
-				hlmsOcean->setShadowSettings(this->mapPbsShadowSettingsToOceanShadowSettings(NOWA::WorkspaceModule::getInstance()->getShadowQuality()));
+				hlmsOcean->setAmbientLightMode(this->mapPbsLightModeToOceanMapMode(NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->getAmbientLightMode()));
+				hlmsOcean->setShadowSettings(this->mapPbsShadowSettingsToOceanShadowSettings(NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->getShadowQuality()));
 
 				if (nullptr == this->datablock)
 				{
@@ -488,7 +488,7 @@ namespace NOWA
 				}
 
 				// Example json material usage:
-				/*Ogre::HlmsDatablock* datablock = WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("OceanDefaultMaterial");
+				/*Ogre::HlmsDatablock* datablock = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getHlmsManager()->getDatablock("OceanDefaultMaterial");
 				if (nullptr != datablock)
 				{
 					this->ocean->setDatablock(datablock);
@@ -504,7 +504,7 @@ namespace NOWA
 				// Register after the component has been created
 				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 
-				WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+				WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 				if (nullptr != workspaceBaseComponent)
 				{
 					workspaceBaseComponent->setUseOcean(true, this);
@@ -595,8 +595,8 @@ namespace NOWA
 	{
 		auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
 
-		hlmsOcean->setAmbientLightMode(this->mapPbsLightModeToOceanMapMode(NOWA::WorkspaceModule::getInstance()->getAmbientLightMode()));
-		hlmsOcean->setShadowSettings(this->mapPbsShadowSettingsToOceanShadowSettings(NOWA::WorkspaceModule::getInstance()->getShadowQuality()));
+		hlmsOcean->setAmbientLightMode(this->mapPbsLightModeToOceanMapMode(NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->getAmbientLightMode()));
+		hlmsOcean->setShadowSettings(this->mapPbsShadowSettingsToOceanShadowSettings(NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->getShadowQuality()));
 	}
 
 	void OceanComponent::destroyOcean(void)
@@ -610,7 +610,7 @@ namespace NOWA
 		GameObjectPtr gameObjectPtr = this->gameObjectPtr;
 		Ogre::HlmsDatablock* datablock = this->datablock;
 
-		WorkspaceModule* workspaceModule = WorkspaceModule::getInstance();
+		WorkspaceModule* workspaceModule = AppStateManager::getSingletonPtr()->getWorkspaceModule();
 		WorkspaceBaseComponent* workspaceBaseComponent = nullptr;
 		if (nullptr != workspaceModule)
 		{
@@ -920,7 +920,7 @@ namespace NOWA
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+		WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->bShutdown)
 		{
 			workspaceBaseComponent->setUseTerra(false);

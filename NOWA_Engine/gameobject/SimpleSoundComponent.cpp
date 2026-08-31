@@ -22,6 +22,7 @@ namespace NOWA
         activated(new Variant(SimpleSoundComponent::AttrActivated(), false, this->attributes)),
         soundName(new Variant(SimpleSoundComponent::AttrSoundName(), "Health.wav", this->attributes)),
         volume(new Variant(SimpleSoundComponent::AttrVolume(), 100.0f, this->attributes)),
+        speed(new Variant(SimpleSoundComponent::AttrSpeed(), 1.0f, this->attributes)),
         loop(new Variant(SimpleSoundComponent::AttrLoop(), false, this->attributes)),
         fadeInFadeOut(new Variant(SimpleSoundComponent::AttrFadeInFadeOut(), Ogre::Vector2(2.0f, 2.0f), this->attributes)),
         stream(new Variant(SimpleSoundComponent::AttrStream(), false, this->attributes)),
@@ -37,6 +38,10 @@ namespace NOWA
 
         this->volume->setDescription("Range [0, 100]");
         this->volume->setConstraints(0.0f, 100.0f);
+
+        this->speed->setDescription("Playback speed. 1.0 is normal speed, below 1.0 slows the sound down (and lowers its pitch), above 1.0 speeds it up (and raises its pitch). "
+                                    "Internally this maps to OpenAL's pitch parameter, which changes speed and pitch together, so there is no way to change one without the other.");
+        this->speed->setConstraints(0.1f, 4.0f);
 
         this->onSpectrumAnalysisFunctionName->setDescription("Sets the lua function name to react on spectrum as long as the audio is played. Note: Streaming must be activated.");
     }
@@ -65,6 +70,11 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Volume")
         {
             this->volume->setValue(XMLConverter::getAttribReal(propertyElement, "data", 100.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Speed")
+        {
+            this->speed->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Loop")
@@ -107,6 +117,7 @@ namespace NOWA
 
         clonedCompPtr->setSoundName(this->soundName->getString());
         clonedCompPtr->setVolume(this->volume->getReal());
+        clonedCompPtr->setSpeed(this->speed->getReal());
         clonedCompPtr->setLoop(this->loop->getBool());
         clonedCompPtr->setFadeInOutTime(this->fadeInFadeOut->getVector2());
         clonedCompPtr->setStream(this->stream->getBool());
@@ -165,6 +176,7 @@ namespace NOWA
             }
             this->sound->setStatic(!this->gameObjectPtr->isDynamic());
             this->sound->setGain(this->calculateEffectiveGain());
+            this->sound->setPitch(this->speed->getReal());
             this->sound->setStream(this->stream->getBool());
             this->sound->setLoop(loop);
             this->sound->setRelativeToListener(this->relativeToListener->getBool());
@@ -393,6 +405,10 @@ namespace NOWA
         {
             this->setVolume(attribute->getReal());
         }
+        else if (SimpleSoundComponent::AttrSpeed() == attribute->getName())
+        {
+            this->setSpeed(attribute->getReal());
+        }
         else if (SimpleSoundComponent::AttrLoop() == attribute->getName())
         {
             this->setLoop(attribute->getBool());
@@ -447,6 +463,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "Volume"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->volume->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Speed"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->speed->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -554,6 +576,20 @@ namespace NOWA
     Ogre::Real SimpleSoundComponent::getVolume(void) const
     {
         return this->volume->getReal();
+    }
+
+    void SimpleSoundComponent::setSpeed(Ogre::Real speed)
+    {
+        this->speed->setValue(speed);
+        if (nullptr != this->sound)
+        {
+            this->sound->setPitch(speed);
+        }
+    }
+
+    Ogre::Real SimpleSoundComponent::getSpeed(void) const
+    {
+        return this->speed->getReal();
     }
 
     void SimpleSoundComponent::setLoop(bool loop)

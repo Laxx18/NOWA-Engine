@@ -325,7 +325,14 @@ namespace NOWA
 
     void AnimationSequenceComponent::update(Ogre::Real dt, bool notSimulating)
     {
-        if (true == this->activated->getBool() && false == notSimulating)
+        // Bug: this only checked the persisted 'activated' Variant, not this->bConnected (the
+        // actual connect()/disconnect() lifecycle flag) - same as setActivated() already does
+        // correctly a few lines below ("if (true == this->bConnected && true == activated)").
+        // disconnect() calls resetAnimation() but never touches 'activated' itself, so once
+        // disconnected, update() kept driving the animationBlender exactly as if still playing -
+        // with several sequences running, that's several game objects that never actually stop
+        // animating after disconnect.
+        if (true == this->activated->getBool() && true == this->bConnected && false == notSimulating)
         {
             if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
             {
@@ -847,7 +854,7 @@ namespace NOWA
         return makeStrongPtr<AnimationSequenceComponent>(gameObject->getComponentFromName<AnimationSequenceComponent>(name)).get();
     }
 
-    void AnimationSequenceComponent::createStaticApiForLua(lua_State* lua,luabind::class_<GameObject>& gameObjectClass,luabind::class_<GameObjectController>& gameObjectControllerClass)
+    void AnimationSequenceComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)[class_<AnimationSequenceComponent, GameObjectComponent>("AnimationSequenceComponent")
                 .def("getParentClassName", &AnimationSequenceComponent::getParentClassName)

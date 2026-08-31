@@ -477,7 +477,7 @@ namespace NOWA
                 this->discoveryState.resize((this->textureSize->getUInt()), std::vector<bool>(this->textureSize->getUInt(), false));
             }
 
-            Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+            Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
             if (false == this->useRoundMinimap->getBool())
             {
@@ -584,7 +584,7 @@ namespace NOWA
 	void MinimapComponent::createRoundMinimapWorkspace(void)
 	{
 		// Threadsafe from the outside
-		Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+		Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
 		this->minimapNodeName = "MinimapNode_Round";
 		if (false == compositorManager->hasNodeDefinition(this->minimapNodeName))
@@ -684,7 +684,7 @@ namespace NOWA
 	void MinimapComponent::createMinimapWorkspace(void)
 	{
 		// Threadsafe from the outside
-		Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+		Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
 		this->minimapNodeName = "MinimapNode";
 		if (false == compositorManager->hasNodeDefinition(this->minimapNodeName))
@@ -980,7 +980,7 @@ namespace NOWA
         {
             NOWA::GraphicsModule::RenderCommand cmd = [this]()
             {
-                Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+                Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
                 compositorManager->removeWorkspace(this->workspace);
 

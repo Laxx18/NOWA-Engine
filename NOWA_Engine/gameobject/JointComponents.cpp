@@ -100,28 +100,30 @@ namespace NOWA
 	{
 		if (nullptr != this->debugGeometryNode)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("JointComponent::~JointComponent debugGeometryNode1",
-			{
-				this->debugGeometryNode->detachAllObjects();
-				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
-				this->sceneManager->destroySceneNode(this->debugGeometryNode);
-				this->debugGeometryNode = nullptr;
-				this->sceneManager->destroyMovableObject(this->debugGeometryItem);
-				this->debugGeometryItem = nullptr;
-			});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->debugGeometryNode->detachAllObjects();
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
+                this->sceneManager->destroySceneNode(this->debugGeometryNode);
+                this->debugGeometryNode = nullptr;
+                this->sceneManager->destroyMovableObject(this->debugGeometryItem);
+                this->debugGeometryItem = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "JointComponent::~JointComponent debugGeometryNode1");
 		}
 
 		if (nullptr != this->debugGeometryNode2)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("JointComponent::~JointComponent debugGeometryNode2",
-			{
-				this->debugGeometryNode2->detachAllObjects();
-				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
-				this->sceneManager->destroySceneNode(this->debugGeometryNode2);
-				this->debugGeometryNode2 = nullptr;
-				this->sceneManager->destroyMovableObject(this->debugGeometryItem2);
-				this->debugGeometryItem2 = nullptr;
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->debugGeometryNode2->detachAllObjects();
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
+                this->sceneManager->destroySceneNode(this->debugGeometryNode2);
+                this->debugGeometryNode2 = nullptr;
+                this->sceneManager->destroyMovableObject(this->debugGeometryItem2);
+                this->debugGeometryItem2 = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "JointComponent::~JointComponent debugGeometryNode2");
 		}
 
 		// Do not remote here, because this destructor will not be called anyway, if its in the joint map!
@@ -1251,8 +1253,8 @@ namespace NOWA
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 
 		// Bad, because causing jerky behavior on ragdolls?
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		OgreNewt::Hinge* hingeJoint = dynamic_cast<OgreNewt::Hinge*>(this->joint);
@@ -2154,8 +2156,8 @@ namespace NOWA
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		// Bad, because causing jerky behavior on ragdolls?
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 // Attention: Just a test!
 		// this->joint->setStiffness(0.1f);
@@ -2808,8 +2810,8 @@ namespace NOWA
 		OgreNewt::BallAndSocket* ballAndSocketJoint = dynamic_cast<OgreNewt::BallAndSocket*>(this->joint);
 		
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		ballAndSocketJoint->enableTwist(this->enableTwistLimits->getBool());
@@ -3286,7 +3288,7 @@ namespace NOWA
 	//	OgreNewt::ControlledBallAndSocket* controlledBallAndSocket = dynamic_cast<OgreNewt::ControlledBallAndSocket*>(this->joint);
 	//	
 	// this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-	//	this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+	//	// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 	////	this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 	// this->applyStiffness();
 	//	
@@ -3985,7 +3987,7 @@ namespace NOWA
 //		OgreNewt::RagDollMotor* ragDollMotor = dynamic_cast<OgreNewt::RagDollMotor*>(this->joint);
 //		
 //		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-//		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+//		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 ////		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 //		this->applyStiffness();
 //
@@ -4254,8 +4256,8 @@ namespace NOWA
 		this->joint = new OgreNewt::UpVector(this->body, this->body->getOrientation() * this->pin->getVector3());
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		
 		return true;
 	}
@@ -4477,8 +4479,8 @@ namespace NOWA
 		// this->joint->setStiffness(0.1f);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		return true;
@@ -5401,8 +5403,8 @@ namespace NOWA
 		OgreNewt::CorkScrew* corkScrewJoint = dynamic_cast<OgreNewt::CorkScrew*>(this->joint);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		corkScrewJoint->enableLimits(this->enableLinearLimits->getBool(), this->enableAngleLimits->getBool());
@@ -5875,8 +5877,8 @@ namespace NOWA
 		OgreNewt::Slider* passiveSlider = dynamic_cast<OgreNewt::Slider*>(this->joint);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		/*passiveSlider->setStiffness(1.0f);
@@ -6463,8 +6465,8 @@ namespace NOWA
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		// Bad, because causing jerky behavior on ragdolls?
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 // Attention: Just a test!
 		// this->joint->setStiffness(0.1f);
@@ -7055,8 +7057,8 @@ namespace NOWA
 		OgreNewt::SlidingContact* slidingContact = dynamic_cast<OgreNewt::SlidingContact*>(this->joint);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		slidingContact->setSpringAndDamping(this->asSpringDamper->getBool(), this->springDamperRelaxation->getReal(), this->springK->getReal(), this->springD->getReal());
@@ -7529,8 +7531,8 @@ namespace NOWA
 			this->maxStopDistance->getReal(), this->moveSpeed->getReal(), this->repeat->getBool(), this->directionChange->getBool(), this->activated->getBool());
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		OgreNewt::ActiveSliderJoint* activeSlider = dynamic_cast<OgreNewt::ActiveSliderJoint*>(this->joint);
@@ -8539,8 +8541,8 @@ namespace NOWA
 		kinematicController->setSolverModel(0);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		short tempMode = 0;
@@ -9209,7 +9211,7 @@ namespace NOWA
 		// kinematicController->setMaxAngularFriction(mass * -gravity * angularFritionAccel);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 
 		return true;
 	}
@@ -10441,8 +10443,8 @@ namespace NOWA
 		}
 		
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		return true;
 	}
 	
@@ -10692,8 +10694,8 @@ namespace NOWA
 		}
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		return true;
 	}
 	
@@ -10921,8 +10923,8 @@ namespace NOWA
 		}
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		return true;
 	}
 	
@@ -11185,8 +11187,8 @@ namespace NOWA
 		}
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		return true;
 	}
 	
@@ -11527,8 +11529,8 @@ namespace NOWA
 		OgreNewt::Universal* universalJoint = dynamic_cast<OgreNewt::Universal*>(this->joint);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		universalJoint->enableLimits0(this->enableLimits0->getBool());
@@ -12526,8 +12528,8 @@ namespace NOWA
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		// Bad, because causing jerky behavior on ragdolls?
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		OgreNewt::UniversalActuator* universalActuatorJoint = dynamic_cast<OgreNewt::UniversalActuator*>(this->joint);
@@ -13086,8 +13088,8 @@ namespace NOWA
 		OgreNewt::Joint6Dof* joint6Dof = dynamic_cast<OgreNewt::Joint6Dof*>(this->joint);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		joint6Dof->setLinearLimits(this->minStopDistance->getVector3(), this->maxStopDistance->getVector3());
@@ -13790,8 +13792,8 @@ namespace NOWA
 		// Bad, because causing jerky behavior on ragdolls?
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
 
 		OgreNewt::Wheel* wheelJoint = dynamic_cast<OgreNewt::Wheel*>(this->joint);
@@ -14136,8 +14138,8 @@ namespace NOWA
 		this->joint = new OgreNewt::FlexyPipeHandleJoint(this->body, this->body->getOrientation() * dir);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		
 		return true;
 	}
@@ -14364,8 +14366,8 @@ namespace NOWA
 		this->joint = new OgreNewt::FlexyPipeSpinnerJoint(this->body, predecessorBody, this->jointPosition, direction.normalisedCopy() /*this->body->getOrientation() * this->pin->getVector3()*/);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		
 		return true;
 	}
@@ -14702,7 +14704,7 @@ namespace NOWA
 		this->joint = new OgreNewt::VehicleTire(this->body, predecessorBody, this->jointPosition, this->pin->getVector3(), physicsActiveVehicleCompPtr->getVehicle(), this->getOwner()->getSize().y / 2.0f);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 
 		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
 		if (vehicleTire)
@@ -15454,7 +15456,7 @@ namespace NOWA
 
 		// Base Joint setup
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+		// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 
 		// Configure tire using our attributes
 		OgreNewt::ComplexVehicleTire* complexTire = dynamic_cast<OgreNewt::ComplexVehicleTire*>(this->joint);

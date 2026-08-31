@@ -198,7 +198,7 @@ namespace NOWA
 		if (nullptr != cameraCompPtr)
 		{
 			// If camera is not activated, this compositor effect should not be played
-			if (false == cameraCompPtr->isActivated() && false == WorkspaceModule::getInstance()->getSplitScreenScenarioActive())
+			if (false == cameraCompPtr->isActivated() && false == AppStateManager::getSingletonPtr()->getWorkspaceModule()->getSplitScreenScenarioActive())
 			{
 				return;
 			}
@@ -1394,16 +1394,17 @@ namespace NOWA
 
 	void CompositorEffectSharpenEdgesComponent::setWeight(const Ogre::Real& weight)
 	{
+        // Sharpen edge has no weight^^
 		this->weight->setValue(weight);
 
-		if (nullptr != this->pass)
+		/*if (nullptr != this->pass)
 		{
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, weight]()
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("weight", weight);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectSharpenEdgesComponent::setWeight");
-		}
+		}*/
 	}
 
 	Ogre::Real CompositorEffectSharpenEdgesComponent::getWeight(void) const

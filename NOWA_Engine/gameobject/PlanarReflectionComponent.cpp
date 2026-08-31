@@ -138,7 +138,7 @@ namespace NOWA
 		Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 		if (nullptr != item)
 		{
-			WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+			WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 			if (nullptr != workspaceBaseComponent)
 			{
 				auto planarReflections = workspaceBaseComponent->getPlanarReflections();
@@ -171,7 +171,7 @@ namespace NOWA
 			{
 				if (nullptr != this->trackedRenderable)
 				{
-					WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+					WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 					if (nullptr != workspaceBaseComponent && true == workspaceBaseComponent->getUsePlanarReflection())
 					{
 						workspaceBaseComponent->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
@@ -188,7 +188,7 @@ namespace NOWA
 				{
 					if (nullptr != this->trackedRenderable)
 					{
-						WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+						WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 						if (nullptr != workspaceBaseComponent && true == workspaceBaseComponent->getUsePlanarReflection())
 						{
 							workspaceBaseComponent->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
@@ -206,12 +206,12 @@ namespace NOWA
 
 	void PlanarReflectionComponent::createPlane(void)
 	{
-		if (nullptr == WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent())
+		if (nullptr == AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent())
 		{
 			return;
 		}
 
-		if ((nullptr != this->gameObjectPtr && nullptr != WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections() && false == this->planarReflectionMeshCreated)
+		if ((nullptr != this->gameObjectPtr && nullptr != AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent()->getPlanarReflections() && false == this->planarReflectionMeshCreated)
 			|| (nullptr == this->mirrorPlaneItem))
 		{
 			this->oldPosition = this->gameObjectPtr->getPosition();
@@ -222,7 +222,7 @@ namespace NOWA
 			this->gameObjectPtr->getAttribute(GameObject::AttrMeshName())->setVisible(false);
 			this->gameObjectPtr->getAttribute(GameObject::AttrScale())->setVisible(false);
 
-			WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->removePlanarReflectionsActor(this->gameObjectPtr->getId());
+			AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent()->removePlanarReflectionsActor(this->gameObjectPtr->getId());
 
 			// Create new mirror plane
 			Ogre::String meshName = this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_PlaneMirrorUnlit";
@@ -327,7 +327,7 @@ namespace NOWA
 
 	void PlanarReflectionComponent::destroyPlane(void)
 	{
-		if (nullptr == WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent())
+		if (nullptr == AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent())
 		{
 			return;
 		}
@@ -336,7 +336,7 @@ namespace NOWA
 		this->mirrorPlaneItem = nullptr;
 		if (nullptr != this->trackedRenderable)
 		{
-			WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections()->removeRenderable(this->trackedRenderable->renderable);
+			AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent()->getPlanarReflections()->removeRenderable(this->trackedRenderable->renderable);
 
 			delete this->trackedRenderable;
 			this->trackedRenderable = nullptr;
@@ -345,14 +345,14 @@ namespace NOWA
 
 	void PlanarReflectionComponent::actualizePlanarReflection(void)
 	{
-		if (nullptr == WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent())
+		if (nullptr == AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent())
 		{
 			return;
 		}
 
-		if (nullptr != this->gameObjectPtr && nullptr != WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections())
+		if (nullptr != this->gameObjectPtr && nullptr != AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent()->getPlanarReflections())
 		{
-			WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
+			AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent()->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
 				static_cast<unsigned int>(this->imageSize->getVector2().x), static_cast<unsigned int>(this->imageSize->getVector2().y),
 				this->useMipmaps->getBool(), this->useMipmapMethodCompute->getBool(), this->gameObjectPtr->getPosition(), this->gameObjectPtr->getOrientation(),
 				this->mirrorSize->getVector2());
@@ -534,13 +534,13 @@ namespace NOWA
 			this->createPlane();
 		}
 
-		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+		WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent && false == workspaceBaseComponent->getUsePlanarReflection())
 		{
 			return;
 		}
 
-		WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
+		AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent()->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
 			static_cast<unsigned int>(this->imageSize->getVector2().x), static_cast<unsigned int>(this->imageSize->getVector2().y),
 			this->useMipmaps->getBool(), this->useMipmapMethodCompute->getBool(), this->gameObjectPtr->getPosition(), this->gameObjectPtr->getOrientation(),
 			this->mirrorSize->getVector2());
@@ -567,12 +567,12 @@ namespace NOWA
 				// mPlanarReflections->reserve(0, actor);
 				//Make sure it's always activated (i.e. always win against other actors)
 				//unless it's not visible by the camera.
-				mirror->setTexture(0, WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections()->getTexture(0));
+				mirror->setTexture(0, AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent()->getPlanarReflections()->getTexture(0));
 				mirror->setEnablePlanarReflection(0, true);
 				item->setDatablock(mirror);
 			}
 
-			WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->addPlanarReflectionsActor(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
+			AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent()->addPlanarReflectionsActor(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
 				static_cast<unsigned int>(this->imageSize->getVector2().x), static_cast<unsigned int>(this->imageSize->getVector2().y),
 				this->useMipmaps->getBool(), this->useMipmapMethodCompute->getBool(), this->gameObjectPtr->getPosition(), this->gameObjectPtr->getOrientation(),
 				this->mirrorSize->getVector2());
@@ -580,7 +580,7 @@ namespace NOWA
 			if (nullptr == this->trackedRenderable)
 			{
 				this->trackedRenderable = new Ogre::PlanarReflections::TrackedRenderable(item->getSubItem(0), item, Ogre::Vector3::UNIT_Z, Ogre::Vector3(0, 0, 0));
-				WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections()->addRenderable(*trackedRenderable);
+				AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent()->getPlanarReflections()->addRenderable(*trackedRenderable);
 			}
 		}
 	}

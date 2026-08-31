@@ -2423,9 +2423,9 @@ namespace NOWA
         // Shadow quality is handled completely by the WorkspaceModule, no scene manager needed
         if (this->optionShadowQuality >= 0)
         {
-            if (true == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
+            if (true == NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace())
             {
-                NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->optionShadowQuality), true);
+                NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->optionShadowQuality), true);
 
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Core] Applied global shadow quality override: " + Ogre::StringConverter::toString(this->optionShadowQuality));
             }
@@ -2468,9 +2468,9 @@ namespace NOWA
 
         if (this->optionShadowQuality >= 0)
         {
-            if (true == NOWA::WorkspaceModule::getInstance()->hasAnyWorkspace())
+            if (true == NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace())
             {
-                NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->optionShadowQuality), true);
+                NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->optionShadowQuality), true);
             }
         }
     }
@@ -2608,8 +2608,8 @@ namespace NOWA
         }
 
         sceneManager->setShadowColour(Ogre::ColourValue(projectParameter.shadowColor.r, projectParameter.shadowColor.g, projectParameter.shadowColor.b, 1.0f));
-        NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(projectParameter.shadowQualityIndex), recreateWorkspace);
-        NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(projectParameter.ambientLightModeIndex));
+        NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(projectParameter.shadowQualityIndex), recreateWorkspace);
+        NOWA::AppStateManager::getSingletonPtr()->getWorkspaceModule()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(projectParameter.ambientLightModeIndex));
 
         // The player configured quality overrides win over the values the level designer authored in the ProjectParameter.
         // Must be applied last, otherwise loading a scene would silently reset what the player has chosen in the options menu.

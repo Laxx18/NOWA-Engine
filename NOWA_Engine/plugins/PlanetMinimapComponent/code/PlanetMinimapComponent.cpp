@@ -700,7 +700,7 @@ namespace NOWA
     void PlanetMinimapComponent::createRoundMinimapWorkspace(void)
     {
         // Threadsafe from the outside
-        Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+        Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
         this->minimapNodeName = "PlanetMinimapNode_Round";
         if (false == compositorManager->hasNodeDefinition(this->minimapNodeName))
@@ -805,7 +805,7 @@ namespace NOWA
     void PlanetMinimapComponent::createMinimapWorkspace(void)
     {
         // Threadsafe from the outside
-        Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+        Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
         this->minimapNodeName = "PlanetMinimapNode";
         if (false == compositorManager->hasNodeDefinition(this->minimapNodeName))
@@ -1101,7 +1101,7 @@ namespace NOWA
         {
             if (nullptr != this->workspace)
             {
-                Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+                Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
                 compositorManager->removeWorkspace(this->workspace);
 

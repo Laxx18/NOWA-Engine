@@ -386,8 +386,24 @@ namespace NOWA
         // Load platform data from file
         if (true == this->loadPlatformDataFromFile())
         {
-            // loadPlatformDataFromFile rebuilds the mesh, which refills grassFrames; turn
-            // them into Items now that the scene is fully parsed.
+            // Grass frames, though, are produced by that sweep: rebuildMesh ->
+            // generatePlatformBox -> collectGrassFrames, because a blade needs the surface
+            // point and the mitered surface normal the sweep computes. Restoring from cache
+            // skips all of it, so grassFrames stayed empty and regenerateGrass had nothing to
+            // turn into Items. The grass attributes themselves were saved and reloaded
+            // perfectly - Use Grass still read true - which is exactly why it looked like the
+            // setting had been lost rather than the geometry.
+            //
+            // The blades are not cached with the mesh on purpose (they are a pure function of
+            // the path plus five attributes, so caching them would only add a way for them to
+            // go stale), so the sweep has to be run once here to produce the frames. Only when
+            // grass is actually enabled: with Use Grass off, the cached-load fast path is
+            // untouched and load stays exactly as quick as it was.
+            if (true == this->useGrass->getBool())
+            {
+                this->rebuildMesh();
+            }
+
             this->regenerateGrass();
 
             // Get PhysicsArtifactComponent if exists
@@ -4927,6 +4943,18 @@ namespace NOWA
     void ProceduralPlatformComponent::setUseGrass(bool useGrass)
     {
         this->useGrass->setValue(useGrass);
+
+        // Same reasoning as the load path in handleSceneParsed: grass frames only exist as a
+        // by-product of the mesh sweep. If this platform was restored from its cached buffers
+        // rather than swept - which is what happens on every scene load - there are no frames
+        // yet, and switching Use Grass on would produce nothing. Sweeping once here is cheap
+        // next to building the blade Items that follow, and it makes the toggle work from any
+        // state rather than only after some other edit happened to trigger a rebuild.
+        if (true == useGrass && true == this->grassFrames.empty() && false == this->platformSegments.empty())
+        {
+            this->rebuildMesh();
+        }
+
         this->regenerateGrass();
     }
 
@@ -7020,9 +7048,9 @@ namespace NOWA
 
     void ProceduralPlatformComponent::updateModificationState(void)
     {
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] updateModificationState: activated=" + Ogre::StringConverter::toString(this->activated->getBool()) +
+        /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] updateModificationState: activated=" + Ogre::StringConverter::toString(this->activated->getBool()) +
                                                                                " meshModifyMode=" + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " selected=" + Ogre::StringConverter::toString(this->isSelected) +
-                                                                               " editMode=" + this->editMode->getListSelectedValue());
+                                                                               " editMode=" + this->editMode->getListSelectedValue());*/
 
         // isEditFocusOwner is the fourth condition, and it is what lets a SIBLING component on
         // the same GameObject take over editing - see claimEditFocus. Not owning editing means

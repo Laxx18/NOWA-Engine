@@ -188,9 +188,10 @@ namespace NOWA
     // =========================================================================
 
     HlmsWind::HlmsWind(Ogre::Archive* dataFolder, Ogre::ArchiveVec* libraryFolders)
-        : Ogre::HlmsPbs(dataFolder, libraryFolders)
-        , noiseSamplerBlock(nullptr)
-        , noiseTexture(nullptr)
+        : Ogre::HlmsPbs(dataFolder, libraryFolders), 
+        noiseSamplerBlock(nullptr),
+        noiseTexture(nullptr),
+        setupRefCount(0)
     {
         mType        = Ogre::HLMS_USER0;
         mTypeName    = "Wind";
@@ -211,23 +212,48 @@ namespace NOWA
 
     void HlmsWind::setup(Ogre::SceneManager* sceneManager)
     {
+        // Reference-counted on purpose: this is called once per workspace creation, and during a
+        // camera switch the newly activated camera creates its workspace BEFORE the previously
+        // active one is torn down. Both hold the same global resources for a moment.
+        ++this->setupRefCount;
+
+        if (this->setupRefCount > 1)
+        {
+            // Already loaded by another workspace. Reloading would leak the previous texture and
+            // samplerblock, so there is nothing to do.
+            return;
+        }
+
         this->loadTexturesAndSamplers(sceneManager);
     }
 
     void HlmsWind::shutdown(Ogre::SceneManager* sceneManager)
     {
+        if (this->setupRefCount > 0)
+        {
+            --this->setupRefCount;
+        }
+
+        if (this->setupRefCount > 0)
+        {
+            // Another workspace is still using the noise texture and samplerblock. Destroying
+            // them here is exactly the bug this counter exists to prevent: the grass would keep
+            // rendering and the wind time would keep advancing, but the shader would sample a
+            // destroyed noise texture and every blade would freeze in place - with no error and
+            // no log line to explain it.
+            return;
+        }
+
         if (nullptr != this->noiseTexture)
         {
-            Ogre::TextureGpuManager* textureManager =
-                sceneManager->getDestinationRenderSystem()->getTextureGpuManager();
+            Ogre::TextureGpuManager* textureManager = sceneManager->getDestinationRenderSystem()->getTextureGpuManager();
             textureManager->destroyTexture(this->noiseTexture);
             this->noiseTexture = nullptr;
         }
 
         if (nullptr != this->noiseSamplerBlock)
         {
-            Ogre::Root::getSingleton().getHlmsManager()->destroySamplerblock(
-                this->noiseSamplerBlock);
+            Ogre::Root::getSingleton().getHlmsManager()->destroySamplerblock(this->noiseSamplerBlock);
             this->noiseSamplerBlock = nullptr;
         }
     }

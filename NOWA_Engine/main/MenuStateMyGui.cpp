@@ -50,7 +50,7 @@ namespace NOWA
 			this->camera->setNearClipDistance(1);
 			this->camera->setAutoAspectRatio(true);
 
-			WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
+			AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
 
 			this->initializeModules(false, false);
 

@@ -62,8 +62,8 @@ hlms SwayingGrass4Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass4.png
-	specular_map grass4.png
+	diffuse_map	grass4v.png
+	specular_map grass4v.png
 }
 
 hlms SwayingGrass5Material Wind
@@ -82,8 +82,8 @@ hlms SwayingGrass6Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass6.png
-	specular_map grass6.png
+	diffuse_map	grass6s.png
+	specular_map grass6s.png
 }
 
 hlms SwayingGrass7Material Wind
@@ -92,8 +92,8 @@ hlms SwayingGrass7Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass7.png
-	specular_map grass7.png
+	diffuse_map	grass7wy.png
+	specular_map grass7wy.png
 }
 
 hlms SwayingGrass8Material Wind
@@ -102,8 +102,8 @@ hlms SwayingGrass8Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass8.png
-	specular_map grass8.png
+	diffuse_map	grass8g.png
+	specular_map grass8g.png
 }
 
 hlms SwayingGrass9Material Wind
@@ -112,8 +112,8 @@ hlms SwayingGrass9Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass9.png
-	specular_map grass9.png
+	diffuse_map	grass9r.png
+	specular_map grass9r.png
 }
 
 hlms SwayingGrass10Material Wind
@@ -132,8 +132,18 @@ hlms SwayingGrass11Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass11.png
-	specular_map grass11.png
+	diffuse_map	grass11wg.png
+	specular_map grass11wg.png
+}
+
+hlms SwayingGrassWinter11Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grass11w.png
+	specular_map grass11w.png
 }
 
 hlms SwayingGrass12Material Wind
@@ -142,8 +152,8 @@ hlms SwayingGrass12Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass12.png
-	specular_map grass12.png
+	diffuse_map	grass12y.png
+	specular_map grass12y.png
 }
 
 hlms SwayingGrass13Material Wind
@@ -152,8 +162,8 @@ hlms SwayingGrass13Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass13.png
-	specular_map grass13.png
+	diffuse_map	grassZ14r.png
+	specular_map grassZ14r.png
 }
 
 hlms SwayingGrass14Material Wind
@@ -162,8 +172,8 @@ hlms SwayingGrass14Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass14.png
-	specular_map grass14.png
+	diffuse_map	grassForest.png
+	specular_map grassForest.png
 }
 
 hlms SwayingGrass15Material Wind
@@ -182,8 +192,8 @@ hlms SwayingGrass16Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass16.png
-	specular_map grass16.png
+	diffuse_map	grass16g.png
+	specular_map grass16g.png
 }
 
 hlms SwayingGrass17Material Wind
@@ -202,8 +212,8 @@ hlms SwayingGrass18Material Wind
 	alpha_hash yes
 	// alpha_to_coverage msaa_only
 
-	diffuse_map	grass18.png
-	specular_map grass18.png
+	diffuse_map	grass18gw.png
+	specular_map grass18gw.png
 }
 
 hlms SwayingGrass19Material Wind
@@ -224,4 +234,44 @@ hlms SwayingGrass20Material Wind
 
 	diffuse_map	grass20.png
 	specular_map grass20.png
+}
+
+hlms SwayingGrass21Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	grassWinter.png
+	specular_map grassWinter.png
+}
+
+hlms SwayingGrass22Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	flower03.png
+	specular_map flower03.png
+}
+
+hlms SwayingGrass23Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	flower02.png
+	specular_map flower02.png
+}
+
+hlms SwayingGrass24Material Wind
+{
+	cull_mode	none
+	alpha_hash yes
+	// alpha_to_coverage msaa_only
+
+	diffuse_map	alienPlant01b.png
+	specular_map alienPlant01b.png
 }

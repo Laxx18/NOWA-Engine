@@ -1,111 +1,127 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "WorkspaceModule.h"
-#include "gameobject/GameObjectController.h"
-#include "gameobject/CameraComponent.h"
-#include "main/Core.h"
-#include "main/AppStateManager.h"
-#include "gameObject/WorkspaceComponents.h"
-#include "gameobject/ProceduralFoliageVolumeComponentBase.h"
-#include "camera/CameraManager.h"
 #include "GraphicsModule.h"
+#include "camera/CameraManager.h"
+#include "gameObject/WorkspaceComponents.h"
+#include "gameobject/CameraComponent.h"
+#include "gameobject/GameObjectController.h"
+#include "gameobject/ProceduralFoliageVolumeComponentBase.h"
+#include "main/AppStateManager.h"
+#include "main/Core.h"
 
 #include "Compositor/OgreCompositorWorkspaceListener.h"
-#include "OgrePixelFormatGpu.h"
 #include "OgreHlmsCompute.h"
 #include "OgreHlmsComputeJob.h"
 #include "OgreLwString.h"
+#include "OgrePixelFormatGpu.h"
 
 namespace NOWA
 {
-	WorkspaceModule::WorkspaceModule()
-		: hlms(nullptr),
-		pbs(nullptr),
-		unlit(nullptr),
-		hlmsManager(nullptr),
-		compositorManager(nullptr),
-		shadowFilter(Ogre::HlmsPbs::PCF_4x4),
-		ambientLightMode(Ogre::HlmsPbs::AmbientAutoNormal),
-		splitScreenScenarioActive(false),
+    WorkspaceModule::WorkspaceModule(const Ogre::String& appStateName) :
+        appStateName(appStateName),
+        hlms(nullptr),
+        pbs(nullptr),
+        unlit(nullptr),
+        hlmsManager(nullptr),
+        compositorManager(nullptr),
+        shadowFilter(Ogre::HlmsPbs::PCF_4x4),
+        ambientLightMode(Ogre::HlmsPbs::AmbientAutoNormal),
+        splitScreenScenarioActive(false),
         adaptiveCurrentLevel(0),
-		adaptiveTargetMs(16.6f),
-		adaptiveAvgFrameTimeMs(0.0f),
+        adaptiveTargetMs(16.6f),
+        adaptiveAvgFrameTimeMs(0.0f),
         adaptiveCooldownMs(0.0f)
-	{
-		// Get hlms data
-		this->hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
-		// assert(dynamic_cast<Ogre::HlmsPbs*>(hlms));
-		this->pbs = static_cast<Ogre::HlmsPbs*>(hlms);
-		// Attention: Just a Test!
-		this->pbs->setDefaultBrdfWithDiffuseFresnel(true);
-		// assert(dynamic_cast<Ogre::HlmsUnlit*>(hlms));
-		this->unlit = static_cast<Ogre::HlmsUnlit*>(hlms);
-		this->hlmsManager = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager();
-		this->compositorManager = Core::getSingletonPtr()->getOgreRoot()->getCompositorManager2();
-	}
+    {
+        // Get hlms data
+        this->hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
+        // assert(dynamic_cast<Ogre::HlmsPbs*>(hlms));
+        this->pbs = static_cast<Ogre::HlmsPbs*>(hlms);
+        // Attention: Just a Test!
+        this->pbs->setDefaultBrdfWithDiffuseFresnel(true);
+        // assert(dynamic_cast<Ogre::HlmsUnlit*>(hlms));
+        this->unlit = static_cast<Ogre::HlmsUnlit*>(hlms);
+        this->hlmsManager = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager();
+        this->compositorManager = Core::getSingletonPtr()->getOgreRoot()->getCompositorManager2();
+    }
 
-	WorkspaceModule::~WorkspaceModule()
-	{
+    WorkspaceModule::~WorkspaceModule()
+    {
+    }
 
-	}
+    void WorkspaceModule::destroyContent(Ogre::SceneManager* sceneManager)
+    {
+        auto it = this->workspaceMap.begin();
+        while (it != this->workspaceMap.end())
+        {
+            Ogre::Camera* camera = it->first;
 
-	void WorkspaceModule::destroyContent(void)
-	{
-		for (const auto& it : this->workspaceMap)
-		{
-			if (it.second.isDummy)
-			{
-				auto workspace = it.second.workspace;
-				auto compositorManager = this->compositorManager;
+            // A camera always belongs to exactly one scene manager, so this cleanly separates
+            // several scenes loaded one after another inside the same app state.
+            bool belongsToSceneManager = (nullptr == sceneManager);
+            if (false == belongsToSceneManager && nullptr != camera)
+            {
+                belongsToSceneManager = (camera->getSceneManager() == sceneManager);
+            }
 
-				NOWA::GraphicsModule::RenderCommand renderCommand = [workspace, compositorManager]()
+            if (false == belongsToSceneManager)
+            {
+                ++it;
+                continue;
+            }
+
+            if (it->second.isDummy)
+            {
+                auto workspace = it->second.workspace;
+                auto compositorManager = this->compositorManager;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [workspace, compositorManager]()
                 {
                     compositorManager->removeWorkspace(workspace);
                 };
                 GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::RemoveDummyWorkspace");
-			}
-		}
+            }
 
-		this->workspaceMap.clear();
-		this->splitScreenScenarioActive = false;
-        this->adaptiveCurrentLevel = 0;
-		this->adaptiveTargetMs = 16.6f;
-        this->adaptiveAvgFrameTimeMs = 0.0f;
-        this->adaptiveCooldownMs = 0.0f;
-	}
+            it = this->workspaceMap.erase(it);
+        }
 
-	WorkspaceModule* WorkspaceModule::getInstance()
-	{
-		static WorkspaceModule instance;
+        // Only reset split screen and adaptive quality when really everything is gone, otherwise a
+        // scene still alive in this app state would silently lose its settings.
+        if (true == this->workspaceMap.empty())
+        {
+            this->splitScreenScenarioActive = false;
+            this->adaptiveCurrentLevel = 0;
+            this->adaptiveTargetMs = 16.6f;
+            this->adaptiveAvgFrameTimeMs = 0.0f;
+            this->adaptiveCooldownMs = 0.0f;
+        }
+    }
 
-		return &instance;
-	}
+    Ogre::Hlms* WorkspaceModule::getHlms(void) const
+    {
+        return this->hlms;
+    }
 
-	Ogre::Hlms* WorkspaceModule::getHlms(void) const
-	{
-		return this->hlms;
-	}
+    Ogre::HlmsPbs* WorkspaceModule::getHlmsPbs(void) const
+    {
+        return this->pbs;
+    }
 
-	Ogre::HlmsPbs* WorkspaceModule::getHlmsPbs(void) const
-	{
-		return this->pbs;
-	}
+    Ogre::HlmsUnlit* WorkspaceModule::getHlmsUnlit(void) const
+    {
+        return this->unlit;
+    }
 
-	Ogre::HlmsUnlit* WorkspaceModule::getHlmsUnlit(void) const
-	{
-		return this->unlit;
-	}
+    Ogre::HlmsManager* WorkspaceModule::getHlmsManager(void) const
+    {
+        return this->hlmsManager;
+    }
 
-	Ogre::HlmsManager* WorkspaceModule::getHlmsManager(void) const
-	{
-		return this->hlmsManager;
-	}
+    Ogre::CompositorManager2* WorkspaceModule::getCompositorManager(void) const
+    {
+        return this->compositorManager;
+    }
 
-	Ogre::CompositorManager2* WorkspaceModule::getCompositorManager(void) const
-	{
-		return this->compositorManager;
-	}
-
-	void WorkspaceModule::setShadowQuality(Ogre::HlmsPbs::ShadowFilter shadowFilter, bool recreateWorkspace)
+    void WorkspaceModule::setShadowQuality(Ogre::HlmsPbs::ShadowFilter shadowFilter, bool recreateWorkspace)
     {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, shadowFilter]()
         {
@@ -226,218 +242,228 @@ namespace NOWA
                 this->shadowNodeName = "NOWAShadowNode";
             }
         };
-        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setShadowQuality");;
+        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setShadowQuality");
+        ;
 
-		if (true == recreateWorkspace)
-		{
-			auto workspaceComponent = this->getPrimaryWorkspaceComponent();
-			if (nullptr != workspaceComponent)
-			{
-				workspaceComponent->createWorkspace();
-			}
-		}
-	}
+        if (true == recreateWorkspace)
+        {
+            auto workspaceComponent = this->getPrimaryWorkspaceComponent();
+            if (nullptr != workspaceComponent)
+            {
+                workspaceComponent->createWorkspace();
+            }
+        }
+    }
 
-	Ogre::HlmsPbs::ShadowFilter WorkspaceModule::getShadowQuality(void) const
-	{
-		return this->shadowFilter;
-	}
+    Ogre::HlmsPbs::ShadowFilter WorkspaceModule::getShadowQuality(void) const
+    {
+        return this->shadowFilter;
+    }
 
-	void WorkspaceModule::setAmbientLightMode(Ogre::HlmsPbs::AmbientLightMode ambientLightMode)
-	{
-		this->ambientLightMode = ambientLightMode;
-		if (nullptr == this->pbs)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] cannot set ambient light mode, because there is no valid workspace. Please create first a workspace!");
-			return;
-		}
+    void WorkspaceModule::setAmbientLightMode(Ogre::HlmsPbs::AmbientLightMode ambientLightMode)
+    {
+        this->ambientLightMode = ambientLightMode;
+        if (nullptr == this->pbs)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] cannot set ambient light mode, because there is no valid workspace. Please create first a workspace!");
+            return;
+        }
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, ambientLightMode]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, ambientLightMode]()
         {
             this->pbs->setAmbientLightMode(ambientLightMode);
         };
         GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setAmbientLightMode");
-	}
+    }
 
-	Ogre::HlmsPbs::AmbientLightMode WorkspaceModule::getAmbientLightMode(void) const
-	{
-		return this->ambientLightMode;
-	}
+    Ogre::HlmsPbs::AmbientLightMode WorkspaceModule::getAmbientLightMode(void) const
+    {
+        return this->ambientLightMode;
+    }
 
-	void WorkspaceModule::setGaussianLogFilterParams(Ogre::HlmsComputeJob* job, Ogre::uint8 kernelRadius, Ogre::Real gaussianDeviationFactor, Ogre::uint16 K)
-	{
-		assert(!(kernelRadius & 0x01) && "kernelRadius must be even!");
+    void WorkspaceModule::setGaussianLogFilterParams(Ogre::HlmsComputeJob* job, Ogre::uint8 kernelRadius, Ogre::Real gaussianDeviationFactor, Ogre::uint16 K)
+    {
+        assert(!(kernelRadius & 0x01) && "kernelRadius must be even!");
 
-		if (job->getProperty("kernel_radius") != kernelRadius)
-			job->setProperty("kernel_radius", kernelRadius);
-		if (job->getProperty("K") != K)
-			job->setProperty("K", K);
+        if (job->getProperty("kernel_radius") != kernelRadius)
+        {
+            job->setProperty("kernel_radius", kernelRadius);
+        }
+        if (job->getProperty("K") != K)
+        {
+            job->setProperty("K", K);
+        }
 
-		Ogre::ShaderParams& shaderParams = job->getShaderParams("default");
+        Ogre::ShaderParams& shaderParams = job->getShaderParams("default");
 
-		std::vector<Ogre::Real> weights(kernelRadius + 1u);
+        std::vector<Ogre::Real> weights(kernelRadius + 1u);
 
-		const Ogre::Real fKernelRadius = kernelRadius;
-		const Ogre::Real gaussianDeviation = fKernelRadius * gaussianDeviationFactor;
+        const Ogre::Real fKernelRadius = kernelRadius;
+        const Ogre::Real gaussianDeviation = fKernelRadius * gaussianDeviationFactor;
 
-		//It's 2.0f if using the approximate filter (sampling between two pixels to
-		//get the bilinear interpolated result and cut the number of samples in half)
-		const Ogre::Real stepSize = 1.0f;
+        // It's 2.0f if using the approximate filter (sampling between two pixels to
+        // get the bilinear interpolated result and cut the number of samples in half)
+        const Ogre::Real stepSize = 1.0f;
 
-		//Calculate the weights
-		Ogre::Real fWeightSum = 0;
-		for (Ogre::uint32 i = 0; i < kernelRadius + 1u; ++i)
-		{
-			const Ogre::Real _X = i - fKernelRadius + (1.0f - 1.0f / stepSize);
-			Ogre::Real fWeight = 1.0f / sqrt(2.0f * Ogre::Math::PI * gaussianDeviation * gaussianDeviation);
-			fWeight *= exp(-(_X * _X) / (2.0f * gaussianDeviation * gaussianDeviation));
+        // Calculate the weights
+        Ogre::Real fWeightSum = 0;
+        for (Ogre::uint32 i = 0; i < kernelRadius + 1u; ++i)
+        {
+            const Ogre::Real _X = i - fKernelRadius + (1.0f - 1.0f / stepSize);
+            Ogre::Real fWeight = 1.0f / sqrt(2.0f * Ogre::Math::PI * gaussianDeviation * gaussianDeviation);
+            fWeight *= exp(-(_X * _X) / (2.0f * gaussianDeviation * gaussianDeviation));
 
-			fWeightSum += fWeight;
-			weights[i] = fWeight;
-		}
+            fWeightSum += fWeight;
+            weights[i] = fWeight;
+        }
 
-		fWeightSum = fWeightSum * 2.0f - weights[kernelRadius];
+        fWeightSum = fWeightSum * 2.0f - weights[kernelRadius];
 
-		//Normalize the weights
-		for (Ogre::uint32 i = 0; i < kernelRadius + 1u; ++i)
-			weights[i] /= fWeightSum;
+        // Normalize the weights
+        for (Ogre::uint32 i = 0; i < kernelRadius + 1u; ++i)
+        {
+            weights[i] /= fWeightSum;
+        }
 
-		//Remove shader constants from previous calls (needed in case we've reduced the radius size)
-		Ogre::ShaderParams::ParamVec::iterator itor = shaderParams.mParams.begin();
-		Ogre::ShaderParams::ParamVec::iterator end = shaderParams.mParams.end();
+        // Remove shader constants from previous calls (needed in case we've reduced the radius size)
+        Ogre::ShaderParams::ParamVec::iterator itor = shaderParams.mParams.begin();
+        Ogre::ShaderParams::ParamVec::iterator end = shaderParams.mParams.end();
 
-		while (itor != end)
-		{
-			Ogre::String::size_type pos = itor->name.find("c_weights[");
+        while (itor != end)
+        {
+            Ogre::String::size_type pos = itor->name.find("c_weights[");
 
-			if (pos != Ogre::String::npos)
-			{
-				itor = shaderParams.mParams.erase(itor);
-				end = shaderParams.mParams.end();
-			}
-			else
-			{
-				++itor;
-			}
-		}
-
-		const bool bIsMetal = job->getCreator()->getShaderProfile() == "metal";
-		//Set the shader constants, 16 at a time (since that's the limit of what ManualParam can hold)
-		char tmp[32];
-		Ogre::LwString weightsString(Ogre::LwString::FromEmptyPointer(tmp, sizeof(tmp)));
-		const Ogre::uint32 floatsPerParam = sizeof(Ogre::ShaderParams::ManualParam().dataBytes) / sizeof(float);
-		for (Ogre::uint32 i = 0; i < kernelRadius + 1u; i += floatsPerParam)
-		{
-			weightsString.clear();
-			if( bIsMetal )
-                weightsString.a( "c_weights[", i, "]" );
+            if (pos != Ogre::String::npos)
+            {
+                itor = shaderParams.mParams.erase(itor);
+                end = shaderParams.mParams.end();
+            }
             else
-                weightsString.a( "c_weights[", ( i >> 2u ), "]" );
+            {
+                ++itor;
+            }
+        }
 
-			Ogre::ShaderParams::Param p;
-			p.isAutomatic = false;
-			p.isDirty = true;
-			p.name = weightsString.c_str();
-			shaderParams.mParams.push_back(p);
-			Ogre::ShaderParams::Param* param = &shaderParams.mParams.back();
+        const bool bIsMetal = job->getCreator()->getShaderProfile() == "metal";
+        // Set the shader constants, 16 at a time (since that's the limit of what ManualParam can hold)
+        char tmp[32];
+        Ogre::LwString weightsString(Ogre::LwString::FromEmptyPointer(tmp, sizeof(tmp)));
+        const Ogre::uint32 floatsPerParam = sizeof(Ogre::ShaderParams::ManualParam().dataBytes) / sizeof(float);
+        for (Ogre::uint32 i = 0; i < kernelRadius + 1u; i += floatsPerParam)
+        {
+            weightsString.clear();
+            if (bIsMetal)
+            {
+                weightsString.a("c_weights[", i, "]");
+            }
+            else
+            {
+                weightsString.a("c_weights[", (i >> 2u), "]");
+            }
 
-			param->setManualValue(&weights[i], std::min<Ogre::uint32>(floatsPerParam, weights.size() - i));
-		}
+            Ogre::ShaderParams::Param p;
+            p.isAutomatic = false;
+            p.isDirty = true;
+            p.name = weightsString.c_str();
+            shaderParams.mParams.push_back(p);
+            Ogre::ShaderParams::Param* param = &shaderParams.mParams.back();
 
-		shaderParams.setDirty();
-	}
+            param->setManualValue(&weights[i], std::min<Ogre::uint32>(floatsPerParam, weights.size() - i));
+        }
 
-	int WorkspaceModule::retrievePreprocessorParameter(const Ogre::String& preprocessDefines, const Ogre::String& paramName)
-	{
-		size_t startPos = preprocessDefines.find(paramName + '=');
-		if (startPos == Ogre::String::npos)
-		{
-			OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE,
-				"Corrupted material? Expected: " + paramName +
-				" but preprocessor defines are: " + preprocessDefines,
-				"MiscUtils::retrievePreprocessorParameter");
-		}
+        shaderParams.setDirty();
+    }
 
-		startPos += paramName.size() + 1u;
+    int WorkspaceModule::retrievePreprocessorParameter(const Ogre::String& preprocessDefines, const Ogre::String& paramName)
+    {
+        size_t startPos = preprocessDefines.find(paramName + '=');
+        if (startPos == Ogre::String::npos)
+        {
+            OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Corrupted material? Expected: " + paramName + " but preprocessor defines are: " + preprocessDefines, "MiscUtils::retrievePreprocessorParameter");
+        }
 
-		size_t endPos = preprocessDefines.find_first_of(";,", startPos);
+        startPos += paramName.size() + 1u;
 
-		Ogre::String valuePart = preprocessDefines.substr(startPos, endPos - startPos);
-		const int retVal = Ogre::StringConverter::parseInt(valuePart);
-		return retVal;
-	}
+        size_t endPos = preprocessDefines.find_first_of(";,", startPos);
 
-	void WorkspaceModule::setGaussianLogFilterParams(const Ogre::String& materialName, Ogre::uint8 kernelRadius, Ogre::Real gaussianDeviationFactor, Ogre::uint16 K)
-	{
-		assert(!(kernelRadius & 0x01) && "kernelRadius must be even!");
+        Ogre::String valuePart = preprocessDefines.substr(startPos, endPos - startPos);
+        const int retVal = Ogre::StringConverter::parseInt(valuePart);
+        return retVal;
+    }
 
-		Ogre::MaterialPtr material;
-		Ogre::GpuProgram* psShader = 0;
-		Ogre::GpuProgramParametersSharedPtr oldParams;
-		Ogre::Pass* pass = 0;
+    void WorkspaceModule::setGaussianLogFilterParams(const Ogre::String& materialName, Ogre::uint8 kernelRadius, Ogre::Real gaussianDeviationFactor, Ogre::uint16 K)
+    {
+        assert(!(kernelRadius & 0x01) && "kernelRadius must be even!");
 
-		material = Ogre::MaterialManager::getSingleton().load(materialName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
+        Ogre::MaterialPtr material;
+        Ogre::GpuProgram* psShader = 0;
+        Ogre::GpuProgramParametersSharedPtr oldParams;
+        Ogre::Pass* pass = 0;
 
-		pass = material->getTechnique(0)->getPass(0);
-		//Save old manual & auto params
-		oldParams = pass->getFragmentProgramParameters();
-		//Retrieve the HLSL/GLSL/Metal shader and rebuild it with new kernel radius
-		psShader = pass->getFragmentProgram()->_getBindingDelegate();
+        material = Ogre::MaterialManager::getSingleton().load(materialName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
 
-		Ogre::String preprocessDefines = psShader->getParameter("preprocessor_defines");
-		int oldNumWeights = retrievePreprocessorParameter(preprocessDefines, "NUM_WEIGHTS");
-		int oldK = retrievePreprocessorParameter(preprocessDefines, "K");
-		if (oldNumWeights != (kernelRadius + 1) || oldK != K)
-		{
-			int horizontalStep = retrievePreprocessorParameter(preprocessDefines, "HORIZONTAL_STEP");
-			int verticalStep = retrievePreprocessorParameter(preprocessDefines, "VERTICAL_STEP");
+        pass = material->getTechnique(0)->getPass(0);
+        // Save old manual & auto params
+        oldParams = pass->getFragmentProgramParameters();
+        // Retrieve the HLSL/GLSL/Metal shader and rebuild it with new kernel radius
+        psShader = pass->getFragmentProgram()->_getBindingDelegate();
 
-			char tmp[64];
-			Ogre::LwString preprocessString(Ogre::LwString::FromEmptyPointer(tmp, sizeof(tmp)));
+        Ogre::String preprocessDefines = psShader->getParameter("preprocessor_defines");
+        int oldNumWeights = retrievePreprocessorParameter(preprocessDefines, "NUM_WEIGHTS");
+        int oldK = retrievePreprocessorParameter(preprocessDefines, "K");
+        if (oldNumWeights != (kernelRadius + 1) || oldK != K)
+        {
+            int horizontalStep = retrievePreprocessorParameter(preprocessDefines, "HORIZONTAL_STEP");
+            int verticalStep = retrievePreprocessorParameter(preprocessDefines, "VERTICAL_STEP");
 
-			preprocessString.a("NUM_WEIGHTS=", kernelRadius + 1u);
-			preprocessString.a(",K=", K);
-			preprocessString.a(",HORIZONTAL_STEP=", horizontalStep);
-			preprocessString.a(",VERTICAL_STEP=", verticalStep);
+            char tmp[64];
+            Ogre::LwString preprocessString(Ogre::LwString::FromEmptyPointer(tmp, sizeof(tmp)));
 
-			psShader->setParameter("preprocessor_defines", preprocessString.c_str());
-			pass->getFragmentProgram()->reload();
-			//Restore manual & auto params to the newly compiled shader
-			pass->getFragmentProgramParameters()->copyConstantsFrom(*oldParams);
-		}
+            preprocessString.a("NUM_WEIGHTS=", kernelRadius + 1u);
+            preprocessString.a(",K=", K);
+            preprocessString.a(",HORIZONTAL_STEP=", horizontalStep);
+            preprocessString.a(",VERTICAL_STEP=", verticalStep);
 
-		std::vector<Ogre::Real> weights(kernelRadius + 1u);
+            psShader->setParameter("preprocessor_defines", preprocessString.c_str());
+            pass->getFragmentProgram()->reload();
+            // Restore manual & auto params to the newly compiled shader
+            pass->getFragmentProgramParameters()->copyConstantsFrom(*oldParams);
+        }
 
-		const Ogre::Real fKernelRadius = kernelRadius;
-		const Ogre::Real gaussianDeviation = fKernelRadius * gaussianDeviationFactor;
+        std::vector<Ogre::Real> weights(kernelRadius + 1u);
 
-		//It's 2.0f if using the approximate filter (sampling between two pixels to
-		//get the bilinear interpolated result and cut the number of samples in half)
-		const Ogre::Real stepSize = 1.0f;
+        const Ogre::Real fKernelRadius = kernelRadius;
+        const Ogre::Real gaussianDeviation = fKernelRadius * gaussianDeviationFactor;
 
-		//Calculate the weights
-		Ogre::Real fWeightSum = 0;
-		for (Ogre::uint32 i = 0; i < kernelRadius + 1u; ++i)
-		{
-			const Ogre::Real _X = i - fKernelRadius + (1.0f - 1.0f / stepSize);
-			float fWeight = 1.0f / sqrt(2.0f * Ogre::Math::PI * gaussianDeviation * gaussianDeviation);
-			fWeight *= exp(-(_X * _X) / (2.0f * gaussianDeviation * gaussianDeviation));
+        // It's 2.0f if using the approximate filter (sampling between two pixels to
+        // get the bilinear interpolated result and cut the number of samples in half)
+        const Ogre::Real stepSize = 1.0f;
 
-			fWeightSum += fWeight;
-			weights[i] = fWeight;
-		}
+        // Calculate the weights
+        Ogre::Real fWeightSum = 0;
+        for (Ogre::uint32 i = 0; i < kernelRadius + 1u; ++i)
+        {
+            const Ogre::Real _X = i - fKernelRadius + (1.0f - 1.0f / stepSize);
+            float fWeight = 1.0f / sqrt(2.0f * Ogre::Math::PI * gaussianDeviation * gaussianDeviation);
+            fWeight *= exp(-(_X * _X) / (2.0f * gaussianDeviation * gaussianDeviation));
 
-		fWeightSum = fWeightSum * 2.0f - weights[kernelRadius];
+            fWeightSum += fWeight;
+            weights[i] = fWeight;
+        }
 
-		//Normalize the weights
-		for (Ogre::uint32 i = 0; i < kernelRadius + 1u; ++i)
-			weights[i] /= fWeightSum;
+        fWeightSum = fWeightSum * 2.0f - weights[kernelRadius];
 
-		Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
-		psParams->setNamedConstant("weights", &weights[0], kernelRadius + 1u, 1);
-	}
+        // Normalize the weights
+        for (Ogre::uint32 i = 0; i < kernelRadius + 1u; ++i)
+        {
+            weights[i] /= fWeightSum;
+        }
 
-	void WorkspaceModule::setPrimaryWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent)
+        Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+        psParams->setNamedConstant("weights", &weights[0], kernelRadius + 1u, 1);
+    }
+
+    void WorkspaceModule::setPrimaryWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent)
     {
         auto found = this->workspaceMap.find(camera);
         if (found != this->workspaceMap.cend())
@@ -564,7 +590,7 @@ namespace NOWA
         }
     }
 
-	void WorkspaceModule::setPrimaryWorkspace2(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::CompositorWorkspace* workspace)
+    void WorkspaceModule::setPrimaryWorkspace2(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::CompositorWorkspace* workspace)
     {
         if (nullptr == workspace)
         {
@@ -643,15 +669,15 @@ namespace NOWA
         }
     }
 
-	void WorkspaceModule::addNthWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent)
-	{
-		auto found = this->workspaceMap.find(camera);
-		if (found != this->workspaceMap.cend())
-		{
-			// If there is no external workspace, create a dummy one
-			if (nullptr == workspaceBaseComponent)
-			{
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, found, sceneManager, camera]()
+    void WorkspaceModule::addNthWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent)
+    {
+        auto found = this->workspaceMap.find(camera);
+        if (found != this->workspaceMap.cend())
+        {
+            // If there is no external workspace, create a dummy one
+            if (nullptr == workspaceBaseComponent)
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, found, sceneManager, camera]()
                 {
                     found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
                     found->second.workspaceBaseComponent = nullptr;
@@ -659,22 +685,22 @@ namespace NOWA
                     found->second.isDummy = true;
                 };
                 GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::createDummyWorkspace");
-			}
-			else
-			{
-				found->second.workspaceBaseComponent = workspaceBaseComponent;
-				found->second.workspace = workspaceBaseComponent->getWorkspace();
+            }
+            else
+            {
+                found->second.workspaceBaseComponent = workspaceBaseComponent;
+                found->second.workspace = workspaceBaseComponent->getWorkspace();
 
-				// No dummy workspace
-				found->second.isDummy = false;
-			}
-		}
-		else
-		{
-			// If there is no external workspace, create a dummy one
-			if (nullptr == workspaceBaseComponent)
-			{
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, camera]()
+                // No dummy workspace
+                found->second.isDummy = false;
+            }
+        }
+        else
+        {
+            // If there is no external workspace, create a dummy one
+            if (nullptr == workspaceBaseComponent)
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, camera]()
                 {
                     WorkspaceData workspaceData;
                     workspaceData.workspace = this->createDummyWorkspace(sceneManager, camera);
@@ -683,120 +709,150 @@ namespace NOWA
                     this->workspaceMap.emplace(camera, workspaceData);
                 };
                 GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::createDummyWorkspace2");
-			}
-			else
-			{
-				WorkspaceData workspaceData;
-				workspaceData.workspaceBaseComponent = workspaceBaseComponent;
-				workspaceData.workspace = workspaceBaseComponent->getWorkspace();
-				workspaceData.isDummy = false;
+            }
+            else
+            {
+                WorkspaceData workspaceData;
+                workspaceData.workspaceBaseComponent = workspaceBaseComponent;
+                workspaceData.workspace = workspaceBaseComponent->getWorkspace();
+                workspaceData.isDummy = false;
 
-				this->workspaceMap.emplace(camera, workspaceData);
-			}
-		}
-	}
+                this->workspaceMap.emplace(camera, workspaceData);
+            }
+        }
+    }
 
-	Ogre::CompositorWorkspace* WorkspaceModule::getPrimaryWorkspace(Ogre::Camera* camera)
-	{
-		auto found = this->workspaceMap.find(camera);
-		if (found != this->workspaceMap.cend())
-		{
-			if (true == found->second.isPrimary)
-			{
-				return found->second.workspace;
-			}
-		}
-		return nullptr;
-	}
+    Ogre::CompositorWorkspace* WorkspaceModule::getPrimaryWorkspace(Ogre::Camera* camera)
+    {
+        auto found = this->workspaceMap.find(camera);
+        if (found != this->workspaceMap.cend())
+        {
+            if (true == found->second.isPrimary)
+            {
+                return found->second.workspace;
+            }
+        }
+        return nullptr;
+    }
 
-	WorkspaceBaseComponent* WorkspaceModule::getPrimaryWorkspaceComponent(void)
-	{
-		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-		auto found = this->workspaceMap.find(camera);
-		if (found != this->workspaceMap.cend())
-		{
-			if (true == found->second.isPrimary)
-			{
-				return found->second.workspaceBaseComponent;
-			}
-		}
-		
-		/*Ogre::String message = "[WorkspaceModule] Error: Could not get primary workspace component, because the camera: '" 
-			+ camera->getName() + "' does not belong to the workspace map. Thus further rendering is not possible!\n"
-			"Please make sure when calling 'setPrimaryWorkspace', that the correct camera is set!";
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-		throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, message + "\n", "NOWA");*/
-		return nullptr;
-	}
+    WorkspaceBaseComponent* WorkspaceModule::getPrimaryWorkspaceComponent(void)
+    {
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        auto found = this->workspaceMap.find(camera);
+        if (found != this->workspaceMap.cend())
+        {
+            if (true == found->second.isPrimary)
+            {
+                return found->second.workspaceBaseComponent;
+            }
+        }
 
-	void WorkspaceModule::setCameraPrimaryWorkspaceActive(void)
-	{
-		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-		auto found = this->workspaceMap.find(camera);
-		if (found != this->workspaceMap.cend())
-		{
-			if (true == found->second.isPrimary)
-			{
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(camera, true);
-			}
-			else
-			{
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(camera, false);
-			}
-		}
-	}
+        /*Ogre::String message = "[WorkspaceModule] Error: Could not get primary workspace component, because the camera: '"
+            + camera->getName() + "' does not belong to the workspace map. Thus further rendering is not possible!\n"
+            "Please make sure when calling 'setPrimaryWorkspace', that the correct camera is set!";
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+        throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, message + "\n", "NOWA");*/
+        return nullptr;
+    }
 
-	Ogre::CompositorWorkspace* WorkspaceModule::getWorkspace(Ogre::Camera* camera)
-	{
-		auto found = this->workspaceMap.find(camera);
-		if (found != this->workspaceMap.cend())
-		{
-			return found->second.workspace;
-		}
-		return nullptr;
-	}
+    void WorkspaceModule::setAllWorkspacesEnabled(bool enabled)
+    {
+        std::vector<Ogre::CompositorWorkspace*> workspacesToSwitch;
 
-	WorkspaceBaseComponent* WorkspaceModule::getWorkspaceComponent(void)
-	{
-		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-		auto found = this->workspaceMap.find(camera);
-		if (found != this->workspaceMap.cend())
-		{
-			return found->second.workspaceBaseComponent;
-		}
+        for (const auto& it : this->workspaceMap)
+        {
+            if (nullptr != it.second.workspace)
+            {
+                workspacesToSwitch.emplace_back(it.second.workspace);
+            }
+        }
 
-		/*Ogre::String message = "[WorkspaceModule] Error: Could not get primary workspace component, because the camera: '"
-			+ camera->getName() + "' does not belong to the workspace map. Thus further rendering is not possible!\n"
-			"Please make sure when calling 'setPrimaryWorkspace', that the correct camera is set!";
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-		throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, message + "\n", "NOWA");*/
-		return nullptr;
-	}
+        if (true == workspacesToSwitch.empty())
+        {
+            return;
+        }
 
-	CameraComponent* WorkspaceModule::getPrimaryCameraComponent(void) const
-	{
-		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
+        // Attention: this switches EVERY workspace of this app state, which is exactly right for
+        // a split screen scenario - all two to four cameras belong to the same state and must be
+        // paused and resumed together.
+        NOWA::GraphicsModule::RenderCommand renderCommand = [workspacesToSwitch, enabled]()
+        {
+            for (Ogre::CompositorWorkspace* workspace : workspacesToSwitch)
+            {
+                workspace->setEnabled(enabled);
+            }
+        };
+        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setAllWorkspacesEnabled");
+    }
 
-		for (auto it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
-		{
-			// Main camera should be the first one
-			for (size_t i = 0; i < gameObjects.size(); i++)
-			{
-				const auto gameObjectPtr = gameObjects[i];
-				auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
-				if (nullptr != cameraCompPtr)
-				{
-					if (cameraCompPtr->getCamera() == it->first && true == it->second.isPrimary)
-					{
-						return cameraCompPtr.get();
-					}
-				}
-			}
-		}
-		return nullptr;
-	}
+    void WorkspaceModule::setCameraPrimaryWorkspaceActive(void)
+    {
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        auto found = this->workspaceMap.find(camera);
+        if (found != this->workspaceMap.cend())
+        {
+            if (true == found->second.isPrimary)
+            {
+                AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(camera, true);
+            }
+            else
+            {
+                AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(camera, false);
+            }
+        }
+    }
 
-	void WorkspaceModule::removeWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera)
+    Ogre::CompositorWorkspace* WorkspaceModule::getWorkspace(Ogre::Camera* camera)
+    {
+        auto found = this->workspaceMap.find(camera);
+        if (found != this->workspaceMap.cend())
+        {
+            return found->second.workspace;
+        }
+        return nullptr;
+    }
+
+    WorkspaceBaseComponent* WorkspaceModule::getWorkspaceComponent(void)
+    {
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        auto found = this->workspaceMap.find(camera);
+        if (found != this->workspaceMap.cend())
+        {
+            return found->second.workspaceBaseComponent;
+        }
+
+        /*Ogre::String message = "[WorkspaceModule] Error: Could not get primary workspace component, because the camera: '"
+            + camera->getName() + "' does not belong to the workspace map. Thus further rendering is not possible!\n"
+            "Please make sure when calling 'setPrimaryWorkspace', that the correct camera is set!";
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+        throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, message + "\n", "NOWA");*/
+        return nullptr;
+    }
+
+    CameraComponent* WorkspaceModule::getPrimaryCameraComponent(void) const
+    {
+        auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
+
+        for (auto it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
+        {
+            // Main camera should be the first one
+            for (size_t i = 0; i < gameObjects.size(); i++)
+            {
+                const auto gameObjectPtr = gameObjects[i];
+                auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+                if (nullptr != cameraCompPtr)
+                {
+                    if (cameraCompPtr->getCamera() == it->first && true == it->second.isPrimary)
+                    {
+                        return cameraCompPtr.get();
+                    }
+                }
+            }
+        }
+        return nullptr;
+    }
+
+    void WorkspaceModule::removeWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera)
     {
         auto found = this->workspaceMap.find(camera);
         if (found != this->workspaceMap.cend())
@@ -810,13 +866,13 @@ namespace NOWA
 
                 // The camera still needs SOME workspace to render at all, so
                 // re-create a dummy in its place, then we are done -- no erase.
- 
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, found, sceneManager, camera]()
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, found, sceneManager, camera]()
                 {
                     this->compositorManager->removeWorkspace(found->second.workspace);
                     found->second.workspace = nullptr;
 
-					found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
+                    found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
                     found->second.workspaceBaseComponent = nullptr;
                     found->second.isDummy = true;
                 };
@@ -844,7 +900,7 @@ namespace NOWA
             // whatever workspace was created next on this camera.
             if (1u == this->workspaceMap.size())
             {
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, found, sceneManager, camera]()
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, found, sceneManager, camera]()
                 {
                     found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
                     found->second.workspaceBaseComponent = nullptr;
@@ -869,67 +925,67 @@ namespace NOWA
         }
     }
 
-	void WorkspaceModule::removeCamera(Ogre::Camera* camera)
-	{
-		auto found = this->workspaceMap.find(camera);
-		if (found != this->workspaceMap.cend())
-		{
-			// If its a dummy workspace delete the workspace here
-			if (true == found->second.isDummy)
-			{
-				// cannot be used anymore, still necessary?
-				// found->second.workspace->setListener(nullptr);
-				// found->second.workspace->removeListener()
-				if (nullptr != found->second.workspace)
-				{
-					NOWA::GraphicsModule::RenderCommand renderCommand = [this, found]()
+    void WorkspaceModule::removeCamera(Ogre::Camera* camera)
+    {
+        auto found = this->workspaceMap.find(camera);
+        if (found != this->workspaceMap.cend())
+        {
+            // If its a dummy workspace delete the workspace here
+            if (true == found->second.isDummy)
+            {
+                // cannot be used anymore, still necessary?
+                // found->second.workspace->setListener(nullptr);
+                // found->second.workspace->removeListener()
+                if (nullptr != found->second.workspace)
+                {
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, found]()
                     {
                         this->compositorManager->removeWorkspace(found->second.workspace);
                         found->second.workspace = nullptr;
                     };
                     GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::createDummyWorkspace");
-				}
-			}
+                }
+            }
 
-			this->workspaceMap.erase(camera);
-		}
-	}
+            this->workspaceMap.erase(camera);
+        }
+    }
 
-	bool WorkspaceModule::hasAnyWorkspace(void) const
-	{
-		return !this->workspaceMap.empty();
-	}
+    bool WorkspaceModule::hasAnyWorkspace(void) const
+    {
+        return !this->workspaceMap.empty();
+    }
 
-	bool WorkspaceModule::hasMoreThanOneWorkspace(void) const
-	{
-		return this->workspaceMap.size() > 1;
-	}
+    bool WorkspaceModule::hasMoreThanOneWorkspace(void) const
+    {
+        return this->workspaceMap.size() > 1;
+    }
 
-	Ogre::uint8 WorkspaceModule::getCountCameras(void)
-	{
-		Ogre::uint8 count = 0;
-		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
+    Ogre::uint8 WorkspaceModule::getCountCameras(void)
+    {
+        Ogre::uint8 count = 0;
+        auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
 
-		for (size_t i = 0; i < gameObjects.size(); i++)
-		{
-			const auto gameObjectPtr = gameObjects[i];
-			auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
-			if (nullptr != cameraCompPtr)
-			{
-				count++;
-			}
-		}
-		return count;
-	}
+        for (size_t i = 0; i < gameObjects.size(); i++)
+        {
+            const auto gameObjectPtr = gameObjects[i];
+            auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+            if (nullptr != cameraCompPtr)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
 
-	void WorkspaceModule::setSplitScreenScenarioActive(bool splitScreenScenarioActive)
-	{
-		this->splitScreenScenarioActive = splitScreenScenarioActive;
-	}
+    void WorkspaceModule::setSplitScreenScenarioActive(bool splitScreenScenarioActive)
+    {
+        this->splitScreenScenarioActive = splitScreenScenarioActive;
+    }
 
-	bool WorkspaceModule::getSplitScreenScenarioActive(void) const
-	{
-		return this->splitScreenScenarioActive;
+    bool WorkspaceModule::getSplitScreenScenarioActive(void) const
+    {
+        return this->splitScreenScenarioActive;
     }
 
     void WorkspaceModule::logAllCompositorNodeDefinitions(void)
@@ -998,45 +1054,45 @@ namespace NOWA
         }
     }
 
-	Ogre::CompositorWorkspace* WorkspaceModule::createDummyWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceModule] Creating dummy workspace");
+    Ogre::CompositorWorkspace* WorkspaceModule::createDummyWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceModule] Creating dummy workspace");
 
-		for (auto it = this->workspaceMap.begin(); it != this->workspaceMap.end(); ++it)
-		{
-			if (false == it->second.isDummy)
-			{
-				it->second.workspaceBaseComponent->removeWorkspace();
-			}
-			else
-			{
-				if (nullptr != it->second.workspace)
-				{
-					this->compositorManager->removeWorkspace(it->second.workspace);
-					it->second.workspace = nullptr;
-				}
-				
-				// it->second.workspaceBaseComponent->setWorkspace(nullptr);
-			}
-		}
+        for (auto it = this->workspaceMap.begin(); it != this->workspaceMap.end(); ++it)
+        {
+            if (false == it->second.isDummy)
+            {
+                it->second.workspaceBaseComponent->removeWorkspace();
+            }
+            else
+            {
+                if (nullptr != it->second.workspace)
+                {
+                    this->compositorManager->removeWorkspace(it->second.workspace);
+                    it->second.workspace = nullptr;
+                }
 
-		// Remove an existing current workspace before another one is added, because only one workspace can be running actively!
-		/*if (nullptr != this->currentlyActiveWorkspace)
-		{
-			this->compositorManager->removeWorkspace(this->currentlyActiveWorkspace);
-		}*/
+                // it->second.workspaceBaseComponent->setWorkspace(nullptr);
+            }
+        }
 
-		return this->compositorManager->addWorkspace(sceneManager, Core::getSingletonPtr()->getOgreRenderWindow()->getTexture(), camera, "NOWAPbsWorkspace", true);
-	}
+        // Remove an existing current workspace before another one is added, because only one workspace can be running actively!
+        /*if (nullptr != this->currentlyActiveWorkspace)
+        {
+            this->compositorManager->removeWorkspace(this->currentlyActiveWorkspace);
+        }*/
 
-	void WorkspaceModule::updateAdaptiveQuality(Ogre::Real renderDt)
+        return this->compositorManager->addWorkspace(sceneManager, Core::getSingletonPtr()->getOgreRenderWindow()->getTexture(), camera, "NOWAPbsWorkspace", true);
+    }
+
+    void WorkspaceModule::updateAdaptiveQuality(Ogre::Real renderDt)
     {
         if (true == this->adaptiveLevels.empty())
         {
             return;
         }
 
-		// Ignore frame time entirely during scene loading / transitions - these
+        // Ignore frame time entirely during scene loading / transitions - these
         // are expected one-off costs (workspace rebuilds, resource loads, spawn
         // logic), not sustained rendering load. Feeding them into the EMA
         // corrupts the signal the controller is supposed to react to.
@@ -1094,14 +1150,14 @@ namespace NOWA
         // but if you already have a SceneManager::setShadowFarDistance() path from
         // your earlier planet-shadow work, prefer reusing that directly here instead.
 
-		auto workspaceComponent = this->getWorkspaceComponent();
+        auto workspaceComponent = this->getWorkspaceComponent();
 
         if (nullptr != workspaceComponent)
         {
             workspaceComponent->getOwner()->getSceneManager()->setShadowFarDistance(lvl.shadowFarDistance);
         }
 
-		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+        auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
         for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
         {
             GameObject* gameObject = it->second.get();
@@ -1131,10 +1187,9 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
             "[WorkspaceModule] AdaptiveQuality switched to level " + Ogre::StringConverter::toString(idx) + " (avgFrameTimeMs=" + Ogre::StringConverter::toString(this->adaptiveAvgFrameTimeMs) + ")");
-
     }
 
-	void WorkspaceModule::configureAdaptiveQuality(std::vector<AdaptiveQualityLevel> levels, float targetFrameTimeMs)
+    void WorkspaceModule::configureAdaptiveQuality(std::vector<AdaptiveQualityLevel> levels, float targetFrameTimeMs)
     {
         if (true == levels.empty())
         {

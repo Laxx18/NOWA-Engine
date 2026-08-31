@@ -176,7 +176,7 @@ namespace NOWA
 		id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+		WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->bShutdown)
 		{
 			workspaceBaseComponent->setUseTerra(false);
@@ -294,7 +294,7 @@ namespace NOWA
 		// Optional: get components that might become unavailable
 		auto core = Core::getSingletonPtr();
 		auto appState = AppStateManager::getSingletonPtr();
-		auto workspaceModule = WorkspaceModule::getInstance();
+		auto workspaceModule = AppStateManager::getSingletonPtr()->getWorkspaceModule();
 		auto workspaceBaseComponent = workspaceModule->getPrimaryWorkspaceComponent();
 
 		// Clear pointers on *this* immediately
@@ -408,7 +408,7 @@ namespace NOWA
 	void TerraComponent::handleSwitchCamera(NOWA::EventDataPtr eventData)
 	{
 		// When camera changed event must be triggered, to set the new camera for the terra
-		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+		WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent)
 		{
 			boost::shared_ptr<EventDataSwitchCamera> castEventData = boost::static_pointer_cast<EventDataSwitchCamera>(eventData);
@@ -467,7 +467,7 @@ namespace NOWA
                 }
 
                 this->terra = new Ogre::Terra(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_STATIC), this->gameObjectPtr->getSceneManager(), NOWA::RENDER_QUEUE_TERRA,
-                                              WorkspaceModule::getInstance()->getCompositorManager(), this->usedCamera, false);
+                                              AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager(), this->usedCamera, false);
                 // Attention: Shadows must not be casted for terra, else ugly crash shader cache is created
                 this->terra->setCastShadows(false);
                 this->terra->setName(this->gameObjectPtr->getName());
@@ -539,7 +539,7 @@ namespace NOWA
                 if (nullptr != this->terra)
                 {
                     // Note: Default terra datablock must first always be used from json. On that base the data block may be adapted in datablock terra component.
-                    Ogre::HlmsDatablock* datablock = WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraDefaultMaterial");
+                    Ogre::HlmsDatablock* datablock = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getHlmsManager()->getDatablock("TerraDefaultMaterial");
                     if (nullptr != datablock)
                     {
                         //        Ogre::HlmsDatablock *datablock = hlmsManager->getHlms( Ogre::HLMS_USER3 )->getDefaultDatablock();
@@ -577,7 +577,7 @@ namespace NOWA
 
                 this->setLightId(this->lightId->getULong());
 
-                WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+                WorkspaceBaseComponent* workspaceBaseComponent = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getPrimaryWorkspaceComponent();
                 if (nullptr != workspaceBaseComponent)
                 {
                     if (false == workspaceBaseComponent->getUseTerra())

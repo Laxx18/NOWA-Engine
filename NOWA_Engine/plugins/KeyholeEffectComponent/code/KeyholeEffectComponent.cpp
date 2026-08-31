@@ -397,7 +397,7 @@ namespace NOWA
 		// Is done in CompositorEffects.compositor
 
 #if 0
-		Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+		Ogre::CompositorManager2* compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 		//Glass compositor is loaded from script but here is the hard coded equivalent
 		if (!compositorManager->hasNodeDefinition("Keyhole"))
 		{

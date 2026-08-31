@@ -589,7 +589,7 @@ namespace NOWA
         graphicsModule->setFrameTime(static_cast<Ogre::Real>(fixedDt));
 
         // Configure fps performance profiles
-        WorkspaceModule::getInstance()->configureAdaptiveQuality(
+        AppStateManager::getSingletonPtr()->getWorkspaceModule()->configureAdaptiveQuality(
             {
                 {/*shadowFarDistance*/ 500.0f, /*foliageDistanceMultiplier*/ 1.0f}, // level 0: best
                 {300.0f, 0.9f},                                                     // level 1
@@ -1488,6 +1488,26 @@ namespace NOWA
         if (nullptr != appState)
         {
             return appState->particleFxModule;
+        }
+        return nullptr;
+    }
+
+    WorkspaceModule* AppStateManager::getWorkspaceModule(void) const
+    {
+        if (true == this->activeStateStack.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] Error getting workspace module, because at this time no application state (AppState) has been created! Maybe this call was to early.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[AppStateManager] Error getting workspace module, because at this time no application state (AppState) has been created! Maybe this call was to early.", "NOWA");
+        }
+        return this->activeStateStack.back()->workspaceModule;
+    }
+
+    WorkspaceModule* AppStateManager::getWorkspaceModule(const Ogre::String& stateName)
+    {
+        AppState* appState = this->findByName(stateName);
+        if (nullptr != appState)
+        {
+            return appState->workspaceModule;
         }
         return nullptr;
     }

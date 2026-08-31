@@ -329,7 +329,7 @@ namespace NOWA
         // assert(dynamic_cast<Ogre::HlmsUnlit*>(hlms));
         this->unlit = static_cast<Ogre::HlmsUnlit*>(hlms);
         this->hlmsManager = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager();
-        this->compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+        this->compositorManager = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager();
 
         auto cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
         if (nullptr != cameraCompPtr)
@@ -426,7 +426,36 @@ namespace NOWA
 
     void WorkspaceBaseComponent::internalInitWorkspaceData(void)
     {
-        Ogre::String workspacePostfix = Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+        // The GameObject id alone is NOT unique across app states. Default GameObjects like
+        // MainCamera carry a fixed id (1111111112) in every scene, so IntroState, MenuState and
+        // ConfigurationState all named their workspace "NOWAWorkspace1111111112".
+        //
+        // With changeAppState that stays invisible, because the old state is fully torn down
+        // before the new one is built. With pushAppState both states are alive at once, and then
+        // createWorkspace's workspaceDef->clearAll() wipes the definition the paused state is
+        // still rendering, while removeWorkspace deletes workspace and node definitions out from
+        // under it. Ogre's CompositorManager2 is global and keyed purely by name - it cannot know
+        // that two app states meant two different things by the same string.
+        //
+        // The app state name is the missing discriminator. AppStateManager's ordering makes it
+        // correct at every point this runs: internalPushAppState pushes the new state onto the
+        // stack BEFORE calling enter(), and internalPopAppState calls exit() BEFORE pop_back() -
+        // so the state doing the creating or removing is always the one on top.
+        //
+        // getCurrentAppState() is used rather than getCurrentAppStateName(), because the latter
+        // dereferences activeStateStack.back() without checking for an empty stack, which would
+        // crash if this ever ran during shutdown after the last state was popped.
+        Ogre::String statePostfix;
+        AppState* currentAppState = AppStateManager::getSingletonPtr()->getCurrentAppState();
+        if (nullptr != currentAppState)
+        {
+            statePostfix = currentAppState->getName();
+            std::string::iterator endPos = std::remove(statePostfix.begin(), statePostfix.end(), ' ');
+            statePostfix.erase(endPos, statePostfix.end());
+        }
+
+        Ogre::String workspacePostfix = statePostfix + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+
         this->workspaceName = "NOWAWorkspace" + workspacePostfix;
         this->renderingNodeName = "NOWARenderingNode" + workspacePostfix;
         this->finalRenderingNodeName = "NOWAFinalCompositionNode" + workspacePostfix;
@@ -551,10 +580,10 @@ namespace NOWA
                 this->compositorManager->createBasicWorkspaceDef(this->workspaceName, color, Ogre::IdString());
             }
 
-            Ogre::CompositorWorkspaceDef* workspaceDef = WorkspaceModule::getInstance()->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+            Ogre::CompositorWorkspaceDef* workspaceDef = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
             workspaceDef->clearAll();
 
-            Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = WorkspaceModule::getInstance()->getCompositorManager()->getNodeDefinitions();
+            Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->getNodeDefinitions();
 
             // Iterate through Compositor Managers resources
             Ogre::CompositorManager2::CompositorNodeDefMap::const_iterator it = nodeDefs.begin();
@@ -701,7 +730,7 @@ namespace NOWA
                     Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
                     this->compositorManager->createBasicWorkspaceDef(this->planarReflectionReflectiveWorkspaceName, color, Ogre::IdString());
 
-                    Ogre::CompositorWorkspaceDef* workspaceDef = WorkspaceModule::getInstance()->getCompositorManager()->getWorkspaceDefinition(this->planarReflectionReflectiveWorkspaceName);
+                    Ogre::CompositorWorkspaceDef* workspaceDef = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->getWorkspaceDefinition(this->planarReflectionReflectiveWorkspaceName);
 
                     workspaceDef->connectExternal(0, this->planarReflectionReflectiveRenderingNode, 0);
                 }
@@ -758,10 +787,10 @@ namespace NOWA
         Ogre::String message = "WorkspaceBaseComponent::createWorkspace for: " + name;
         GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), message.data());
 
-// TODO: Check if -> and condition this->involvedInSplitScreen is necessary!
+        // TODO: Check if -> and condition this->involvedInSplitScreen is necessary!
         if (nullptr != this->cameraComponent)
         {
-            WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
+            AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
         }
 
         return true;
@@ -974,7 +1003,7 @@ namespace NOWA
 
         if (nullptr != this->cameraComponent)
         {
-            WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera());
+            AppStateManager::getSingletonPtr()->getWorkspaceModule()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera());
         }
 
         // Send event, that component has been deleted
@@ -1466,15 +1495,6 @@ namespace NOWA
 
             this->workspace->reconnectAllNodes();
         }
-    }
-
-    void WorkspaceBaseComponent::onEffectActivationChanged(const Ogre::String& effectName, bool activated)
-    {
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, effectName, activated]()
-        {
-            this->enableEffect(effectName, activated);
-        };
-        GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::onEffectActivationChanged");
     }
 
     void WorkspaceBaseComponent::enableEffect(const Ogre::String& effectName, bool activated)
@@ -2037,11 +2057,12 @@ namespace NOWA
         {
             position = 0;
         }
-        this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), this->externalChannels, this->cameraComponent->getCamera(), this->workspaceName, true, position);
+        this->workspace =
+            AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), this->externalChannels, this->cameraComponent->getCamera(), this->workspaceName, true, position);
 
-        // WorkspaceModule::getInstance()->logLiveNodeGraph(this->workspace, "Sky after create");
+        // AppStateManager::getSingletonPtr()->getWorkspaceModule()->logLiveNodeGraph(this->workspace, "Sky after create");
 
-        // WorkspaceModule::getInstance()->logAllCompositorNodeDefinitions();
+        // AppStateManager::getSingletonPtr()->getWorkspaceModule()->logAllCompositorNodeDefinitions();
     }
 
     Ogre::String WorkspaceBaseComponent::getDistortionNode(void) const
@@ -2492,7 +2513,7 @@ namespace NOWA
     }
 
     void WorkspaceBaseComponent::setUseHdr(bool useHdr)
-    {      
+    {
         if (false == useHdr && nullptr != this->gameObjectPtr)
         {
             boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(gameObjectPtr->getId(), useHdr));
@@ -2550,7 +2571,6 @@ namespace NOWA
         this->useReflection->setValue(useReflection);
 
         this->reflectionCameraGameObjectId->setVisible(useReflection);
-
 
         this->createWorkspace();
     }
@@ -2882,7 +2902,7 @@ namespace NOWA
                     passScene->mLastRQ = 250;
 
                     // Use shadow node with recalculation for accurate shadows
-                    passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                    passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                     passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_RECALCULATE;
 
                     passScene->mProfilingId = "NOWA_PCC_Cubemap_Face_Pass_Scene";
@@ -3154,7 +3174,7 @@ namespace NOWA
 
     void WorkspaceBaseComponent::updateShadowGlobalBias(void)
     {
-        Ogre::CompositorShadowNodeDef* node = this->compositorManager->getShadowNodeDefinitionNonConst(WorkspaceModule::getInstance()->shadowNodeName);
+        Ogre::CompositorShadowNodeDef* node = this->compositorManager->getShadowNodeDefinitionNonConst(AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName);
         size_t numShadowDefinitions = node->getNumShadowTextureDefinitions();
         for (size_t i = 0; i < numShadowDefinitions; i++)
         {
@@ -3481,7 +3501,7 @@ namespace NOWA
 
                         // IMPORTANT: First pass that uses shadows must NOT be set to REUSE
                         // otherwise shadow atlas may be read as Undefined at startup / after invalidation.
-                        passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                        passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
 
                         passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Opaque_Pass_Scene";
                         passScene->mCameraName = this->cameraComponent->getCamera()->getName();
@@ -3520,7 +3540,7 @@ namespace NOWA
 
                         passScene->mIncludeOverlays = false;
 
-                        passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                        passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                         passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 
                         passScene->mCameraName = this->cameraComponent->getCamera()->getName();
@@ -3567,7 +3587,7 @@ namespace NOWA
                         overlayPass->mIncludeOverlays = false;
                         overlayPass->mUpdateLodLists = false;
 
-                        overlayPass->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                        overlayPass->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                         overlayPass->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 
                         overlayPass->mProfilingId = "NOWA_Pbs_PCC_Overlays_Pass_Scene";
@@ -3718,7 +3738,7 @@ namespace NOWA
 
                             // https://forums.ogre3d.org/viewtopic.php?t=93636
                             // https://forums.ogre3d.org/viewtopic.php?t=94748
-                            passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                            passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                         }
 
                         // Generate Mipmaps
@@ -3774,9 +3794,7 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    WorkspaceSkyComponent::WorkspaceSkyComponent()
-        : WorkspaceBaseComponent(),
-        skyBoxName(new Variant(WorkspaceSkyComponent::AttrSkyBoxName(), this->attributes))
+    WorkspaceSkyComponent::WorkspaceSkyComponent() : WorkspaceBaseComponent(), skyBoxName(new Variant(WorkspaceSkyComponent::AttrSkyBoxName(), this->attributes))
     {
         Ogre::StringVectorPtr skyNames = Ogre::ResourceGroupManager::getSingleton().findResourceNames("Skies", "*.dds");
         std::vector<Ogre::String> compatibleSkyNames(skyNames.getPointer()->size() + 1);
@@ -4111,7 +4129,7 @@ namespace NOWA
 
                     passScene->mIncludeOverlays = false;
 
-                    passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                    passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
 
                     // FIX: do NOT reuse here, atlas may be Undefined at startup / after invalidation
                     // If your Ogre has SHADOW_NODE_RECALCULATE, you can set it explicitly.
@@ -4160,7 +4178,7 @@ namespace NOWA
                     overlayPass->mIncludeOverlays = false;
                     overlayPass->mUpdateLodLists = false;
 
-                    overlayPass->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                    overlayPass->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                     overlayPass->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 
                     overlayPass->mProfilingId = "NOWA_Pbs_PCC_Overlays_Pass_Scene";
@@ -4299,7 +4317,7 @@ namespace NOWA
 
                             // https://forums.ogre3d.org/viewtopic.php?t=93636
                             // https://forums.ogre3d.org/viewtopic.php?t=94748
-                            passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                            passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                         }
 
                         // Sky quad
@@ -4319,7 +4337,7 @@ namespace NOWA
                             auto pass = targetDef->addPass(Ogre::PASS_SCENE);
                             passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
                             passScene->mIncludeOverlays = false;
-                            passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                            passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                             passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
                             passScene->mFirstRQ = 2;
 
@@ -4351,7 +4369,7 @@ namespace NOWA
         this->changeSkyBox(this->skyBoxName->getListSelectedValue());
 
         // Is added in CameraComponent
-        // WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
+        // AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
 
         if (this->msaaLevel == 1)
         {
@@ -4412,10 +4430,7 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    WorkspaceBackgroundComponent::WorkspaceBackgroundComponent()
-        : WorkspaceBaseComponent(),
-        hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes)),
-        activeLayerCount(0)
+    WorkspaceBackgroundComponent::WorkspaceBackgroundComponent() : WorkspaceBaseComponent(), hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes)), activeLayerCount(0)
     {
         for (size_t i = 0; i < 9; i++)
         {
@@ -4802,7 +4817,7 @@ namespace NOWA
 
                     passScene->mIncludeOverlays = false;
 
-                    passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                    passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
 
                     // FIX: do NOT reuse here, atlas may be Undefined at startup / after invalidation.
                     // If your Ogre has SHADOW_NODE_RECALCULATE, you can set it explicitly.
@@ -4851,7 +4866,7 @@ namespace NOWA
                     overlayPass->mIncludeOverlays = false;
                     overlayPass->mUpdateLodLists = false;
 
-                    overlayPass->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                    overlayPass->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                     overlayPass->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 
                     overlayPass->mProfilingId = "NOWA_Pbs_PCC_Overlays_Pass_Scene";
@@ -4980,7 +4995,7 @@ namespace NOWA
                             passScene->mLastRQ = 2;
 
                             passScene->mIncludeOverlays = false;
-                            passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                            passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                         }
 
                         // Background quad
@@ -5000,7 +5015,7 @@ namespace NOWA
                             passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
 
                             passScene->mIncludeOverlays = false;
-                            passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+                            passScene->mShadowNode = AppStateManager::getSingletonPtr()->getWorkspaceModule()->shadowNodeName;
                             passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
                             passScene->mFirstRQ = 2;
                             passScene->mProfilingId = "NOWA_Background_After_Background_Pass_Scene";
@@ -5308,7 +5323,7 @@ namespace NOWA
         {
             const Ogre::IdString workspaceNameId(this->customWorkspaceName->getString());
 
-            if (false == WorkspaceModule::getInstance()->getCompositorManager()->hasWorkspaceDefinition(workspaceNameId))
+            if (false == AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->hasWorkspaceDefinition(workspaceNameId))
             {
                 Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
                 this->compositorManager->createBasicWorkspaceDef(this->customWorkspaceName->getString(), color, Ogre::IdString());
@@ -5321,7 +5336,8 @@ namespace NOWA
                 this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
             }
 
-            this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels, this->cameraComponent->getCamera(), this->customWorkspaceName->getString(), true);
+            this->workspace = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels, this->cameraComponent->getCamera(),
+                this->customWorkspaceName->getString(), true);
         }
 
         return nullptr != this->workspace;

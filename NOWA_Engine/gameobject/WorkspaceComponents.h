@@ -41,6 +41,7 @@ namespace NOWA
 		friend class TerraComponent;
 		friend class OceanComponent;
 		friend class WorkspaceModule;
+        friend class CameraComponent;
 
 		WorkspaceBaseComponent();
 
@@ -342,8 +343,6 @@ namespace NOWA
 
 	private:
 		void reconnectAllNodes(void);
-
-		void onEffectActivationChanged(const Ogre::String& effectName, bool activated);
 
 		void enableEffect(const Ogre::String& effectName, bool activated);
 	protected:

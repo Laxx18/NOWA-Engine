@@ -295,7 +295,7 @@ namespace NOWA
         // AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->destroyContent();
 
 		// TODO what else must be deleted?
-		WorkspaceModule::getInstance()->destroyContent();
+		AppStateManager::getSingletonPtr()->getWorkspaceModule(this->appStateName)->destroyContent(this->sceneManager);
 	}
 	
 	void GameProgressModule::start(void)
