@@ -1,8 +1,8 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "AtmosphereComponent.h"
+#include "gameobject/CameraComponent.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/LightDirectionalComponent.h"
-#include "gameobject/CameraComponent.h"
 #include "gameobject/WorkspaceComponents.h"
 #include "main/AppStateManager.h"
 #include "main/EventManager.h"
@@ -870,6 +870,12 @@ namespace NOWA
     {
         GameObjectComponent::onRemoveComponent();
 
+        // Belt and braces: make sure the tracked closure is gone no matter which path led here.
+        // It now captures raw pointers only, so a closure left behind would run against a dead
+        // scene manager on the very next frame.
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
         this->resetAtmosphere();
     }
 
@@ -977,7 +983,25 @@ namespace NOWA
             this->azimuth += this->timeMultiplicator->getReal() * dt;
             this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
-            auto closureFunction = [gameObjectPtr = this->gameObjectPtr, atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(), lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(),
+            // Attention: never capture the GameObjectPtr (a shared_ptr) in a tracked closure.
+            // The closure lives inside the GraphicsModule and would keep the game object alive
+            // past GameObjectController::destroyContent(). drainAllDestroyCommands() then runs
+            // while the object is still referenced and finds nothing to flush. The object dies
+            // much later, when the closure is finally replaced or removed, and only then enqueues
+            // its destroy command into the ring buffer - at a point where the scene manager is
+            // long gone. GameObject::destroyGameObjectResources then reads freed memory and
+            // crashes while constructing the name string from a dangling scene node.
+            // Resolve the camera up front and capture raw pointers only. Their lifetime is
+            // covered by removeTrackedClosure(), which runs in disconnect(), resetAtmosphere()
+            // and onRemoveComponent().
+            Ogre::Camera* atmosphereCamera = nullptr;
+            auto atmosphereCameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
+            if (nullptr != atmosphereCameraCompPtr)
+            {
+                atmosphereCamera = atmosphereCameraCompPtr->getCamera();
+            }
+
+            auto closureFunction = [atmosphereCamera, atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(), lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(),
                                        defaultDir = this->lightDirectionalComponent->getOwner()->getDefaultDirection(), externalLightMode = this->externalLightMode, cachedSunDir = this->cachedExternalSunDir, timeOfDay = this->timeOfDay,
                                        azimuth = this->azimuth](Ogre::Real renderDt) mutable
             {
@@ -1014,14 +1038,9 @@ namespace NOWA
                 // regardless of the actual time of day.
                 atmosphereNpr->updatePreset(sd, timeOfDay);
 
-                auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
-                if (nullptr != cameraCompPtr)
+                if (nullptr != atmosphereCamera)
                 {
-                    Ogre::Camera* camera = cameraCompPtr->getCamera(); 
-                    if (nullptr != camera)
-                    {
-                        atmosphereNpr->_update(sceneManager, camera);
-                    }
+                    atmosphereNpr->_update(sceneManager, atmosphereCamera);
                 }
             };
 
@@ -1163,29 +1182,29 @@ namespace NOWA
         //// range at the wrap point and produces a massive HDR spike — the visible brightness jump.
         //// We use case 4 (midnight, darkest preset) for both sentinels so the boundary is dark
         //// and any extrapolation beyond it stays dark rather than spiking bright.
-        //const size_t nightIdx = 4; // case 4 = midnight
-        //Ogre::AtmosphereNpr::Preset sentinel;
-        //sentinel.densityCoeff = this->densityCoefficients[nightIdx]->getReal();
-        //sentinel.densityDiffusion = this->densityDiffusions[nightIdx]->getReal();
-        //sentinel.horizonLimit = this->horizonLimits[nightIdx]->getReal();
-        //sentinel.sunPower = bShowSun ? this->sunPowers[nightIdx]->getReal() : 0.0f;
-        //sentinel.skyPower = this->enableSky->getBool() ? this->skyPowers[nightIdx]->getReal() : 0.0f;
-        //sentinel.skyColour = this->skyColors[nightIdx]->getVector3();
-        //sentinel.fogDensity = this->fogDensities[nightIdx]->getReal();
-        //sentinel.fogBreakMinBrightness = this->fogBreakMinBrightnesses[nightIdx]->getReal();
-        //sentinel.fogBreakFalloff = this->fogBreakFalloffs[nightIdx]->getReal();
-        //sentinel.linkedLightPower = bShowSun ? this->linkedLightPowers[nightIdx]->getReal() : 0.0f;
-        //sentinel.linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[nightIdx]->getReal();
-        //sentinel.linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[nightIdx]->getReal();
-        //sentinel.envmapScale = this->envmapScales[nightIdx]->getReal();
+        // const size_t nightIdx = 4; // case 4 = midnight
+        // Ogre::AtmosphereNpr::Preset sentinel;
+        // sentinel.densityCoeff = this->densityCoefficients[nightIdx]->getReal();
+        // sentinel.densityDiffusion = this->densityDiffusions[nightIdx]->getReal();
+        // sentinel.horizonLimit = this->horizonLimits[nightIdx]->getReal();
+        // sentinel.sunPower = bShowSun ? this->sunPowers[nightIdx]->getReal() : 0.0f;
+        // sentinel.skyPower = this->enableSky->getBool() ? this->skyPowers[nightIdx]->getReal() : 0.0f;
+        // sentinel.skyColour = this->skyColors[nightIdx]->getVector3();
+        // sentinel.fogDensity = this->fogDensities[nightIdx]->getReal();
+        // sentinel.fogBreakMinBrightness = this->fogBreakMinBrightnesses[nightIdx]->getReal();
+        // sentinel.fogBreakFalloff = this->fogBreakFalloffs[nightIdx]->getReal();
+        // sentinel.linkedLightPower = bShowSun ? this->linkedLightPowers[nightIdx]->getReal() : 0.0f;
+        // sentinel.linkedSceneAmbientUpperPower = this->linkedSceneAmbientUpperPowers[nightIdx]->getReal();
+        // sentinel.linkedSceneAmbientLowerPower = this->linkedSceneAmbientLowerPowers[nightIdx]->getReal();
+        // sentinel.envmapScale = this->envmapScales[nightIdx]->getReal();
 
-        //Ogre::AtmosphereNpr::Preset lowerSentinel = sentinel;
-        //lowerSentinel.time = -1.0f; // time01 = 0.0
-        //presets.push_back(lowerSentinel);
+        // Ogre::AtmosphereNpr::Preset lowerSentinel = sentinel;
+        // lowerSentinel.time = -1.0f; // time01 = 0.0
+        // presets.push_back(lowerSentinel);
 
-        //Ogre::AtmosphereNpr::Preset upperSentinel = sentinel;
-        //upperSentinel.time = 0.999999f; // time01 = 1.0
-        //presets.push_back(upperSentinel);
+        // Ogre::AtmosphereNpr::Preset upperSentinel = sentinel;
+        // upperSentinel.time = 0.999999f; // time01 = 1.0
+        // presets.push_back(upperSentinel);
 
         // Everything above is pushed in case-index order (0,1,2,3,4,5, lowerSentinel,
         // upperSentinel), which is NOT the same as ascending order by .time - e.g. case1

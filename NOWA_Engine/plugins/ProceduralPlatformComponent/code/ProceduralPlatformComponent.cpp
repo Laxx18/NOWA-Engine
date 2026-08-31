@@ -4019,9 +4019,9 @@ namespace NOWA
 
         this->cachedPlatformOrigin = this->platformOrigin;
 
-        this->logSuspectedZFightingPairs();
-        this->logSuspectedCoplanarOverlaps();
-        this->logAllVertexPositions();
+        // this->logSuspectedZFightingPairs();
+        // this->logSuspectedCoplanarOverlaps();
+        // this->logAllVertexPositions();
 
         std::vector<float> surfaceVerticesCopy = this->surfaceVertices;
         std::vector<Ogre::uint32> surfaceIndicesCopy = this->surfaceIndices;

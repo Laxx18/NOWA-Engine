@@ -40,16 +40,16 @@
 ** These next four methods are custom accessor functions to allow the Ogg Vorbis
 ** libraries to be able to stream audio data directly from an Ogre::DataStreamPtr
 */
-size_t OgreALOggStreamRead(void *ptr, size_t size, size_t nmemb, void *datasource)
+size_t OgreALOggStreamRead(void* ptr, size_t size, size_t nmemb, void* datasource)
 {
 	Ogre::DataStreamPtr dataStream = *reinterpret_cast<Ogre::DataStreamPtr*>(datasource);
 	return dataStream->read(ptr, size);
 }
 
-int OgreALOggStreamSeek(void *datasource, ogg_int64_t offset, int whence)
+int OgreALOggStreamSeek(void* datasource, ogg_int64_t offset, int whence)
 {
 	Ogre::DataStreamPtr dataStream = *reinterpret_cast<Ogre::DataStreamPtr*>(datasource);
-	switch(whence)
+	switch (whence)
 	{
 	case SEEK_SET:
 		dataStream->seek(offset);
@@ -66,12 +66,12 @@ int OgreALOggStreamSeek(void *datasource, ogg_int64_t offset, int whence)
 	return 0;
 }
 
-int OgreALOggStreamClose(void *datasource)
+int OgreALOggStreamClose(void* datasource)
 {
 	return 0;
 }
 
-long OgreALOggStreamTell(void *datasource)
+long OgreALOggStreamTell(void* datasource)
 {
 	Ogre::DataStreamPtr dataStream = *reinterpret_cast<Ogre::DataStreamPtr*>(datasource);
 	return static_cast<long>(dataStream->tell());
@@ -81,7 +81,8 @@ long OgreALOggStreamTell(void *datasource)
 ** End Custome Accessors
 */
 
-namespace OgreAL {
+namespace OgreAL
+{
 	OggSound::OggSound(Ogre::SceneManager* sceneMgr, const Ogre::String& name, const Ogre::DataStreamPtr& soundStream, bool loop, bool stream) :
 		Sound(sceneMgr, name, soundStream->getName(), stream)
 	{
@@ -116,9 +117,9 @@ namespace OgreAL {
 			generateBuffers();
 			mBuffersLoaded = loadBuffers();
 		}
-		catch(Ogre::Exception e)
+		catch (Ogre::Exception e)
 		{
-			for(int i = 0; i < mNumBuffers; i++)
+			for (int i = 0; i < mNumBuffers; i++)
 			{
 				if (mBuffers[i] && alIsBuffer(mBuffers[i]) == AL_TRUE)
 				{
@@ -140,7 +141,7 @@ namespace OgreAL {
 
 	bool OggSound::loadBuffers()
 	{
-		for(int i = 0; i < mNumBuffers; i++)
+		for (int i = 0; i < mNumBuffers; i++)
 		{
 			CheckCondition(AL_NONE != mBuffers[i], 13, "Could not generate buffer");
 			Buffer buffer = bufferData(&mOggStream, mStream ? mBufferSize : 0);
@@ -153,7 +154,7 @@ namespace OgreAL {
 
 	bool OggSound::unloadBuffers()
 	{
-		if(mStream)
+		if (mStream)
 		{
 			ov_time_seek(&mOggStream, 0);
 			return false;
@@ -166,26 +167,26 @@ namespace OgreAL {
 
 	void OggSound::setSecondOffset(Ogre::Real seconds)
 	{
-		if(seconds < 0) return;
+		if (seconds < 0) return;
 
-		if(!mStream)
+		if (!mStream)
 		{
 			Sound::setSecondOffset(seconds);
 		}
 		else
 		{
 			bool wasPlaying = isPlaying();
-			
+
 			pause();
 			ov_time_seek(&mOggStream, seconds);
 
-			if(wasPlaying) play();
+			if (wasPlaying) play();
 		}
 	}
 
 	Ogre::Real OggSound::getSecondOffset()
 	{
-		if(!mStream)
+		if (!mStream)
 		{
 			return Sound::getSecondOffset();
 		}
@@ -300,42 +301,64 @@ namespace OgreAL {
 			mRenderDelta = 0;
 			mTotalElapsedTime = 0.0f;
 
-			if (nullptr != mSpectrumCallback)
+			// FIX: this cleanup must NOT depend on mSpectrumCallback being set.
+			// mSpectrumParameter is exactly what gates the normal loop-restart logic
+			// down in updateSound() via `if (eof && !mSpectrumParameter)`. If
+			// mSpectrumCallback happened to be null here (never set, or cleared
+			// separately from disabling spectrum analysis), mSpectrumParameter was
+			// NEVER reset to nullptr - it stayed a dangling non-null pointer forever.
+			// That silently and permanently blocked the loop-restart branch below,
+			// regardless of whether spectrum analysis was actually still in use.
+			if (nullptr != mAudioProcessor)
 			{
-				if (nullptr != mAudioProcessor)
-				{
-					delete mAudioProcessor;
-					mAudioProcessor = nullptr;
-				}
+				delete mAudioProcessor;
+				mAudioProcessor = nullptr;
+			}
 
-				if (nullptr != mSpectrumParameter)
-				{
-					delete mSpectrumParameter;
-					mSpectrumParameter = nullptr;
-				}
+			if (nullptr != mSpectrumParameter)
+			{
+				delete mSpectrumParameter;
+				mSpectrumParameter = nullptr;
 			}
 		}
 	}
 
 	bool OggSound::updateSound()
 	{
-		// Check for buffer underrun BEFORE calling the base class -- otherwise
-		// Sound::updateSound() sees AL_STOPPED and releases the source before
-		// we get a chance to detect this was an underrun, not a real end-of-stream.
+		// FIX (root cause of loop never restarting): Sound::updateSound() (base class)
+		// decides "finished" purely from the raw OpenAL source state (isStopped(), i.e.
+		// AL_SOURCE_STATE == AL_STOPPED). OpenAL enters that exact state on EVERY buffer
+		// underrun too - not just on genuine end-of-file - and the base class has no idea
+		// mOggStream still has more data (or should loop). The old `buffersQueued > 0`
+		// check below was meant to distinguish "recoverable underrun" from "really done",
+		// but right at our own loop boundary (while THIS function's eof-handling further
+		// down is mid-refill) that check can race: Sound::updateSound() runs first (it's
+		// called unconditionally right here, before our own eof loop even executes), sees
+		// isStopped()==true, and immediately releases mSource + sets mManualStop=true -
+		// permanently, since nothing else ever calls play() again. Once that happens,
+		// mSource is AL_NONE by the time we reach our own eof/loop code below, so it never
+		// runs, and mLoopedCallback never fires again for this sound.
+		//
+		// The correct ownership split: for a STREAMING OggSound, only OggSound itself may
+		// decide "really finished", using mOggStream.offset/.end - never the raw AL source
+		// state. So for streaming sounds we treat every unexpected stop as a recoverable
+		// underrun unconditionally, and never let Sound::updateSound() run its own
+		// finished/release logic in that case. Only when we ourselves already detected a
+		// genuine end (eof && !mLoop) do we call our own stop(), which already sets
+		// mManualStop = true beforehand - so the base-class guard `!mManualStop` correctly
+		// skips its own duplicate handling in that case, and Sound::updateSound() staying
+		// unconditional there is fine and intentional.
 		bool wasUnderrun = false;
 		if (mStream && (mSource != AL_NONE) && !isPlaying() && !mManualStop)
 		{
+			wasUnderrun = true;
+
 			ALint buffersQueued = 0;
 			alGetSourcei(mSource, AL_BUFFERS_QUEUED, &buffersQueued);
-
-			if (buffersQueued > 0)
-			{
-				wasUnderrun = true;
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-					"[OgreAL] OggSound buffer underrun detected for '" + this->getName() +
-					"' -- " + Ogre::StringConverter::toString((int)buffersQueued) +
-					" buffers still queued. Refilling and resuming instead of stopping.");
-			}
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+				"[OgreAL] OggSound source stopped unexpectedly for '" + this->getName() +
+				"' -- " + Ogre::StringConverter::toString((int)buffersQueued) +
+				" buffers queued. Treating as recoverable underrun, refilling and resuming instead of releasing the source.");
 		}
 
 		// Skip the base class's "treat AL_STOPPED as finished" logic this frame
@@ -382,7 +405,15 @@ namespace OgreAL {
 				alSourceQueueBuffers(mSource, 1, &buffer);
 				CheckError(alGetError(), "Failed to queue buffers");
 
-				if (eof && !mSpectrumParameter)
+				// FIX: this must run for the REAL playback stream (mOggStream)
+				// regardless of whether spectrum analysis is active. It used to be
+				// gated behind `!mSpectrumParameter`, deferring looping entirely to
+				// the separate, wall-clock-paced spectrum stream below - which drifts
+				// out of sync with actual playback whenever pitch/speed != 1.0 (AL_PITCH
+				// affects real playback speed but not the spectrum timing model), so the
+				// real stream could sit finished for a long time (or effectively forever)
+				// before the spectrum side ever noticed and restarted it.
+				if (eof)
 				{
 					if (mLoop)
 					{
@@ -491,18 +522,25 @@ namespace OgreAL {
 					}
 					else
 					{
+						// FIX: looping/stopping the REAL playback stream (mOggStream) and
+						// firing mLoopedCallback/mFinishedCallback is now exclusively owned
+						// by the eof-handling block above, which runs unconditionally for
+						// every OggSound. Duplicating that here (as before) caused a second,
+						// independently-timed ov_time_seek(&mOggStream, 0) and a second
+						// callback firing, drifting further out of sync the longer playback
+						// ran at pitch/speed != 1.0. This branch now ONLY resets state that
+						// belongs to the separate analysis stream (mSpectrumOggStream) and
+						// its own timing bookkeeping.
 						if (mLoop)
 						{
 							spectrumEof = false;
 							mFirstTimeReady = true;
-							eof = false;
 
 							if (nullptr != mAudioProcessor)
 							{
 								mAudioProcessor->setProcessingSize(this->getSpectrumProcessingSize() * 2);
 							}
 
-							ov_time_seek(&mOggStream, 0);
 							unsigned long loopResetTime = mTimer.getMilliseconds();
 							ov_time_seek(&mSpectrumOggStream, 0);
 
@@ -512,17 +550,11 @@ namespace OgreAL {
 							mCurrentSpectrumPos = 0;
 							mLastTime = loopResetTime;
 							mRenderDelta = 0;
-
-							if (mLoopedCallback)
-								mLoopedCallback->execute(static_cast<Sound*>(this));
 						}
-						else
-						{
-							stop();
-							mTotalElapsedTime = 0.0f;
-							if (mFinishedCallback)
-								mFinishedCallback->execute(static_cast<Sound*>(this));
-						}
+						// else: nothing to do here - the real stream's stop() and
+						// mFinishedCallback were already handled above when mOggStream
+						// itself reached eof. Analysis simply stops producing new frames
+						// once spectrumEof stays true.
 					}
 				}
 			}
@@ -531,62 +563,62 @@ namespace OgreAL {
 		return !eof;
 	}
 
-	Buffer OggSound::bufferData(OggVorbis_File *oggVorbisFile, int size)
+	Buffer OggSound::bufferData(OggVorbis_File* oggVorbisFile, int size)
 	{
 		Buffer buffer;
-		char *data = new char[mBufferSize];
+		char* data = new char[mBufferSize];
 		int section, sizeRead = 0;
 
-		if(size == 0)
+		if (size == 0)
 		{
 			// Read the rest of the file
 			do
 			{
 				sizeRead = ov_read(oggVorbisFile, data, mBufferSize, 0, 2, 1, &section);
 				buffer.insert(buffer.end(), data, data + sizeRead);
-			}while(sizeRead > 0);
+			} while (sizeRead > 0);
 		}
 		else
 		{
 			// Read only what was asked for
-			while(buffer.size() < size)
+			while (buffer.size() < size)
 			{
 				sizeRead = ov_read(oggVorbisFile, data, mBufferSize, 0, 2, 1, &section);
-				if(sizeRead == 0) break;
+				if (sizeRead == 0) break;
 				buffer.insert(buffer.end(), data, data + sizeRead);
 			}
 		}
-		
+
 		delete[] data;
 		return buffer;
 	}
 
-	Buffer OggSound::bufferDataSpectrum(OggVorbis_File *oggVorbisFile, int size)
+	Buffer OggSound::bufferDataSpectrum(OggVorbis_File* oggVorbisFile, int size)
 	{
 		Buffer buffer;
-		char *data = new char[size];
+		char* data = new char[size];
 		int section, sizeRead = 0;
 
-		if(size == 0)
+		if (size == 0)
 		{
 			// Read the rest of the file
 			do
 			{
 				sizeRead = ov_read(oggVorbisFile, data, size, 0, 2, 1, &section);
 				buffer.insert(buffer.end(), data, data + sizeRead);
-			}while(sizeRead > 0);
+			} while (sizeRead > 0);
 		}
 		else
 		{
 			// Read only what was asked for
-			while(buffer.size() < size)
+			while (buffer.size() < size)
 			{
 				sizeRead = ov_read(oggVorbisFile, data, size, 0, 2, 1, &section);
-				if(sizeRead == 0) break;
+				if (sizeRead == 0) break;
 				buffer.insert(buffer.end(), data, data + sizeRead);
 			}
 		}
-		
+
 		delete[] data;
 		return buffer;
 	}

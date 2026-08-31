@@ -105,6 +105,8 @@ namespace OgreNewt
 		void SetSpringAndDamping(bool enable, bool massIndependent, Ogre::Real springDamperRelaxation, Ogre::Real spring, Ogre::Real damper);
 
 		void SetFriction(Ogre::Real friction);
+
+		void applySpringDamper();
 	protected:
 		ndJointHinge* asNd() const
 		{
@@ -123,6 +125,9 @@ namespace OgreNewt
 		Ogre::Real      m_lastRegularizer = 0.1f;  // reused for SetFriction emulation
 		Ogre::Real      m_setFriction = 0.0f;      // last SetFriction value (viscous)
 		Ogre::Real      m_motorTorque = 0.0f;      // SetTorque() requested torque (emulated)
+        bool m_springEnabled = false;
+        Ogre::Real m_springK = 0.0f;
+        Ogre::Real m_springD = 0.0f;
 	};
 
 	/*!

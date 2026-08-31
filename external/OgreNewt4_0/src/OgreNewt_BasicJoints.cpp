@@ -283,7 +283,9 @@ namespace OgreNewt
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    Hinge::Hinge(const Body* child, const Body* parent, const Ogre::Vector3& pos, const Ogre::Vector3& pin) : Joint(), m_childPinLocal(pin)
+    Hinge::Hinge(const Body* child, const Body* parent, const Ogre::Vector3& pos, const Ogre::Vector3& pin) 
+        : Joint(),
+        m_childPinLocal(pin)
     {
         // build ND4 frame from Ogre pin + position (same as Newton3 grammSchmidt logic)
         const Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
@@ -300,6 +302,7 @@ namespace OgreNewt
         // This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
         joint->SetSolverModel(m_jointIterativeSoft);
         // store for OgreNewt lifetime mgmt
+
         SetSupportJoint(child->getWorld(), joint);
     }
 
@@ -321,6 +324,8 @@ namespace OgreNewt
         // ND4 hinge can also be created from separate frames
         ndJointHinge* const joint = new ndJointHinge(frameChild, frameParent, childBody, parentBody);
 
+        m_body0 = const_cast<OgreNewt::Body*>(child);
+        m_body1 = const_cast<OgreNewt::Body*>(parent);
         SetSupportJoint(child->getWorld(), joint);
     }
 
@@ -504,6 +509,43 @@ namespace OgreNewt
         const ndFloat32 damper = static_cast<ndFloat32>(friction);
 
         joint->SetAsSpringDamper(reg, spring, damper);
+
+        if (m_body0)
+        {
+            m_body0->unFreeze();
+        }
+        if (m_body1)
+        {
+            m_body1->unFreeze();
+        }
+    }
+
+    void Hinge::applySpringDamper()
+    {
+        if (!m_world)
+        {
+            return;
+        }
+
+        ndJointHinge* const joint = asNd();
+        if (!joint)
+        {
+            return;
+        }
+
+        // ndJointHinge owns exactly one spring/damper pair, so spring, friction and
+        // motor torque have to be merged here instead of each setter calling
+        // SetAsSpringDamper() on its own and wiping the previous two.
+        const ndFloat32 reg = static_cast<ndFloat32>(m_lastRegularizer);
+        const ndFloat32 k = m_springEnabled ? static_cast<ndFloat32>(m_springK) : ndFloat32(0.0f);
+
+        ndFloat32 c = m_springEnabled ? static_cast<ndFloat32>(m_springD) : ndFloat32(0.0f);
+        if (m_setFriction > 0.0f)
+        {
+            c += static_cast<ndFloat32>(m_setFriction);
+        }
+
+        joint->SetAsSpringDamper(reg, k, c);
 
         if (m_body0)
         {

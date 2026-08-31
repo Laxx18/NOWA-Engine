@@ -248,7 +248,7 @@ namespace NOWA
 
             this->animationBlender = new NOWA::AnimationBlenderV2(item);
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationSequenceComponent] List all animations for mesh '" + item->getMesh()->getName() + "':");
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationSequenceComponent] List all animations for mesh '" + item->getMesh()->getName() + "':");
 
             // Iterate V2 skeleton animations (replaces AnimationStateIterator)
             for (auto& anim : this->skeleton->getAnimationsNonConst())
@@ -261,7 +261,7 @@ namespace NOWA
                 const Ogre::String animName = anim.getName().getFriendlyText();
                 this->availableAnimations.emplace_back(animName);
 
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationSequenceComponent] Animation name: " + animName + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
+                // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationSequenceComponent] Animation name: " + animName + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
             }
 
             // Animation names must be set after loading, because just in postInit the item with the animations is available

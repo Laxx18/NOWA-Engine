@@ -58,47 +58,63 @@ namespace
 
 Joint::Joint()
     : m_jointPtr(),
-    m_stiffness(1.0f)
+    m_stiffness(1.0f),
+    m_world(nullptr)
 {
 }
 
 Joint::~Joint()
 {
-    if (!m_world || !m_jointPtr)
+    // Take ownership out of the members in a way that does not rely on ndSharedPtr
+    // having a move constructor (ND4's ndSharedPtr declares a copy ctor and a
+    // destructor, which suppresses the implicit move ctor -- std::move would
+    // silently degrade to a copy and leave m_jointPtr alive).
+    OgreNewt::World* const world = m_world;
+    ndSharedPtr<ndJointBilateralConstraint> jointPtr(m_jointPtr);
+
+    m_world = nullptr;
+    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+
+    if (nullptr == world || nullptr == *jointPtr)
     {
         return;
     }
 
-    ndSharedPtr<ndJointBilateralConstraint> jointPtr = std::move(m_jointPtr);
-    OgreNewt::World* world = m_world;
-    m_world = nullptr;
-
-    world->enqueuePhysics(
+    // Use the blocking variant here as well. A fire-and-forget removal can be
+    // executed AFTER a subsequent reconnect has already created the replacement
+    // joint on the same bodies, which corrupts the world's joint list.
+    world->enqueuePhysicsAndWait(
         [jointPtr](OgreNewt::World& w) mutable
         {
-            if (*jointPtr && (*jointPtr)->IsInWorld())
+            if (nullptr != *jointPtr && (*jointPtr)->IsInWorld())
             {
                 w.destroyJoint(jointPtr);
             }
-            jointPtr = ndSharedPtr<ndJointBilateralConstraint>(); // release
+            jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
         });
 }
 
 void Joint::destroyJoint(OgreNewt::World*)
 {
-    if (!m_world || !m_jointPtr)
+    // Idempotent by construction: both members are cleared before anything else
+    // happens, so a following destructor call becomes a no-op.
+    OgreNewt::World* const world = m_world;
+    ndSharedPtr<ndJointBilateralConstraint> jointPtr(m_jointPtr);
+
+    m_world = nullptr;
+    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+
+    if (nullptr == world || nullptr == *jointPtr)
     {
         return;
     }
 
-    ndSharedPtr<ndJointBilateralConstraint> jointPtr = std::move(m_jointPtr);
-
-    m_world->enqueuePhysicsAndWait(
+    world->enqueuePhysicsAndWait(
         [jointPtr](OgreNewt::World& w) mutable
         {
-            if (*jointPtr && (*jointPtr)->IsInWorld())
+            if (nullptr != *jointPtr && (*jointPtr)->IsInWorld())
             {
-                w.destroyJoint(jointPtr); // SharedPtr — correct
+                w.destroyJoint(jointPtr);
             }
             jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
         });
@@ -241,11 +257,23 @@ void Joint::destructorCallback(const ndJointBilateralConstraint* /*me*/)
 
 void Joint::setCollisionState(int state) const
 {
-    m_jointPtr->SetCollidable(state != 0);
+    if (nullptr == *m_jointPtr)
+    {
+        // The joint may already have been released (disconnect) while the
+        // component still pushes collision state changes.
+        return;
+    }
+
+    m_jointPtr->SetCollidable(0 != state);
 }
 
 int Joint::getCollisionState() const
 {
+    if (nullptr == *m_jointPtr)
+    {
+        return 0;
+    }
+
     return m_jointPtr->IsCollidable() ? 1 : 0;
 }
 

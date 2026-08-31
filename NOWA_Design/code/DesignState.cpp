@@ -1,91 +1,89 @@
 #include "NOWAPrecompiled.h"
 #include "DesignState.h"
 #include "GuiEvents.h"
-#include "OgreFrameStats.h"
 #include "MyGUIHelper.h"
+#include "OgreFrameStats.h"
 
 // Compile directly into project
-#include "TreeControl/TreeControl.cpp"
-#include "TreeControl/TreeControlItem.cpp"
-#include "Slider/Slider.cpp"
 #include "HyperTextBox/HyperTextBox.cpp"
 #include "HyperTextBox/Panel.cpp"
 #include "HyperTextBox/ScrollViewPanel.cpp"
 #include "HyperTextBox/StackPanel.cpp"
 #include "HyperTextBox/WrapPanel.cpp"
+#include "Slider/Slider.cpp"
+#include "TreeControl/TreeControl.cpp"
+#include "TreeControl/TreeControlItem.cpp"
 
 class SelectionObserver : public NOWA::SelectionManager::ISelectionObserver
 {
 public:
-	SelectionObserver(NOWA::EditorManager* editorManager)
-		: selectionStrategy(new NOWA::DefaultOutLine()), // = new NOWA::RimEffectOutLine();
-		editorManager(editorManager)
-	{
-		
-	}
+    SelectionObserver(NOWA::EditorManager* editorManager) :
+        selectionStrategy(new NOWA::DefaultOutLine()), // = new NOWA::RimEffectOutLine();
+        editorManager(editorManager)
+    {
+    }
 
-	virtual ~SelectionObserver()
-	{
-		if (this->selectionStrategy)
-		{
-			delete this->selectionStrategy;
-			this->selectionStrategy = nullptr;
-		}
-	}
+    virtual ~SelectionObserver()
+    {
+        if (this->selectionStrategy)
+        {
+            delete this->selectionStrategy;
+            this->selectionStrategy = nullptr;
+        }
+    }
 
-	virtual void onHandleSelection(NOWA::GameObject* gameObject, bool selected) override
-	{
-		if (true == selected && NOWA::EditorManager::EDITOR_PICKER_MODE != this->editorManager->getManipulationMode())
-		{
-			this->selectionStrategy->highlight(gameObject);
-		}
-		else
-		{
-			this->selectionStrategy->unHighlight(gameObject);
-		}
-	}
+    virtual void onHandleSelection(NOWA::GameObject* gameObject, bool selected) override
+    {
+        if (true == selected && NOWA::EditorManager::EDITOR_PICKER_MODE != this->editorManager->getManipulationMode())
+        {
+            this->selectionStrategy->highlight(gameObject);
+        }
+        else
+        {
+            this->selectionStrategy->unHighlight(gameObject);
+        }
+    }
+
 private:
-	NOWA::DefaultOutLine* selectionStrategy;
-	NOWA::EditorManager* editorManager;
+    NOWA::DefaultOutLine* selectionStrategy;
+    NOWA::EditorManager* editorManager;
 };
 
 //////////////////////////////////////////////////////////////////////
 
-DesignState::DesignState()
-	: NOWA::AppState()
+DesignState::DesignState() : NOWA::AppState()
 {
-
 }
 
 void DesignState::enter(void)
 {
-	this->hasStarted = true;
-	this->canUpdate = true;
+    this->hasStarted = true;
+    this->canUpdate = true;
 
-	this->projectManager = nullptr;
-	this->editorManager = nullptr;
-	this->propertiesPanel = nullptr;
-	this->componentsPanel = nullptr;
-	this->resourcesPanel = nullptr;
-	this->mainMenuBar = nullptr;
-	this->nextInfoUpdate = 1.0f;
-	this->validScene = false;
-	this->hasSceneChanges = false;
-	this->activeCategory = "All";
-	this->cameraMoveSpeed = 10.0f;
-	this->lastOrbitValue = Ogre::Vector2::ZERO;
-	this->firstTimeValueSet = true;
-	this->playerInControl = false;
-	this->ogreNewt = nullptr;
-	this->selectQuery = nullptr;
-	this->undoPressed = false;
-	this->editPopupMenu = nullptr;
-	this->isMouseAtTop = false;
-	this->guiVisible = true;
-	this->mouseTopTimer = 0.0f;
-	this->selectedGameObject = nullptr;
+    this->projectManager = nullptr;
+    this->editorManager = nullptr;
+    this->propertiesPanel = nullptr;
+    this->componentsPanel = nullptr;
+    this->resourcesPanel = nullptr;
+    this->mainMenuBar = nullptr;
+    this->nextInfoUpdate = 1.0f;
+    this->validScene = false;
+    this->hasSceneChanges = false;
+    this->activeCategory = "All";
+    this->cameraMoveSpeed = 10.0f;
+    this->lastOrbitValue = Ogre::Vector2::ZERO;
+    this->firstTimeValueSet = true;
+    this->playerInControl = false;
+    this->ogreNewt = nullptr;
+    this->selectQuery = nullptr;
+    this->undoPressed = false;
+    this->editPopupMenu = nullptr;
+    this->isMouseAtTop = false;
+    this->guiVisible = true;
+    this->mouseTopTimer = 0.0f;
+    this->selectedGameObject = nullptr;
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = []()
+    NOWA::GraphicsModule::RenderCommand renderCommand = []()
     {
         // Register the tree control
         MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
@@ -110,12 +108,12 @@ void DesignState::enter(void)
 
         MyGUIHelper::getInstance()->initToolTipData();
 
-// TODO: Just for testing, deactivate again!
+        // TODO: Just for testing, deactivate again!
         // NOWA::GraphicsModule::getInstance()->enableDebugVisualization(true);
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::enter");
 
-	this->createScene();
+    this->createScene();
 }
 
 void DesignState::exit(void)
@@ -143,7 +141,7 @@ void DesignState::exit(void)
 
     NOWA::Core::getSingletonPtr()->switchFullscreen(false, 0, 0, 0);
 
-	bool isSimulating = this->gameObjectController->getIsSimulating();
+    bool isSimulating = this->gameObjectController->getIsSimulating();
     if (nullptr != this->editorManager && true == isSimulating)
     {
         // Stop simulation, since there can be tag-point components involved which changed the scene node owner ship, so a crash may occur if a movable object is detached from its
@@ -226,16 +224,16 @@ void DesignState::exit(void)
 
 void DesignState::createScene(void)
 {
-	size_t numThreads = 1;
+    size_t numThreads = 1;
 #ifdef _DEBUG
-	//Debugging multithreaded code is a PITA, disable it.
-	numThreads = 1;
+    // Debugging multithreaded code is a PITA, disable it.
+    numThreads = 1;
 #else
-	//getNumLogicalCores() may return 0 if couldn't detect
-	numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
+    // getNumLogicalCores() may return 0 if couldn't detect
+    numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
 #endif
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, numThreads]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, numThreads]()
     {
         // Loads textures in background in multiple threads
         Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
@@ -252,47 +250,47 @@ void DesignState::createScene(void)
         this->camera->setFarClipDistance(500.0f);
         this->camera->setQueryFlags(0 << 0);
 
-		NOWA::FaderProcess::showBlackScreenImmediate();
+        NOWA::FaderProcess::showBlackScreenImmediate();
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::createScene");
 
-	this->initializeModules(false, false);
+    this->initializeModules(false, false);
 
-	// Enable metrics!
+    // Enable metrics!
     Ogre::Root::getSingletonPtr()->getRenderSystem()->setMetricsRecordingEnabled(true);
 
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleEditorMode), NOWA::EventDataEditorMode::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneValid), EventDataSceneValid::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleFeedback), NOWA::EventDataFeedback::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleEditorMode), NOWA::EventDataEditorMode::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneValid), EventDataSceneValid::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleFeedback), NOWA::EventDataFeedback::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 
-	//this->sceneManager->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f) * 0.1f * 0.75f, Ogre::ColourValue(0.6f, 0.45f, 0.3f) * 0.065f * 0.75f, Ogre::Vector3(-1, -1, -1).normalisedCopy());
-	////Set sane defaults for proper shadow mapping
-	//this->sceneManager->setShadowDirectionalLightExtrusionDistance(500.0f);
-	//this->sceneManager->setShadowFarDistance(500.0f);
-	// http://www.ogre3d.org/forums/viewtopic.php?f=25&t=83081#p518819
-	// http://www.ogre3d.org/forums/viewtopic.php?f=25&t=82878#p515450
-	// this->sceneManager->setFog(Ogre::FogMode::FOG_LINEAR);
-	// this->sceneManager->setFog(Ogre::FOG_EXP, Ogre::ColourValue::White, 0.1f);
+    // this->sceneManager->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f) * 0.1f * 0.75f, Ogre::ColourValue(0.6f, 0.45f, 0.3f) * 0.065f * 0.75f, Ogre::Vector3(-1, -1, -1).normalisedCopy());
+    ////Set sane defaults for proper shadow mapping
+    // this->sceneManager->setShadowDirectionalLightExtrusionDistance(500.0f);
+    // this->sceneManager->setShadowFarDistance(500.0f);
+    //  http://www.ogre3d.org/forums/viewtopic.php?f=25&t=83081#p518819
+    //  http://www.ogre3d.org/forums/viewtopic.php?f=25&t=82878#p515450
+    //  this->sceneManager->setFog(Ogre::FogMode::FOG_LINEAR);
+    //  this->sceneManager->setFog(Ogre::FOG_EXP, Ogre::ColourValue::White, 0.1f);
 
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", this->camera);
-	auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, baseCamera);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(this->camera, baseCamera->getBehaviorType());
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", this->camera);
+    auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, baseCamera);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(this->camera, baseCamera->getBehaviorType());
 
-	this->projectManager = new ProjectManager(this->sceneManager);
+    this->projectManager = new ProjectManager(this->sceneManager);
 
-	NOWA::GraphicsModule::RenderCommand renderCommand2 = [this]()
+    NOWA::GraphicsModule::RenderCommand renderCommand2 = [this]()
     {
         // Setup all MyGUI widgets
         this->setupMyGUIWidgets();
@@ -304,310 +302,312 @@ void DesignState::createScene(void)
 
 void DesignState::setupMyGUIWidgets(void)
 {
-	// Creates the manipulation window
-	{
-		this->widgetsManipulation = MyGUI::LayoutManager::getInstancePtr()->loadLayout("ManipulationWindow.layout");
-		MyGUI::FloatPoint windowPosition;
-		windowPosition.left = 0.0f;
-		windowPosition.top = 0.93f;
-		
-		this->manipulationWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow");
-		this->manipulationWindow->setRealCoord(MyGUI::FloatCoord(0.0f, 0.93f, 1.0f, 0.1f));
-		this->manipulationWindow->setTextAlign(MyGUI::Align::Left);
-		this->manipulationWindow->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+    // Creates the manipulation window
+    {
+        this->widgetsManipulation = MyGUI::LayoutManager::getInstancePtr()->loadLayout("ManipulationWindow.layout");
+        MyGUI::FloatPoint windowPosition;
+        windowPosition.left = 0.0f;
+        windowPosition.top = 0.93f;
 
-		this->gridButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("gridButton");
-		this->gridButton->setNeedToolTip(true);
-		this->gridButton->setUserString("tooltip", "Shows a grid");
-		this->gridButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->gridValueComboBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("gridValueComboBox");
-		this->gridValueComboBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		this->gridValueComboBox->setNeedToolTip(true);
-		this->gridValueComboBox->setUserString("tooltip", "Sets a grid value (meters) to move game objects in grid steps.");
-		this->gridValueComboBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->categoriesComboBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("categoriesComboBox");
-		this->categoriesComboBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		this->categoriesComboBox->setNeedToolTip(true);
-		this->categoriesComboBox->setUserString("tooltip", "Sets a category (or several combined) in the scene, so that only game objects, which do belong to those categories can be selected and manipulated.");
-		this->categoriesComboBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->selectModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("selectModeCheck");
-		this->selectModeCheck->setNeedToolTip(true);
-		this->selectModeCheck->setUserString("tooltip", "Sets the game objects selection mode.");
-		this->selectModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->placeModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("placeModeCheck");
-		this->placeModeCheck->setNeedToolTip(true);
-		this->placeModeCheck->setUserString("tooltip", "Sets a mode to place new game objects.");
-		this->placeModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->translateModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("translateModeCheck");
-		this->translateModeCheck->setNeedToolTip(true);
-		this->translateModeCheck->setUserString("tooltip", "Sets the Gizmo to translation mode for game objects translation.");
-		this->translateModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->pickModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("pickModeCheck");
-		this->pickModeCheck->setNeedToolTip(true);
-		this->pickModeCheck->setUserString("tooltip", "Starts the simulation with a physics picker mode, in which game objects with physics active components can be dragged by a spring picker.");
-		this->pickModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->scaleModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("scaleModeCheck");
-		this->scaleModeCheck->setNeedToolTip(true);
-		this->scaleModeCheck->setUserString("tooltip", "Sets the Gizmo to scale mode for game objects scale.");
-		this->scaleModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->rotate1ModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("rotate1ModeCheck");
-		this->rotate1ModeCheck->setNeedToolTip(true);
-		this->rotate1ModeCheck->setUserString("tooltip", "Sets the Gizmo to orientation mode 1 for game objects rotation. Mode 1 means, that each game object is rotated individually.");
-		this->rotate1ModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->rotate2ModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("rotate2ModeCheck");
-		this->rotate2ModeCheck->setNeedToolTip(true);
-		this->rotate2ModeCheck->setUserString("tooltip", "Sets the Gizmo to orientation mode 2 for game objects rotation. Mode 2 means, that if several game objects are selected, they are rotated around the center of all game objects.");
-		this->rotate2ModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->terrainModifyModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("terrainModifyModeCheck");
-		this->terrainModifyModeCheck->setNeedToolTip(true);
-		this->terrainModifyModeCheck->setUserString("tooltip", "If a terra component is involved, please specify a brush and then if this mode is activated, the user may modify the terrain height by mouse with the selected brush.");
-		this->terrainModifyModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->terrainSmoothModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("terrainSmoothModeCheck");
-		this->terrainSmoothModeCheck->setNeedToolTip(true);
-		this->terrainSmoothModeCheck->setUserString("tooltip", "If a terra component is involved, please specify a brush and then if this mode is activated, the user may smooth a modified the terrain by mouse with the selected brush.");
-		this->terrainSmoothModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->terrainPaintModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("terrainPaintModeCheck");
-		this->terrainPaintModeCheck->setNeedToolTip(true);
-		this->terrainPaintModeCheck->setUserString("tooltip", "If a terra component is involved, please specify a brush and layer id (layer image) and then if this mode is activated, the user may point on the terrain by mouse with the selected brush.");
-		this->terrainPaintModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->meshModifyModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("meshModifyModeCheck");
-		this->meshModifyModeCheck->setNeedToolTip(true);
-		this->meshModifyModeCheck->setUserString("tooltip", "If a mesh modify, wall, road etc. component is involved, then with this mode the corresponding selected GameObject with that component can be modified..");
-		this->meshModifyModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->manipulationWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow");
+        this->manipulationWindow->setRealCoord(MyGUI::FloatCoord(0.0f, 0.93f, 1.0f, 0.1f));
+        this->manipulationWindow->setTextAlign(MyGUI::Align::Left);
+        this->manipulationWindow->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 
-		this->removeButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("removeButton");
-		this->removeButton->setNeedToolTip(true);
-		this->removeButton->setUserString("tooltip", "Removes the selected game objects from the scene.");
-		this->removeButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->copyButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("copyButton");
-		this->copyButton->setNeedToolTip(true);
-		this->copyButton->setUserString("tooltip", "Copies the selected game objects and afterwards switches to Gizmo translation mode, so that the copied game objects can be moved to another place.");
-		this->copyButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->focusButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("focusButton");
-		this->focusButton->setNeedToolTip(true);
-		this->focusButton->setUserString("tooltip", "Teleports the camera to the given selected game object. This is useful: E.g. if a game object is not visible or the user cannot find it in the 3D scene, but has found it in the game objects menu.");
-		this->focusButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		
-		MyGUI::TextBox* findTextBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::TextBox>("findObjectTextBox");
-		findTextBox->setNeedToolTip(true);
-		findTextBox->setUserString("tooltip", "Teleports the camera to the given selected game object. This is useful: E.g. if a game object is not visible or the user cannot find it in the 3D scene, but the user has the game object id in clipboard.");
-		findTextBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->gridButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("gridButton");
+        this->gridButton->setNeedToolTip(true);
+        this->gridButton->setUserString("tooltip", "Shows a grid");
+        this->gridButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->gridValueComboBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("gridValueComboBox");
+        this->gridValueComboBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        this->gridValueComboBox->setNeedToolTip(true);
+        this->gridValueComboBox->setUserString("tooltip", "Sets a grid value (meters) to move game objects in grid steps.");
+        this->gridValueComboBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->categoriesComboBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("categoriesComboBox");
+        this->categoriesComboBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        this->categoriesComboBox->setNeedToolTip(true);
+        this->categoriesComboBox->setUserString("tooltip", "Sets a category (or several combined) in the scene, so that only game objects, which do belong to those categories can be selected and manipulated.");
+        this->categoriesComboBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->selectModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("selectModeCheck");
+        this->selectModeCheck->setNeedToolTip(true);
+        this->selectModeCheck->setUserString("tooltip", "Sets the game objects selection mode.");
+        this->selectModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->placeModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("placeModeCheck");
+        this->placeModeCheck->setNeedToolTip(true);
+        this->placeModeCheck->setUserString("tooltip", "Sets a mode to place new game objects.");
+        this->placeModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->translateModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("translateModeCheck");
+        this->translateModeCheck->setNeedToolTip(true);
+        this->translateModeCheck->setUserString("tooltip", "Sets the Gizmo to translation mode for game objects translation.");
+        this->translateModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->pickModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("pickModeCheck");
+        this->pickModeCheck->setNeedToolTip(true);
+        this->pickModeCheck->setUserString("tooltip", "Starts the simulation with a physics picker mode, in which game objects with physics active components can be dragged by a spring picker.");
+        this->pickModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->scaleModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("scaleModeCheck");
+        this->scaleModeCheck->setNeedToolTip(true);
+        this->scaleModeCheck->setUserString("tooltip", "Sets the Gizmo to scale mode for game objects scale.");
+        this->scaleModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->rotate1ModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("rotate1ModeCheck");
+        this->rotate1ModeCheck->setNeedToolTip(true);
+        this->rotate1ModeCheck->setUserString("tooltip", "Sets the Gizmo to orientation mode 1 for game objects rotation. Mode 1 means, that each game object is rotated individually.");
+        this->rotate1ModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->rotate2ModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("rotate2ModeCheck");
+        this->rotate2ModeCheck->setNeedToolTip(true);
+        this->rotate2ModeCheck->setUserString("tooltip", "Sets the Gizmo to orientation mode 2 for game objects rotation. Mode 2 means, that if several game objects are selected, they are rotated around the center of all game objects.");
+        this->rotate2ModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->terrainModifyModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("terrainModifyModeCheck");
+        this->terrainModifyModeCheck->setNeedToolTip(true);
+        this->terrainModifyModeCheck->setUserString("tooltip", "If a terra component is involved, please specify a brush and then if this mode is activated, the user may modify the terrain height by mouse with the selected brush.");
+        this->terrainModifyModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->terrainSmoothModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("terrainSmoothModeCheck");
+        this->terrainSmoothModeCheck->setNeedToolTip(true);
+        this->terrainSmoothModeCheck->setUserString("tooltip", "If a terra component is involved, please specify a brush and then if this mode is activated, the user may smooth a modified the terrain by mouse with the selected brush.");
+        this->terrainSmoothModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->terrainPaintModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("terrainPaintModeCheck");
+        this->terrainPaintModeCheck->setNeedToolTip(true);
+        this->terrainPaintModeCheck->setUserString("tooltip",
+            "If a terra component is involved, please specify a brush and layer id (layer image) and then if this mode is activated, the user may point on the terrain by mouse with the selected brush.");
+        this->terrainPaintModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->meshModifyModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("meshModifyModeCheck");
+        this->meshModifyModeCheck->setNeedToolTip(true);
+        this->meshModifyModeCheck->setUserString("tooltip", "If a mesh modify, wall, road etc. component is involved, then with this mode the corresponding selected GameObject with that component can be modified..");
+        this->meshModifyModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-		this->findObjectEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("findObjectEdit");
-		this->findObjectEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		this->findObjectEdit->setNeedKeyFocus(true);
-		this->findObjectEdit->setNeedMouseFocus(true);
-		
-		MyGUI::TextBox* constraintAxesTextBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::TextBox>("constraintAxesTextBox");
-		constraintAxesTextBox->setNeedToolTip(true);
-		constraintAxesTextBox->setUserString("tooltip", "This mode is useful if the user wants to create a 2.5 Jump'n'Run game, in order to e.g. constraint the z-axis a the set distance value (meters), "
-			"so that all game objects can only be placed at that z-distance, but freely on x- and y-axis.");
-		constraintAxesTextBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->removeButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("removeButton");
+        this->removeButton->setNeedToolTip(true);
+        this->removeButton->setUserString("tooltip", "Removes the selected game objects from the scene.");
+        this->removeButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->copyButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("copyButton");
+        this->copyButton->setNeedToolTip(true);
+        this->copyButton->setUserString("tooltip", "Copies the selected game objects and afterwards switches to Gizmo translation mode, so that the copied game objects can be moved to another place.");
+        this->copyButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->focusButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("focusButton");
+        this->focusButton->setNeedToolTip(true);
+        this->focusButton->setUserString("tooltip",
+            "Teleports the camera to the given selected game object. This is useful: E.g. if a game object is not visible or the user cannot find it in the 3D scene, but has found it in the game objects menu.");
+        this->focusButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-		this->constraintAxisEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("constraintAxisEdit");
-		this->constraintAxisEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		this->constraintAxisEdit->setNeedKeyFocus(true);
-		this->constraintAxisEdit->setNeedMouseFocus(true);
+        MyGUI::TextBox* findTextBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::TextBox>("findObjectTextBox");
+        findTextBox->setNeedToolTip(true);
+        findTextBox->setUserString("tooltip",
+            "Teleports the camera to the given selected game object. This is useful: E.g. if a game object is not visible or the user cannot find it in the 3D scene, but the user has the game object id in clipboard.");
+        findTextBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-		this->cameraResetButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraResetButton");
-		this->cameraResetButton->setNeedToolTip(true);
-		this->cameraResetButton->setUserString("tooltip", "Resets the camera translation and orientation to origin in the scene.");
-		this->cameraResetButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->findObjectEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("findObjectEdit");
+        this->findObjectEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        this->findObjectEdit->setNeedKeyFocus(true);
+        this->findObjectEdit->setNeedMouseFocus(true);
 
-		this->gridButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->gridButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->categoriesComboBox->eventComboChangePosition += MyGUI::newDelegate(this, &DesignState::itemSelected);
-		this->categoriesComboBox->eventEditSelectAccept += MyGUI::newDelegate(this, &DesignState::notifyEditSelectAccept);
-		this->categoriesComboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->gridValueComboBox->eventComboChangePosition += MyGUI::newDelegate(this, &DesignState::itemSelected);
-		this->gridValueComboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->selectModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->selectModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->translateModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->translateModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->placeModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->placeModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->pickModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->pickModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->scaleModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->scaleModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->rotate1ModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->rotate1ModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->rotate2ModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->rotate2ModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->terrainModifyModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->terrainModifyModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->terrainSmoothModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->terrainSmoothModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->terrainPaintModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->terrainPaintModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->meshModifyModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->meshModifyModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->removeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->removeButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->copyButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->copyButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->focusButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->focusButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->findObjectEdit->eventEditSelectAccept += MyGUI::newDelegate(this, &DesignState::notifyEditSelectAccept);
-		this->findObjectEdit->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->constraintAxisEdit->eventEditSelectAccept += MyGUI::newDelegate(this, &DesignState::notifyEditSelectAccept);
-		this->constraintAxisEdit->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        MyGUI::TextBox* constraintAxesTextBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::TextBox>("constraintAxesTextBox");
+        constraintAxesTextBox->setNeedToolTip(true);
+        constraintAxesTextBox->setUserString("tooltip", "This mode is useful if the user wants to create a 2.5 Jump'n'Run game, in order to e.g. constraint the z-axis a the set distance value (meters), "
+                                                        "so that all game objects can only be placed at that z-distance, but freely on x- and y-axis.");
+        constraintAxesTextBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-		this->cameraResetButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->cameraResetButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->constraintAxisEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("constraintAxisEdit");
+        this->constraintAxisEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        this->constraintAxisEdit->setNeedKeyFocus(true);
+        this->constraintAxisEdit->setNeedMouseFocus(true);
 
-		this->gridButton->setUserString("Description", "Show grid");
-		this->gridValueComboBox->setUserString("Description", "Set grid value");
-		this->categoriesComboBox->setUserString("Description", "Selectable category. Its possible to combine categories.");
-		this->selectModeCheck->setUserString("Description", "Select objects");
-		this->translateModeCheck->setUserString("Description", "Translate selectedobjects");
-		this->placeModeCheck->setUserString("Description", "Place object");
-		this->pickModeCheck->setUserString("Description", "Pick object physically (simulation will be activated)");
-		this->scaleModeCheck->setUserString("Description", "Scale selectedobjects");
-		this->rotate1ModeCheck->setUserString("Description", "Each object own rotation");
-		this->rotate2ModeCheck->setUserString("Description", "All object rotation around center");
-		this->terrainModifyModeCheck->setUserString("Description", "Modifies the terrain");
-		this->terrainSmoothModeCheck->setUserString("Description", "Smooths the terrain");
-		this->terrainPaintModeCheck->setUserString("Description", "Paints on the terrain");
-		this->meshModifyModeCheck->setUserString("Description", "Modifies a mesh");
-		this->removeButton->setUserString("Description", "Remove selectedobjects");
-		this->copyButton->setUserString("Description", "Copy selected objects");
-		this->focusButton->setUserString("Description", "Focus selectedobject");
-		this->findObjectEdit->setUserString("Description", "Find object");
-		this->constraintAxisEdit->setUserString("Description", "Constraint axes, any axe that is not 0, will be constraint to that value");
-		this->cameraResetButton->setUserString("Description", "Reset camera pos and orient (holding shift will only reset orient");
-	}
+        this->cameraResetButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraResetButton");
+        this->cameraResetButton->setNeedToolTip(true);
+        this->cameraResetButton->setUserString("tooltip", "Resets the camera translation and orientation to origin in the scene.");
+        this->cameraResetButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-	// Creates the simulation window
-	{
-		MyGUI::IntPoint windowPosition;
-		this->widgetsSimulation = MyGUI::LayoutManager::getInstancePtr()->loadLayout("SimulationWindow.layout");
-		windowPosition.left = (NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f) - 150;
-		windowPosition.top = 0;
-		this->simulationWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("simulationWindow");
-		this->simulationWindow->setPosition(windowPosition);
-		this->simulationWindow->getCaptionWidget()->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-		this->simulationWindow->getCaptionWidget()->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::mouseClicked);
+        this->gridButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->gridButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->categoriesComboBox->eventComboChangePosition += MyGUI::newDelegate(this, &DesignState::itemSelected);
+        this->categoriesComboBox->eventEditSelectAccept += MyGUI::newDelegate(this, &DesignState::notifyEditSelectAccept);
+        this->categoriesComboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->gridValueComboBox->eventComboChangePosition += MyGUI::newDelegate(this, &DesignState::itemSelected);
+        this->gridValueComboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->selectModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->selectModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->translateModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->translateModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->placeModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->placeModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->pickModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->pickModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->scaleModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->scaleModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->rotate1ModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->rotate1ModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->rotate2ModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->rotate2ModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->terrainModifyModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->terrainModifyModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->terrainSmoothModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->terrainSmoothModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->terrainPaintModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->terrainPaintModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->meshModifyModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->meshModifyModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->removeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->removeButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->copyButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->copyButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->focusButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->focusButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->findObjectEdit->eventEditSelectAccept += MyGUI::newDelegate(this, &DesignState::notifyEditSelectAccept);
+        this->findObjectEdit->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+        this->constraintAxisEdit->eventEditSelectAccept += MyGUI::newDelegate(this, &DesignState::notifyEditSelectAccept);
+        this->constraintAxisEdit->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
 
-		this->playButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("playButton");
-		this->playButton->setStateSelected(true);
-		this->undoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("undoButton");
-		this->undoButton->setEnabled(false);
-		this->redoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("redoButton");
-		this->redoButton->setEnabled(false);
-		this->cameraUndoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraUndoButton");
-		this->cameraUndoButton->setEnabled(false);
-		this->cameraUndoButton->setNeedToolTip(true);
-		this->cameraUndoButton->setUserString("tooltip", "Undo the camera transform");
-		this->cameraUndoButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->cameraRedoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraRedoButton");
-		this->cameraRedoButton->setEnabled(false);
-		this->cameraRedoButton->setNeedToolTip(true);
-		this->cameraRedoButton->setUserString("tooltip", "Redo the camera transform");
-		this->cameraRedoButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->selectUndoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("selectUndoButton");
-		this->selectUndoButton->setEnabled(false);
-		this->selectUndoButton->setNeedToolTip(true);
-		this->selectUndoButton->setUserString("tooltip", "Undo the last selection");
-		this->selectUndoButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->selectRedoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("selectRedoButton");
-		this->selectRedoButton->setEnabled(false);
-		this->selectRedoButton->setNeedToolTip(true);
-		this->selectRedoButton->setUserString("tooltip", "Redo the last selection");
-		this->cameraSpeedUpButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraSpeedUpButton");
-		this->cameraSpeedUpButton->setEnabled(false);
-		this->cameraSpeedUpButton->setNeedToolTip(true);
-		this->cameraSpeedUpButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->cameraSpeedDownButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraSpeedDownButton");
-		this->cameraSpeedDownButton->setEnabled(false);
-		this->cameraSpeedDownButton->setNeedToolTip(true);
-		this->cameraSpeedDownButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->cameraResetButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->cameraResetButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
 
-		this->playButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->undoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->redoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->cameraUndoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->cameraRedoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->selectUndoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->selectRedoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->cameraSpeedUpButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->cameraSpeedDownButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		
-	}
+        this->gridButton->setUserString("Description", "Show grid");
+        this->gridValueComboBox->setUserString("Description", "Set grid value");
+        this->categoriesComboBox->setUserString("Description", "Selectable category. Its possible to combine categories.");
+        this->selectModeCheck->setUserString("Description", "Select objects");
+        this->translateModeCheck->setUserString("Description", "Translate selectedobjects");
+        this->placeModeCheck->setUserString("Description", "Place object");
+        this->pickModeCheck->setUserString("Description", "Pick object physically (simulation will be activated)");
+        this->scaleModeCheck->setUserString("Description", "Scale selectedobjects");
+        this->rotate1ModeCheck->setUserString("Description", "Each object own rotation");
+        this->rotate2ModeCheck->setUserString("Description", "All object rotation around center");
+        this->terrainModifyModeCheck->setUserString("Description", "Modifies the terrain");
+        this->terrainSmoothModeCheck->setUserString("Description", "Smooths the terrain");
+        this->terrainPaintModeCheck->setUserString("Description", "Paints on the terrain");
+        this->meshModifyModeCheck->setUserString("Description", "Modifies a mesh");
+        this->removeButton->setUserString("Description", "Remove selectedobjects");
+        this->copyButton->setUserString("Description", "Copy selected objects");
+        this->focusButton->setUserString("Description", "Focus selectedobject");
+        this->findObjectEdit->setUserString("Description", "Find object");
+        this->constraintAxisEdit->setUserString("Description", "Constraint axes, any axe that is not 0, will be constraint to that value");
+        this->cameraResetButton->setUserString("Description", "Reset camera pos and orient (holding shift will only reset orient");
+    }
 
-	// MyGUI::EditPtr actionLabel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("EditBoxEmpty", 0.6f, 0.9f, 0.3f, 0.05f, MyGUI::Align::Default, "Main", "DebugLabel");
+    // Creates the simulation window
+    {
+        MyGUI::IntPoint windowPosition;
+        this->widgetsSimulation = MyGUI::LayoutManager::getInstancePtr()->loadLayout("SimulationWindow.layout");
+        windowPosition.left = (NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f) - 150;
+        windowPosition.top = 0;
+        this->simulationWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("simulationWindow");
+        this->simulationWindow->setPosition(windowPosition);
+        this->simulationWindow->getCaptionWidget()->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+        this->simulationWindow->getCaptionWidget()->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::mouseClicked);
 
-	// Creates the popup menu for place modes
-	{
-		this->placeModePopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::PopupMenu>(/*MyGUI::WidgetStyle::Popup, */"PopupMenu",
-		this->placeModeCheck->getAbsoluteCoord() + MyGUI::IntCoord(0, -100, 0, 0), MyGUI::Align::Default, "Popup", "placePopupMenu");
-		MyGUI::MenuItem* placeItem1 = this->placeModePopupMenu->addItem("placeItem1"/*, MyGUI::MenuItemType::Popup*/);
-		placeItem1->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		placeItem1->setCaption("Normal");
+        this->playButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("playButton");
+        this->playButton->setStateSelected(true);
+        this->undoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("undoButton");
+        this->undoButton->setEnabled(false);
+        this->redoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("redoButton");
+        this->redoButton->setEnabled(false);
+        this->cameraUndoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraUndoButton");
+        this->cameraUndoButton->setEnabled(false);
+        this->cameraUndoButton->setNeedToolTip(true);
+        this->cameraUndoButton->setUserString("tooltip", "Undo the camera transform");
+        this->cameraUndoButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->cameraRedoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraRedoButton");
+        this->cameraRedoButton->setEnabled(false);
+        this->cameraRedoButton->setNeedToolTip(true);
+        this->cameraRedoButton->setUserString("tooltip", "Redo the camera transform");
+        this->cameraRedoButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->selectUndoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("selectUndoButton");
+        this->selectUndoButton->setEnabled(false);
+        this->selectUndoButton->setNeedToolTip(true);
+        this->selectUndoButton->setUserString("tooltip", "Undo the last selection");
+        this->selectUndoButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->selectRedoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("selectRedoButton");
+        this->selectRedoButton->setEnabled(false);
+        this->selectRedoButton->setNeedToolTip(true);
+        this->selectRedoButton->setUserString("tooltip", "Redo the last selection");
+        this->cameraSpeedUpButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraSpeedUpButton");
+        this->cameraSpeedUpButton->setEnabled(false);
+        this->cameraSpeedUpButton->setNeedToolTip(true);
+        this->cameraSpeedUpButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+        this->cameraSpeedDownButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraSpeedDownButton");
+        this->cameraSpeedDownButton->setEnabled(false);
+        this->cameraSpeedDownButton->setNeedToolTip(true);
+        this->cameraSpeedDownButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+        this->playButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->undoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->redoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->cameraUndoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->cameraRedoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->selectUndoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->selectRedoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->cameraSpeedUpButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        this->cameraSpeedDownButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+    }
+
+    // MyGUI::EditPtr actionLabel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("EditBoxEmpty", 0.6f, 0.9f, 0.3f, 0.05f, MyGUI::Align::Default, "Main", "DebugLabel");
+
+    // Creates the popup menu for place modes
+    {
+        this->placeModePopupMenu =
+            MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::PopupMenu>(/*MyGUI::WidgetStyle::Popup, */ "PopupMenu", this->placeModeCheck->getAbsoluteCoord() + MyGUI::IntCoord(0, -100, 0, 0), MyGUI::Align::Default, "Popup", "placePopupMenu");
+        MyGUI::MenuItem* placeItem1 = this->placeModePopupMenu->addItem("placeItem1" /*, MyGUI::MenuItemType::Popup*/);
+        placeItem1->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        placeItem1->setCaption("Normal");
         placeItem1->setStateCheck(false);
         placeItem1->setStateSelected(false);
-		placeItem1->hideItemChild();
-		placeItem1->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		MyGUI::MenuItem* placeItem2 = this->placeModePopupMenu->addItem("placeItem2"/*, MyGUI::MenuItemType::Popup*/);
-		placeItem2->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		placeItem2->setCaptionWithReplacing("#{Stack}");
+        placeItem1->hideItemChild();
+        placeItem1->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        MyGUI::MenuItem* placeItem2 = this->placeModePopupMenu->addItem("placeItem2" /*, MyGUI::MenuItemType::Popup*/);
+        placeItem2->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        placeItem2->setCaptionWithReplacing("#{Stack}");
         placeItem2->setStateCheck(false);
         placeItem2->setStateSelected(false);
-		placeItem2->hideItemChild();
-		placeItem2->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		MyGUI::MenuItem* placeItem3 = this->placeModePopupMenu->addItem("placeItem3"/*, MyGUI::MenuItemType::Popup*/);
-		placeItem3->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		placeItem3->setCaptionWithReplacing("#{StackOrientated}");
+        placeItem2->hideItemChild();
+        placeItem2->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        MyGUI::MenuItem* placeItem3 = this->placeModePopupMenu->addItem("placeItem3" /*, MyGUI::MenuItemType::Popup*/);
+        placeItem3->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        placeItem3->setCaptionWithReplacing("#{StackOrientated}");
         placeItem3->setStateCheck(true);
         placeItem3->setStateSelected(true);
-		placeItem3->hideItemChild();
-		placeItem3->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        placeItem3->hideItemChild();
+        placeItem3->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 
-		// Set at button pos, but below the button
-		this->placeModePopupMenu->hideMenu();
-	}
+        // Set at button pos, but below the button
+        this->placeModePopupMenu->hideMenu();
+    }
 
-	// Creates the popup menu for translate modes
-	{
-		this->translateModePopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::PopupMenu>(/*MyGUI::WidgetStyle::Popup, */"PopupMenu",
-			this->translateModeCheck->getAbsoluteCoord() + MyGUI::IntCoord(0, -100, 0, 0), MyGUI::Align::Default, "Popup", "translatePopupMenu");
-		MyGUI::MenuItem* translateItem1 = this->translateModePopupMenu->addItem("translateItem1"/*, MyGUI::MenuItemType::Popup*/);
-		translateItem1->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		translateItem1->setCaption("Normal");
-		translateItem1->hideItemChild();
-		translateItem1->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		MyGUI::MenuItem* translateItem2 = this->translateModePopupMenu->addItem("translateItem2"/*, MyGUI::MenuItemType::Popup*/);
-		translateItem2->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		translateItem2->setCaptionWithReplacing("#{Stack}");
-		translateItem2->hideItemChild();
-		translateItem2->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		MyGUI::MenuItem* translateItem3 = this->translateModePopupMenu->addItem("translateItem3"/*, MyGUI::MenuItemType::Popup*/);
-		translateItem3->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		translateItem3->setCaptionWithReplacing("#{StackOrientated}");
-		translateItem3->hideItemChild();
-		translateItem3->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+    // Creates the popup menu for translate modes
+    {
+        this->translateModePopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::PopupMenu>(/*MyGUI::WidgetStyle::Popup, */ "PopupMenu", this->translateModeCheck->getAbsoluteCoord() + MyGUI::IntCoord(0, -100, 0, 0), MyGUI::Align::Default,
+            "Popup", "translatePopupMenu");
+        MyGUI::MenuItem* translateItem1 = this->translateModePopupMenu->addItem("translateItem1" /*, MyGUI::MenuItemType::Popup*/);
+        translateItem1->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        translateItem1->setCaption("Normal");
+        translateItem1->hideItemChild();
+        translateItem1->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        MyGUI::MenuItem* translateItem2 = this->translateModePopupMenu->addItem("translateItem2" /*, MyGUI::MenuItemType::Popup*/);
+        translateItem2->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        translateItem2->setCaptionWithReplacing("#{Stack}");
+        translateItem2->hideItemChild();
+        translateItem2->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+        MyGUI::MenuItem* translateItem3 = this->translateModePopupMenu->addItem("translateItem3" /*, MyGUI::MenuItemType::Popup*/);
+        translateItem3->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        translateItem3->setCaptionWithReplacing("#{StackOrientated}");
+        translateItem3->hideItemChild();
+        translateItem3->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 
-		// Set at button pos, but below the button
-		this->translateModePopupMenu->hideMenu();
-	}
+        // Set at button pos, but below the button
+        this->translateModePopupMenu->hideMenu();
+    }
 
-	ColourPanelManager::getInstance()->init();
+    ColourPanelManager::getInstance()->init();
 
-	// Creates the main menu bar
-	{
-		this->mainMenuBar = new MainMenuBar(this->projectManager);
-	}
+    // Creates the main menu bar
+    {
+        this->mainMenuBar = new MainMenuBar(this->projectManager);
+    }
 
-	// Disable everything
-	this->enableWidgets(false);
-	this->simulationWindow->setVisible(false);
-	this->manipulationWindow->setVisible(false);
+    // Disable everything
+    this->enableWidgets(false);
+    this->simulationWindow->setVisible(false);
+    this->manipulationWindow->setVisible(false);
 }
 
 void DesignState::enableWidgets(bool enable)
 {
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, enable]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, enable]()
     {
         this->playButton->setStateSelected(enable);
         this->undoButton->setEnabled(enable);
@@ -636,81 +636,89 @@ void DesignState::enableWidgets(bool enable)
 
 void DesignState::simulate(bool pause, bool withUndo)
 {
-	// NOWA::Core::getSingletonPtr()->switchFullscreen(!pause, 0, 0, 0);
+    // NOWA::Core::getSingletonPtr()->switchFullscreen(!pause, 0, 0, 0);
 
-	if (false == pause)
-	{
-		if (false == NOWA::Core::getSingletonPtr()->getIsGame())
-		{
-			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->snapshotGameObjects();
-		}
+    if (false == pause)
+    {
+        if (false == NOWA::Core::getSingletonPtr()->getIsGame())
+        {
+            NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->snapshotGameObjects();
+        }
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause]()
-		{
-			this->mainMenuBar->enableFileMenu(pause);
-			MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
-			MyGUI::LayerManager::getInstance().attachToLayerNode("Back", this->manipulationWindow);
-			this->mainMenuBar->clearLuaErrors();
-			// Internally a snapshot is made before anything is changed in simulation, to get the state back, when stopping the simulation
-			// this->editorManager->stopSimulation(); Never do this!!!! Else because of internal undo, all set values are reset and fancy behavior will start!
-			this->playButton->setImageResource("StopImage");
-			this->enableWidgets(false);
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause]()
+        {
+            this->mainMenuBar->enableFileMenu(pause);
+            MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
+            MyGUI::LayerManager::getInstance().attachToLayerNode("Back", this->manipulationWindow);
+            this->mainMenuBar->clearLuaErrors();
+            // Internally a snapshot is made before anything is changed in simulation, to get the state back, when stopping the simulation
+            // this->editorManager->stopSimulation(); Never do this!!!! Else because of internal undo, all set values are reset and fancy behavior will start!
+            this->playButton->setImageResource("StopImage");
+            this->enableWidgets(false);
 
-			if (nullptr != this->editorManager)
-			{
-				this->editorManager->setViewportGridEnabled(false);
-				this->editorManager->getGizmo()->setEnabled(false);
-				this->editorManager->startSimulation();
-			}
-		};
-		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_1");
-	}
-	else
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause, withUndo]()
-		{
-			this->mainMenuBar->enableFileMenu(pause);
-			MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
-			MyGUI::LayerManager::getInstance().attachToLayerNode("Popup", this->manipulationWindow);
+            if (nullptr != this->editorManager)
+            {
+                this->editorManager->setViewportGridEnabled(false);
+                this->editorManager->getGizmo()->setEnabled(false);
+                this->editorManager->startSimulation();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_1");
+    }
+    else
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause, withUndo]()
+        {
+            this->mainMenuBar->enableFileMenu(pause);
+            MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
+            MyGUI::LayerManager::getInstance().attachToLayerNode("Popup", this->manipulationWindow);
 
-			if (nullptr != editorManager)
-			{
-				// Show panels
-				this->playButton->setImageResource("PlayImage");
-				this->playButton->setStateSelected(true);
-				// this->simulationButton->setCaptionWithReplacing(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Pause}"));
-				this->enableWidgets(true);
+            if (nullptr != editorManager)
+            {
+                // Show panels
+                this->playButton->setImageResource("PlayImage");
+                this->playButton->setStateSelected(true);
+                // this->simulationButton->setCaptionWithReplacing(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Pause}"));
+                this->enableWidgets(true);
 
-				this->mainMenuBar->activateTestSelectedGameObjects(false);
-			}
+                this->mainMenuBar->activateTestSelectedGameObjects(false);
+            }
 
-			if (nullptr != editorManager)
-			{
-				// this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
-				// Set the state before the simulation began
-				this->editorManager->stopSimulation(withUndo);
-			}
-		};
-		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_2");
+            if (nullptr != editorManager)
+            {
+                // FIX: this was commented out, which left getManipulationMode() stuck on
+                // whatever mode was active when the simulation stopped (e.g. EDITOR_PICKER_MODE).
+                // The pickModeCheck click-handler guards against re-entering picker mode with
+                // `if (EDITOR_PICKER_MODE != getManipulationMode())`, so once the mode never got
+                // reset, that guard stayed permanently closed after the first stop - clicking
+                // pickModeCheck again silently did nothing. Restoring EDITOR_SELECT_MODE here
+                // also re-fires EventDataEditorMode, which handleEditorMode() already listens to
+                // and uses to reset all the mode checkbox UI states (including pickModeCheck).
+                this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
+                // Set the state before the simulation began
+                this->editorManager->stopSimulation(withUndo);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_2");
 
-		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
-	}
+        boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+    }
 }
 
 void DesignState::generateCategories(void)
 {
     NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
-		this->categoriesComboBox->deleteAllItems();
-		std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
-		for (const auto& category : allCategories)
-		{
-			this->categoriesComboBox->addItem(category);
-		}
-		this->categoriesComboBox->addItem("All");
-		Ogre::String selectedCategory = this->categoriesComboBox->getItemNameAt(this->categoriesComboBox->findItemIndexWith("All"));
-		this->categoriesComboBox->setCaption(selectedCategory);
+        this->categoriesComboBox->deleteAllItems();
+        std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
+        for (const auto& category : allCategories)
+        {
+            this->categoriesComboBox->addItem(category);
+        }
+        this->categoriesComboBox->addItem("All");
+        Ogre::String selectedCategory = this->categoriesComboBox->getItemNameAt(this->categoriesComboBox->findItemIndexWith("All"));
+        this->categoriesComboBox->setCaption(selectedCategory);
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::generateCategories");
 }
@@ -719,14 +727,14 @@ void DesignState::generateCategories(void)
 
 void DesignState::handleGenerateCategoriesDelegate(NOWA::EventDataPtr eventData)
 {
-	this->generateCategories();
+    this->generateCategories();
 }
 
 void DesignState::handleExit(NOWA::EventDataPtr eventData)
 {
-	if (true == this->hasSceneChanges)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    if (true == this->hasSceneChanges)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             MyGUI::Message* messageBox =
                 MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"), MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
@@ -736,10 +744,10 @@ void DesignState::handleExit(NOWA::EventDataPtr eventData)
             messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEnd);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleExit1");
-	}
-	else
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             MyGUI::Message* messageBox =
                 MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"), MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
@@ -747,34 +755,34 @@ void DesignState::handleExit(NOWA::EventDataPtr eventData)
             messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEndExit);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleExit2");
-	}
+    }
 }
 
 void DesignState::handleStopSimulation(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<NOWA::EventDataStopSimulation> castEventData = boost::static_pointer_cast<NOWA::EventDataStopSimulation>(eventData);
+    boost::shared_ptr<NOWA::EventDataStopSimulation> castEventData = boost::static_pointer_cast<NOWA::EventDataStopSimulation>(eventData);
 
-	if (NOWA::AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
-	{
-		this->simulate(true, true);
-	}
+    if (NOWA::AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+    {
+        this->simulate(true, true);
+    }
 }
 
 void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<EventDataProjectManipulation> castEventData = boost::static_pointer_cast<EventDataProjectManipulation>(eventData);
+    boost::shared_ptr<EventDataProjectManipulation> castEventData = boost::static_pointer_cast<EventDataProjectManipulation>(eventData);
 
-	ProjectManager::eProjectMode projectMode = static_cast<ProjectManager::eProjectMode>(castEventData->getMode());
-	// When not save scene
-	if (ProjectManager::eProjectMode::SAVE != projectMode)
-	{
-		this->camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-		this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
-		this->validScene = true;
+    ProjectManager::eProjectMode projectMode = static_cast<ProjectManager::eProjectMode>(castEventData->getMode());
+    // When not save scene
+    if (ProjectManager::eProjectMode::SAVE != projectMode)
+    {
+        this->camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
+        this->validScene = true;
 
-		NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 5.0f, NOWA::Interpolator::Linear, 1.0f, 0.0f, 1.0f)));
+        NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 5.0f, NOWA::Interpolator::Linear, 1.0f, 0.0f, 1.0f)));
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->mainMenuBar->enableMenuEntries(this->validScene);
             this->mainMenuBar->drawNavigationMap(false);
@@ -839,35 +847,35 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
             this->cameraSpeedUpButton->setEnabled(true);
             this->cameraSpeedDownButton->setEnabled(true);
 
-			auto sceneBoundsLeftNear = NOWA::Core::getSingletonPtr()->getCurrentSceneBoundLeftNear();
+            auto sceneBoundsLeftNear = NOWA::Core::getSingletonPtr()->getCurrentSceneBoundLeftNear();
             auto sceneBoundsRightFar = NOWA::Core::getSingletonPtr()->getCurrentSceneBoundRightFar();
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[NOWADesign]: Scene bounds left near: " + Ogre::StringConverter::toString(sceneBoundsLeftNear) + " right far: " + Ogre::StringConverter::toString(sceneBoundsRightFar));
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleProjectManipulation");
 
-		this->hasSceneChanges = false;
+        this->hasSceneChanges = false;
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, NOWA::Core::getSingletonPtr()->dumpGraphicsMemory());
-	}
-	else if (ProjectManager::eProjectMode::SAVE == projectMode)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, NOWA::Core::getSingletonPtr()->dumpGraphicsMemory());
+    }
+    else if (ProjectManager::eProjectMode::SAVE == projectMode)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::simulationWindow_setCaption");
 
-		this->hasSceneChanges = false;
-	}
+        this->hasSceneChanges = false;
+    }
 }
 
 void DesignState::handleEditorMode(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<NOWA::EventDataEditorMode> castEventData = boost::static_pointer_cast<NOWA::EventDataEditorMode>(eventData);
+    boost::shared_ptr<NOWA::EventDataEditorMode> castEventData = boost::static_pointer_cast<NOWA::EventDataEditorMode>(eventData);
 
-	if (NOWA::EditorManager::EDITOR_SELECT_MODE == castEventData->getManipulationMode())
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    if (NOWA::EditorManager::EDITOR_SELECT_MODE == castEventData->getManipulationMode())
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->selectModeCheck->setStateSelected(true);
             this->placeModeCheck->setStateSelected(false);
@@ -882,10 +890,10 @@ void DesignState::handleEditorMode(NOWA::EventDataPtr eventData)
             this->meshModifyModeCheck->setStateSelected(false);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleEditorMode_select");
-	}
-	else if (NOWA::EditorManager::EDITOR_PLACE_MODE == castEventData->getManipulationMode())
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (NOWA::EditorManager::EDITOR_PLACE_MODE == castEventData->getManipulationMode())
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->selectModeCheck->setStateSelected(false);
             this->placeModeCheck->setStateSelected(true);
@@ -900,37 +908,37 @@ void DesignState::handleEditorMode(NOWA::EventDataPtr eventData)
             this->meshModifyModeCheck->setStateSelected(false);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleEditorMode_place");
-	}
+    }
 }
 
 void DesignState::handleSceneValid(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<EventDataSceneValid> castEventData = boost::static_pointer_cast<EventDataSceneValid>(eventData);
-	this->validScene = castEventData->getSceneValid();
+    boost::shared_ptr<EventDataSceneValid> castEventData = boost::static_pointer_cast<EventDataSceneValid>(eventData);
+    this->validScene = castEventData->getSceneValid();
 }
 
 void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
 {
-	if (nullptr == this->editorManager)
-	{
+    if (nullptr == this->editorManager)
+    {
         return;
-	}
+    }
 
-	boost::shared_ptr<NOWA::EventDataFeedback> castEventData = boost::static_pointer_cast<NOWA::EventDataFeedback>(eventData);
+    boost::shared_ptr<NOWA::EventDataFeedback> castEventData = boost::static_pointer_cast<NOWA::EventDataFeedback>(eventData);
 
-	if (false == castEventData->isPositive())
-	{
+    if (false == castEventData->isPositive())
+    {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData]()
         {
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Feedback", MyGUI::LanguageManager::getInstancePtr()->replaceTags(castEventData->getFeedbackMessage()),
-				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+            MyGUI::Message* messageBox =
+                MyGUI::Message::createMessageBox("Feedback", MyGUI::LanguageManager::getInstancePtr()->replaceTags(castEventData->getFeedbackMessage()), MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleFeedback::createMessageBox");
-	}
+    }
 
-	Ogre::String feedbackMessage = castEventData->getFeedbackMessage();
+    Ogre::String feedbackMessage = castEventData->getFeedbackMessage();
 
-	// In your feedback event handler in DesignState:
+    // In your feedback event handler in DesignState:
     if (Ogre::StringUtil::startsWith(feedbackMessage, "[UNIVERSUM_CAMSPEED:"))
     {
         // Extract the speed value between ':' and ']'
@@ -944,16 +952,16 @@ void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
             // Remove the hardcoded 52 cap -- apply suggested speed directly.
             this->cameraMoveSpeed = suggestedSpeed;
 
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
-				auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-				if (nullptr != cameraBehavior)
-				{
-					cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
-				}
-				// Re-enable both speed buttons since we've reset to a new baseline.
-				this->cameraSpeedUpButton->setEnabled(true);
-				this->cameraSpeedDownButton->setEnabled(true);
+                auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+                if (nullptr != cameraBehavior)
+                {
+                    cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+                }
+                // Re-enable both speed buttons since we've reset to a new baseline.
+                this->cameraSpeedUpButton->setEnabled(true);
+                this->cameraSpeedDownButton->setEnabled(true);
             };
             NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleFeedback");
         }
@@ -963,60 +971,60 @@ void DesignState::handleFeedback(NOWA::EventDataPtr eventData)
 
 void DesignState::handlePlayerInControl(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<NOWA::EventDataActivatePlayerController> castEventData = boost::static_pointer_cast<NOWA::EventDataActivatePlayerController>(eventData);
+    boost::shared_ptr<NOWA::EventDataActivatePlayerController> castEventData = boost::static_pointer_cast<NOWA::EventDataActivatePlayerController>(eventData);
 
-	this->playerInControl = castEventData->getIsActive();
+    this->playerInControl = castEventData->getIsActive();
 }
 
 // Only called from GameProgressModule
 void DesignState::handleSceneLoaded(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<NOWA::EventDataSceneLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataSceneLoaded>(eventData);
+    boost::shared_ptr<NOWA::EventDataSceneLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataSceneLoaded>(eventData);
 
-	// Event not for this state
-	if (castEventData->getSceneParameter().appStateName != this->appStateName)
-	{
-		return;
-	}
-	
-	boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(ProjectManager::eProjectMode::NEW));
-	this->handleProjectManipulation(eventDataProjectManipulation);
+    // Event not for this state
+    if (castEventData->getSceneParameter().appStateName != this->appStateName)
+    {
+        return;
+    }
 
-	// Note: When scene has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
-	// and the scene has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
-	if (true == castEventData->getSceneChanged())
-	{
-		this->simulate(false, false); // With undo false, how to solve this: when stopping, that the old scene is loaded?
+    boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(ProjectManager::eProjectMode::NEW));
+    this->handleProjectManipulation(eventDataProjectManipulation);
 
-		// Set project parameter for project manager when a new scene has been loaded in running simulation
-		if (nullptr != this->projectManager)
-		{
-			this->projectManager->setProjectParameter(castEventData->getProjectParameter());
-		}
+    // Note: When scene has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
+    // and the scene has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
+    if (true == castEventData->getSceneChanged())
+    {
+        this->simulate(false, false); // With undo false, how to solve this: when stopping, that the old scene is loaded?
 
-		NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->determinePlayerStartLocation(castEventData->getProjectParameter().sceneName);
+        // Set project parameter for project manager when a new scene has been loaded in running simulation
+        if (nullptr != this->projectManager)
+        {
+            this->projectManager->setProjectParameter(castEventData->getProjectParameter());
+        }
 
-		NOWA::GameObjectPtr player = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->getPlayerName());
-		if (nullptr != player)
-		{
-			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, player->getId(), true);
-		}
-	}
+        NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->determinePlayerStartLocation(castEventData->getProjectParameter().sceneName);
+
+        NOWA::GameObjectPtr player = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->getPlayerName());
+        if (nullptr != player)
+        {
+            NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, player->getId(), true);
+        }
+    }
 }
 
 void DesignState::handleTestSelectedGameObjects(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<EventDataTestSelectedGameObjects> castEventData = boost::static_pointer_cast<EventDataTestSelectedGameObjects>(eventData);
-	this->simulate(!castEventData->isActive(), true);
+    boost::shared_ptr<EventDataTestSelectedGameObjects> castEventData = boost::static_pointer_cast<EventDataTestSelectedGameObjects>(eventData);
+    this->simulate(!castEventData->isActive(), true);
 }
 
 void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<NOWA::EventDataMyGUIWidgetSelected> castEventData = boost::static_pointer_cast<NOWA::EventDataMyGUIWidgetSelected>(eventData);
+    boost::shared_ptr<NOWA::EventDataMyGUIWidgetSelected> castEventData = boost::static_pointer_cast<NOWA::EventDataMyGUIWidgetSelected>(eventData);
 
-	// Event not for this state
-	if (0 != castEventData->getGameObjectId())
-	{
+    // Event not for this state
+    if (0 != castEventData->getGameObjectId())
+    {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData]()
         {
             MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
@@ -1039,14 +1047,14 @@ void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleMyGUIWidgetSelected");
-	}
+    }
 }
 
 void DesignState::handleSceneModified(NOWA::EventDataPtr eventData)
 {
-	this->hasSceneChanges = true;
+    this->hasSceneChanges = true;
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
     };
@@ -1055,34 +1063,34 @@ void DesignState::handleSceneModified(NOWA::EventDataPtr eventData)
 
 void DesignState::handleGeometryChanged(NOWA::EventDataPtr eventData)
 {
-	// Do not set changes, if undo button has pressed, because things for terra have been made back, so not changes
-	if (false == this->undoPressed)
-	{
-		this->hasSceneChanges = true;
+    // Do not set changes, if undo button has pressed, because things for terra have been made back, so not changes
+    if (false == this->undoPressed)
+    {
+        this->hasSceneChanges = true;
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleGeometryChanged");
-	}
-	else
-	{
-		this->undoPressed = false;
-	}
+    }
+    else
+    {
+        this->undoPressed = false;
+    }
 }
 
 void DesignState::handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData)
 {
-	// Changed game object global state, scene must be stored!
-	if (nullptr != this->projectManager)
-	{
-		this->projectManager->saveProject();
-	}
+    // Changed game object global state, scene must be stored!
+    if (nullptr != this->projectManager)
+    {
+        this->projectManager->saveProject();
+    }
 
-	this->hasSceneChanges = false;
+    this->hasSceneChanges = false;
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
     };
@@ -1091,110 +1099,109 @@ void DesignState::handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventDa
 
 void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
 {
-	if (this->categoriesComboBox == sender)
-	{
-		if (index <= categoriesComboBox->getItemCount())
-		{
-			this->activeCategory = this->categoriesComboBox->getItemNameAt(index);
+    if (this->categoriesComboBox == sender)
+    {
+        if (index <= categoriesComboBox->getItemCount())
+        {
+            this->activeCategory = this->categoriesComboBox->getItemNameAt(index);
 
-			// Enqueue the filtering logic to the render thread to interact with the editorManager
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            // Enqueue the filtering logic to the render thread to interact with the editorManager
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
             };
             NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::itemSelected1");
-		}
-	}
-	else if (this->gridValueComboBox == sender)
-	{
-		if (index <= gridValueComboBox->getItemCount())
-		{
-			Ogre::String selectedGridValue = this->gridValueComboBox->getItemNameAt(index);
+        }
+    }
+    else if (this->gridValueComboBox == sender)
+    {
+        if (index <= gridValueComboBox->getItemCount())
+        {
+            Ogre::String selectedGridValue = this->gridValueComboBox->getItemNameAt(index);
 
-			// Enqueue the logic to update the grid step in the render thread
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, selectedGridValue]()
+            // Enqueue the logic to update the grid step in the render thread
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, selectedGridValue]()
             {
                 this->editorManager->setGridStep(Ogre::StringConverter::parseReal(selectedGridValue));
             };
             NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::itemSelected2");
-		}
-	}
+        }
+    }
 }
 void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
-	// Its possible to create a custom complex combination of categories, so set the text for selections
-	if (sender == this->categoriesComboBox)
-	{
-		this->activeCategory = this->categoriesComboBox->getOnlyText();
-		// Wrap editorManager access in render command for thread safety
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    // Its possible to create a custom complex combination of categories, so set the text for selections
+    if (sender == this->categoriesComboBox)
+    {
+        this->activeCategory = this->categoriesComboBox->getOnlyText();
+        // Wrap editorManager access in render command for thread safety
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::notifyEditSelectAccept_categories");
-	}
-	else if (sender == this->findObjectEdit)
-	{
-		// Find game object for guid and focus it
-		Ogre::String text = sender->getOnlyText();
+    }
+    else if (sender == this->findObjectEdit)
+    {
+        // Find game object for guid and focus it
+        Ogre::String text = sender->getOnlyText();
 
-		text.erase(std::remove(text.begin(), text.end(), '#'), text.end());
-		NOWA::GameObjectPtr gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(Ogre::StringConverter::parseUnsignedLong(text));
-		if (nullptr == gameObjectPtr)
-		{
-			NOWA::JointCompPtr jointCompPtr = NOWA::makeStrongPtr(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(Ogre::StringConverter::parseUnsignedLong(text)));
-			if (nullptr != jointCompPtr)
-			{
-				gameObjectPtr = jointCompPtr->getOwner();
-			}
-		}
-		if (nullptr != gameObjectPtr)
-		{
-			/*
-			* Benefits of Centralizing Logic in EditorManager:
-				Encapsulation: By moving everything into EditorManager, you're centralizing the logic that interacts with the game objects, selections, and camera. 
-				This makes your code more modular and maintainable. You could create a function in EditorManager that handles all of these operations at once, reducing the need to enqueue multiple commands from the outside.
+        text.erase(std::remove(text.begin(), text.end(), '#'), text.end());
+        NOWA::GameObjectPtr gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(Ogre::StringConverter::parseUnsignedLong(text));
+        if (nullptr == gameObjectPtr)
+        {
+            NOWA::JointCompPtr jointCompPtr = NOWA::makeStrongPtr(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(Ogre::StringConverter::parseUnsignedLong(text)));
+            if (nullptr != jointCompPtr)
+            {
+                gameObjectPtr = jointCompPtr->getOwner();
+            }
+        }
+        if (nullptr != gameObjectPtr)
+        {
+            /*
+            * Benefits of Centralizing Logic in EditorManager:
+                Encapsulation: By moving everything into EditorManager, you're centralizing the logic that interacts with the game objects, selections, and camera.
+                This makes your code more modular and maintainable. You could create a function in EditorManager that handles all of these operations at once, reducing the need to enqueue multiple commands from the outside.
 
-				Abstraction of Render Thread Interactions: EditorManager could abstract away the complexities of ensuring thread safety by having its own internal mechanisms for pushing commands to the render thread.
-				This would make it easier to work with UI elements and other game objects without having to worry about threading issues in each individual part of your game.
+                Abstraction of Render Thread Interactions: EditorManager could abstract away the complexities of ensuring thread safety by having its own internal mechanisms for pushing commands to the render thread.
+                This would make it easier to work with UI elements and other game objects without having to worry about threading issues in each individual part of your game.
 
-				Consistency: If you centralize the logic in EditorManager, it can be easier to maintain consistency in how various components interact with the render thread.
-				For example, you could ensure that every modification to the game state (like camera focus, selection changes, or other actions) follows a uniform pattern of handling operations safely on the correct thread.
+                Consistency: If you centralize the logic in EditorManager, it can be easier to maintain consistency in how various components interact with the render thread.
+                For example, you could ensure that every modification to the game state (like camera focus, selection changes, or other actions) follows a uniform pattern of handling operations safely on the correct thread.
 
-				Drawbacks of Centralizing Everything in EditorManager:
-				Monolithic EditorManager: The downside is that EditorManager could grow too large and become too complex if you add too many responsibilities to it.
-				You want to avoid making it a "god class" that handles everything, as this could lead to difficulties in debugging and maintaining the system.
-				It�s important to keep the responsibilities of EditorManager focused on editor-related operations and not everything in your game.
+                Drawbacks of Centralizing Everything in EditorManager:
+                Monolithic EditorManager: The downside is that EditorManager could grow too large and become too complex if you add too many responsibilities to it.
+                You want to avoid making it a "god class" that handles everything, as this could lead to difficulties in debugging and maintaining the system.
+                It�s important to keep the responsibilities of EditorManager focused on editor-related operations and not everything in your game.
 
-				Potential Lack of Flexibility: Moving everything into EditorManager could make the code harder to extend in the future. For instance,
-				if you wanted to change how selection or camera focus works (e.g., for a new feature or modification), you might find yourself modifying a large
-				complex EditorManager class instead of adjusting smaller, more focused pieces of code.
+                Potential Lack of Flexibility: Moving everything into EditorManager could make the code harder to extend in the future. For instance,
+                if you wanted to change how selection or camera focus works (e.g., for a new feature or modification), you might find yourself modifying a large
+                complex EditorManager class instead of adjusting smaller, more focused pieces of code.
 
-				Harder to Optimize: If the logic for interacting with the render thread is centralized in EditorManager,
-				you might inadvertently introduce unnecessary complexity or inefficiency when trying to optimize the performance of specific parts of your game (e.g., if certain tasks don't need to be handled on the render thread).
+                Harder to Optimize: If the logic for interacting with the render thread is centralized in EditorManager,
+                you might inadvertently introduce unnecessary complexity or inefficiency when trying to optimize the performance of specific parts of your game (e.g., if certain tasks don't need to be handled on the render thread).
 
-				Suggested Approach:
-				Instead of moving everything into EditorManager, you could refactor some of the repeated logic into helper methods within EditorManager that handle the render thread interaction,
-				but still keep EditorManager focused on managing editor-related tasks. You could also consider the following:
+                Suggested Approach:
+                Instead of moving everything into EditorManager, you could refactor some of the repeated logic into helper methods within EditorManager that handle the render thread interaction,
+                but still keep EditorManager focused on managing editor-related tasks. You could also consider the following:
 
-				Command Queues within EditorManager: You could add command queueing directly inside EditorManager for certain operations that require thread-safe interaction with the render thread.
-				This would centralize the logic but keep the interaction points clean.
+                Command Queues within EditorManager: You could add command queueing directly inside EditorManager for certain operations that require thread-safe interaction with the render thread.
+                This would centralize the logic but keep the interaction points clean.
 
-				Event-driven System: Instead of pushing logic directly into the EditorManager, consider having it listen for specific events or requests 
-				(such as camera focus, game object selection, etc.) and then enqueue commands as needed.
-				This would allow EditorManager to be more reactive to the game state rather than being a catch-all for every operation.
+                Event-driven System: Instead of pushing logic directly into the EditorManager, consider having it listen for specific events or requests
+                (such as camera focus, game object selection, etc.) and then enqueue commands as needed.
+                This would allow EditorManager to be more reactive to the game state rather than being a catch-all for every operation.
 
-				Fazit: make the queue from the outside, if a class, has mix of logic and graphics!
+                Fazit: make the queue from the outside, if a class, has mix of logic and graphics!
 
-				It's a good idea to centralize the logic in EditorManager to some extent, but it�s also important to keep EditorManager from becoming overly complex. Encapsulating render thread operations in EditorManager
-			*/
+                It's a good idea to centralize the logic in EditorManager to some extent, but it�s also important to keep EditorManager from becoming overly complex. Encapsulating render thread operations in EditorManager
+            */
 
+            // Wrap editorManager access in render command for thread safety
+            unsigned long gameObjectId = gameObjectPtr->getId();
+            auto rawGameObject = gameObjectPtr.get();
 
-			// Wrap editorManager access in render command for thread safety
-			unsigned long gameObjectId = gameObjectPtr->getId();
-			auto rawGameObject = gameObjectPtr.get();
-
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, rawGameObject, gameObjectId]()
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, rawGameObject, gameObjectId]()
             {
                 this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
                 this->editorManager->focusCameraGameObject(rawGameObject);
@@ -1202,23 +1209,23 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
                 this->editorManager->getSelectionManager()->select(gameObjectId);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyEditSelectAccept_focus");
-		}
-	}
-	else if (sender == this->constraintAxisEdit)
-	{
-		Ogre::Vector3 constraintAxis = Ogre::StringConverter::parseVector3(sender->getOnlyText());
-		// Wrap editorManager access in render command for thread safety
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, constraintAxis]()
+        }
+    }
+    else if (sender == this->constraintAxisEdit)
+    {
+        Ogre::Vector3 constraintAxis = Ogre::StringConverter::parseVector3(sender->getOnlyText());
+        // Wrap editorManager access in render command for thread safety
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, constraintAxis]()
         {
             this->editorManager->setConstraintAxis(constraintAxis);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::notifyEditSelectAccept_constraint");
-	}
+    }
 }
 
 void DesignState::buttonHit(MyGUI::Widget* sender)
 {
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
         this->selectModeCheck->setStateSelected(false);
         this->placeModeCheck->setStateSelected(false);
@@ -1234,25 +1241,25 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit1");
 
-	if (this->playButton == sender)
-	{
-		this->simulate(false == this->playButton->getStateSelected(), true);
-	}
+    if (this->playButton == sender)
+    {
+        this->simulate(false == this->playButton->getStateSelected(), true);
+    }
 
-	if (this->gridButton == sender)
-	{
-		// Wrap editorManager access in render command for thread safety
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    if (this->gridButton == sender)
+    {
+        // Wrap editorManager access in render command for thread safety
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->editorManager->setViewportGridEnabled(!this->editorManager->getViewportGridEnabled());
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit_grid");
-	}
+    }
 
-	if (this->focusButton == sender)
-	{
-		// Wrap editorManager access in render command for thread safety
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    if (this->focusButton == sender)
+    {
+        // Wrap editorManager access in render command for thread safety
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
             {
@@ -1261,20 +1268,20 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit_focus");
-	}
+    }
 
-	if (this->selectModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    if (this->selectModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->selectModeCheck->setStateSelected(true);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit2");
-	}
-	else if (this->placeModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->placeModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->placeModeCheck->setStateSelected(true);
             this->placeModePopupMenu->showMenu();
@@ -1289,10 +1296,10 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit3");
-	}
-	else if (this->translateModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->translateModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->translateModeCheck->setStateSelected(true);
             this->translateModePopupMenu->showMenu();
@@ -1307,13 +1314,13 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit4");
-	}
-	else if (this->pickModeCheck == sender)
-	{
-		// If already in picker mode, to not re-start simulation again, since another undo command is pushed, so when stopped, the first undo is gone (2x undo would be required)
-		if (NOWA::EditorManager::EDITOR_PICKER_MODE != this->editorManager->getManipulationMode())
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->pickModeCheck == sender)
+    {
+        // If already in picker mode, to not re-start simulation again, since another undo command is pushed, so when stopped, the first undo is gone (2x undo would be required)
+        if (NOWA::EditorManager::EDITOR_PICKER_MODE != this->editorManager->getManipulationMode())
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->pickModeCheck->setStateSelected(true);
                 this->propertiesPanel->clearProperties();
@@ -1321,45 +1328,45 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             };
             NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit5");
 
-			this->simulate(false, true);
-			NOWA::GraphicsModule::RenderCommand renderCommand2 = [this]()
+            this->simulate(false, true);
+            NOWA::GraphicsModule::RenderCommand renderCommand2 = [this]()
             {
                 this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PICKER_MODE);
                 this->editorManager->getGizmo()->setEnabled(false);
             };
             NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand2), "DesignState::buttonHit5_mode");
-		}
-	}
-	else if (this->scaleModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        }
+    }
+    else if (this->scaleModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->scaleModeCheck->setStateSelected(true);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SCALE_MODE);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit6");
-	}
-	else if (this->rotate1ModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->rotate1ModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->rotate1ModeCheck->setStateSelected(true);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE1);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit7");
-	}
-	else if (this->rotate2ModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->rotate2ModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->rotate2ModeCheck->setStateSelected(true);
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE2);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit8");
-	}
-	else if (this->terrainModifyModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->terrainModifyModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->terrainSmoothModeCheck->setStateSelected(false);
             this->terrainModifyModeCheck->setStateSelected(true);
@@ -1368,10 +1375,10 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit9");
-	}
-	else if (this->terrainSmoothModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->terrainSmoothModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->terrainSmoothModeCheck->setStateSelected(true);
             this->terrainModifyModeCheck->setStateSelected(false);
@@ -1380,10 +1387,10 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit10");
-	}
-	else if (this->terrainPaintModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->terrainPaintModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->terrainSmoothModeCheck->setStateSelected(false);
             this->terrainModifyModeCheck->setStateSelected(false);
@@ -1392,10 +1399,10 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit11");
-	}
-	else if (this->meshModifyModeCheck == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->meshModifyModeCheck == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->terrainSmoothModeCheck->setStateSelected(false);
             this->terrainModifyModeCheck->setStateSelected(false);
@@ -1404,10 +1411,10 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
             this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit12");
-	}
-	else if (this->undoButton == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    }
+    else if (this->undoButton == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             // Show properties
             this->propertiesPanel->showProperties();
@@ -1422,11 +1429,11 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit13");
 
-		this->editorManager->undo();
-	}
-	else if (this->redoButton == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        this->editorManager->undo();
+    }
+    else if (this->redoButton == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
             this->hasSceneChanges = true;
@@ -1436,19 +1443,19 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit14");
 
-		this->editorManager->redo();
-	}
-	else if (this->cameraUndoButton == sender)
-	{
-		this->editorManager->cameraUndo();
-	}
-	else if (this->cameraRedoButton == sender)
-	{
-		this->editorManager->cameraRedo();
-	}
-	else if (this->selectUndoButton == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        this->editorManager->redo();
+    }
+    else if (this->cameraUndoButton == sender)
+    {
+        this->editorManager->cameraUndo();
+    }
+    else if (this->cameraRedoButton == sender)
+    {
+        this->editorManager->cameraRedo();
+    }
+    else if (this->selectUndoButton == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             // Show properties
             this->propertiesPanel->showProperties();
@@ -1456,11 +1463,11 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit15");
 
-		this->editorManager->getSelectionManager()->selectionUndo();
-	}
-	else if (this->selectRedoButton == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        this->editorManager->getSelectionManager()->selectionUndo();
+    }
+    else if (this->selectRedoButton == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             // Show properties
             this->propertiesPanel->showProperties();
@@ -1468,84 +1475,84 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit16");
 
-		this->editorManager->getSelectionManager()->selectionRedo();
-	}
-	else if (this->cameraSpeedUpButton == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        this->editorManager->getSelectionManager()->selectionRedo();
+    }
+    else if (this->cameraSpeedUpButton == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->cameraSpeedDownButton->setEnabled(true);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit16");
 
-		this->cameraMoveSpeed += 5.0f;
-		if (this->cameraMoveSpeed > 52.0f)
-		{
-			this->cameraMoveSpeed = 52.0f;
-			this->cameraSpeedUpButton->setEnabled(false);
-		}
+        this->cameraMoveSpeed += 5.0f;
+        if (this->cameraMoveSpeed > 52.0f)
+        {
+            this->cameraMoveSpeed = 52.0f;
+            this->cameraSpeedUpButton->setEnabled(false);
+        }
 
-		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-		if (nullptr != cameraBehavior)
-		{
-			cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+        auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+        if (nullptr != cameraBehavior)
+        {
+            cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
 
-			this->cameraSpeedUpButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
-		}
-	}
-	else if (this->cameraSpeedDownButton == sender)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            this->cameraSpeedUpButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
+        }
+    }
+    else if (this->cameraSpeedDownButton == sender)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->cameraSpeedDownButton->setEnabled(true);
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit17");
 
-		this->cameraMoveSpeed -= 5.0f;
-		if (this->cameraMoveSpeed < 2.0f)
-		{
-			this->cameraMoveSpeed = 2.0f;
-			this->cameraSpeedUpButton->setEnabled(true);
-			this->cameraSpeedDownButton->setEnabled(false);
-		}
+        this->cameraMoveSpeed -= 5.0f;
+        if (this->cameraMoveSpeed < 2.0f)
+        {
+            this->cameraMoveSpeed = 2.0f;
+            this->cameraSpeedUpButton->setEnabled(true);
+            this->cameraSpeedDownButton->setEnabled(false);
+        }
 
-		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-		if (nullptr != cameraBehavior)
-		{
-			cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+        auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+        if (nullptr != cameraBehavior)
+        {
+            cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
 
-			this->cameraSpeedDownButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
-		}
-	}
-	else if (this->removeButton == sender)
-	{
-		this->removeGameObjects();
-	}
-	else if (this->copyButton == sender)
-	{
-		this->cloneGameObjects();
-	}
-	else if (this->cameraResetButton == sender)
-	{
+            this->cameraSpeedDownButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
+        }
+    }
+    else if (this->removeButton == sender)
+    {
+        this->removeGameObjects();
+    }
+    else if (this->copyButton == sender)
+    {
+        this->cloneGameObjects();
+    }
+    else if (this->cameraResetButton == sender)
+    {
         if (!GetAsyncKeyState(VK_LSHIFT))
         {
             /*NOWA::GraphicsModule::getInstance()->setCameraPosition(this->camera, Ogre::Vector3(0.0f, 5.0f, -2.0f));
             NOWA::GraphicsModule::getInstance()->setCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY);*/
 
-			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(0.0f, 5.0f, -2.0f));
+            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(0.0f, 5.0f, -2.0f));
             NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY);
         }
 
-		this->cameraMoveSpeed = 10.0f;
-		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-		if (nullptr != cameraBehavior)
-		{
-			cameraBehavior->reset();
-			cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
-		}
-	}
+        this->cameraMoveSpeed = 10.0f;
+        auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+        if (nullptr != cameraBehavior)
+        {
+            cameraBehavior->reset();
+            cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+        }
+    }
 
-	NOWA::GraphicsModule::RenderCommand renderCommand2 = [this, sender]()
+    NOWA::GraphicsModule::RenderCommand renderCommand2 = [this, sender]()
     {
         // Check if some place mode has been pressed
         for (size_t i = 0; i < this->placeModePopupMenu->getChildCount(); i++)
@@ -1618,27 +1625,26 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 
 void DesignState::mouseClicked(MyGUI::Widget* sender)
 {
-	if (this->simulationWindow->getCaptionWidget() == sender)
-	{
-		if (true == this->mainMenuBar->hasLuaErrors())
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    if (this->simulationWindow->getCaptionWidget() == sender)
+    {
+        if (true == this->mainMenuBar->hasLuaErrors())
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->mainMenuBar->showLuaAnalysisWindow();
             };
             NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::mouseClicked");
-		}
-	}
+        }
+    }
 }
 
 void DesignState::notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo& info)
 {
-
 }
 
 void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBoxStyle result)
 {
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, result]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, result]()
     {
         if (result == MyGUI::MessageBoxStyle::Yes)
         {
@@ -1661,7 +1667,7 @@ void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBox
 
 void DesignState::notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
 {
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, result]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, result]()
     {
         if (result == MyGUI::MessageBoxStyle::Yes)
         {
@@ -1673,154 +1679,156 @@ void DesignState::notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::Message
 
 void DesignState::setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
 {
-	this->description.clear();
-	// Send the text box change to the game object and internally actualize the data
-	Ogre::String description = sender->getUserString("Description");
-	this->description = description;
+    this->description.clear();
+    // Send the text box change to the game object and internally actualize the data
+    Ogre::String description = sender->getUserString("Description");
+    this->description = description;
 }
 
 void DesignState::updateInfo(Ogre::Real dt)
 {
-	auto closureFunction = [this](Ogre::Real renderDt)
-	{
-		if (this->nextInfoUpdate <= 0.0f)
-		{
-			if (nullptr == this->editorManager)
-			{
-				return;
-			}
+    auto closureFunction = [this](Ogre::Real renderDt)
+    {
+        if (this->nextInfoUpdate <= 0.0f)
+        {
+            if (nullptr == this->editorManager)
+            {
+                return;
+            }
 
-			Ogre::String info = "Selected : " + Ogre::StringConverter::toString(this->editorManager->getSelectionManager()->getSelectedGameObjects().size());
+            Ogre::String info = "Selected : " + Ogre::StringConverter::toString(this->editorManager->getSelectionManager()->getSelectedGameObjects().size());
 
-			if (false == this->selectedMovableObjectInfo.empty())
-			{
-				info += " " + this->selectedMovableObjectInfo;
-			}
+            if (false == this->selectedMovableObjectInfo.empty())
+            {
+                info += " " + this->selectedMovableObjectInfo;
+            }
 
-			if (1 == this->editorManager->getSelectionManager()->getSelectedGameObjects().size())
-			{
-				NOWA::GameObject* gameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
-				if (nullptr != gameObject)
-					info += " Object Pos: " + Ogre::StringConverter::toString(gameObject->getPosition());
-			}
+            if (1 == this->editorManager->getSelectionManager()->getSelectedGameObjects().size())
+            {
+                NOWA::GameObject* gameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
+                if (nullptr != gameObject)
+                {
+                    info += " Object Pos: " + Ogre::StringConverter::toString(gameObject->getPosition());
+                }
+            }
 
-			info += " Camera pos: " + Ogre::StringConverter::toString(NOWA::MathHelper::getInstance()->round(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getPosition(), 2));
-			info += " orient: " + Ogre::StringConverter::toString(NOWA::MathHelper::getInstance()->round(
-				NOWA::MathHelper::getInstance()->quatToDegrees(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getOrientation()), 2));
-			info += " speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed);
+            info += " Camera pos: " + Ogre::StringConverter::toString(NOWA::MathHelper::getInstance()->round(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getPosition(), 2));
+            info += " orient: " + Ogre::StringConverter::toString(NOWA::MathHelper::getInstance()->round(NOWA::MathHelper::getInstance()->quatToDegrees(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getOrientation()), 2));
+            info += " speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed);
 
-			if (NOWA::EditorManager::EDITOR_PICKER_MODE == this->editorManager->getManipulationMode())
-			{
-				info += " Pick force: " + Ogre::StringConverter::toString(this->editorManager->getPickForce());
-			}
+            if (NOWA::EditorManager::EDITOR_PICKER_MODE == this->editorManager->getManipulationMode())
+            {
+                info += " Pick force: " + Ogre::StringConverter::toString(this->editorManager->getPickForce());
+            }
 
-			// Do it with tooltips etc.
-			/*if (false == this->description.empty())
-			{
-				info += " | " + this->description;
-			}*/
+            // Do it with tooltips etc.
+            /*if (false == this->description.empty())
+            {
+                info += " | " + this->description;
+            }*/
 
-			const Ogre::FrameStats* frameStats = NOWA::Core::getSingletonPtr()->getOgreRoot()->getFrameStats();
-			const Ogre::RenderingMetrics& metrics = Ogre::Root::getSingletonPtr()->getRenderSystem()->getMetrics();
+            const Ogre::FrameStats* frameStats = NOWA::Core::getSingletonPtr()->getOgreRoot()->getFrameStats();
+            const Ogre::RenderingMetrics& metrics = Ogre::Root::getSingletonPtr()->getRenderSystem()->getMetrics();
 
-			float avgTime = frameStats->getAvgTime();
-			char m[64];  // Increase buffer size
-			if (avgTime > 0.0f && avgTime < 1000.0f) // Prevent division by zero and extreme values
-			{
-				snprintf(m, sizeof(m), "%.2fms - %.2ffps", avgTime, 1000.0f / avgTime);
-			}
-			else
-			{
-				snprintf(m, sizeof(m), "FPS: Invalid");
-			}
-			info += " FPS: " + Ogre::String(m);
-			// Is always 0??
-			info += " Faces: " + Ogre::StringConverter::toString(metrics.mFaceCount);
-			info += " Batches: " + Ogre::StringConverter::toString(metrics.mBatchCount);
-			info += " Vertices: " + Ogre::StringConverter::toString(metrics.mVertexCount);
-			info += " Drawings: " + Ogre::StringConverter::toString(metrics.mDrawCount);
-			info += " Instances: " + Ogre::StringConverter::toString(metrics.mInstanceCount);
-			// info += " Threadcount: " + Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount());
+            float avgTime = frameStats->getAvgTime();
+            char m[64];                              // Increase buffer size
+            if (avgTime > 0.0f && avgTime < 1000.0f) // Prevent division by zero and extreme values
+            {
+                snprintf(m, sizeof(m), "%.2fms - %.2ffps", avgTime, 1000.0f / avgTime);
+            }
+            else
+            {
+                snprintf(m, sizeof(m), "FPS: Invalid");
+            }
+            info += " FPS: " + Ogre::String(m);
+            // Is always 0??
+            info += " Faces: " + Ogre::StringConverter::toString(metrics.mFaceCount);
+            info += " Batches: " + Ogre::StringConverter::toString(metrics.mBatchCount);
+            info += " Vertices: " + Ogre::StringConverter::toString(metrics.mVertexCount);
+            info += " Drawings: " + Ogre::StringConverter::toString(metrics.mDrawCount);
+            info += " Instances: " + Ogre::StringConverter::toString(metrics.mInstanceCount);
+            // info += " Threadcount: " + Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount());
 
-			this->manipulationWindow->setCaption(info);
+            this->manipulationWindow->setCaption(info);
 
-			bool isSimulating = this->gameObjectController->getIsSimulating();
+            bool isSimulating = this->gameObjectController->getIsSimulating();
             if (false == isSimulating)
-			{
-				this->undoButton->setEnabled(this->editorManager->canUndo());
-				this->redoButton->setEnabled(this->editorManager->canRedo());
-				this->cameraUndoButton->setEnabled(this->editorManager->canCameraUndo());
-				this->cameraRedoButton->setEnabled(this->editorManager->canCameraRedo());
-				this->selectUndoButton->setEnabled(this->editorManager->getSelectionManager()->canSelectionUndo());
-				this->selectRedoButton->setEnabled(this->editorManager->getSelectionManager()->canSelectionRedo());
-			}
-			
-			this->nextInfoUpdate = 1.0f;
-		}
-		else
-		{
-			this->nextInfoUpdate -= renderDt;
-		}
-	};
-	NOWA::GraphicsModule::getInstance()->updateTrackedClosure("DesignState::updateInfo", closureFunction, false);
+            {
+                this->undoButton->setEnabled(this->editorManager->canUndo());
+                this->redoButton->setEnabled(this->editorManager->canRedo());
+                this->cameraUndoButton->setEnabled(this->editorManager->canCameraUndo());
+                this->cameraRedoButton->setEnabled(this->editorManager->canCameraRedo());
+                this->selectUndoButton->setEnabled(this->editorManager->getSelectionManager()->canSelectionUndo());
+                this->selectRedoButton->setEnabled(this->editorManager->getSelectionManager()->canSelectionRedo());
+            }
+
+            this->nextInfoUpdate = 1.0f;
+        }
+        else
+        {
+            this->nextInfoUpdate -= renderDt;
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->updateTrackedClosure("DesignState::updateInfo", closureFunction, false);
 }
 
 void DesignState::removeGameObjects(void)
 {
-	if (true == this->gameObjectController->getIsSimulating())
-	{
-		return;
-	}
-	std::vector<unsigned long> gameObjectIds;
-	// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-	for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
-	{
-		// SunLight must not be deleted by the user!
-		if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID 
-				&& it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
-		{
-			gameObjectIds.emplace_back(it->second.gameObject->getId());
-		}
-	}
-	if (gameObjectIds.size() > 0)
-	{
-		this->editorManager->deleteGameObjects(gameObjectIds);
-		this->editorManager->getSelectionManager()->clearSelection();
-		boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    if (true == this->gameObjectController->getIsSimulating())
+    {
+        return;
+    }
+    std::vector<unsigned long> gameObjectIds;
+    // Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
+    for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+    {
+        // SunLight must not be deleted by the user!
+        if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID &&
+            it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
+        {
+            gameObjectIds.emplace_back(it->second.gameObject->getId());
+        }
+    }
+    if (gameObjectIds.size() > 0)
+    {
+        this->editorManager->deleteGameObjects(gameObjectIds);
+        this->editorManager->getSelectionManager()->clearSelection();
+        boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 
-		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+        boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
 
-		this->generateCategories();
-	}
+        this->generateCategories();
+    }
 }
 
 void DesignState::cloneGameObjects(void)
 {
-	if (true == this->gameObjectController->getIsSimulating())
-	{
-		return;
-	}
-	std::vector<unsigned long> gameObjectIds(this->editorManager->getSelectionManager()->getSelectedGameObjects().size());
-	size_t i = 0;
-	// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-	for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
-	{
-		// Prohibit cloning of mandatory game objects
-		if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID 
-			&& it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID  
-			&& it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID)
-			gameObjectIds[i++] = it->second.gameObject->getId();
-	}
-	if (0 == gameObjectIds.size())
-	{
-		return;
-	}
+    if (true == this->gameObjectController->getIsSimulating())
+    {
+        return;
+    }
+    std::vector<unsigned long> gameObjectIds(this->editorManager->getSelectionManager()->getSelectedGameObjects().size());
+    size_t i = 0;
+    // Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
+    for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+    {
+        // Prohibit cloning of mandatory game objects
+        if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID && it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID &&
+            it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID)
+        {
+            gameObjectIds[i++] = it->second.gameObject->getId();
+        }
+    }
+    if (0 == gameObjectIds.size())
+    {
+        return;
+    }
 
-	this->editorManager->cloneGameObjects(gameObjectIds);
-	boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    this->editorManager->cloneGameObjects(gameObjectIds);
+    boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 }
 
 void DesignState::update(Ogre::Real dt)
@@ -1835,7 +1843,7 @@ void DesignState::update(Ogre::Real dt)
             NOWA::AppStateManager::getSingletonPtr()->getParticleFxModule(this->appStateName)->update(dt);
         }
 
-		bool altKeyIsDown = (0 != (GetAsyncKeyState(VK_LMENU) & 0x8000));
+        bool altKeyIsDown = (0 != (GetAsyncKeyState(VK_LMENU) & 0x8000));
         if (true == altKeyIsDown && false == this->altKeyWasDown)
         {
             this->targetCoordinateSystemModeActive = !this->targetCoordinateSystemModeActive;
@@ -1857,10 +1865,10 @@ void DesignState::update(Ogre::Real dt)
             this->ogreNewt->update(dt);
             // this->ogreNewt->updateFixed(dt);
 
-			// Newton has stepped, interalPostUpdate has set m_nodePosit.
+            // Newton has stepped, interalPostUpdate has set m_nodePosit.
             // Camera reads the correct interpolated position and writes
             // into the transform buffer. Render thread lerps it at 400fps.
-			// So if simulating (almost in any case a physics object is involved for tracking, so it must be done on max 144hz updaterate to stay in sync with physics).
+            // So if simulating (almost in any case a physics object is involved for tracking, so it must be done on max 144hz updaterate to stay in sync with physics).
             NOWA::AppStateManager::getSingletonPtr()->getCameraManager(this->appStateName)->moveCamera(dt);
         }
 
@@ -1910,31 +1918,30 @@ update (fixed frequency, 144hz)
 
 void DesignState::renderUpdate(Ogre::Real dt)
 {
-	this->processUnbufferedKeyInput(dt);
-	this->processUnbufferedMouseInput(dt);
+    this->processUnbufferedKeyInput(dt);
+    this->processUnbufferedMouseInput(dt);
 
-	NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->update(dt);
+    NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->update(dt);
 
-	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+    const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
-	MyGUI::Widget* focusWidget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
+    MyGUI::Widget* focusWidget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
 
-	auto* cameraManager = NOWA::AppStateManager::getSingletonPtr()->getCameraManager();
+    auto* cameraManager = NOWA::AppStateManager::getSingletonPtr()->getCameraManager();
 
-	bool isSimulating = this->gameObjectController->getIsSimulating();
-   
-	if (false == isSimulating && nullptr != focusWidget && false == ms.buttonDown(OIS::MB_Right) &&
-        nullptr == NOWA::InputDeviceCore::getSingletonPtr()->getJoystick())
-	{
-		return;
-	}
+    bool isSimulating = this->gameObjectController->getIsSimulating();
+
+    if (false == isSimulating && nullptr != focusWidget && false == ms.buttonDown(OIS::MB_Right) && nullptr == NOWA::InputDeviceCore::getSingletonPtr()->getJoystick())
+    {
+        return;
+    }
     if (false == isSimulating)
     {
         // So if not simulating (no physics object is involved for tracking, so it can stay in max fps render update function).
         cameraManager->moveCamera(dt);
     }
 
-	// Prevent rotation, when user does something in GUI, or control is pressed
+    // Prevent rotation, when user does something in GUI, or control is pressed
     if (true == validScene && 0 == GetAsyncKeyState(VK_LCONTROL) /* && false == this->playerInControl*/)
     {
         if (ms.buttonDown(OIS::MB_Right) && GetAsyncKeyState(VK_LSHIFT) && this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
@@ -1991,65 +1998,65 @@ void DesignState::renderUpdate(Ogre::Real dt)
 
 void DesignState::orbitCamera(Ogre::Real dt)
 {
-	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+    const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
-	Ogre::Vector2 rotationValue;
-	rotationValue.x = -ms.X.rel;
-	rotationValue.y = ms.Y.rel;
+    Ogre::Vector2 rotationValue;
+    rotationValue.x = -ms.X.rel;
+    rotationValue.y = ms.Y.rel;
 
-	if (this->firstTimeValueSet)
-	{
-		this->lastOrbitValue = rotationValue;
-		this->firstTimeValueSet = false;
-	}
+    if (this->firstTimeValueSet)
+    {
+        this->lastOrbitValue = rotationValue;
+        this->firstTimeValueSet = false;
+    }
 
-	rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastOrbitValue.x, 0.01f);
-	rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastOrbitValue.y, 0.01f);
+    rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastOrbitValue.x, 0.01f);
+    rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastOrbitValue.y, 0.01f);
 
-	// Start orbit mode
-	// Same as camera->moveRelative
-	Ogre::Vector3 trans = this->camera->getOrientation() * Ogre::Vector3(rotationValue.x, rotationValue.y, 0.0f);
+    // Start orbit mode
+    // Same as camera->moveRelative
+    Ogre::Vector3 trans = this->camera->getOrientation() * Ogre::Vector3(rotationValue.x, rotationValue.y, 0.0f);
 
-	Ogre::Quaternion resultOrientation = NOWA::MathHelper::getInstance()->computeDirectionQuaternion(this->editorManager->getGizmo()->getSelectedNode()->getPosition() - this->camera->getPosition());
-	NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, resultOrientation);
+    Ogre::Quaternion resultOrientation = NOWA::MathHelper::getInstance()->computeDirectionQuaternion(this->editorManager->getGizmo()->getSelectedNode()->getPosition() - this->camera->getPosition());
+    NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, resultOrientation);
 
-	NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->camera->getPosition() + trans);
+    NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->camera->getPosition() + trans);
 
-	this->lastOrbitValue = rotationValue;
+    this->lastOrbitValue = rotationValue;
 }
 
 void DesignState::showDebugCollisionLines(bool show)
 {
-	const auto gameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-	for (auto it = gameObjects.begin(); it != gameObjects.end(); it++)
-	{
-		auto gameObject = it->second.gameObject;
-		// Issue here: PhysicsRagDollComponent is derived from PhysicsActiveComponent, and PhysicsActiveComponent is derived from GameObjectComponent, but the link from
-		// PhysicsRagDollComponent to GameObjectComponent is somehow missing ?!?
-		auto gameObjectComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::GameObjectComponent>());
-		if (nullptr != gameObjectComponent)
-		{
-			gameObjectComponent->showDebugData();
-		}
-		else
-		{
-			auto physicsActiveComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsActiveComponent>());
-			if (nullptr != physicsActiveComponent)
-			{
-				physicsActiveComponent->showDebugData();
-			}
-		}
-	}
+    const auto gameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+    for (auto it = gameObjects.begin(); it != gameObjects.end(); it++)
+    {
+        auto gameObject = it->second.gameObject;
+        // Issue here: PhysicsRagDollComponent is derived from PhysicsActiveComponent, and PhysicsActiveComponent is derived from GameObjectComponent, but the link from
+        // PhysicsRagDollComponent to GameObjectComponent is somehow missing ?!?
+        auto gameObjectComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::GameObjectComponent>());
+        if (nullptr != gameObjectComponent)
+        {
+            gameObjectComponent->showDebugData();
+        }
+        else
+        {
+            auto physicsActiveComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsActiveComponent>());
+            if (nullptr != physicsActiveComponent)
+            {
+                physicsActiveComponent->showDebugData();
+            }
+        }
+    }
 }
 
 void DesignState::showContextMenu(int mouseX, int mouseY)
 {
-	if (this->editorManager->getManipulationMode() == NOWA::EditorManager::EDITOR_PLACE_MODE || this->editorManager->getManipulationMode() == NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE)
-	{
-		return;
-	}
+    if (this->editorManager->getManipulationMode() == NOWA::EditorManager::EDITOR_PLACE_MODE || this->editorManager->getManipulationMode() == NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE)
+    {
+        return;
+    }
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, mouseX, mouseY]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, mouseX, mouseY]()
     {
         this->editPopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
 
@@ -2067,64 +2074,64 @@ void DesignState::showContextMenu(int mouseX, int mouseY)
 
 void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* item)
 {
-	MyGUI::UString itemName = item->getCaption();
-	// Handle the selected item
-	if (itemName == MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Select_Same_Mesh}"))
-	{
-		Ogre::String meshName;
-		if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-		{
-			Ogre::Item* item = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObjectUnsafe<Ogre::Item>();
-			if (nullptr != item)
-			{
-				meshName = item->getMesh()->getName();
-			}
-		}
+    MyGUI::UString itemName = item->getCaption();
+    // Handle the selected item
+    if (itemName == MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Select_Same_Mesh}"))
+    {
+        Ogre::String meshName;
+        if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+        {
+            Ogre::Item* item = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObjectUnsafe<Ogre::Item>();
+            if (nullptr != item)
+            {
+                meshName = item->getMesh()->getName();
+            }
+        }
 
-		auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromMeshName(meshName);
-		this->editorManager->getSelectionManager()->clearSelection();
+        auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromMeshName(meshName);
+        this->editorManager->getSelectionManager()->clearSelection();
 
-		for (size_t i = 0; i < affectedGameObjects.size(); i++)
-		{
-			this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
-		}
-	}
-	else if (itemName == MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Select_Same_Datablock}"))
-	{
-		Ogre::String datablockName;
-		if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-		{
-			Ogre::Item* item = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObjectUnsafe<Ogre::Item>();
-			if (nullptr != item)
-			{
-				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-				for (size_t i = 0; i < item->getNumSubItems(); i++)
-				{
-					auto datablock = item->getSubItem(i)->getDatablock();
-					Ogre::String tempDatablockName;
-					if (nullptr != datablock)
-					{
-						tempDatablockName = *datablock->getNameStr();
-					}
-					datablockName = tempDatablockName;
-					break;
-				}
-			}
-		}
+        for (size_t i = 0; i < affectedGameObjects.size(); i++)
+        {
+            this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
+        }
+    }
+    else if (itemName == MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Select_Same_Datablock}"))
+    {
+        Ogre::String datablockName;
+        if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+        {
+            Ogre::Item* item = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObjectUnsafe<Ogre::Item>();
+            if (nullptr != item)
+            {
+                // Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
+                for (size_t i = 0; i < item->getNumSubItems(); i++)
+                {
+                    auto datablock = item->getSubItem(i)->getDatablock();
+                    Ogre::String tempDatablockName;
+                    if (nullptr != datablock)
+                    {
+                        tempDatablockName = *datablock->getNameStr();
+                    }
+                    datablockName = tempDatablockName;
+                    break;
+                }
+            }
+        }
 
-		auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromDatablockName(datablockName);
-		this->editorManager->getSelectionManager()->clearSelection();
-		for (size_t i = 0; i < affectedGameObjects.size(); i++)
-		{
-			this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
-		}
-	}
-	/*else if (itemName == "Option 3")
-	{
-		Ogre::LogManager::getSingleton().logMessage("Option 3 selected");
-	}*/
+        auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromDatablockName(datablockName);
+        this->editorManager->getSelectionManager()->clearSelection();
+        for (size_t i = 0; i < affectedGameObjects.size(); i++)
+        {
+            this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
+        }
+    }
+    /*else if (itemName == "Option 3")
+    {
+        Ogre::LogManager::getSingleton().logMessage("Option 3 selected");
+    }*/
 
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, menu]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, menu]()
     {
         // Close (destroy) the menu after selection
         MyGUI::Gui::getInstancePtr()->destroyWidget(menu);
@@ -2134,7 +2141,7 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 
 void DesignState::toggleGuiVisibility(bool visible)
 {
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]()
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, visible]()
     {
         if (nullptr != this->propertiesPanel)
         {
@@ -2158,780 +2165,798 @@ void DesignState::toggleGuiVisibility(bool visible)
 
 bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 {
-    bool isSimulating = this->gameObjectController->getIsSimulating();;
+    bool isSimulating = this->gameObjectController->getIsSimulating();
+    ;
     if (false == isSimulating)
-	{
-		if (GetAsyncKeyState(VK_LCONTROL) && keyEventRef.key == MyGUI::KeyCode::C)
-		{
-			if (false == this->selectedMovableObjectInfo.empty())
-			{
-				Ogre::String toFind = "local pos: ";
-				size_t foundStart = this->selectedMovableObjectInfo.find(toFind);
-				if (foundStart != Ogre::String::npos)
-				{
-					size_t foundEnd = this->selectedMovableObjectInfo.find(" normal: ", foundStart + toFind.length());
-					if (foundEnd != Ogre::String::npos)
-					{
-						Ogre::String strPosition = this->selectedMovableObjectInfo.substr(foundStart + toFind.length(), foundEnd - (foundStart + toFind.length()));
-						NOWA::Core::getSingletonPtr()->copyTextToClipboard(strPosition);
-					}
-				}
+    {
+        if (GetAsyncKeyState(VK_LCONTROL) && keyEventRef.key == MyGUI::KeyCode::C)
+        {
+            if (false == this->selectedMovableObjectInfo.empty())
+            {
+                Ogre::String toFind = "local pos: ";
+                size_t foundStart = this->selectedMovableObjectInfo.find(toFind);
+                if (foundStart != Ogre::String::npos)
+                {
+                    size_t foundEnd = this->selectedMovableObjectInfo.find(" normal: ", foundStart + toFind.length());
+                    if (foundEnd != Ogre::String::npos)
+                    {
+                        Ogre::String strPosition = this->selectedMovableObjectInfo.substr(foundStart + toFind.length(), foundEnd - (foundStart + toFind.length()));
+                        NOWA::Core::getSingletonPtr()->copyTextToClipboard(strPosition);
+                    }
+                }
 
-				size_t foundPos = this->selectedMovableObjectInfo.find("pos: ");
-				if (foundPos != Ogre::String::npos)
-				{
-					
-				}
-			}
-		}
+                size_t foundPos = this->selectedMovableObjectInfo.find("pos: ");
+                if (foundPos != Ogre::String::npos)
+                {
+                }
+            }
+        }
 
-		if (keyEventRef.key == MyGUI::KeyCode::Add)
-		{
-			this->cameraMoveSpeed += 2.0f;
-			if (this->cameraMoveSpeed > 50.0f)
-				this->cameraMoveSpeed = 50.0f;
+        if (keyEventRef.key == MyGUI::KeyCode::Add)
+        {
+            this->cameraMoveSpeed += 2.0f;
+            if (this->cameraMoveSpeed > 50.0f)
+            {
+                this->cameraMoveSpeed = 50.0f;
+            }
 
-			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-			if (nullptr != cameraBehavior)
-			{
-				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
-			}
-		}
-		else if (keyEventRef.key == MyGUI::KeyCode::Subtract)
-		{
-			this->cameraMoveSpeed -= 2.0f;
-			if (this->cameraMoveSpeed < 2.0f)
-				this->cameraMoveSpeed = 2.0f;
+            auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != cameraBehavior)
+            {
+                cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+            }
+        }
+        else if (keyEventRef.key == MyGUI::KeyCode::Subtract)
+        {
+            this->cameraMoveSpeed -= 2.0f;
+            if (this->cameraMoveSpeed < 2.0f)
+            {
+                this->cameraMoveSpeed = 2.0f;
+            }
 
-			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-			if (nullptr != cameraBehavior)
-			{
-				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
-			}
-		}
-	}
+            auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != cameraBehavior)
+            {
+                cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+            }
+        }
+    }
 
-	if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
-	{
-		return true;
-	}
+    if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
+    {
+        return true;
+    }
 
-	bool handled = false;
+    bool handled = false;
 
-	if (true == validScene && nullptr != this->editorManager)
-	{
-		handled = this->editorManager->handleKeyPress(keyEventRef);
-	}
+    if (true == validScene && nullptr != this->editorManager)
+    {
+        handled = this->editorManager->handleKeyPress(keyEventRef);
+    }
 
-	if (false == handled)
-	{
-		switch (keyEventRef.key)
-		{
-			case OIS::KC_ESCAPE:
-			{
-				// Stop simulation if simulating
-                if (true == isSimulating)
-				{
-					if (GetAsyncKeyState(VK_LCONTROL))
-					{
-						this->simulate(true, false); // Stop without undo
-					}
-					else
-					{
-						this->simulate(true, true);
-					}
-				}
-				else
-				{
-					this->handleExit(nullptr);
-				}
-				return true;
-			}
-			/*case OIS::KC_N:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL) && nullptr != this->projectManager)
-				{
-					this->mainMenuBar->callNewProject();
-				}
-				return true;
-			}*/
-			case OIS::KC_O:
-			{
+    if (false == handled)
+    {
+        switch (keyEventRef.key)
+        {
+        case OIS::KC_ESCAPE:
+        {
+            // Stop simulation if simulating
+            if (true == isSimulating)
+            {
+                if (GetAsyncKeyState(VK_LCONTROL))
+                {
+                    this->simulate(true, false); // Stop without undo
+                }
+                else
+                {
+                    this->simulate(true, true);
+                }
+            }
+            else
+            {
+                this->handleExit(nullptr);
+            }
+            return true;
+        }
+        /*case OIS::KC_N:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL) && nullptr != this->projectManager)
+            {
+                this->mainMenuBar->callNewProject();
+            }
+            return true;
+        }*/
+        case OIS::KC_O:
+        {
 
-                MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
-                if (nullptr == widget)
-				{
-					if (GetAsyncKeyState(VK_LCONTROL) && nullptr != this->projectManager)
-					{
-						this->projectManager->showFileOpenDialog("LoadProject", "*.scene");
-					}
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_F5:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL))
-				{
-					NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->createAllGameObjectsForShaderCacheGeneration(this->sceneManager);
-				}
-				NOWA::Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->validateDevice(true);
+            MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
+            if (nullptr == widget)
+            {
+                if (GetAsyncKeyState(VK_LCONTROL) && nullptr != this->projectManager)
+                {
+                    this->projectManager->showFileOpenDialog("LoadProject", "*.scene");
+                }
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_F5:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL))
+            {
+                NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->createAllGameObjectsForShaderCacheGeneration(this->sceneManager);
+            }
+            NOWA::Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->validateDevice(true);
 
-				return true;
-			}
-			case OIS::KC_F6:
-			{
-				NOWA::Core::getSingletonPtr()->dumpNodes(this->sceneManager->getRootSceneNode());
-				return true;
-			}
-			case OIS::KC_F7:
-			{
-				NOWA::DeployResourceModule::getInstance()->createAndStartExecutable(NOWA::Core::getSingletonPtr()->getProjectName(), NOWA::Core::getSingletonPtr()->getSceneName());
-				// NOWA::AppStateManager::getSingletonPtr()->pause();
-				NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
-				return true;
-			}
-		}
-	}
+            return true;
+        }
+        case OIS::KC_F6:
+        {
+            NOWA::Core::getSingletonPtr()->dumpNodes(this->sceneManager->getRootSceneNode());
+            return true;
+        }
+        case OIS::KC_F7:
+        {
+            NOWA::DeployResourceModule::getInstance()->createAndStartExecutable(NOWA::Core::getSingletonPtr()->getProjectName(), NOWA::Core::getSingletonPtr()->getSceneName());
+            // NOWA::AppStateManager::getSingletonPtr()->pause();
+            NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
+            return true;
+        }
+        }
+    }
 
-	// Show components should work from anywhere on the screen, but clone objects etc. not if mouse is over a widget, because copy text would clone also a game object else...
-	if (false == handled && true == validScene)
-	{
-		switch (keyEventRef.key)
-		{
-			case OIS::KC_C:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL) && GetAsyncKeyState(VK_LSHIFT))
-				{
-					if (nullptr != this->componentsPanel)
-					{
-						if (false == this->editorManager->getSelectionManager()->getSelectedGameObjects().empty())
-						{
-							NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-                            {
-                                this->componentsPanel->showComponents(-1);
-                            };
-                            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::ShowComponents");
-						}
-					}
-					return true;
-				}
-				break;
-			}
-		}
-	}
+    // Show components should work from anywhere on the screen, but clone objects etc. not if mouse is over a widget, because copy text would clone also a game object else...
+    if (false == handled && true == validScene)
+    {
+        switch (keyEventRef.key)
+        {
+        case OIS::KC_C:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL) && GetAsyncKeyState(VK_LSHIFT))
+            {
+                if (nullptr != this->componentsPanel)
+                {
+                    if (false == this->editorManager->getSelectionManager()->getSelectedGameObjects().empty())
+                    {
+                        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                        {
+                            this->componentsPanel->showComponents(-1);
+                        };
+                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::ShowComponents");
+                    }
+                }
+                return true;
+            }
+            break;
+        }
+        }
+    }
 
     MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
     if (false == handled && nullptr == widget && true == validScene)
-	{
-		switch (keyEventRef.key)
-		{
-			case OIS::KC_A: // Select all that matching the filter
-			{
-				if (GetAsyncKeyState(VK_LCONTROL))
-				{
-					auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->activeCategory);
-					for (size_t i = 0; i < affectedGameObjects.size(); i++)
-					{
-						this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
-					}
-					NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        switch (keyEventRef.key)
+        {
+        case OIS::KC_A: // Select all that matching the filter
+        {
+            if (GetAsyncKeyState(VK_LCONTROL))
+            {
+                auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->activeCategory);
+                for (size_t i = 0; i < affectedGameObjects.size(); i++)
+                {
+                    this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
+                }
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    this->propertiesPanel->showProperties();
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttClick_ShowPropertiesonHit17");
+
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_C:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL))
+            {
+                // Only clone if the mouse is in the scene and not in a property, that may be also copied
+                this->cloneGameObjects();
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_T:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL))
+            {
+                this->buttonHit(this->translateModeCheck);
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_S:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL))
+            {
+                if (false == GetAsyncKeyState(VK_LSHIFT))
+                {
+                    this->buttonHit(this->scaleModeCheck);
+                }
+                else
+                {
+                    if (nullptr != this->projectManager)
                     {
-                        this->propertiesPanel->showProperties();
-                    };
-                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttClick_ShowPropertiesonHit17");
+                        this->projectManager->saveProject();
+                        this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
+                    }
+                }
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_R:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL))
+            {
+                if (GetAsyncKeyState(VK_LSHIFT))
+                {
+                    this->buttonHit(this->rotate2ModeCheck);
+                }
+                else
+                {
+                    this->buttonHit(this->rotate1ModeCheck);
+                }
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_Y:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL))
+            {
+                this->buttonHit(this->undoButton);
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_Z:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL))
+            {
+                this->buttonHit(this->redoButton);
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_SPACE:
+        {
+            if (GetAsyncKeyState(VK_LCONTROL))
+            {
+                this->buttonHit(this->playButton);
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_DELETE:
+        {
+            if (true == validScene)
+            {
+                this->removeGameObjects();
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_TAB:
+        {
+            if (GetAsyncKeyState(KF_ALTDOWN))
+            {
+                NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
+                return true;
+            }
+            break;
+        }
+        case OIS::KC_7:
+        {
+            // NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(true);
+            this->showDebugCollisionLines(true);
+            return true;
+        }
+        case OIS::KC_8:
+        {
+            // NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(false);
+            this->showDebugCollisionLines(false);
+            return true;
+        }
+        case OIS::KC_F9:
+        {
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(true);
+            return true;
+        }
+        case OIS::KC_F10:
+        {
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(false);
+            return true;
+        }
+        case OIS::KC_F11:
+        {
+            // NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(true);
+            NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->requestFullscreenSwitch(true, false, 0, 1920, 1080, 0, 0);
+            return true;
+        }
+        }
 
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_C:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL))
-				{
-					// Only clone if the mouse is in the scene and not in a property, that may be also copied
-					this->cloneGameObjects();
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_T:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL))
-				{
-					this->buttonHit(this->translateModeCheck);
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_S:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL))
-				{
-					if (false == GetAsyncKeyState(VK_LSHIFT))
-					{
-						this->buttonHit(this->scaleModeCheck);
-					}
-					else
-					{
-						if (nullptr != this->projectManager)
-						{
-							this->projectManager->saveProject();
-							this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
-						}
-					}
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_R:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL))
-				{
-					if (GetAsyncKeyState(VK_LSHIFT))
-					{
-						this->buttonHit(this->rotate2ModeCheck);
-					}
-					else
-					{
-						this->buttonHit(this->rotate1ModeCheck);
-					}
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_Y:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL))
-				{
-					this->buttonHit(this->undoButton);
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_Z:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL))
-				{
-					this->buttonHit(this->redoButton);
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_SPACE:
-			{
-				if (GetAsyncKeyState(VK_LCONTROL))
-				{
-					this->buttonHit(this->playButton);
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_DELETE:
-			{
-				if (true == validScene)
-				{
-					this->removeGameObjects();
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_TAB:
-			{
-				if (GetAsyncKeyState(KF_ALTDOWN))
-				{
-					NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
-					return true;
-				}
-				break;
-			}
-			case OIS::KC_7:
-			{
-				// NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(true);
-				this->showDebugCollisionLines(true);
-				return true;
-			}
-			case OIS::KC_8:
-			{
-				// NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(false);
-				this->showDebugCollisionLines(false);
-				return true;
-			}
-			case OIS::KC_F9:
-			{
-				NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(true);
-				return true;
-			}
-			case OIS::KC_F10:
-			{
-				NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(false);
-				return true;
-			}
-			case OIS::KC_F11:
-			{
-				// NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(true);
-				NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->requestFullscreenSwitch(true, false, 0, 1920, 1080, 0, 0);
-				return true;
-			}
-		}
+        // Snapshot camera position when used pressed a camera key
+        if (NOWA_K_CAMERA_LEFT == keyEventRef.key || NOWA_K_CAMERA_RIGHT == keyEventRef.key || NOWA_K_CAMERA_BACKWARD == keyEventRef.key || NOWA_K_CAMERA_FORWARD == keyEventRef.key || NOWA_K_CAMERA_UP == keyEventRef.key ||
+            NOWA_K_CAMERA_DOWN == keyEventRef.key && (false == this->playerInControl))
+        {
+            this->editorManager->snapshotCameraPosition();
+        }
+    }
 
-		// Snapshot camera position when used pressed a camera key
-		if (NOWA_K_CAMERA_LEFT == keyEventRef.key || NOWA_K_CAMERA_RIGHT == keyEventRef.key
-			|| NOWA_K_CAMERA_BACKWARD == keyEventRef.key || NOWA_K_CAMERA_FORWARD == keyEventRef.key
-			|| NOWA_K_CAMERA_UP == keyEventRef.key || NOWA_K_CAMERA_DOWN == keyEventRef.key && (false == this->playerInControl))
-		{
-			this->editorManager->snapshotCameraPosition();
-		}
-	}
-
-	return true;
+    return true;
 }
 
-bool DesignState::keyReleased(const OIS::KeyEvent &keyEventRef)
+bool DesignState::keyReleased(const OIS::KeyEvent& keyEventRef)
 {
-	// Prevent scene manipulation, when user does something in GUI
-	/*
+    // Prevent scene manipulation, when user does something in GUI
+    /*
     MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
-	if (nullptr != widget)
-	{
-		return true;
-	}*/
+    if (nullptr != widget)
+    {
+        return true;
+    }*/
 
-	if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
-	{
-		return true;
-	}
-	switch (keyEventRef.key)
-	{
-		case OIS::KC_F4:
-		{
-			NOWA::Core::getSingletonPtr()->setPolygonMode(3);
-			// this->camera->setPolygonMode(Ogre::PM_SOLID);
-			break;
-		}
-	}
+    if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
+    {
+        return true;
+    }
+    switch (keyEventRef.key)
+    {
+    case OIS::KC_F4:
+    {
+        NOWA::Core::getSingletonPtr()->setPolygonMode(3);
+        // this->camera->setPolygonMode(Ogre::PM_SOLID);
+        break;
+    }
+    }
 
-	if (true == validScene && nullptr != this->editorManager)
-	{
-		this->editorManager->handleKeyRelease(keyEventRef);
-	}
-	return true;
+    if (true == validScene && nullptr != this->editorManager)
+    {
+        this->editorManager->handleKeyRelease(keyEventRef);
+    }
+    return true;
 }
 
 void DesignState::processUnbufferedKeyInput(Ogre::Real dt)
 {
-	const auto keyboard = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard();
+    const auto keyboard = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard();
 
-	if (keyboard->isKeyDown(OIS::KC_F4) && keyboard->isKeyDown(OIS::KC_LMENU))
-	{
-		bQuit = true;
-		return;
-	}
+    if (keyboard->isKeyDown(OIS::KC_F4) && keyboard->isKeyDown(OIS::KC_LMENU))
+    {
+        bQuit = true;
+        return;
+    }
 
-	if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
-	{
-		return;
-	}
+    if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
+    {
+        return;
+    }
 }
 
 void DesignState::processUnbufferedMouseInput(Ogre::Real dt)
 {
-
 }
 
 bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 {
-	// Prevent scene manipulation, when user does something in GUI
+    // Prevent scene manipulation, when user does something in GUI
     MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
 
-	if (nullptr == widget)
-	{
-		// Check if mouse is at the top of the screen
-		bool isNowAtTop = (evt.state.Y.abs <= TOP_THRESHOLD);
+    if (nullptr == widget)
+    {
+        // Check if mouse is at the top of the screen
+        bool isNowAtTop = (evt.state.Y.abs <= TOP_THRESHOLD);
 
-		// If mouse just entered or left the top region, reset timer
-		if (isNowAtTop != this->isMouseAtTop && evt.state.buttonDown(OIS::MB_Left))
-		{
-			this->mouseTopTimer = 0.0f;
-			this->isMouseAtTop = isNowAtTop;
-		}
-	}
+        // If mouse just entered or left the top region, reset timer
+        if (isNowAtTop != this->isMouseAtTop && evt.state.buttonDown(OIS::MB_Left))
+        {
+            this->mouseTopTimer = 0.0f;
+            this->isMouseAtTop = isNowAtTop;
+        }
+    }
 
-	bool isSimulating = this->gameObjectController->getIsSimulating();
+    bool isSimulating = this->gameObjectController->getIsSimulating();
     if (false == isSimulating)
-	{
-		if (evt.state.buttonDown(OIS::MB_Middle))
-		{
-			int mX = evt.state.X.abs;
-			int mY = evt.state.Y.abs;
+    {
+        if (evt.state.buttonDown(OIS::MB_Middle))
+        {
+            int mX = evt.state.X.abs;
+            int mY = evt.state.Y.abs;
 
-			Ogre::MovableObject* movableObject = nullptr;
-			Ogre::Item* item = nullptr;
-			Ogre::Vector3 result = Ogre::Vector3::ZERO;
-			Ogre::Real closestDistance = 0.0f;
-			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+            Ogre::MovableObject* movableObject = nullptr;
+            Ogre::Item* item = nullptr;
+            Ogre::Vector3 result = Ogre::Vector3::ZERO;
+            Ogre::Real closestDistance = 0.0f;
+            Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 
-			if (NOWA::MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, NOWA::Core::getSingletonPtr()->getOgreRenderWindow(),
-				this->selectQuery, result, (size_t&)movableObject, closestDistance, normal, nullptr, false))
-			{
-				this->selectedMovableObjectInfo = "GameObject: " + movableObject->getName() + " global pos: " + Ogre::StringConverter::toString(result) + " local pos: " + Ogre::StringConverter::toString(result - movableObject->getParentNode()->_getDerivedPositionUpdated()) + " normal: " + Ogre::StringConverter::toString(normal);
-			}
-		}
-	}
+            if (NOWA::MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, NOWA::Core::getSingletonPtr()->getOgreRenderWindow(), this->selectQuery, result, (size_t&)movableObject, closestDistance, normal, nullptr, false))
+            {
+                this->selectedMovableObjectInfo = "GameObject: " + movableObject->getName() + " global pos: " + Ogre::StringConverter::toString(result) +
+                                                  " local pos: " + Ogre::StringConverter::toString(result - movableObject->getParentNode()->_getDerivedPositionUpdated()) + " normal: " + Ogre::StringConverter::toString(normal);
+            }
+        }
+    }
 
-	if (nullptr != widget && false == isSimulating)
-	{
-		// If mouse wheel has been pressed, search for the scroll view in panel view parenting and simulate scrolling manually, because it does not work in MyGUI :(
-		if (evt.state.Z.rel != 0)
-		{
-			// If the user was inside an editbox and scroll away, erase possible text selection
-			/*MyGUI::TextBox* textBox = widget->castType<MyGUI::TextBox>(false);
-			if (nullptr != textBox)
-			{
-				textBox->getSubWidgetText()->setTextSelection(0, 0);
-			}*/
+    if (nullptr != widget && false == isSimulating)
+    {
+        // If mouse wheel has been pressed, search for the scroll view in panel view parenting and simulate scrolling manually, because it does not work in MyGUI :(
+        if (evt.state.Z.rel != 0)
+        {
+            // If the user was inside an editbox and scroll away, erase possible text selection
+            /*MyGUI::TextBox* textBox = widget->castType<MyGUI::TextBox>(false);
+            if (nullptr != textBox)
+            {
+                textBox->getSubWidgetText()->setTextSelection(0, 0);
+            }*/
 
-			MyGUI::ComboBox* comboBox = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::ComboBox>(widget);
-			if (nullptr != comboBox)
-			{
-				// If its a combo box, scrolling here would effect, that listbox list is scrolled and the panel
-				// Note: widget->parent->parent->listbox->combobox
-				return true;
-			}
-			MyGUI::TreeControl* treeControl = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::TreeControl>(widget);
-			if (nullptr != treeControl)
-			{
-				// If its a tree, scrolling here would effect, that tree list is scrolled and the panel
-				return true;
-			}
-			MyGUI::ItemBox* itemBox = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::ItemBox>(widget);
-			if (nullptr != itemBox)
-			{
-				// If its an item, scrolling here would effect, that item list is scrolled and the panel
-				return true;
-			}
-			
-			MyGUI::ScrollView* scrollView = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::ScrollView>(widget);
+            MyGUI::ComboBox* comboBox = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::ComboBox>(widget);
+            if (nullptr != comboBox)
+            {
+                // If its a combo box, scrolling here would effect, that listbox list is scrolled and the panel
+                // Note: widget->parent->parent->listbox->combobox
+                return true;
+            }
+            MyGUI::TreeControl* treeControl = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::TreeControl>(widget);
+            if (nullptr != treeControl)
+            {
+                // If its a tree, scrolling here would effect, that tree list is scrolled and the panel
+                return true;
+            }
+            MyGUI::ItemBox* itemBox = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::ItemBox>(widget);
+            if (nullptr != itemBox)
+            {
+                // If its an item, scrolling here would effect, that item list is scrolled and the panel
+                return true;
+            }
 
-			if (nullptr != scrollView && nullptr != this->editorManager)
-			{
-				int scrollAmount = scrollView->getViewOffset().top + evt.state.Z.rel;
+            MyGUI::ScrollView* scrollView = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::ScrollView>(widget);
 
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, scrollAmount, scrollView]()
+            if (nullptr != scrollView && nullptr != this->editorManager)
+            {
+                int scrollAmount = scrollView->getViewOffset().top + evt.state.Z.rel;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, scrollAmount, scrollView]()
                 {
                     scrollView->setViewOffset(MyGUI::IntPoint(scrollView->getViewOffset().left, scrollAmount));
                 };
                 NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::scroll");
 
-				unsigned long id = -1;
-				
-				if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-				{
-					id = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getId();
-				}
+                unsigned long id = -1;
 
-				MyGUIHelper::getInstance()->setScrollPosition(id, scrollAmount);
-			}
-		}
-		return true;
-	}
+                if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+                {
+                    id = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getId();
+                }
 
-	if (true == validScene)
-	{
-		if (nullptr != this->editorManager)
-		{
-  			this->editorManager->handleMouseMove(evt);
-		}
-	}
-	return true;
+                MyGUIHelper::getInstance()->setScrollPosition(id, scrollAmount);
+            }
+        }
+        return true;
+    }
+
+    if (true == validScene)
+    {
+        if (nullptr != this->editorManager)
+        {
+            this->editorManager->handleMouseMove(evt);
+        }
+    }
+    return true;
 }
 
 bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 {
-	if (OIS::MB_Left == id || OIS::MB_Right == id)
-	{
-		if (nullptr != this->editPopupMenu)
-		{
+    if (OIS::MB_Left == id || OIS::MB_Right == id)
+    {
+        if (nullptr != this->editPopupMenu)
+        {
             MyGUI::Widget* focusedWidget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
 
-			// Check if the focused widget is inside popupMenu
-			bool isInsidePopup = false;
-			while (focusedWidget)
-			{
-				if (focusedWidget == this->editPopupMenu)
-				{
-					isInsidePopup = true;
-					break;
-				}
-				focusedWidget = focusedWidget->getParent();
-			}
+            // Check if the focused widget is inside popupMenu
+            bool isInsidePopup = false;
+            while (focusedWidget)
+            {
+                if (focusedWidget == this->editPopupMenu)
+                {
+                    isInsidePopup = true;
+                    break;
+                }
+                focusedWidget = focusedWidget->getParent();
+            }
 
-			// If no menu item has focus, hide the menu
-			if (false == isInsidePopup)
-			{
-				this->editPopupMenu = nullptr;
-			}
-		}
-	}
+            // If no menu item has focus, hide the menu
+            if (false == isInsidePopup)
+            {
+                this->editPopupMenu = nullptr;
+            }
+        }
+    }
 
     bool isSimulating = this->gameObjectController->getIsSimulating();
 
-	// Prevent scene manipulation, when user does something in GUI
+    // Prevent scene manipulation, when user does something in GUI
     if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget() /* && false == this->gameObjectController->getIsSimulating()*/)
-	{
-		if (true == MyGUIHelper::getInstance()->getCanMousePress())
-		{
+    {
+        if (true == MyGUIHelper::getInstance()->getCanMousePress())
+        {
 
-			// Gets the selected mygui widget and checks if it has some user data (with game object id and component index)
-			const auto gameObjectData = MyGUIHelper::getInstance()->findWidgetGameObject(evt.state.X.abs, evt.state.Y.abs);
+            // Gets the selected mygui widget and checks if it has some user data (with game object id and component index)
+            const auto gameObjectData = MyGUIHelper::getInstance()->findWidgetGameObject(evt.state.X.abs, evt.state.Y.abs);
 
-			if (false == isSimulating && OIS::MB_Left == id && true == std::get<0>(gameObjectData))
-			{
-				const auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-				const auto found = selectedGameObjects.find(std::get<1>(gameObjectData));
-				// Prevents reseleciton of the same game object
-				// if (true == selectedGameObjects.empty() || found == selectedGameObjects.cend())
-				{
-					this->editorManager->getSelectionManager()->clearSelection();
-					this->editorManager->getSelectionManager()->select(std::get<1>(gameObjectData));
+            if (false == isSimulating && OIS::MB_Left == id && true == std::get<0>(gameObjectData))
+            {
+                const auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+                const auto found = selectedGameObjects.find(std::get<1>(gameObjectData));
+                // Prevents reseleciton of the same game object
+                // if (true == selectedGameObjects.empty() || found == selectedGameObjects.cend())
+                {
+                    this->editorManager->getSelectionManager()->clearSelection();
+                    this->editorManager->getSelectionManager()->select(std::get<1>(gameObjectData));
 
-					// Also scrolls down to component
-					NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObjectData]()
+                    // Also scrolls down to component
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObjectData]()
                     {
                         this->propertiesPanel->showProperties(std::get<2>(gameObjectData));
                     };
                     NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::mousePressed_showProperties");
-				}
-			}
-		}
-		else
-		{
-			MyGUIHelper::getInstance()->setCanMousePress(true);
-		}
+                }
+            }
+        }
+        else
+        {
+            MyGUIHelper::getInstance()->setCanMousePress(true);
+        }
 
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
-		return true;
-	}
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
+        return true;
+    }
 
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 
-	if (true == validScene)
-	{
-		if (nullptr != this->editorManager)
-		{
-			// Snapshot camera orientation when used pressed the right mouse key
-			if (evt.state.buttonDown(OIS::MB_Right))
-			{
-				this->editorManager->snapshotCameraOrientation();
-			}
+    if (true == validScene)
+    {
+        if (nullptr != this->editorManager)
+        {
+            // Snapshot camera orientation when used pressed the right mouse key
+            if (evt.state.buttonDown(OIS::MB_Right))
+            {
+                this->editorManager->snapshotCameraOrientation();
+            }
 
-			this->editorManager->handleMousePress(evt, id);
-		}
+            this->editorManager->handleMousePress(evt, id);
+        }
 
-		if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() == 1)
-		{
-			this->selectedGameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
-		}
-		else
-		{
-			this->selectedGameObject = nullptr;
-		}
+        if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() == 1)
+        {
+            this->selectedGameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
+        }
+        else
+        {
+            this->selectedGameObject = nullptr;
+        }
 
-		if (false == isSimulating)
-		{
-			if (id == OIS::MB_Middle)
-			{
-				if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-				{
-					this->showContextMenu(evt.state.X.abs, evt.state.Y.abs);
-				}
-			}
-		}
-	}
+        if (false == isSimulating)
+        {
+            if (id == OIS::MB_Middle)
+            {
+                if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+                {
+                    this->showContextMenu(evt.state.X.abs, evt.state.Y.abs);
+                }
+            }
+        }
+    }
 
-	return true;
+    return true;
 }
 
-bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID id)
+bool DesignState::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 {
-	this->selectedMovableObjectInfo.clear();
+    this->selectedMovableObjectInfo.clear();
 
-	// Prevent scene manipulation, when user does something in GUI
+    // Prevent scene manipulation, when user does something in GUI
     MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
-	if (nullptr != widget/* && true == this->gameObjectController->getIsSimulating()*/) // causes ugly gui behavior
-	{
-		return true;
-	}
+    if (nullptr != widget /* && true == this->gameObjectController->getIsSimulating()*/) // causes ugly gui behavior
+    {
+        return true;
+    }
 
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 
-	if (nullptr != this->editorManager)
-	{
-		this->editorManager->handleMouseRelease(evt, id);
-	}
+    if (nullptr != this->editorManager)
+    {
+        this->editorManager->handleMouseRelease(evt, id);
+    }
 
-	if (false == this->gameObjectController->getIsSimulating() && false == this->bQuit && true == validScene)
-	{
-		if (id == OIS::MB_Left && nullptr != editorManager 
-			&& this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE 
-			&& this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE 
-			&& this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE)
-		{
-			if (false == MyGUIHelper::getInstance()->isIdPairingActive())
-			{
-				if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-				{
-					/*bool selectedGameObjectsChanged = false;
-					for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().cend(); ++it)
-					{
-						auto found = oldSelectedGameObjectIds.find(it->first);
-						if (found == oldSelectedGameObjectIds.cend())
-						{
-							selectedGameObjectsChanged = true;
-							break;
-						}
-					}*/
+    if (false == this->gameObjectController->getIsSimulating() && false == this->bQuit && true == validScene)
+    {
+        if (id == OIS::MB_Left && nullptr != editorManager && this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE &&
+            this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE && this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE)
+        {
+            if (false == MyGUIHelper::getInstance()->isIdPairingActive())
+            {
+                if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+                {
+                    /*bool selectedGameObjectsChanged = false;
+                    for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().cend(); ++it)
+                    {
+                        auto found = oldSelectedGameObjectIds.find(it->first);
+                        if (found == oldSelectedGameObjectIds.cend())
+                        {
+                            selectedGameObjectsChanged = true;
+                            break;
+                        }
+                    }*/
 
-					if (this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE)
-					{
-						// Show properties (only when selection changed, because showProperties is an heavy operation!)
-						NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                    if (this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE)
+                    {
+                        // Show properties (only when selection changed, because showProperties is an heavy operation!)
+                        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
                         {
                             this->propertiesPanel->showProperties();
                         };
                         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::mouseRelease_showProperties");
-					}
-					// Attention: To early here, better, when everything is loaded
-					/*if (-1 != MyGUIHelper::getInstance()->getScrollPosition())
-					{
-						MyGUI::ScrollView* scrollView = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::ScrollView>(widget);
-						if (nullptr != scrollView)
-						{
-							scrollView->setViewOffset(MyGUI::IntPoint(scrollView->getViewOffset().left, MyGUIHelper::getInstance()->getScrollPosition()));
-						}
-					}*/
+                    }
+                    // Attention: To early here, better, when everything is loaded
+                    /*if (-1 != MyGUIHelper::getInstance()->getScrollPosition())
+                    {
+                        MyGUI::ScrollView* scrollView = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::ScrollView>(widget);
+                        if (nullptr != scrollView)
+                        {
+                            scrollView->setViewOffset(MyGUI::IntPoint(scrollView->getViewOffset().left, MyGUIHelper::getInstance()->getScrollPosition()));
+                        }
+                    }*/
 
-					/*oldSelectedGameObjectIds.clear();
-					for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().cend(); ++it)
-					{
-						oldSelectedGameObjectIds.emplace(it->first);
-					}*/
-				}
-			}
-			else
-			{
-				// When id to edit box pairing is active, pair the id
-				if (1 == this->editorManager->getSelectionManager()->getSelectedGameObjects().size())
-				{
-					NOWA::GameObject* gameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
-					if (nullptr != gameObject)
-					{
-						MyGUIHelper::getInstance()->pairIdWithEditBox(Ogre::StringConverter::toString(gameObject->getId()));
-					}
-				}
-			}
-			MyGUIHelper::getInstance()->clearIdPairing();
-		}
-	}
-	return true;
+                    /*oldSelectedGameObjectIds.clear();
+                    for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().cend(); ++it)
+                    {
+                        oldSelectedGameObjectIds.emplace(it->first);
+                    }*/
+                }
+            }
+            else
+            {
+                // When id to edit box pairing is active, pair the id
+                if (1 == this->editorManager->getSelectionManager()->getSelectedGameObjects().size())
+                {
+                    NOWA::GameObject* gameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
+                    if (nullptr != gameObject)
+                    {
+                        MyGUIHelper::getInstance()->pairIdWithEditBox(Ogre::StringConverter::toString(gameObject->getId()));
+                    }
+                }
+            }
+            MyGUIHelper::getInstance()->clearIdPairing();
+        }
+    }
+    return true;
 }
 
 bool DesignState::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 {
-	//int abs = evt.state.mAxes[axis].abs;
-	//int rel = evt.state.mAxes[axis].rel; // is always 0
-	//Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Axis " + Ogre::StringConverter::toString(axis));
+    // int abs = evt.state.mAxes[axis].abs;
+    // int rel = evt.state.mAxes[axis].rel; // is always 0
+    // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Axis " + Ogre::StringConverter::toString(axis));
 
-	//switch (axis)
-	//{
-	//case 0: //Forward/Back pitch up + /pitch down -
-	//	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Pitch Abs " + Ogre::StringConverter::toString(abs));
-	//	break;
-	//case 1: //Turn right + /left -
-	//	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Yaw Abs " + Ogre::StringConverter::toString(abs));
-	//	break;
-	//case 2: //Swivel right + / left -
-	//	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Swivel Abs " + Ogre::StringConverter::toString(abs));
-	//	break;
-	//	//case 3: //Left
-	//		//joyAxes.swivelL=x;
-	//	//break;
-	//}
+    // switch (axis)
+    //{
+    // case 0: //Forward/Back pitch up + /pitch down -
+    //	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Pitch Abs " + Ogre::StringConverter::toString(abs));
+    //	break;
+    // case 1: //Turn right + /left -
+    //	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Yaw Abs " + Ogre::StringConverter::toString(abs));
+    //	break;
+    // case 2: //Swivel right + / left -
+    //	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Swivel Abs " + Ogre::StringConverter::toString(abs));
+    //	break;
+    //	//case 3: //Left
+    //		//joyAxes.swivelL=x;
+    //	//break;
+    // }
 
-	return true;
+    return true;
 }
 
 bool DesignState::povMoved(const OIS::JoyStickEvent& evt, int pov)
 {
-	// this code goes in the function calls of the joysticks, axisMoved, buttonPressed, buttonReleassed, etc.
-	// the variable joyID gets the id number as follows, 0 - for the first input device(joystick one), 1 - second device(joystick two), an so on..
-	// const OIS::Object* mJoyObj = evt.device;
-	// unsigned int joyID = mJoyObj->getID();
-	// Identfy which joystick has been handled
+    // this code goes in the function calls of the joysticks, axisMoved, buttonPressed, buttonReleassed, etc.
+    // the variable joyID gets the id number as follows, 0 - for the first input device(joystick one), 1 - second device(joystick two), an so on..
+    // const OIS::Object* mJoyObj = evt.device;
+    // unsigned int joyID = mJoyObj->getID();
+    // Identfy which joystick has been handled
 
-	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Vendor: " +  evt.device->vendor() + ". POV" + Ogre::StringConverter::toString(pov));
+    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Vendor: " + evt.device->vendor() + ". POV" + Ogre::StringConverter::toString(pov));
 
-	if (evt.state.mPOV[pov].direction & OIS::Pov::North) //Going up
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: North");
-	else if (evt.state.mPOV[pov].direction & OIS::Pov::South) //Going down
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: South");
+    if (evt.state.mPOV[pov].direction & OIS::Pov::North) // Going up
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: North");
+    }
+    else if (evt.state.mPOV[pov].direction & OIS::Pov::South) // Going down
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: South");
+    }
 
-	if (evt.state.mPOV[pov].direction & OIS::Pov::East) //Going right
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: East");
-	else if (evt.state.mPOV[pov].direction & OIS::Pov::West) //Going left
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: West");
+    if (evt.state.mPOV[pov].direction & OIS::Pov::East) // Going right
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: East");
+    }
+    else if (evt.state.mPOV[pov].direction & OIS::Pov::West) // Going left
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: West");
+    }
 
-	if (evt.state.mPOV[pov].direction == OIS::Pov::Centered) //stopped/centered out
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Centered");
+    if (evt.state.mPOV[pov].direction == OIS::Pov::Centered) // stopped/centered out
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Centered");
+    }
 
-	if (evt.state.mPOV[pov].direction & OIS::Pov::NorthEast) //Going right
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: North-East");
-	else if (evt.state.mPOV[pov].direction & OIS::Pov::SouthEast) //Going left
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: South-East");
+    if (evt.state.mPOV[pov].direction & OIS::Pov::NorthEast) // Going right
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: North-East");
+    }
+    else if (evt.state.mPOV[pov].direction & OIS::Pov::SouthEast) // Going left
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: South-East");
+    }
 
-	if (evt.state.mPOV[pov].direction & OIS::Pov::NorthWest) //Going right
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: North-West");
-	else if (evt.state.mPOV[pov].direction & OIS::Pov::SouthWest) //Going left
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: South-West");
+    if (evt.state.mPOV[pov].direction & OIS::Pov::NorthWest) // Going right
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: North-West");
+    }
+    else if (evt.state.mPOV[pov].direction & OIS::Pov::SouthWest) // Going left
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: South-West");
+    }
 
-	return true;
+    return true;
 }
 
-bool DesignState::vector3Moved(const OIS::JoyStickEvent & evt, int index)
+bool DesignState::vector3Moved(const OIS::JoyStickEvent& evt, int index)
 {
-	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: vector3Moved Vendor: " + evt.device->vendor() + ". Orientation" 
-		+ Ogre::StringConverter::toString(Ogre::Vector3(evt.state.mVectors[index].x, evt.state.mVectors[index].y, evt.state.mVectors[index].z)));
+    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+        "[DesignState]: vector3Moved Vendor: " + evt.device->vendor() + ". Orientation" + Ogre::StringConverter::toString(Ogre::Vector3(evt.state.mVectors[index].x, evt.state.mVectors[index].y, evt.state.mVectors[index].z)));
 
-	return false;
+    return false;
 }
 
 bool DesignState::buttonPressed(const OIS::JoyStickEvent& evt, int button)
 {
-	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Button " + Ogre::StringConverter::toString(button) + " pressed");
-	
-	switch (button)
-	{
-	case 0:
-		
-		break;
+    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Button " + Ogre::StringConverter::toString(button) + " pressed");
 
-	case 2:
-		
-		break;
-	}
+    switch (button)
+    {
+    case 0:
 
-	return true;
+        break;
+
+    case 2:
+
+        break;
+    }
+
+    return true;
 }
 
 bool DesignState::buttonReleased(const OIS::JoyStickEvent& evt, int button)
 {
-	return true;
+    return true;
 }
 
-bool DesignState::sliderMoved(const OIS::JoyStickEvent & evt, int index)
+bool DesignState::sliderMoved(const OIS::JoyStickEvent& evt, int index)
 {
-	return true;
+    return true;
 }

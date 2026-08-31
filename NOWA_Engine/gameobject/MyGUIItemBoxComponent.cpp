@@ -1724,11 +1724,15 @@ namespace NOWA
         }
         else if (_info.notify == MyGUI::IBNotifyItemData::NotifyItem::MouseReleased)
         {
-            if (this->mouseButtonReleasedClosureFunction.is_valid())
-            {
+
                 NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
                 {
                     if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                    {
+                        return;
+                    }
+
+                    if (false == this->mouseButtonReleasedClosureFunction.is_valid())
                     {
                         return;
                     }
@@ -1746,7 +1750,6 @@ namespace NOWA
                     }
                 };
                 NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
-            }
         }
     }
 
@@ -3366,6 +3369,11 @@ namespace NOWA
             NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
             {
                 if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                {
+                    return;
+                }
+
+                if (false == this->mouseButtonPressedClosureFunction.is_valid())
                 {
                     return;
                 }

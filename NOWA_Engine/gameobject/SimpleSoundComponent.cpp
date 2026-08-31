@@ -322,19 +322,40 @@ namespace NOWA
         return true;
     }
 
-    bool SimpleSoundComponent::disconnect(void)
+        bool SimpleSoundComponent::disconnect(void)
     {
         GameObjectComponent::disconnect();
 
         this->oldPosition = this->gameObjectPtr->getPosition();
         this->oldOrientation = this->gameObjectPtr->getOrientation();
 
+        // Attention: OgreALModule is a global singleton, but its destroyContent() is called per
+        // app state in AppState::destroyModules(). When one state exits it takes the whole
+        // OgreAL::SoundManager with it, so a state that is torn down afterwards still holds
+        // OgreAL::Sound pointers whose manager no longer exists. Sound::stop() then calls
+        // SoundManager::getSingleton(), which asserts on a null msSingleton and crashes.
+        // The sound object itself is owned by the sound manager, so once the manager is gone
+        // there is nothing left to stop or clean up here - just drop the pointer.
+        if (nullptr == OgreAL::SoundManager::getSingletonPtr())
+        {
+            this->sound = nullptr;
+            return true;
+        }
+
         if (nullptr != this->sound)
         {
             this->sound->stop();
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+
+            OgreAL::Sound* soundToDisable = this->sound;
+            NOWA::GraphicsModule::RenderCommand renderCommand = [soundToDisable]()
             {
-                this->sound->enableSpectrumAnalysis(false, 1, 1, OgreAL::MathWindows::BARLETT, OgreAL::AudioProcessor::SpectrumPreparationType::LINEAR, 0.0f);
+                // Capture the raw pointer instead of 'this'. The render command may run after
+                // this component has already been destroyed, and dereferencing this->sound then
+                // reads freed memory.
+                if (nullptr != OgreAL::SoundManager::getSingletonPtr())
+                {
+                    soundToDisable->enableSpectrumAnalysis(false, 1, 1, OgreAL::MathWindows::BARLETT, OgreAL::AudioProcessor::SpectrumPreparationType::LINEAR, 0.0f);
+                }
             };
             GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SimpleSoundComponent::enableSpectrumAnalysis");
         }

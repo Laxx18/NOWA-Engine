@@ -5,6 +5,7 @@
 #include "MenuState.h"
 #include "LoadMenuState.h"
 #include "ConfigurationState.h"
+#include "PrehistoryState.h"
 #include "GameState.h"
 #include "main/Core.h"
 #include "modules/GraphicsModule.h"
@@ -77,7 +78,8 @@ void MainApplication::startSimulation(const Ogre::String& graphicsConfigName)
 	ConfigurationState::create(NOWA::AppStateManager::getSingletonPtr(), "ConfigurationState", "ConfigurationState");
 	// LoadMenuState::create(NOWA::AppStateManager::getSingletonPtr(), "LoadMenuState", "LoadMenuState");
 	// SaveMenuState::create(NOWA::AppStateManager::getSingletonPtr(), "SaveMenuState", "SaveMenuState");
-	GameState::create(NOWA::AppStateManager::getSingletonPtr(), "GameState", "GameState");
+	PrehistoryState::create(NOWA::AppStateManager::getSingletonPtr(), "PrehistoryState", "PrehistoryState");
+	// GameState::create(NOWA::AppStateManager::getSingletonPtr(), "GameState", "GameState");
 
 	// Lets start with the Game
 	NOWA::AppStateManager::getSingletonPtr()->start("IntroState", false);

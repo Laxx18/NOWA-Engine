@@ -729,27 +729,32 @@ namespace NOWA
             Ogre::Real textHalfHeight = (liveTextAabb.getMaximum().y - liveTextAabb.getMinimum().y) * 0.5f;
             Ogre::Real textCenterY = (liveTextAabb.getMaximum().y + liveTextAabb.getMinimum().y) * 0.5f;
 
-            // Local tuning constants - no new properties/header members needed for these.
-            const Ogre::Real widthPadding = 1.3f;
-            const Ogre::Real heightPadding = 1.4f;
+                        // An ellipse with radii (w*k, h*k) only fully contains a rectangle of
+            // half-extents (w, h) when 2/k^2 <= 1, i.e. k >= sqrt(2) ~ 1.4142. The
+            // previous 1.3 / 1.4 were BOTH below that threshold, so the four corners
+            // of the text block were mathematically guaranteed to stick out. The more
+            // wrapped lines, the larger the corner area and the more visible the bug.
+            const Ogre::Real cornerFit = Ogre::Math::Sqrt(2.0f);
+            const Ogre::Real widthPadding = cornerFit * 1.06f; // sqrt(2) + 6% breathing room
+            const Ogre::Real heightPadding = cornerFit * 1.06f;
 
-            Ogre::Real bubbleHorizontalOffset = this->xOffsetStart->getReal();
+            const Ogre::Real bubbleHorizontalOffset = this->xOffsetStart->getReal();
 
-            // The text itself stays centered on p (unshifted) - only the bubble body
-            // (ellipse + tail) shifts by bubbleHorizontalOffset. If the radius were
-            // computed from text width alone, shifting the ellipse would push its
-            // edge past the text on the side opposite the shift direction (text
-            // pokes out) while leaving empty space on the shifted-toward side -
-            // exactly the "lots of space on the left, text sticks out on the right"
-            // bug. Adding abs(bubbleHorizontalOffset) to the required half-width
-            // guarantees the shifted ellipse still fully contains the unshifted
-            // text on both sides, regardless of shift direction or magnitude.
-            Ogre::Real requiredHalfWidth = textHalfWidth * widthPadding + Ogre::Math::Abs(bubbleHorizontalOffset);
+            // X was previously assumed to be centred on local 0, which only holds for
+            // H_CENTER alignment. GameObjectTitleComponent exposes the alignment as an
+            // editable property, so with H_LEFT the text sat entirely on one side while
+            // the ellipse stayed centred - the bubble ended up in the wrong place.
+            const Ogre::Real textCenterX = (liveTextAabb.getMaximum().x + liveTextAabb.getMinimum().x) * 0.5f;
 
-            Ogre::Real ellipseRadiusX = std::max(requiredHalfWidth, 0.1f);
-            Ogre::Real ellipseRadiusY = std::max(textHalfHeight * heightPadding, 0.1f);
-            Ogre::Real ellipseCenterX = bubbleHorizontalOffset;
-            Ogre::Real ellipseCenterY = textCenterY;
+            // The ellipse is shifted by bubbleHorizontalOffset while the text is not,
+            // so the required radius has to cover the distance from the shifted centre
+            // out to the far text edge, not just the text's own half width.
+            const Ogre::Real farthestTextDx = Ogre::Math::Abs(textCenterX - (textCenterX + bubbleHorizontalOffset)) + textHalfWidth;
+
+            const Ogre::Real ellipseRadiusX = std::max(farthestTextDx * widthPadding, 0.1f);
+            const Ogre::Real ellipseRadiusY = std::max(textHalfHeight * heightPadding, 0.1f);
+            const Ogre::Real ellipseCenterX = textCenterX + bubbleHorizontalOffset;
+            const Ogre::Real ellipseCenterY = textCenterY;
 
             // Tail: tip sits exactly at the anchor (local origin = mouth position,
             // NOT shifted by bubbleHorizontalOffset - the tail must still point at

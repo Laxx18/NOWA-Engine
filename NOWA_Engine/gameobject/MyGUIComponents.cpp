@@ -307,7 +307,7 @@ namespace NOWA
     {
     }
 
-    void MyGUIComponent::rootMouseChangeFocus(MyGUI::Widget* sender, bool focus)
+        void MyGUIComponent::rootMouseChangeFocus(MyGUI::Widget* sender, bool focus)
     {
         if (false == this->isSimulating)
         {
@@ -333,13 +333,22 @@ namespace NOWA
 
             NOWA::AppStateManager::LogicCommand logicCommand = [this]()
             {
-                // Attention: re-check here, not only before enqueueing. This command runs one
-                // or more frames later on the logic thread. A mouse enter/leave that happens
-                // while a MyGUI button triggers an app state change is enqueued while the state
-                // is still simulating, but executed after disconnect() has already run - the
-                // lua module's locals (clickSound, controllers, ...) are nil by then and the
+                // Attention: re-check everything here, not only before enqueueing. This command
+                // runs one or more frames later on the logic thread. A mouse enter/leave that
+                // happens while a MyGUI button triggers an app state change is enqueued while the
+                // state is still simulating, but executed after the state has been torn down.
+                // isSimulating and getLuaScript() can still look fine at that moment, while the
+                // game object's components are already gone - calls like
+                // mainGameObject:getSimpleSoundComponent() then return nil inside lua and the
                 // closure fails with "attempt to index local 'clickSound' (a nil value)".
+                // disconnect() clears the closure objects, so this is_valid() check is what
+                // actually catches the case.
                 if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                {
+                    return;
+                }
+
+                if (false == this->mouseEnterClosureFunction.is_valid())
                 {
                     return;
                 }
@@ -370,6 +379,11 @@ namespace NOWA
             {
                 // Same re-check as above: the state may have been torn down in between.
                 if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                {
+                    return;
+                }
+
+                if (false == this->mouseLeaveClosureFunction.is_valid())
                 {
                     return;
                 }
@@ -2245,30 +2259,33 @@ namespace NOWA
                 // Call also function in lua script, if it does exist in the lua script component
                 if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
                 {
-                    if (this->editTextChangedClosureFunction.is_valid())
+
+                    NOWA::AppStateManager::LogicCommand logicCommand = [this]()
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+                        if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                            {
-                                return;
-                            }
+                            return;
+                        }
 
-                            try
-                            {
-                                luabind::call_function<void>(this->editTextChangedClosureFunction);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
+                        if (false == this->editTextChangedClosureFunction.is_valid())
+                        {
+                            return;
+                        }
 
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUITextComponent] Caught error in 'reactOnEditTextChanged' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
+                        try
+                        {
+                            luabind::call_function<void>(this->editTextChangedClosureFunction);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUITextComponent] Caught error in 'reactOnEditTextChanged' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        }
+                    };
+                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
                 }
             }
         }
@@ -2285,11 +2302,14 @@ namespace NOWA
                 // Call also function in lua script, if it does exist in the lua script component
                 if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
                 {
-                    if (this->editAcceptedClosureFunction.is_valid())
-                    {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this]()
                         {
                             if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+
+                            if (false == this->editAcceptedClosureFunction.is_valid())
                             {
                                 return;
                             }
@@ -2308,7 +2328,6 @@ namespace NOWA
                             }
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
                 }
             }
         }
@@ -4695,11 +4714,14 @@ namespace NOWA
                 // Call also function in lua script, if it does exist in the lua script component
                 if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
                 {
-                    if (this->selectedClosureFunction.is_valid())
-                    {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
                         {
                             if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            {
+                                return;
+                            }
+
+                            if (false == this->selectedClosureFunction.is_valid())
                             {
                                 return;
                             }
@@ -4718,7 +4740,6 @@ namespace NOWA
                             }
                         };
                         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
                 }
             }
         }
@@ -4734,30 +4755,32 @@ namespace NOWA
                 // Call also function in lua script, if it does exist in the lua script component
                 if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
                 {
-                    if (this->acceptClosureFunction.is_valid())
+                    NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
+                        if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                            {
-                                return;
-                            }
+                            return;
+                        }
 
-                            try
-                            {
-                                luabind::call_function<void>(this->acceptClosureFunction, index);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
+                        if (false == this->acceptClosureFunction.is_valid())
+                        {
+                            return;
+                        }
 
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIListBoxComponent] Caught error in 'reactOnAccept' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
+                        try
+                        {
+                            luabind::call_function<void>(this->acceptClosureFunction, index);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIListBoxComponent] Caught error in 'reactOnAccept' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        }
+                    };
+                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
                 }
             }
         }
@@ -5566,30 +5589,32 @@ namespace NOWA
                 // Call also function in lua script, if it does exist in the lua script component
                 if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
                 {
-                    if (this->selectedClosureFunction.is_valid())
+                    NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
+                        if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                            {
-                                return;
-                            }
+                            return;
+                        }
 
-                            try
-                            {
-                                luabind::call_function<void>(this->selectedClosureFunction, index);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
+                        if (false == this->selectedClosureFunction.is_valid())
+                        {
+                            return;
+                        }
 
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComboBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
+                        try
+                        {
+                            luabind::call_function<void>(this->selectedClosureFunction, index);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComboBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        }
+                    };
+                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
                 }
             }
         }

@@ -11600,8 +11600,8 @@ namespace NOWA
 			"in order to remove some behavior from global game objects. This could be necessary if global game objects need different behavior e.g. in a GameState as in a MenuState.");
 		AddClassToCollection("AppStateManager", "void exitGame()", "Exits the game and destroys all application states.");
 		// AddClassToCollection("AppStateManager", "WorkspaceModule getWorkspaceModule()", "Gets the module for the current AppState.");
-		AddClassToCollection("AppStateManager", "CameraManagerModule getCameraManager()", "Gets the module for the current AppState.");
-		AddClassToCollection("AppStateManager", "CameraManagerModule getCameraManager2(String stateName)", "Gets the module for the given application state name, or null if the application state does not exist.");
+		AddClassToCollection("AppStateManager", "CameraManager getCameraManager()", "Gets the module for the current AppState.");
+		AddClassToCollection("AppStateManager", "CameraManager getCameraManager2(String stateName)", "Gets the module for the given application state name, or null if the application state does not exist.");
 		AddClassToCollection("AppStateManager", "GameObjectController getGameObjectController()", "Gets the module for the current AppState.");
 		AddClassToCollection("AppStateManager", "GameObjectController getGameObjectController2(String stateName)", "Gets the module for the given application state name, or null if the application state does not exist.");
 		AddClassToCollection("AppStateManager", "GameProgressModule getGameProgressModule()", "Gets the module for the current AppState.");

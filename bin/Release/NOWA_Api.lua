@@ -2036,16 +2036,16 @@ return {
 				type = "function",
 				description = "Gets the module for the current AppState.",
 				args = "()",
-				returns = "(CameraManagerModule)",
-				valuetype = "CameraManagerModule"
+				returns = "(CameraManager)",
+				valuetype = "CameraManager"
 			},
 			getCameraManager2 =
 			{
 				type = "function",
 				description = "Gets the module for the given application state name, or null if the application state does not exist.",
 				args = "(string stateName)",
-				returns = "(CameraManagerModule)",
-				valuetype = "CameraManagerModule"
+				returns = "(CameraManager)",
+				valuetype = "CameraManager"
 			},
 			getGameObjectController =
 			{

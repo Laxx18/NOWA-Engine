@@ -264,20 +264,41 @@ void World::addBody(const ndSharedPtr<ndBody>& bodyPtr)
 // after DeleteDeadContacts, on Newton's own thread.
 void World::destroyBody(ndSharedPtr<ndBody> bodyPtr)
 {
+    if (!bodyPtr)
+    {
+        return;
+    }
+
     if (m_isShuttingDown.load(std::memory_order_acquire))
     {
         // Newton thread is gone — just drop the ref, CleanUp() handles the rest
         m_deadBodiesFree.push_back(std::move(bodyPtr));
         return;
     }
+
+    // BUGFIX: the enqueue was missing entirely, so in normal operation this
+    // function silently did nothing. The body never reached m_impl->deadBodies,
+    // therefore neither PostUpdate() nor flushDeadBodies() ever saw it and
+    // RemoveBody() was never called -> the body stayed physically inside the
+    // scene as a zombie for the rest of the session.
+    m_impl->deadBodies.enqueue(std::move(bodyPtr));
 }
 
 void World::addJoint(const ndSharedPtr<ndJointBilateralConstraint>& joint)
 {
-    if (!joint/* || (*joint)->IsInWorld()*/)
+    if (!joint)
     {
         return;
     }
+
+    // Re-enabled on purpose: a joint that is already linked must never be added
+    // a second time, otherwise ndWorld ends up with two list nodes referencing
+    // the same constraint and RemoveJoint() only unlinks one of them.
+    if ((*joint)->IsInWorld())
+    {
+        return;
+    }
+
     AddJoint(joint); // calls patched ndWorld::AddJoint
 }
 
@@ -443,10 +464,11 @@ void World::recoverInternal()
 
 void World::recover()
 {
-    enqueuePhysicsAndWait([](World& w)
-    {
-        w.recoverInternal();
-    });
+    enqueuePhysicsAndWait(
+        [](World& w)
+        {
+            w.recoverInternal();
+        });
 }
 
 void World::PreUpdate(ndFloat32 /*timestep*/)
@@ -506,7 +528,22 @@ void World::setJointRecursiveCollision(const OgreNewt::Body* root, bool enable)
                 return;
             }
 
-            const unsigned int group = enable ? w.m_nextSelfCollisionGroup.fetch_add(1) : 0;
+            // BUGFIX: the mapping was inverted.
+            //
+            // "enable" carries the Newton 3 meaning of
+            // NewtonBodySetJointRecursiveCollision(): true -> jointed bodies DO
+            // collide with each other, false -> they do NOT.
+            //
+            // ContactNotify::OnAabbOverlap suppresses a pair when both bodies
+            // carry the SAME NON-ZERO group id; group 0 is the "no group"
+            // sentinel that disables filtering entirely. So the DO-collide case
+            // is the one that wants 0, and the DO-NOT-collide case is the one
+            // that needs a shared non-zero id handed to the whole chain.
+            //
+            // m_nextSelfCollisionGroup is initialised to 1, so the first id
+            // handed out is already non-zero.
+            const unsigned int group = enable ? 0u : w.m_nextSelfCollisionGroup.fetch_add(1u);
+
             w.applySelfCollisionGroup(start, group);
         });
 }
@@ -516,10 +553,27 @@ void World::applySelfCollisionGroup(ndBodyKinematic* start, unsigned int group)
     std::unordered_map<ndBodyKinematic*, std::vector<ndBodyKinematic*>> adj;
     adj.reserve(128);
 
-    const auto joints = GetJointList();
+    // BUGFIX: this used to read
+    //
+    //     const auto joints = GetJointList();
+    //
+    // The missing reference was fatal. ndList's copy constructor (ndList.h) is a
+    // hand-rolled "steal" that predates move semantics: it takes over m_first,
+    // m_last and m_count from the source and asserts that the source is empty.
+    // The source here is the live world joint list and it is passed as const&,
+    // so it cannot be cleared -- both objects end up owning the same nodes.
+    // When the copy leaves scope, ~ndList() runs RemoveAll(), which deletes every
+    // node and releases the ndSharedPtr each of them holds. Net effect on every
+    // single call: all joints in the world destroyed, ndWorld's own m_first and
+    // m_last left dangling.
+    const auto& joints = GetJointList();
+
     for (auto node = joints.GetFirst(); node; node = node->GetNext())
     {
-        auto jSp = node->GetInfo();
+        // Bind by reference as well: no refcount churn per joint. Left
+        // non-const because ndSharedPtr::operator->() is not const-qualified in
+        // every ND4 revision.
+        ndSharedPtr<ndJointBilateralConstraint>& jSp = node->GetInfo();
         ndJointBilateralConstraint* j = jSp.operator->();
         if (!j)
         {
