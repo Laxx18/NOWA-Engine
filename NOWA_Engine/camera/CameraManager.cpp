@@ -16,7 +16,9 @@ namespace NOWA
 		: appStateName(appStateName),
 		moveSpeed(0.0f),
 		rotateSpeed(0.0f),
-		cameraBehaviorId(0)
+		cameraBehaviorId(0),
+		moveCameraWeight(1.0f),
+		rotateCameraWeight(1.0f)
 	{
 
 	}
@@ -48,6 +50,8 @@ namespace NOWA
 			}
 		}
 		this->cameraDataMap.clear();
+        this->moveCameraWeight = 1.0f;
+        this->rotateCameraWeight = 1.0f;
 	}
 
 	void CameraManager::setMoveSpeed(Ogre::Real moveSpeed)
@@ -564,6 +568,8 @@ namespace NOWA
 
 	void CameraManager::setMoveCameraWeight(Ogre::Real moveCameraWeight)
 	{
+        this->moveCameraWeight = moveCameraWeight;
+
 		// Sets moveCameraWeight for all active cameras
 		for (auto& cameraPair : this->cameraDataMap)
 		{
@@ -576,6 +582,7 @@ namespace NOWA
 
 	void CameraManager::setRotateCameraWeight(Ogre::Real rotateCameraWeight)
 	{
+        this->rotateCameraWeight = rotateCameraWeight;
 		// Set rotateCameraWeight for all active cameras
 		for (auto& cameraPair : this->cameraDataMap)
 		{
@@ -585,7 +592,30 @@ namespace NOWA
 				cameraPair.second.behaviorData.begin()->cameraBehavior->rotateCameraWeight = rotateCameraWeight;
 			}
 		}
-	}
+    }
+
+    Ogre::Real CameraManager::getMoveCameraWeight(void) const
+    {
+        return this->moveCameraWeight;
+    }
+
+    Ogre::Real CameraManager::getRotateCameraWeight(void) const
+    {
+        return this->rotateCameraWeight;
+    }
+
+    void CameraManager::applyCurrentCameraTransformWeights(void)
+    {
+        for (auto& cameraPair : this->cameraDataMap)
+        {
+            // Checks if the camera is active
+            if (true == cameraPair.second.isActive)
+            {
+                cameraPair.second.behaviorData.begin()->cameraBehavior->moveCameraWeight = this->moveCameraWeight;
+                cameraPair.second.behaviorData.begin()->cameraBehavior->rotateCameraWeight = this->rotateCameraWeight;
+            }
+        }
+    }
 
 	unsigned int CameraManager::getCameraBehaviorId(void)
 	{

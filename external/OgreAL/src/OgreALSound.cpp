@@ -89,9 +89,9 @@ namespace OgreAL
 		mStream(false),
 		mSumDataRead(0),
 		MovableObject(Ogre::Id::generateNewId<MovableObject>(),
-			SoundManager::getSingleton().getDefaultMemoryManager(),
-			sceneMgr,
-			SoundManager::getSingleton().getDefaultRenderQueue()),
+		SoundManager::getSingleton().getDefaultMemoryManager(),
+		sceneMgr,
+		SoundManager::getSingleton().getDefaultRenderQueue()),
 		mPitch(1.0f),
 		mGain(1.0f),
 		mMaxGain(1.0f),
@@ -155,9 +155,9 @@ namespace OgreAL
 		mStream(stream),
 		mSumDataRead(0),
 		MovableObject(Ogre::Id::generateNewId<MovableObject>(),
-			SoundManager::getSingleton().getDefaultMemoryManager(),
-			sceneMgr,
-			SoundManager::getSingleton().getDefaultRenderQueue()),
+		SoundManager::getSingleton().getDefaultMemoryManager(),
+		sceneMgr,
+		SoundManager::getSingleton().getDefaultRenderQueue()),
 		mPitch(1.0f), mGain(1.0f),
 		mMaxGain(1.0f),
 		mMinGain(0.0f),
@@ -221,9 +221,9 @@ namespace OgreAL
 		mStream(false),
 		mSumDataRead(0),
 		MovableObject(Ogre::Id::generateNewId<MovableObject>(),
-			SoundManager::getSingleton().getDefaultMemoryManager(),
-			sceneMgr,
-			SoundManager::getSingleton().getDefaultRenderQueue()),
+		SoundManager::getSingleton().getDefaultMemoryManager(),
+		sceneMgr,
+		SoundManager::getSingleton().getDefaultRenderQueue()),
 		mLoop(loop ? AL_TRUE : AL_FALSE),
 		mPitch(1.0f), mGain(1.0f),
 		mMaxGain(1.0f), mMinGain(0.0f),
@@ -457,6 +457,9 @@ namespace OgreAL
 		{
 			if (mSource != AL_NONE)
 			{
+				// Same fix as below: don't leave a stale mStartTime around for
+				// the next play() to compute a wall-clock offset against.
+				mStartTime = 0;
 				mSource = SoundManager::getSingleton()._releaseSource(this);
 				return true;
 			}
@@ -465,8 +468,40 @@ namespace OgreAL
 		{
 			mManualStop = true;
 
-			// D GILL to avoid AL lib: (EE) alc_cleanup: 1 device not closed ogre 
-			setLoop(false);
+			// FIX (root cause of "only hear the last bit / wrong offset after
+			// restart"): Sound::play() computes `setSecondOffset(currentTime -
+			// mStartTime)` on every call after the very first one - a wall-clock
+			// based "catch up to real elapsed time" resume, meant for scenarios
+			// like the app having been backgrounded. mStartTime is only ever set
+			// ONCE (the very first play()) and never reset afterward. So every
+			// subsequent play() - even long after a clean stop() that already
+			// correctly reset the stream to position 0 via unloadBuffers() below -
+			// immediately overwrites that correct position with
+			// (real seconds since the very first play ever happened), which for
+			// a short looping track quickly exceeds the track length entirely,
+			// seeking at or past EOF. Resetting mStartTime here means the next
+			// play() takes the `mStartTime == 0` branch instead (a real fresh
+			// start, no offset seek), matching the position-0 reset unloadBuffers()
+			// already performs for streaming sounds.
+			mStartTime = 0;
+
+			// FIX: setLoop(false) here unconditionally overwrote the mLoop MEMBER
+			// (not just the AL_LOOPING flag), even for streaming sounds - see
+			// Sound::setLoop(): `mLoop = loop ? AL_TRUE : AL_FALSE;` runs regardless
+			// of mStream, only the alSourcei() call below it is stream-guarded.
+			// For streaming OggSound instances, mLoop is the ONLY thing that decides
+			// whether updateSound()'s own eof-handling loops or truly stops - so any
+			// stop() call while playing (for whatever reason, not just a deliberate
+			// "end for good") silently and permanently disabled looping from then on,
+			// with nothing ever re-enabling it. The alc_cleanup workaround this line
+			// exists for is an OpenAL-level concern for static (non-streaming)
+			// sources, so it's preserved for those, but must not touch the streaming
+			// case's own independent loop bookkeeping.
+			if (!mStream)
+			{
+				// D GILL to avoid AL lib: (EE) alc_cleanup: 1 device not closed ogre 
+				setLoop(false);
+			}
 
 			// Stop the source
 			alSourceStop(mSource);
@@ -987,7 +1022,7 @@ namespace OgreAL
 					// our previous offset, then we have simply advanced in the file normally.
 					if (currOffset >= mPreviousOffset)
 					{
-						if (reqOffset > mPreviousOffset&& reqOffset <= currOffset)
+						if (reqOffset > mPreviousOffset && reqOffset <= currOffset)
 						{
 							// Good to go. Notify the listener that we have reached or passed the
 							// offset.
@@ -1008,7 +1043,7 @@ namespace OgreAL
 					else
 					{
 						if ((reqOffset >= 0.0 && reqOffset <= currOffset) || // A
-							(reqOffset > mPreviousOffset&& reqOffset <= getSecondDuration()))
+							(reqOffset > mPreviousOffset && reqOffset <= getSecondDuration()))
 						{ // B
 // We looped around. The logic of figuring our that we've looped
 // is up to the listener.

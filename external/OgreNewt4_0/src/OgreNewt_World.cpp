@@ -31,7 +31,6 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
     m_debugger(nullptr),
     m_mainThreadId()
 {
-    SetThreadCount(m_threadsRequested);
     setSolverModel(m_solverMode);
     // Must be 1 because else on any movecallback forces and especially jump force will not work anymore! because on logic thread 1x jump is made and if substeps are 4, then 4 times gravity back, so no jump possible!
     SetSubSteps(1);
@@ -48,6 +47,16 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
     {
         m_mainThreadId = std::this_thread::get_id();
     }
+
+    // Attention: MUST be the very last statement of this constructor.
+    // ndWorld::SetThreadCount belongs to ndThread and spawns the worker threads, which
+    // immediately dispatch a virtual call on this object. While the constructor is still
+    // running, the vtable pointer still refers to ndWorld and the derived World part does not
+    // exist yet - a worker that comes up fast enough then reads a half written vtable entry and
+    // crashes in ndThread::vcall with 0xFFFFFFFFFFFFFFFF. It is a race, so it only shows up
+    // occasionally and mostly in a debug build, where the remaining constructor body is slow
+    // enough to widen the window.
+    SetThreadCount(m_threadsRequested);
 }
 
 World::~World()

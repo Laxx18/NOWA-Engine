@@ -1815,8 +1815,6 @@ namespace NOWA
                 }
             }
         }
-
-        NOWA::GraphicsModule::getInstance()->renderLoadingFrameThrottled();
     }
 
     void DotSceneImportModule::processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
@@ -1887,8 +1885,6 @@ namespace NOWA
                 }
             }
         }
-
-        NOWA::GraphicsModule::getInstance()->renderLoadingFrameThrottled();
     }
 
     void DotSceneImportModule::processOcean(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
@@ -1959,8 +1955,6 @@ namespace NOWA
                 }
             }
         }
-
-        NOWA::GraphicsModule::getInstance()->renderLoadingFrameThrottled();
     }
 
     void DotSceneImportModule::processPlane(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
@@ -2095,8 +2089,6 @@ namespace NOWA
                 } while (false == foundId && nullptr != propertyElement);
             }
         }
-
-        NOWA::GraphicsModule::getInstance()->renderLoadingFrameThrottled();
     }
 
     Ogre::MeshPtr DotSceneImportModule::loadMeshV2Optimized(const Ogre::String& meshName, const Ogre::String& itemName, const Ogre::String& originalMeshFile)

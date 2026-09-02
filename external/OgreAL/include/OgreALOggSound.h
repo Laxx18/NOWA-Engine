@@ -45,7 +45,8 @@
 #include "OgreALPrereqs.h"
 #include "OgreALSound.h"
 
-namespace OgreAL {
+namespace OgreAL
+{
 	/**
 	 * OggSound.
 	 * @note
@@ -58,7 +59,7 @@ namespace OgreAL {
 	{
 	protected:
 		/*
-		** Constructor is protected to enforce the use of the 
+		** Constructor is protected to enforce the use of the
 		** factory via SoundManager::createSound
 		*/
 		/**
@@ -79,7 +80,7 @@ namespace OgreAL {
 		/** Returns the current offset within the audio stream in seconds */
 		virtual Ogre::Real getSecondOffset();
 		/** Sets whether to enable spectrum analysis. */
-		virtual void enableSpectrumAnalysis(bool enable, int processingSize, int numberOfBands, MathWindows::WindowType windowType, 
+		virtual void enableSpectrumAnalysis(bool enable, int processingSize, int numberOfBands, MathWindows::WindowType windowType,
 			AudioProcessor::SpectrumPreparationType spectrumPreparationType, Ogre::Real smoothFactor) override;
 	protected:
 		/// This is called each frame to update the position, direction, etc
@@ -90,13 +91,17 @@ namespace OgreAL {
 		virtual bool unloadBuffers();
 
 	private:
-		/// Returns a buffer containing the next chunk of length size
-		Buffer bufferData(OggVorbis_File *oggVorbisFile, int size);
-		Buffer bufferDataSpectrum(OggVorbis_File *oggVorbisFile, int size);
+		/// Returns a buffer containing the next chunk of length size.
+		/// outEof, if non-null, is set to true when ov_read() itself reported
+		/// genuine end-of-stream (return value 0) while filling this chunk -
+		/// the only reliable way to detect real EOF with our custom
+		/// DataStreamPtr-backed callbacks; do not compare mOggStream.offset/.end.
+		Buffer bufferData(OggVorbis_File* oggVorbisFile, int size, bool* outEof = nullptr);
+		Buffer bufferDataSpectrum(OggVorbis_File* oggVorbisFile, int size);
 
 		OggVorbis_File mOggStream;
 		OggVorbis_File mSpectrumOggStream;
-		vorbis_info *mVorbisInfo;
+		vorbis_info* mVorbisInfo;
 
 		friend class SoundFactory;
 	};

@@ -307,8 +307,8 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] playParticleSystem: name='" + name + "' found=" + (it != this->particles.end() ? "YES" : "NO"));
         if (it != this->particles.end())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                "[ParticleFxModule] playParticleSystem: particleSystem=" + Ogre::String(it->second.particleSystem ? "VALID" : "NULL") + " clonedDefName='" + it->second.clonedDefName + "'" + " templateName='" + it->second.particleTemplateName + "'");
+            /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[ParticleFxModule] playParticleSystem: particleSystem=" + Ogre::String(it->second.particleSystem ? "VALID" : "NULL") + " clonedDefName='" + it->second.clonedDefName + "'" + " templateName='" + it->second.particleTemplateName + "'");*/
             // Reset the time
             it->second.particlePlayTime = it->second.particleInitialPlayTime;
             it->second.activated = true;

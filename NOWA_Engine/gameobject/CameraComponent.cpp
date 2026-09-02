@@ -561,21 +561,22 @@ namespace NOWA
                 // Register camera
                 if (this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
                 {
-                    Ogre::Camera* previousCamera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+                    Ogre::Camera* previousCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
                     if (nullptr != previousCamera)
                     {
-                        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(previousCamera);
-                        NOWA::GraphicsModule::getInstance()->removeTrackedCamera(previousCamera);
+                        AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(previousCamera);
+                        GraphicsModule::getInstance()->removeTrackedCamera(previousCamera);
                         this->gameObjectPtr->getSceneManager()->destroyCamera(previousCamera);
                     }
 
                     if (nullptr == this->baseCamera)
                     {
-                        this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 1.0f, 0.01f);
+                        this->baseCamera = new BaseCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 0.75, 0.3f);
                     }
 
                     AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
                     AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
+                    AppStateManager::getSingletonPtr()->getCameraManager()->applyCurrentCameraTransformWeights();
                 }
 
                 this->setActivated(this->active->getBool());
@@ -898,6 +899,8 @@ namespace NOWA
             }
         }
 
+        AppStateManager::getSingletonPtr()->getCameraManager()->applyCurrentCameraTransformWeights();
+
         if (nullptr != this->gameObjectPtr)
         {
             Ogre::String name = this->gameObjectPtr->getName();
@@ -949,6 +952,8 @@ namespace NOWA
                 }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setActivatedFlag");
+
+            AppStateManager::getSingletonPtr()->getCameraManager()->applyCurrentCameraTransformWeights();
         }
     }
 

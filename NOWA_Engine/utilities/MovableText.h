@@ -54,6 +54,22 @@ namespace NOWA
         void setLocalTranslation(Ogre::Vector3 trans);
         void showOnTop(bool show = true);
         void setTextYOffset(Ogre::Real yOffset);
+
+        /**
+         * @brief Replaces the camera billboard by an explicit orientation.
+         *
+         * Without this the text ALWAYS faces the rendering camera, no matter how its
+         * parent node is rotated. That made it impossible for an owning component to
+         * align other geometry with the glyphs unless it happened to use the very same
+         * camera. With an override set, the owner decides the orientation once and can
+         * apply the identical value to its own geometry.
+         *
+         * Call clearOrientationOverride() to go back to camera billboarding.
+         */
+        void setOrientationOverride(const Ogre::Quaternion& orientation);
+
+        void clearOrientationOverride();
+
         void forceUpdate(void);
         void update(Ogre::Real dt);
 
@@ -90,8 +106,41 @@ namespace NOWA
         {
             return mOnTop;
         }
+        HorizontalAlignment getHorizontalAlignment() const
+        {
+            return mHorizontalAlignment;
+        }
+        VerticalAlignment getVerticalAlignment() const
+        {
+            return mVerticalAlignment;
+        }
+        bool hasOrientationOverride() const
+        {
+            return mUseOrientationOverride;
+        }
+        Ogre::Quaternion getOrientationOverride() const
+        {
+            return mOrientationOverride;
+        }
+
+        /**
+         * @brief Gets the camera this text last billboarded towards, i.e. the camera
+         *        Ogre passed into _updateRenderQueue() most recently.
+         *
+         * Other components that want to lock geometry onto this text's transform must
+         * use THIS camera rather than resolving an "active" one themselves - otherwise
+         * a camera switch, a shadow pass or a reflection pass makes the two disagree
+         * and the attached geometry ends up rotated against the glyphs.
+         *
+         * Returns nullptr until the text has been rendered at least once.
+         */
+        Ogre::Camera* getCamera() const
+        {
+            return mpCam;
+        }
 
         void setVisibleRequested(bool visible);
+
     protected:
         void _setupGeometry();
         void _destroyGeometry();
@@ -137,6 +186,8 @@ namespace NOWA
 
         Ogre::Vector3 mGlobalTranslation;
         Ogre::Vector3 mLocalTranslation;
+        Ogre::Quaternion mOrientationOverride;
+        bool mUseOrientationOverride;
 
         Ogre::Camera* mpCam;
         Ogre::Font* mpFont;

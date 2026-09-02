@@ -6,7 +6,7 @@
 #include "utilities/LoadingIndicator.h"
 
 // Attention: TEMPORARY diagnostic for the loading indicator. Comment out when done.
-#define NOWA_LOADING_INDICATOR_TIMING
+// #define NOWA_LOADING_INDICATOR_TIMING
 
 #include <Animation/OgreBone.h>
 #include <chrono>
@@ -289,6 +289,16 @@ namespace NOWA
             // enqueueAndWait() until these run, so skipping this in ANY branch (stall,
             // scene loading, shutdown drain) deadlocks the logic thread.
             this->processAllCommands();
+
+            // Attention: this must be driven from here, not from AppStateManager's pump loop.
+            // That loop only runs when the RENDER thread waits for a logic command - the exact
+            // opposite of a scene load, where the LOGIC thread waits for render commands and this
+            // loop is where the render thread actually spends its time. Calling it there produced
+            // roughly three calls per second, which is why the indicator only appeared once every
+            // game object had been loaded.
+            // No-op when no indicator is set, and internally throttled, so it costs nothing
+            // outside a scene load.
+            this->renderLoadingFrameThrottled();
 
 #ifdef CLOSURE_DEBUG
             tCommands = stageElapsedMicroseconds();

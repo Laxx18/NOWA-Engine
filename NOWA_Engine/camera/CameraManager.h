@@ -77,6 +77,12 @@ namespace NOWA
 
 		void setRotateCameraWeight(Ogre::Real rotateCameraWeight);
 
+		Ogre::Real getMoveCameraWeight(void) const;
+
+		Ogre::Real getRotateCameraWeight(void) const;
+
+		void applyCurrentCameraTransformWeights(void);
+
 		unsigned int getCameraBehaviorId(void);
 
 		void registerSplitScreenCamera(Ogre::Camera* camera, const Ogre::Vector4& geometry);
@@ -93,6 +99,8 @@ namespace NOWA
 
 		Ogre::Real moveSpeed;
 		Ogre::Real rotateSpeed;
+        Ogre::Real moveCameraWeight;
+        Ogre::Real rotateCameraWeight;
 
 		struct BehaviorData
 		{

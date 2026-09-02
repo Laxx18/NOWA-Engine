@@ -679,123 +679,156 @@ namespace NOWA
 
     void JointComponent::internalShowDebugData(bool activate, unsigned short type, const Ogre::Vector3& value1, const Ogre::Vector3& value2)
     {
-        if (nullptr != this->body)
+        if (nullptr == this->body)
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this, activate, type, value1, value2]()
+            return;
+        }
+
+        const bool shouldShowDebugData = this->bShowDebugData && activate;
+
+        if (true == shouldShowDebugData)
+        {
+            if (nullptr != this->debugGeometryNode)
             {
-                if (true == this->bShowDebugData && true == activate)
+                return;
+            }
+
+            if (0 == type)
+            {
+                if (nullptr == this->body->getOgreNode())
                 {
-                    if (nullptr == this->debugGeometryNode)
-                    {
-
-                        // For hinge
-                        if (0 == type)
-                        {
-                            if (nullptr != this->body->getOgreNode())
-                            {
-                                this->debugGeometryNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-                                this->debugGeometryNode->setPosition(value1);
-                                this->debugGeometryNode->setDirection(value2);
-                                // Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
-                                this->debugGeometryNode->setInheritScale(false);
-                                this->debugGeometryNode->setScale(0.05f, 0.05f, 0.025f);
-                                this->debugGeometryNode->setName(this->getClassName() + "_Node");
-                                this->debugGeometryItem = this->sceneManager->createItem("Arrow.mesh");
-                                this->debugGeometryItem->setName(this->getClassName() + "_Item");
-                                this->debugGeometryItem->setDatablock("BaseRedLine");
-                                this->debugGeometryItem->setQueryFlags(0 << 0);
-                                this->debugGeometryItem->setCastShadows(false);
-                                this->debugGeometryNode->attachObject(this->debugGeometryItem);
-                            }
-                        }
-
-                        // For ball and socket
-                        else if (1 == type)
-                        {
-                            if (true == this->bShowDebugData)
-                            {
-                                if (nullptr == this->debugGeometryNode)
-                                {
-                                    this->debugGeometryNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-                                    this->debugGeometryNode->setPosition(value1);
-                                    // this->debugGeometryNode->setDirection(value2);
-                                    this->debugGeometryNode->setName(this->getClassName() + "_Node");
-                                    // Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
-                                    this->debugGeometryNode->setInheritScale(false);
-                                    this->debugGeometryNode->setScale(0.05f, 0.05f, 0.05f);
-                                    this->debugGeometryItem = this->sceneManager->createItem("gizmosphere.mesh");
-                                    this->debugGeometryItem->setName(this->getClassName() + "_Item");
-                                    this->debugGeometryItem->setDatablock("BaseRedLine");
-                                    this->debugGeometryItem->setQueryFlags(0 << 0);
-                                    this->debugGeometryItem->setCastShadows(false);
-                                    this->debugGeometryNode->attachObject(this->debugGeometryItem);
-                                }
-                            }
-                        }
-                        // For point to point
-                        else if (2 == type)
-                        {
-                            if (nullptr != this->gameObjectPtr)
-                            {
-                                if (true == this->bShowDebugData)
-                                {
-                                    if (nullptr == this->debugGeometryNode)
-                                    {
-                                        this->debugGeometryNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-                                        this->debugGeometryNode->setPosition(value1);
-                                        this->debugGeometryNode->setName(this->getClassName() + "_Node");
-                                        // Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
-                                        this->debugGeometryNode->setInheritScale(false);
-                                        this->debugGeometryNode->setScale(0.05f, 0.05f, 0.05f);
-                                        this->debugGeometryItem = this->sceneManager->createItem("gizmosphere.mesh");
-                                        this->debugGeometryItem->setName(this->getClassName() + "_Item");
-                                        this->debugGeometryItem->setDatablock("BaseRedLine");
-                                        this->debugGeometryItem->setQueryFlags(0 << 0);
-                                        this->debugGeometryItem->setCastShadows(false);
-                                        this->debugGeometryNode->attachObject(this->debugGeometryItem);
-
-                                        this->debugGeometryNode2 = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-                                        this->debugGeometryNode2->setName(this->getClassName() + "_Node2");
-                                        this->debugGeometryNode2->setPosition(value2);
-                                        // Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
-                                        this->debugGeometryNode2->setInheritScale(false);
-                                        this->debugGeometryNode2->setScale(0.05f, 0.05f, 0.05f);
-                                        this->debugGeometryItem2 = this->gameObjectPtr->getSceneManager()->createItem("gizmosphere.mesh");
-                                        this->debugGeometryItem2->setName(this->getClassName() + "_Item2");
-                                        this->debugGeometryItem2->setDatablock("BaseRedLine");
-                                        this->debugGeometryItem2->setQueryFlags(0 << 0);
-                                        this->debugGeometryItem2->setCastShadows(false);
-                                        this->debugGeometryNode2->attachObject(this->debugGeometryItem2);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    return;
                 }
 
-                if (false == this->bShowDebugData || false == activate)
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, value1, value2]()
                 {
-                    if (nullptr != this->debugGeometryNode)
-                    {
-                        this->debugGeometryNode->detachAllObjects();
-                        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
-                        this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
-                        this->debugGeometryNode = nullptr;
-                        this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem);
-                        this->debugGeometryItem = nullptr;
-                    }
-                    if (nullptr != this->debugGeometryNode2)
-                    {
-                        this->debugGeometryNode2->detachAllObjects();
-                        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
-                        this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
-                        this->debugGeometryNode2 = nullptr;
-                        this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem2);
-                        this->debugGeometryItem2 = nullptr;
-                    }
+                    this->debugGeometryNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+                    this->debugGeometryNode->setPosition(value1);
+                    this->debugGeometryNode->setDirection(value2);
+
+                    // Do not inherit, because if parent node is scaled, then this scale is relative
+                    // and debug data may be too small or too big.
+                    this->debugGeometryNode->setInheritScale(false);
+                    this->debugGeometryNode->setScale(0.05f, 0.05f, 0.025f);
+                    this->debugGeometryNode->setName(this->getClassName() + "_Node");
+
+                    this->debugGeometryItem = this->sceneManager->createItem("Arrow.mesh");
+                    this->debugGeometryItem->setName(this->getClassName() + "_Item");
+                    this->debugGeometryItem->setDatablock("BaseRedLine");
+                    this->debugGeometryItem->setQueryFlags(0 << 0);
+                    this->debugGeometryItem->setCastShadows(false);
+
+                    this->debugGeometryNode->attachObject(this->debugGeometryItem);
+                };
+
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "JointComponent::internalShowDebugData");
+            }
+            else if (1 == type)
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, value1]()
+                {
+                    this->debugGeometryNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+                    this->debugGeometryNode->setPosition(value1);
+                    this->debugGeometryNode->setName(this->getClassName() + "_Node");
+
+                    // Do not inherit, because if parent node is scaled, then this scale is relative
+                    // and debug data may be too small or too big.
+                    this->debugGeometryNode->setInheritScale(false);
+                    this->debugGeometryNode->setScale(0.05f, 0.05f, 0.05f);
+
+                    this->debugGeometryItem = this->sceneManager->createItem("gizmosphere.mesh");
+                    this->debugGeometryItem->setName(this->getClassName() + "_Item");
+                    this->debugGeometryItem->setDatablock("BaseRedLine");
+                    this->debugGeometryItem->setQueryFlags(0 << 0);
+                    this->debugGeometryItem->setCastShadows(false);
+
+                    this->debugGeometryNode->attachObject(this->debugGeometryItem);
+                };
+
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "JointComponent::internalShowDebugData");
+            }
+            else if (2 == type)
+            {
+                if (nullptr == this->gameObjectPtr)
+                {
+                    return;
+                }
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, value1, value2]()
+                {
+                    this->debugGeometryNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+                    this->debugGeometryNode->setPosition(value1);
+                    this->debugGeometryNode->setName(this->getClassName() + "_Node");
+
+                    // Do not inherit, because if parent node is scaled, then this scale is relative
+                    // and debug data may be too small or too big.
+                    this->debugGeometryNode->setInheritScale(false);
+                    this->debugGeometryNode->setScale(0.05f, 0.05f, 0.05f);
+
+                    this->debugGeometryItem = this->sceneManager->createItem("gizmosphere.mesh");
+                    this->debugGeometryItem->setName(this->getClassName() + "_Item");
+                    this->debugGeometryItem->setDatablock("BaseRedLine");
+                    this->debugGeometryItem->setQueryFlags(0 << 0);
+                    this->debugGeometryItem->setCastShadows(false);
+
+                    this->debugGeometryNode->attachObject(this->debugGeometryItem);
+
+                    this->debugGeometryNode2 = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+                    this->debugGeometryNode2->setName(this->getClassName() + "_Node2");
+                    this->debugGeometryNode2->setPosition(value2);
+
+                    // Do not inherit, because if parent node is scaled, then this scale is relative
+                    // and debug data may be too small or too big.
+                    this->debugGeometryNode2->setInheritScale(false);
+                    this->debugGeometryNode2->setScale(0.05f, 0.05f, 0.05f);
+
+                    this->debugGeometryItem2 = this->gameObjectPtr->getSceneManager()->createItem("gizmosphere.mesh");
+                    this->debugGeometryItem2->setName(this->getClassName() + "_Item2");
+                    this->debugGeometryItem2->setDatablock("BaseRedLine");
+                    this->debugGeometryItem2->setQueryFlags(0 << 0);
+                    this->debugGeometryItem2->setCastShadows(false);
+
+                    this->debugGeometryNode2->attachObject(this->debugGeometryItem2);
+                };
+
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "JointComponent::internalShowDebugData");
+            }
+        }
+        else
+        {
+            const bool hasDebugGeometry = (nullptr != this->debugGeometryNode) || (nullptr != this->debugGeometryNode2);
+
+            if (false == hasDebugGeometry)
+            {
+                return;
+            }
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                if (nullptr != this->debugGeometryNode)
+                {
+                    this->debugGeometryNode->detachAllObjects();
+                    NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
+                    this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
+                    this->debugGeometryNode = nullptr;
+
+                    this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem);
+                    this->debugGeometryItem = nullptr;
+                }
+
+                if (nullptr != this->debugGeometryNode2)
+                {
+                    this->debugGeometryNode2->detachAllObjects();
+                    NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
+                    this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
+                    this->debugGeometryNode2 = nullptr;
+
+                    this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem2);
+                    this->debugGeometryItem2 = nullptr;
                 }
             };
-            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "JointComponent::internalShowDebugData");
+
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "JointComponent::internalShowDebugData");
         }
     }
 

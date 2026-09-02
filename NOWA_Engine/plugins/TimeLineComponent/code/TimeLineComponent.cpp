@@ -244,6 +244,8 @@ namespace NOWA
 
 	void TimeLineComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+        assert(AppStateManager::getSingletonPtr()->isLogicThread() && "TimeLineComponent::update() must be called from the main/logic thread!");
+
 		if (false == notSimulating)
 		{
 			this->timeDt += dt;
@@ -281,11 +283,11 @@ namespace NOWA
 						// Call lua function name in script, if it does exist
 						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->timePointStartEventNames[this->timePointIndex]->getString().empty())
 						{
-							NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
+							// NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+							// {
 								this->gameObjectPtr->getLuaScript()->callTableFunction(this->timePointStartEventNames[this->timePointIndex]->getString(), this->timeDt);
-							};
-							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+							// };
+							// NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 
 						this->alreadyActivatedList[this->totalIndex] = true;
@@ -325,11 +327,11 @@ namespace NOWA
 						// Call lua function name in script, if it does exist
 						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->timePointEndEventNames[this->timePointIndex]->getString().empty())
 						{
-							NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
+							// NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+							// {
 								this->gameObjectPtr->getLuaScript()->callTableFunction(this->timePointEndEventNames[this->timePointIndex]->getString(), this->timeDt);
-							};
-							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+							// };
+							// NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 
 						this->alreadyActivatedList[this->totalIndex] = true;

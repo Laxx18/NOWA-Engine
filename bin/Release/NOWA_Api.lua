@@ -32805,7 +32805,7 @@ return {
 	SpeechBubbleComponent =
 	{
 		type = "class",
-		description = "This component can be used to draw an speech bubble at the game object with an offset. A GameObjectTitle is required and optionally for sound, a SimpleSoundComponent is required.",
+		description = "This component draws a self contained speech bubble at the game object with an offset. It brings its own text rendering, so no GameObjectTitleComponent is required. Optionally, for the typewriter sound, a SimpleSoundComponent is required.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -32824,22 +32824,6 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
-			},
-			setTextColor =
-			{
-				type = "method",
-				description = "Sets the color for the text.",
-				args = "(Vector3 color)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getTextColor =
-			{
-				type = "function",
-				description = "Gets the text color.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
 			},
 			setRunSpeech =
 			{
@@ -32876,7 +32860,7 @@ return {
 			setSpeechDuration =
 			{
 				type = "method",
-				description = "Sets the speed duration. That is how long the bubble shall remain in seconds.",
+				description = "Sets the speech duration. That is how long the bubble shall remain in seconds.",
 				args = "(number speechDuration)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -32884,7 +32868,7 @@ return {
 			getSpeechDuration =
 			{
 				type = "function",
-				description = "Gets the speed duration. That is how long the bubble shall remain in seconds.",
+				description = "Gets the speech duration. That is how long the bubble shall remain in seconds.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -32924,7 +32908,7 @@ return {
 			setRunSpeechSound =
 			{
 				type = "method",
-				description = "Sets whether the caption should remain after the speech run.",
+				description = "Sets whether to use a sound if the speech is running char by char.",
 				args = "(boolean runSpeechSound)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -32932,10 +32916,234 @@ return {
 			getRunSpeechSound =
 			{
 				type = "function",
-				description = "Gets whether the caption is remained after the speech run.",
+				description = "Gets whether a sound is used if the speech is running char by char.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			setFontName =
+			{
+				type = "method",
+				description = "Sets the font used for the speech text.",
+				args = "(string fontName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFontName =
+			{
+				type = "function",
+				description = "Gets the font used for the speech text.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setCharHeight =
+			{
+				type = "method",
+				description = "Sets the character height of the speech text in local units.",
+				args = "(number charHeight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCharHeight =
+			{
+				type = "function",
+				description = "Gets the character height of the speech text in local units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setTextColor =
+			{
+				type = "method",
+				description = "Sets the color for the text.",
+				args = "(Vector4 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTextColor =
+			{
+				type = "function",
+				description = "Gets the text color.",
+				args = "()",
+				returns = "(Vector4)",
+				valuetype = "Vector4"
+			},
+			setBubbleColor =
+			{
+				type = "method",
+				description = "Sets the color for the bubble body.",
+				args = "(Vector4 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBubbleColor =
+			{
+				type = "function",
+				description = "Gets the bubble body color.",
+				args = "()",
+				returns = "(Vector4)",
+				valuetype = "Vector4"
+			},
+			setOffsetPosition =
+			{
+				type = "method",
+				description = "Sets the offset position of the speech bubble relative to the game object.",
+				args = "(Vector3 offsetPosition)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOffsetPosition =
+			{
+				type = "function",
+				description = "Gets the offset position of the speech bubble relative to the game object.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setMaxTextWidth =
+			{
+				type = "method",
+				description = "Sets the maximum text width in local units used for word wrapping.",
+				args = "(number maxTextWidth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxTextWidth =
+			{
+				type = "function",
+				description = "Gets the maximum text width in local units used for word wrapping.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOrientationTargetId =
+			{
+				type = "method",
+				description = "Sets the id of the game object with a CameraComponent the bubble should face. 0 uses the active camera.",
+				args = "(number orientationTargetId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOrientationTargetId =
+			{
+				type = "function",
+				description = "Gets the id of the game object with a CameraComponent the bubble faces.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOffsetOrientation =
+			{
+				type = "method",
+				description = "Sets the additional rotation in degrees applied on top of the billboard rotation.",
+				args = "(Vector3 offsetOrientation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOffsetOrientation =
+			{
+				type = "function",
+				description = "Gets the additional rotation in degrees.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setPadding =
+			{
+				type = "method",
+				description = "Sets the margin between the text block and the bubble border.",
+				args = "(number padding)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPadding =
+			{
+				type = "function",
+				description = "Gets the margin between the text block and the bubble border.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCornerRadius =
+			{
+				type = "method",
+				description = "Sets the corner radius of the rounded bubble body.",
+				args = "(number cornerRadius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCornerRadius =
+			{
+				type = "function",
+				description = "Gets the corner radius of the rounded bubble body.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCaptionCount =
+			{
+				type = "method",
+				description = "Sets how many captions are played back one after another.",
+				args = "(number captionCount)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCaptionCount =
+			{
+				type = "function",
+				description = "Gets how many captions are played back one after another.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCaptionAt =
+			{
+				type = "method",
+				description = "Sets the caption of the given index.",
+				args = "(number index, string caption)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCaptionAt =
+			{
+				type = "function",
+				description = "Gets the caption of the given index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setSpeechDurationAt =
+			{
+				type = "method",
+				description = "Sets the speech duration of the given index.",
+				args = "(number index, number speechDuration)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSpeechDurationAt =
+			{
+				type = "function",
+				description = "Gets the speech duration of the given index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			restartSequence =
+			{
+				type = "method",
+				description = "Restarts the whole caption sequence at index 0.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCurrentCaptionIndex =
+			{
+				type = "function",
+				description = "Gets the index of the caption currently being played back.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			},
 			reactOnSpeechDone =
 			{

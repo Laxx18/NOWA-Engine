@@ -61,6 +61,8 @@ namespace NOWA
         mVerticalAlignment(V_BELOW),
         mGlobalTranslation(Ogre::Vector3::ZERO),
         mLocalTranslation(Ogre::Vector3::ZERO),
+        mOrientationOverride(Ogre::Quaternion::IDENTITY),
+        mUseOrientationOverride(false),
         yOffset(0.0f),
         mWantVisible(false),
         mVaoManager(nullptr)
@@ -467,22 +469,39 @@ namespace NOWA
 
     void MovableText::getWorldTransforms(Ogre::Matrix4* xform) const
     {
-        if (this->isVisible() && mpCam)
+        if (false == this->isVisible())
         {
-            Ogre::Matrix3 rot3x3, scale3x3 = Ogre::Matrix3::IDENTITY;
-
-            mpCam->getDerivedOrientation().ToRotationMatrix(rot3x3);
-
-            Ogre::Vector3 ppos = mParentNode->_getDerivedPosition() + Ogre::Vector3::UNIT_Y * mGlobalTranslation;
-            ppos += rot3x3 * mLocalTranslation;
-
-            scale3x3[0][0] = mParentNode->_getDerivedScale().x / 2.0f;
-            scale3x3[1][1] = mParentNode->_getDerivedScale().y / 2.0f;
-            scale3x3[2][2] = mParentNode->_getDerivedScale().z / 2.0f;
-
-            *xform = Ogre::Matrix4(rot3x3 * scale3x3);
-            xform->setTrans(ppos);
+            return;
         }
+
+        // With an override the camera is irrelevant, so mpCam must NOT be required
+        // here - otherwise the very first frame (mpCam still null) would leave xform
+        // untouched and therefore uninitialised.
+        if (false == mUseOrientationOverride && nullptr == mpCam)
+        {
+            return;
+        }
+
+        Ogre::Matrix3 rot3x3, scale3x3 = Ogre::Matrix3::IDENTITY;
+
+        if (true == mUseOrientationOverride)
+        {
+            mOrientationOverride.ToRotationMatrix(rot3x3);
+        }
+        else
+        {
+            mpCam->getDerivedOrientation().ToRotationMatrix(rot3x3);
+        }
+
+        Ogre::Vector3 ppos = mParentNode->_getDerivedPosition() + Ogre::Vector3::UNIT_Y * mGlobalTranslation;
+        ppos += rot3x3 * mLocalTranslation;
+
+        scale3x3[0][0] = mParentNode->_getDerivedScale().x / 2.0f;
+        scale3x3[1][1] = mParentNode->_getDerivedScale().y / 2.0f;
+        scale3x3[2][2] = mParentNode->_getDerivedScale().z / 2.0f;
+
+        *xform = Ogre::Matrix4(rot3x3 * scale3x3);
+        xform->setTrans(ppos);
     }
 
     // ============================================================================
@@ -575,6 +594,19 @@ namespace NOWA
             // and mVaoPerLod is already populated.
             _updateHlmsMacroblock();
         }
+    }
+
+    void MovableText::setOrientationOverride(const Ogre::Quaternion& orientation)
+    {
+        // Only affects getWorldTransforms(), no geometry rebuild required.
+        mOrientationOverride = orientation;
+        mUseOrientationOverride = true;
+    }
+
+    void MovableText::clearOrientationOverride()
+    {
+        mUseOrientationOverride = false;
+        mOrientationOverride = Ogre::Quaternion::IDENTITY;
     }
 
     void MovableText::setTextYOffset(Ogre::Real offset)

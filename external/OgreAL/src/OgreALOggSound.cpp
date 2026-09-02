@@ -352,13 +352,6 @@ namespace OgreAL
 		if (mStream && (mSource != AL_NONE) && !isPlaying() && !mManualStop)
 		{
 			wasUnderrun = true;
-
-			ALint buffersQueued = 0;
-			alGetSourcei(mSource, AL_BUFFERS_QUEUED, &buffersQueued);
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-				"[OgreAL] OggSound source stopped unexpectedly for '" + this->getName() +
-				"' -- " + Ogre::StringConverter::toString((int)buffersQueued) +
-				" buffers queued. Treating as recoverable underrun, refilling and resuming instead of releasing the source.");
 		}
 
 		// Skip the base class's "treat AL_STOPPED as finished" logic this frame
@@ -390,7 +383,8 @@ namespace OgreAL
 				alSourceUnqueueBuffers(mSource, 1, &buffer);
 				CheckError(alGetError(), "Failed to unqueue buffers");
 
-				Buffer data = bufferData(&mOggStream, mBufferSize);
+				bool chunkEof = false;
+				Buffer data = bufferData(&mOggStream, mBufferSize, &chunkEof);
 
 				if (!eof)
 				{
@@ -400,7 +394,13 @@ namespace OgreAL
 					}
 				}
 
-				eof = (mOggStream.offset == mOggStream.end);
+				// FIX: real root cause of the loop never restarting. This used to be
+				// `eof = (mOggStream.offset == mOggStream.end);` - comparing raw
+				// libvorbisfile struct fields that never reliably reflected true
+				// end-of-stream with our custom DataStreamPtr-backed callbacks. Now
+				// driven directly by ov_read()'s own return value (0 == genuinely no
+				// more data), captured in bufferData() above.
+				eof = chunkEof;
 
 				alSourceQueueBuffers(mSource, 1, &buffer);
 				CheckError(alGetError(), "Failed to queue buffers");
@@ -563,11 +563,26 @@ namespace OgreAL
 		return !eof;
 	}
 
-	Buffer OggSound::bufferData(OggVorbis_File* oggVorbisFile, int size)
+	// FIX (real root cause of loop never restarting): added an optional outEof
+	// parameter that reports TRUE end-of-stream based on ov_read()'s own return
+	// value (0 == genuinely no more data, per libvorbisfile's documented
+	// contract) instead of the caller comparing mOggStream.offset/.end - which,
+	// with our custom Ogre::DataStreamPtr-backed callbacks, never reliably
+	// signalled real EOF, so OggSound::updateSound()'s loop/stop branch never
+	// fired at all. Without this, once the real audio ran out, the last-filled
+	// buffer just kept getting silently re-queued unchanged forever (repeating
+	// the tail of the track), while the underrun-recovery path kept "resuming"
+	// a source that had nothing new to play.
+	Buffer OggSound::bufferData(OggVorbis_File* oggVorbisFile, int size, bool* outEof)
 	{
 		Buffer buffer;
 		char* data = new char[mBufferSize];
 		int section, sizeRead = 0;
+
+		if (nullptr != outEof)
+		{
+			*outEof = false;
+		}
 
 		if (size == 0)
 		{
@@ -575,8 +590,16 @@ namespace OgreAL
 			do
 			{
 				sizeRead = ov_read(oggVorbisFile, data, mBufferSize, 0, 2, 1, &section);
-				buffer.insert(buffer.end(), data, data + sizeRead);
+				if (sizeRead > 0)
+				{
+					buffer.insert(buffer.end(), data, data + sizeRead);
+				}
 			} while (sizeRead > 0);
+
+			if (nullptr != outEof && sizeRead == 0)
+			{
+				*outEof = true;
+			}
 		}
 		else
 		{
@@ -584,7 +607,21 @@ namespace OgreAL
 			while (buffer.size() < size)
 			{
 				sizeRead = ov_read(oggVorbisFile, data, mBufferSize, 0, 2, 1, &section);
-				if (sizeRead == 0) break;
+				if (sizeRead == 0)
+				{
+					if (nullptr != outEof)
+					{
+						*outEof = true;
+					}
+					break;
+				}
+				if (sizeRead < 0)
+				{
+					// Negative = recoverable stream error (e.g. OV_HOLE), not a
+					// real end-of-stream - stop filling this cycle but do NOT
+					// report eof, so the caller tries again next update.
+					break;
+				}
 				buffer.insert(buffer.end(), data, data + sizeRead);
 			}
 		}

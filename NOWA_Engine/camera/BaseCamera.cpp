@@ -248,7 +248,7 @@ namespace NOWA
         }
         Ogre::Vector2 rotationValue = Ogre::Vector2::ZERO;
         // Normalize rotation speed by frame time
-        Ogre::Real normalizedRotateSpeed = this->rotateSpeed * this->rotateCameraWeight * 0.75f;
+        Ogre::Real normalizedRotateSpeed = this->rotateSpeed * this->rotateCameraWeight;
         bool isRotating = false;
         // Input handling remains the same
         if (false == forJoyStick)

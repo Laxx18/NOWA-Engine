@@ -246,6 +246,24 @@ namespace NOWA
                 return;
             }
 
+            // FIX: this used to read this->animationNames[0] and eagerly call
+            // animationBlender->init(selectedAnim, repeat) here, in postInit() -
+            // long before the user has configured the sequence (animation count +
+            // per-index animation names) via the editor or Lua. At this point
+            // this->animationNames can legitimately still be EMPTY, so
+            // this->animationNames[0] was undefined behavior on an empty vector -
+            // almost certainly the real crash, which then surfaced downstream
+            // during the skeleton iteration right below (heap corruption from an
+            // earlier out-of-bounds access often crashes somewhere unrelated).
+            //
+            // AnimationSequenceComponent's whole point is that the sequence gets
+            // configured AFTER this runs, so there is nothing valid to init()
+            // with yet. The blender only needs to exist here (so
+            // getAnimationBlender() returns a valid, non-null pointer - e.g. for
+            // direct Lua access) - real initialization with an actual animation
+            // name already happens correctly, and only once the sequence is
+            // genuinely configured, in activateAnimation() at connect()-time
+            // (which already guards against an empty animationNames list).
             this->animationBlender = new NOWA::AnimationBlenderV2(item);
 
             // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationSequenceComponent] List all animations for mesh '" + item->getMesh()->getName() + "':");

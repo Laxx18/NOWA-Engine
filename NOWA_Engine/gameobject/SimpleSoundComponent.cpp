@@ -322,7 +322,7 @@ namespace NOWA
         return true;
     }
 
-        bool SimpleSoundComponent::disconnect(void)
+    bool SimpleSoundComponent::disconnect(void)
     {
         GameObjectComponent::disconnect();
 
@@ -364,46 +364,49 @@ namespace NOWA
 
     void SimpleSoundComponent::update(Ogre::Real dt, bool notSimulating)
     {
-        if (false == notSimulating && true == this->playWhenInMotion->getBool())
+        if (false == notSimulating)
         {
-            bool canPlay = false;
-
-            // Check if position or orientation changed
-            if (false == this->oldPosition.positionEquals(this->gameObjectPtr->getPosition(), 0.001f))
+            if (true == this->playWhenInMotion->getBool())
             {
-                canPlay = true;
-            }
-            else if (false == this->gameObjectPtr->getOrientation().equals(this->oldOrientation, Ogre::Degree(0.001f)))
-            {
-                canPlay = true;
-            }
+                bool canPlay = false;
 
-            this->oldPosition = this->gameObjectPtr->getPosition();
-            this->oldOrientation = this->gameObjectPtr->getOrientation();
-
-            if (true == canPlay)
-            {
-                if (nullptr != this->sound)
+                // Check if position or orientation changed
+                if (false == this->oldPosition.positionEquals(this->gameObjectPtr->getPosition(), 0.001f))
                 {
-                    // Do not interrupt sound, when it is currently playing
-                    if (this->sound->isPlaying())
+                    canPlay = true;
+                }
+                else if (false == this->gameObjectPtr->getOrientation().equals(this->oldOrientation, Ogre::Degree(0.001f)))
+                {
+                    canPlay = true;
+                }
+
+                this->oldPosition = this->gameObjectPtr->getPosition();
+                this->oldOrientation = this->gameObjectPtr->getOrientation();
+
+                if (true == canPlay)
+                {
+                    if (nullptr != this->sound)
                     {
-                        return;
+                        // Do not interrupt sound, when it is currently playing
+                        if (this->sound->isPlaying())
+                        {
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        this->createSound();
+                        this->sound->play();
                     }
                 }
                 else
                 {
-                    this->createSound();
-                    this->sound->play();
-                }
-            }
-            else
-            {
-                if (nullptr != this->sound)
-                {
-                    if (this->fadeInFadeOut->getVector2().y > 0.0f)
+                    if (nullptr != this->sound)
                     {
-                        this->sound->fadeOut(this->fadeInFadeOut->getVector2().y);
+                        if (this->fadeInFadeOut->getVector2().y > 0.0f)
+                        {
+                            this->sound->fadeOut(this->fadeInFadeOut->getVector2().y);
+                        }
                     }
                 }
             }

@@ -255,10 +255,10 @@ namespace NOWA
             }
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxDiag] component connect: goNode=" + Ogre::StringConverter::toString(reinterpret_cast<size_t>(this->gameObjectPtr->getSceneNode())) +
+        /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxDiag] component connect: goNode=" + Ogre::StringConverter::toString(reinterpret_cast<size_t>(this->gameObjectPtr->getSceneNode())) +
                                                                                 " goDerivedPos=" + Ogre::StringConverter::toString(this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated()) +
                                                                                 " offsetPosition=" + Ogre::StringConverter::toString(this->particleOffsetPosition->getVector3()) +
-                                                                                " goSceneMgr=" + Ogre::StringConverter::toString(reinterpret_cast<size_t>(this->gameObjectPtr->getSceneManager())));
+                                                                                " goSceneMgr=" + Ogre::StringConverter::toString(reinterpret_cast<size_t>(this->gameObjectPtr->getSceneManager())));*/
 
         return true;
     }
