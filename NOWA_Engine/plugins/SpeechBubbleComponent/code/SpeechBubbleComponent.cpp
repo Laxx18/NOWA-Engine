@@ -111,9 +111,9 @@ namespace NOWA
         textColor(new Variant(SpeechBubbleComponent::AttrTextColor(), Ogre::Vector4(0.0f, 0.0f, 0.0f, 1.0f), this->attributes)),
         bubbleColor(new Variant(SpeechBubbleComponent::AttrBubbleColor(), Ogre::Vector4(1.0f, 1.0f, 1.0f, 1.0f), this->attributes)),
         offsetPosition(new Variant(SpeechBubbleComponent::AttrOffsetPosition(), Ogre::Vector3(0.0f, 1.0f, 0.0f), this->attributes)),
-        maxTextWidth(new Variant(SpeechBubbleComponent::AttrMaxTextWidth(), 6.0f, this->attributes)),
-        orientationTargetId(new Variant(SpeechBubbleComponent::AttrOrientationTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
         offsetOrientation(new Variant(SpeechBubbleComponent::AttrOffsetOrientation(), Ogre::Vector3::ZERO, this->attributes)),
+        orientationTargetId(new Variant(SpeechBubbleComponent::AttrOrientationTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
+        maxTextWidth(new Variant(SpeechBubbleComponent::AttrMaxTextWidth(), 6.0f, this->attributes)),
         padding(new Variant(SpeechBubbleComponent::AttrPadding(), 0.35f, this->attributes)),
         cornerRadius(new Variant(SpeechBubbleComponent::AttrCornerRadius(), 0.35f, this->attributes)),
         captionCount(new Variant(SpeechBubbleComponent::AttrCaptionCount(), static_cast<unsigned int>(1), this->attributes))
@@ -133,7 +133,9 @@ namespace NOWA
         this->charHeight->setDescription("The character height of the speech text in local units.");
         this->textColor->setDescription("The text color (r, g, b, a).");
         this->bubbleColor->setDescription("The bubble body color (r, g, b, a).");
-        this->offsetPosition->setDescription("The offset of the whole speech bubble relative to the game object.");
+        this->offsetPosition->setDescription("The point the speech bubble points at, relative to the game object. The tip of the "
+                                             "tail sits exactly here and stays there; the body always grows upwards from it, so a "
+                                             "long caption can never push the bubble into the ground.");
         this->maxTextWidth->setDescription("Maximum text width in local units. The caption is word wrapped to this width "
                                            "using the real font metrics, so bubble and text always agree.");
         this->orientationTargetId->setDescription("Id of a game object with a CameraComponent the bubble should face. "
@@ -958,6 +960,10 @@ namespace NOWA
 
         if (nullptr != this->textNode)
         {
+            // Uncompensated starting value. As soon as drawSpeechBubble() runs it
+            // replaces this with offsetPosition + the anchor lift that keeps the
+            // tail tip on offsetPosition, which needs the text AABB and can only be
+            // computed once there is geometry.
             this->textNode->setPosition(this->offsetPosition->getVector3());
             this->applyStaticOrientation();
         }
@@ -1363,8 +1369,6 @@ namespace NOWA
             return;
         }
 
-        this->updateOrientation();
-
         // Everything below is built in the bubble node's LOCAL space, which is now
         // identical to the space MovableText lays its glyphs out in. No world space
         // maths, no derived transforms read from a foreign component, therefore no
@@ -1394,6 +1398,32 @@ namespace NOWA
         // Clamped so the corners can never overlap on a small bubble.
         const Ogre::Real radius = std::min(std::max(this->cornerRadius->getReal(), 0.0f), std::min(halfWidth, halfHeight));
 
+        // ---- Anchoring: the bubble grows UPWARDS -----------------------------
+        //
+        // MovableText lays its lines out downwards from the node origin - every
+        // '\n' does "top -= charHeight". The bubble is derived from that block, so
+        // with a growing caption it grew downwards as well and sooner or later sank
+        // into the terrain.
+        //
+        // The fix is a per frame compensation: the whole node is lifted by exactly
+        // as much as the bubble reaches below the anchor, so the tail TIP always
+        // ends up at Offset Position and every additional line of text pushes the
+        // body upwards instead of downwards. Offset Position therefore means "the
+        // point the bubble points at" - typically slightly above the head - and
+        // that point stays put no matter how long the caption is.
+        //
+        // The node may be written to directly here: this runs on the render thread
+        // and the node is deliberately untracked (see createSpeechBubble()).
+        const Ogre::Real tailLength = std::max(pad + radius, 0.05f);
+        const Ogre::Real bodyBottom = centerY - halfHeight;
+        const Ogre::Real anchorLift = tailLength - bodyBottom;
+
+        this->textNode->setPosition(this->offsetPosition->getVector3() + Ogre::Vector3(0.0f, anchorLift, 0.0f));
+
+        // The orientation is read back from the node further down, so it has to be
+        // updated AFTER the position has been corrected.
+        this->updateOrientation();
+
         const Ogre::Vector4 bc = this->bubbleColor->getVector4();
         const Ogre::ColourValue bubbleColourValue(bc.x, bc.y, bc.z, bc.w);
 
@@ -1422,15 +1452,19 @@ namespace NOWA
         const Ogre::Vector3 bubbleCenter(centerX, centerY, 0.0f);
 
         // ---- Tail ----------------------------------------------------------
-        // Tip stays at the local origin, which is the anchor / mouth position and is
-        // deliberately NOT shifted along with the body.
-        const Ogre::Vector3 tailTip = Ogre::Vector3::ZERO;
+        // The tip hangs one tail length below the bottom edge of the body. Together
+        // with the lift applied above this puts it exactly on Offset Position, in
+        // world space, on every frame and for every caption length. It used to sit
+        // at the local origin instead, which meant it drifted further and further
+        // away from the body with every additional line of text and ended up as a
+        // long white wedge running across the scene.
         const Ogre::Real tailBaseY = centerY - halfHeight;
+        const Ogre::Vector3 tailTip(0.0f, tailBaseY - tailLength, 0.0f);
         const Ogre::Real tailHalfSpan = std::max(std::min(halfWidth - radius, pad + radius), 0.05f);
 
         // Anchor the tail to the part of the bottom edge closest to the tip, so it
         // always points at the character no matter how the body is offset.
-        Ogre::Real tailAnchorX = 0.0f;
+        Ogre::Real tailAnchorX = tailTip.x;
         const Ogre::Real tailMin = centerX - halfWidth + radius + tailHalfSpan;
         const Ogre::Real tailMax = centerX + halfWidth - radius - tailHalfSpan;
         if (tailMin <= tailMax)

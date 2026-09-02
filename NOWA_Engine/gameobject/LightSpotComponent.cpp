@@ -499,35 +499,59 @@ namespace NOWA
 
         if ("Range" == attenuationMode)
         {
+            // Default values for Range attenuation
+            this->attenuationRange->setValue(23.0f);
+            this->attenuationConstant->setValue(1.0f);
+            this->attenuationLinear->setValue(0.0f);
+            this->attenuationQuadratic->setValue(0.0f);
+
             this->attenuationRange->setVisible(true);
             this->attenuationConstant->setVisible(true);
             this->attenuationLinear->setVisible(true);
             this->attenuationQuadratic->setVisible(true);
+
             this->attenuationRadius->setVisible(false);
             this->attenuationLumThreshold->setVisible(false);
+
             if (nullptr != this->light)
             {
-                NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+                const Ogre::Real range = this->attenuationRange->getReal();
+                const Ogre::Real constant = this->attenuationConstant->getReal();
+                const Ogre::Real linear = this->attenuationLinear->getReal();
+                const Ogre::Real quadratic = this->attenuationQuadratic->getReal();
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, range, constant, linear, quadratic]
                 {
-                    this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+                    this->light->setAttenuation(range, constant, linear, quadratic);
                 };
+
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightSpotComponent::setAttenuationMode1");
             }
         }
         else
         {
+            // Default values for Radius attenuation
+            this->attenuationRadius->setValue(10.0f);
+            this->attenuationLumThreshold->setValue(0.00192f);
+
             this->attenuationRange->setVisible(false);
             this->attenuationConstant->setVisible(false);
             this->attenuationLinear->setVisible(false);
             this->attenuationQuadratic->setVisible(false);
+
             this->attenuationRadius->setVisible(true);
             this->attenuationLumThreshold->setVisible(true);
+
             if (nullptr != this->light)
             {
-                NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+                const Ogre::Real radius = this->attenuationRadius->getReal();
+                const Ogre::Real lumThreshold = this->attenuationLumThreshold->getReal();
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, radius, lumThreshold]
                 {
-                    this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+                    this->light->setAttenuationBasedOnRadius(radius, lumThreshold);
                 };
+
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightSpotComponent::setAttenuationMode2");
             }
         }
@@ -541,12 +565,19 @@ namespace NOWA
     void LightSpotComponent::setAttenuationRange(Ogre::Real attenuationRange)
     {
         this->attenuationRange->setValue(attenuationRange);
-        if (nullptr != this->light)
+
+        if (nullptr != this->light && "Range" == this->attenuationMode->getListSelectedValue())
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            const Ogre::Real range = this->attenuationRange->getReal();
+            const Ogre::Real constant = this->attenuationConstant->getReal();
+            const Ogre::Real linear = this->attenuationLinear->getReal();
+            const Ogre::Real quadratic = this->attenuationQuadratic->getReal();
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, range, constant, linear, quadratic]
             {
-                this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+                this->light->setAttenuation(range, constant, linear, quadratic);
             };
+
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightSpotComponent::setAttenuationRange");
         }
     }
@@ -559,12 +590,19 @@ namespace NOWA
     void LightSpotComponent::setAttenuationConstant(Ogre::Real attenuationConstant)
     {
         this->attenuationConstant->setValue(attenuationConstant);
-        if (nullptr != this->light)
+
+        if (nullptr != this->light && "Range" == this->attenuationMode->getListSelectedValue())
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            const Ogre::Real range = this->attenuationRange->getReal();
+            const Ogre::Real constant = this->attenuationConstant->getReal();
+            const Ogre::Real linear = this->attenuationLinear->getReal();
+            const Ogre::Real quadratic = this->attenuationQuadratic->getReal();
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, range, constant, linear, quadratic]
             {
-                this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+                this->light->setAttenuation(range, constant, linear, quadratic);
             };
+
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightSpotComponent::setAttenuationConstant");
         }
     }
@@ -577,12 +615,19 @@ namespace NOWA
     void LightSpotComponent::setAttenuationLinear(Ogre::Real attenuationLinear)
     {
         this->attenuationLinear->setValue(attenuationLinear);
-        if (nullptr != this->light)
+
+        if (nullptr != this->light && "Range" == this->attenuationMode->getListSelectedValue())
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            const Ogre::Real range = this->attenuationRange->getReal();
+            const Ogre::Real constant = this->attenuationConstant->getReal();
+            const Ogre::Real linear = this->attenuationLinear->getReal();
+            const Ogre::Real quadratic = this->attenuationQuadratic->getReal();
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, range, constant, linear, quadratic]
             {
-                this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+                this->light->setAttenuation(range, constant, linear, quadratic);
             };
+
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightSpotComponent::setAttenuationLinear");
         }
     }
@@ -595,12 +640,19 @@ namespace NOWA
     void LightSpotComponent::setAttenuationQuadratic(Ogre::Real attenuationQuadratic)
     {
         this->attenuationQuadratic->setValue(attenuationQuadratic);
-        if (nullptr != this->light)
+
+        if (nullptr != this->light && "Range" == this->attenuationMode->getListSelectedValue())
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            const Ogre::Real range = this->attenuationRange->getReal();
+            const Ogre::Real constant = this->attenuationConstant->getReal();
+            const Ogre::Real linear = this->attenuationLinear->getReal();
+            const Ogre::Real quadratic = this->attenuationQuadratic->getReal();
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, range, constant, linear, quadratic]
             {
-                this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+                this->light->setAttenuation(range, constant, linear, quadratic);
             };
+
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightSpotComponent::setAttenuationQuadratic");
         }
     }
@@ -613,12 +665,17 @@ namespace NOWA
     void LightSpotComponent::setAttenuationRadius(Ogre::Real attenuationRadius)
     {
         this->attenuationRadius->setValue(attenuationRadius);
-        if (nullptr != this->light)
+
+        if (nullptr != this->light && "Radius" == this->attenuationMode->getListSelectedValue())
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            const Ogre::Real radius = this->attenuationRadius->getReal();
+            const Ogre::Real lumThreshold = this->attenuationLumThreshold->getReal();
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, radius, lumThreshold]
             {
-                this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+                this->light->setAttenuationBasedOnRadius(radius, lumThreshold);
             };
+
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightSpotComponent::setAttenuationRadius");
         }
     }
@@ -631,19 +688,24 @@ namespace NOWA
     void LightSpotComponent::setAttenuationLumThreshold(Ogre::Real attenuationLumThreshold)
     {
         this->attenuationLumThreshold->setValue(attenuationLumThreshold);
-        if (nullptr != this->light)
+
+        if (nullptr != this->light && "Radius" == this->attenuationMode->getListSelectedValue())
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]
+            const Ogre::Real radius = this->attenuationRadius->getReal();
+            const Ogre::Real lumThreshold = this->attenuationLumThreshold->getReal();
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, radius, lumThreshold]
             {
-                this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+                this->light->setAttenuationBasedOnRadius(radius, lumThreshold);
             };
+
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightSpotComponent::setAttenuationLumThreshold");
         }
     }
 
     Ogre::Real LightSpotComponent::getAttenuationLumThreshold(void) const
     {
-        return this->attenuationRadius->getReal();
+        return this->attenuationLumThreshold->getReal();
     }
 
     void LightSpotComponent::setCastShadows(bool castShadows)

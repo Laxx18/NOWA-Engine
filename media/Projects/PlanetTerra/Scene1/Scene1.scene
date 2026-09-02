@@ -471,32 +471,32 @@
 					<property type="7" name="AttributeName0" data="isOnPlanet"/>
 					<property type="7" name="AttributeType0" data="Bool"/>
 					<property type="7" name="AttributeValue0" data="true"/>
-					<property type="7" name="ComponentGameObjectTitleComponent" data="GameObjectTitleComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="7" name="FontName" data="BlueHighway"/>
-					<property type="7" name="Caption" data="I need to fly to planet Corba
-Alfred has important information!"/>
-					<property type="6" name="CharHeight" data="0.5"/>
-					<property type="12" name="AlwaysPresent" data="true"/>
-					<property type="9" name="OffsetPosition" data="0 2 -1"/>
-					<property type="9" name="OffsetOrientation" data="0 180 0"/>
-					<property type="2" name="OrientationTargetId" data="0"/>
-					<property type="10" name="Color" data="0 0 0 1"/>
-					<property type="8" name="Alignment" data="1 1"/>
 					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="Caption" data="I need to fly to planet Corba
-Alfred has important information!"/>
+					<property type="7" name="Caption" data="I need to fly to planet Corba."/>
+					<property type="2" name="CaptionCount" data="2"/>
+					<property type="7" name="Caption0" data="I need to fly to planet Corba."/>
+					<property type="6" name="SpeechDuration0" data="5"/>
+					<property type="7" name="Caption1" data="Alfred has important information!"/>
+					<property type="6" name="SpeechDuration1" data="10"/>
 					<property type="12" name="RunSpeech" data="true"/>
-					<property type="6" name="SpeechDuration" data="7"/>
+					<property type="6" name="SpeechDuration" data="5"/>
 					<property type="12" name="RunSpeechSound" data="false"/>
-					<property type="12" name="KeepCaption" data="false"/>
+					<property type="12" name="KeepCaption" data="true"/>
 					<property type="6" name="XOffsetStart" data="-0.5"/>
+					<property type="7" name="FontName" data="BlueHighway"/>
+					<property type="6" name="CharHeight" data="0.5"/>
+					<property type="10" name="TextColor" data="0 0 0 1"/>
+					<property type="10" name="BubbleColor" data="1 1 1 1"/>
+					<property type="9" name="OffsetPosition" data="0 2 -1"/>
+					<property type="6" name="MaxTextWidth" data="6"/>
+					<property type="2" name="OrientationTargetId" data="0"/>
+					<property type="9" name="OffsetOrientation" data="0 180 0"/>
+					<property type="6" name="Padding" data="0.35"/>
+					<property type="6" name="CornerRadius" data="0.35"/>
 				</userData>
 			</item>
 		</node>
@@ -631,30 +631,32 @@ Alfred has important information!"/>
 					<property type="6" name="RotationSpeed" data="10"/>
 					<property type="12" name="FlyMode" data="false"/>
 					<property type="7" name="StartStateName" data="WanderState"/>
-					<property type="7" name="ComponentGameObjectTitleComponent" data="GameObjectTitleComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="7" name="FontName" data="BlueHighway"/>
-					<property type="7" name="Caption" data=""/>
-					<property type="6" name="CharHeight" data="0.2"/>
-					<property type="12" name="AlwaysPresent" data="true"/>
-					<property type="9" name="OffsetPosition" data="2 2 0"/>
-					<property type="9" name="OffsetOrientation" data="0 0 0"/>
-					<property type="2" name="OrientationTargetId" data="0"/>
-					<property type="10" name="Color" data="0 0 0 1"/>
-					<property type="8" name="Alignment" data="1 1"/>
 					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
-					<property type="7" name="Caption" data="Hello Stranger, please fly to planet Eri and bring me the lost stonetable. There is important information on it how to save our local solar system."/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Caption" data="Hello Stranger, please fly to planet Eri and bring me the lost stonetable."/>
+					<property type="2" name="CaptionCount" data="2"/>
+					<property type="7" name="Caption0" data="Hello Stranger, please fly to planet Eri and bring me the lost stonetable."/>
+					<property type="6" name="SpeechDuration0" data="5"/>
+					<property type="7" name="Caption1" data="There is important information on it how to save our local solar system."/>
+					<property type="6" name="SpeechDuration1" data="10"/>
 					<property type="12" name="RunSpeech" data="true"/>
-					<property type="6" name="SpeechDuration" data="10"/>
+					<property type="6" name="SpeechDuration" data="5"/>
 					<property type="12" name="RunSpeechSound" data="false"/>
 					<property type="12" name="KeepCaption" data="true"/>
 					<property type="6" name="XOffsetStart" data="-0.5"/>
+					<property type="7" name="FontName" data="BlueHighway"/>
+					<property type="6" name="CharHeight" data="0.5"/>
+					<property type="10" name="TextColor" data="0 0 0 1"/>
+					<property type="10" name="BubbleColor" data="1 1 1 1"/>
+					<property type="9" name="OffsetPosition" data="2 2 0"/>
+					<property type="6" name="MaxTextWidth" data="6"/>
+					<property type="2" name="OrientationTargetId" data="0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="6" name="Padding" data="0.35"/>
+					<property type="6" name="CornerRadius" data="0.35"/>
 				</userData>
 			</item>
 		</node>

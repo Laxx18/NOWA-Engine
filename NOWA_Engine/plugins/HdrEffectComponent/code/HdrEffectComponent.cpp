@@ -22,13 +22,13 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    HdrEffectComponent::HdrEffectComponent()
-        : GameObjectComponent(),
+    HdrEffectComponent::HdrEffectComponent() :
+        GameObjectComponent(),
         name("HdrEffectComponent"),
-        effectName(new Variant(HdrEffectComponent::AttrEffectName(), {"Bright, sunny day", "Scary Night", "Dark Night", 
-        "Dream Night", "Average, slightly hazy day", "Heavy overcast day", "Gibbous moon night", 
-         "JJ Abrams style", "Black Night", "Golden Hour", "Dawn", "Dusk", "Stormy", "Underwater",
-         "Alien World", "Foggy Morning", "Foggy Day", "Desert Noon", "Arctic Day", "Neon Night", "Volcanic", "Moonless Night", "Custom"}, this->attributes)),
+        effectName(new Variant(HdrEffectComponent::AttrEffectName(),
+            {"Bright, sunny day", "Scary Night", "Dark Night", "Dream Night", "Average, slightly hazy day", "Heavy overcast day", "Gibbous moon night", "JJ Abrams style", "Black Night", "Golden Hour", "Dawn", "Dusk", "Stormy", "Underwater",
+                "Alien World", "Foggy Morning", "Foggy Day", "Desert Noon", "Arctic Day", "Neon Night", "Volcanic", "Moonless Night", "Custom"},
+            this->attributes)),
         skyColor(new Variant(HdrEffectComponent::AttrSkyColor(), Ogre::Vector4(0.2f, 0.4f, 0.6f, 1.0f) * 60.0f, this->attributes)),
         upperHemisphere(new Variant(HdrEffectComponent::AttrUpperHemisphere(), Ogre::Vector4(0.3f, 0.50f, 0.7f, 1.0f) * 4.5f, this->attributes)),
         lowerHemisphere(new Variant(HdrEffectComponent::AttrLowerHemisphere(), Ogre::Vector4(0.6f, 0.45f, 0.3f, 1.0f) * 2.925f, this->attributes)),
@@ -40,7 +40,14 @@ namespace NOWA
         envMapScale(new Variant(HdrEffectComponent::AttrEnvMapScale(), 16.0f, this->attributes)),
         lightDirectionalComponent(nullptr),
         workspaceBaseComponent(nullptr),
-        isApplyingPreset(false)
+        isApplyingPreset(false),
+        oldLightPowerScale(3.14159f),
+        hasConnectLightingSnapshot(false),
+        connectOldLightPowerScale(3.14159f),
+        connectOldAmbientUpperHemisphere(Ogre::ColourValue::Black),
+        connectOldAmbientLowerHemisphere(Ogre::ColourValue::Black),
+        connectOldAmbientHemisphereDir(Ogre::Vector3::UNIT_Y),
+        connectOldEnvMapScale(1.0f)
     {
         this->effectName->addUserData(GameObject::AttrActionNeedRefresh());
         this->skyColor->addUserData(GameObject::AttrActionColorDialog());
@@ -212,6 +219,29 @@ namespace NOWA
             // Note: If its a camera, e.g. MainCamera and hdr effect shall be set, but there is split screen scenario active, the hdr effect may not be set for a camera, which is not involved in split screen scenario
             if ((true == cameraCompPtr->isActivated() && false == AppStateManager::getSingletonPtr()->getWorkspaceModule()->getSplitScreenScenarioActive()) || true == this->workspaceBaseComponent->getInvolvedInSplitScreen())
             {
+                // FIX/FEATURE: snapshot whatever lighting was in effect right
+                // before HDR touches anything - directional light power scale is
+                // GLOBAL (there is only one directional light for the whole
+                // scene), so if HDR overrides it (e.g. to 200 for a bright
+                // preset) and that override is never reverted, the scene can get
+                // saved with the blown-out value baked in, making the next load
+                // start already overexposed. disconnect() -> resetShining() uses
+                // this snapshot to put everything back exactly as it was.
+                if (nullptr != this->lightDirectionalComponent)
+                {
+                    this->connectOldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
+                }
+
+                Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+                if (nullptr != sceneManager)
+                {
+                    this->connectOldAmbientUpperHemisphere = sceneManager->getAmbientLightUpperHemisphere();
+                    this->connectOldAmbientLowerHemisphere = sceneManager->getAmbientLightLowerHemisphere();
+                    this->connectOldAmbientHemisphereDir = sceneManager->getAmbientLightHemisphereDir();
+                    // this->connectOldEnvMapScale = sceneManager->getAmbientLightEnvMapScale();
+                }
+                this->hasConnectLightingSnapshot = true;
+
                 this->postApplySunPower();
 
                 this->applyCurrentValues();
@@ -239,10 +269,14 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] Destructor hdr effect component for game object: " + this->gameObjectPtr->getName());
 
+        // FIX: resetShining() needs this->lightDirectionalComponent (and the
+        // scene manager) to still be valid to actually restore the saved
+        // snapshot - it used to run AFTER both were already nulled below,
+        // which meant the light power scale never got restored on removal.
+        this->resetShining();
+
         this->lightDirectionalComponent = nullptr;
         this->workspaceBaseComponent = nullptr;
-
-        this->resetShining();
     }
 
     void HdrEffectComponent::onOtherComponentRemoved(unsigned int index)
@@ -263,7 +297,7 @@ namespace NOWA
         boost::shared_ptr<EventDataHdrActivated> castEventData = boost::static_pointer_cast<EventDataHdrActivated>(eventData);
 
         // Only react if the event concerns this game object's workspace
-        if (castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+        if (castEventData->getGameObjectId() != this->gameObjectPtr->getId())
         {
             return;
         }
@@ -442,25 +476,52 @@ namespace NOWA
 
     void HdrEffectComponent::resetShining(void)
     {
-#if 0
-		if (true == Core::getSingletonPtr()->getIsSceneBeingDestroyed())
-		{
-			return;
-		}
-		// Reset shining and set default values
-		if (nullptr != this->lightDirectionalComponent)
-		{
-			ENQUEUE_RENDER_COMMAND("HdrEffectComponent::resetShining",
-				{
-					this->lightDirectionalComponent->setPowerScale(3.14159f);
-				});
-		}
-		this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.03375f, 0.05625f, 0.07875f), Ogre::ColourValue(0.04388f, 0.03291f, 0.02194f, 0.07312f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
-#endif
+        if (true == Core::getSingletonPtr()->getIsSceneBeingDestroyed())
+        {
+            return;
+        }
+
+        // FIX: this used to be entirely #if-0'd out, and even enabled it only
+        // ever wrote hardcoded fallback values - never the lighting that was
+        // actually active before connect() applied HDR. That meant an HDR
+        // override (e.g. directional light power scale 200 for a bright
+        // preset) never got reverted on disconnect, since the directional
+        // light is global (only one for the whole scene) - the blown-out
+        // state could even get saved into the scene file and reappear
+        // immediately blown out on next load.
+        if (false == this->hasConnectLightingSnapshot)
+        {
+            // connect() never actually applied HDR for this component (e.g.
+            // its camera was inactive, or split-screen didn't involve it) -
+            // nothing was overridden, so there is nothing to restore.
+            return;
+        }
+
+        if (nullptr != this->lightDirectionalComponent)
+        {
+            Ogre::Real restorePowerScale = this->connectOldLightPowerScale;
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, restorePowerScale]()
+            {
+                this->lightDirectionalComponent->setPowerScale(restorePowerScale);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "HdrEffectComponent::resetShining");
+        }
+
+        if (nullptr != this->gameObjectPtr)
+        {
+            Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+            if (nullptr != sceneManager)
+            {
+                sceneManager->setAmbientLight(this->connectOldAmbientUpperHemisphere, this->connectOldAmbientLowerHemisphere, this->connectOldAmbientHemisphereDir, this->connectOldEnvMapScale);
+            }
+        }
+
+        this->hasConnectLightingSnapshot = false;
     }
 
     void HdrEffectComponent::postApplySunPower(void)
     {
+        this->oldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
         // The presets are calibrated like the Ogre HDR sample: powerScale is
         // lumens / 1024, e.g. 97 = direct sunlight (~100.000 lumens).
         // NO multiplication by PI here, and setEffectName must not do it either,
@@ -538,7 +599,7 @@ namespace NOWA
                 // Play with this value:
                 const Ogre::Real skyBoxCompensation = 0.5f;
                 Ogre::Real hdrSkyPower = (0.2125f * hdrSkyColor.r + 0.7154f * hdrSkyColor.g + 0.0721f * hdrSkyColor.b) / 0.372f * skyBoxCompensation;
-                
+
                 if (hdrSkyPower < 0.001f)
                 {
                     hdrSkyPower = 0.001f;
@@ -667,6 +728,8 @@ namespace NOWA
     {
         this->effectName->setListSelectedValue(effectName);
 
+        this->oldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
+
         // ====================================================================
         // Preset calibration philosophy (post aspect-ratio fix):
         //
@@ -691,7 +754,7 @@ namespace NOWA
             this->skyColor->setValue(Ogre::Vector4(0.2f, 0.4f, 0.6f, 1.0f) * 60.0f);
             this->upperHemisphere->setValue(Ogre::Vector4(0.3f, 0.50f, 0.7f, 1.0f) * 4.5f);
             this->lowerHemisphere->setValue(Ogre::Vector4(0.6f, 0.45f, 0.3f, 1.0f) * 2.925f);
-            this->sunPower->setValue(97.0f);
+            this->sunPower->setValue(200.0f);
             this->exposure->setValue(-0.3f);
             this->minAutoExposure->setValue(-1.5f);
             this->maxAutoExposure->setValue(1.0f);
@@ -993,6 +1056,8 @@ namespace NOWA
 
     void HdrEffectComponent::refreshAllParameters()
     {
+        this->oldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
+
         // Force re-application of all parameters
         this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
 
@@ -1233,33 +1298,30 @@ namespace NOWA
 
     void HdrEffectComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)
-        [
-            class_<HdrEffectComponent, GameObjectComponent>("HdrEffectComponent")
-            .def("setEffectName", &HdrEffectComponent::setEffectName)
-            .def("getEffectName", &HdrEffectComponent::getEffectName)
-            .def("setSkyColor", &HdrEffectComponent::setSkyColor)
-            .def("getSkyColor", &HdrEffectComponent::getSkyColor)
-            .def("setUpperHemisphere", &HdrEffectComponent::setUpperHemisphere)
-            .def("getUpperHemisphere", &HdrEffectComponent::getUpperHemisphere)
-            .def("setLowerHemisphere", &HdrEffectComponent::setLowerHemisphere)
-            .def("getLowerHemisphere", &HdrEffectComponent::getLowerHemisphere)
-            .def("setSunPower", &HdrEffectComponent::setSunPower)
-            .def("getSunPower", &HdrEffectComponent::getSunPower)
-            .def("setExposure", &HdrEffectComponent::setExposure)
-            .def("getExposure", &HdrEffectComponent::getExposure)
-            .def("setMinAutoExposure", &HdrEffectComponent::setMinAutoExposure)
-            .def("getMinAutoExposure", &HdrEffectComponent::getMinAutoExposure)
-            .def("setMaxAutoExposure", &HdrEffectComponent::setMaxAutoExposure)
-            .def("getMaxAutoExposure", &HdrEffectComponent::getMaxAutoExposure)
-            .def("setBloom", &HdrEffectComponent::setBloom)
-            .def("getBloom", &HdrEffectComponent::getBloom)
-            .def("setEnvMapScale", &HdrEffectComponent::setEnvMapScale)
-            .def("getEnvMapScale", &HdrEffectComponent::getEnvMapScale)
-        ];
+        module(lua)[class_<HdrEffectComponent, GameObjectComponent>("HdrEffectComponent")
+                .def("setEffectName", &HdrEffectComponent::setEffectName)
+                .def("getEffectName", &HdrEffectComponent::getEffectName)
+                .def("setSkyColor", &HdrEffectComponent::setSkyColor)
+                .def("getSkyColor", &HdrEffectComponent::getSkyColor)
+                .def("setUpperHemisphere", &HdrEffectComponent::setUpperHemisphere)
+                .def("getUpperHemisphere", &HdrEffectComponent::getUpperHemisphere)
+                .def("setLowerHemisphere", &HdrEffectComponent::setLowerHemisphere)
+                .def("getLowerHemisphere", &HdrEffectComponent::getLowerHemisphere)
+                .def("setSunPower", &HdrEffectComponent::setSunPower)
+                .def("getSunPower", &HdrEffectComponent::getSunPower)
+                .def("setExposure", &HdrEffectComponent::setExposure)
+                .def("getExposure", &HdrEffectComponent::getExposure)
+                .def("setMinAutoExposure", &HdrEffectComponent::setMinAutoExposure)
+                .def("getMinAutoExposure", &HdrEffectComponent::getMinAutoExposure)
+                .def("setMaxAutoExposure", &HdrEffectComponent::setMaxAutoExposure)
+                .def("getMaxAutoExposure", &HdrEffectComponent::getMaxAutoExposure)
+                .def("setBloom", &HdrEffectComponent::setBloom)
+                .def("getBloom", &HdrEffectComponent::getBloom)
+                .def("setEnvMapScale", &HdrEffectComponent::setEnvMapScale)
+                .def("getEnvMapScale", &HdrEffectComponent::getEnvMapScale)];
 
         gameObjectClass.def("getHdrEffectComponentFromName", &getHdrEffectComponentFromName);
-        gameObjectClass.def("getHdrEffectComponent", (HdrEffectComponent * (*)(GameObject*)) &getHdrEffectComponent);
+        gameObjectClass.def("getHdrEffectComponent", (HdrEffectComponent * (*)(GameObject*)) & getHdrEffectComponent);
 
         LuaScriptApi::getInstance()->LuaScriptApi::getInstance()->addClassToCollection("GameObject", "HdrEffectComponent getHdrEffectComponent()", "Gets the component. This can be used if the game object this component just once.");
         LuaScriptApi::getInstance()->LuaScriptApi::getInstance()->addClassToCollection("GameObject", "HdrEffectComponent getHdrEffectComponentFromName(String name)", "Gets the component from name.");

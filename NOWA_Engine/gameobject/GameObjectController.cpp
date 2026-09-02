@@ -647,7 +647,7 @@ namespace NOWA
 
         // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName());
 
-        if (NOWA::ITEM == originalGameObjectPtr->getType())
+        if (NOWA::ITEM == originalGameObjectPtr->getType() || NOWA::SCENE_NODE == originalGameObjectPtr->getType())
         {
             clonedMovableObject = sceneManager->createItem(static_cast<Ogre::Item*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
         }
@@ -655,7 +655,7 @@ namespace NOWA
         clonedSceneNode->attachObject(clonedMovableObject);
         if (nullptr != clonedMovableObject)
         {
-            if (NOWA::ITEM == originalGameObjectPtr->getType())
+            if (NOWA::ITEM == originalGameObjectPtr->getType() || NOWA::SCENE_NODE == originalGameObjectPtr->getType())
             {
                 // also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
                 for (unsigned int i = 0; i < static_cast<Ogre::Item*>(originalMovableObject)->getNumSubItems(); i++)
@@ -704,7 +704,7 @@ namespace NOWA
             const auto datablock = originalGameObjectPtr->dataBlocks[i];
             Ogre::String datablockName = datablock->getString();
             // clonedGameObjectPtr->setDatablock(originalGameObjectPtr->dataBlocks[i]);
-            clonedGameObjectPtr->actualizeDatablockName(originalGameObjectPtr->dataBlocks[i]->getString(), i);
+            clonedGameObjectPtr->actualizeDatablockName(originalGameObjectPtr->dataBlocks[i]->getString(), static_cast<unsigned short>(i));
         }
 
         if (!clonedGameObjectPtr->init())

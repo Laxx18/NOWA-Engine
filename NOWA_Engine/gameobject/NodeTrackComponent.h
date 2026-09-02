@@ -32,6 +32,11 @@ namespace NOWA
 		* @see		GameObjectComponent::postInit
 		*/
 		virtual bool postInit(void) override;
+   
+       /**
+        * @see		GameObjectComponent::onRemoveComponent
+        */
+        virtual void onRemoveComponent(void) override;
 
 		/**
 		* @see		GameObjectComponent::connect
@@ -211,6 +216,8 @@ namespace NOWA
 		Ogre::v1::Animation* animation;
 		Ogre::v1::NodeAnimationTrack* animationTrack;
 		Ogre::v1::AnimationState* animationState;
+        Ogre::Camera* camera;
+        bool trackingActive;
 	};
 
 }; //namespace end
