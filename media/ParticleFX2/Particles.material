@@ -158,6 +158,14 @@ hlms Particle/BlurredBubble unlit
 }
 
 // bm: AlphaTransparent
+hlms Particle/Zzz unlit
+{
+	diffuse_map p_zzz.png
+	cull_mode none
+	diffuse 1 1 1
+}
+
+// bm: AlphaTransparent
 hlms Particle/Tornado unlit
 {
     diffuse_map p_sand_336x330.png 

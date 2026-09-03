@@ -390,7 +390,7 @@ namespace NOWA
                 if (sourceDuration > 0.0f)
                 {
                     // See: comments in AnimationComponentV2
-                    Ogre::Real deltaTime = dt * this->animationSpeeds[this->currentAnimationIndex]->getReal() /*/ sourceDuration*/;
+                    Ogre::Real deltaTime = dt * this->animationSpeeds[this->currentAnimationIndex]->getReal() / sourceDuration;
                     this->animationBlender->addTime(deltaTime, this->getClassName());
 
                     if (true == this->bShowDebugData)

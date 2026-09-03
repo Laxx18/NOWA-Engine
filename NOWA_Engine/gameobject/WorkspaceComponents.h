@@ -412,6 +412,19 @@ namespace NOWA
 
 		Ogre::ParallaxCorrectedCubemapAuto* parallaxCorrectedCubemap;
 		Ogre::CompositorWorkspace* workspacePccProbes;
+
+		/**
+         * @brief   True while connectExternal(0, finalRenderingNodeName, 0) is declared on the current
+         *          workspace definition.
+         *
+         *          Ogre exposes no getter for the external channel routes - _getChannelRoutes() returns
+         *          the INTER-NODE routes, and connectExternal() writes into mExternalChannelRoutes
+         *          instead. The state therefore has to be tracked here. It must be updated at every
+         *          place where the external route is declared or dropped, which is exactly:
+         *          baseCreateWorkspace() (declares it), and clearOutputConnections() / clearAll() /
+         *          removeWorkspace() (drop it).
+         */
+        bool externalChannelConnected;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////

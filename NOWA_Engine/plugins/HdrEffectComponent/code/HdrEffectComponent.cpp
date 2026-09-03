@@ -22,6 +22,121 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
+    namespace
+    {
+        const Ogre::String ATMOSPHERE_COMPONENT_CLASS_NAME = "AtmosphereComponent";
+
+        // ====================================================================================
+        // Diagnostics for the shared lighting state. DELIBERATELY file local: temporary
+        // troubleshooting scaffolding for the "who writes the directional light and the scene
+        // ambient last" question, nothing of it is declared in the header. Deleting this block
+        // plus its call sites removes the instrumentation completely. It reads the component
+        // through its PUBLIC getters only, which is why it needs no access to internals.
+        // ====================================================================================
+        void logLightingState(const Ogre::String& context, const Ogre::String& gameObjectName, HdrEffectComponent* component, Ogre::SceneManager* sceneManager, Ogre::Real powerScale)
+        {
+            if (nullptr == component)
+            {
+                return;
+            }
+
+            Ogre::String description;
+
+            if (nullptr == sceneManager)
+            {
+                description = "<no scene manager>";
+            }
+            else
+            {
+                const Ogre::ColourValue upperHemisphere = sceneManager->getAmbientLightUpperHemisphere();
+                const Ogre::ColourValue lowerHemisphere = sceneManager->getAmbientLightLowerHemisphere();
+
+                // Same read out as the probe in AtmosphereComponent.cpp, so both sides of the
+                // conflict produce comparable lines in one and the same log. The envmap scale
+                // has no getter of its own - it lives in upperHemisphere.a.
+                description = "powerScale=" + Ogre::StringConverter::toString(powerScale) + " envMapScale=" + Ogre::StringConverter::toString(upperHemisphere.a) +
+                              " upper=" + Ogre::StringConverter::toString(Ogre::Vector3(upperHemisphere.r, upperHemisphere.g, upperHemisphere.b)) +
+                              " lower=" + Ogre::StringConverter::toString(Ogre::Vector3(lowerHemisphere.r, lowerHemisphere.g, lowerHemisphere.b));
+            }
+
+            description += " | want: sunPower=" + Ogre::StringConverter::toString(component->getSunPower()) + " envMapScale=" + Ogre::StringConverter::toString(component->getEnvMapScale()) +
+                           " exposure=" + Ogre::StringConverter::toString(component->getExposure()) + " minAuto=" + Ogre::StringConverter::toString(component->getMinAutoExposure()) +
+                           " maxAuto=" + Ogre::StringConverter::toString(component->getMaxAutoExposure()) + " effect=" + component->getEffectName() +
+                           " | atmosphereOwnsLighting=" + Ogre::String(component->isAtmosphereOwningLighting() ? "true" : "false");
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HdrEffectComponent][LIGHTING] " + context + " for '" + gameObjectName + "': " + description);
+        }
+
+        /**
+         * Makes sure a compositor material is actually LOADED before anybody writes shader
+         * constants into it, and reports what really arrived.
+         *
+         * Ogre::MaterialManager::getByName() hands out the material in whatever state it happens
+         * to be in. A material parsed from script but never loaded has no compiled GPU program
+         * yet, and the named constant map lives in the GPU program - so
+         * GpuProgramParameters::setNamedConstant() has nothing to write into and the value is
+         * silently dropped. The existing "Applied exposure: ..." line is printed unconditionally
+         * and therefore says nothing about whether the write landed.
+         *
+         * @return True if the material carries a resolvable named constant of that name.
+         */
+        bool prepareCompositorMaterial(const Ogre::MaterialPtr& material, const Ogre::String& materialName, const Ogre::String& constantName)
+        {
+            if (true == material.isNull())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HdrEffectComponent][MATERIAL] '" + materialName + "' not found at all.");
+                return false;
+            }
+
+            const bool wasLoaded = material->isLoaded();
+            if (false == wasLoaded)
+            {
+                material->load();
+            }
+
+            Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+            Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+            const bool constantResolvable = (nullptr != psParams->_findNamedConstantDefinition(constantName));
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HdrEffectComponent][MATERIAL] '" + materialName + "' wasLoaded=" + Ogre::String(wasLoaded ? "true" : "false") +
+                                                                                    " isLoadedNow=" + Ogre::String(material->isLoaded() ? "true" : "false") + " hasFragmentProgram=" + Ogre::String(pass->hasFragmentProgram() ? "true" : "false") +
+                                                                                    " '" + constantName + "' resolvable=" + Ogre::String(constantResolvable ? "true" : "false"));
+
+            return constantResolvable;
+        }
+
+        /**
+         * Reads a named constant back out of the pass after it was written, so the log shows the
+         * value that is actually in the parameter block rather than the value somebody intended
+         * to put there.
+         */
+        void logNamedConstantReadback(Ogre::Pass* pass, const Ogre::String& materialName, const Ogre::String& constantName, unsigned int componentCount)
+        {
+            if (nullptr == pass)
+            {
+                return;
+            }
+
+            Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+            const Ogre::GpuConstantDefinition* definition = psParams->_findNamedConstantDefinition(constantName);
+
+            if (nullptr == definition)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HdrEffectComponent][MATERIAL] READBACK '" + materialName + "' / '" + constantName + "': constant does NOT exist, the write was silently dropped.");
+                return;
+            }
+
+            const float* values = psParams->getFloatPointer(definition->physicalIndex);
+            Ogre::String readback;
+            for (unsigned int i = 0; i < componentCount; i++)
+            {
+                readback += (0u == i ? "" : ", ") + Ogre::StringConverter::toString(values[i]);
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HdrEffectComponent][MATERIAL] READBACK '" + materialName + "' / '" + constantName + "' = " + readback);
+        }
+    }
+
     HdrEffectComponent::HdrEffectComponent() :
         GameObjectComponent(),
         name("HdrEffectComponent"),
@@ -173,6 +288,61 @@ namespace NOWA
         return nullptr;
     }
 
+    /**
+     * Ownership rule for the two pieces of GLOBAL lighting state.
+     *
+     * The directional light's power scale and SceneManager's ambient light (upper and lower
+     * hemisphere plus the envmap scale packed into upperHemisphere.a) exist exactly once per
+     * scene, and two components write them.
+     *
+     * Ogre::AtmosphereNpr::syncToLight(), reached from setPreset() and therefore from
+     * updatePreset(), writes the light direction, the diffuse and specular colour, the power
+     * scale from Preset::linkedLightPower and the ambient light from
+     * Preset::linkedSceneAmbientUpper/LowerPower and Preset::envmapScale. AtmosphereComponent
+     * drives that from a tracked closure, so it happens on EVERY render frame.
+     * HdrEffectComponent wrote the same state once per connect() and lost it again one frame
+     * later - that is the "HDR only works on the second connect" symptom, and the difference
+     * between the first and later runs was only the timing of that race.
+     *
+     * The atmosphere wins by design: it simulates the time of day and its presets carry a
+     * complete lighting description per time slot. HdrEffectComponent is then strictly a TONE
+     * MAPPING component - exposure, auto exposure clamp, bloom threshold and the compositor sky
+     * colour - and does not touch light or ambient at all. Its SunPower, UpperHemisphere,
+     * LowerHemisphere and EnvMapScale values are still stored and still saved, they simply stay
+     * inert as long as an activated atmosphere is present.
+     */
+    bool HdrEffectComponent::isAtmosphereOwningLighting(void) const
+    {
+        GameObjectController* gameObjectController = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController();
+        if (nullptr == gameObjectController)
+        {
+            return false;
+        }
+
+        // Looked up by class name on purpose: AtmosphereComponent is a plugin and must not be
+        // included from here, and the state it owns is global anyway - an atmosphere on ANY game
+        // object claims it, not only one sharing this camera. In this scene MainCamera and
+        // GameCamera share the same MAIN_LIGHT, so a per game object check would let the other
+        // camera's HdrEffectComponent keep fighting the atmosphere.
+        std::vector<GameObjectPtr> gameObjects = gameObjectController->getGameObjectsFromComponent(ATMOSPHERE_COMPONENT_CLASS_NAME);
+
+        for (size_t i = 0; i < gameObjects.size(); i++)
+        {
+            if (nullptr == gameObjects[i])
+            {
+                continue;
+            }
+
+            auto atmosphereCompPtr = NOWA::makeStrongPtr(gameObjects[i]->getComponentFromName<GameObjectComponent>(ATMOSPHERE_COMPONENT_CLASS_NAME));
+            if (nullptr != atmosphereCompPtr && true == atmosphereCompPtr->isActivated())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     bool HdrEffectComponent::postInit(void)
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] Init hdr effect component for game object: " + this->gameObjectPtr->getName());
@@ -213,6 +383,8 @@ namespace NOWA
     {
         GameObjectComponent::connect();
 
+        logLightingState("connect() ENTER", this->gameObjectPtr->getName(), this, this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getPowerScale() : -1.0f);
+
         auto cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
         if (nullptr != cameraCompPtr)
         {
@@ -227,7 +399,11 @@ namespace NOWA
                 // saved with the blown-out value baked in, making the next load
                 // start already overexposed. disconnect() -> resetShining() uses
                 // this snapshot to put everything back exactly as it was.
-                if (nullptr != this->lightDirectionalComponent)
+                // No snapshot and no restore when the atmosphere owns the lighting: nothing is
+                // overridden, so there would be nothing to put back. Leaving
+                // hasConnectLightingSnapshot at false also keeps resetShining() out of the way,
+                // which would otherwise fight the atmosphere on every disconnect().
+                if (false == isAtmosphereOwningLighting() && nullptr != this->lightDirectionalComponent)
                 {
                     this->connectOldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
                 }
@@ -238,9 +414,17 @@ namespace NOWA
                     this->connectOldAmbientUpperHemisphere = sceneManager->getAmbientLightUpperHemisphere();
                     this->connectOldAmbientLowerHemisphere = sceneManager->getAmbientLightLowerHemisphere();
                     this->connectOldAmbientHemisphereDir = sceneManager->getAmbientLightHemisphereDir();
-                    // this->connectOldEnvMapScale = sceneManager->getAmbientLightEnvMapScale();
+                    // SceneManager has no dedicated getter for the envmap scale - it is stored
+                    // in the alpha channel of the upper hemisphere colour (see the doc comment on
+                    // SceneManager::setAmbientLight). This snapshot used to be commented out, so
+                    // resetShining() restored whatever connectOldEnvMapScale happened to be
+                    // initialised to instead of the value that was actually active.
+                    this->connectOldEnvMapScale = this->connectOldAmbientUpperHemisphere.a;
                 }
-                this->hasConnectLightingSnapshot = true;
+                this->hasConnectLightingSnapshot = (false == isAtmosphereOwningLighting());
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[HdrEffectComponent] connect() -> calling applyCurrentValues (DIRECT) for '" + this->gameObjectPtr->getName() + "', snapshot powerScale=" + Ogre::StringConverter::toString(this->connectOldLightPowerScale));
 
                 this->postApplySunPower();
 
@@ -248,7 +432,17 @@ namespace NOWA
 
                 // Apply loaded effect
                 this->setEffectName(this->effectName->getListSelectedValue());
+
+                logLightingState("connect() EXIT (applied)", this->gameObjectPtr->getName(), this, this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getPowerScale() : -1.0f);
             }
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HdrEffectComponent][LIGHTING] connect() SKIPPED for '" + this->gameObjectPtr->getName() + "': camera not activated or not involved in the split screen scenario.");
+            }
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HdrEffectComponent][LIGHTING] connect() SKIPPED for '" + this->gameObjectPtr->getName() + "': no CameraComponent on this game object.");
         }
         return true;
     }
@@ -257,7 +451,11 @@ namespace NOWA
     {
         GameObjectComponent::disconnect();
 
+        logLightingState("disconnect() ENTER", this->gameObjectPtr->getName(), this, this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getPowerScale() : -1.0f);
+
         this->resetShining();
+
+        logLightingState("disconnect() EXIT", this->gameObjectPtr->getName(), this, this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getPowerScale() : -1.0f);
         return true;
     }
 
@@ -296,21 +494,52 @@ namespace NOWA
     {
         boost::shared_ptr<EventDataHdrActivated> castEventData = boost::static_pointer_cast<EventDataHdrActivated>(eventData);
 
-        // Only react if the event concerns this game object's workspace
+        // FIX: this condition was inverted - it early-returned exactly when the
+        // event DID concern this game object's workspace (IDs equal), and only
+        // fell through to applyCurrentValues() when the IDs did NOT match (i.e.
+        // for a workspace belonging to some other game object entirely). With a
+        // single HDR workspace/camera in the scene, that meant this corrective
+        // re-apply - meant to fix up the luminance measurement window once the
+        // viewport rect is finalized - never ran at all on the first connect(),
+        // leaving auto-exposure to react to a wrong/degenerate measurement
+        // region and render the scene too dark. A second connect() only looked
+        // right because by then the viewport was already correctly sized from
+        // the first run, so connect()'s own direct applyCurrentValues() call was
+        // sufficient without needing this event-triggered correction.
         if (castEventData->getGameObjectId() != this->gameObjectPtr->getId())
         {
             return;
         }
 
+        // FIX: this listener is registered once in postInit(), which runs at
+        // scene LOAD time - independent of whether connect() (simulation start)
+        // has ever run. WorkspaceBaseComponent::setViewportRect() can fire this
+        // event purely from editor/initial workspace setup, before Play is ever
+        // pressed. Without this guard, applyCurrentValues() applied the HDR
+        // preset (e.g. power scale 200) immediately on load - exactly the thing
+        // connect() is supposed to be the sole gatekeeper for.
+        if (false == this->bConnected)
+        {
+            return;
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] handleHdrActivated -> calling applyCurrentValues (EVENT-triggered) for '" + this->gameObjectPtr->getName() + "'");
+
         // The workspace has just been (re)created. Any apply calls made before
         // this point early-returned because the workspace did not exist yet,
         // hence the CURRENT values must be (re)applied now - never hardcoded
         // reset defaults, which would silently neutralize the active preset.
+        logLightingState("handleHdrActivated() (EVENT-triggered)", this->gameObjectPtr->getName(), this, this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getPowerScale() : -1.0f);
+
         this->applyCurrentValues();
     }
 
     void HdrEffectComponent::applyCurrentValues(void)
     {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] applyCurrentValues ENTER for '" + this->gameObjectPtr->getName() +
+                                                                               "', workspace ready=" + Ogre::String((nullptr != this->workspaceBaseComponent && nullptr != this->workspaceBaseComponent->getWorkspace()) ? "true" : "false") +
+                                                                               ", hasConnectLightingSnapshot=" + Ogre::String(this->hasConnectLightingSnapshot ? "true" : "false"));
+
         // The skyColor variant stores the PREMULTIPLIED colour (e.g. 12 24 36
         // for bright sunny day = base 0.2 0.4 0.6 times 60) and keeps the
         // original preset multiplier in w for display purposes. The rgb part
@@ -344,6 +573,9 @@ namespace NOWA
         {
             this->applyLuminanceViewportRect(this->workspaceBaseComponent->getViewportRect());
         }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[HdrEffectComponent] applyCurrentValues EXIT for '" + this->gameObjectPtr->getName() + "', hasConnectLightingSnapshot=" + Ogre::String(this->hasConnectLightingSnapshot ? "true" : "false"));
     }
 
     void HdrEffectComponent::actualizeValue(Variant* attribute)
@@ -512,7 +744,19 @@ namespace NOWA
             Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
             if (nullptr != sceneManager)
             {
-                sceneManager->setAmbientLight(this->connectOldAmbientUpperHemisphere, this->connectOldAmbientLowerHemisphere, this->connectOldAmbientHemisphereDir, this->connectOldEnvMapScale);
+                // Through the render thread like every other lighting write in this component.
+                // Writing the ambient light straight from the logic thread races against
+                // AtmosphereComponent's per frame closure, which writes the very same state.
+                const Ogre::ColourValue restoreUpper = this->connectOldAmbientUpperHemisphere;
+                const Ogre::ColourValue restoreLower = this->connectOldAmbientLowerHemisphere;
+                const Ogre::Vector3 restoreDir = this->connectOldAmbientHemisphereDir;
+                const Ogre::Real restoreEnvMapScale = this->connectOldEnvMapScale;
+
+                NOWA::GraphicsModule::RenderCommand ambientRdCmd = [sceneManager, restoreUpper, restoreLower, restoreDir, restoreEnvMapScale]()
+                {
+                    sceneManager->setAmbientLight(restoreUpper, restoreLower, restoreDir, restoreEnvMapScale);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(ambientRdCmd), "HdrEffectComponent::resetShining");
             }
         }
 
@@ -521,17 +765,35 @@ namespace NOWA
 
     void HdrEffectComponent::postApplySunPower(void)
     {
+        // The null check below is worthless as long as the pointer is dereferenced above it.
+        // onOtherComponentRemoved() sets lightDirectionalComponent to nullptr, and postInit()
+        // leaves it null when the scene has no LightDirectionalComponent on the main light.
+        if (nullptr == this->lightDirectionalComponent)
+        {
+            return;
+        }
+
+        if (true == isAtmosphereOwningLighting())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] postApplySunPower skipped for '" + this->gameObjectPtr->getName() + "': an activated AtmosphereComponent owns the directional light.");
+            return;
+        }
+
         this->oldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
         // The presets are calibrated like the Ogre HDR sample: powerScale is
         // lumens / 1024, e.g. 97 = direct sunlight (~100.000 lumens).
         // NO multiplication by PI here, and setEffectName must not do it either,
         // otherwise the last writer wins and the sun power differs by factor 3.14
         // depending on call order.
-        if (nullptr != this->lightDirectionalComponent)
         {
-            NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this]
+            Ogre::Real targetPowerScale = this->sunPower->getReal();
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[HdrEffectComponent] postApplySunPower for '" + this->gameObjectPtr->getName() + "': " + Ogre::StringConverter::toString(this->oldLightPowerScale) + " -> " + Ogre::StringConverter::toString(targetPowerScale));
+
+            NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, targetPowerScale]
             {
-                this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
+                this->lightDirectionalComponent->setPowerScale(targetPowerScale);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] postApplySunPower (render thread) actual powerScale now: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getPowerScale()));
             };
             NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::postApplySunPower");
         }
@@ -539,9 +801,24 @@ namespace NOWA
 
     void HdrEffectComponent::applyHdrSkyColor(const Ogre::ColourValue& color, Ogre::Real multiplier)
     {
+        // FIX: this used to call this->resetShining() when the workspace wasn't
+        // ready yet (e.g. on the very first connect(), before WorkspaceBaseComponent
+        // has finished (re)creating its Ogre::CompositorWorkspace). That was
+        // harmless back when resetShining() was dead code (#if 0'd out), but
+        // resetShining() now does REAL work - it restores the connect-time
+        // lighting snapshot and clears hasConnectLightingSnapshot. Calling it
+        // here mid-applyCurrentValues() (itself called from connect(), right
+        // after the snapshot was taken and the bright values were just set)
+        // immediately undid the just-applied brightness and desynced the
+        // snapshot flag - the root cause of "first connect looks dark/wrong,
+        // second connect looks right" depending on exactly when the workspace
+        // became available. Simply skip sky-colour application this call - it
+        // gets correctly re-applied once handleHdrActivated() fires after the
+        // workspace truly exists.
         if (nullptr == this->workspaceBaseComponent || false == this->workspaceBaseComponent->getUseHdr() || nullptr == this->workspaceBaseComponent->getWorkspace())
         {
-            this->resetShining();
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[HdrEffectComponent] applyHdrSkyColor: workspace not ready yet for game object '" + this->gameObjectPtr->getName() + "' - skipping sky colour for now, will be re-applied once the workspace exists.");
             return;
         }
 
@@ -587,6 +864,8 @@ namespace NOWA
             Ogre::MaterialPtr skyMaterial = Ogre::MaterialManager::getSingleton().getByName("NOWASkyPostprocess", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
             if (false == skyMaterial.isNull())
             {
+                prepareCompositorMaterial(skyMaterial, "NOWASkyPostprocess", "hdrSkyPower");
+
                 Ogre::Pass* skyPass = skyMaterial->getTechnique(0)->getPass(0);
                 Ogre::GpuProgramParametersSharedPtr psParams = skyPass->getFragmentProgramParameters();
 
@@ -643,6 +922,12 @@ namespace NOWA
             return;
         }
 
+        // Force the material to be loaded first. Without a compiled GPU program there is no named
+        // constant map, so setNamedConstant() below writes into nothing and the exposure silently
+        // keeps the value from the material script - which looks exactly like "HDR only works on
+        // the second run", because by the second run the material has been loaded by the first.
+        prepareCompositorMaterial(material, "HDR/DownScale03_SumLumEnd", "exposure");
+
         Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
 
         // 1024 = HDR calibration factor (-10 stops), e is the correct base, NOT 2.
@@ -653,6 +938,8 @@ namespace NOWA
         {
             Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
             psParams->setNamedConstant("exposure", exposureParams);
+
+            logNamedConstantReadback(pass, "HDR/DownScale03_SumLumEnd", "exposure", 3u);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "HdrEffectComponent::applyExposure");
 
@@ -679,6 +966,8 @@ namespace NOWA
             return;
         }
 
+        prepareCompositorMaterial(material, "HDR/BrightPass_Start", "brightThreshold");
+
         Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
 
         const Ogre::Vector4 brightThreshold(minThreshold, 1.0f / (fullThreshold - minThreshold), 0.0f, 0.0f);
@@ -687,6 +976,8 @@ namespace NOWA
         {
             Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
             psParams->setNamedConstant("brightThreshold", brightThreshold);
+
+            logNamedConstantReadback(pass, "HDR/BrightPass_Start", "brightThreshold", 2u);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "HdrEffectComponent::applyBloomThreshold");
     }
@@ -728,7 +1019,10 @@ namespace NOWA
     {
         this->effectName->setListSelectedValue(effectName);
 
-        this->oldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
+        if (nullptr != this->lightDirectionalComponent)
+        {
+            this->oldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
+        }
 
         // ====================================================================
         // Preset calibration philosophy (post aspect-ratio fix):
@@ -1039,24 +1333,30 @@ namespace NOWA
         this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
         this->applyBloomThreshold(std::max(this->bloom->getReal() - 2.0f, 0.0f), std::max(this->bloom->getReal(), 0.01f));
 
-        NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this]
+        if (false == isAtmosphereOwningLighting())
         {
-            Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
-            Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z);
-
-            this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
-
-            if (nullptr != this->lightDirectionalComponent)
+            NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this]
             {
-                this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setEffectName");
+                Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
+                Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z);
+
+                this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+
+                if (nullptr != this->lightDirectionalComponent)
+                {
+                    this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setEffectName");
+        }
     }
 
     void HdrEffectComponent::refreshAllParameters()
     {
-        this->oldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
+        if (nullptr != this->lightDirectionalComponent)
+        {
+            this->oldLightPowerScale = this->lightDirectionalComponent->getPowerScale();
+        }
 
         // Force re-application of all parameters
         this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
@@ -1066,7 +1366,12 @@ namespace NOWA
         Ogre::ColourValue skyColor(this->skyColor->getVector4().x, this->skyColor->getVector4().y, this->skyColor->getVector4().z, this->skyColor->getVector4().w);
         this->applyHdrSkyColor(skyColor, 1.0f);
 
-        // Force ambient light update
+        // Force ambient light update - unless the atmosphere owns it.
+        if (true == isAtmosphereOwningLighting())
+        {
+            return;
+        }
+
         NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this]
         {
             Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
@@ -1115,13 +1420,18 @@ namespace NOWA
             this->effectName->setListSelectedValue("Custom");
         }
 
-        NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, upperHemisphere]
+        // Value is stored and saved either way, it is only INERT while the atmosphere owns the
+        // ambient light.
+        if (false == isAtmosphereOwningLighting())
         {
-            Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
-            Ogre::ColourValue ambUpperHemisphere(upperHemisphere.x, upperHemisphere.y, upperHemisphere.z);
-            this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setUpperHemisphere");
+            NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, upperHemisphere]
+            {
+                Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
+                Ogre::ColourValue ambUpperHemisphere(upperHemisphere.x, upperHemisphere.y, upperHemisphere.z);
+                this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setUpperHemisphere");
+        }
     }
 
     Ogre::Vector4 HdrEffectComponent::getUpperHemisphere(void) const
@@ -1138,13 +1448,16 @@ namespace NOWA
             this->effectName->setListSelectedValue("Custom");
         }
 
-        NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, lowerHemisphere]
+        if (false == isAtmosphereOwningLighting())
         {
-            Ogre::ColourValue ambLowerHemisphere(lowerHemisphere.x, lowerHemisphere.y, lowerHemisphere.z);
-            Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z);
-            this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setLowerHemisphere");
+            NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, lowerHemisphere]
+            {
+                Ogre::ColourValue ambLowerHemisphere(lowerHemisphere.x, lowerHemisphere.y, lowerHemisphere.z);
+                Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z);
+                this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setLowerHemisphere");
+        }
     }
 
     Ogre::Vector4 HdrEffectComponent::getLowerHemisphere(void) const
@@ -1161,14 +1474,17 @@ namespace NOWA
             this->effectName->setListSelectedValue("Custom");
         }
 
-        NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, sunPower]
+        if (false == isAtmosphereOwningLighting())
         {
-            if (nullptr != this->lightDirectionalComponent)
+            NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, sunPower]
             {
-                this->lightDirectionalComponent->setPowerScale(sunPower);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setSunPower");
+                if (nullptr != this->lightDirectionalComponent)
+                {
+                    this->lightDirectionalComponent->setPowerScale(sunPower);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setSunPower");
+        }
     }
 
     Ogre::Real HdrEffectComponent::getSunPower(void) const
@@ -1253,13 +1569,16 @@ namespace NOWA
             this->effectName->setListSelectedValue("Custom");
         }
 
-        NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, envMapScale]
+        if (false == isAtmosphereOwningLighting())
         {
-            Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
-            Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z);
-            this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), envMapScale);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setEnvMapScale");
+            NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, envMapScale]
+            {
+                Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
+                Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z);
+                this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), envMapScale);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(oceanRdCmd), "HdrEffectComponent::setEnvMapScale");
+        }
     }
 
     Ogre::Real HdrEffectComponent::getEnvMapScale(void) const

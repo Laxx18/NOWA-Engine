@@ -18,6 +18,113 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
+    // ========================================================================================
+    // Diagnostics for the shared lighting state. DELIBERATELY file local: this is temporary
+    // troubleshooting scaffolding for the "who writes the directional light and the scene
+    // ambient last" question and has no business in the component's public interface. Nothing
+    // here is declared in the header, and deleting this block plus its call sites removes the
+    // instrumentation completely.
+    // ========================================================================================
+    namespace
+    {
+        struct LightingSnapshot
+        {
+            Ogre::Real powerScale;
+            Ogre::Real envMapScale;
+            Ogre::ColourValue upperHemisphere;
+
+            LightingSnapshot() : powerScale(-1.0f), envMapScale(-1.0f), upperHemisphere(Ogre::ColourValue::Black)
+            {
+            }
+        };
+
+        // Keyed by component instance. Only ever touched from the render thread (the change
+        // gated probe) and from the logic thread while the render thread is not inside the
+        // closure, so no extra locking is needed for a debug aid.
+        std::map<const void*, LightingSnapshot> lightingLogSnapshots;
+
+        Ogre::String describeLightingState(Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::AtmosphereNpr* atmosphereNpr)
+        {
+            if (nullptr == sceneManager)
+            {
+                return "<no scene manager>";
+            }
+
+            const Ogre::ColourValue upperHemisphere = sceneManager->getAmbientLightUpperHemisphere();
+            const Ogre::ColourValue lowerHemisphere = sceneManager->getAmbientLightLowerHemisphere();
+
+            const Ogre::Real powerScale = (nullptr != light) ? light->getPowerScale() : -1.0f;
+
+            // The envmap scale has no dedicated getter - SceneManager::setAmbientLight() packs it
+            // into the alpha channel of the upper hemisphere colour.
+            Ogre::String description = "powerScale=" + Ogre::StringConverter::toString(powerScale) + " envMapScale=" + Ogre::StringConverter::toString(upperHemisphere.a) +
+                                       " upper=" + Ogre::StringConverter::toString(Ogre::Vector3(upperHemisphere.r, upperHemisphere.g, upperHemisphere.b)) +
+                                       " lower=" + Ogre::StringConverter::toString(Ogre::Vector3(lowerHemisphere.r, lowerHemisphere.g, lowerHemisphere.b));
+
+            if (nullptr != atmosphereNpr)
+            {
+                const Ogre::AtmosphereNpr::Preset preset = atmosphereNpr->getPreset();
+                description += " | preset.linkedLightPower=" + Ogre::StringConverter::toString(preset.linkedLightPower) + " preset.envmapScale=" + Ogre::StringConverter::toString(preset.envmapScale) +
+                               " preset.ambientUpperPower=" + Ogre::StringConverter::toString(preset.linkedSceneAmbientUpperPower) + " preset.ambientLowerPower=" + Ogre::StringConverter::toString(preset.linkedSceneAmbientLowerPower);
+            }
+            else
+            {
+                description += " | atmosphereNpr=null";
+            }
+
+            return description;
+        }
+
+        void logLightingState(const Ogre::String& context, const Ogre::String& gameObjectName, Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::AtmosphereNpr* atmosphereNpr)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent][LIGHTING] " + context + " for '" + gameObjectName + "': " + describeLightingState(sceneManager, light, atmosphereNpr));
+        }
+
+        /**
+         * Change gated variant, safe to call once per RENDER frame: a steady state stays silent,
+         * so every line that does appear is an actual write to the global lighting state and the
+         * log turns into a writer trace.
+         */
+        void logLightingStateOnChange(const void* owner, const Ogre::String& context, const Ogre::String& gameObjectName, Ogre::SceneManager* sceneManager, Ogre::Light* light, Ogre::AtmosphereNpr* atmosphereNpr)
+        {
+            if (nullptr == sceneManager)
+            {
+                return;
+            }
+
+            const Ogre::ColourValue upperHemisphere = sceneManager->getAmbientLightUpperHemisphere();
+            const Ogre::Real powerScale = (nullptr != light) ? light->getPowerScale() : -1.0f;
+
+            auto it = lightingLogSnapshots.find(owner);
+            const bool isFirstCall = (it == lightingLogSnapshots.end());
+
+            if (false == isFirstCall)
+            {
+                const LightingSnapshot& previous = it->second;
+                const bool unchanged = Ogre::Math::RealEqual(powerScale, previous.powerScale, 0.0001f) && Ogre::Math::RealEqual(upperHemisphere.a, previous.envMapScale, 0.0001f) &&
+                                       Ogre::Math::RealEqual(upperHemisphere.r, previous.upperHemisphere.r, 0.0001f) && Ogre::Math::RealEqual(upperHemisphere.g, previous.upperHemisphere.g, 0.0001f) &&
+                                       Ogre::Math::RealEqual(upperHemisphere.b, previous.upperHemisphere.b, 0.0001f);
+
+                if (true == unchanged)
+                {
+                    return;
+                }
+            }
+
+            LightingSnapshot& snapshot = lightingLogSnapshots[owner];
+            snapshot.powerScale = powerScale;
+            snapshot.envMapScale = upperHemisphere.a;
+            snapshot.upperHemisphere = upperHemisphere;
+
+            logLightingState(context, gameObjectName, sceneManager, light, atmosphereNpr);
+        }
+
+        void forgetLightingLogState(const void* owner)
+        {
+            lightingLogSnapshots.erase(owner);
+        }
+    }
+
     AtmosphereComponent::AtmosphereComponent() :
         GameObjectComponent(),
         name("AtmosphereComponent"),
@@ -870,6 +977,8 @@ namespace NOWA
     {
         GameObjectComponent::onRemoveComponent();
 
+        forgetLightingLogState(this);
+
         // Belt and braces: make sure the tracked closure is gone no matter which path led here.
         // It now captures raw pointers only, so a closure left behind would run against a dead
         // scene manager on the very next frame.
@@ -881,6 +990,8 @@ namespace NOWA
 
     bool AtmosphereComponent::connect(void)
     {
+        logLightingState("connect() ENTER", this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getOgreLight() : nullptr, this->atmosphereNpr);
+
         this->setActivated(this->activated->getBool());
 
         if (true == this->activated->getBool())
@@ -916,14 +1027,23 @@ namespace NOWA
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AtmosphereComponent::postInit");
         }
 
+        logLightingState("connect() EXIT", this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getOgreLight() : nullptr, this->atmosphereNpr);
+
         return true;
     }
 
     bool AtmosphereComponent::disconnect(void)
     {
+        logLightingState("disconnect() ENTER", this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getOgreLight() : nullptr, this->atmosphereNpr);
+
         this->setStartTime(this->startTime->getString());
 
-        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+        // The id used to read "::update1", which matches nothing: update() registers under
+        // "::update" + index. The removal was a silent no-op for the whole lifetime of the
+        // component. It matters because the closure keeps driving the directional light and the
+        // scene ambient every render frame, so anything a later disconnect() restores - see
+        // HdrEffectComponent::resetShining() - was overwritten again immediately.
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
         if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
@@ -953,6 +1073,8 @@ namespace NOWA
         // Do NOT call resetAtmosphere() here — that destroys atmosphereNpr and turns off
         // the sky, leaving a black screen in the editor. resetAtmosphere() is only called
         // from onRemoveComponent() when the component is actually being destroyed.
+
+        logLightingState("disconnect() EXIT", this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getOgreLight() : nullptr, this->atmosphereNpr);
 
         return true;
     }
@@ -1001,11 +1123,33 @@ namespace NOWA
                 atmosphereCamera = atmosphereCameraCompPtr->getCamera();
             }
 
-            auto closureFunction = [atmosphereCamera, atmosphereNpr = this->atmosphereNpr, sceneManager = this->gameObjectPtr->getSceneManager(), lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(),
+            // The AtmosphereNpr pointer is read from the component at CALL time instead of
+            // being captured by value. setActivated() and connect() delete and recreate it on
+            // the render thread, and removeTrackedClosure() posts its removal into the closure
+            // queue while the delete travels through the RENDER COMMAND queue - two independent
+            // queues with no ordering guarantee between them. A captured copy therefore survives
+            // as a dangling pointer for at least one frame whenever the atmosphere is rebuilt.
+            // Capturing the component raw is as safe as the raw scene manager next to it: the
+            // closure is unregistered in disconnect(), resetAtmosphere() and onRemoveComponent().
+            auto closureFunction = [atmosphereCamera, component = this, sceneManager = this->gameObjectPtr->getSceneManager(), lightNode = this->lightDirectionalComponent->getOwner()->getSceneNode(),
                                        defaultDir = this->lightDirectionalComponent->getOwner()->getDefaultDirection(), externalLightMode = this->externalLightMode, cachedSunDir = this->cachedExternalSunDir, timeOfDay = this->timeOfDay,
-                                       azimuth = this->azimuth](Ogre::Real renderDt) mutable
+                                       azimuth = this->azimuth, gameObjectName = this->gameObjectPtr->getName()](Ogre::Real renderDt) mutable
             {
-                sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere(), sceneManager->getAmbientLightLowerHemisphere(), sceneManager->getAmbientLightHemisphereDir());
+                Ogre::AtmosphereNpr* atmosphereNpr = component->atmosphereNpr;
+                if (nullptr == atmosphereNpr)
+                {
+                    return;
+                }
+
+                // SceneManager::setAmbientLight() takes envmapScale and envFeatures as DEFAULTED
+                // parameters (1.0f and 0xffffffff), and it stores envmapScale in
+                // upperHemisphere.a. Calling the three argument form here was therefore never the
+                // intended "write the same values back" no-op: it silently reset the global
+                // envmap scale to 1.0 on EVERY render frame. Anything else that configures the
+                // ambient light - HdrEffectComponent sets an EnvMapScale of 16 - had its value
+                // wiped one frame later, which is a large part of why the scene stayed dark.
+                const Ogre::ColourValue currentUpperHemisphere = sceneManager->getAmbientLightUpperHemisphere();
+                sceneManager->setAmbientLight(currentUpperHemisphere, sceneManager->getAmbientLightLowerHemisphere(), sceneManager->getAmbientLightHemisphereDir(), currentUpperHemisphere.a, sceneManager->getEnvFeatures());
 
                 Ogre::Vector3 sd;
                 if (false == externalLightMode)
@@ -1036,7 +1180,18 @@ namespace NOWA
                 // line as the presets' negative-for-evening/night .time values, and querying
                 // with it makes lower_bound() skip every preset with a negative time entirely,
                 // regardless of the actual time of day.
+                // Two probes around updatePreset(), which reaches syncToLight() via setPreset().
+                // BEFORE prints only when somebody ELSE changed the global lighting since the
+                // last frame - that is the foreign writer, e.g. HdrEffectComponent. AFTER prints
+                // what the atmosphere itself just wrote. Both are change gated, so a steady state
+                // stays silent and every line in the log is an actual write.
+                // logLightingStateOnChange(component, "render closure BEFORE updatePreset (foreign write detected)", gameObjectName, sceneManager,
+                    // (nullptr != component->lightDirectionalComponent) ? component->lightDirectionalComponent->getOgreLight() : nullptr, atmosphereNpr);
+
                 atmosphereNpr->updatePreset(sd, timeOfDay);
+
+                // logLightingStateOnChange(component, "render closure AFTER updatePreset (written by the atmosphere)", gameObjectName, sceneManager,
+                //     (nullptr != component->lightDirectionalComponent) ? component->lightDirectionalComponent->getOgreLight() : nullptr, atmosphereNpr);
 
                 if (nullptr != atmosphereCamera)
                 {

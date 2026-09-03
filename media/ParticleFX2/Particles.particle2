@@ -6214,3 +6214,201 @@ particle_system Woosh
     // }
 }
 
+// ============================================================================
+// Sleep particle effects
+//
+// SleepBubbles    -> soft white bubbles, slowly floating upwards
+// SleepZzz        -> classic comic "Z" letters, slowly floating upwards
+// SleepZzzDrift   -> same as SleepZzz, but drifting sideways (comic style)
+//
+// Attach the system to a scene node placed slightly above the character's
+// head. All values are tuned for a scale of 1 unit == 1 meter.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Soft white bubbles. Very slow, very calm, slightly wobbling.
+// ----------------------------------------------------------------------------
+particle_system SleepBubbles
+{
+    material            Particle/Bubble
+    particle_width      0.07
+    particle_height     0.07
+    cull_each           false
+    quota               120
+    billboard_type      point
+    sorted              true
+
+    // Small emitter cone, so the bubbles stay close together while rising.
+    emitter Point
+    {
+        position            0 0 0
+        angle               12
+        emission_rate       7
+        time_to_live_min    2.5
+        time_to_live_max    3.5
+        direction           0 1 0
+        velocity_min        0.15
+        velocity_max        0.30
+        colour              1 1 1 1
+    }
+
+    // Fade in at birth, hold, then fade out again before the particle dies.
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.20
+        colour1     1 1 1 0.85
+        time2       0.65
+        colour2     1 1 1 0.70
+        time3       1.0
+        colour3     1 1 1 0
+    }
+
+    // Bubbles slowly grow while rising.
+    affector Scaler
+    {
+        rate 0.05
+    }
+
+    // Gentle wobble, so they do not rise on a perfectly straight line.
+    affector DirectionRandomiser
+    {
+        randomness      0.35
+        scope           0.6
+        keep_velocity   true
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Comic style "Z" letters. One Z roughly every 0.8 seconds.
+// ----------------------------------------------------------------------------
+particle_system SleepZzz
+{
+    material                Particle/Zzz
+    particle_width          0.22
+    particle_height         0.22
+    cull_each               false
+    quota                   40
+    billboard_type          point
+    billboard_rotation_type vertex
+    sorted                  true
+
+    emitter Point
+    {
+        position            0 0 0
+        angle               8
+        emission_rate       1.2
+        time_to_live_min    3.0
+        time_to_live_max    4.0
+        direction           0 1 0
+        velocity_min        0.22
+        velocity_max        0.32
+        colour              1 1 1 1
+    }
+
+    // Fade in / fade out over the lifetime.
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.25
+        colour1     1 1 1 1
+        time2       0.70
+        colour2     1 1 1 0.9
+        time3       1.0
+        colour3     1 1 1 0
+    }
+
+    // The letters get bigger the higher they float.
+    affector Scaler
+    {
+        rate 0.09
+    }
+
+    // Slight random tilt and a lazy rotation.
+    affector Rotator
+    {
+        rotation_range_start        -12
+        rotation_range_end           12
+        rotation_speed_range_start  -9
+        rotation_speed_range_end     9
+    }
+
+    // Very light drift, keeps the letters from stacking on one line.
+    affector DirectionRandomiser
+    {
+        randomness      0.18
+        scope           0.5
+        keep_velocity   true
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Same as SleepZzz, but the letters drift away to the right (+x) while rising.
+// Use this one when the camera looks at the character from the side.
+// Mirror the x component of force_vector if the character faces the other way.
+// ----------------------------------------------------------------------------
+particle_system SleepZzzDrift
+{
+    material                Particle/Zzz
+    particle_width          0.22
+    particle_height         0.22
+    cull_each               false
+    quota                   40
+    billboard_type          point
+    billboard_rotation_type vertex
+    sorted                  true
+
+    emitter Point
+    {
+        position            0 0 0
+        angle               6
+        emission_rate       1.2
+        time_to_live_min    3.0
+        time_to_live_max    4.0
+        direction           0 1 0
+        velocity_min        0.20
+        velocity_max        0.28
+        colour              1 1 1 1
+    }
+
+    // Constant sideways push -> the typical diagonal comic trail.
+    affector LinearForce
+    {
+        force_vector        0.08 0.02 0
+        force_application   add
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.25
+        colour1     1 1 1 1
+        time2       0.70
+        colour2     1 1 1 0.9
+        time3       1.0
+        colour3     1 1 1 0
+    }
+
+    affector Scaler
+    {
+        rate 0.09
+    }
+
+    affector Rotator
+    {
+        rotation_range_start        -12
+        rotation_range_end           12
+        rotation_speed_range_start  -9
+        rotation_speed_range_end     9
+    }
+
+    affector DirectionRandomiser
+    {
+        randomness      0.15
+        scope           0.5
+        keep_velocity   true
+    }
+}

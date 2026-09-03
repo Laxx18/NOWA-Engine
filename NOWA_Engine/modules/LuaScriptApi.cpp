@@ -11418,10 +11418,13 @@ namespace NOWA
 		[
 			class_<LuaScriptComponent, GameObjectComponent>("LuaScriptComponent")
 			.def("callDelayedMethod", &LuaScriptComponent::callDelayedMethod)
+			.def("callMethodOnce", &LuaScriptComponent::callMethodOnce)
 		];
 
 		AddClassToCollection("LuaScriptComponent", "class inherits GameObjectComponent", LuaScriptComponent::getStaticInfoText());
 		AddClassToCollection("LuaScriptComponent", "void callDelayedMethod(func closureFunction, Ogre::Real delaySec)", "Calls a lua closure function in lua script after a delay in seconds. Note: The game object is optional and may be nil.");
+        AddClassToCollection("LuaScriptComponent", "void callMethodOnce(string key, func closureFunction)",
+            "Calls a lua closure function exactly once for the given key during the whole running session (not per game object, not per connect/disconnect cycle) - repeated calls with the same key are ignored.");
 		// AddClassToCollection("LuaScriptComponent", "void connect(GameObject gameObject)", "Calls connect for the given game object.");
 	}
 

@@ -194,6 +194,15 @@ namespace NOWA
                    "Requirements: This component can only be set directly under a workspace component.";
         }
 
+        /**
+         * @brief   Determines whether an activated AtmosphereComponent exists anywhere in the scene.
+         *          If so, that component is the sole owner of the directional light's power scale and of
+         *          the scene ambient light, and this component restricts itself to tone mapping:
+         *          exposure, auto exposure clamp, bloom threshold and the compositor sky colour.
+         * @return  True if the atmosphere owns the lighting.
+         */
+        bool isAtmosphereOwningLighting(void) const;
+
         void setEffectName(const Ogre::String& effectName);
 
         Ogre::String getEffectName(void) const;

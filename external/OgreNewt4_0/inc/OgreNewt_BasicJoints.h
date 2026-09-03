@@ -33,6 +33,7 @@
 #include "ndJointFix6Dof.h"
 #include "ndJointKinematicController.h"
 #include "ndJointWheel.h"
+#include "ndShapeNull.h"
 
 // OgreNewt namespace.  all functions and classes use this namespace.
 namespace OgreNewt
@@ -874,6 +875,13 @@ namespace OgreNewt
 		bool m_clockwise;
 		std::vector<ndBigVector> m_internalControlPoints;
 		std::vector<ndBigVector> m_sourceControlPoints;
+
+		// ndJointFollowPath needs an ndBodyDynamic as body1 purely to define the frame of
+        // reference the spline control points live in. A static scene object is a plain
+        // ndBodyKinematic and cannot serve, and semantically it has no business being
+        // involved. So PathFollow brings its own: an invisible zero mass body at identity,
+        // which makes spline local space identical to world space.
+        static ndSharedPtr<ndBody> msPathAnchorBody;
 
 		// helper to compute direction in Newton space
 		ndVector computeDirection(unsigned int index) const;

@@ -256,6 +256,8 @@ namespace NOWA
 
     bool LuaScriptComponent::disconnect(void)
     {
+        this->executedOnceKeys.clear();
+
         if (true == this->alreadyDisconnected)
         {
             return true;
@@ -719,6 +721,27 @@ namespace NOWA
         NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(delaySec));
         delayProcess->attachChild(NOWA::ProcessPtr(new LuaMethodProcess(closureFunction)));
         NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+    }
+
+    void LuaScriptComponent::callMethodOnce(const Ogre::String& key, luabind::object closureFunction)
+    {
+        Ogre::String uniqueKey = this->gameObjectPtr->getName() + "_" + key;
+        // Lua creates a FRESH closure object every time the calling line executes (e.g. from
+        // within update()), so tracking "already called" via closure identity would never work -
+        // it would just fire every time. An explicit, caller-chosen key is the only reliable way
+        // to identify "this particular call site" across repeated invocations.
+        if (this->executedOnceKeys.find(uniqueKey) != this->executedOnceKeys.end())
+        {
+            return;
+        }
+
+        this->executedOnceKeys.insert(uniqueKey);
+
+        // Re-use the exact same invocation path as callDelayedMethod (LuaMethodProcess handles the
+        // actual luabind call + error handling there already) - just without the DelayProcess
+        // parent, so it fires as soon as the ProcessManager next ticks, instead of after a delay.
+        NOWA::ProcessPtr methodProcess(new LuaMethodProcess(closureFunction));
+        NOWA::ProcessManager::getInstance()->attachProcess(methodProcess);
     }
 
     bool LuaScriptComponent::compileScript(void)

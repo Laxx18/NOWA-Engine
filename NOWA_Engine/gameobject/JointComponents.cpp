@@ -9562,6 +9562,12 @@ namespace NOWA
             this->jointPosition = customJointPosition;
         }
 
+        // A predecessor is OPTIONAL for this joint type. ndJointFollowPath only needs a
+        // body as its frame of reference for the spline, and PathFollow now creates its
+        // own invisible zero mass anchor at identity for exactly that purpose. Pointing
+        // this at an unrelated static scene object (a ground plane) was never meaningful,
+        // and refusing to build the joint without one made it impossible to use a path
+        // without also having such an object.
         OgreNewt::Body* predecessorBody = nullptr;
 
         if (nullptr != this->predecessorJointCompPtr)
@@ -9572,8 +9578,7 @@ namespace NOWA
         }
         else
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointPathFollowComponent] Could not create path follow joint: " + this->gameObjectPtr->getName() + " because the predecessor path body does not exist.");
-            return false;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointPathFollowComponent] Creating path follow joint for: " + this->gameObjectPtr->getName() + " without a predecessor (using an internal path anchor).");
         }
 
         // Release joint each time, to create new one with new values
@@ -9794,11 +9799,8 @@ namespace NOWA
 
     Ogre::Vector3 JointPathFollowComponent::getStartMoveDirection(void)
     {
-        if (nullptr == this->predecessorJointCompPtr->getBody())
-        {
-            return Ogre::Vector3::ZERO;
-        }
-
+        // The predecessor is optional now, so it must not be dereferenced unconditionally.
+        // The direction comes from the spline anyway and has nothing to do with it.
         OgreNewt::PathFollow* pathFollowJoint = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
         if (nullptr != pathFollowJoint)
         {
@@ -9850,10 +9852,10 @@ namespace NOWA
 
     void JointPathFollowComponent::drawLines(void)
     {
-        if (nullptr == this->predecessorJointCompPtr->getBody())
+        /*if (nullptr == this->predecessorJointCompPtr->getBody())
         {
             return;
-        }
+        }*/
 
         auto closureFunction = [this](Ogre::Real renderDt)
         {

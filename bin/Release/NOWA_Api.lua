@@ -20257,6 +20257,14 @@ return {
 				args = "(func closureFunction, Ogre::Real delaySec)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			callMethodOnce =
+			{
+				type = "method",
+				description = "Calls a lua closure function exactly once for the given key during the whole running session (not per game object, not per connect/disconnect cycle) - repeated calls with the same key are ignored.",
+				args = "(string key, func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

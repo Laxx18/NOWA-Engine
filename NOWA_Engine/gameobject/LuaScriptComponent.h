@@ -193,6 +193,8 @@ namespace NOWA
 		*/
 		void callDelayedMethod(luabind::object closureFunction, Ogre::Real delaySec);
 
+		void callMethodOnce(const Ogre::String& key, luabind::object closureFunction);
+
 		// void triggerEvent(const Ogre::String& eventName, )
 
 		/**
@@ -230,6 +232,7 @@ namespace NOWA
 		bool componentCloned;
 		Ogre::String differentScriptNameForXML;
 		bool alreadyDisconnected;
+        std::set<Ogre::String> executedOnceKeys;
 	};
 
 }; //namespace end

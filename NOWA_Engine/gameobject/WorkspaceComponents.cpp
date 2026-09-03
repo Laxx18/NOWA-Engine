@@ -175,7 +175,8 @@ namespace NOWA
         hlmsWind(nullptr),
         involvedInSplitScreen(false),
         parallaxCorrectedCubemap(nullptr),
-        workspacePccProbes(nullptr)
+        workspacePccProbes(nullptr),
+        externalChannelConnected(false)
     {
         this->backgroundColor->addUserData(GameObject::AttrActionColorDialog());
         this->superSampling->setDescription("Sets the supersampling for whole scene texture rendering. E.g. a value of 0.25 will pixelize the scene for retro Game experience.");
@@ -405,6 +406,7 @@ namespace NOWA
                 {
                     workspaceDef->clearAll();
                     workspaceDef->clearOutputConnections();
+                    this->externalChannelConnected = false;
                 }
             }
 
@@ -583,6 +585,8 @@ namespace NOWA
             Ogre::CompositorWorkspaceDef* workspaceDef = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
             workspaceDef->clearAll();
 
+            this->externalChannelConnected = false;
+
             Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->getNodeDefinitions();
 
             // Iterate through Compositor Managers resources
@@ -710,7 +714,20 @@ namespace NOWA
                 // PccPerPixelGridPlacementComponent after workspace is ready
             }
 
+            if (true == this->useMSAA->getBool())
+            {
+                this->msaaLevel = this->getMSAA();
+            }
+            else
+            {
+                this->msaaLevel = 1;
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBaseComponent][MSAA] createWorkspace resolved msaaLevel=" + Ogre::StringConverter::toString(this->msaaLevel) + " for '" + this->workspaceName + "'");
+
             this->internalCreateCompositorNode();
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBaseComponent][MSAA] createWorkspace resolved msaaLevel=" + Ogre::StringConverter::toString(this->msaaLevel) + " for '" + this->workspaceName + "'");
 
             if (true == this->useTerra || true == this->canUseOcean)
             {
@@ -884,6 +901,7 @@ namespace NOWA
                 }
 
                 this->workspace = nullptr;
+                this->externalChannelConnected = false;
                 this->externalChannels.clear();
 
                 this->customExternalChannels.clear();
@@ -1473,24 +1491,25 @@ namespace NOWA
                 }
             }
 
-            // Only declare the external route if no path has done it yet.
-            // clearAllInterNodeConnections() keeps external routes alive, so on a
-            // workspace created via baseCreateWorkspace this is always already present;
-            // connecting it again would just stack duplicates and spam warnings.
-            bool externalAlreadyConnected = false;
-            const Ogre::CompositorWorkspaceDef::ChannelRouteList& channelRoutes = workspaceDef->_getChannelRoutes();
-            for (Ogre::CompositorWorkspaceDef::ChannelRouteList::const_iterator routeIt = channelRoutes.begin(); routeIt != channelRoutes.end(); ++routeIt)
-            {
-                if (routeIt->outNode == Ogre::IdString() && 0 == routeIt->outChannel && routeIt->inNode == finalRenderNodeName && 0 == routeIt->inChannel)
-                {
-                    externalAlreadyConnected = true;
-                    break;
-                }
-            }
-
-            if (false == externalAlreadyConnected)
+            // Only declare the external route if it is not declared already.
+            //
+            // clearAllInterNodeConnections() above wipes mChannelRoutes but deliberately KEEPS the
+            // external routes, so on a workspace built via baseCreateWorkspace() the route is normally
+            // still there. Declaring it a second time makes Ogre warn "are both trying to connect its
+            // output to input channel #0 of node ... Only the latter will work" and stacks a duplicate
+            // entry on every reconnect.
+            //
+            // Whether the route exists cannot be read back from Ogre: connectExternal() writes into
+            // mExternalChannelRoutes, for which there is no getter, while _getChannelRoutes() returns
+            // the INTER-NODE routes. The previous version searched that inter-node list for an entry
+            // with an empty outNode - something connect() never produces - so the check was always
+            // false and the duplicate was created every single time. The state is therefore tracked in
+            // externalChannelConnected, which is set in baseCreateWorkspace() and cleared wherever the
+            // definition is wiped (createWorkspace, removeWorkspace, disconnect, enableEffect).
+            if (false == this->externalChannelConnected)
             {
                 workspaceDef->connectExternal(0, finalRenderNodeName, 0);
+                this->externalChannelConnected = true;
             }
 
             this->workspace->reconnectAllNodes();
@@ -1515,6 +1534,7 @@ namespace NOWA
 
             workspaceDef->clearAll();
             workspaceDef->clearOutputConnections();
+            this->externalChannelConnected = false;
 
             auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
 
@@ -1541,6 +1561,8 @@ namespace NOWA
         {
             this->msaaLevel = 1;
         }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBaseComponent][MSAA] baseCreateWorkspace wiring graph for msaaLevel=" + Ogre::StringConverter::toString(this->msaaLevel));
 
         bool oceanUnderwater = this->canUseOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
 
@@ -1677,6 +1699,8 @@ namespace NOWA
                 workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
             }
         }
+
+        this->externalChannelConnected = true;
     }
 
     void WorkspaceBaseComponent::createFinalRenderNode(void)
@@ -2059,10 +2083,6 @@ namespace NOWA
         }
         this->workspace =
             AppStateManager::getSingletonPtr()->getWorkspaceModule()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), this->externalChannels, this->cameraComponent->getCamera(), this->workspaceName, true, position);
-
-        // AppStateManager::getSingletonPtr()->getWorkspaceModule()->logLiveNodeGraph(this->workspace, "Sky after create");
-
-        // AppStateManager::getSingletonPtr()->getWorkspaceModule()->logAllCompositorNodeDefinitions();
     }
 
     Ogre::String WorkspaceBaseComponent::getDistortionNode(void) const
@@ -3282,6 +3302,8 @@ namespace NOWA
 
     void WorkspacePbsComponent::internalCreateCompositorNode(void)
     {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspacePbsComponent][MSAA] internalCreateCompositorNode building render targets with msaaLevel=" + Ogre::StringConverter::toString(this->msaaLevel));
+
         // Threadsafe from the outside
         // https://forums.ogre3d.org/viewtopic.php?t=94748
         if (false == this->compositorManager->hasNodeDefinition(this->renderingNodeName))

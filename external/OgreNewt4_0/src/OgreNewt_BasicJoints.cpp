@@ -2812,13 +2812,22 @@ namespace OgreNewt
     // PathFollow implementation
     // =============================================================
 
-    PathFollow::PathFollow(OgreNewt::Body* child, OgreNewt::Body* pathBody, const Ogre::Vector3& pos) : m_childBody(child), m_pathBody(pathBody), m_pos(pos), m_loop(false), m_clockwise(true)
+    ndSharedPtr<ndBody> OgreNewt::PathFollow::msPathAnchorBody;
+
+    PathFollow::PathFollow(OgreNewt::Body* child, OgreNewt::Body* pathBody, const Ogre::Vector3& pos)
+        : m_childBody(child),
+        m_pathBody(pathBody),
+        m_pos(pos),
+        m_loop(false),
+        m_clockwise(true)
     {
     }
 
     PathFollow::~PathFollow()
     {
-        // Base Joint class cleans up joint object
+        // Base Joint class cleans up the joint object itself, but the anchor body was
+        // created here, so it has to be removed here too - otherwise every path follow
+        // joint leaks one body into the world.
     }
 
     void PathFollow::setLoop(bool value)
@@ -2854,7 +2863,9 @@ namespace OgreNewt
         m_sourceControlPoints.clear();
         m_sourceControlPoints.reserve(knots.size());
 
-        // store world-space points as given by the component
+        // Stored in WORLD space and kept that way: the anchor body created in
+        // createPathJoint() sits at identity, so spline local space == world space and no
+        // conversion is needed anywhere.
         for (const auto& p : knots)
         {
             m_sourceControlPoints.emplace_back(ndBigVector(p.x, p.y, p.z, 1.0));
@@ -2865,12 +2876,8 @@ namespace OgreNewt
             return false;
         }
 
-        // Path body must exist
-        if (!m_pathBody || !m_pathBody->getNewtonBody())
-        {
-            return false;
-        }
-
+        // The former "path body must exist" check is gone on purpose - this joint no
+        // longer depends on any external body to define its frame of reference.
         rebuildSpline();
         return true;
     }
@@ -2879,13 +2886,11 @@ namespace OgreNewt
     {
         m_internalControlPoints.clear();
 
-        // nothing to do without source data
         if (m_sourceControlPoints.size() < 2)
         {
             return;
         }
 
-        // Start from original points
         m_internalControlPoints = m_sourceControlPoints;
 
         // --------------------------------------------------
@@ -2893,7 +2898,6 @@ namespace OgreNewt
         // --------------------------------------------------
         if (!m_clockwise && m_internalControlPoints.size() > 2)
         {
-            // [0] remains anchor/start, [1..N-1] get reversed
             std::reverse(m_internalControlPoints.begin() + 1, m_internalControlPoints.end());
         }
 
@@ -2912,54 +2916,113 @@ namespace OgreNewt
             }
         }
 
-        if (!m_pathBody || !m_pathBody->getNewtonBody())
-        {
-            return;
-        }
-
-        const ndBodyKinematic* pathKine = (ndBodyKinematic*)m_pathBody->getNewtonBody();
-        ndMatrix pathM(pathKine->GetMatrix());
-
-        // Convert world -> local
-        std::vector<ndBigVector> localPoints;
-        localPoints.reserve(m_internalControlPoints.size());
-
-        for (const auto& pWorldBig : m_internalControlPoints)
-        {
-            ndVector pWorld((ndFloat32)pWorldBig.m_x, (ndFloat32)pWorldBig.m_y, (ndFloat32)pWorldBig.m_z, 1.0f);
-
-            ndVector pLocal = pathM.UntransformVector(pWorld);
-            localPoints.emplace_back(ndBigVector(pLocal.m_x, pLocal.m_y, pLocal.m_z, 1.0));
-        }
-
-        const ndInt32 count = (ndInt32)localPoints.size();
+        const ndInt32 count = (ndInt32)m_internalControlPoints.size();
         if (count < 2)
         {
             return;
         }
 
-        ndBigVector firstTangent = localPoints[1] - localPoints[0];
-        ndBigVector lastTangent = localPoints[count - 1] - localPoints[count - 2];
+        // No world->local conversion anymore: the anchor body is at identity, so the
+        // control points are already in the spline's own space. The previous version
+        // converted against the path body's matrix, which tied the whole path to an
+        // unrelated scene object.
+        ndBigVector firstTangent = m_internalControlPoints[1] - m_internalControlPoints[0];
+        ndBigVector lastTangent = m_internalControlPoints[count - 1] - m_internalControlPoints[count - 2];
 
-        // Build the real spline
-        m_spline.GlobalCubicInterpolation(count, &localPoints[0], firstTangent, lastTangent);
+        if (m_loop && count > 2)
+        {
+            // On a closed loop the start and end tangents must agree, otherwise the spline
+            // has a kink exactly at the seam and the body jolts once per lap. Averaging the
+            // incoming and outgoing direction gives a C1 continuous join.
+            ndBigVector seamTangent(firstTangent + lastTangent);
+            const ndFloat64 len2 = seamTangent.DotProduct(seamTangent).GetScalar();
+            if (len2 > 1.0e-12)
+            {
+                seamTangent = seamTangent.Scale(1.0 / ndSqrt(len2));
+                firstTangent = seamTangent;
+                lastTangent = seamTangent;
+            }
+        }
+
+        m_spline.GlobalCubicInterpolation(count, &m_internalControlPoints[0], firstTangent, lastTangent);
     }
 
     void PathFollow::createPathJoint(void)
     {
-        // direction from first segment (already consistent with clockwise order)
-        const Ogre::Vector3 dir = getMoveDirection(0);
-        Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(dir);
+        if (nullptr == m_childBody || nullptr == m_childBody->getNewtonBody())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PathFollow] Cannot create path joint: the moving body has no native ND4 body yet.");
+            return;
+        }
+
+        if (m_internalControlPoints.size() < 2)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PathFollow] Cannot create path joint: fewer than two waypoints.");
+            return;
+        }
+
+        ndBodyKinematic* const childKin = (ndBodyKinematic*)m_childBody->getNewtonBody();
+        ndBodyDynamic* const childDyn = childKin->GetAsBodyDynamic();
+        if (nullptr == childDyn)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PathFollow] Cannot create path joint: the moving body is not an ndBodyDynamic.");
+            return;
+        }
+
+         if (!msPathAnchorBody)
+        {
+            // Zero mass on purpose: SetMassMatrix() is deliberately NOT called, which
+            // leaves the body at infinite mass, i.e. immovable. That is the ND4 idiom for
+            // a static body and exactly what the roller coaster demo does for its path
+            // body - it too never calls SetMassMatrix().
+            //
+            // Left at identity so spline local space == world space, and shared by every
+            // path follow joint so nothing is ever created or destroyed per joint.
+            ndBodyDynamic* const anchor = new ndBodyDynamic();
+            anchor->SetMatrix(ndGetIdentityMatrix());
+
+            ndShapeInstance nullShape(new ndShapeNull());
+            anchor->SetCollisionShape(nullShape);
+
+            msPathAnchorBody = ndSharedPtr<ndBody>(anchor);
+            m_childBody->getWorld()->addBody(msPathAnchorBody);
+        }
+
+        ndBodyDynamic* const pathDyn = (*msPathAnchorBody)->GetAsBodyDynamic();
+
+        // Build the joint frame AT the child's own location on the path, not at a fixed
+        // anchor point. The previous code put the frame at AnchorPosition (0,0,0 in your
+        // scene) while the barrel sat ~15 units away, so the very first solver step had to
+        // yank the body across that entire gap - the root cause of the instability you saw
+        // even back when it "worked".
+        const ndVector childPos(childKin->GetMatrix().m_posit);
+
+        ndBigVector closestPoint;
+        const ndFloat64 knot = m_spline.FindClosestKnot(closestPoint, ndBigVector(childPos), 8);
+
+        ndBigVector tangentBig(m_spline.CurveDerivative(knot));
+        const ndFloat64 tangentLen2 = tangentBig.DotProduct(tangentBig).GetScalar();
+        if (tangentLen2 > 1.0e-12)
+        {
+            tangentBig = tangentBig.Scale(1.0 / ndSqrt(tangentLen2));
+        }
+
+        const Ogre::Vector3 tangentDir((Ogre::Real)tangentBig.m_x, (Ogre::Real)tangentBig.m_y, (Ogre::Real)tangentBig.m_z);
+
+        // Front axis = the actual tangent where THIS body is, matching how the demo builds
+        // matrix.m_front per car. Using segment 0's direction for every body meant the
+        // frame was misaligned from the very first frame.
+        const Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(tangentDir);
 
         ndMatrix frame;
         OgreNewt::Converters::QuatPosToMatrix(q, Ogre::Vector3::ZERO, frame);
+        frame.m_posit = ndVector((ndFloat32)closestPoint.m_x, (ndFloat32)closestPoint.m_y, (ndFloat32)closestPoint.m_z, 1.0f);
 
-        const ndBodyKinematic* pathKine = (ndBodyKinematic*)m_pathBody->getNewtonBody();
-        const ndMatrix pathM(pathKine->GetMatrix());
-        frame.m_posit = pathM.TransformVector(ndVector(m_pos.x, m_pos.y, m_pos.z, 1.0f));
-
-        ndBodyDynamic* const childDyn = ((ndBodyKinematic*)m_childBody->getNewtonBody())->GetAsBodyDynamic();
-        ndBodyDynamic* const pathDyn = ((ndBodyKinematic*)m_pathBody->getNewtonBody())->GetAsBodyDynamic();
+        // Snap the body onto the path BEFORE constraining it, so the solver starts with
+        // zero positional error instead of having to resolve the gap in a single step.
+        ndMatrix childMatrix(childKin->GetMatrix());
+        childMatrix.m_posit = frame.m_posit;
+        childKin->SetMatrix(childMatrix);
 
         auto* joint = new NdCustomPathFollowAdapter(frame, childDyn, pathDyn, &m_spline);
         SetSupportJoint(m_childBody->getWorld(), joint);

@@ -594,7 +594,7 @@ namespace OgreAL
 			// Start at min gain..
 			setGain(mMinGain);
 			// ..and play
-			return play();
+			return true;
 		}
 
 
