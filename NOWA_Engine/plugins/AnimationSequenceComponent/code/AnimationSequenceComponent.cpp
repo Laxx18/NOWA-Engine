@@ -48,6 +48,7 @@ namespace NOWA
         skeletonVisualizer(nullptr),
         timePosition(0.0f),
         firstTimeRepeat(true),
+        sequenceFinished(false),
         currentAnimationIndex(0)
     {
         // Since when animation count is changed, the whole properties must be refreshed, so that new field may come for animations
@@ -112,6 +113,8 @@ namespace NOWA
             this->animationNames.resize(this->animationCount->getUInt());
             this->animationBlendTransitions.resize(this->animationCount->getUInt());
             this->animationDurations.resize(this->animationCount->getUInt());
+            this->animationLengths.resize(this->animationCount->getUInt());
+            this->animationBlendDurations.resize(this->animationCount->getUInt());
             this->animationTimePositions.resize(this->animationCount->getUInt());
             this->animationSpeeds.resize(this->animationCount->getUInt());
         }
@@ -153,6 +156,12 @@ namespace NOWA
                 if (nullptr == this->animationDurations[i])
                 {
                     this->animationDurations[i] = new Variant(AnimationSequenceComponent::AttrDuration() + Ogre::StringConverter::toString(i), XMLConverter::getAttribReal(propertyElement, "data"), this->attributes);
+                    this->animationDurations[i]->setDescription("How long this segment is PLAYED, in seconds. See 'Animation Length' for how long the animation actually is.");
+                    this->animationLengths[i] = new Variant(AnimationSequenceComponent::AttrAnimationLength() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->animationLengths[i]->setReadOnly(true);
+                    this->animationLengths[i]->setDescription("Real length of the selected animation in seconds, taken from the skeleton. Informational only.");
+                    this->animationBlendDurations[i] = new Variant(AnimationSequenceComponent::AttrBlendDuration() + Ogre::StringConverter::toString(i), 0.2f, this->attributes);
+                    this->animationBlendDurations[i]->setDescription("Cross fade length into the NEXT animation, in seconds. The blend starts this much before the segment ends.");
                 }
                 else
                 {
@@ -183,6 +192,18 @@ namespace NOWA
                     this->animationSpeeds[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
                 }
                 this->animationSpeeds[i]->addUserData(GameObject::AttrActionSeparator());
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BlendDuration" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->animationBlendDurations[i])
+                {
+                    this->animationBlendDurations[i] = new Variant(AnimationSequenceComponent::AttrBlendDuration() + Ogre::StringConverter::toString(i), XMLConverter::getAttribReal(propertyElement, "data", 0.2f), this->attributes);
+                }
+                else
+                {
+                    this->animationBlendDurations[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.2f));
+                }
                 propertyElement = propertyElement->next_sibling("property");
             }
         }
@@ -350,24 +371,116 @@ namespace NOWA
         // disconnected, update() kept driving the animationBlender exactly as if still playing -
         // with several sequences running, that's several game objects that never actually stop
         // animating after disconnect.
-        if (true == this->activated->getBool() && true == this->bConnected && false == notSimulating)
+        // A blend started from OUTSIDE this component (a Lua script calling
+        // blender->blend(...) right after setActivated(false)) still needs someone to
+        // advance it - addTime() is what counts timeleft down. Without this the blend
+        // was armed but frozen, so the cross fade never actually ran.
+        const bool blendStillRunning = (nullptr != this->animationBlender && nullptr != this->animationBlender->getTarget());
+
+        if ((true == this->activated->getBool() || true == blendStillRunning) && true == this->bConnected && false == notSimulating)
         {
             if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
             {
                 this->animationBlender->beginFrame();
 
-                this->timePosition += dt;
+                if (false == this->activated->getBool())
+                {
+                    // Deactivated: do NOT run the sequence logic below (it would advance
+                    // segments and index the vectors). Just keep the blender ticking until
+                    // the external cross fade has finished.
+                    Ogre::Real outgoingDuration = this->animationBlender->getSource()->getDuration();
+                    if (outgoingDuration > 0.0f)
+                    {
+                        this->animationBlender->addTime(dt / outgoingDuration, this->getClassName());
+                    }
+
+                    if (true == this->showSkeleton->getBool() && nullptr != this->skeletonVisualizer)
+                    {
+                        this->skeletonVisualizer->update(dt);
+                    }
+                    return;
+                }
+
+                // Bug: this used to be "this->timePosition += dt;" - ignoring
+                // animationSpeeds[currentAnimationIndex] entirely. timePosition is the clock
+                // that decides when the current segment has finished and it's time to blend
+                // into the next animation in the sequence (compared against
+                // animationDurations[...] below); the ACTUAL playback a few lines down
+                // (addTime()) already scales dt by speed. With the two out of sync, at
+                // speed > 1 the animation visually finishes (and freezes on its last frame)
+                // long before timePosition catches up to switch segments; at speed < 1
+                // timePosition reaches the segment's nominal duration - and switches to the
+                // next animation - while the current one is still mid-playback, causing a
+                // visible jump-cut. Scale timePosition by the same speed so both clocks track
+                // the same real, sped-up-or-slowed-down progress.
+                // Bug: once a NON repeating sequence had played its last segment, the old
+                // code incremented currentAnimationIndex to size() and returned - but only
+                // for that one frame. From the next frame on, this very line indexed
+                // animationSpeeds[size()], i.e. one past the end of the vector, and so did
+                // every other access below it. Undefined behaviour every single frame.
+                if (true == this->sequenceFinished)
+                {
+                    return;
+                }
+
+                this->timePosition += dt * this->animationSpeeds[this->currentAnimationIndex]->getReal();
 
                 if (true == this->firstTimeRepeat)
                 {
                     this->firstTimeRepeat = false;
                 }
 
+                // A cross fade needs the OUTGOING animation to still be running while it
+                // fades out. Starting the blend at the very end of the segment meant the
+                // source had already reached its last frame and was frozen there, so there
+                // was nothing left to fade from and the switch looked like a hard cut -
+                // most obvious at the wrap around, where the sequence jumps back to the
+                // start. Trigger the blend blendDuration seconds EARLY instead.
+                const Ogre::Real segmentDuration = this->animationDurations[this->currentAnimationIndex]->getReal();
+                const Ogre::Real segmentSpeed = this->animationSpeeds[this->currentAnimationIndex]->getReal();
+                Ogre::Real blendDuration = this->animationBlendDurations[this->currentAnimationIndex]->getReal();
+
+                if (blendDuration < 0.0f)
+                {
+                    blendDuration = 0.0f;
+                }
+
+                // Bug: blendDuration is a REAL time value in seconds, but timePosition
+                // counts in SCALED units (dt * speed), so subtracting one from the other
+                // mixed two different clocks. Example from a real scene: duration 1.03333
+                // at speed 0.3 gave switchTime 0.83333 scaled = 2.78 s real, while the
+                // segment itself lasts 1.03333 / 0.3 = 3.44 s real - so the blend started
+                // 0.66 s early instead of 0.2 s, more than three times too soon. Scaling
+                // the blend into the segment clock makes the real lead time exactly
+                // blendDuration again, whatever the speed is.
+                Ogre::Real blendDurationScaled = blendDuration * segmentSpeed;
+
+                // Never let the fade eat more than half the segment, otherwise a long blend
+                // on a short animation would trigger the switch immediately, every frame.
+                if (blendDurationScaled > segmentDuration * 0.5f)
+                {
+                    blendDurationScaled = segmentDuration * 0.5f;
+                }
+
+                const Ogre::Real switchTime = segmentDuration - blendDurationScaled;
+
                 // Start at the second animation (if existing), because the first is played when animation is activated
-                if (this->timePosition >= this->animationDurations[this->currentAnimationIndex]->getReal())
+                if (this->timePosition >= switchTime)
                 {
                     this->currentAnimationIndex++;
-                    this->timePosition = 0.0f;
+
+                    // Bug: this used to be "timePosition = 0.0f", discarding however far
+                    // the last frame overshot switchTime. That remainder is lost on every
+                    // single switch, so the segment clock drifts against the blender's
+                    // actual playback position - and because the error ACCUMULATES over
+                    // laps, the second run through the sequence behaves differently from
+                    // the first. Carrying the overshoot into the new segment keeps the two
+                    // clocks locked together indefinitely.
+                    this->timePosition -= switchTime;
+                    if (this->timePosition < 0.0f)
+                    {
+                        this->timePosition = 0.0f;
+                    }
 
                     // If repeat, start the current animation index at the beginning
                     if (this->currentAnimationIndex > this->animationNames.size() - 1)
@@ -378,18 +491,49 @@ namespace NOWA
                         }
                         else
                         {
+                            // Clamp back to the last valid index and latch, so nothing below
+                            // and no later frame can index out of range.
+                            this->currentAnimationIndex = this->animationNames.size() - 1;
+                            this->sequenceFinished = true;
                             return;
                         }
                     }
+                    // loop = FALSE, deliberately. It used to be hardcoded true, which is
+                    // wrong twice over: a sequence segment is meant to play exactly once
+                    // (repeating the whole sequence is what the 'Repeat' attribute does),
+                    // and more importantly AnimationBlenderV2::internalBlend() only applies
+                    // its phase-sync when BOTH the source loops and this flag is true:
+                    //
+                    //     sourcePhase = source->getCurrentFrame() / source->getNumFrames();
+                    //     target->setFrame(sourcePhase * target->getNumFrames());
+                    //
+                    // That is meant for locomotion blends (walk into run, keeping the feet
+                    // in step). Applied to a sequence it starts the incoming animation at
+                    // the OUTGOING one's phase - so blending into a pick up animation while
+                    // idle sits at 60% started the pick up 60% in, played the remainder,
+                    // looped back and only then played it properly. Exactly the "starts
+                    // briefly, stops, then does the real pick up" symptom.
                     this->animationBlender->blend(this->animationNames[this->currentAnimationIndex]->getListSelectedValue(), this->mapStringToBlendingTransition(this->animationBlendTransitions[this->currentAnimationIndex]->getListSelectedValue()),
-                        0.2f, true);
+                        blendDuration, false);
+
+                    // Each segment in the sequence can have its own configured speed - the
+                    // new segment just blended into may run at a different speed than the
+                    // one before it, so push it now. See the comment in activateAnimation()
+                    // for why this (not the addTime() parameter) is the real speed control.
+                    this->animationBlender->setAnimationSpeed(this->animationSpeeds[this->currentAnimationIndex]->getReal());
                 }
 
                 // Ported: getDuration() replaces v1 getLength()
                 Ogre::Real sourceDuration = this->animationBlender->getSource()->getDuration();
                 if (sourceDuration > 0.0f)
                 {
-                    // See: comments in AnimationComponentV2
+                    // Note: the value passed here is NOT what drives playback speed - inside
+                    // AnimationBlenderV2::addTime()'s render-thread closure, the "time"
+                    // parameter is unused; actual advancement uses renderDt, and actual speed
+                    // comes from AnimationBlenderV2::setAnimationSpeed() (called above on
+                    // segment switch, and in setSpeed()). This call's only real job left is to
+                    // drive the addTime()->tryClaimAddTime()/beginFrame() per-frame bookkeeping
+                    // (blend weights, completion detection, observer notification) each tick.
                     Ogre::Real deltaTime = dt * this->animationSpeeds[this->currentAnimationIndex]->getReal() / sourceDuration;
                     this->animationBlender->addTime(deltaTime, this->getClassName());
 
@@ -412,11 +556,17 @@ namespace NOWA
         }
     }
 
-    void AnimationSequenceComponent::resetAnimation(void)
+    void AnimationSequenceComponent::resetSequenceClock(void)
     {
         this->timePosition = 0.0f;
         this->currentAnimationIndex = 0;
         this->firstTimeRepeat = true;
+        this->sequenceFinished = false;
+    }
+
+    void AnimationSequenceComponent::resetAnimation(void)
+    {
+        this->resetSequenceClock();
 
         if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
         {
@@ -498,6 +648,14 @@ namespace NOWA
                     this->setSpeed(i, attribute->getReal());
                 }
             }
+            for (unsigned int i = 0; i < static_cast<unsigned int>(this->animationBlendDurations.size()); i++)
+            {
+                if (AnimationSequenceComponent::AttrBlendDuration() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setBlendDuration(i, attribute->getReal());
+                }
+            }
+            // 'Animation Length' is read only and intentionally has no branch here.
         }
     }
 
@@ -561,6 +719,16 @@ namespace NOWA
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Speed" + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animationSpeeds[i]->getReal())));
             propertiesXML->append_node(propertyXML);
+
+            // Written right after Speed<i>, matching the order init() parses them in -
+            // that parser walks the properties sequentially, so the two must agree.
+            // 'Animation Length' is deliberately NOT serialised: it is derived from the
+            // mesh and is refreshed from the skeleton whenever the name is applied.
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "BlendDuration" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animationBlendDurations[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
         }
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -589,7 +757,21 @@ namespace NOWA
             // First deactivate, then restart from the first animation
             this->resetAnimation();
             this->animationBlender->init(this->animationNames[0]->getListSelectedValue(), false);
-            this->animationBlender->blend(this->animationNames[0]->getListSelectedValue(), this->mapStringToBlendingTransition(this->animationBlendTransitions[0]->getListSelectedValue()), 0.2f, true);
+            const Ogre::Real initialBlendDuration = (false == this->animationBlendDurations.empty() && nullptr != this->animationBlendDurations[0]) ? this->animationBlendDurations[0]->getReal() : 0.2f;
+            // Same reasoning as in update(): a sequence segment plays once, and passing
+            // true here would additionally arm internalBlend()'s locomotion phase-sync.
+            this->animationBlender->blend(this->animationNames[0]->getListSelectedValue(), this->mapStringToBlendingTransition(this->animationBlendTransitions[0]->getListSelectedValue()), initialBlendDuration, false);
+
+            // AnimationBlenderV2::addTime()'s "time" parameter is dead code inside its
+            // render-thread closure (it drives playback purely off renderDt, ignoring the
+            // value passed in) - the actually working speed control is
+            // AnimationBlenderV2::setAnimationSpeed(), which scales mFrameRate against a
+            // cached base rate. Apply THIS segment's configured speed now, since
+            // currentSpeed may still be left over from a previous run/segment otherwise.
+            if (false == this->animationSpeeds.empty())
+            {
+                this->animationBlender->setAnimationSpeed(this->animationSpeeds[0]->getReal());
+            }
         }
     }
 
@@ -597,15 +779,34 @@ namespace NOWA
     {
         this->activated->setValue(activated);
 
-        // First deactivate
-        if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
+        if (true == activated)
         {
-            this->resetAnimation();
-        }
+            // Full reset only when (re)starting: the sequence takes the pose over anyway.
+            if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
+            {
+                this->resetAnimation();
+            }
 
-        if (true == this->bConnected && true == activated)
+            if (true == this->bConnected)
+            {
+                this->activateAnimation();
+            }
+        }
+        else
         {
-            this->activateAnimation();
+            // Bug: deactivating used to call resetAnimation(), which does
+            //     getSource()->setEnabled(false); getSource()->mWeight = 0.0f;
+            // i.e. it HARD KILLS the animation that is currently on screen. Anything
+            // blending afterwards - typically a script doing
+            // setActivated(false) followed by blender->blend(idle, BlendWhileAnimating)
+            // - then had no live source left to fade out of, so the character snapped
+            // into the new pose no matter which transition type was requested.
+            //
+            // Only the sequence bookkeeping is reset here. The current animation stays
+            // enabled and simply stops being advanced, which makes it a perfectly good
+            // source for a following cross fade. disconnect() still calls
+            // resetAnimation() for the real, hard stop.
+            this->resetSequenceClock();
         }
     }
 
@@ -649,6 +850,8 @@ namespace NOWA
             this->animationNames.resize(animationCount);
             this->animationBlendTransitions.resize(animationCount);
             this->animationDurations.resize(animationCount);
+            this->animationLengths.resize(animationCount);
+            this->animationBlendDurations.resize(animationCount);
             this->animationTimePositions.resize(animationCount);
             this->animationSpeeds.resize(animationCount);
 
@@ -670,6 +873,8 @@ namespace NOWA
             this->eraseVariants(this->animationNames, animationCount);
             this->eraseVariants(this->animationBlendTransitions, animationCount);
             this->eraseVariants(this->animationDurations, animationCount);
+            this->eraseVariants(this->animationLengths, animationCount);
+            this->eraseVariants(this->animationBlendDurations, animationCount);
             this->eraseVariants(this->animationTimePositions, animationCount);
             this->eraseVariants(this->animationSpeeds, animationCount);
         }
@@ -703,7 +908,22 @@ namespace NOWA
                 if (true == skeletonInst->hasAnimation(animationName))
                 {
                     Ogre::Real duration = skeletonInst->getAnimation(animationName)->getDuration();
-                    this->animationDurations[index]->setValue(duration);
+
+                    // Always mirrored into the read only length: it describes the mesh,
+                    // not a user setting, so it must stay truthful at all times.
+                    if (index < this->animationLengths.size() && nullptr != this->animationLengths[index])
+                    {
+                        this->animationLengths[index]->setValue(duration);
+                    }
+
+                    // Duration is only SEEDED, never overwritten. It used to be clobbered
+                    // unconditionally, so a duration the user had deliberately configured
+                    // (to play only part of an animation) was silently reset every time the
+                    // component reloaded or the name was re-applied.
+                    if (this->animationDurations[index]->getReal() <= 0.0f)
+                    {
+                        this->animationDurations[index]->setValue(duration);
+                    }
                 }
             }
         }
@@ -784,6 +1004,16 @@ namespace NOWA
         }
 
         this->animationSpeeds[index]->setValue(animationSpeed);
+
+        // Bug: this only ever stored the value for later - it never actually reached
+        // AnimationBlenderV2 (the addTime() parameter it used to feed is dead code there,
+        // see activateAnimation()/update() for the real mechanism). If this is the segment
+        // CURRENTLY playing, apply it right away instead of waiting for the next segment
+        // switch to pick it up in update().
+        if (index == this->currentAnimationIndex && nullptr != this->animationBlender)
+        {
+            this->animationBlender->setAnimationSpeed(animationSpeed);
+        }
     }
 
     Ogre::Real AnimationSequenceComponent::getSpeed(unsigned int index) const
@@ -793,6 +1023,40 @@ namespace NOWA
             return -1.0f;
         }
         return this->animationSpeeds[index]->getReal();
+    }
+
+    Ogre::Real AnimationSequenceComponent::getAnimationLength(unsigned int index) const
+    {
+        if (index >= this->animationLengths.size() || nullptr == this->animationLengths[index])
+        {
+            return 0.0f;
+        }
+        return this->animationLengths[index]->getReal();
+    }
+
+    void AnimationSequenceComponent::setBlendDuration(unsigned int index, Ogre::Real blendDuration)
+    {
+        // Guard with >= instead of clamping to size() - 1: on an empty vector that
+        // expression underflows to a huge unsigned value and indexes out of range. The
+        // same pattern is still used in several setters above and is worth cleaning up.
+        if (index >= this->animationBlendDurations.size() || nullptr == this->animationBlendDurations[index])
+        {
+            return;
+        }
+        if (blendDuration < 0.0f)
+        {
+            blendDuration = 0.0f;
+        }
+        this->animationBlendDurations[index]->setValue(blendDuration);
+    }
+
+    Ogre::Real AnimationSequenceComponent::getBlendDuration(unsigned int index) const
+    {
+        if (index >= this->animationBlendDurations.size() || nullptr == this->animationBlendDurations[index])
+        {
+            return 0.0f;
+        }
+        return this->animationBlendDurations[index]->getReal();
     }
 
     AnimationBlenderV2* AnimationSequenceComponent::getAnimationBlender(void) const

@@ -9,7 +9,7 @@ namespace NOWA
 {
 	class GameObject;
 	class PhysicsActiveComponent;
-	class IAnimationBlender;
+	class AnimationBlenderV2;
 	class CrowdComponent;
     class AnimationComponentV2;
 
@@ -416,7 +416,7 @@ namespace NOWA
 			unsigned long agentId;
 			bool autoOrientation;
 			bool autoAnimation;
-			IAnimationBlender* animationBlender;
+			AnimationBlenderV2* animationBlender;
 			Ogre::Real oldAnimationSpeed;
 			Ogre::Vector3 oldGravity;
 			// Target object

@@ -5219,151 +5219,149 @@ namespace NOWA
 
 		module(lua)
 		[
-			class_<IAnimationBlender::BlendSpaceEntryList>("BlendSpaceEntryList")
+			class_<AnimationBlenderV2::BlendSpaceEntryList>("BlendSpaceEntryList")
 			.def(constructor<>())
-			.def("add", &IAnimationBlender::BlendSpaceEntryList::add)
-			.def("clear", &IAnimationBlender::BlendSpaceEntryList::clear)
-			.def("size", &IAnimationBlender::BlendSpaceEntryList::size)
+			.def("add", &AnimationBlenderV2::BlendSpaceEntryList::add)
+			.def("clear", &AnimationBlenderV2::BlendSpaceEntryList::clear)
+			.def("size", &AnimationBlenderV2::BlendSpaceEntryList::size)
 		];
+		AddClassToCollection("BlendSpaceEntryList", "class", "Lua constructible list of blend space entries. Build it once in connect(), keep it as a variable and pass it to driveBlendSpace() every frame.");
+		AddClassToCollection("BlendSpaceEntryList", "void add(AnimID animationId, float parameter)", "Adds a clip and the parameter value it represents, e.g. the speed at which this animation looks right. Entries must be added sorted by parameter ascending.");
+		AddClassToCollection("BlendSpaceEntryList", "void clear()", "Removes all entries.");
+		AddClassToCollection("BlendSpaceEntryList", "number size()", "Gets the number of entries.");
 
 		module(lua)
 		[
-			class_<IAnimationBlender>("AnimationBlender")
+			class_<AnimationBlenderV2>("AnimationBlender")
 			.enum_("AnimID")
 			[
-				value("ANIM_IDLE_1", IAnimationBlender::ANIM_IDLE_1),
-				value("ANIM_IDLE_2", IAnimationBlender::ANIM_IDLE_2),
-				value("ANIM_IDLE_3", IAnimationBlender::ANIM_IDLE_3),
-				value("ANIM_IDLE_4", IAnimationBlender::ANIM_IDLE_4),
-				value("ANIM_IDLE_5", IAnimationBlender::ANIM_IDLE_5),
-				value("ANIM_WALK_NORTH", IAnimationBlender::ANIM_WALK_NORTH),
-				value("ANIM_WALK_SOUTH", IAnimationBlender::ANIM_WALK_SOUTH),
-				value("ANIM_WALK_WEST", IAnimationBlender::ANIM_WALK_WEST),
-				value("ANIM_WALK_EAST", IAnimationBlender::ANIM_WALK_EAST),
-				value("ANIM_RUN", IAnimationBlender::ANIM_RUN),
-				value("ANIM_CLIMB", IAnimationBlender::ANIM_CLIMB),
-				value("ANIM_SNEAK", IAnimationBlender::ANIM_SNEAK),
-				value("ANIM_HANDS_CLOSED", IAnimationBlender::ANIM_HANDS_CLOSED),
-				value("ANIM_HANDS_RELAXED", IAnimationBlender::ANIM_HANDS_RELAXED),
-				value("ANIM_DRAW_WEAPON", IAnimationBlender::ANIM_DRAW_WEAPON),
-				value("ANIM_SLICE_VERTICAL", IAnimationBlender::ANIM_SLICE_VERTICAL),
-				value("ANIM_SLICE_HORIZONTAL", IAnimationBlender::ANIM_SLICE_HORIZONTAL),
-				value("ANIM_JUMP_START", IAnimationBlender::ANIM_JUMP_START),
-				value("ANIM_JUMP_LOOP", IAnimationBlender::ANIM_JUMP_LOOP),
-				value("ANIM_JUMP_END", IAnimationBlender::ANIM_JUMP_END),
-				value("ANIM_HIGH_JUMP_END", IAnimationBlender::ANIM_HIGH_JUMP_END),
-				value("ANIM_JUMP_WALK", IAnimationBlender::ANIM_JUMP_WALK),
-				value("ANIM_FALL", IAnimationBlender::ANIM_FALL),
-				value("ANIM_EAT_1", IAnimationBlender::ANIM_EAT_1),
-				value("ANIM_EAT_2", IAnimationBlender::ANIM_EAT_2),
-				value("ANIM_PICKUP_1", IAnimationBlender::ANIM_PICKUP_1),
-				value("ANIM_PICKUP_2", IAnimationBlender::ANIM_PICKUP_2),
-				value("ANIM_ATTACK_1", IAnimationBlender::ANIM_ATTACK_1),
-				value("ANIM_ATTACK_2", IAnimationBlender::ANIM_ATTACK_2),
-				value("ANIM_ATTACK_3", IAnimationBlender::ANIM_ATTACK_3),
-				value("ANIM_ATTACK_4", IAnimationBlender::ANIM_ATTACK_4),
-				value("ANIM_SWIM", IAnimationBlender::ANIM_SWIM),
-				value("ANIM_THROW_1", IAnimationBlender::ANIM_THROW_1),
-				value("ANIM_THROW_2", IAnimationBlender::ANIM_THROW_2),
-				value("ANIM_DEAD_1", IAnimationBlender::ANIM_DEAD_1),
-				value("ANIM_DEAD_2", IAnimationBlender::ANIM_DEAD_2),
-				value("ANIM_DEAD_3", IAnimationBlender::ANIM_DEAD_3),
-				value("ANIM_SPEAK_1", IAnimationBlender::ANIM_SPEAK_1),
-				value("ANIM_SPEAK_2", IAnimationBlender::ANIM_SPEAK_2),
-				value("ANIM_SLEEP", IAnimationBlender::ANIM_SLEEP),
-				value("ANIM_DANCE", IAnimationBlender::ANIM_DANCE),
-				value("ANIM_DUCK", IAnimationBlender::ANIM_DUCK),
-				value("ANIM_CROUCH", IAnimationBlender::ANIM_CROUCH),
-				value("ANIM_HALT", IAnimationBlender::ANIM_HALT),
-				value("ANIM_ROAR", IAnimationBlender::ANIM_ROAR),
-				value("ANIM_SIGH", IAnimationBlender::ANIM_SIGH),
-				value("ANIM_GREETINGS", IAnimationBlender::ANIM_GREETINGS),
-				value("ANIM_NO_IDEA", IAnimationBlender::ANIM_NO_IDEA),
-				value("ANIM_ACTION_1", IAnimationBlender::ANIM_ACTION_1),
-				value("ANIM_ACTION_2", IAnimationBlender::ANIM_ACTION_2),
-				value("ANIM_ACTION_3", IAnimationBlender::ANIM_ACTION_3),
-				value("ANIM_ACTION_4", IAnimationBlender::ANIM_ACTION_4),
-				value("ANIM_NONE", IAnimationBlender::ANIM_NONE),
-				value("ANIM_PULL", IAnimationBlender::ANIM_PULL),
-				value("ANIM_PUSH", IAnimationBlender::ANIM_PUSH),
-				value("ANIM_KNOCK_DOWN", IAnimationBlender::ANIM_KNOCK_DOWN),
-				value("ANIM_STAND_UP", IAnimationBlender::ANIM_STAND_UP),
-				value("ANIM_TALK_1", IAnimationBlender::ANIM_TALK_1),
-				value("ANIM_TALK_2", IAnimationBlender::ANIM_TALK_2),
-				value("ANIM_POINT", IAnimationBlender::ANIM_POINT),
-				value("ANIM_LAUGH", IAnimationBlender::ANIM_LAUGH),
-				value("ANIM_LAND_1", IAnimationBlender::ANIM_LAND_1),
-				value("ANIM_LAND_2", IAnimationBlender::ANIM_LAND_2),
-				value("ANIM_SHOOT", IAnimationBlender::ANIM_SHOOT),
-				value("ANIM_START_CLIMB", IAnimationBlender::ANIM_START_CLIMB),
-				value("ANIM_TAKE_DAMAGE", IAnimationBlender::ANIM_TAKE_DAMAGE),
-				value("ANIM_SHRUG", IAnimationBlender::ANIM_SHRUG),
-				value("ANIM_SALTO", IAnimationBlender::ANIM_SALTO),
-				value("ANIM_CRY", IAnimationBlender::ANIM_CRY),
-				value("ANIM_CHEER", IAnimationBlender::ANIM_CHEER),
-				value("ANIM_CAST_SPELL_1", IAnimationBlender::ANIM_CAST_SPELL_1),
-				value("ANIM_CAST_SPELL_2", IAnimationBlender::ANIM_CAST_SPELL_2),
-				value("ANIM_CAST_SPELL_3", IAnimationBlender::ANIM_CAST_SPELL_3)
+				value("ANIM_IDLE_1", AnimationBlenderV2::ANIM_IDLE_1),
+				value("ANIM_IDLE_2", AnimationBlenderV2::ANIM_IDLE_2),
+				value("ANIM_IDLE_3", AnimationBlenderV2::ANIM_IDLE_3),
+				value("ANIM_IDLE_4", AnimationBlenderV2::ANIM_IDLE_4),
+				value("ANIM_IDLE_5", AnimationBlenderV2::ANIM_IDLE_5),
+				value("ANIM_WALK_NORTH", AnimationBlenderV2::ANIM_WALK_NORTH),
+				value("ANIM_WALK_SOUTH", AnimationBlenderV2::ANIM_WALK_SOUTH),
+				value("ANIM_WALK_WEST", AnimationBlenderV2::ANIM_WALK_WEST),
+				value("ANIM_WALK_EAST", AnimationBlenderV2::ANIM_WALK_EAST),
+				value("ANIM_RUN", AnimationBlenderV2::ANIM_RUN),
+				value("ANIM_CLIMB", AnimationBlenderV2::ANIM_CLIMB),
+				value("ANIM_SNEAK", AnimationBlenderV2::ANIM_SNEAK),
+				value("ANIM_HANDS_CLOSED", AnimationBlenderV2::ANIM_HANDS_CLOSED),
+				value("ANIM_HANDS_RELAXED", AnimationBlenderV2::ANIM_HANDS_RELAXED),
+				value("ANIM_DRAW_WEAPON", AnimationBlenderV2::ANIM_DRAW_WEAPON),
+				value("ANIM_SLICE_VERTICAL", AnimationBlenderV2::ANIM_SLICE_VERTICAL),
+				value("ANIM_SLICE_HORIZONTAL", AnimationBlenderV2::ANIM_SLICE_HORIZONTAL),
+				value("ANIM_JUMP_START", AnimationBlenderV2::ANIM_JUMP_START),
+				value("ANIM_JUMP_LOOP", AnimationBlenderV2::ANIM_JUMP_LOOP),
+				value("ANIM_JUMP_END", AnimationBlenderV2::ANIM_JUMP_END),
+				value("ANIM_HIGH_JUMP_END", AnimationBlenderV2::ANIM_HIGH_JUMP_END),
+				value("ANIM_JUMP_WALK", AnimationBlenderV2::ANIM_JUMP_WALK),
+				value("ANIM_FALL", AnimationBlenderV2::ANIM_FALL),
+				value("ANIM_EAT_1", AnimationBlenderV2::ANIM_EAT_1),
+				value("ANIM_EAT_2", AnimationBlenderV2::ANIM_EAT_2),
+				value("ANIM_PICKUP_1", AnimationBlenderV2::ANIM_PICKUP_1),
+				value("ANIM_PICKUP_2", AnimationBlenderV2::ANIM_PICKUP_2),
+				value("ANIM_ATTACK_1", AnimationBlenderV2::ANIM_ATTACK_1),
+				value("ANIM_ATTACK_2", AnimationBlenderV2::ANIM_ATTACK_2),
+				value("ANIM_ATTACK_3", AnimationBlenderV2::ANIM_ATTACK_3),
+				value("ANIM_ATTACK_4", AnimationBlenderV2::ANIM_ATTACK_4),
+				value("ANIM_SWIM", AnimationBlenderV2::ANIM_SWIM),
+				value("ANIM_THROW_1", AnimationBlenderV2::ANIM_THROW_1),
+				value("ANIM_THROW_2", AnimationBlenderV2::ANIM_THROW_2),
+				value("ANIM_DEAD_1", AnimationBlenderV2::ANIM_DEAD_1),
+				value("ANIM_DEAD_2", AnimationBlenderV2::ANIM_DEAD_2),
+				value("ANIM_DEAD_3", AnimationBlenderV2::ANIM_DEAD_3),
+				value("ANIM_SPEAK_1", AnimationBlenderV2::ANIM_SPEAK_1),
+				value("ANIM_SPEAK_2", AnimationBlenderV2::ANIM_SPEAK_2),
+				value("ANIM_SLEEP", AnimationBlenderV2::ANIM_SLEEP),
+				value("ANIM_DANCE", AnimationBlenderV2::ANIM_DANCE),
+				value("ANIM_DUCK", AnimationBlenderV2::ANIM_DUCK),
+				value("ANIM_CROUCH", AnimationBlenderV2::ANIM_CROUCH),
+				value("ANIM_HALT", AnimationBlenderV2::ANIM_HALT),
+				value("ANIM_ROAR", AnimationBlenderV2::ANIM_ROAR),
+				value("ANIM_SIGH", AnimationBlenderV2::ANIM_SIGH),
+				value("ANIM_GREETINGS", AnimationBlenderV2::ANIM_GREETINGS),
+				value("ANIM_NO_IDEA", AnimationBlenderV2::ANIM_NO_IDEA),
+				value("ANIM_ACTION_1", AnimationBlenderV2::ANIM_ACTION_1),
+				value("ANIM_ACTION_2", AnimationBlenderV2::ANIM_ACTION_2),
+				value("ANIM_ACTION_3", AnimationBlenderV2::ANIM_ACTION_3),
+				value("ANIM_ACTION_4", AnimationBlenderV2::ANIM_ACTION_4),
+				value("ANIM_NONE", AnimationBlenderV2::ANIM_NONE),
+				value("ANIM_PULL", AnimationBlenderV2::ANIM_PULL),
+				value("ANIM_PUSH", AnimationBlenderV2::ANIM_PUSH),
+				value("ANIM_KNOCK_DOWN", AnimationBlenderV2::ANIM_KNOCK_DOWN),
+				value("ANIM_STAND_UP", AnimationBlenderV2::ANIM_STAND_UP),
+				value("ANIM_TALK_1", AnimationBlenderV2::ANIM_TALK_1),
+				value("ANIM_TALK_2", AnimationBlenderV2::ANIM_TALK_2),
+				value("ANIM_POINT", AnimationBlenderV2::ANIM_POINT),
+				value("ANIM_LAUGH", AnimationBlenderV2::ANIM_LAUGH),
+				value("ANIM_LAND_1", AnimationBlenderV2::ANIM_LAND_1),
+				value("ANIM_LAND_2", AnimationBlenderV2::ANIM_LAND_2),
+				value("ANIM_SHOOT", AnimationBlenderV2::ANIM_SHOOT),
+				value("ANIM_START_CLIMB", AnimationBlenderV2::ANIM_START_CLIMB),
+				value("ANIM_TAKE_DAMAGE", AnimationBlenderV2::ANIM_TAKE_DAMAGE),
+				value("ANIM_SHRUG", AnimationBlenderV2::ANIM_SHRUG),
+				value("ANIM_SALTO", AnimationBlenderV2::ANIM_SALTO),
+				value("ANIM_CRY", AnimationBlenderV2::ANIM_CRY),
+				value("ANIM_CHEER", AnimationBlenderV2::ANIM_CHEER),
+				value("ANIM_CAST_SPELL_1", AnimationBlenderV2::ANIM_CAST_SPELL_1),
+				value("ANIM_CAST_SPELL_2", AnimationBlenderV2::ANIM_CAST_SPELL_2),
+				value("ANIM_CAST_SPELL_3", AnimationBlenderV2::ANIM_CAST_SPELL_3)
 			]
 			.enum_("BlendingTransition")
 			[
-				value("BLEND_SWITCH", IAnimationBlender::BlendSwitch),
-				value("BLEND_WHILE_ANIMATING", IAnimationBlender::BlendWhileAnimating),
-				value("BLEND_THEN_ANIMATE", IAnimationBlender::BlendThenAnimate)
+				value("BLEND_SWITCH", AnimationBlenderV2::BlendSwitch),
+				value("BLEND_WHILE_ANIMATING", AnimationBlenderV2::BlendWhileAnimating),
+				value("BLEND_THEN_ANIMATE", AnimationBlenderV2::BlendThenAnimate)
 			]
-			.def("init1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, bool)) & IAnimationBlender::init)
-			.def("init2", (void (IAnimationBlender::*)(const Ogre::String&, bool)) & IAnimationBlender::init)
+			.def("init1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, bool)) & AnimationBlenderV2::init)
+			.def("init2", (void (AnimationBlenderV2::*)(const Ogre::String&, bool)) & AnimationBlenderV2::init)
 			.def("getAllAvailableAnimationNames", &getAllAvailableAnimationNames)
-			.def("blend1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
-			.def("blend2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
-			.def("blend3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
-			.def("blend4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
-			.def("blend5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
-			.def("blend6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
-			.def("blendExclusive1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendAndContinue1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::blendAndContinue)
-			.def("blendAndContinue2", (void (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::blendAndContinue)
-			.def("blendAndContinue3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real)) & IAnimationBlender::blendAndContinue)
-			.def("blendAndContinue4", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real)) & IAnimationBlender::blendAndContinue)
-			.def("getProgress", &IAnimationBlender::getProgress)
-		
-			.def("isComplete", &IAnimationBlender::isComplete)
-			.def("registerAnimation", &IAnimationBlender::registerAnimation)
-			.def("getAnimationIdFromString", &IAnimationBlender::getAnimationIdFromString)
-			.def("hasAnimation", (bool (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::hasAnimation)
-			.def("hasAnimation", (bool (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::hasAnimation)
-			.def("isAnimationActive", &IAnimationBlender::isAnimationActive)
-			.def("isAnimationActive", &IAnimationBlender::isAnyAnimationActive)
-			.def("addTime", &IAnimationBlender::addTime)
-			.def("setTimePosition", &IAnimationBlender::setTimePosition)
-			.def("getTimePosition", &IAnimationBlender::getTimePosition)
-			.def("getLength", &IAnimationBlender::getLength)
-			.def("setWeight", &IAnimationBlender::setWeight)
-			.def("getWeight", &IAnimationBlender::getWeight)
-			.def("resetBones", &IAnimationBlender::resetBones)
-			.def("setDebugLog", &IAnimationBlender::setDebugLog)
-			.def("setOverlayAnimation1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
-			.def("setOverlayAnimation2", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
-			.def("clearOverlayAnimation", &IAnimationBlender::clearOverlayAnimation)
-			.def("isOverlayAnimationActive", &IAnimationBlender::isOverlayAnimationActive)
-			.def("setAnimationSpeed", &IAnimationBlender::setAnimationSpeed)
-			.def("getAnimationSpeed", &IAnimationBlender::getAnimationSpeed)
-			.def("driveBlendSpace", &IAnimationBlender::driveBlendSpace)
-		];
-
-		// NOTE: the separate "BlendingTransition" class_<> module that used to sit
-		// here (between AnimationBlender and AnimationBlenderV2) has been removed -
-		// its enum now lives inside the AnimationBlender registration above, where
-		// AnimationBlender.BLEND_WHILE_ANIMATING etc. actually resolve from Lua.
-
-		module(lua)
-		[
-			class_<AnimationBlenderV2, IAnimationBlender>("AnimationBlender")
+			.def("blend1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition)) & AnimationBlenderV2::blend)
+			.def("blend2", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition)) & AnimationBlenderV2::blend)
+			.def("blend3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, bool)) & AnimationBlenderV2::blend)
+			.def("blend4", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, bool)) & AnimationBlenderV2::blend)
+			.def("blend5", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool)) & AnimationBlenderV2::blend)
+			.def("blend6", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool)) & AnimationBlenderV2::blend)
+			.def("blendPhaseSynced1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool)) & AnimationBlenderV2::blendPhaseSynced)
+			.def("blendPhaseSynced2", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool)) & AnimationBlenderV2::blendPhaseSynced)
+			.def("blendExclusive1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition)) & AnimationBlenderV2::blendExclusive)
+			.def("blendExclusive2", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition)) & AnimationBlenderV2::blendExclusive)
+			.def("blendExclusive3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, bool)) & AnimationBlenderV2::blendExclusive)
+			.def("blendExclusive4", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, bool)) & AnimationBlenderV2::blendExclusive)
+			.def("blendExclusive5", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool)) & AnimationBlenderV2::blendExclusive)
+			.def("blendExclusive6", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool)) & AnimationBlenderV2::blendExclusive)
+			.def("blendAndContinue1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID)) & AnimationBlenderV2::blendAndContinue)
+			.def("blendAndContinue2", (void (AnimationBlenderV2::*)(const Ogre::String&)) & AnimationBlenderV2::blendAndContinue)
+			.def("blendAndContinue3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, Ogre::Real)) & AnimationBlenderV2::blendAndContinue)
+			.def("blendAndContinue4", (void (AnimationBlenderV2::*)(const Ogre::String&, Ogre::Real)) & AnimationBlenderV2::blendAndContinue)
+			.def("getProgress", &AnimationBlenderV2::getProgress)
+			.def("isComplete", &AnimationBlenderV2::isComplete)
+			.def("registerAnimation", &AnimationBlenderV2::registerAnimation)
+			.def("getAnimationIdFromString", &AnimationBlenderV2::getAnimationIdFromString)
+			.def("hasAnimation", (bool (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID)) & AnimationBlenderV2::hasAnimation)
+			.def("hasAnimation", (bool (AnimationBlenderV2::*)(const Ogre::String&)) & AnimationBlenderV2::hasAnimation)
+			.def("isAnimationActive", &AnimationBlenderV2::isAnimationActive)
+			// Was bound as "isAnimationActive" a second time, shadowing the AnimID overload
+			// above with a zero argument function of a completely different meaning.
+			.def("isAnyAnimationActive", &AnimationBlenderV2::isAnyAnimationActive)
+			.def("addTime", &AnimationBlenderV2::addTime)
+			.def("setTimePosition", &AnimationBlenderV2::setTimePosition)
+			.def("getTimePosition", &AnimationBlenderV2::getTimePosition)
+			.def("getLength", &AnimationBlenderV2::getLength)
+			.def("setWeight", &AnimationBlenderV2::setWeight)
+			.def("getWeight", &AnimationBlenderV2::getWeight)
+			.def("resetBones", &AnimationBlenderV2::resetBones)
+			.def("setDebugLog", &AnimationBlenderV2::setDebugLog)
+			.def("setOverlayAnimation1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, Ogre::Real)) & AnimationBlenderV2::setOverlayAnimation)
+			.def("setOverlayAnimation2", (void (AnimationBlenderV2::*)(const Ogre::String&, Ogre::Real)) & AnimationBlenderV2::setOverlayAnimation)
+			.def("clearOverlayAnimation", &AnimationBlenderV2::clearOverlayAnimation)
+			.def("isOverlayAnimationActive", &AnimationBlenderV2::isOverlayAnimationActive)
+			.def("setAnimationSpeed", &AnimationBlenderV2::setAnimationSpeed)
+			.def("getAnimationSpeed", &AnimationBlenderV2::getAnimationSpeed)
+			.def("driveBlendSpace", &AnimationBlenderV2::driveBlendSpace)
+			// Merged in from the removed second registration block.
 			.def("getSource", &AnimationBlenderV2::getSource)
 			.def("getTarget", &AnimationBlenderV2::getTarget)
 			.def("getBone", &AnimationBlenderV2::getBone)
@@ -5469,6 +5467,12 @@ namespace NOWA
 		AddClassToCollection("AnimationBlender", "void blendExclusive4(String animationName, BlendingTransition blendingTransition, bool loop)", "Blends to the given animation name with a transition exclusively and optionally loops the animation. The animation will only be blend, if it is not active currently.");
 		AddClassToCollection("AnimationBlender", "void blendExclusive5(AnimID animationId, BlendingTransition blendingTransition, float duration)", "Blends to the given animation id with a transition exclusively. Sets how long the animation should be played. The animation will only be blend, if it is not active currently.");
 		AddClassToCollection("AnimationBlender", "void blendExclusive6(String animationName, BlendingTransition blendingTransition, float duration)", "Blends to the given animation name with a transition exclusively. Sets how long the animation should be played. The animation will only be blend, if it is not active currently.");
+        AddClassToCollection("AnimationBlender", "void blendPhaseSynced1(AnimID animationId, BlendingTransition blendingTransition, float duration, bool loop)",
+            "Blends to the given animation id keeping both clips phase synchronised: the incoming animation starts at the same relative position the outgoing one currently has, so a walk cycle blending into a run keeps the feet in step. Use only "
+            "for comparable timelines (walk/run/sprint, strafe left/right) - for anything else use blend5, which always starts the new animation at its beginning. Requires BLEND_WHILE_ANIMATING and both animations looping, otherwise it behaves like "
+            "blend5.");
+        AddClassToCollection("AnimationBlender", "void blendPhaseSynced2(String animationName, BlendingTransition blendingTransition, float duration, bool loop)",
+            "Blends to the given animation name keeping both clips phase synchronised. See blendPhaseSynced1 for details and caveats.");
 		AddClassToCollection("AnimationBlender", "float getProgress()", "Gets the progress of the currently played animation in ms.");
 		AddClassToCollection("AnimationBlender", "bool isCompleted()", "Gets whether the currently played animation has completed or not.");
 		AddClassToCollection("AnimationBlender", "void registerAnimation(String animationName, AnimID animationId)", "Registers the animation name and maps it with the given animation id.");
@@ -5887,43 +5891,52 @@ namespace NOWA
 	}
 
 	void bindNodeTrackComponent(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<NodeTrackComponent, GameObjectComponent>("NodeTrackComponent")
-				// .def("getClassName", &NodeTrackComponent::getClassName)
-				// .def("clone", &NodeTrackComponent::clone)
-				// .def("getClassId", &NodeTrackComponent::getClassId)
-			.def("setActivated", &NodeTrackComponent::setActivated)
-			.def("isActivated", &NodeTrackComponent::isActivated)
-			.def("setNodeTrackCount", &NodeTrackComponent::setNodeTrackCount)
-			.def("getNodeTrackCount", &NodeTrackComponent::getNodeTrackCount)
-			// .def("setNodeTrackId", &NodeTrackComponent::setNodeTrackId)
-			// .def("getNodeTrackId", &NodeTrackComponent::getNodeTrackId)
-			.def("setNodeTrackId", &setNodeTrackId)
-			.def("getNodeTrackId", &getNodeTrackId)
-			.def("setTimePosition", &NodeTrackComponent::setTimePosition)
-			.def("getTimePosition", &NodeTrackComponent::getTimePosition)
-			.def("setInterpolationMode", &NodeTrackComponent::setInterpolationMode)
-			.def("getInterpolationMode", &NodeTrackComponent::getInterpolationMode)
-			.def("setRotationMode", &NodeTrackComponent::setRotationMode)
-			.def("getRotationMode", &NodeTrackComponent::getRotationMode)
-			];
+    {
+        module(lua)
+		[
+			class_<NodeTrackComponent, GameObjectComponent>("NodeTrackComponent")
+            // .def("getClassName", &NodeTrackComponent::getClassName)
+            // .def("clone", &NodeTrackComponent::clone)
+            // .def("getClassId", &NodeTrackComponent::getClassId)
+            .def("setActivated", &NodeTrackComponent::setActivated)
+            .def("isActivated", &NodeTrackComponent::isActivated)
+            .def("setNodeTrackCount", &NodeTrackComponent::setNodeTrackCount)
+            .def("getNodeTrackCount", &NodeTrackComponent::getNodeTrackCount)
+            // .def("setNodeTrackId", &NodeTrackComponent::setNodeTrackId)
+            // .def("getNodeTrackId", &NodeTrackComponent::getNodeTrackId)
+            .def("setNodeTrackId", &setNodeTrackId)
+            .def("getNodeTrackId", &getNodeTrackId)
+            .def("setTimePosition", &NodeTrackComponent::setTimePosition)
+            .def("getTimePosition", &NodeTrackComponent::getTimePosition)
+            .def("setInterpolationMode", &NodeTrackComponent::setInterpolationMode)
+            .def("getInterpolationMode", &NodeTrackComponent::getInterpolationMode)
+            .def("setRotationMode", &NodeTrackComponent::setRotationMode)
+            .def("getRotationMode", &NodeTrackComponent::getRotationMode)
+            .def("setRepeat", &NodeTrackComponent::setRepeat)
+            .def("getRepeat", &NodeTrackComponent::getRepeat)
+            .def("reactOnEndOfPathReached", &NodeTrackComponent::reactOnEndOfPathReached)
+		];
 
-		AddClassToCollection("NodeTrackComponent", "class inherits GameObjectComponent", NodeTrackComponent::getStaticInfoText());
-		AddClassToCollection("NodeTrackComponent", "void setActivated(bool activated)", "Sets whether this node track is activated or not.");
-		AddClassToCollection("NodeTrackComponent", "bool isActivated()", "Gets whether this node track is activated or not.");
-		AddClassToCollection("NodeTrackComponent", "void setNodeTrackCount(unsigned int nodeTrackCount)", "Sets the node track count (how many nodes are used for the tracking).");
-		AddClassToCollection("NodeTrackComponent", "number getNodeTrackCount()", "Gets the node track count.");
-		AddClassToCollection("NodeTrackComponent", "void setNodeTrackId(unsigned int index, String id)", "Sets the node track id for the given index in the node track list with @nodeTrackCount elements. Note: The order is controlled by the index, from which node to which node this game object will be tracked.");
-		AddClassToCollection("NodeTrackComponent", "String getNodeTrackId(unsigned int index)", "Gets node track id from the given node track index from list.");
-		AddClassToCollection("NodeTrackComponent", "void setTimePosition(unsigned int index, float timePosition)", "Sets time position in milliseconds after which this game object should be tracked at the node from the given index.");
-		AddClassToCollection("NodeTrackComponent", "float getTimePosition(unsigned int index)", "Gets time position in milliseconds for the node with the given index.");
-		AddClassToCollection("NodeTrackComponent", "void setInterpolationMode(String interpolationMode)", "Sets the curve interpolation mode how the game object will be moved. Possible values are: 'Spline', 'Linear'");
-		AddClassToCollection("NodeTrackComponent", "String getInterpolationMode()", "Gets the curve interpolation mode how the game object is moved. Possible values are: 'Spline', 'Linear'");
-		AddClassToCollection("NodeTrackComponent", "void setRotationMode(String rotationMode)", "Sets the rotation mode how the game object will be rotated during movement. Possible values are: 'Linear', 'Spherical'");
-		AddClassToCollection("NodeTrackComponent", "String getRotationMode(void)", "Gets the rotation mode how the game object is rotated during movement. Possible values are: 'Linear', 'Spherical'");
-	}
+        AddClassToCollection("NodeTrackComponent", "class inherits GameObjectComponent", NodeTrackComponent::getStaticInfoText());
+        AddClassToCollection("NodeTrackComponent", "void setActivated(bool activated)", "Sets whether this node track is activated or not.");
+        AddClassToCollection("NodeTrackComponent", "bool isActivated()", "Gets whether this node track is activated or not.");
+        AddClassToCollection("NodeTrackComponent", "void setNodeTrackCount(unsigned int nodeTrackCount)", "Sets the node track count (how many nodes are used for the tracking).");
+        AddClassToCollection("NodeTrackComponent", "number getNodeTrackCount()", "Gets the node track count.");
+        AddClassToCollection("NodeTrackComponent", "void setNodeTrackId(unsigned int index, String id)",
+            "Sets the node track id for the given index in the node track list with @nodeTrackCount elements. Note: The order is controlled by the index, from which node to which node this game object will be tracked.");
+        AddClassToCollection("NodeTrackComponent", "String getNodeTrackId(unsigned int index)", "Gets node track id from the given node track index from list.");
+        AddClassToCollection("NodeTrackComponent", "void setTimePosition(unsigned int index, float timePosition)", "Sets time position in milliseconds after which this game object should be tracked at the node from the given index.");
+        AddClassToCollection("NodeTrackComponent", "float getTimePosition(unsigned int index)", "Gets time position in milliseconds for the node with the given index.");
+        AddClassToCollection("NodeTrackComponent", "void setInterpolationMode(String interpolationMode)", "Sets the curve interpolation mode how the game object will be moved. Possible values are: 'Spline', 'Linear'");
+        AddClassToCollection("NodeTrackComponent", "String getInterpolationMode()", "Gets the curve interpolation mode how the game object is moved. Possible values are: 'Spline', 'Linear'");
+        AddClassToCollection("NodeTrackComponent", "void setRotationMode(String rotationMode)", "Sets the rotation mode how the game object will be rotated during movement. Possible values are: 'Linear', 'Spherical'");
+        AddClassToCollection("NodeTrackComponent", "String getRotationMode(void)", "Gets the rotation mode how the game object is rotated during movement. Possible values are: 'Linear', 'Spherical'");
+        AddClassToCollection("NodeTrackComponent", "void setRepeat(bool repeat)", "Sets whether the path is played over and over again. If disabled, the game object stops at the last node.");
+        AddClassToCollection("NodeTrackComponent", "bool getRepeat()", "Gets whether the path is played over and over again.");
+        AddClassToCollection("NodeTrackComponent", "void reactOnEndOfPathReached(func closureFunction)",
+            "Sets the closure function which is called when the LAST node of the path has been reached. The closure receives the game object as parameter. With 'Repeat' enabled it fires on every completed lap. Calling this again replaces the "
+            "previous closure, so it is safe to call from a function that runs every frame.");
+    }
 
 	void setTargetIdLine(LineComponent* instance, const Ogre::String& targetId)
 	{

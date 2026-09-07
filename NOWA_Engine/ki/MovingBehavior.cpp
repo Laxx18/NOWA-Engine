@@ -2347,7 +2347,7 @@ namespace NOWA
 			{
                 if (nullptr != this->agent)
                 {
-                    this->agent->clearLatchedVelocity();
+                    this->agent->clearLatchedValues();
                 }
 			}
 
@@ -2870,7 +2870,7 @@ namespace NOWA
             if (true == autoAnimation)
             {
                 bool hasAnimation = false;
-                IAnimationBlender* animationBlender;
+                AnimationBlenderV2* animationBlender;
                 auto animationCompPtrV2 = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<AnimationComponentV2>());
                 if (nullptr != animationCompPtrV2)
                 {

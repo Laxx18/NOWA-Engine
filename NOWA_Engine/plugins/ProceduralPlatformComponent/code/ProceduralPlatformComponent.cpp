@@ -31,6 +31,7 @@ GPL v3
 #include "OgreMesh2Serializer.h"
 #include "OgreMeshManager2.h"
 #include "OgreSubMesh2.h"
+#include "Vao/OgreAsyncTicket.h"
 #include "Vao/OgreVaoManager.h"
 #include "Vao/OgreVertexArrayObject.h"
 
@@ -70,8 +71,8 @@ namespace NOWA
         PlatformComponentBase(),
         name("ProceduralPlatformComponent"),
         activated(new Variant(ProceduralPlatformComponent::AttrActivated(), true, this->attributes)),
-        platformDepth(new Variant(ProceduralPlatformComponent::AttrPlatformDepth(), 2.0f, this->attributes)),
-        platformHeight(new Variant(ProceduralPlatformComponent::AttrPlatformHeight(), 1.0f, this->attributes)),
+        platformDepth(new Variant(ProceduralPlatformComponent::AttrPlatformDepth(), 10.0f, this->attributes)),
+        platformHeight(new Variant(ProceduralPlatformComponent::AttrPlatformHeight(), 2.0f, this->attributes)),
         platformStyle(new Variant(ProceduralPlatformComponent::AttrPlatformStyle(), {"Grass", "Wood", "Stone", "Ice", "Metal"}, this->attributes)),
         snapToGrid(new Variant(ProceduralPlatformComponent::AttrSnapToGrid(), false, this->attributes)),
         gridSize(new Variant(ProceduralPlatformComponent::AttrGridSize(), 1.0f, this->attributes)),
@@ -81,6 +82,12 @@ namespace NOWA
         grassDensity(new Variant(ProceduralPlatformComponent::AttrGrassDensity(), 8.0f, this->attributes)),
         grassBladeWidth(new Variant(ProceduralPlatformComponent::AttrGrassBladeWidth(), 0.15f, this->attributes)),
         grassBladeHeight(new Variant(ProceduralPlatformComponent::AttrGrassBladeHeight(), 0.5f, this->attributes)),
+        useTrees(new Variant(ProceduralPlatformComponent::AttrUseTrees(), false, this->attributes)),
+        treeMeshName(new Variant(ProceduralPlatformComponent::AttrTreeMeshName(), Ogre::String("treeAOG-17birTall.mesh"), this->attributes)),
+        treeSpacing(new Variant(ProceduralPlatformComponent::AttrTreeSpacing(), 8.0f, this->attributes)),
+        treeZStart(new Variant(ProceduralPlatformComponent::AttrTreeZStart(), 0.5f, this->attributes)),
+        treeScale(new Variant(ProceduralPlatformComponent::AttrTreeScale(), 1.0f, this->attributes)),
+        treeBranchClusterCount(new Variant(ProceduralPlatformComponent::AttrTreeBranchClusterCount(), 8, this->attributes)),
         curveSubdivisions(new Variant(ProceduralPlatformComponent::AttrCurveSubdivisions(), 10, this->attributes)),
         surfaceDatablock(new Variant(ProceduralPlatformComponent::AttrSurfaceDatablock(), "grass_clean", this->attributes)),
         groundDatablock(new Variant(ProceduralPlatformComponent::AttrGroundDatablock(), "rockClif_D", this->attributes)),
@@ -138,6 +145,24 @@ namespace NOWA
         this->grassBladeHeight->setDescription("Height of one grass blade in meters, measured along the surface normal - so blades stand "
                                                "up from a flat platform and stick out sideways from a vertical wall.");
         this->grassBladeHeight->setConstraints(0.05f, 5.0f);
+        this->useTrees->setDescription("If true, places instances of the tree mesh below along the platform, standing upright in world "
+                                       "space. Leaves sway when a WindComponent exists and a matching Swaying datablock is authored.");
+        this->treeMeshName->setDescription("Mesh file used for the trees, e.g. 'Tree.mesh'. Any authored mesh works; submeshes whose "
+                                           "datablock name contains leaf/leaves/twig are treated as foliage and made to sway, while "
+                                           "bark/trunk/branch/wood submeshes stay rigid.");
+        this->treeSpacing->setDescription("Distance in meters along the platform between two trees. Larger = fewer trees.");
+        this->treeSpacing->setConstraints(0.5f, 200.0f);
+        this->treeZStart->setDescription("Trees are only placed BEHIND this line, away from the camera. The value is the distance from "
+                                         "the middle of the platform towards the back: 0 fills the whole back half, larger values push "
+                                         "the trees further back and leave more of the running lane clear. At Platform Depth / 2 the "
+                                         "window is empty and no trees are placed.");
+        this->treeZStart->setConstraints(0.0f, 50.0f);
+        this->treeScale->setDescription("Uniform scale applied to each tree instance.");
+        this->treeScale->setConstraints(0.01f, 20.0f);
+        this->treeBranchClusterCount->setDescription("Number of pseudo-branches the leaf vertices are clustered into. Each cluster sways "
+                                                     "with its own phase offset, so the canopy does not move as one rigid block. "
+                                                     "Higher = finer motion, at the cost of a longer one-off mesh preparation.");
+        this->treeBranchClusterCount->setConstraints(1, 64);
         this->curveSubdivisions->setDescription("Number of segments for curved platform paths (higher = smoother).");
 
         this->surfaceDatablock->setDescription("The top walkable surface datablock to set (e.g. grass, wood plank top).");
@@ -264,6 +289,36 @@ namespace NOWA
             this->grassBladeHeight->setValue(Ogre::Math::Clamp(XMLConverter::getAttribReal(propertyElement, "data", 0.5f), 0.05f, 5.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrUseTrees())
+        {
+            this->useTrees->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrTreeMeshName())
+        {
+            this->treeMeshName->setValue(XMLConverter::getAttrib(propertyElement, "data", "Tree.mesh"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrTreeSpacing())
+        {
+            this->treeSpacing->setValue(Ogre::Math::Clamp(XMLConverter::getAttribReal(propertyElement, "data", 8.0f), 0.5f, 200.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrTreeZStart())
+        {
+            this->treeZStart->setValue(Ogre::Math::Clamp(XMLConverter::getAttribReal(propertyElement, "data", 0.5f), 0.0f, 50.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrTreeScale())
+        {
+            this->treeScale->setValue(Ogre::Math::Clamp(XMLConverter::getAttribReal(propertyElement, "data", 1.0f), 0.01f, 20.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrTreeBranchClusterCount())
+        {
+            this->treeBranchClusterCount->setValue(Ogre::Math::Clamp(XMLConverter::getAttribInt(propertyElement, "data", 8), 1, 64));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         // Backward compatibility: scenes saved before Max Gradient and Max Turn Angle were
         // removed still carry both properties, in this position, in their XML. init() walks
         // the property list strictly in order, so an unconsumed property would leave the
@@ -386,10 +441,18 @@ namespace NOWA
         // Load platform data from file
         if (true == this->loadPlatformDataFromFile())
         {
+            // BUGFIX: grass disappeared after saving and reloading a scene.
+            //
+            // My earlier comment here claimed loadPlatformDataFromFile rebuilds the mesh. It
+            // does not - and that is the whole point of it. It restores the mesh from the
+            // vertex and index buffers CACHED in the .platformdata file, straight into
+            // createPlatformMeshInternal, precisely so a saved platform does not have to be
+            // swept again on every scene load.
+            //
             // Grass frames, though, are produced by that sweep: rebuildMesh ->
-            // generatePlatformBox -> collectGrassFrames, because a blade needs the surface
+            // generatePlatformBox -> collectSurfaceFrames, because a blade needs the surface
             // point and the mitered surface normal the sweep computes. Restoring from cache
-            // skips all of it, so grassFrames stayed empty and regenerateGrass had nothing to
+            // skips all of it, so surfaceFrames stayed empty and regenerateGrass had nothing to
             // turn into Items. The grass attributes themselves were saved and reloaded
             // perfectly - Use Grass still read true - which is exactly why it looked like the
             // setting had been lost rather than the geometry.
@@ -399,12 +462,13 @@ namespace NOWA
             // go stale), so the sweep has to be run once here to produce the frames. Only when
             // grass is actually enabled: with Use Grass off, the cached-load fast path is
             // untouched and load stays exactly as quick as it was.
-            if (true == this->useGrass->getBool())
+            if (true == this->useGrass->getBool() || true == this->useTrees->getBool())
             {
                 this->rebuildMesh();
             }
 
             this->regenerateGrass();
+            this->regenerateTrees();
 
             // Get PhysicsArtifactComponent if exists
             const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
@@ -498,10 +562,11 @@ namespace NOWA
             GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->destroyGrassItems();
+                this->destroyTreeItems();
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralPlatformComponent::onRemoveComponent::destroyGrass");
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralPlatformComponent::onRemoveComponent::destroyGrassAndTrees");
         }
-        this->grassFrames.clear();
+        this->surfaceFrames.clear();
 
         this->destroyPlatformMesh();
         this->destroyPreviewMesh();
@@ -580,6 +645,30 @@ namespace NOWA
         else if (ProceduralPlatformComponent::AttrGrassBladeHeight() == attribute->getName())
         {
             this->setGrassBladeHeight(attribute->getReal());
+        }
+        else if (ProceduralPlatformComponent::AttrUseTrees() == attribute->getName())
+        {
+            this->setUseTrees(attribute->getBool());
+        }
+        else if (ProceduralPlatformComponent::AttrTreeMeshName() == attribute->getName())
+        {
+            this->setTreeMeshName(attribute->getString());
+        }
+        else if (ProceduralPlatformComponent::AttrTreeSpacing() == attribute->getName())
+        {
+            this->setTreeSpacing(attribute->getReal());
+        }
+        else if (ProceduralPlatformComponent::AttrTreeZStart() == attribute->getName())
+        {
+            this->setTreeZStart(attribute->getReal());
+        }
+        else if (ProceduralPlatformComponent::AttrTreeScale() == attribute->getName())
+        {
+            this->setTreeScale(attribute->getReal());
+        }
+        else if (ProceduralPlatformComponent::AttrTreeBranchClusterCount() == attribute->getName())
+        {
+            this->setTreeBranchClusterCount(attribute->getInt());
         }
         else if (ProceduralPlatformComponent::AttrSmoothingFactor() == attribute->getName())
         {
@@ -685,6 +774,42 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrGrassBladeHeight().c_str())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->grassBladeHeight->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrUseTrees().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useTrees->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrTreeMeshName().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->treeMeshName->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrTreeSpacing().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->treeSpacing->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrTreeZStart().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->treeZStart->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrTreeScale().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->treeScale->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrTreeBranchClusterCount().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->treeBranchClusterCount->getInt())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -1063,6 +1188,7 @@ namespace NOWA
 
                 this->rebuildMesh();
                 this->regenerateGrass();
+                this->regenerateTrees();
                 this->scheduleSegmentOverlayUpdate();
 
                 // Same old-data/new-data transaction deleteSelectedSegment uses, so a depth
@@ -1352,6 +1478,7 @@ namespace NOWA
 
         this->rebuildMesh();
         this->regenerateGrass();
+        this->regenerateTrees();
 
         std::vector<unsigned char> newData = this->getPlatformData();
 
@@ -1455,6 +1582,7 @@ namespace NOWA
             this->updateContinuationPoint();
         }
         this->regenerateGrass();
+        this->regenerateTrees();
 
         std::vector<unsigned char> newData = this->getPlatformData();
 
@@ -1514,7 +1642,7 @@ namespace NOWA
         // whatever the last rebuild left behind, so the drag preview would sprout grass and
         // every mouse-move would add more of it. Same file-local mechanism, and for the same
         // reason, as g_platformRunDepthOverride above.
-        thread_local bool g_platformCollectGrassFrames = false;
+        thread_local bool g_platformCollectSurfaceFrames = false;
 
         // Platform paths live in exactly TWO axes: horizontal (x) and height - unlike
         // ProceduralRoadComponent, where XZ (ground plane) is one independent quantity and Y
@@ -1546,10 +1674,10 @@ namespace NOWA
         this->groundIndices.clear();
         this->currentGroundVertexIndex = 0;
 
-        // Refilled by generatePlatformBox -> collectGrassFrames as the sweep runs. Turning
+        // Refilled by generatePlatformBox -> collectSurfaceFrames as the sweep runs. Turning
         // them into Items is a separate, much more expensive step that regenerateGrass does
         // on its own schedule - see the comment there.
-        this->grassFrames.clear();
+        this->surfaceFrames.clear();
 
         if (this->platformSegments.empty())
         {
@@ -1559,7 +1687,7 @@ namespace NOWA
         // Armed AFTER the early return above, not before it: leaving the flag set on a
         // bail-out would mean the next drag preview - which runs through the same
         // generatePlatformBox - quietly started contributing grass frames.
-        g_platformCollectGrassFrames = true;
+        g_platformCollectSurfaceFrames = true;
 
         // Default every point's DRAWN depth to its authored one before any chain is walked.
         // The per-chain ramp below overwrites this for everything it reaches; the default is
@@ -2446,7 +2574,7 @@ namespace NOWA
             }
         }
 
-        g_platformCollectGrassFrames = false;
+        g_platformCollectSurfaceFrames = false;
 
         // ── Junction patches ────────────────────────────────────────────────────
         // ARCHITECTURE CHANGE: this no longer builds anything - generateJunctionPatch is
@@ -2976,7 +3104,7 @@ namespace NOWA
         currentIdx += 4;
     }
 
-    void ProceduralPlatformComponent::collectGrassFrames(const std::vector<PlatformControlPoint>& points, const std::vector<Ogre::Vector2>& topPoints, const std::vector<Ogre::Vector2>& downDirs, Ogre::Real depth)
+    void ProceduralPlatformComponent::collectSurfaceFrames(const std::vector<PlatformControlPoint>& points, const std::vector<Ogre::Vector2>& topPoints, const std::vector<Ogre::Vector2>& downDirs, Ogre::Real depth)
     {
         // One frame per path SEGMENT (not per point), positioned at the segment's midpoint.
         // createGrassItems then scatters spanAlong * spanAcross * density blades over each.
@@ -3008,14 +3136,14 @@ namespace NOWA
 
             const Ogre::Real zCentre = (points[i].position.z + points[i + 1].position.z) * 0.5f;
 
-            GrassSurfaceFrame frame;
+            PlatformSurfaceFrame frame;
             frame.position = Ogre::Vector3((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f, zCentre);
             frame.normal = Ogre::Vector3(outward.x, outward.y, 0.0f);
             frame.tangent = Ogre::Vector3(along.x, along.y, 0.0f);
             frame.spanAlong = spanAlong;
             frame.spanAcross = depth;
 
-            this->grassFrames.push_back(frame);
+            this->surfaceFrames.push_back(frame);
         }
     }
 
@@ -3034,7 +3162,7 @@ namespace NOWA
         //     piece of platform happens to face.
         //   - Cells hang off the GameObject's own scene node in mesh-local space instead of
         //     the static root in world space, so grass moves with the platform.
-        if (true == this->grassFrames.empty())
+        if (true == this->surfaceFrames.empty())
         {
             return;
         }
@@ -3107,10 +3235,10 @@ namespace NOWA
         std::map<int, std::vector<size_t>> cellMap;
         {
             Ogre::Real walked = 0.0f;
-            for (size_t fi = 0; fi < this->grassFrames.size(); ++fi)
+            for (size_t fi = 0; fi < this->surfaceFrames.size(); ++fi)
             {
                 cellMap[static_cast<int>(std::floor(walked / cellSize))].push_back(fi);
-                walked += this->grassFrames[fi].spanAlong;
+                walked += this->surfaceFrames[fi].spanAlong;
             }
         }
 
@@ -3126,7 +3254,7 @@ namespace NOWA
             size_t bladesInCell = 0u;
             for (size_t k = 0; k < cellFrames.size(); ++k)
             {
-                const GrassSurfaceFrame& f = this->grassFrames[cellFrames[k]];
+                const PlatformSurfaceFrame& f = this->surfaceFrames[cellFrames[k]];
                 const size_t count = static_cast<size_t>(std::max(0.0f, f.spanAlong * f.spanAcross * density));
                 bladesPerFrame[k] = count;
                 bladesInCell += count;
@@ -3151,7 +3279,7 @@ namespace NOWA
 
             for (size_t k = 0; k < cellFrames.size(); ++k)
             {
-                const GrassSurfaceFrame& f = this->grassFrames[cellFrames[k]];
+                const PlatformSurfaceFrame& f = this->surfaceFrames[cellFrames[k]];
 
                 // Orthonormal surface frame. binormal is the depth axis: the platform's path
                 // lives entirely in the XY plane, so tangent x normal comes out along Z.
@@ -3345,7 +3473,7 @@ namespace NOWA
             cellItem->setRenderQueueGroup(renderQueue);
             cellItem->setCastShadows(false); // Grass never casts shadows.
             cellItem->setQueryFlags(this->gameObjectPtr->getCategoryId());
-            // cellItem->setVisibilityFlags(this->gameObjectPtr->getRenderCategoryId());
+            // cellItem->setVisibilityFlags(NOWA::VISIBILITY_FLAG_GRASS);
 
             // Child of the platform's own node, in mesh-local space - the same space the
             // frames were collected in - so the grass follows the platform if the GameObject
@@ -3370,7 +3498,7 @@ namespace NOWA
             ++cellIndex;
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Grass: " + Ogre::StringConverter::toString(static_cast<unsigned int>(this->grassFrames.size())) + " surface frames -> " +
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Grass: " + Ogre::StringConverter::toString(static_cast<unsigned int>(this->surfaceFrames.size())) + " surface frames -> " +
                                                                                Ogre::StringConverter::toString(static_cast<unsigned int>(this->grassItems.size())) + " cell Items, material=" + this->grassMaterialName->getString());
     }
 
@@ -3416,13 +3544,613 @@ namespace NOWA
         this->grassNodes.clear();
     }
 
+    bool ProceduralPlatformComponent::isLeavesSubMesh(Ogre::HlmsDatablock* datablock) const
+    {
+        // Same rule as ProceduralFoliageVolumeComponent::isLeavesSubMesh, minus the transparency
+        // fallback. That fallback exists there because foliage meshes come from anywhere; here
+        // the tree mesh is named explicitly in an attribute, so the name test alone is both
+        // sufficient and predictable. Its ordering is kept exactly, and for the reasons recorded
+        // there: bark datablocks can report transparency they do not have, and leaf datablocks
+        // often use alpha_test rather than blending, so neither signal is reliable on its own -
+        // but an explicit bark/trunk/branch/wood name always wins over a leaf-ish one.
+        if (nullptr == datablock || nullptr == datablock->getNameStr())
+        {
+            return false;
+        }
+
+        Ogre::String lowerName = *datablock->getNameStr();
+        Ogre::StringUtil::toLowerCase(lowerName);
+
+        if (lowerName.find("bark") != Ogre::String::npos || lowerName.find("trunk") != Ogre::String::npos || lowerName.find("branch") != Ogre::String::npos || lowerName.find("wood") != Ogre::String::npos)
+        {
+            return false;
+        }
+
+        if (lowerName.find("leaf") != Ogre::String::npos || lowerName.find("leaves") != Ogre::String::npos || lowerName.find("twig") != Ogre::String::npos)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    void ProceduralPlatformComponent::clusterLeafVerticesIntoBranches(const std::vector<Ogre::Vector3>& positions, int clusterCount, std::vector<int>& outBranchIds) const
+    {
+        // Greedy farthest-point seeding, then one assignment pass. Condensed from
+        // ProceduralFoliageVolumeComponent::clusterLeafVerticesIntoBranches: the Lloyd refinement
+        // iterations and the pivot output are dropped, because the shader only consumes the
+        // branch ID and its derived phase - the pivots were never read here.
+        //
+        // Deterministic on purpose: the same mesh must always cluster identically, or a tree
+        // would sway differently after every reload.
+        const size_t vertexCount = positions.size();
+        outBranchIds.assign(vertexCount, 0);
+
+        if (clusterCount < 1)
+        {
+            clusterCount = 1;
+        }
+        if (0u == vertexCount)
+        {
+            return;
+        }
+        if (static_cast<size_t>(clusterCount) > vertexCount)
+        {
+            clusterCount = static_cast<int>(vertexCount);
+        }
+
+        std::vector<size_t> seedIndices;
+        seedIndices.reserve(static_cast<size_t>(clusterCount));
+        seedIndices.push_back(0u);
+
+        std::vector<float> bestDistSq(vertexCount, std::numeric_limits<float>::max());
+
+        while (seedIndices.size() < static_cast<size_t>(clusterCount))
+        {
+            const Ogre::Vector3& lastSeed = positions[seedIndices.back()];
+
+            size_t farthestIdx = 0u;
+            float farthestDist = -1.0f;
+
+            for (size_t vi = 0u; vi < vertexCount; ++vi)
+            {
+                const float distSq = positions[vi].squaredDistance(lastSeed);
+                if (distSq < bestDistSq[vi])
+                {
+                    bestDistSq[vi] = distSq;
+                }
+                if (bestDistSq[vi] > farthestDist)
+                {
+                    farthestDist = bestDistSq[vi];
+                    farthestIdx = vi;
+                }
+            }
+
+            seedIndices.push_back(farthestIdx);
+        }
+
+        for (size_t vi = 0u; vi < vertexCount; ++vi)
+        {
+            float nearestDist = std::numeric_limits<float>::max();
+            int nearestSeed = 0;
+
+            for (size_t si = 0u; si < seedIndices.size(); ++si)
+            {
+                const float distSq = positions[vi].squaredDistance(positions[seedIndices[si]]);
+                if (distSq < nearestDist)
+                {
+                    nearestDist = distSq;
+                    nearestSeed = static_cast<int>(si);
+                }
+            }
+
+            outBranchIds[vi] = nearestSeed;
+        }
+    }
+
+    Ogre::HlmsDatablock* ProceduralPlatformComponent::resolveSwayingLeavesDatablock(Ogre::HlmsDatablock* originalDatablock) const
+    {
+        // Same naming convention as ProceduralFoliageVolumeComponent: original name plus the
+        // literal "Swaying" suffix, looked up in the Wind HLMS. Deliberately identical so a
+        // Swaying datablock authored for the foliage component works for platform trees too,
+        // with no second material to maintain.
+        if (nullptr == originalDatablock || nullptr == originalDatablock->getNameStr())
+        {
+            return nullptr;
+        }
+
+        const Ogre::String swayingName = *originalDatablock->getNameStr() + "Swaying";
+
+        Ogre::Hlms* hlmsWind = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0);
+        if (nullptr == hlmsWind)
+        {
+            return nullptr;
+        }
+
+        Ogre::HlmsDatablock* swayingDatablock = hlmsWind->getDatablock(swayingName);
+        if (nullptr == swayingDatablock)
+        {
+            // Not an error: per-branch sway is opt-in per leaf texture. Without the Swaying
+            // variant the tree simply renders rigid.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] No Swaying Wind datablock '" + swayingName + "' found for leaves datablock '" + *originalDatablock->getNameStr() +
+                                                                                    "'. Leaves will not sway - create it in a .material script (see SwayingTreeLeavesMaterials.material).");
+            return nullptr;
+        }
+
+        return swayingDatablock;
+    }
+
+    bool ProceduralPlatformComponent::prepareSwayingTreeMesh(void)
+    {
+        //  RUNS ON RENDER THREAD!
+        //
+        // Builds ONE rewritten clone of the authored tree mesh, which every instance then shares.
+        //
+        // The rewrite is the entire reason this function exists: HlmsWind's per-branch sway reads
+        // (branchId, branchPhase) from VES_BLEND_WEIGHTS, a semantic no authored tree mesh
+        // carries. ProceduralFoliageVolumeComponent bakes that attribute in while it merges
+        // thousands of instances into cell meshes; a platform carries tens of trees, so the merge
+        // machinery would be pure overhead here. Rewriting once and instancing normally gives the
+        // same sway, keeps every tree individually cullable, and is a fraction of the code.
+        //
+        // Only leaf submeshes are rewritten. Trunk and bark submeshes are copied through
+        // unchanged and keep their original datablock, so they stay rigid - which is what a trunk
+        // should do.
+        if (false == this->preparedTreeMeshName.empty())
+        {
+            // Already prepared for the current settings.
+            return true;
+        }
+
+        const Ogre::String sourceMeshName = this->treeMeshName->getString();
+        if (true == sourceMeshName.empty())
+        {
+            return false;
+        }
+
+        Ogre::MeshPtr sourceMesh;
+        try
+        {
+            sourceMesh = Ogre::MeshManager::getSingleton().load(sourceMeshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+        }
+        catch (const Ogre::Exception& e)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Could not load tree mesh '" + sourceMeshName + "': " + e.getDescription());
+            return false;
+        }
+
+        if (sourceMesh.isNull())
+        {
+            return false;
+        }
+
+        Ogre::VaoManager* vaoManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
+
+        const Ogre::String targetMeshName = "PlatformTree_GO" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+
+        {
+            Ogre::ResourcePtr existing = Ogre::MeshManager::getSingleton().getByName(targetMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+            if (false == existing.isNull())
+            {
+                Ogre::MeshManager::getSingleton().remove(existing->getHandle());
+            }
+        }
+
+        Ogre::MeshPtr targetMesh = Ogre::MeshManager::getSingleton().createManual(targetMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, &NOWA::gDummyMeshLoader);
+        targetMesh->_setVaoManager(vaoManager);
+
+        const int clusterCount = this->treeBranchClusterCount->getInt();
+        size_t leafSubMeshCount = 0u;
+
+        for (size_t smIdx = 0u; smIdx < sourceMesh->getNumSubMeshes(); ++smIdx)
+        {
+            Ogre::SubMesh* sourceSubMesh = sourceMesh->getSubMesh(smIdx);
+            if (true == sourceSubMesh->mVao[Ogre::VpNormal].empty())
+            {
+                continue;
+            }
+
+            Ogre::VertexArrayObject* sourceVao = sourceSubMesh->mVao[Ogre::VpNormal][0];
+
+            Ogre::HlmsDatablock* sourceDatablock = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(sourceSubMesh->mMaterialName);
+            const bool isLeaves = this->isLeavesSubMesh(sourceDatablock);
+
+            Ogre::SubMesh* targetSubMesh = targetMesh->createSubMesh();
+            targetSubMesh->mMaterialName = sourceSubMesh->mMaterialName;
+
+            if (false == isLeaves)
+            {
+                // Trunk and bark need no rewrite, but the VAO still has to be CLONED rather than
+                // shared.
+                //
+                // BUGFIX: this used to push the source VAO straight into the target submesh. Ogre
+                // meshes own their VAOs and their buffers: Mesh::destroyVaos walks its submeshes
+                // and destroys everything it finds. So as soon as the prepared mesh was removed -
+                // which destroyTreeItems does on every regenerate - it took the SOURCE mesh's
+                // vertex and index buffers with it, leaving the authored tree mesh pointing at
+                // freed GPU memory. That is the crash when Tree Z Start is changed after the
+                // trees already exist: the first regenerate destroys the shared buffers, the
+                // second one reads them.
+                //
+                // clone() with a null shared-buffer map gives the target mesh its own copies, so
+                // each mesh owns exactly what it destroys.
+                Ogre::VertexArrayObject* clonedVao = sourceVao->clone(vaoManager, nullptr);
+                targetSubMesh->mVao[Ogre::VpNormal].push_back(clonedVao);
+                targetSubMesh->mVao[Ogre::VpShadow].push_back(clonedVao);
+                continue;
+            }
+
+            ++leafSubMeshCount;
+
+            // Read the leaf vertices back so they can be clustered. A tree mesh is authored
+            // content loaded from disk, so a shadow copy is normally present; the async ticket is
+            // the fallback for meshes built at runtime.
+            const Ogre::VertexElement2VecVec elementsVec = sourceVao->getVertexDeclaration();
+            Ogre::VertexBufferPacked* sourceBuffer = sourceVao->getVertexBuffers()[0];
+            const size_t vertexCount = sourceBuffer->getNumElements();
+            const size_t sourceBytesPerVertex = sourceBuffer->getBytesPerElement();
+
+            std::vector<unsigned char> sourceBytes(vertexCount * sourceBytesPerVertex);
+
+            const void* shadowCopy = sourceBuffer->getShadowCopy();
+            if (nullptr != shadowCopy)
+            {
+                memcpy(sourceBytes.data(), shadowCopy, sourceBytes.size());
+            }
+            else
+            {
+                Ogre::AsyncTicketPtr ticket = sourceBuffer->readRequest(0u, vertexCount);
+                const void* raw = ticket->map();
+                memcpy(sourceBytes.data(), raw, sourceBytes.size());
+                ticket->unmap();
+            }
+
+            // Position is always the first element of the first buffer in Ogre's own exported
+            // meshes, which is what the offset walk below relies on.
+            size_t positionOffset = 0u;
+            bool foundPosition = false;
+            {
+                size_t offset = 0u;
+                for (const Ogre::VertexElement2& element : elementsVec[0])
+                {
+                    if (Ogre::VES_POSITION == element.mSemantic)
+                    {
+                        positionOffset = offset;
+                        foundPosition = true;
+                        break;
+                    }
+                    offset += Ogre::v1::VertexElement::getTypeSize(element.mType);
+                }
+            }
+
+            if (false == foundPosition)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralPlatformComponent] Leaf submesh " + Ogre::StringConverter::toString(static_cast<unsigned int>(smIdx)) + " of tree mesh '" + sourceMeshName + "' has no POSITION element. It will not sway.");
+                Ogre::VertexArrayObject* clonedVao = sourceVao->clone(vaoManager, nullptr);
+                targetSubMesh->mVao[Ogre::VpNormal].push_back(clonedVao);
+                targetSubMesh->mVao[Ogre::VpShadow].push_back(clonedVao);
+                continue;
+            }
+
+            std::vector<Ogre::Vector3> positions(vertexCount);
+            for (size_t vi = 0u; vi < vertexCount; ++vi)
+            {
+                const float* p = reinterpret_cast<const float*>(&sourceBytes[vi * sourceBytesPerVertex + positionOffset]);
+                positions[vi] = Ogre::Vector3(p[0], p[1], p[2]);
+            }
+
+            std::vector<int> branchIds;
+            this->clusterLeafVerticesIntoBranches(positions, clusterCount, branchIds);
+
+            // Rebuild the vertex buffer as "original bytes, then two extra floats". Appending
+            // rather than rewriting means every existing element keeps its offset, so the source
+            // declaration can be reused verbatim with one element added at the end.
+            const size_t targetBytesPerVertex = sourceBytesPerVertex + 2u * sizeof(float);
+            unsigned char* targetBytes = reinterpret_cast<unsigned char*>(OGRE_MALLOC_SIMD(vertexCount * targetBytesPerVertex, Ogre::MEMCATEGORY_GEOMETRY));
+
+            for (size_t vi = 0u; vi < vertexCount; ++vi)
+            {
+                unsigned char* dst = targetBytes + vi * targetBytesPerVertex;
+                memcpy(dst, &sourceBytes[vi * sourceBytesPerVertex], sourceBytesPerVertex);
+
+                float* extra = reinterpret_cast<float*>(dst + sourceBytesPerVertex);
+                extra[0] = static_cast<float>(branchIds[vi]);
+                // Deterministic phase per branch. 2.39996 is the golden-angle constant in
+                // radians, used here only because successive multiples of it never fall into an
+                // obvious repeating pattern - neighbouring branches must not sway in lockstep.
+                extra[1] = static_cast<float>(branchIds[vi]) * 2.39996f;
+            }
+
+            Ogre::VertexElement2Vec targetElements = elementsVec[0];
+            // Repurposed semantic: this geometry is never skinned, so VES_BLEND_WEIGHTS carries
+            // (branchId, branchPhase). Exactly the encoding ProceduralFoliageVolumeComponent
+            // uses, so both feed the same HlmsWind shader path.
+            targetElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_BLEND_WEIGHTS));
+
+            Ogre::VertexBufferPacked* targetBuffer = nullptr;
+            try
+            {
+                targetBuffer = vaoManager->createVertexBuffer(targetElements, vertexCount, Ogre::BT_IMMUTABLE, targetBytes, true);
+            }
+            catch (const Ogre::Exception& e)
+            {
+                OGRE_FREE_SIMD(targetBytes, Ogre::MEMCATEGORY_GEOMETRY);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Tree leaf createVertexBuffer failed: " + e.getDescription());
+                Ogre::VertexArrayObject* clonedVao = sourceVao->clone(vaoManager, nullptr);
+                targetSubMesh->mVao[Ogre::VpNormal].push_back(clonedVao);
+                targetSubMesh->mVao[Ogre::VpShadow].push_back(clonedVao);
+                continue;
+            }
+
+            Ogre::VertexBufferPackedVec targetBuffers;
+            targetBuffers.push_back(targetBuffer);
+
+            // The topology is untouched, but the index buffer must still be COPIED rather than
+            // shared with the source mesh - same ownership rule as the cloned trunk VAOs above.
+            // Handing the source's index buffer to a second mesh means whichever mesh is
+            // destroyed first frees it out from under the other.
+            Ogre::IndexBufferPacked* sourceIndexBuffer = sourceVao->getIndexBuffer();
+            Ogre::IndexBufferPacked* targetIndexBuffer = nullptr;
+
+            if (nullptr != sourceIndexBuffer)
+            {
+                const size_t indexCount = sourceIndexBuffer->getNumElements();
+                const size_t indexBytes = indexCount * sourceIndexBuffer->getBytesPerElement();
+
+                unsigned char* indexData = reinterpret_cast<unsigned char*>(OGRE_MALLOC_SIMD(indexBytes, Ogre::MEMCATEGORY_GEOMETRY));
+
+                const void* indexShadowCopy = sourceIndexBuffer->getShadowCopy();
+                if (nullptr != indexShadowCopy)
+                {
+                    memcpy(indexData, indexShadowCopy, indexBytes);
+                }
+                else
+                {
+                    Ogre::AsyncTicketPtr indexTicket = sourceIndexBuffer->readRequest(0u, indexCount);
+                    const void* rawIndices = indexTicket->map();
+                    memcpy(indexData, rawIndices, indexBytes);
+                    indexTicket->unmap();
+                }
+
+                try
+                {
+                    targetIndexBuffer = vaoManager->createIndexBuffer(sourceIndexBuffer->getIndexType(), indexCount, Ogre::BT_IMMUTABLE, indexData, true);
+                }
+                catch (const Ogre::Exception& e)
+                {
+                    OGRE_FREE_SIMD(indexData, Ogre::MEMCATEGORY_GEOMETRY);
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Tree leaf createIndexBuffer failed: " + e.getDescription());
+                    targetIndexBuffer = nullptr;
+                }
+            }
+
+            Ogre::VertexArrayObject* targetVao = vaoManager->createVertexArrayObject(targetBuffers, targetIndexBuffer, sourceVao->getOperationType());
+
+            targetSubMesh->mVao[Ogre::VpNormal].push_back(targetVao);
+            targetSubMesh->mVao[Ogre::VpShadow].push_back(targetVao);
+        }
+
+        targetMesh->_setBounds(sourceMesh->getAabb(), false);
+        targetMesh->_setBoundingSphereRadius(sourceMesh->getBoundingSphereRadius());
+
+        if (false == targetMesh->hasValidShadowMappingVaos())
+        {
+            targetMesh->prepareForShadowMapping(true);
+        }
+
+        this->preparedTreeMeshName = targetMeshName;
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Prepared tree mesh '" + targetMeshName + "' from '" + sourceMeshName + "', " +
+                                                                               Ogre::StringConverter::toString(static_cast<unsigned int>(leafSubMeshCount)) + " leaf submesh(es) clustered into " + Ogre::StringConverter::toString(clusterCount) +
+                                                                               " branches.");
+        return true;
+    }
+
+    void ProceduralPlatformComponent::createTreeItems(void)
+    {
+        //  RUNS ON RENDER THREAD!
+        if (true == this->surfaceFrames.empty())
+        {
+            return;
+        }
+
+        if (false == this->prepareSwayingTreeMesh())
+        {
+            return;
+        }
+
+        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+
+        const Ogre::Real spacing = std::max(0.5f, this->treeSpacing->getReal());
+        const Ogre::Real scale = this->treeScale->getReal();
+        const Ogre::Real depth = this->platformDepth->getReal();
+        const Ogre::Real zStart = this->treeZStart->getReal();
+
+        const bool parentIsStatic = this->gameObjectPtr->getSceneNode()->isStatic();
+        Ogre::SceneMemoryMgrTypes memoryType = Ogre::SCENE_DYNAMIC;
+        if (true == parentIsStatic)
+        {
+            memoryType = Ogre::SCENE_STATIC;
+        }
+
+        Ogre::MeshPtr treeMesh = Ogre::MeshManager::getSingleton().getByName(this->preparedTreeMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME).staticCast<Ogre::Mesh>();
+        if (treeMesh.isNull())
+        {
+            return;
+        }
+
+        // Resolve the Swaying datablock per leaf submesh once, then apply it to every instance.
+        std::vector<Ogre::HlmsDatablock*> subMeshDatablocks(treeMesh->getNumSubMeshes(), nullptr);
+        for (size_t smIdx = 0u; smIdx < treeMesh->getNumSubMeshes(); ++smIdx)
+        {
+            Ogre::HlmsDatablock* originalDatablock = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(treeMesh->getSubMesh(smIdx)->mMaterialName);
+            if (nullptr == originalDatablock)
+            {
+                continue;
+            }
+
+            if (true == this->isLeavesSubMesh(originalDatablock))
+            {
+                Ogre::HlmsDatablock* swayingDatablock = this->resolveSwayingLeavesDatablock(originalDatablock);
+                if (nullptr != swayingDatablock)
+                {
+                    subMeshDatablocks[smIdx] = swayingDatablock;
+                }
+            }
+        }
+
+        // Walk the path and drop a tree every 'spacing' meters. Distance-based rather than
+        // per-frame, so the tree count follows the platform's real length instead of its
+        // Curve Subdivisions setting.
+        Ogre::Real walked = 0.0f;
+        Ogre::Real nextTreeAt = spacing * 0.5f;
+        size_t treeIndex = 0u;
+
+        for (const PlatformSurfaceFrame& frame : this->surfaceFrames)
+        {
+            const Ogre::Real frameStart = walked;
+            walked += frame.spanAlong;
+
+            while (nextTreeAt >= frameStart && nextTreeAt < walked)
+            {
+                const Ogre::Real t = (nextTreeAt - frameStart) / std::max(0.001f, frame.spanAlong);
+                nextTreeAt += spacing;
+
+                // Deterministic per-tree jitter, same idea as the grass scatter: no per-instance
+                // state is stored, yet a rebuild reproduces the identical layout.
+                const Ogre::Real seed = frame.position.x * 71.3f + frame.position.y * 37.9f + static_cast<Ogre::Real>(treeIndex) * 91.7f;
+                const Ogre::Real r0 = std::fmod(std::abs(std::sin(seed) * 43758.5453f), 1.0f);
+                const Ogre::Real r1 = std::fmod(std::abs(std::sin(seed * 1.7f + 11.3f) * 24634.6345f), 1.0f);
+
+                // ── The Z window ─────────────────────────────────────────────────
+                // BUGFIX: this used to run towards +Z. The camera looks along -Z, so +Z is the
+                // side FACING the player - exactly the running lane that has to stay clear. The
+                // window now runs from the Tree Z Start line towards -Z, i.e. away from the
+                // camera, and everything between that line and the front edge is left free.
+                //
+                // The frame's own Z is the centre of the slab at that point (it carries the depth
+                // ramp from the U / SHIFT+U nudge), so the window is expressed relative to it
+                // rather than in absolute local Z.
+                const Ogre::Real zBackEdge = frame.position.z - depth * 0.5f;
+                const Ogre::Real zStartLine = frame.position.z - zStart;
+                if (zStartLine <= zBackEdge)
+                {
+                    // The window is empty - Tree Z Start reaches the back edge or beyond. Nothing
+                    // to place, and nothing wrong with that; it is how the user switches trees off
+                    // for a stretch without disabling them entirely.
+                    ++treeIndex;
+                    continue;
+                }
+
+                const Ogre::Real treeZ = zBackEdge + r0 * (zStartLine - zBackEdge);
+
+                // Position along the path, at the surface, then into the Z window.
+                Ogre::Vector3 position = frame.position + frame.tangent * ((t - 0.5f) * frame.spanAlong);
+                position.z = treeZ;
+
+                Ogre::Item* treeItem = sceneManager->createItem(treeMesh, memoryType);
+                treeItem->setName("PlatformTreeItem_GO" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_T" + Ogre::StringConverter::toString(static_cast<unsigned int>(treeIndex)));
+
+                for (size_t smIdx = 0u; smIdx < treeItem->getNumSubItems() && smIdx < subMeshDatablocks.size(); ++smIdx)
+                {
+                    if (nullptr != subMeshDatablocks[smIdx])
+                    {
+                        treeItem->getSubItem(smIdx)->setDatablock(subMeshDatablocks[smIdx]);
+                    }
+                }
+
+                treeItem->setQueryFlags(this->gameObjectPtr->getCategoryId());
+
+                Ogre::SceneNode* treeNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(memoryType);
+                treeNode->setPosition(position);
+                // Upright in world space, per the design decision: a tree is not oriented to the
+                // surface the way grass is. On a wall or the underside of a loop, a
+                // surface-aligned tree would grow sideways or hang downwards, which reads as
+                // broken rather than stylised. Only the spin about the trunk axis is randomised,
+                // so repeated instances of one mesh do not look copy-pasted.
+                treeNode->setOrientation(Ogre::Quaternion(Ogre::Radian(r1 * Ogre::Math::TWO_PI), Ogre::Vector3::UNIT_Y));
+                treeNode->setScale(Ogre::Vector3(scale, scale, scale));
+                treeNode->attachObject(treeItem);
+
+                if (Ogre::SCENE_STATIC == memoryType)
+                {
+                    sceneManager->notifyStaticAabbDirty(treeItem);
+                }
+
+                this->treeItems.push_back(treeItem);
+                this->treeNodes.push_back(treeNode);
+
+                ++treeIndex;
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ProceduralPlatformComponent] Trees: " + Ogre::StringConverter::toString(static_cast<unsigned int>(this->treeItems.size())) + " instances of '" + this->treeMeshName->getString() + "'.");
+    }
+
+    void ProceduralPlatformComponent::destroyTreeItems(void)
+    {
+        //  RUNS ON RENDER THREAD!
+        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+
+        for (size_t i = 0; i < this->treeItems.size(); ++i)
+        {
+            if (nullptr != this->treeNodes[i])
+            {
+                this->treeNodes[i]->detachAllObjects();
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->treeNodes[i]);
+                sceneManager->destroySceneNode(this->treeNodes[i]);
+                this->treeNodes[i] = nullptr;
+            }
+
+            if (nullptr != this->treeItems[i])
+            {
+                sceneManager->destroyItem(this->treeItems[i]);
+                this->treeItems[i] = nullptr;
+            }
+        }
+
+        this->treeItems.clear();
+        this->treeNodes.clear();
+
+        // The prepared mesh is shared by every instance, so it can only go once they are all
+        // destroyed. Dropping it here rather than keeping it cached means a changed Tree Mesh or
+        // Branch Clusters value takes effect on the next regenerate.
+        if (false == this->preparedTreeMeshName.empty())
+        {
+            Ogre::ResourcePtr preparedMesh = Ogre::MeshManager::getSingleton().getByName(this->preparedTreeMeshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+            if (false == preparedMesh.isNull())
+            {
+                Ogre::MeshManager::getSingleton().remove(preparedMesh->getHandle());
+            }
+            this->preparedTreeMeshName.clear();
+        }
+    }
+
+    void ProceduralPlatformComponent::regenerateTrees(void)
+    {
+        // Same scheduling rule as regenerateGrass: deliberately NOT called from rebuildMesh,
+        // which runs on every preview frame while dragging. Rebuilding every tree instance per
+        // mouse-move would be far worse than for grass, since each one is its own Item and node.
+        GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->destroyTreeItems();
+            if (true == this->useTrees->getBool())
+            {
+                this->createTreeItems();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralPlatformComponent::regenerateTrees");
+    }
+
     void ProceduralPlatformComponent::regenerateGrass(void)
     {
         // The one entry point for "the grass is out of date". Deliberately NOT called from
         // rebuildMesh: that runs on every preview frame while dragging, and destroying and
         // rebuilding every VAO in the chain per mouse-move would stall the editor on a
-        // loop-sized platform. rebuildMesh only refills grassFrames (via
-        // generatePlatformBox -> collectGrassFrames); this turns them into Items, and is
+        // loop-sized platform. rebuildMesh only refills surfaceFrames (via
+        // generatePlatformBox -> collectSurfaceFrames); this turns them into Items, and is
         // called from the points where the platform has actually settled: a confirmed
         // segment, a delete, a depth nudge, an attribute change.
         GraphicsModule::RenderCommand renderCommand = [this]()
@@ -3690,9 +4418,9 @@ namespace NOWA
         // rebuild then happened to collect). Frames are cheap - a handful of structs per path
         // segment, against the thousands of vertices being written right next to them - so
         // they are always collected, and Use Grass decides only whether they become Items.
-        if (true == g_platformCollectGrassFrames)
+        if (true == g_platformCollectSurfaceFrames)
         {
-            this->collectGrassFrames(points, topPoints, downDirs, depth);
+            this->collectSurfaceFrames(points, topPoints, downDirs, depth);
         }
 
         for (size_t i = 0; i + 1 < numPoints; ++i)
@@ -4588,18 +5316,9 @@ namespace NOWA
 
     void ProceduralPlatformComponent::destroyPlatformMesh(void)
     {
-        // Another component (e.g. MeshConstructionComponent) may have swapped
-        // the GameObject's movable object behind our back and already destroyed
-        // the Ogre::Item our item pointer used to refer to. Re-sync against
-        // the GameObject's *current* movable object before touching item,
-        // otherwise we dereference freed memory here.
-        Ogre::Item* currentItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-        if (currentItem != this->platformItem)
+        if (nullptr == this->platformItem && nullptr == this->platformMesh)
         {
-            // Stale pointer: our original item is gone, someone else owns the
-            // slot now (or a freshly recreated item that isn't "ours" anymore).
-            // Nothing safe left for us to destroy here.
-            this->platformItem = nullptr;
+            return;
         }
 
         GraphicsModule::RenderCommand renderCommand = [this]()
@@ -4950,7 +5669,7 @@ namespace NOWA
         // yet, and switching Use Grass on would produce nothing. Sweeping once here is cheap
         // next to building the blade Items that follow, and it makes the toggle work from any
         // state rather than only after some other edit happened to trigger a rebuild.
-        if (true == useGrass && true == this->grassFrames.empty() && false == this->platformSegments.empty())
+        if (true == useGrass && true == this->surfaceFrames.empty() && false == this->platformSegments.empty())
         {
             this->rebuildMesh();
         }
@@ -5005,6 +5724,81 @@ namespace NOWA
     Ogre::Real ProceduralPlatformComponent::getGrassBladeHeight(void) const
     {
         return this->grassBladeHeight->getReal();
+    }
+
+    void ProceduralPlatformComponent::setUseTrees(bool useTrees)
+    {
+        this->useTrees->setValue(useTrees);
+
+        // Same reasoning as setUseGrass: surface frames only exist as a by-product of the mesh
+        // sweep, and a platform restored from its cached buffers on scene load has none yet.
+        // Without this, switching trees on right after a load would silently produce nothing.
+        if (true == useTrees && true == this->surfaceFrames.empty() && false == this->platformSegments.empty())
+        {
+            this->rebuildMesh();
+        }
+
+        this->regenerateTrees();
+    }
+
+    bool ProceduralPlatformComponent::getUseTrees(void) const
+    {
+        return this->useTrees->getBool();
+    }
+
+    void ProceduralPlatformComponent::setTreeMeshName(const Ogre::String& meshName)
+    {
+        this->treeMeshName->setValue(meshName);
+        this->regenerateTrees();
+    }
+
+    Ogre::String ProceduralPlatformComponent::getTreeMeshName(void) const
+    {
+        return this->treeMeshName->getString();
+    }
+
+    void ProceduralPlatformComponent::setTreeSpacing(Ogre::Real spacing)
+    {
+        this->treeSpacing->setValue(Ogre::Math::Clamp(spacing, 0.5f, 200.0f));
+        this->regenerateTrees();
+    }
+
+    Ogre::Real ProceduralPlatformComponent::getTreeSpacing(void) const
+    {
+        return this->treeSpacing->getReal();
+    }
+
+    void ProceduralPlatformComponent::setTreeZStart(Ogre::Real zStart)
+    {
+        this->treeZStart->setValue(Ogre::Math::Clamp(zStart, 0.0f, 50.0f));
+        this->regenerateTrees();
+    }
+
+    Ogre::Real ProceduralPlatformComponent::getTreeZStart(void) const
+    {
+        return this->treeZStart->getReal();
+    }
+
+    void ProceduralPlatformComponent::setTreeScale(Ogre::Real scale)
+    {
+        this->treeScale->setValue(Ogre::Math::Clamp(scale, 0.01f, 20.0f));
+        this->regenerateTrees();
+    }
+
+    Ogre::Real ProceduralPlatformComponent::getTreeScale(void) const
+    {
+        return this->treeScale->getReal();
+    }
+
+    void ProceduralPlatformComponent::setTreeBranchClusterCount(int clusterCount)
+    {
+        this->treeBranchClusterCount->setValue(Ogre::Math::Clamp(clusterCount, 1, 64));
+        this->regenerateTrees();
+    }
+
+    int ProceduralPlatformComponent::getTreeBranchClusterCount(void) const
+    {
+        return this->treeBranchClusterCount->getInt();
     }
 
     void ProceduralPlatformComponent::setCurveSubdivisions(int subdivisions)
@@ -6064,6 +6858,7 @@ namespace NOWA
             this->updateContinuationPoint();
         }
         this->regenerateGrass();
+        this->regenerateTrees();
 
         this->scheduleSegmentOverlayUpdate();
 
@@ -6791,6 +7586,7 @@ namespace NOWA
         {
             this->rebuildMesh();
             this->regenerateGrass();
+            this->regenerateTrees();
         }
         this->updateContinuationPoint();
     }
@@ -6908,6 +7704,7 @@ namespace NOWA
     {
         this->rebuildMesh();
         this->regenerateGrass();
+        this->regenerateTrees();
     }
 
     void ProceduralPlatformComponent::beginBatch(void)
@@ -6920,6 +7717,7 @@ namespace NOWA
         this->bBatchMode = false;
         this->rebuildMesh();
         this->regenerateGrass();
+        this->regenerateTrees();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -7048,9 +7846,9 @@ namespace NOWA
 
     void ProceduralPlatformComponent::updateModificationState(void)
     {
-        /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] updateModificationState: activated=" + Ogre::StringConverter::toString(this->activated->getBool()) +
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] updateModificationState: activated=" + Ogre::StringConverter::toString(this->activated->getBool()) +
                                                                                " meshModifyMode=" + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " selected=" + Ogre::StringConverter::toString(this->isSelected) +
-                                                                               " editMode=" + this->editMode->getListSelectedValue());*/
+                                                                               " editMode=" + this->editMode->getListSelectedValue());
 
         // isEditFocusOwner is the fourth condition, and it is what lets a SIBLING component on
         // the same GameObject take over editing - see claimEditFocus. Not owning editing means

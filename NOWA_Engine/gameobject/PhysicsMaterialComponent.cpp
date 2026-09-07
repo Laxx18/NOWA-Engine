@@ -865,11 +865,6 @@ namespace NOWA
         const Ogre::String& contactOnceScratchName) :
         OgreNewt::ContactCallback(),
         firstObjectId(firstObjectId),
-        lastNormalSpeed(1.0f),
-        gameObject0(nullptr),
-        gameObject1(nullptr),
-        body0(nullptr),
-        body1(nullptr),
         luaScript(luaScript),
         overlapFunctionName(overlapFunctionName),
         contactFunctionName(contactFunctionName),
@@ -878,156 +873,162 @@ namespace NOWA
     {
     }
 
-	GenericContactCallback::~GenericContactCallback()
+    GenericContactCallback::~GenericContactCallback()
     {
     }
 
-	int GenericContactCallback::onAABBOverlap(OgreNewt::Body* body0, OgreNewt::Body* body1, int threadIndex)
+    GameObject* GenericContactCallback::resolveGameObject(OgreNewt::Body* body)
     {
-        if (nullptr == luaScript)
+        if (nullptr == body)
+        {
+            return nullptr;
+        }
+
+        auto physicsComponent = OgreNewt::any_cast<PhysicsComponent*>(body->getUserData());
+        if (nullptr == physicsComponent)
+        {
+            return nullptr;
+        }
+        return physicsComponent->getOwner().get();
+    }
+
+    void GenericContactCallback::orderBodies(OgreNewt::Body* bodyA, OgreNewt::Body* bodyB, OgreNewt::Body*& outBody0, OgreNewt::Body*& outBody1) const
+    {
+        outBody0 = bodyA;
+        outBody1 = bodyB;
+
+        // Swap the INPUTS rather than assigning crosswise. The original code read bodyA into
+        // gameObject1 and bodyB into gameObject0, which was correct but near impossible to
+        // verify at a glance.
+        if (nullptr != bodyA && nullptr != bodyB && bodyB->getType() == this->firstObjectId && bodyA->getType() != this->firstObjectId)
+        {
+            outBody0 = bodyB;
+            outBody1 = bodyA;
+        }
+    }
+
+    int GenericContactCallback::onAABBOverlap(OgreNewt::Body* body0, OgreNewt::Body* body1, int threadIndex)
+    {
+        if (nullptr == this->luaScript || true == this->overlapFunctionName.empty())
         {
             return 1;
         }
 
-        // check who is who
-        if (body0->getType() == this->firstObjectId)
+        OgreNewt::Body* orderedBody0 = nullptr;
+        OgreNewt::Body* orderedBody1 = nullptr;
+        this->orderBodies(body0, body1, orderedBody0, orderedBody1);
+
+        // Everything the logic command needs is captured BY VALUE, frozen at the moment the
+        // overlap happened. Nothing is stored in the object, so parallel calls from several
+        // ND4 worker threads cannot interfere with each other.
+        GameObject* const capturedGameObject0 = GenericContactCallback::resolveGameObject(orderedBody0);
+        GameObject* const capturedGameObject1 = GenericContactCallback::resolveGameObject(orderedBody1);
+        const Ogre::String capturedFunctionName = this->overlapFunctionName;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, capturedGameObject0, capturedGameObject1, capturedFunctionName]()
         {
-            this->body0 = body0;
-            this->body1 = body1;
-            // If a body cannot be cast to a physics component, set the game object to nullptr
-            // This is the case e.g. when using a RagDoll, which bones are just bodies
-            // But still the collision may be correct
-            auto physicsComponent0 = OgreNewt::any_cast<PhysicsComponent*>(body0->getUserData());
-            if (physicsComponent0)
+            // Re-checked here, not only above: the command runs one or more frames later and
+            // the script may have been torn down in between.
+            if (nullptr == this->luaScript)
             {
-                this->gameObject0 = physicsComponent0->getOwner().get();
-            }
-            else
-            {
-                this->gameObject0 = nullptr;
+                return;
             }
 
-            auto physicsComponent1 = OgreNewt::any_cast<PhysicsComponent*>(body1->getUserData());
-            if (physicsComponent1)
-            {
-                this->gameObject1 = physicsComponent1->getOwner().get();
-            }
-            else
-            {
-                this->gameObject1 = nullptr;
-            }
-        }
-        else if (body1->getType() == this->firstObjectId)
-        {
-            this->body0 = body1;
-            this->body1 = body0;
+            this->luaScript->callTableFunction(capturedFunctionName, capturedGameObject0, capturedGameObject1);
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 
-            auto physicsComponent1 = OgreNewt::any_cast<PhysicsComponent*>(body0->getUserData());
-            if (physicsComponent1)
-            {
-                this->gameObject1 = physicsComponent1->getOwner().get();
-            }
-            else
-            {
-                this->gameObject1 = nullptr;
-            }
-
-            auto physicsComponent0 = OgreNewt::any_cast<PhysicsComponent*>(body1->getUserData());
-            if (physicsComponent0)
-            {
-                this->gameObject0 = physicsComponent0->getOwner().get();
-            }
-            else
-            {
-                this->gameObject0 = nullptr;
-            }
-        }
-
-        if (false == this->overlapFunctionName.empty())
-        {
-            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-            {
-                this->luaScript->callTableFunction(this->overlapFunctionName, this->gameObject0, this->gameObject1);
-            };
-            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-        }
         return 1;
     }
 
-	void GenericContactCallback::contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
+    void GenericContactCallback::contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
     {
-        // Note: If several threads are used, a lock is required, else lua will crash when a script is called?
-
         if (nullptr == this->luaScript)
         {
             return;
         }
 
-        Ogre::Real maxTangentSpeed = 0.0f;
+        // The bodies come straight from the contact joint we were handed, instead of from
+        // members that onAABBOverlap() happened to write earlier. That is what removes the
+        // shared state: with ND4 running one worker per core, those members were rewritten by
+        // other threads while this function was still using them, so Lua could receive the
+        // correct contact snapshot together with the game objects of a DIFFERENT collision.
+        OgreNewt::ContactJoint& mutableContactJoint = const_cast<OgreNewt::ContactJoint&>(contactJoint);
 
-        OgreNewt::Contact* normalContact = nullptr;
+        OgreNewt::Body* orderedBody0 = nullptr;
+        OgreNewt::Body* orderedBody1 = nullptr;
+        this->orderBodies(mutableContactJoint.getBody0(), mutableContactJoint.getBody1(), orderedBody0, orderedBody1);
+
+        if (nullptr == orderedBody0 || nullptr == orderedBody1)
+        {
+            return;
+        }
+
+        GameObject* const capturedGameObject0 = GenericContactCallback::resolveGameObject(orderedBody0);
+        GameObject* const capturedGameObject1 = GenericContactCallback::resolveGameObject(orderedBody1);
+
+        Ogre::Real maxTangentSpeed = 0.0f;
+        Ogre::Real maxNormalSpeed = 0.0f;
+
         OgreNewt::ContactSnapshot scratchSnapshot;
+        OgreNewt::ContactSnapshot impactSnapshot;
         bool hasScratch = false;
+        bool hasImpact = false;
         OgreNewt::Contact* contact = nullptr;
 
-        OgreNewt::Contact firstContact = const_cast<OgreNewt::ContactJoint&>(contactJoint).getFirstContact();
+        OgreNewt::Contact firstContact = mutableContactJoint.getFirstContact();
         for (contact = &firstContact; false == contact->isEmpty(); contact = &contact->getNext())
         {
             if (false == this->contactFunctionName.empty())
             {
-                // Snapshot NOW — contact ptr is dangling by logic thread execution time
+                // Snapshot NOW - contact ptr is dangling by logic thread execution time
                 OgreNewt::ContactSnapshot snap = contact->createSnapshot();
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, snap]()
+                const Ogre::String capturedContactFunctionName = this->contactFunctionName;
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, snap, capturedGameObject0, capturedGameObject1, capturedContactFunctionName]()
                 {
-                    this->luaScript->callTableFunction(this->contactFunctionName, this->gameObject0, this->gameObject1, snap);
+                    if (nullptr == this->luaScript)
+                    {
+                        return;
+                    }
+                    this->luaScript->callTableFunction(capturedContactFunctionName, capturedGameObject0, capturedGameObject1, snap);
                 };
                 NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
             }
 
             if (false == this->contactOnceFunctionName.empty())
             {
-                // Get the normal speed difference between two contacts
-                Ogre::Real normalSpeedDiff = (this->lastNormalSpeed - contact->getNormalSpeed()) / this->lastNormalSpeed;
-
-                // If the normal speed is high enough, an impact occured, like a body contacts with another one once
-                // if it remains on another body, the normal speed is not high enough, so onContactOnce will not be called
-                if (contact->getNormalSpeed() > 3.0f && abs(normalSpeedDiff) > 3.0f)
+                // The impact test used to compare against a lastNormalSpeed MEMBER, i.e. the
+                // speed of whatever contact was processed last - which under parallel contact
+                // processing is a completely unrelated body pair. That made the result
+                // meaningless regardless of any locking, so the shared value is gone and the
+                // decision is made from this contact joint alone: the strongest normal speed
+                // among its own contact points.
+                const Ogre::Real currentNormalSpeed = contact->getNormalSpeed();
+                if (currentNormalSpeed > maxNormalSpeed)
                 {
-                    // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "hit: " + Ogre::StringConverter::toString(normalSpeedDiff));
-                    // Snapshot NOW — contact ptr is dangling by logic thread execution time
-                    OgreNewt::ContactSnapshot contactSnapshot = contact->createSnapshot();
-                    NOWA::AppStateManager::LogicCommand logicCommand = [this, contactSnapshot]()
-                    {
-                        this->luaScript->callTableFunction(this->contactOnceFunctionName, this->gameObject0, this->gameObject1, contactSnapshot);
-                    };
-                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    break;
-                }
-
-                this->lastNormalSpeed = contact->getNormalSpeed();
-                if (this->lastNormalSpeed == 0.0f)
-                {
-                    this->lastNormalSpeed = 1.0f;
+                    maxNormalSpeed = currentNormalSpeed;
+                    impactSnapshot = contact->createSnapshot();
+                    hasImpact = true;
                 }
             }
 
             if (false == this->contactScratchFunctionName.empty())
             {
-                Ogre::Vector3 point0;
-                Ogre::Vector3 normal0;
-                contact->getPositionAndNormal(point0, normal0);
+                Ogre::Vector3 point;
+                Ogre::Vector3 normal;
+                contact->getPositionAndNormal(point, normal);
 
-                Ogre::Vector3 point1;
-                Ogre::Vector3 normal1;
-                contact->getPositionAndNormal(point1, normal1);
-
-                const Ogre::Vector3 pointVeloc0(this->body0->getVelocityAtPoint(point0));
-                const Ogre::Vector3 pointVeloc1(this->body1->getVelocityAtPoint(point1));
+                // Both velocities are sampled at the SAME contact point, once per body. The
+                // former code called getPositionAndNormal() twice into two variable pairs,
+                // which necessarily produced identical values and left one normal unused.
+                const Ogre::Vector3 pointVeloc0(orderedBody0->getVelocityAtPoint(point));
+                const Ogre::Vector3 pointVeloc1(orderedBody1->getVelocityAtPoint(point));
                 const Ogre::Vector3 veloc(pointVeloc1 - pointVeloc0);
 
-                const Ogre::Real verticalSpeed = normal0.dotProduct(veloc);
+                const Ogre::Real verticalSpeed = normal.dotProduct(veloc);
 
-                Ogre::Vector3 tangVeloc(veloc - (normal0 * verticalSpeed));
+                const Ogre::Vector3 tangVeloc(veloc - (normal * verticalSpeed));
                 const Ogre::Real tangentSpeed = tangVeloc.dotProduct(tangVeloc);
                 if (tangentSpeed > maxTangentSpeed)
                 {
@@ -1039,16 +1040,37 @@ namespace NOWA
             }
         }
 
+        // Impact
+        if (false == this->contactOnceFunctionName.empty() && true == hasImpact && maxNormalSpeed > 3.0f)
+        {
+            const Ogre::String capturedContactOnceFunctionName = this->contactOnceFunctionName;
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, impactSnapshot, capturedGameObject0, capturedGameObject1, capturedContactOnceFunctionName]()
+            {
+                if (nullptr == this->luaScript)
+                {
+                    return;
+                }
+                this->luaScript->callTableFunction(capturedContactOnceFunctionName, capturedGameObject0, capturedGameObject1, impactSnapshot);
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        }
+
         // Scratch
         if (false == this->contactScratchFunctionName.empty())
         {
             maxTangentSpeed = Ogre::Math::Sqrt(maxTangentSpeed);
             if (true == hasScratch && maxTangentSpeed > 10.0f)
             {
-                // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "scratch: " + Ogre::StringConverter::toString(maxTangentSpeed));
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, scratchSnapshot]()
+                const Ogre::String capturedContactScratchFunctionName = this->contactScratchFunctionName;
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, scratchSnapshot, capturedGameObject0, capturedGameObject1, capturedContactScratchFunctionName]()
                 {
-                    this->luaScript->callTableFunction(this->contactScratchFunctionName, this->gameObject0, this->gameObject1, scratchSnapshot);
+                    if (nullptr == this->luaScript)
+                    {
+                        return;
+                    }
+                    this->luaScript->callTableFunction(capturedContactScratchFunctionName, capturedGameObject0, capturedGameObject1, scratchSnapshot);
                 };
                 NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
             }

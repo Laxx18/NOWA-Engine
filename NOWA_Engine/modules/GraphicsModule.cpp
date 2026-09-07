@@ -15,8 +15,8 @@
 // Attention: TEMPORARY diagnostic for the suspended-render wait and for the render loop itself.
 // Comment the define out once the measurement is done. Everything it adds is aggregated, never one
 // log line per iteration.
-// #define NOWA_SUSPEND_WAIT_TIMING
-// #define CLOSURE_DEBUG
+#define NOWA_SUSPEND_WAIT_TIMING
+#define CLOSURE_DEBUG
 
 #ifdef NOWA_SUSPEND_WAIT_TIMING
 
@@ -2013,9 +2013,15 @@ namespace NOWA
     {
         GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
 
+        Ogre::Vector3 tempScale = scale;
+        if (scale == Ogre::Vector3::UNIT_SCALE)
+        {
+            tempScale = node->getScale();
+        }
+
         nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
         nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
-        nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
+        nodeTransforms->transforms[this->currentTransformNodeIdx].scale = tempScale;
         nodeTransforms->active.store(true, std::memory_order_relaxed);
         nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);
     }

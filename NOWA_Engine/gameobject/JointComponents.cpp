@@ -1730,7 +1730,12 @@ namespace NOWA
 
     /*******************************JointHingeActuatorComponent*******************************/
 
-    JointHingeActuatorComponent::JointHingeActuatorComponent() : JointComponent(), round(0), internalDirectionChange(false), oppositeDir(1.0f)
+    JointHingeActuatorComponent::JointHingeActuatorComponent()
+        : JointComponent(),
+        round(0),
+        internalDirectionChange(false),
+        oppositeDir(1.0f),
+        wasAtTargetAngle(false)
     {
         // Note that also in JointComponent internalBaseInit() is called, which sets the values for JointComponent, so this is called for already existing values
         // But luckely in Variant, no new attributes are added, but the values changed via interalAdd(...) in Variant
@@ -1844,6 +1849,7 @@ namespace NOWA
         this->round = 0;
         this->internalDirectionChange = this->directionChange->getBool();
         this->oppositeDir = 1.0f;
+        this->wasAtTargetAngle = false;
 
         this->internalShowDebugData(false, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
 
@@ -1862,109 +1868,117 @@ namespace NOWA
 
     void JointHingeActuatorComponent::update(Ogre::Real dt, bool notSimulating)
     {
-        if (!notSimulating && this->activated->getBool())
+        if (notSimulating || false == this->activated->getBool())
         {
-            const bool repeat = this->repeat->getBool();
-            bool targetAngleReached = false;
+            return;
+        }
 
-            // Only stop after two legs if we are NOT repeating
-            if (!repeat && this->round == 2)
+        const bool repeat = this->repeat->getBool();
+
+        // Changed from '== 2' to '>= 2': round could overshoot (see the edge latch below for
+        // why it used to), and then this early out silently stopped guarding.
+        if (false == repeat && this->round >= 2)
+        {
+            return;
+        }
+
+        OgreNewt::HingeActuator* hingeActuatorJoint = static_cast<OgreNewt::HingeActuator*>(this->joint);
+        if (nullptr == hingeActuatorJoint)
+        {
+            return;
+        }
+
+        const Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle();
+        const Ogre::Real targetLimit = (this->oppositeDir == 1.0f) ? this->maxAngleLimit->getReal() : this->minAngleLimit->getReal();
+
+        // RealEqual() describes a STATE, not an event: while the actuator sits inside the 0.1
+        // degree tolerance the condition is true in EVERY frame. The old code incremented
+        // 'round' on each of those frames, so without internalDirectionChange - where the
+        // actuator simply stays at its limit - round raced up at frame rate, and the
+        // 'round == 2' checks were only true for a single frame before being overshot.
+        // Latching on the rising edge turns it back into one count per actual arrival.
+        const bool atLimitNow = Ogre::Math::RealEqual(angle, targetLimit, 0.1f);
+        const bool justArrived = atLimitNow && (false == this->wasAtTargetAngle);
+        this->wasAtTargetAngle = atLimitNow;
+
+        if (false == justArrived)
+        {
+            return;
+        }
+
+        if (true == this->internalDirectionChange)
+        {
+            // flip direction and head for the opposite limit
+            this->oppositeDir *= -1.0f;
+            const Ogre::Real nextLimit = (this->oppositeDir == 1.0f) ? this->maxAngleLimit->getReal() : this->minAngleLimit->getReal();
+            hingeActuatorJoint->SetTargetAngle(Ogre::Degree(nextLimit));
+        }
+
+        // Only count rounds if we are NOT in repeat mode
+        if (true == repeat)
+        {
+            return;
+        }
+
+        ++this->round;
+
+        if (this->round < 2)
+        {
+            return;
+        }
+
+        Ogre::Degree newAngle(0.0f);
+        if (this->oppositeDir == 1.0f)
+        {
+            newAngle = Ogre::Degree(this->minAngleLimit->getReal());
+        }
+        else
+        {
+            newAngle = Ogre::Degree(this->maxAngleLimit->getReal());
+        }
+
+        hingeActuatorJoint->SetTargetAngle(newAngle);
+
+        if (false == this->targetAngleReachedClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // The closure object is deliberately NOT copied: disconnect() clears it, and the
+        // is_valid() check inside the command is what notices that. A copy would stay valid
+        // and fire after teardown. The weak pointer covers the other case - the component
+        // being DESTROYED rather than merely disconnected, where 'this' would already be
+        // freed memory before any check could run.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, newAngle]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
             {
                 return;
             }
 
-            OgreNewt::HingeActuator* hingeActuatorJoint = static_cast<OgreNewt::HingeActuator*>(this->joint);
-
-            if (hingeActuatorJoint)
+            if (false == this->targetAngleReachedClosureFunction.is_valid())
             {
-                const Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle();
-
-                if (this->oppositeDir == 1.0f)
-                {
-                    // heading toward max
-                    if (Ogre::Math::RealEqual(angle, this->maxAngleLimit->getReal(), 0.1f))
-                    {
-                        targetAngleReached = true;
-
-                        if (this->internalDirectionChange)
-                        {
-                            // flip direction and go to min
-                            this->oppositeDir *= -1.0f;
-                            hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->minAngleLimit->getReal()));
-                        }
-
-                        // Only count rounds if we are NOT in repeat mode
-                        if (!repeat)
-                        {
-                            ++this->round;
-                        }
-                    }
-                }
-                else
-                {
-                    // heading toward min
-                    if (Ogre::Math::RealEqual(angle, this->minAngleLimit->getReal(), 0.1f))
-                    {
-                        targetAngleReached = true;
-
-                        if (this->internalDirectionChange)
-                        {
-                            // flip direction and go to max
-                            this->oppositeDir *= -1.0f;
-                            hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->maxAngleLimit->getReal()));
-                        }
-
-                        if (!repeat)
-                        {
-                            ++this->round;
-                        }
-                    }
-                }
+                return;
             }
 
-            // Only do the "2 rounds done" handling when NOT repeating
-            if (targetAngleReached && !repeat && this->round == 2)
+            try
             {
-                if (!hingeActuatorJoint)
-                {
-                    return;
-                }
-
-                Ogre::Degree newAngle(0.0f);
-
-                if (this->oppositeDir == 1.0f)
-                {
-                    newAngle = Ogre::Degree(this->minAngleLimit->getReal());
-                }
-                else
-                {
-                    newAngle = Ogre::Degree(this->maxAngleLimit->getReal());
-                }
-
-                hingeActuatorJoint->SetTargetAngle(newAngle);
-
-                if (this->targetAngleReachedClosureFunction.is_valid())
-                {
-                    NOWA::AppStateManager::LogicCommand logicCommand = [this, newAngle]()
-                    {
-                        try
-                        {
-                            luabind::call_function<void>(this->targetAngleReachedClosureFunction, newAngle);
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
-
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Caught error in 'reactOnTargetAngleReached' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                        }
-                    };
-
-                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                }
+                luabind::call_function<void>(this->targetAngleReachedClosureFunction, newAngle);
             }
-        }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Caught error in 'reactOnTargetAngleReached' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     bool JointHingeActuatorComponent::init(xml_node<>*& propertyElement)
@@ -6023,7 +6037,12 @@ namespace NOWA
 
     /*******************************JointSliderActuatorComponent*******************************/
 
-    JointSliderActuatorComponent::JointSliderActuatorComponent() : JointComponent(), round(0), internalDirectionChange(false), oppositeDir(1.0f)
+    JointSliderActuatorComponent::JointSliderActuatorComponent()
+        : JointComponent(),
+        round(0),
+        internalDirectionChange(false),
+        oppositeDir(1.0f), 
+        wasAtTargetPosition(false)
     {
         // Note that also in JointComponent internalBaseInit() is called, which sets the values for JointComponent, so this is called for already existing values
         // But luckely in Variant, no new attributes are added, but the values changed via interalAdd(...) in Variant
@@ -6117,99 +6136,117 @@ namespace NOWA
         this->round = 0;
         this->internalDirectionChange = this->directionChange->getBool();
         this->oppositeDir = 1.0f;
+        this->wasAtTargetPosition = false;
 
         return success;
     }
 
     void JointSliderActuatorComponent::update(Ogre::Real dt, bool notSimulating)
     {
-        if (false == notSimulating && true == this->activated->getBool())
+        if (notSimulating || false == this->activated->getBool())
         {
-            if (true == this->internalDirectionChange)
+            return;
+        }
+
+        if (false == this->internalDirectionChange)
+        {
+            return;
+        }
+
+        OgreNewt::SliderActuator* sliderActuatorJoint = static_cast<OgreNewt::SliderActuator*>(this->joint);
+        if (nullptr == sliderActuatorJoint)
+        {
+            // The joint used to be null checked only around the position query, while
+            // SetTargetPosition() below was called outside that check.
+            return;
+        }
+
+        const Ogre::Real position = sliderActuatorJoint->GetActuatorPosition();
+        const Ogre::Real step = this->linearRate->getReal() * dt;
+        const Ogre::Real targetStop = (1.0f == this->oppositeDir) ? this->maxStopDistance->getReal() : this->minStopDistance->getReal();
+
+        // RealEqual() describes a STATE, not an event: while the actuator sits within the
+        // tolerance the condition is true in EVERY frame, so 'round' used to be incremented
+        // once per frame instead of once per arrival. Latching on the rising edge fixes that.
+        const bool atStopNow = Ogre::Math::RealEqual(position, targetStop, step);
+        const bool justArrived = atStopNow && (false == this->wasAtTargetPosition);
+        this->wasAtTargetPosition = atStopNow;
+
+        if (false == justArrived)
+        {
+            // Everything below reacts to ARRIVING at a stop. It used to sit one indentation
+            // level further out, outside this condition, so SetTargetPosition() was reissued
+            // and - far worse - 'reactOnTargetPositionReached' was fired on EVERY frame,
+            // dozens of times a second, whether or not any target had been reached.
+            return;
+        }
+
+        this->oppositeDir *= -1.0f;
+        this->round++;
+
+        // If the slider took 2 rounds (1x forward and 1x back, then its enough, if repeat is off)
+        if (this->round >= 2)
+        {
+            this->round = 0;
+            // if repeat is off, only change the direction one time, to get back to its origin and leave
+            if (false == this->repeat->getBool())
             {
-                OgreNewt::SliderActuator* sliderActuatorJoint = static_cast<OgreNewt::SliderActuator*>(this->joint);
-                if (nullptr != sliderActuatorJoint)
-                {
-                    Ogre::Real position = sliderActuatorJoint->GetActuatorPosition();
-                    Ogre::Real step = this->linearRate->getReal() * dt;
-                    if (1.0f == this->oppositeDir)
-                    {
-                        if (Ogre::Math::RealEqual(position, this->maxStopDistance->getReal(), step))
-                        {
-                            this->oppositeDir *= -1.0f;
-                            this->round++;
-                        }
-                    }
-                    else
-                    {
-                        if (Ogre::Math::RealEqual(position, this->minStopDistance->getReal(), step))
-                        {
-                            this->oppositeDir *= -1.0f;
-                            this->round++;
-                        }
-                    }
-                }
-
-                // If the hinge took 2 rounds (1x forward and 1x back, then its enough, if repeat is off)
-                if (this->round == 2)
-                {
-                    this->round = 0;
-                    // if repeat is of, only change the direction one time, to get back to its origin and leave
-                    if (false == this->repeat->getBool())
-                    {
-                        this->internalDirectionChange = false;
-                    }
-                }
-
-                if (true == this->repeat->getBool() || true == this->internalDirectionChange)
-                {
-                    Ogre::Real newPosition = 0.0f;
-
-                    if (1.0f == this->oppositeDir)
-                    {
-                        newPosition = this->maxStopDistance->getReal();
-                    }
-                    else
-                    {
-                        newPosition = this->minStopDistance->getReal();
-                    }
-
-                    sliderActuatorJoint->SetTargetPosition(newPosition);
-
-                    if (this->targetPositionReachedClosureFunction.is_valid())
-                    {
-                        try
-                        {
-                            NOWA::AppStateManager::LogicCommand logicCommand = [this, newPosition]()
-                            {
-                                try
-                                {
-                                    luabind::call_function<void>(this->targetPositionReachedClosureFunction, newPosition);
-                                }
-                                catch (luabind::error& error)
-                                {
-                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                    std::stringstream msg;
-                                    msg << errorMsg;
-
-                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
-                                        "[JointSliderActuatorComponent] Caught error in 'targetPositionReachedClosureFunction' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                                }
-                            };
-                            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
-
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Caught error in 'reactOnTargetPositionReached' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                        }
-                    }
-                }
+                this->internalDirectionChange = false;
             }
         }
+
+        if (false == this->repeat->getBool() && false == this->internalDirectionChange)
+        {
+            return;
+        }
+
+        const Ogre::Real newPosition = (1.0f == this->oppositeDir) ? this->maxStopDistance->getReal() : this->minStopDistance->getReal();
+
+        sliderActuatorJoint->SetTargetPosition(newPosition);
+
+        if (false == this->targetPositionReachedClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // The outer try/catch that used to wrap this only covered creating and enqueueing the
+        // command - the Lua call happens later, inside the command's own try/catch, so the
+        // outer one could never catch anything. Removed.
+        //
+        // The closure object is deliberately NOT copied: disconnect() clears it, and the
+        // is_valid() check inside the command is what notices that. A copy would stay valid
+        // and fire after teardown. The weak pointer covers the other case - the component
+        // being DESTROYED rather than merely disconnected, where 'this' would already be freed
+        // memory before any check could run.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, newPosition]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->targetPositionReachedClosureFunction.is_valid())
+            {
+                return;
+            }
+
+            try
+            {
+                luabind::call_function<void>(this->targetPositionReachedClosureFunction, newPosition);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Caught error in 'reactOnTargetPositionReached' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     Ogre::String JointSliderActuatorComponent::getClassName(void) const
@@ -8158,7 +8195,12 @@ namespace NOWA
 
     /*******************************JointKinematicComponent*******************************/
 
-    JointKinematicComponent::JointKinematicComponent() : JointComponent(), originPosition(Ogre::Vector3::ZERO), originRotation(Ogre::Quaternion::IDENTITY), gravity(Ogre::Vector3(0.0f, -16.9f, 0.0f))
+    JointKinematicComponent::JointKinematicComponent()
+        : JointComponent(),
+        originPosition(Ogre::Vector3::ZERO),
+        originRotation(Ogre::Quaternion::IDENTITY),
+        gravity(Ogre::Vector3(0.0f, -16.9f, 0.0f)),
+        wasAtTargetPosition(false)
     {
         this->type->setReadOnly(false);
         this->type->setValue(this->getClassName());
@@ -8345,6 +8387,7 @@ namespace NOWA
     bool JointKinematicComponent::disconnect(void)
     {
         bool success = JointComponent::disconnect();
+        this->wasAtTargetPosition = false;
         return success;
     }
 
@@ -8361,40 +8404,72 @@ namespace NOWA
     void JointKinematicComponent::update(Ogre::Real dt, bool notSimulating)
     {
         // Checks if the body has reached its target position, and if short time activation is set, the component will be deactivated, if position reached.
-        if (false == notSimulating)
+        if (notSimulating || false == this->activated->getBool())
         {
-            if (true == this->activated->getBool())
-            {
-                Ogre::Real distSquare = this->getUpdatedJointPosition().squaredDistance(this->targetPosition->getVector3());
-                if (distSquare <= 0.01f * 0.01f)
-                {
-                    if (true == this->shortTimeActivation->getBool())
-                    {
-                        this->setActivated(false);
-                    }
-
-                    if (this->targetPositionReachedClosureFunction.is_valid())
-                    {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                        {
-                            try
-                            {
-                                luabind::call_function<void>(this->targetPositionReachedClosureFunction);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointKinematicComponent] Caught error in 'targetPositionReachedClosureFunction' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
-                }
-            }
+            return;
         }
+
+        const Ogre::Real distSquare = this->getUpdatedJointPosition().squaredDistance(this->targetPosition->getVector3());
+
+        // Being within tolerance is a STATE, not an event: as long as the body rests near the
+        // target, this condition is true in EVERY frame. With shortTimeActivation the component
+        // deactivates itself and the outer check stops further frames, which hid the problem -
+        // but WITHOUT it, 'reactOnTargetPositionReached' fired dozens of times a second for as
+        // long as the body stayed put. Latching on the rising edge makes it one call per actual
+        // arrival, in both modes.
+        const bool atTargetNow = (distSquare <= 0.01f * 0.01f);
+        const bool justArrived = atTargetNow && (false == this->wasAtTargetPosition);
+        this->wasAtTargetPosition = atTargetNow;
+
+        if (false == justArrived)
+        {
+            return;
+        }
+
+        if (true == this->shortTimeActivation->getBool())
+        {
+            this->setActivated(false);
+        }
+
+        if (false == this->targetPositionReachedClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // The closure object is deliberately NOT copied: disconnect() clears it, and the
+        // is_valid() check inside the command is what notices that. A copy would stay valid
+        // and fire after teardown. The weak pointer covers the other case - the component
+        // being DESTROYED rather than merely disconnected, where 'this' would already be freed
+        // memory before any check could run.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->targetPositionReachedClosureFunction.is_valid())
+            {
+                return;
+            }
+
+            try
+            {
+                luabind::call_function<void>(this->targetPositionReachedClosureFunction);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointKinematicComponent] Caught error in 'reactOnTargetPositionReached' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     bool JointKinematicComponent::createJoint(const Ogre::Vector3& customJointPosition)

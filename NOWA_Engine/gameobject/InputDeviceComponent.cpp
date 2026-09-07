@@ -76,10 +76,10 @@ namespace NOWA
     {
         boost::shared_ptr<InputDeviceComponent> clonedCompPtr(boost::make_shared<InputDeviceComponent>());
 
-        clonedCompPtr->setIsExcluse(this->isExclusive->getBool());
-
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        clonedCompPtr->setIsExcluse(this->isExclusive->getBool());
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
         return clonedCompPtr;

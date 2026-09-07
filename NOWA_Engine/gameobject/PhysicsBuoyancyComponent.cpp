@@ -40,53 +40,69 @@ namespace NOWA
 
         // Note: visitor is the body ENTERING the volume (not the body that owns this trigger).
         PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
-        if (nullptr != visitorPhysicsComponent)
+        if (nullptr == visitorPhysicsComponent)
         {
-            GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
-
-            // Only allow for physics active components
-            auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
-            if (nullptr == physicsActiveComponent)
-            {
-                return;
-            }
-
-            // Check for correct category
-            unsigned int type = visitorGameObjectPtr->getCategoryId();
-            unsigned int finalType = type & this->categoryId;
-            if (type == finalType)
-            {
-                if (nullptr != luaScript)
-                {
-                    if (this->enterClosureFunction.is_valid())
-                    {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObjectPtr]()
-                        {
-                            try
-                            {
-                                luabind::call_function<void>(this->enterClosureFunction, visitorGameObjectPtr.get());
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
-                                                                                                "Caught error in 'reactOnEnter' Error: " +
-                                                                                                    Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
-                }
-            }
+            return;
         }
+
+        GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
+        if (nullptr == visitorGameObjectPtr)
+        {
+            // The physics component was null checked but its owner was not - a component
+            // being torn down right now has none.
+            return;
+        }
+
+        // Only allow for physics active components
+        auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
+        if (nullptr == physicsActiveComponent)
+        {
+            return;
+        }
+
+        // Check for correct category
+        unsigned int type = visitorGameObjectPtr->getCategoryId();
+        unsigned int finalType = type & this->categoryId;
+        if (type != finalType)
+        {
+            return;
+        }
+
+        if (nullptr == luaScript || false == this->enterClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // The closure is COPIED into the command instead of being read from 'this' at
+        // execution time. This callback is owned by the component and destroyed with it, and
+        // the command runs one or more frames later - reading this->enterClosureFunction then
+        // would touch freed memory. Unlike the GUI components there is no shared_from_this()
+        // here to weak-reference, so freezing the closure is the available protection.
+        luabind::object callback = this->enterClosureFunction;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [callback, visitorGameObjectPtr]()
+        {
+            try
+            {
+                luabind::call_function<void>(callback, visitorGameObjectPtr.get());
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
+                                                                                "Caught error in 'reactOnEnter' Error: " +
+                                                                                    Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     void PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::OnInside(const OgreNewt::Body* visitor)
     {
-        // Base does nothing (no physics) � we only use this for Lua callbacks.
+        // Base does nothing (no physics) - we only use this for Lua callbacks.
         OgreNewt::BuoyancyForceTriggerCallback::OnInside(visitor);
 
         if (false == this->onInsideFunctionAvailable)
@@ -95,46 +111,56 @@ namespace NOWA
         }
 
         PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
-        if (nullptr != visitorPhysicsComponent)
+        if (nullptr == visitorPhysicsComponent)
         {
-            GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
-
-            auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
-            if (nullptr == physicsActiveComponent)
-            {
-                return;
-            }
-
-            unsigned int type = visitorGameObjectPtr->getCategoryId();
-            unsigned int finalType = type & this->categoryId;
-            if (type == finalType)
-            {
-                if (nullptr != luaScript)
-                {
-                    if (this->insideClosureFunction.is_valid())
-                    {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObjectPtr]()
-                        {
-                            try
-                            {
-                                luabind::call_function<void>(this->insideClosureFunction, visitorGameObjectPtr.get());
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
-                                                                                                "Caught error in 'reactOnInside' Error: " +
-                                                                                                    Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
-                }
-            }
+            return;
         }
+
+        GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
+        if (nullptr == visitorGameObjectPtr)
+        {
+            return;
+        }
+
+        auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
+        if (nullptr == physicsActiveComponent)
+        {
+            return;
+        }
+
+        unsigned int type = visitorGameObjectPtr->getCategoryId();
+        unsigned int finalType = type & this->categoryId;
+        if (type != finalType)
+        {
+            return;
+        }
+
+        if (nullptr == luaScript || false == this->insideClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // See OnEnter() for why the closure is copied rather than read through 'this'.
+        luabind::object callback = this->insideClosureFunction;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [callback, visitorGameObjectPtr]()
+        {
+            try
+            {
+                luabind::call_function<void>(callback, visitorGameObjectPtr.get());
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
+                                                                                "Caught error in 'reactOnInside' Error: " +
+                                                                                    Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     void PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::OnExit(const OgreNewt::Body* visitor)
@@ -143,46 +169,56 @@ namespace NOWA
         OgreNewt::BuoyancyForceTriggerCallback::OnExit(visitor);
 
         PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
-        if (nullptr != visitorPhysicsComponent)
+        if (nullptr == visitorPhysicsComponent)
         {
-            GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
-
-            auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
-            if (nullptr == physicsActiveComponent)
-            {
-                return;
-            }
-
-            unsigned int type = visitorGameObjectPtr->getCategoryId();
-            unsigned int finalType = type & this->categoryId;
-            if (type == finalType)
-            {
-                if (nullptr != luaScript)
-                {
-                    if (this->leaveClosureFunction.is_valid())
-                    {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObjectPtr]()
-                        {
-                            try
-                            {
-                                luabind::call_function<void>(this->leaveClosureFunction, visitorGameObjectPtr.get());
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
-                                                                                                "Caught error in 'reactOnLeave' Error: " +
-                                                                                                    Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
-                }
-            }
+            return;
         }
+
+        GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
+        if (nullptr == visitorGameObjectPtr)
+        {
+            return;
+        }
+
+        auto physicsActiveComponent = NOWA::makeStrongPtr(visitorGameObjectPtr->getComponent<PhysicsActiveComponent>());
+        if (nullptr == physicsActiveComponent)
+        {
+            return;
+        }
+
+        unsigned int type = visitorGameObjectPtr->getCategoryId();
+        unsigned int finalType = type & this->categoryId;
+        if (type != finalType)
+        {
+            return;
+        }
+
+        if (nullptr == luaScript || false == this->leaveClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // See OnEnter() for why the closure is copied rather than read through 'this'.
+        luabind::object callback = this->leaveClosureFunction;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [callback, visitorGameObjectPtr]()
+        {
+            try
+            {
+                luabind::call_function<void>(callback, visitorGameObjectPtr.get());
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback] "
+                                                                                "Caught error in 'reactOnLeave' Error: " +
+                                                                                    Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     bool PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback::getDensityOverride(const OgreNewt::Body* visitor, Ogre::Real& outDensity) const

@@ -67,13 +67,7 @@ namespace NOWA
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ItemData::ItemData(unsigned long inventoryOwnerId)
-        : inventoryOwnerId(inventoryOwnerId),
-        quantity(0),
-        sellValue(0.0f),
-        buyValue(0.0f),
-        resourceInfo(nullptr),
-        resourceImage(nullptr)
+    ItemData::ItemData(unsigned long inventoryOwnerId) : inventoryOwnerId(inventoryOwnerId), quantity(0), sellValue(0.0f), buyValue(0.0f), resourceInfo(nullptr), resourceImage(nullptr)
     {
     }
 
@@ -474,8 +468,7 @@ namespace NOWA
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ItemBox::ItemBox(MyGUI::Widget* _parent)
-        : wraps::BaseItemBox<CellView>(_parent)
+    ItemBox::ItemBox(MyGUI::Widget* _parent) : wraps::BaseItemBox<CellView>(_parent)
     {
     }
 
@@ -487,7 +480,13 @@ namespace NOWA
             size_t count = box->getItemCount();
             for (size_t pos = 0; pos < count; ++pos)
             {
-                delete *box->getItemDataAt<ItemData*>(pos);
+                // getItemDataAt() can return null for a slot that never received data;
+                // dereferencing it straight into delete would be undefined.
+                ItemData** itemData = box->getItemDataAt<ItemData*>(pos, false);
+                if (nullptr != itemData)
+                {
+                    delete *itemData;
+                }
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ItemBox::~ItemBox");
@@ -495,8 +494,7 @@ namespace NOWA
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ItemBoxWindow::ItemBoxWindow(const std::string& _layout)
-        : BaseLayout(_layout)
+    ItemBoxWindow::ItemBoxWindow(const std::string& _layout) : BaseLayout(_layout)
     {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
@@ -510,8 +508,8 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    MyGUIItemBoxComponent::MyGUIItemBoxComponent()
-        : MyGUIWindowComponent(),
+    MyGUIItemBoxComponent::MyGUIItemBoxComponent() :
+        MyGUIWindowComponent(),
         toolTip(nullptr),
         itemBoxWindow(nullptr),
         sharedItemBoxWindow(nullptr),
@@ -743,7 +741,8 @@ namespace NOWA
             {
                 this->spriteComponentIndices[i] = new Variant(MyGUIItemBoxComponent::AttrSpriteComponentIndex() + Ogre::StringConverter::toString(i), static_cast<int>(-1), this->attributes);
             }
-            this->spriteComponentIndices[i]->setDescription("Optional: Occurrence index of a MyGuiSpriteComponent on the same game object to overlay and animate over this slot on click. See in NOWA-Design: MyGuiSpriteComponent (i). Setting to -1 = disabled.");
+            this->spriteComponentIndices[i]
+                ->setDescription("Optional: Occurrence index of a MyGuiSpriteComponent on the same game object to overlay and animate over this slot on click. See in NOWA-Design: MyGuiSpriteComponent (i). Setting to -1 = disabled.");
             this->spriteComponentIndices[i]->addUserData(GameObject::AttrActionSeparator());
         }
 
@@ -787,7 +786,6 @@ namespace NOWA
             clonedCompPtr->setBuyValue(i, this->buyValues[i]->getReal());
             clonedCompPtr->setGameObjectId(i, this->gameObjectIds[i]->getULong());
             clonedCompPtr->setSpriteComponentIndex(i, this->spriteComponentIndices[i]->getInt());
-            
         }
 
         clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
@@ -1190,8 +1188,16 @@ namespace NOWA
     {
         if (_info.sender_index != MyGUI::ITEM_NONE && true == this->allowDragDrop->getBool() && true == this->isSimulating)
         {
-            ItemData* data = *static_cast<ItemBox*>(_info.sender)->getItemDataAt<ItemData*>(_info.sender_index);
-            _result = !data->isEmpty();
+            // Was dereferenced twice without a check and then used immediately, same as in
+            // the other drag drop handlers.
+            ItemData** dataPtr = static_cast<ItemBox*>(_info.sender)->getItemDataAt<ItemData*>(_info.sender_index);
+            if (nullptr == dataPtr || nullptr == *dataPtr)
+            {
+                _result = false;
+                return;
+            }
+
+            _result = !(*dataPtr)->isEmpty();
             this->dropFinished = false;
         }
     }
@@ -1209,8 +1215,25 @@ namespace NOWA
             return;
         }
 
-        ItemData* senderData = *static_cast<ItemBox*>(_info.sender)->getItemDataAt<ItemData*>(_info.sender_index);
-        ItemData* receiverData = *static_cast<ItemBox*>(_info.receiver)->getItemDataAt<ItemData*>(_info.receiver_index);
+        ItemData** senderDataPtr = static_cast<ItemBox*>(_info.sender)->getItemDataAt<ItemData*>(_info.sender_index);
+        ItemData** receiverDataPtr = static_cast<ItemBox*>(_info.receiver)->getItemDataAt<ItemData*>(_info.receiver_index);
+
+        // Both were dereferenced immediately without any check, and their contents used right
+        // after.
+        if (nullptr == senderDataPtr || nullptr == receiverDataPtr)
+        {
+            _result = false;
+            return;
+        }
+
+        ItemData* senderData = *senderDataPtr;
+        ItemData* receiverData = *receiverDataPtr;
+
+        if (nullptr == senderData || nullptr == receiverData)
+        {
+            _result = false;
+            return;
+        }
 
         this->dragDropData->clear();
         this->dragDropData->senderInventoryId = senderData->getInventoryOwnerId();
@@ -1222,6 +1245,9 @@ namespace NOWA
         // Sender and receiver is the same and its the same inventory slot, moving within the same slot, which is unspectacular and can be skipped
         if ((_info.sender == _info.receiver) && (_info.sender_index == _info.receiver_index))
         {
+            // _result was left untouched here, so MyGUI kept whatever the caller passed in.
+            // The ITEM_NONE case above sets it explicitly; this one has to as well.
+            _result = false;
             return;
         }
 
@@ -1230,20 +1256,29 @@ namespace NOWA
         {
             this->dragDropData->senderReceiverIsSame = true;
 
-            auto dragDropDataCopy = this->dragDropData;
-            auto* closureListPtr = &this->closureFunctionRequestDropRequest;
+            // The closure list is copied HERE, on the calling thread, instead of capturing a
+            // POINTER into this component and dereferencing it later. The old comment claimed
+            // the deferred copy was safe - true as far as luabind goes, but the pointer target
+            // lives inside this component and dies with it.
+            auto closures = this->closureFunctionRequestDropRequest;
 
-            if (false == closureListPtr->empty())
+            if (false == closures.empty())
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, dragDropDataCopy]()
+                DragDropData* const sharedDragDropData = this->dragDropData;
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, closures, sharedDragDropData]()
                 {
-                    if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
                     {
                         return;
                     }
 
-                    // Copy happens HERE on the logic thread — safe for luabind::object
-                    auto closures = *closureListPtr;
+                    if (false == this->isSimulating)
+                    {
+                        return;
+                    }
 
                     for (const auto& closure : closures)
                     {
@@ -1253,7 +1288,7 @@ namespace NOWA
                         }
                         try
                         {
-                            luabind::call_function<void>(closure, dragDropDataCopy);
+                            luabind::call_function<void>(closure, sharedDragDropData);
                         }
                         catch (luabind::error& error)
                         {
@@ -1273,23 +1308,36 @@ namespace NOWA
             {
                 // Calls on receiver the closure function, if does exist
                 auto receiverGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(receiverData->getInventoryOwnerId());
+                if (nullptr == receiverGameObjectPtr)
+                {
+                    // getGameObjectFromId() can legitimately return null; getComponent() used
+                    // to be called on it unguarded.
+                    _result = false;
+                    return;
+                }
+
                 auto myGuiItemBoxCompPtr = NOWA::makeStrongPtr(receiverGameObjectPtr->getComponent<MyGUIItemBoxComponent>());
                 if (nullptr != myGuiItemBoxCompPtr)
                 {
-                    auto dragDropDataCopy = this->dragDropData;
-                    auto* closureListPtr = &this->closureFunctionRequestDropAccepted;
+                    auto closures = this->closureFunctionRequestDropAccepted;
 
-                    if (false == closureListPtr->empty())
+                    if (false == closures.empty())
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, dragDropDataCopy]()
+                        DragDropData* const sharedDragDropData = this->dragDropData;
+                        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, closures, sharedDragDropData]()
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                            if (nullptr == strongThis)
                             {
                                 return;
                             }
 
-                            // Copy happens HERE on the logic thread — safe for luabind::object
-                            auto closures = *closureListPtr;
+                            if (false == this->isSimulating)
+                            {
+                                return;
+                            }
 
                             for (const auto& closure : closures)
                             {
@@ -1299,7 +1347,7 @@ namespace NOWA
                                 }
                                 try
                                 {
-                                    luabind::call_function<void>(closure, dragDropDataCopy);
+                                    luabind::call_function<void>(closure, sharedDragDropData);
                                 }
                                 catch (luabind::error& error)
                                 {
@@ -1316,6 +1364,15 @@ namespace NOWA
             }
         }
 
+        // Attention: 'canDrop' is what DragDropData::setCanDrop() exists for, i.e. the lua
+        // callbacks above are meant to veto a drop. That cannot work through the logic queue:
+        // those callbacks run one or more frames from now, while _result is returned to MyGUI
+        // immediately - so this always reads the value from the PREVIOUS drop, and MyGUI has
+        // long since decided by the time lua is asked.
+        //
+        // Deliberately left as the shared member rather than a per call copy: a copy would
+        // make the disconnect airtight but silently discard the veto for good. See the note
+        // below the code for the two ways out.
         _result = true == this->dragDropData->canDrop && (receiverData->isEmpty() || receiverData->compare(senderData));
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
@@ -1334,179 +1391,197 @@ namespace NOWA
             return;
         }
 
-        if (_result && false == this->dropFinished && true == this->dragDropData->canDrop)
+        if (false == _result || true == this->dropFinished || false == this->dragDropData->canDrop)
         {
-            ItemData* senderData = *static_cast<ItemBox*>(_info.sender)->getItemDataAt<ItemData*>(_info.sender_index);
-            ItemData* receiverData = *static_cast<ItemBox*>(_info.receiver)->getItemDataAt<ItemData*>(_info.receiver_index);
+            return;
+        }
 
-            // Sender and receiver is the same
-            if ((_info.sender == _info.receiver))
+        ItemData** senderDataPtr = static_cast<ItemBox*>(_info.sender)->getItemDataAt<ItemData*>(_info.sender_index);
+        ItemData** receiverDataPtr = static_cast<ItemBox*>(_info.receiver)->getItemDataAt<ItemData*>(_info.receiver_index);
+
+        // Both were dereferenced immediately without any check, and their contents used right
+        // after.
+        if (nullptr == senderDataPtr || nullptr == receiverDataPtr)
+        {
+            return;
+        }
+
+        ItemData* senderData = *senderDataPtr;
+        ItemData* receiverData = *receiverDataPtr;
+
+        if (nullptr == senderData || nullptr == receiverData)
+        {
+            return;
+        }
+
+        // Resolved ONCE up front. The receiver component used to be looked up twice - once for
+        // the closures, once for the actual transfer - and the second lookup dereferenced
+        // getGameObjectFromId() without checking it for null.
+        const bool receiverIsOtherInventory = (receiverData->getInventoryOwnerId() != this->gameObjectPtr->getId());
+        MyGUIItemBoxCompPtr receiverItemBoxCompPtr;
+
+        if (true == receiverIsOtherInventory)
+        {
+            auto receiverGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(receiverData->getInventoryOwnerId());
+            if (nullptr != receiverGameObjectPtr)
             {
-                this->dragDropData->senderReceiverIsSame = true;
-
-                auto dragDropDataCopy = this->dragDropData;
-                auto* closureListPtr = &this->closureFunctionRequestDropAccepted;
-
-                if (false == closureListPtr->empty())
-                {
-                    NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, dragDropDataCopy]()
-                    {
-                        if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                        {
-                            return;
-                        }
-
-                        // Copy happens HERE on the logic thread — safe for luabind::object
-                        auto closures = *closureListPtr;
-
-                        for (const auto& closure : closures)
-                        {
-                            if (false == closure.is_valid())
-                            {
-                                continue;
-                            }
-                            try
-                            {
-                                luabind::call_function<void>(closure, dragDropDataCopy);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        }
-                    };
-                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                }
+                receiverItemBoxCompPtr = NOWA::makeStrongPtr(receiverGameObjectPtr->getComponent<MyGUIItemBoxComponent>());
             }
-            else
+        }
+
+        // Sender and receiver is the same
+        if ((_info.sender == _info.receiver))
+        {
+            this->dragDropData->senderReceiverIsSame = true;
+
+            // The closure list is copied HERE, on the calling thread, instead of capturing a
+            // POINTER into the component and dereferencing it later.
+            auto closures = this->closureFunctionRequestDropAccepted;
+
+            if (false == closures.empty())
             {
-                if (receiverData->getInventoryOwnerId() != this->gameObjectPtr->getId())
+                DragDropData* const sharedDragDropData = this->dragDropData;
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, closures, sharedDragDropData]()
                 {
-                    // Calls on receiver the closure function, if does exist
-                    auto receiverGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(receiverData->getInventoryOwnerId());
-                    auto myGuiItemBoxCompPtr = NOWA::makeStrongPtr(receiverGameObjectPtr->getComponent<MyGUIItemBoxComponent>());
-                    if (nullptr != myGuiItemBoxCompPtr)
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
                     {
-                        // Copy the list — it may be modified during iteration
-                        auto dragDropDataCopy = this->dragDropData;
-                        auto* closureListPtr = &myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted;
+                        return;
+                    }
 
-                        if (false == closureListPtr->empty())
+                    if (false == this->isSimulating)
+                    {
+                        return;
+                    }
+
+                    for (const auto& closure : closures)
+                    {
+                        if (false == closure.is_valid())
                         {
-                            NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, dragDropDataCopy]()
-                            {
-                                if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                                {
-                                    return;
-                                }
-
-                                // Copy happens HERE on the logic thread — safe for luabind::object
-                                auto closures = *closureListPtr;
-
-                                for (const auto& closure : closures)
-                                {
-                                    if (false == closure.is_valid())
-                                    {
-                                        continue;
-                                    }
-                                    try
-                                    {
-                                        luabind::call_function<void>(closure, dragDropDataCopy);
-                                    }
-                                    catch (luabind::error& error)
-                                    {
-                                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                        std::stringstream msg;
-                                        msg << errorMsg;
-                                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                                    }
-                                }
-                            };
-                            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                            continue;
+                        }
+                        try
+                        {
+                            luabind::call_function<void>(closure, sharedDragDropData);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
                         }
                     }
-                }
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
             }
-
-#if 1
-            // Shall be done in lua script!
-            // if ((_info.sender != _info.receiver))
-            //{
-            //	// Remove one from the sender
-            //	unsigned int currentQuantity = this->quantities[_info.sender_index]->getUInt();
-            //	if (currentQuantity > 1)
-            //	{
-            //		this->quantities[_info.sender_index]->setValue(currentQuantity - 1);
-            //	}
-            //	else
-            //	{
-            //		this->setResourceName(_info.sender_index, "");
-            //		this->setQuantity(_info.sender_index, 0);
-            //		this->setSellValue(_info.sender_index, 0.0f);
-            //		this->setBuyValue(_info.sender_index, 0.0f);
-            //	}
-            //}
-
-            if (false == this->dragDropData->canDrop)
-            {
-                return;
-            }
-
-            // Add also the inventory resource and data for the receiver
-            if (receiverData->getInventoryOwnerId() != this->gameObjectPtr->getId())
-            {
-                auto receiverGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(receiverData->getInventoryOwnerId());
-                auto myGuiItemBoxCompPtr = NOWA::makeStrongPtr(receiverGameObjectPtr->getComponent<MyGUIItemBoxComponent>());
-                if (nullptr != myGuiItemBoxCompPtr)
-                {
-                    myGuiItemBoxCompPtr->setResourceName(_info.receiver_index, senderData->getResourceName());
-                    myGuiItemBoxCompPtr->increaseQuantity(_info.receiver_index, 1 /*senderData->getQuantity()*/);
-                    myGuiItemBoxCompPtr->setSellValue(_info.receiver_index, senderData->getSellValue());
-                    myGuiItemBoxCompPtr->setBuyValue(_info.receiver_index, senderData->getBuyValue());
-                }
-            }
-            else
-            {
-                // In the same inventory re-arranged the items
-                this->setResourceName(_info.receiver_index, senderData->getResourceName());
-                this->setQuantity(_info.receiver_index, senderData->getQuantity());
-                this->setSellValue(_info.receiver_index, senderData->getSellValue());
-                this->setBuyValue(_info.receiver_index, senderData->getBuyValue());
-
-                this->setResourceName(_info.sender_index, "");
-                this->setQuantity(_info.sender_index, 0);
-                this->setSellValue(_info.sender_index, 0.0f);
-                this->setBuyValue(_info.sender_index, 0.0f);
-            }
-
-            receiverData->add(senderData);
-            if (_info.sender != _info.receiver || receiverData->getInventoryOwnerId() != this->gameObjectPtr->getId())
-            {
-                senderData->removeQuantity(1);
-            }
-            else
-            {
-                // Just moved from a to b in the same inventory, remove completely from the previous place
-                senderData->clear();
-            }
-#endif
-
-            static_cast<ItemBox*>(_info.receiver)->setItemData(_info.receiver_index, receiverData);
-            static_cast<ItemBox*>(_info.sender)->setItemData(_info.sender_index, senderData);
-
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-            {
-                // Trigger item box repaint update, so that resource will be visible
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::notifyEndDrop");
-
-            this->dropFinished = true;
         }
+        else if (nullptr != receiverItemBoxCompPtr)
+        {
+            // Bug: the closure list used to be captured as a raw POINTER INTO THE RECEIVER
+            // component - '&myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted' - while
+            // the shared_ptr holding that component went out of scope at the end of the block.
+            // The command then dereferenced that pointer one or more frames later, and the
+            // only guard inside it checked 'this', i.e. the SENDER. Nothing tied the check to
+            // the memory actually being read. Copying the list here removes the pointer
+            // entirely.
+            auto closures = receiverItemBoxCompPtr->closureFunctionRequestDropAccepted;
+
+            if (false == closures.empty())
+            {
+                DragDropData* const sharedDragDropData = this->dragDropData;
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, closures, sharedDragDropData]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    if (false == this->isSimulating)
+                    {
+                        return;
+                    }
+
+                    for (const auto& closure : closures)
+                    {
+                        if (false == closure.is_valid())
+                        {
+                            continue;
+                        }
+                        try
+                        {
+                            luabind::call_function<void>(closure, sharedDragDropData);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        }
+                    }
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+        }
+
+        // The second 'if (false == canDrop) return;' that used to sit here was redundant:
+        // nothing between it and the check at the top of this function changes the value
+        // synchronously. The lua callbacks enqueued above cannot - they run frames later.
+
+        // Add also the inventory resource and data for the receiver
+        if (true == receiverIsOtherInventory)
+        {
+            if (nullptr != receiverItemBoxCompPtr)
+            {
+                receiverItemBoxCompPtr->setResourceName(_info.receiver_index, senderData->getResourceName());
+                receiverItemBoxCompPtr->increaseQuantity(_info.receiver_index, 1 /*senderData->getQuantity()*/);
+                receiverItemBoxCompPtr->setSellValue(_info.receiver_index, senderData->getSellValue());
+                receiverItemBoxCompPtr->setBuyValue(_info.receiver_index, senderData->getBuyValue());
+            }
+        }
+        else
+        {
+            // In the same inventory re-arranged the items
+            this->setResourceName(_info.receiver_index, senderData->getResourceName());
+            this->setQuantity(_info.receiver_index, senderData->getQuantity());
+            this->setSellValue(_info.receiver_index, senderData->getSellValue());
+            this->setBuyValue(_info.receiver_index, senderData->getBuyValue());
+
+            this->setResourceName(_info.sender_index, "");
+            this->setQuantity(_info.sender_index, 0);
+            this->setSellValue(_info.sender_index, 0.0f);
+            this->setBuyValue(_info.sender_index, 0.0f);
+        }
+
+        receiverData->add(senderData);
+        if (_info.sender != _info.receiver || true == receiverIsOtherInventory)
+        {
+            senderData->removeQuantity(1);
+        }
+        else
+        {
+            // Just moved from a to b in the same inventory, remove completely from the previous place
+            senderData->clear();
+        }
+
+        static_cast<ItemBox*>(_info.receiver)->setItemData(_info.receiver_index, receiverData);
+        static_cast<ItemBox*>(_info.sender)->setItemData(_info.sender_index, senderData);
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            // Trigger item box repaint update, so that resource will be visible
+            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::notifyEndDrop");
+
+        this->dropFinished = true;
     }
 
     void MyGUIItemBoxComponent::notifyNotifyItem(wraps::BaseLayout* _sender, const MyGUI::IBNotifyItemData& _info)
@@ -1673,9 +1748,14 @@ namespace NOWA
             {
                 if (buttonId == OIS::MB_Left)
                 {
-                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
+                    // The closure list is copied HERE, on the calling thread, instead of
+                    // capturing a POINTER into this component and dereferencing it later.
+                    // The old comment claimed the deferred copy was safe - true as far as
+                    // luabind goes, but the pointer target lives inside this component and
+                    // dies with it.
+                    auto closures = this->mouseButtonClickClosureFunctions;
 
-                    if (false == closureListPtr->empty())
+                    if (false == closures.empty())
                     {
                         // Resolve the optional per-slot associated GameObject id
                         Ogre::String slotGameObjectId = "0";
@@ -1688,15 +1768,20 @@ namespace NOWA
                             }
                         }
 
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, resourceName, slotGameObjectId, buttonId]()
+                        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, closures, resourceName, slotGameObjectId, buttonId]()
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                            if (nullptr == strongThis)
                             {
                                 return;
                             }
-                            
-                            // Copy happens HERE on the logic thread — safe for luabind::object
-                            auto closures = *closureListPtr;
+
+                            if (false == this->isSimulating)
+                            {
+                                return;
+                            }
 
                             for (const auto& closure : closures)
                             {
@@ -1725,31 +1810,31 @@ namespace NOWA
         else if (_info.notify == MyGUI::IBNotifyItemData::NotifyItem::MouseReleased)
         {
 
-                NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
+            NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
+            {
+                if (false == this->isSimulating)
                 {
-                    if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                    {
-                        return;
-                    }
+                    return;
+                }
 
-                    if (false == this->mouseButtonReleasedClosureFunction.is_valid())
-                    {
-                        return;
-                    }
+                if (false == this->mouseButtonReleasedClosureFunction.is_valid())
+                {
+                    return;
+                }
 
-                    try
-                    {
-                        luabind::call_function<void>(this->mouseButtonReleasedClosureFunction, slotIndex, resourceName, buttonId);
-                    }
-                    catch (luabind::error& error)
-                    {
-                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                        std::stringstream msg;
-                        msg << errorMsg;
-                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonReleased error: " + Ogre::String(error.what()) + " " + msg.str());
-                    }
-                };
-                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+                try
+                {
+                    luabind::call_function<void>(this->mouseButtonReleasedClosureFunction, slotIndex, resourceName, buttonId);
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonReleased error: " + Ogre::String(error.what()) + " " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
         }
     }
 
@@ -2645,7 +2730,12 @@ namespace NOWA
                     {
                         if (this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount() > itemCount)
                         {
-                            delete *this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(itemCount);
+                            // Same as in ItemBox's destructor: null checked before delete.
+                            ItemData** itemData = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(itemCount, false);
+                            if (nullptr != itemData)
+                            {
+                                delete *itemData;
+                            }
                             this->itemBoxWindow->getItemBox()->removeItem(itemCount);
                         }
                     }
@@ -3326,19 +3416,27 @@ namespace NOWA
 
         if (buttonId == OIS::MB_Left)
         {
-            auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
+            // Copied here rather than captured as a pointer into this component, see the
+            // same pattern in notifyNotifyItem().
+            auto closures = this->mouseButtonClickClosureFunctions;
 
-            if (false == closureListPtr->empty())
+            if (false == closures.empty())
             {
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
                 // Capture the pending values — they are resolved before the lambda runs
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, resourceName, slotGameObjectId, buttonId]()
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, closures, resourceName, slotGameObjectId, buttonId]()
                 {
-                    if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
                     {
                         return;
                     }
 
-                    auto closures = *closureListPtr;
+                    if (false == this->isSimulating)
+                    {
+                        return;
+                    }
 
                     for (const auto& closure : closures)
                     {
@@ -3368,7 +3466,7 @@ namespace NOWA
         {
             NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
             {
-                if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                if (false == this->isSimulating)
                 {
                     return;
                 }
@@ -3521,7 +3619,18 @@ namespace NOWA
 
     //////////////////////////////////////////////////////////////////////////////////
 
-    DragDropData::DragDropData() : quantity(0), sellValue(0.0f), buyValue(0.0f), canDrop(false), senderReceiverIsSame(false), senderInventoryId(0L)
+    DragDropData::DragDropData() :
+        quantity(0),
+        sellValue(0.0f),
+        buyValue(0.0f),
+        // Default TRUE: canDrop is a VETO, not a permission. With false, _result in
+        // notifyRequestDrop() could never become true - clear() is called at the top of
+        // that function and reset the flag again - so no drop was ever accepted. The only
+        // thing able to set it is a lua callback, and those run frames later on the logic
+        // thread, long after _result has been returned to MyGUI.
+        canDrop(true),
+        senderReceiverIsSame(false),
+        senderInventoryId(0L)
     {
     }
 
@@ -3575,7 +3684,8 @@ namespace NOWA
         this->quantity = 0;
         this->sellValue = 0.0f;
         this->buyValue = 0.0f;
-        this->canDrop = false;
+        // Reset to the permissive default, see the constructor.
+        this->canDrop = true;
         this->senderInventoryId = 0L;
         this->senderReceiverIsSame = false;
     }

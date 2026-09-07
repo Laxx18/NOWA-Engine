@@ -36,143 +36,186 @@ namespace NOWA
 	}
 
 	void PhysicsTriggerComponent::PhysicsTriggerCallback::OnEnter(const OgreNewt::Body* visitor)
-	{
-		if (true == this->bDebugData)
-		{
-			// static int enter = 0;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Enter: " + visitor->getOgreNode()->getName() + " " + Ogre::StringConverter::toString(enter++));
-		}
-		// Note visitor is not the one that has created this trigger, but the one that enters it
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
-		if (nullptr != visitorPhysicsComponent)
-		{
-			GameObject* visitorGameObject = visitorPhysicsComponent->getOwner().get();
-			// Check for correct category
-			unsigned int type = visitorGameObject->getCategoryId();
-			unsigned int finalType = type & this->categoryId;
-			if (type == finalType)
-			{
-				if (nullptr != luaScript)
-				{
-					if (this->enterClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObject]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->enterClosureFunction, visitorGameObject);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+    {
+        if (true == this->bDebugData)
+        {
+            // static int enter = 0;
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Enter: " + visitor->getOgreNode()->getName() + " " + Ogre::StringConverter::toString(enter++));
+        }
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent::PhysicsTriggerCallback] Caught error in 'reactOnEnter' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
-				}
-				/*else
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Cannot enter trigger, because there is no lua script");
-				}*/
-				// Trigger also an event, that a trigger has been entered
-				boost::shared_ptr<EventPhysicsTrigger> eventPhysicsTrigger(new EventPhysicsTrigger(visitorGameObject->getId(), true));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventPhysicsTrigger);
-			}
-		}
-	}
+        // Note visitor is not the one that has created this trigger, but the one that enters it
+        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+        if (nullptr == visitorPhysicsComponent)
+        {
+            return;
+        }
 
-	void PhysicsTriggerComponent::PhysicsTriggerCallback::OnInside(const OgreNewt::Body* visitor)
-	{
-		// For performance reasons only call lua table function permanentely if the function does exist in a lua script
-		if (true == this->onInsideFunctionAvailable)
-		{
-			PhysicsComponent* physicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
-			if (nullptr != physicsComponent)
-			{
-				auto visitorGameObject = physicsComponent->getOwner().get();
-				// Check for correct category
-				unsigned int type = visitorGameObject->getCategoryId();
-				unsigned int finalType = type & this->categoryId;
-				if (type == finalType)
-				{
-					if (nullptr != luaScript)
-					{
-						if (this->insideClosureFunction.is_valid())
-						{
-							NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObject]()
-								{
-									try
-									{
-										luabind::call_function<void>(this->insideClosureFunction, visitorGameObject);
-									}
-									catch (luabind::error& error)
-									{
-										luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-										std::stringstream msg;
-										msg << errorMsg;
+        // Kept as a SHARED pointer instead of calling .get() right away. The command below runs
+        // one or more frames later, and a raw pointer could be dangling by then - holding the
+        // owner keeps it alive until lua has seen it.
+        GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
+        if (nullptr == visitorGameObjectPtr)
+        {
+            // The physics component was null checked but its owner was not - a component being
+            // torn down right now has none.
+            return;
+        }
 
-										Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent::PhysicsTriggerCallback] Caught error in 'reactOnInside' Error: " + Ogre::String(error.what())
-											+ " details: " + msg.str());
-									}
-								};
-							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-						}
-					}
-				}
-			}
-		}
-	}
+        // Check for correct category
+        unsigned int type = visitorGameObjectPtr->getCategoryId();
+        unsigned int finalType = type & this->categoryId;
+        if (type != finalType)
+        {
+            return;
+        }
 
-	void PhysicsTriggerComponent::PhysicsTriggerCallback::OnExit(const OgreNewt::Body* visitor)
-	{
-		if (true == this->bDebugData)
-		{
-			// static int exit = 0;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Exit: " + visitor->getOgreNode()->getName() + " " + Ogre::StringConverter::toString(exit++));
-		}
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
-		if (nullptr != visitorPhysicsComponent)
-		{
-			GameObject* visitorGameObject = visitorPhysicsComponent->getOwner().get();
-			// Check for correct category
-			unsigned int type = visitorGameObject->getCategoryId();
-			unsigned int finalType = type & this->categoryId;
-			if (type == finalType)
-			{
-				if (nullptr != luaScript)
-				{
-					if (this->leaveClosureFunction.is_valid())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObject]()
-							{
-								try
-								{
-									luabind::call_function<void>(this->leaveClosureFunction, visitorGameObject);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
+        if (nullptr != luaScript && true == this->enterClosureFunction.is_valid())
+        {
+            // The closure is COPIED into the command rather than read from 'this' at execution
+            // time. This callback is owned by the component and destroyed with it, so reading
+            // this->enterClosureFunction a few frames later would touch freed memory. Unlike
+            // the GUI components there is no shared_from_this() here to weak-reference.
+            luabind::object callback = this->enterClosureFunction;
 
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent::PhysicsTriggerCallback] Caught error in 'reactOnLeave' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
-				}
-				// Trigger also an event, that a trigger has been exitted
-				boost::shared_ptr<EventPhysicsTrigger> eventPhysicsTrigger(new EventPhysicsTrigger(visitorGameObject->getId(), false));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventPhysicsTrigger);
-			}
-		}
-	}
+            NOWA::AppStateManager::LogicCommand logicCommand = [callback, visitorGameObjectPtr]()
+            {
+                try
+                {
+                    luabind::call_function<void>(callback, visitorGameObjectPtr.get());
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent::PhysicsTriggerCallback] Caught error in 'reactOnEnter' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        }
+        /*else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Cannot enter trigger, because there is no lua script");
+        }*/
+
+        // Trigger also an event, that a trigger has been entered
+        boost::shared_ptr<EventPhysicsTrigger> eventPhysicsTrigger(new EventPhysicsTrigger(visitorGameObjectPtr->getId(), true));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventPhysicsTrigger);
+    }
+
+    void PhysicsTriggerComponent::PhysicsTriggerCallback::OnInside(const OgreNewt::Body* visitor)
+    {
+        // For performance reasons only call lua table function permanentely if the function does exist in a lua script
+        if (false == this->onInsideFunctionAvailable)
+        {
+            return;
+        }
+
+        PhysicsComponent* physicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+        if (nullptr == physicsComponent)
+        {
+            return;
+        }
+
+        GameObjectPtr visitorGameObjectPtr = physicsComponent->getOwner();
+        if (nullptr == visitorGameObjectPtr)
+        {
+            return;
+        }
+
+        // Check for correct category
+        unsigned int type = visitorGameObjectPtr->getCategoryId();
+        unsigned int finalType = type & this->categoryId;
+        if (type != finalType)
+        {
+            return;
+        }
+
+        if (nullptr == luaScript || false == this->insideClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // See OnEnter() for why the closure is copied rather than read through 'this'.
+        luabind::object callback = this->insideClosureFunction;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [callback, visitorGameObjectPtr]()
+        {
+            try
+            {
+                luabind::call_function<void>(callback, visitorGameObjectPtr.get());
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent::PhysicsTriggerCallback] Caught error in 'reactOnInside' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+    }
+
+    void PhysicsTriggerComponent::PhysicsTriggerCallback::OnExit(const OgreNewt::Body* visitor)
+    {
+        if (true == this->bDebugData)
+        {
+            // static int exit = 0;
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Exit: " + visitor->getOgreNode()->getName() + " " + Ogre::StringConverter::toString(exit++));
+        }
+
+        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+        if (nullptr == visitorPhysicsComponent)
+        {
+            return;
+        }
+
+        // Holding the owner matters most in THIS callback: an object typically leaves a trigger
+        // because it is being destroyed, so a raw pointer handed to lua a few frames later is
+        // the most likely of the three to already be dangling.
+        GameObjectPtr visitorGameObjectPtr = visitorPhysicsComponent->getOwner();
+        if (nullptr == visitorGameObjectPtr)
+        {
+            return;
+        }
+
+        // Check for correct category
+        unsigned int type = visitorGameObjectPtr->getCategoryId();
+        unsigned int finalType = type & this->categoryId;
+        if (type != finalType)
+        {
+            return;
+        }
+
+        if (nullptr != luaScript && true == this->leaveClosureFunction.is_valid())
+        {
+            // See OnEnter() for why the closure is copied rather than read through 'this'.
+            luabind::object callback = this->leaveClosureFunction;
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [callback, visitorGameObjectPtr]()
+            {
+                try
+                {
+                    luabind::call_function<void>(callback, visitorGameObjectPtr.get());
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent::PhysicsTriggerCallback] Caught error in 'reactOnLeave' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        }
+
+        // Trigger also an event, that a trigger has been exitted
+        boost::shared_ptr<EventPhysicsTrigger> eventPhysicsTrigger(new EventPhysicsTrigger(visitorGameObjectPtr->getId(), false));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventPhysicsTrigger);
+    }
 
 	void PhysicsTriggerComponent::PhysicsTriggerCallback::setLuaScript(LuaScript* luaScript)
 	{

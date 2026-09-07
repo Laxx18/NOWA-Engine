@@ -221,7 +221,146 @@ namespace NOWA
 				this->picker->release();
 			}
 		}
-	}
+    }
+
+    	void PickerComponent::enqueueClosureCall(luabind::object& closureFunction, const char* reactionName)
+    {
+        if (false == closureFunction.is_valid())
+        {
+            return;
+        }
+
+        // The closure object is deliberately NOT copied: disconnect() clears it, and the
+        // is_valid() check inside the command is what notices that. The weak pointer covers
+        // the component being DESTROYED rather than merely disconnected. This block used to
+        // be written out six times in this file, identically.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+        luabind::object* closurePtr = &closureFunction;
+        const Ogre::String capturedReactionName = reactionName;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, closurePtr, capturedReactionName]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == closurePtr->is_valid())
+            {
+                return;
+            }
+
+            try
+            {
+                luabind::call_function<void>(*closurePtr);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in '" + capturedReactionName + "' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+    }
+
+    bool PickerComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
+    {
+        // Read BEFORE release() clears it: the end reaction must only fire if something was
+        // actually being dragged. It used to fire on every release, so a plain click
+        // without any drag reported "dragging end" to lua.
+        const bool wasDragging = this->picker->getIsDragging();
+
+        this->mouseIdPressed = false;
+        this->draggingStartedFirstTime = true;
+        this->draggingEndedFirstTime = true;
+        this->picker->release();
+
+        if (true == wasDragging)
+        {
+            this->enqueueClosureCall(this->endClosureFunction, "reactOnDraggingEnd");
+        }
+        return true;
+    }
+
+    bool PickerComponent::mouseMoved(const OIS::MouseEvent& evt)
+    {
+        if (true == this->mouseIdPressed && true == this->bConnected && true == this->activated->getBool())
+        {
+            this->picker->grabGameObject(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(), Ogre::Vector2(static_cast<Ogre::Real>(evt.state.X.abs), static_cast<Ogre::Real>(evt.state.Y.abs)),
+                Core::getSingletonPtr()->getOgreRenderWindow(), this->springStrength->getReal(), this->dragAffectDistance->getReal());
+        }
+        // Call also function in lua script, if it does exist in the lua script component
+        if (nullptr != this->gameObjectPtr->getLuaScript())
+        {
+            if (true == this->draggingStartedFirstTime && true == this->picker->getIsDragging())
+            {
+                this->enqueueClosureCall(this->startClosureFunction, "reactOnDraggingStart");
+                this->draggingStartedFirstTime = false;
+            }
+            else if (true == this->draggingEndedFirstTime && false == this->picker->getIsDragging())
+            {
+                this->enqueueClosureCall(this->endClosureFunction, "reactOnDraggingEnd");
+                this->draggingEndedFirstTime = false;
+            }
+        }
+        return true;
+    }
+
+    bool PickerComponent::buttonPressed(const OIS::JoyStickEvent& evt, int button)
+    {
+        if (this->joystickButtonId == button && true == this->bConnected && true == this->activated->getBool())
+        {
+            this->joystickIdPressed = true;
+        }
+        return true;
+    }
+
+    bool PickerComponent::buttonReleased(const OIS::JoyStickEvent& evt, int button)
+    {
+        // Same as in mouseReleased(): only report an end if there was a drag.
+        const bool wasDragging = this->picker->getIsDragging();
+
+        this->joystickIdPressed = false;
+        this->draggingStartedFirstTime = true;
+        this->draggingEndedFirstTime = true;
+        this->picker->release();
+
+        if (true == wasDragging)
+        {
+            this->enqueueClosureCall(this->endClosureFunction, "reactOnDraggingEnd");
+        }
+
+        return true;
+    }
+
+    bool PickerComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
+    {
+        if (true == this->joystickIdPressed && true == this->bConnected && true == this->activated->getBool())
+        {
+            this->picker->grabGameObject(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(), Ogre::Vector2(static_cast<Ogre::Real>(evt.state.mAxes[0].abs), static_cast<Ogre::Real>(evt.state.mAxes[1].abs)),
+                Core::getSingletonPtr()->getOgreRenderWindow());
+        }
+
+        // Call also function in lua script, if it does exist in the lua script component
+        if (nullptr != this->gameObjectPtr->getLuaScript())
+        {
+            if (true == this->draggingStartedFirstTime && true == this->picker->getIsDragging())
+            {
+                this->enqueueClosureCall(this->startClosureFunction, "reactOnDraggingStart");
+                this->draggingStartedFirstTime = false;
+            }
+            else if (true == this->draggingEndedFirstTime && false == this->picker->getIsDragging())
+            {
+                this->enqueueClosureCall(this->endClosureFunction, "reactOnDraggingEnd");
+                this->draggingEndedFirstTime = false;
+            }
+        }
+        return true;
+    }
 
 	void PickerComponent::onRemoveComponent(void)
 	{
@@ -513,203 +652,6 @@ namespace NOWA
 			this->mouseIdPressed = true;
 		}
 
-		return true;
-	}
-
-	bool PickerComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
-	{
-		this->mouseIdPressed = false;
-		this->draggingStartedFirstTime = true;
-		this->draggingEndedFirstTime = true;
-		this->picker->release();
-
-		if (this->endClosureFunction.is_valid())
-		{
-			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-				{
-					try
-					{
-						luabind::call_function<void>(this->endClosureFunction);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
-
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
-							+ " details: " + msg.str());
-					}
-				};
-			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		}
-		return true;
-	}
-
-	bool PickerComponent::mouseMoved(const OIS::MouseEvent& evt)
-	{
-		if (true == this->mouseIdPressed && true == this->bConnected && true == this->activated->getBool())
-		{
-			this->picker->grabGameObject(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(),
-										 Ogre::Vector2(static_cast<Ogre::Real>(evt.state.X.abs), static_cast<Ogre::Real>(evt.state.Y.abs)),
-										 Core::getSingletonPtr()->getOgreRenderWindow(), this->springStrength->getReal(), this->dragAffectDistance->getReal());
-		}
-		// Call also function in lua script, if it does exist in the lua script component
-		if (nullptr != this->gameObjectPtr->getLuaScript())
-		{
-			if (true == this->draggingStartedFirstTime && true == this->picker->getIsDragging())
-			{
-				if (this->startClosureFunction.is_valid())
-				{
-					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-						{
-							try
-							{
-								luabind::call_function<void>(this->startClosureFunction);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
-
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingStart' Error: " + Ogre::String(error.what())
-									+ " details: " + msg.str());
-							}
-						};
-					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-				}
-				this->draggingStartedFirstTime = false;
-			}
-			else if (true == this->draggingEndedFirstTime && false == this->picker->getIsDragging())
-			{
-				if (this->endClosureFunction.is_valid())
-				{
-					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-						{
-							try
-							{
-								luabind::call_function<void>(this->endClosureFunction);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
-
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingEnd2' Error: " + Ogre::String(error.what())
-									+ " details: " + msg.str());
-							}
-						};
-					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-				}
-				this->draggingEndedFirstTime = false;
-			}
-		}
-		return true;
-	}
-
-	bool PickerComponent::buttonPressed(const OIS::JoyStickEvent& evt, int button)
-	{
-		if (this->joystickButtonId == button && true == this->bConnected && true == this->activated->getBool())
-		{
-			this->joystickIdPressed = true;
-		}
-		return true;
-	}
-
-	bool PickerComponent::buttonReleased(const OIS::JoyStickEvent& evt, int button)
-	{
-		this->joystickIdPressed = false;
-		this->draggingStartedFirstTime = true;
-		this->draggingEndedFirstTime = true;
-		this->picker->release();
-
-		if (this->endClosureFunction.is_valid())
-		{
-			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-				{
-					try
-					{
-						luabind::call_function<void>(this->endClosureFunction);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
-
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingEnd3' Error: " + Ogre::String(error.what())
-							+ " details: " + msg.str());
-					}
-				};
-			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		}
-
-		return true;
-	}
-
-	bool PickerComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
-	{
-		if (true == this->joystickIdPressed && true == this->bConnected && true == this->activated->getBool())
-		{
-			this->picker->grabGameObject(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(),
-										 Ogre::Vector2(static_cast<Ogre::Real>(evt.state.mAxes[0].abs), static_cast<Ogre::Real>(evt.state.mAxes[1].abs)),
-										 Core::getSingletonPtr()->getOgreRenderWindow());
-		}
-
-		// Call also function in lua script, if it does exist in the lua script component
-		if (nullptr != this->gameObjectPtr->getLuaScript())
-		{
-			if (true == this->draggingStartedFirstTime && true == this->picker->getIsDragging())
-			{
-				if (this->startClosureFunction.is_valid())
-				{
-					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-						{
-							try
-							{
-								luabind::call_function<void>(this->startClosureFunction);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
-
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingStart2' Error: " + Ogre::String(error.what())
-									+ " details: " + msg.str());
-							}
-						};
-					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-				}
-				this->draggingStartedFirstTime = false;
-			}
-			else if (true == this->draggingEndedFirstTime && false == this->picker->getIsDragging())
-			{
-				if (this->endClosureFunction.is_valid())
-				{
-					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-						{
-							try
-							{
-								luabind::call_function<void>(this->endClosureFunction);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
-
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingEnd4' Error: " + Ogre::String(error.what())
-									+ " details: " + msg.str());
-							}
-						};
-					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-				}
-				this->draggingEndedFirstTime = false;
-			}
-		}
 		return true;
 	}
 

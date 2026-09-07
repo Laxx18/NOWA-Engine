@@ -204,29 +204,41 @@ namespace NOWA
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class GenericContactCallback : public OgreNewt::ContactCallback
-	{
-	public:
-		GenericContactCallback(LuaScript* luaScript, int firstObjectId, const Ogre::String& overlapFunctionName, 
-			const Ogre::String& contactFunctionName, const Ogre::String& contactOnceFunctionName, const Ogre::String& contactOnceScratchName);
+    {
+    public:
+        GenericContactCallback(LuaScript* luaScript, int firstObjectId, const Ogre::String& overlapFunctionName, const Ogre::String& contactFunctionName, const Ogre::String& contactOnceFunctionName, const Ogre::String& contactOnceScratchName);
 
-		~GenericContactCallback();
+        ~GenericContactCallback();
 
-		int onAABBOverlap(OgreNewt::Body* body0, OgreNewt::Body* body1, int threadIndex) override;
+        int onAABBOverlap(OgreNewt::Body* body0, OgreNewt::Body* body1, int threadIndex) override;
 
-		void contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex) override;
-	private:
-		int firstObjectId;
-		Ogre::Real lastNormalSpeed;
-		GameObject* gameObject0;
-		GameObject* gameObject1;
-		OgreNewt::Body* body0;
-		OgreNewt::Body* body1;
-		LuaScript* luaScript;
-		Ogre::String overlapFunctionName;
-		Ogre::String contactFunctionName;
-		Ogre::String contactOnceFunctionName;
-		Ogre::String contactScratchFunctionName;
-	};
+        void contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex) override;
+
+    private:
+        // Resolves the owning game object of a body, or nullptr if the body has none.
+        // A body that cannot be cast to a physics component simply has no game object -
+        // the normal case for e.g. ragdoll bones, which are plain bodies. The collision
+        // itself is still valid.
+        static GameObject* resolveGameObject(OgreNewt::Body* body);
+
+        // Orders a body pair so that index 0 is always the one matching firstObjectId.
+        void orderBodies(OgreNewt::Body* bodyA, OgreNewt::Body* bodyB, OgreNewt::Body*& outBody0, OgreNewt::Body*& outBody1) const;
+
+    private:
+        // All members below are IMMUTABLE after construction. ND4 spawns one worker thread
+        // per CPU core (see World's SetThreadCount) and drives contact processing from all of
+        // them, so anything written here at runtime would be a data race - the previous
+        // gameObject0/1, body0/1 and lastNormalSpeed members were exactly that. They were only
+        // ever used to smuggle values from onAABBOverlap() into contactsProcess(); the latter
+        // now resolves everything it needs from the ContactJoint it is handed, which makes the
+        // shared state unnecessary rather than merely synchronised. No locks required.
+        const int firstObjectId;
+        LuaScript* const luaScript;
+        const Ogre::String overlapFunctionName;
+        const Ogre::String contactFunctionName;
+        const Ogre::String contactOnceFunctionName;
+        const Ogre::String contactScratchFunctionName;
+    };
 
 }; //namespace end
 

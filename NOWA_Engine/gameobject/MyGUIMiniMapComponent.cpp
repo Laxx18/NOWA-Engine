@@ -627,63 +627,96 @@ namespace NOWA
 	}
 
 	void MyGUIMiniMapComponent::mouseButtonClick(MyGUI::Widget* sender)
-	{
-		if (true == this->isSimulating)
-		{
-			MyGUI::Window* window = sender->castType<MyGUI::Window>();
-			unsigned int index = 0;
-			for (unsigned int i = 0; i < static_cast<unsigned int>(this->windowMapTiles.size()); i++)
-			{
-				if (sender == this->windowMapTiles[i])
-				{
-					index = i;
-					break;
-				}
-			}
-			if (nullptr != window)
-			{
-				// Call also function in lua script, if it does exist in the lua script component
-				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-				{
-                    auto* closureListPtr = &this->mouseButtonClickClosureFunctions;
+    {
+        if (false == this->isSimulating)
+        {
+            return;
+        }
 
-                    if (false == closureListPtr->empty())
-                    {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
-                        {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                            {
-                                return;
-                            }
+        MyGUI::Window* window = sender->castType<MyGUI::Window>();
+        if (nullptr == window)
+        {
+            return;
+        }
 
-                            // Copy happens HERE on the logic thread — safe for luabind::object
-                            auto closures = *closureListPtr;
+        // Which map tile was clicked. This used to be computed and then never used - the lua
+        // callback was invoked with no arguments at all, so a script could not tell which tile
+        // the click belonged to.
+        unsigned int index = 0;
+        bool foundTile = false;
+        for (unsigned int i = 0; i < static_cast<unsigned int>(this->windowMapTiles.size()); i++)
+        {
+            if (sender == this->windowMapTiles[i])
+            {
+                index = i;
+                foundTile = true;
+                break;
+            }
+        }
 
-                            for (const auto& closure : closures)
-                            {
-                                if (false == closure.is_valid())
-                                {
-                                    continue;
-                                }
-                                try
-                                {
-                                    luabind::call_function<void>(closure);
-                                }
-                                catch (luabind::error& error)
-                                {
-                                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                    std::stringstream msg;
-                                    msg << errorMsg;
-                                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIMiniMapComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                                }
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                    }
-				}
-			}
-		}
-	}
+        if (false == foundTile)
+        {
+            // Without this, an unknown sender reported index 0 - indistinguishable from a real
+            // click on the first tile.
+            return;
+        }
+
+        // Call also function in lua script, if it does exist in the lua script component
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->enabled->getBool())
+        {
+            return;
+        }
+
+        // The closure list is copied HERE, on the calling thread, instead of capturing a
+        // POINTER into this component and dereferencing it later. The old comment claimed the
+        // deferred copy was safe - true as far as luabind goes, but the pointer target lives
+        // inside this component and dies with it.
+        auto closures = this->mouseButtonClickClosureFunctions;
+
+        if (true == closures.empty())
+        {
+            return;
+        }
+
+        // This callback comes from MyGUI on the render thread while the command runs on the
+        // logic thread, and the component may be destroyed in between - the command's first
+        // line would then already touch freed memory through 'this'.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, closures, index]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->isSimulating)
+            {
+                return;
+            }
+
+            for (const auto& closure : closures)
+            {
+                if (false == closure.is_valid())
+                {
+                    continue;
+                }
+                try
+                {
+                    luabind::call_function<void>(closure, index);
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIMiniMapComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+    }
 
 	void MyGUIMiniMapComponent::update(Ogre::Real dt, bool notSimulating)
 	{

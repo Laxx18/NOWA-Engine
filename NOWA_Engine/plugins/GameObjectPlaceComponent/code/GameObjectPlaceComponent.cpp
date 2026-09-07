@@ -1048,10 +1048,31 @@ namespace NOWA
         this->isForbiddenVisualActive = false;
         this->lastHitObject = nullptr;
 
-        if (cancelled && this->cancelledClosureFunction.is_valid())
+        if (true == cancelled && this->cancelledClosureFunction.is_valid())
         {
-            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+            // The closure object is deliberately NOT copied: disconnect() clears it, and the
+            // is_valid() check inside the command is what notices that. A copy would stay valid
+            // and fire after teardown. The weak pointer covers the other case - the component
+            // being DESTROYED rather than merely disconnected.
+            //
+            // Cancelling is where that matters most: it is exactly the moment the user leaves
+            // placement mode, which is a likely trigger for a state change that tears this
+            // component down while the command is still queued.
+            boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
             {
+                boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                if (nullptr == strongThis)
+                {
+                    return;
+                }
+
+                if (false == this->cancelledClosureFunction.is_valid())
+                {
+                    return;
+                }
+
                 try
                 {
                     luabind::call_function<void>(this->cancelledClosureFunction);
@@ -1507,8 +1528,27 @@ namespace NOWA
             {
                 Ogre::String newId = Ogre::StringConverter::toString(clonedGameObjectPtr->getId());
 
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, newId]()
+                // The closure object is deliberately NOT copied: disconnect() clears it, and
+                // the is_valid() check inside the command is what notices that. A copy would
+                // stay valid and fire after teardown. The weak pointer covers the other case -
+                // the component being DESTROYED rather than merely disconnected, where reading
+                // this->placedClosureFunction would touch freed memory. Placing an object can
+                // well trigger a state change that tears this component down.
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, newId]()
                 {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    if (false == this->placedClosureFunction.is_valid())
+                    {
+                        return;
+                    }
+
                     try
                     {
                         luabind::call_function<void>(this->placedClosureFunction, newId);

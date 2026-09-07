@@ -22,11 +22,16 @@ namespace NOWA
             this->succeed();
             if (this->closureFunction.is_valid())
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+                // Copy the closure into the command instead of capturing 'this'. The command runs
+                // later on the logic thread, and the observer may already be gone by then - a raw
+                // 'this' capture then dereferences freed memory.
+                luabind::object callback = this->closureFunction;
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [callback]()
                 {
                     try
                     {
-                        luabind::call_function<void>(this->closureFunction);
+                        luabind::call_function<void>(callback);
                     }
                     catch (luabind::error& error)
                     {

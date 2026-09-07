@@ -568,9 +568,6 @@
     <ClInclude Include="utilities\AnimationBlenderV2.h">
       <Filter>utilities</Filter>
     </ClInclude>
-    <ClInclude Include="utilities\IAnimationBlender.h">
-      <Filter>utilities</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>

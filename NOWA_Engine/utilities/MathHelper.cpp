@@ -289,23 +289,50 @@ namespace NOWA
 	}
 
 	Ogre::Quaternion MathHelper::faceTarget(Ogre::SceneNode* source, Ogre::SceneNode* dest)
-	{
-		Ogre::Vector3 lookAt = dest->getPosition() - source->getPosition();
-		Ogre::Vector3 axes[3];
+    {
+        Ogre::Vector3 lookAt = dest->getPosition() - source->getPosition();
 
-		source->getOrientation().ToAxes(axes);
-		Ogre::Quaternion rotQuat;
+        // Projected onto the horizontal plane. Callers that restrict rotation to the Y axis
+        // (applyOmegaForceRotateTo with Vector3::UNIT_Y) filter the resulting angular velocity
+        // afterwards, but the ANGLE was computed from the unfiltered difference - so with the
+        // two objects at different heights the rotation speed no longer matched the remaining
+        // yaw, and the body either overshot or crept.
+        lookAt.y = 0.0f;
 
-		if (lookAt == axes[2])
-		{
-			rotQuat.FromAngleAxis(Ogre::Radian(Ogre::Math::PI), axes[1]);
-		}
-		else
-		{
-			rotQuat = axes[2].getRotationTo(lookAt);
-		}
-		return rotQuat * source->getOrientation();
-	}
+        if (lookAt.squaredLength() < 0.0001f)
+        {
+            // Directly above or below each other: no meaningful facing direction exists.
+            return source->getOrientation();
+        }
+        lookAt.normalise();
+
+        Ogre::Vector3 axes[3];
+        source->getOrientation().ToAxes(axes);
+
+        Ogre::Vector3 currentForward = axes[2];
+        currentForward.y = 0.0f;
+        if (currentForward.squaredLength() < 0.0001f)
+        {
+            currentForward = Ogre::Vector3::UNIT_Z;
+        }
+        currentForward.normalise();
+
+        Ogre::Quaternion rotQuat;
+
+        // Comparing normalised vectors with == was unreliable: lookAt was unnormalised before,
+        // so it practically never equalled the unit axis and the 180 degree special case never
+        // triggered. Use a dot product threshold instead.
+        if (currentForward.dotProduct(lookAt) < -0.9999f)
+        {
+            rotQuat.FromAngleAxis(Ogre::Radian(Ogre::Math::PI), Ogre::Vector3::UNIT_Y);
+        }
+        else
+        {
+            rotQuat = currentForward.getRotationTo(lookAt);
+        }
+
+        return rotQuat * source->getOrientation();
+    }
 
 	Ogre::Quaternion MathHelper::faceTarget(Ogre::SceneNode* source, Ogre::SceneNode* dest, const Ogre::Vector3& defaultDirection)
 	{

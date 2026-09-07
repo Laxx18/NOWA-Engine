@@ -695,6 +695,9 @@ namespace NOWA
         clonedGameObjectPtr->setRenderDistance(originalGameObjectPtr->getRenderDistance());
         clonedGameObjectPtr->setLodDistance(originalGameObjectPtr->getLodDistance());
         clonedGameObjectPtr->setShadowRenderingDistance(originalGameObjectPtr->getShadowRenderingDistance());
+        clonedGameObjectPtr->setHideOnConnect(originalGameObjectPtr->getHideOnConnect());
+
+        clonedGameObjectPtr->setDynamic(originalGameObjectPtr->isDynamic());
 
         clonedGameObjectPtr->lodLevels->setValue(originalGameObjectPtr->lodLevels->getUInt());
         clonedGameObjectPtr->lodDistance->setValue(originalGameObjectPtr->lodDistance->getReal());

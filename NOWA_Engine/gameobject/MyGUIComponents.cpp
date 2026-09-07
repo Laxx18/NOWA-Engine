@@ -307,7 +307,7 @@ namespace NOWA
     {
     }
 
-        void MyGUIComponent::rootMouseChangeFocus(MyGUI::Widget* sender, bool focus)
+    void MyGUIComponent::rootMouseChangeFocus(MyGUI::Widget* sender, bool focus)
     {
         if (false == this->isSimulating)
         {
@@ -324,6 +324,21 @@ namespace NOWA
             return;
         }
 
+        // Deliberately NOT copying the closure objects into the commands below.
+        //
+        // The whole teardown protection relies on re-reading the MEMBER at execution time:
+        // disconnect() clears mouseEnterClosureFunction / mouseLeaveClosureFunction, and the
+        // is_valid() check inside the command is what notices that. A copied closure would
+        // stay valid regardless and fire after the state has already been torn down - exactly
+        // the crash this guard exists to prevent.
+        //
+        // What the old code did NOT cover is the component being DESTROYED rather than just
+        // disconnected. Then 'this->isSimulating' already touches freed memory, before any
+        // check can run. A weak pointer closes that gap: the command resolves it first and
+        // simply does nothing if the component is gone, and holds it alive for the duration
+        // of the Lua call if it is not.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
         if (true == focus)
         {
             if (false == this->mouseEnterClosureFunction.is_valid())
@@ -331,8 +346,15 @@ namespace NOWA
                 return;
             }
 
-            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
             {
+                // Keeps the component alive while the closure runs.
+                boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                if (nullptr == strongThis)
+                {
+                    return;
+                }
+
                 // Attention: re-check everything here, not only before enqueueing. This command
                 // runs one or more frames later on the logic thread. A mouse enter/leave that
                 // happens while a MyGUI button triggers an app state change is enqueued while the
@@ -343,7 +365,7 @@ namespace NOWA
                 // closure fails with "attempt to index local 'clickSound' (a nil value)".
                 // disconnect() clears the closure objects, so this is_valid() check is what
                 // actually catches the case.
-                if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                if (false == this->isSimulating)
                 {
                     return;
                 }
@@ -375,10 +397,16 @@ namespace NOWA
                 return;
             }
 
-            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
             {
+                boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                if (nullptr == strongThis)
+                {
+                    return;
+                }
+
                 // Same re-check as above: the state may have been torn down in between.
-                if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                if (false == this->isSimulating)
                 {
                     return;
                 }
@@ -1691,7 +1719,7 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            if (false == this->isSimulating)
                             {
                                 return;
                             }
@@ -2075,7 +2103,7 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            if (false == this->isSimulating)
                             {
                                 return;
                             }
@@ -2250,87 +2278,152 @@ namespace NOWA
 
     void MyGUITextComponent::onEditTextChanged(MyGUI::EditBox* sender)
     {
-        if (true == this->isSimulating)
+        if (false == this->isSimulating)
         {
-            // Note: Does only work, if user clicked the border of the text box
-            MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>();
-            if (nullptr != editBox)
-            {
-                // Call also function in lua script, if it does exist in the lua script component
-                if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-                {
-
-                    NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                    {
-                        if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                        {
-                            return;
-                        }
-
-                        if (false == this->editTextChangedClosureFunction.is_valid())
-                        {
-                            return;
-                        }
-
-                        try
-                        {
-                            luabind::call_function<void>(this->editTextChangedClosureFunction);
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
-
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUITextComponent] Caught error in 'reactOnEditTextChanged' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                        }
-                    };
-                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                }
-            }
+            return;
         }
+
+        // Note: Does only work, if user clicked the border of the text box
+        MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>();
+        if (nullptr == editBox)
+        {
+            return;
+        }
+
+        // Call also function in lua script, if it does exist in the lua script component
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->enabled->getBool())
+        {
+            return;
+        }
+
+        // Early out added: the closure was only checked INSIDE the command, so an edit box
+        // without a registered reaction still queued one logic command per keystroke.
+        if (false == this->editTextChangedClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // The closure object is deliberately NOT copied into the command. Teardown protection
+        // relies on re-reading the MEMBER at execution time: disconnect() clears the closure,
+        // and the is_valid() check below is what notices that. A copy would stay valid and
+        // fire after the app state has already been torn down.
+        //
+        // What that does not cover is the component being DESTROYED rather than merely
+        // disconnected - then 'this->isSimulating' already touches freed memory before any
+        // check can run. The weak pointer closes that gap and additionally keeps the component
+        // alive for the duration of the Lua call.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            // Re-check everything here, not only before enqueueing: this command runs one or
+            // more frames later on the logic thread, by which time the app state may have been
+            // torn down while isSimulating and getLuaScript() still looked fine at enqueue time.
+            if (false == this->isSimulating)
+            {
+                return;
+            }
+
+            if (false == this->editTextChangedClosureFunction.is_valid())
+            {
+                return;
+            }
+
+            try
+            {
+                luabind::call_function<void>(this->editTextChangedClosureFunction);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUITextComponent] Caught error in 'reactOnEditTextChanged' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     void MyGUITextComponent::onEditAccepted(MyGUI::EditBox* sender)
     {
-        if (true == this->isSimulating)
+        if (false == this->isSimulating)
         {
-            // Note: Does only work, if user clicked the border of the text box
-            MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>();
-            if (nullptr != editBox)
-            {
-                // Call also function in lua script, if it does exist in the lua script component
-                if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-                {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                        {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                            {
-                                return;
-                            }
-
-                            if (false == this->editAcceptedClosureFunction.is_valid())
-                            {
-                                return;
-                            }
-
-                            try
-                            {
-                                luabind::call_function<void>(this->editAcceptedClosureFunction);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUITextComponent] Caught error in 'reactOnEditAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                }
-            }
+            return;
         }
+
+        // Note: Does only work, if user clicked the border of the text box
+        MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>();
+        if (nullptr == editBox)
+        {
+            return;
+        }
+
+        // Call also function in lua script, if it does exist in the lua script component
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->enabled->getBool())
+        {
+            return;
+        }
+
+        // Early out added: the closure was only checked INSIDE the command, so a logic command
+        // was queued even when no reaction had been registered at all.
+        if (false == this->editAcceptedClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // The closure object is deliberately NOT copied into the command. Teardown protection
+        // relies on re-reading the MEMBER at execution time: disconnect() clears the closure,
+        // and the is_valid() check below is what notices that. A copy would stay valid and
+        // fire after the app state has already been torn down.
+        //
+        // What that does not cover is the component being DESTROYED rather than merely
+        // disconnected - then 'this->isSimulating' already touches freed memory before any
+        // check can run. The weak pointer closes that gap and additionally keeps the component
+        // alive for the duration of the Lua call.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            // Re-check everything here, not only before enqueueing: this command runs one or
+            // more frames later on the logic thread, by which time the app state may have been
+            // torn down while isSimulating and getLuaScript() still looked fine at enqueue time.
+            if (false == this->isSimulating)
+            {
+                return;
+            }
+
+            if (false == this->editAcceptedClosureFunction.is_valid())
+            {
+                return;
+            }
+
+            try
+            {
+                luabind::call_function<void>(this->editAcceptedClosureFunction);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUITextComponent] Caught error in 'reactOnEditAccepted' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     void MyGUITextComponent::setCaption(const Ogre::String& caption)
@@ -2730,7 +2823,7 @@ namespace NOWA
 
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr, clickedCaption]()
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            if (false == this->isSimulating)
                             {
                                 return;
                             }
@@ -3163,7 +3256,7 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            if (false == this->isSimulating)
                             {
                                 return;
                             }
@@ -3687,7 +3780,7 @@ namespace NOWA
             {
                 NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                 {
-                    if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                    if (false == this->isSimulating)
                     {
                         return;
                     }
@@ -4179,7 +4272,7 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            if (false == this->isSimulating)
                             {
                                 return;
                             }
@@ -4671,7 +4764,7 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            if (false == this->isSimulating)
                             {
                                 return;
                             }
@@ -4706,84 +4799,135 @@ namespace NOWA
 
     void MyGUIListBoxComponent::listSelectAccept(MyGUI::ListBox* sender, size_t index)
     {
-        if (true == this->isSimulating)
+        if (false == this->isSimulating)
         {
-            MyGUI::ListBox* listBox = sender->castType<MyGUI::ListBox>();
-            if (nullptr != listBox)
-            {
-                // Call also function in lua script, if it does exist in the lua script component
-                if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-                {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
-                        {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                            {
-                                return;
-                            }
-
-                            if (false == this->selectedClosureFunction.is_valid())
-                            {
-                                return;
-                            }
-
-                            try
-                            {
-                                luabind::call_function<void>(this->selectedClosureFunction, index);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIListBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                }
-            }
+            return;
         }
+
+        MyGUI::ListBox* listBox = sender->castType<MyGUI::ListBox>();
+        if (nullptr == listBox)
+        {
+            return;
+        }
+
+        // Call also function in lua script, if it does exist in the lua script component
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->enabled->getBool())
+        {
+            return;
+        }
+
+        // Early out added: the closure was only checked INSIDE the command, so a list without
+        // a registered reaction still queued one logic command per selection.
+        if (false == this->selectedClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // The closure object is deliberately NOT copied into the command. Teardown protection
+        // relies on re-reading the MEMBER at execution time: disconnect() clears the closure,
+        // and the is_valid() check below is what notices that. A copy would stay valid and
+        // fire after the app state has already been torn down.
+        //
+        // What that does not cover is the component being DESTROYED rather than merely
+        // disconnected - then 'this->isSimulating' on the command's first line already touches
+        // freed memory before any check can run. The weak pointer closes that gap and keeps
+        // the component alive for the duration of the Lua call.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, index]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->isSimulating)
+            {
+                return;
+            }
+
+            if (false == this->selectedClosureFunction.is_valid())
+            {
+                return;
+            }
+
+            try
+            {
+                luabind::call_function<void>(this->selectedClosureFunction, index);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIListBoxComponent] Caught error in 'reactOnSelected' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     void MyGUIListBoxComponent::listAccept(MyGUI::ListBox* sender, size_t index)
     {
-        if (true == this->isSimulating)
+        if (false == this->isSimulating)
         {
-            MyGUI::ListBox* listBox = sender->castType<MyGUI::ListBox>();
-            if (nullptr != listBox)
-            {
-                // Call also function in lua script, if it does exist in the lua script component
-                if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-                {
-                    NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
-                    {
-                        if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                        {
-                            return;
-                        }
-
-                        if (false == this->acceptClosureFunction.is_valid())
-                        {
-                            return;
-                        }
-
-                        try
-                        {
-                            luabind::call_function<void>(this->acceptClosureFunction, index);
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
-
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIListBoxComponent] Caught error in 'reactOnAccept' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                        }
-                    };
-                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                }
-            }
+            return;
         }
+
+        MyGUI::ListBox* listBox = sender->castType<MyGUI::ListBox>();
+        if (nullptr == listBox)
+        {
+            return;
+        }
+
+        // Call also function in lua script, if it does exist in the lua script component
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->enabled->getBool())
+        {
+            return;
+        }
+
+        if (false == this->acceptClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // See listSelectAccept() for why the closure is re-read rather than copied, and why
+        // the weak pointer is needed on top of that.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, index]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->isSimulating)
+            {
+                return;
+            }
+
+            if (false == this->acceptClosureFunction.is_valid())
+            {
+                return;
+            }
+
+            try
+            {
+                luabind::call_function<void>(this->acceptClosureFunction, index);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIListBoxComponent] Caught error in 'reactOnAccept' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     bool MyGUIListBoxComponent::connect(void)
@@ -5546,7 +5690,7 @@ namespace NOWA
                     {
                         NOWA::AppStateManager::LogicCommand logicCommand = [this, closureListPtr]()
                         {
-                            if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
+                            if (false == this->isSimulating)
                             {
                                 return;
                             }
@@ -5581,43 +5725,75 @@ namespace NOWA
 
     void MyGUIComboBoxComponent::comboAccept(MyGUI::ComboBox* sender, size_t index)
     {
-        if (true == this->isSimulating)
+        if (false == this->isSimulating)
         {
-            MyGUI::ComboBox* comboBox = sender->castType<MyGUI::ComboBox>();
-            if (nullptr != comboBox)
-            {
-                // Call also function in lua script, if it does exist in the lua script component
-                if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-                {
-                    NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
-                    {
-                        if (false == this->isSimulating || nullptr == this->gameObjectPtr->getLuaScript())
-                        {
-                            return;
-                        }
-
-                        if (false == this->selectedClosureFunction.is_valid())
-                        {
-                            return;
-                        }
-
-                        try
-                        {
-                            luabind::call_function<void>(this->selectedClosureFunction, index);
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
-
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComboBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                        }
-                    };
-                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-                }
-            }
+            return;
         }
+
+        MyGUI::ComboBox* comboBox = sender->castType<MyGUI::ComboBox>();
+        if (nullptr == comboBox)
+        {
+            return;
+        }
+
+        // Call also function in lua script, if it does exist in the lua script component
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->enabled->getBool())
+        {
+            return;
+        }
+
+        // Early out added: the closure was only checked INSIDE the command, so a combo box
+        // without a registered reaction still queued one logic command per selection.
+        if (false == this->selectedClosureFunction.is_valid())
+        {
+            return;
+        }
+
+        // The closure object is deliberately NOT copied into the command. Teardown protection
+        // relies on re-reading the MEMBER at execution time: disconnect() clears the closure,
+        // and the is_valid() check below is what notices that. A copy would stay valid and
+        // fire after the app state has already been torn down.
+        //
+        // What that does not cover is the component being DESTROYED rather than merely
+        // disconnected - then 'this->isSimulating' on the command's first line already touches
+        // freed memory before any check can run. The weak pointer closes that gap and keeps
+        // the component alive for the duration of the Lua call.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, index]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->isSimulating)
+            {
+                return;
+            }
+
+            if (false == this->selectedClosureFunction.is_valid())
+            {
+                return;
+            }
+
+            try
+            {
+                luabind::call_function<void>(this->selectedClosureFunction, index);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                // Was 'reactOnMouseButtonClick', copied from another component - it would have
+                // pointed you at the wrong reaction while debugging.
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIComboBoxComponent] Caught error in 'reactOnSelected' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     bool MyGUIComboBoxComponent::connect(void)
@@ -6517,9 +6693,38 @@ namespace NOWA
             // Call also function in lua script, if it does exist in the lua script component
             if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->resultEventName->getString().empty())
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, result]()
+                // Resolved NOW rather than inside the command: the variant is read at trigger
+                // time, not one or more frames later when its value may already differ.
+                const Ogre::String capturedEventName = this->resultEventName->getString();
+
+                // The weak pointer covers this component being destroyed between enqueueing and
+                // execution. It matters more here than in the other MyGUI callbacks, because
+                // 'this' is not merely used internally - it is handed to lua as an argument
+                // below, so the command must not run at all once the component is gone.
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, capturedEventName, result]()
                 {
-                    this->gameObjectPtr->getLuaScript()->callTableFunction(this->resultEventName->getString(), this, result);
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    // The other MyGUI components re-check both of these inside their commands;
+                    // this one had no checks at all, even though it runs just as deferred.
+                    if (false == this->isSimulating)
+                    {
+                        return;
+                    }
+
+                    LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+                    if (nullptr == luaScript)
+                    {
+                        return;
+                    }
+
+                    luaScript->callTableFunction(capturedEventName, this, result);
                 };
                 NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
             }

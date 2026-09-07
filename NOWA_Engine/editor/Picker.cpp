@@ -1077,97 +1077,115 @@ namespace NOWA
 	}
 
 	PhysicsComponent* KinematicPicker::grab(OgreNewt::World* ogreNewt, const Ogre::Vector2 position, Ogre::Window* renderWindow)
-	{
-		this->mousePosition = position;
-		this->renderWindow = renderWindow;
+    {
+        this->mousePosition = position;
+        this->renderWindow = renderWindow;
 
-		if (false == this->active || nullptr == this->sceneManager)
-		{
-			return nullptr;
-		}
+        if (false == this->active || nullptr == this->sceneManager)
+        {
+            return nullptr;
+        }
 
-		// Get ray origin and end coordinates
-		Ogre::Ray mouseRay = getRayFromMouse();
+        // Get ray origin and end coordinates
+        Ogre::Ray mouseRay = getRayFromMouse();
 
-		if (false == this->dragging)
-		{
-			// Cast a ray between these points and check for first hit
-			OgreNewt::BasicRaycast* ray = new OgreNewt::BasicRaycast(ogreNewt, mouseRay.getOrigin(), mouseRay.getPoint(this->maxDistance), true);
-			OgreNewt::BasicRaycast::BasicRaycastInfo info = ray->getFirstHit();
+        if (true == this->dragging)
+        {
+            if (nullptr != this->kinematicController)
+            {
+                this->dragPoint = mouseRay.getPoint(this->dragDistance);
+                this->kinematicController->setTargetPosit(this->dragPoint);
+            }
+            return this->dragComponent;
+        }
 
-			// Found a body in the ray's path
-			if (nullptr != info.mBody)
-			{
-				this->dragDistance = this->maxDistance * info.mDistance;
-				this->dragNormal = info.mNormal;
+        // Cast a ray between these points and check for first hit.
+        // Held by unique_ptr: 'delete ray' used to sit INSIDE the 'if (nullptr != info.mBody)'
+        // block, so a ray that hit nothing - clicking into empty space, the most common case -
+        // leaked on every single click. It also sat after several assignments and an
+        // enqueueAndWait(), so any early return or exception in between skipped it too.
+        std::unique_ptr<OgreNewt::BasicRaycast> ray(new OgreNewt::BasicRaycast(ogreNewt, mouseRay.getOrigin(), mouseRay.getPoint(this->maxDistance), true));
+        OgreNewt::BasicRaycast::BasicRaycastInfo info = ray->getFirstHit();
 
-				// check its query mask
-				unsigned int type = info.mBody->getType();
-				unsigned int finalType = type & this->queryMask;
-				if (type == finalType)
-				{
-					this->hitBody = info.mBody;
-					this->dragNormal = info.mNormal;
+        // Found a body in the ray's path
+        if (nullptr == info.mBody)
+        {
+            // Cleared on a miss: it used to keep the value of the PREVIOUS grab, so the caller
+            // received a component even though nothing had been grabbed.
+            this->dragComponent = nullptr;
+            return nullptr;
+        }
 
-					Ogre::Vector3 bodyPos;
-					Ogre::Quaternion bodyOrientation;
+        this->dragDistance = this->maxDistance * info.mDistance;
+        this->dragNormal = info.mNormal;
 
-					// Store the body position and orientation
-					this->hitBody->getPositionOrientation(bodyPos, bodyOrientation);
+        // check its query mask
+        unsigned int type = info.mBody->getType();
+        unsigned int finalType = type & this->queryMask;
+        if (type != finalType)
+        {
+            this->dragComponent = nullptr;
+            return nullptr;
+        }
 
-					// Try to cast to physics component
-					this->dragComponent = OgreNewt::any_cast<PhysicsComponent*>(this->hitBody->getUserData());
+        this->hitBody = info.mBody;
+        this->dragNormal = info.mNormal;
 
-					if (nullptr != this->dragComponent)
-					{
-						if (nullptr != this->kinematicController)
-						{
-							delete this->kinematicController;
-							this->kinematicController = nullptr;
-						}
+        Ogre::Vector3 bodyPos;
+        Ogre::Quaternion bodyOrientation;
 
-						Ogre::Vector3 gravity = this->hitBody->getGravity();
-						if (Ogre::Vector3::ZERO == gravity)
-						{
-							gravity = Ogre::Vector3(0.0f, -19.8f, 0.0f);
-						}
+        // Store the body position and orientation
+        this->hitBody->getPositionOrientation(bodyPos, bodyOrientation);
 
-						// Change this to make the grabbing stronger or weaker
-						//const dFloat angularFritionAccel = 10.0f;
-						const Ogre::Real angularFrictionAccel = 5.0f;
-						const Ogre::Real linearFrictionAccel = 400.0f * gravity.y;
+        // Try to cast to physics component
+        this->dragComponent = OgreNewt::any_cast<PhysicsComponent*>(this->hitBody->getUserData());
 
-						Ogre::Vector3 hitBodyInertia = this->hitBody->getInertia();
+        if (nullptr != this->dragComponent)
+        {
+            Ogre::Vector3 gravity = this->hitBody->getGravity();
+            if (Ogre::Vector3::ZERO == gravity)
+            {
+                gravity = Ogre::Vector3(0.0f, -19.8f, 0.0f);
+            }
 
-						const Ogre::Real inertia = std::max(hitBodyInertia.z, std::max(hitBodyInertia.x, hitBodyInertia.y));
+            // Change this to make the grabbing stronger or weaker
+            // const dFloat angularFritionAccel = 10.0f;
+            const Ogre::Real angularFrictionAccel = 5.0f;
+            const Ogre::Real linearFrictionAccel = 400.0f * gravity.y;
 
-						NOWA::AppStateManager::LogicCommand logicCommand = [this, bodyPos, inertia, angularFrictionAccel, linearFrictionAccel]()
-                        {
-                            this->kinematicController = new OgreNewt::KinematicController(this->hitBody, bodyPos);
-                            this->kinematicController->setPickingMode(/*linearPlusAngularFriction*/ 4);
-                            this->kinematicController->setMaxLinearFriction(hitBody->getMass() * linearFrictionAccel);
-                            this->kinematicController->setMaxAngularFriction(inertia * angularFrictionAccel);
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
-					}
+            Ogre::Vector3 hitBodyInertia = this->hitBody->getInertia();
 
-					this->dragging = true;
-				}
+            const Ogre::Real inertia = std::max(hitBodyInertia.z, std::max(hitBodyInertia.x, hitBodyInertia.y));
 
-				delete ray;
-			}
-		}
-		else
-		{
-			if (nullptr != this->kinematicController)
-			{
-				this->dragPoint = mouseRay.getPoint(this->dragDistance);
-				this->kinematicController->setTargetPosit(this->dragPoint);
-			}
-		}
+            // Captured by value like bodyPos and inertia already were. It used to be read as
+            // the plain member 'hitBody' inside the lambda, i.e. through the captured 'this' at
+            // EXECUTION time - a second grab() in between would have overwritten it.
+            OgreNewt::Body* const grabbedBody = this->hitBody;
+            const Ogre::Real bodyMass = grabbedBody->getMass();
 
-		return this->dragComponent;
-	}
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, grabbedBody, bodyPos, bodyMass, inertia, angularFrictionAccel, linearFrictionAccel]()
+            {
+                // Moved INTO the command. Deleting on the calling thread while the creation
+                // was deferred left kinematicController null in between - and the dragging
+                // branch above checks exactly that pointer.
+                if (nullptr != this->kinematicController)
+                {
+                    delete this->kinematicController;
+                    this->kinematicController = nullptr;
+                }
+
+                this->kinematicController = new OgreNewt::KinematicController(grabbedBody, bodyPos);
+                this->kinematicController->setPickingMode(/*linearPlusAngularFriction*/ 4);
+                this->kinematicController->setMaxLinearFriction(bodyMass * linearFrictionAccel);
+                this->kinematicController->setMaxAngularFriction(inertia * angularFrictionAccel);
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
+        }
+
+        this->dragging = true;
+
+        return this->dragComponent;
+    }
 
 	void KinematicPicker::release(void)
 	{

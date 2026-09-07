@@ -50,28 +50,36 @@ namespace NOWA
 	}
 
 	void PlayerControllerComponent::AnimationBlenderObserver::onAnimationFinished(void)
-	{
-		if (this->closureFunction.is_valid())
-		{
-			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-				{
-					try
-					{
-						luabind::call_function<void>(this->closureFunction);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
+    {
+        if (false == this->closureFunction.is_valid())
+        {
+            return;
+        }
 
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent::AnimationBlenderObserver] Caught error in 'reactOnAnimationFinished' Error: " + Ogre::String(error.what())
-							+ " details: " + msg.str());
-					}
-				};
-			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		}
-	}
+        // The closure is COPIED into the command instead of capturing 'this'. The command runs
+        // later on the logic thread, and this observer may already be gone by then - an
+        // animation finishing is precisely the moment a state change tends to remove it, so a
+        // raw 'this' capture would dereference freed memory. Same fix as in
+        // PathGoalObserver::onPathGoalReached().
+        luabind::object callback = this->closureFunction;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [callback]()
+        {
+            try
+            {
+                luabind::call_function<void>(callback);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent::AnimationBlenderObserver] Caught error in 'reactOnAnimationFinished' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+    }
 
 	bool PlayerControllerComponent::AnimationBlenderObserver::shouldReactOneTime(void) const
 	{
@@ -1007,7 +1015,7 @@ namespace NOWA
 		return this->goalRadius->getReal();
 	}
 
-	IAnimationBlender* PlayerControllerComponent::getAnimationBlender(void) const
+	AnimationBlenderV2* PlayerControllerComponent::getAnimationBlender(void) const
 	{
 		return this->animationBlender;
 	}
@@ -3306,14 +3314,23 @@ namespace NOWA
                     Ogre::Vector3 pos = this->pendingPosOnNavMesh;
                     NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript, pos]()
                     {
-                        luaScript->callTableFunction("onNavMeshClicked", pos);
+                        // Re-checked: the command runs one or more frames later and the script may
+                        // have been torn down in between. 'pos' was already copied for the same
+                        // reason - the script pointer deserves the same care.
+                        LuaScript* currentLuaScript = this->playerController->getOwner()->getLuaScript();
+                        if (nullptr == currentLuaScript)
+                        {
+                            return;
+                        }
+
+                        currentLuaScript->callTableFunction("onNavMeshClicked", pos);
                     };
                     NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
                 }
 
                 this->hasGoal = true;
 
-                // Clear the old path and install the new one NOW — path data is fully
+                // Clear the old path and install the new one NOW - path data is fully
                 // written by the async task and isPathReady() has confirmed this.
                 // No data race: the shared_lock in FindPathWithQuery was released before
                 // the future became ready, and we hold no lock here on the logic thread.
@@ -3340,34 +3357,48 @@ namespace NOWA
                     NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "PathFollowState3D::DrawPathLine");
                 }
 
-                auto playerController = this->playerController;
+                // The waypoints are added HERE, on the logic thread, not inside a render command.
+                // MovingBehavior reads this path from the logic thread and getPath()->clear() a few
+                // lines above already runs here - filling the very same structure from the render
+                // thread meant two threads writing one logic-owned container. The enqueueAndWait()
+                // that used to guard that also stalled the logic thread on every path computation.
+                Ogre::Vector3 lastWaypoint = Ogre::Vector3::ZERO;
+                bool hasWaypoint = false;
 
-				NOWA::GraphicsModule::RenderCommand renderCommand = [this, path, playerController]()
+                for (size_t i = 0; i < path.size(); i++)
                 {
-                    for (size_t i = 0; i < path.size(); i++)
+                    // First wp is useless at it is at the same position as the player
+                    if (i > 0)
                     {
-                        Ogre::Vector3 resultWaypoint = path[i];
-                        // resultWaypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
-
-                        // First wp is useless at it is at the same position as the player
-                        if (i > 0)
-                        {
-                            this->movingBehavior->getPath()->addWayPoint(resultWaypoint);
-
-                            if (true == this->playerController->getDrawPath())
-                            {
-                                if (nullptr == this->playerController->debugWaypointNode)
-                                {
-                                    this->playerController->debugWaypointNode = this->playerController->getOwner()->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-                                    Ogre::Item* item = this->playerController->getOwner()->getSceneManager()->createItem("Node.mesh");
-                                    this->playerController->debugWaypointNode->attachObject(item);
-                                }
-                                this->playerController->debugWaypointNode->setPosition(resultWaypoint);
-                            }
-                        }
+                        this->movingBehavior->getPath()->addWayPoint(path[i]);
+                        lastWaypoint = path[i];
+                        hasWaypoint = true;
                     }
-                };
-                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::AddWaypoints");
+                }
+
+                // Only the scene node work belongs on the render thread. Non blocking, because
+                // nothing below depends on the node existing.
+                if (true == this->playerController->getDrawPath() && true == hasWaypoint)
+                {
+                    auto playerController = this->playerController;
+
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [playerController, lastWaypoint]()
+                    {
+                        if (nullptr == playerController->debugWaypointNode)
+                        {
+                            playerController->debugWaypointNode = playerController->getOwner()->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+                            Ogre::Item* item = playerController->getOwner()->getSceneManager()->createItem("Node.mesh");
+                            playerController->debugWaypointNode->attachObject(item);
+                        }
+
+                        // Note: this is ONE node showing the LAST waypoint, which is what the
+                        // previous code effectively did too - it looped over every waypoint but
+                        // re-positioned the same single node each time, so only the last one was
+                        // ever visible. Kept as is; see the note below on marking the whole path.
+                        playerController->debugWaypointNode->setPosition(lastWaypoint);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "PathFollowState3D::DebugWaypointNode");
+                }
 
                 this->playerController->setMoveWeight(1.0f);
                 this->playerController->setJumpWeight(1.0f);

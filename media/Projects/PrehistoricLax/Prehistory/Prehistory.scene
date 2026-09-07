@@ -4,9 +4,9 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.0115994" g="0.0372746" b="0.088645"/>
-			<ambientLightLowerHemisphere r="0.013813" g="0.0164932" b="0.0180753" a="1"/>
-			<hemisphereDir x="0.00841075" y="0.965932" z="-0.258658"/>
+			<ambientLightUpperHemisphere r="0.0115992" g="0.0372741" b="0.0886436"/>
+			<ambientLightLowerHemisphere r="0.0137978" g="0.0164771" b="0.0180611" a="1"/>
+			<hemisphereDir x="0.0107708" y="0.965927" z="-0.258592"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -33,7 +33,7 @@
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-20.2177 -4.80309 -22.6618" mostRightFarPosition="97.1917 84.2207 103.191"/>
+		<bounds mostLeftNearPosition="-20.2177 -4.80309 -22.6618" mostRightFarPosition="118.463 106.125 124.395"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="38.6726" y="8.79806" z="-7.20732"/>
-			<rotation qw="0.996766" qx="-0.0784472" qy="-0.0173986" qz="-0.0013693"/>
+			<position x="-0.0486387" y="3.8794" z="-7.57336"/>
+			<rotation qw="0.99981" qx="-0.0087252" qy="0.0174517" qz="0.000152299"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -56,6 +56,7 @@
 					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -71,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="38.6726 8.79806 -7.20732"/>
-					<property type="9" name="CameraOrientation" data="-9.16184 -1.95326 -0.00551825"/>
+					<property type="9" name="CameraPosition" data="-2.24762 2.10776 -8.51069"/>
+					<property type="9" name="CameraOrientation" data="-6.97662 10.1769 0.0423287"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -107,8 +108,8 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="96.8146" y="83.7756" z="102.727"/>
-			<rotation qw="-0.111592" qx="0.0551387" qy="0.497105" qz="0.858716"/>
+			<position x="118.087" y="105.689" z="123.931"/>
+			<rotation qw="0.675165" qx="-0.397444" qy="0.303738" qz="0.542156"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -122,6 +123,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -164,6 +166,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="false"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -184,7 +187,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="2" name="TimePointCount" data="6"/>
+					<property type="2" name="TimePointCount" data="9"/>
 					<property type="2" name="GameObjectId0" data="0"/>
 					<property type="6" name="StartTime0" data="0"/>
 					<property type="6" name="Duration0" data="19"/>
@@ -205,22 +208,40 @@
 					<property type="7" name="TimePointEndEventName2" data=""/>
 					<property type="2" name="GameObjectId3" data="0"/>
 					<property type="6" name="StartTime3" data="32"/>
-					<property type="6" name="Duration3" data="10"/>
+					<property type="6" name="Duration3" data="8"/>
 					<property type="2" name="RepeatCount3" data="0"/>
 					<property type="7" name="TimePointStartEventName3" data="SleepTimePoint"/>
 					<property type="7" name="TimePointEndEventName3" data=""/>
 					<property type="2" name="GameObjectId4" data="0"/>
-					<property type="6" name="StartTime4" data="44"/>
+					<property type="6" name="StartTime4" data="42"/>
 					<property type="6" name="Duration4" data="3"/>
 					<property type="2" name="RepeatCount4" data="0"/>
 					<property type="7" name="TimePointStartEventName4" data="CameraDriveTimePoint"/>
 					<property type="7" name="TimePointEndEventName4" data=""/>
 					<property type="2" name="GameObjectId5" data="0"/>
 					<property type="6" name="StartTime5" data="47"/>
-					<property type="6" name="Duration5" data="15"/>
+					<property type="6" name="Duration5" data="3"/>
 					<property type="2" name="RepeatCount5" data="0"/>
-					<property type="7" name="TimePointStartEventName5" data="BreakInTimePoint"/>
+					<property type="7" name="TimePointStartEventName5" data="LuiziusTimePoint"/>
 					<property type="7" name="TimePointEndEventName5" data=""/>
+					<property type="2" name="GameObjectId6" data="0"/>
+					<property type="6" name="StartTime6" data="50"/>
+					<property type="6" name="Duration6" data="1"/>
+					<property type="2" name="RepeatCount6" data="0"/>
+					<property type="7" name="TimePointStartEventName6" data="CastSleepSpellTimePoint"/>
+					<property type="7" name="TimePointEndEventName6" data=""/>
+					<property type="2" name="GameObjectId7" data="0"/>
+					<property type="6" name="StartTime7" data="51"/>
+					<property type="6" name="Duration7" data="10"/>
+					<property type="2" name="RepeatCount7" data="0"/>
+					<property type="7" name="TimePointStartEventName7" data="BreakDoorTimePoint"/>
+					<property type="7" name="TimePointEndEventName7" data=""/>
+					<property type="2" name="GameObjectId8" data="0"/>
+					<property type="6" name="StartTime8" data="61"/>
+					<property type="6" name="Duration8" data="8"/>
+					<property type="2" name="RepeatCount8" data="0"/>
+					<property type="7" name="TimePointStartEventName8" data="BreakInTimePoint"/>
+					<property type="7" name="TimePointEndEventName8" data=""/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -276,6 +297,7 @@
 					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -308,6 +330,12 @@
 					<property type="6" name="Grass Density" data="25"/>
 					<property type="6" name="Grass Blade Width" data="0.15"/>
 					<property type="6" name="Grass Blade Height" data="0.3"/>
+					<property type="12" name="Use Trees" data="false"/>
+					<property type="7" name="Tree Mesh" data="treeAOG-17birTall.mesh"/>
+					<property type="6" name="Tree Spacing" data="8"/>
+					<property type="6" name="Tree Z Start" data="0.5"/>
+					<property type="6" name="Tree Scale" data="1"/>
+					<property type="2" name="Tree Branch Clusters" data="8"/>
 					<property type="2" name="Curve Subdivisions" data="10"/>
 					<property type="7" name="Surface Datablock" data="grass_clean"/>
 					<property type="7" name="Ground Datablock" data="rockClif_D"/>
@@ -339,6 +367,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -417,6 +446,7 @@
 					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -466,6 +496,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -497,6 +528,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -546,6 +578,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -579,6 +612,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -610,6 +644,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -640,6 +675,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -671,6 +707,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -689,7 +726,7 @@
 			<position x="-1.92532" y="2.85846" z="-7.99024"/>
 			<rotation qw="0.997564" qx="-0.0697565" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
+			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -701,6 +738,7 @@
 					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -888,6 +926,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="-1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -925,34 +964,21 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="12" name="Repeat" data="true"/>
-					<property type="2" name="Count" data="5"/>
+					<property type="2" name="Count" data="2"/>
 					<property type="7" name="AnimationName0" data="Boy 1 Idle"/>
 					<property type="7" name="BlendTransition0" data="BlendWhileAnimating"/>
-					<property type="6" name="Duration0" data="10.7333"/>
+					<property type="6" name="Duration0" data="5.36667"/>
 					<property type="6" name="TimePosition0" data="0"/>
 					<property type="6" name="Speed0" data="1"/>
+					<property type="6" name="BlendDuration0" data="0.2"/>
 					<property type="7" name="AnimationName1" data="Boy 1 Idle Pick Up Item"/>
 					<property type="7" name="BlendTransition1" data="BlendWhileAnimating"/>
-					<property type="6" name="Duration1" data="1"/>
-					<property type="6" name="TimePosition1" data="10"/>
-					<property type="6" name="Speed1" data="0.25"/>
-					<property type="7" name="AnimationName2" data="Boy 1 Idle Turn Right"/>
-					<property type="7" name="BlendTransition2" data="BlendWhileAnimating"/>
-					<property type="6" name="Duration2" data="1.03333"/>
-					<property type="6" name="TimePosition2" data="12"/>
-					<property type="6" name="Speed2" data="0.7"/>
-					<property type="7" name="AnimationName3" data="Boy 1 Fight Stance Turn Left"/>
-					<property type="7" name="BlendTransition3" data="BlendWhileAnimating"/>
-					<property type="6" name="Duration3" data="1"/>
-					<property type="6" name="TimePosition3" data="13"/>
-					<property type="6" name="Speed3" data="0.3"/>
-					<property type="7" name="AnimationName4" data="Boy 1 Idle Pick Up Item"/>
-					<property type="7" name="BlendTransition4" data="BlendWhileAnimating"/>
-					<property type="6" name="Duration4" data="1"/>
-					<property type="6" name="TimePosition4" data="14"/>
-					<property type="6" name="Speed4" data="0.25"/>
+					<property type="6" name="Duration1" data="1.03333"/>
+					<property type="6" name="TimePosition1" data="5.36667"/>
+					<property type="6" name="Speed1" data="0.3"/>
+					<property type="6" name="BlendDuration1" data="0.2"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
 			</item>
@@ -973,6 +999,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1002,6 +1029,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1031,6 +1059,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1060,6 +1089,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1089,6 +1119,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1118,6 +1149,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1147,6 +1179,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1176,6 +1209,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1205,6 +1239,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1234,6 +1269,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1264,6 +1300,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1294,6 +1331,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1326,6 +1364,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1358,6 +1397,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1387,6 +1427,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1416,6 +1457,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1431,7 +1473,7 @@
 		</node>
 		<node name="Double_bed_0" id="3328545227">
 			<position x="-12.3476" y="1.28" z="-14.6881"/>
-			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="0.766045" qz="0"/>
 			<scale x="0.7" y="0.7" z="0.7"/>
 			<item name="Double_bed_0" meshFile="Double_bed.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Double_Bed"/>
@@ -1445,6 +1487,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1477,7 +1520,7 @@
 		</node>
 		<node name="Bedside_0" id="2509448584">
 			<position x="-12.5424" y="0.854038" z="-15.6846"/>
-			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="0.766045" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Bedside_0" meshFile="Bedside.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Bedside"/>
@@ -1491,6 +1534,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1506,7 +1550,7 @@
 		</node>
 		<node name="Vaso_Etrusco_01_0" id="1526863547">
 			<position x="-12.4962" y="1.40309" z="-15.6838"/>
-			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="0.766045" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Vaso_Etrusco_01_0" meshFile="Vaso_Etrusco_01.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Vaso_Etrusco_01"/>
@@ -1520,6 +1564,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1535,7 +1580,7 @@
 		</node>
 		<node name="CastleLantern_0" id="3289022220">
 			<position x="-8.15575" y="3.76187" z="-15.1114"/>
-			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="0.766045" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="CastleLantern_0" meshFile="CastleLantern.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="CastleRoofColor"/>
@@ -1549,6 +1594,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1578,6 +1624,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1600,11 +1647,13 @@
 					<property type="6" name="Duration0" data="3.33333"/>
 					<property type="6" name="TimePosition0" data="0"/>
 					<property type="6" name="Speed0" data="1"/>
+					<property type="6" name="BlendDuration0" data="0.2"/>
 					<property type="7" name="AnimationName1" data="talk-02"/>
 					<property type="7" name="BlendTransition1" data="BlendWhileAnimating"/>
 					<property type="6" name="Duration1" data="3.33333"/>
 					<property type="6" name="TimePosition1" data="0"/>
 					<property type="6" name="Speed1" data="1"/>
+					<property type="6" name="BlendDuration1" data="0.2"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1653,6 +1702,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1718,7 +1768,7 @@
 			<position x="-4.34281" y="0.667632" z="-15.7857"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Node_0" meshFile="Node.mesh" castShadows="true" visible="false">
+			<item name="Node_0" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1729,7 +1779,8 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1763,6 +1814,7 @@
 					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="false"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1798,7 +1850,7 @@
 			<position x="12.363" y="5.52405" z="-7.96637"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Node_1" meshFile="Node.mesh" castShadows="true" visible="false">
+			<item name="Node_1" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1809,7 +1861,8 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1829,10 +1882,10 @@
 			</item>
 		</node>
 		<node name="Node_2" id="4215510380">
-			<position x="25.5696" y="6.69205" z="-7.96637"/>
+			<position x="29.239" y="6.69205" z="-7.96637"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Node_2" meshFile="Node.mesh" castShadows="true" visible="false">
+			<item name="Node_2" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1843,7 +1896,8 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1880,6 +1934,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1911,6 +1966,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1941,6 +1997,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1972,6 +2029,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2007,6 +2065,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2046,6 +2105,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2066,7 +2126,7 @@
 		</node>
 		<node name="Pillar_05_125_0" id="4219269507">
 			<position x="23.4117" y="4.59286" z="-15.456"/>
-			<rotation qw="0.642788" qx="0" qy="-0.766044" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="-0.766045" qz="0"/>
 			<scale x="0.5" y="0.2" z="0.5"/>
 			<item name="Pillar_05_125_0" meshFile="Pillar_05_125.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="M_MasterMaterial"/>
@@ -2080,6 +2140,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2095,7 +2156,7 @@
 		</node>
 		<node name="HollowSphere1_0" id="2453649545">
 			<position x="23.4951" y="5.24017" z="-15.3981"/>
-			<rotation qw="0.642788" qx="0" qy="-0.766044" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="-0.766045" qz="0"/>
 			<scale x="0.03" y="0.03" z="0.03"/>
 			<item name="HollowSphere1_0" meshFile="HollowSphere1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="HollowSphere"/>
@@ -2109,6 +2170,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2141,7 +2203,7 @@
 		</node>
 		<node name="Light (Spot)_1" id="2100318410">
 			<position x="19.874" y="6.5903" z="-16.6186"/>
-			<rotation qw="0.622515" qx="-0.782608" qy="6.14199e-08" qz="6.14199e-08"/>
+			<rotation qw="0.622515" qx="-0.782608" qy="-6.14199e-08" qz="-6.14199e-08"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightSpot.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -2155,6 +2217,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2202,6 +2265,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2247,6 +2311,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2291,6 +2356,7 @@
 					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2322,11 +2388,11 @@
 				</userData>
 			</item>
 		</node>
-		<node name="Luizius" id="305200545">
-			<position x="43.6663" y="10.7374" z="-16"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+		<node name="Luizius" id="2117706548">
+			<position x="54.564" y="17.4141" z="-16"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Mage1_0" meshFile="Mage1.mesh" castShadows="true" visible="true">
+			<item name="Luizius" meshFile="Mage1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Chibi_Mage1"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2338,7 +2404,8 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
-					<property type="9" name="DefaultDirection" data="1 0 0"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="-1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -2346,9 +2413,223 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="Chibi_Mage1"/>
-					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="idle-01"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="7" name="ComponentNodeTrackComponent" data="NodeTrackComponent"/>
+					<property type="7" name="Name" data="AppearNodeTrack"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="InterpolationMode" data="Spline"/>
+					<property type="7" name="RotationMode" data="Linear"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="2" name="NodeTrackCount" data="1"/>
+					<property type="2" name="NodeTrackId0" data="1033750382"/>
+					<property type="6" name="TimePosition0" data="1"/>
+					<property type="7" name="ComponentNodeTrackComponent" data="NodeTrackComponent"/>
+					<property type="7" name="Name" data="BreakInNodeTrack"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="InterpolationMode" data="Spline"/>
+					<property type="7" name="RotationMode" data="Linear"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="2" name="NodeTrackCount" data="4"/>
+					<property type="2" name="NodeTrackId0" data="740929867"/>
+					<property type="6" name="TimePosition0" data="1"/>
+					<property type="2" name="NodeTrackId1" data="649336421"/>
+					<property type="6" name="TimePosition1" data="2"/>
+					<property type="2" name="NodeTrackId2" data="478374637"/>
+					<property type="6" name="TimePosition2" data="3"/>
+					<property type="2" name="NodeTrackId3" data="1700938876"/>
+					<property type="6" name="TimePosition3" data="4"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_3" id="4215510815">
+			<position x="39.1954" y="8.20138" z="-16"/>
+			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_3" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="740929867"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_4" id="4215509510">
+			<position x="36.9742" y="6.74248" z="-16"/>
+			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_4" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="649336421"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_5" id="4215509945">
+			<position x="32.1567" y="4.93502" z="-16"/>
+			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_5" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="478374637"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_6" id="4215508640">
+			<position x="23.9149" y="4.45382" z="-16"/>
+			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_6" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1700938876"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="PrehistoricAgathe_0" id="3886242454">
+			<position x="26.2125" y="3.68415" z="-14.6052"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="PrehistoricAgathe_0" meshFile="PrehistoricAgathe.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="PrehistoricAgathe"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3425782733"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="PrehistoricAgathe"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="Girl 2 Idle"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="7" name="ComponentPhysicsRagDollComponentV2" data="PhysicsRagDollComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2356,7 +2637,7 @@
 					<property type="9" name="CollisionSize" data="0 0 0"/>
 					<property type="9" name="OffsetPosition" data="0 0 0"/>
 					<property type="9" name="OffsetDirection" data="0 0 0"/>
-					<property type="6" name="Mass" data="150"/>
+					<property type="6" name="Mass" data="10"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
 					<property type="6" name="LinearDamping" data="0.1"/>
 					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
@@ -2371,38 +2652,46 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="ComponentJointPathFollowComponent" data="JointPathFollowComponent"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="BoneConfigFile" data="PrehistoricAgathe.rag"/>
+					<property type="7" name="State" data="Inactive"/>
+					<property type="7" name="ComponentTagPointComponent" data="TagPointComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="7" name="JointType" data="JointPathFollowComponent"/>
-					<property type="12" name="JointActivate" data="true"/>
-					<property type="2" name="JointId" data="2191126289"/>
-					<property type="2" name="JointPredecessorId" data="0"/>
-					<property type="2" name="JointTargetId" data="0"/>
-					<property type="12" name="JointRecursiveCollision" data="false"/>
-					<property type="6" name="Stiffness" data="0.9"/>
-					<property type="8" name="BodyMassScale" data="1 1"/>
-					<property type="9" name="AnchorPosition" data="0 0 0"/>
-					<property type="12" name="DrawPath" data="true"/>
-					<property type="2" name="WaypointsCount" data="4"/>
-					<property type="12" name="Loop" data="false"/>
-					<property type="12" name="Clockwise" data="false"/>
-					<property type="2" name="Waypoint0" data="740929867"/>
-					<property type="2" name="Waypoint1" data="649336421"/>
-					<property type="2" name="Waypoint2" data="478374637"/>
-					<property type="2" name="Waypoint3" data="1700938876"/>
+					<property type="7" name="TagPointName" data="Girl 2 R Hand"/>
+					<property type="6" name="SourceId" data="2887726787"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="TemplateName" data="SleepZzz"/>
+					<property type="12" name="Repeat" data="true"/>
+					<property type="6" name="PlayTime" data="10000"/>
+					<property type="6" name="PlaySpeed" data="1"/>
+					<property type="9" name="OffsetPosition" data="0 0.5 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="8" name="Scale" data="1 1"/>
+					<property type="7" name="BlendingMethod" data="From Material"/>
+					<property type="12" name="FadeIn" data="false"/>
+					<property type="6" name="FadeInTime" data="1000"/>
+					<property type="12" name="FadeOut" data="false"/>
+					<property type="6" name="FadeOutTime" data="1000"/>
 				</userData>
 			</item>
 		</node>
-		<node name="Node_3" id="4215510815">
-			<position x="41.8825" y="8.86949" z="-16"/>
-			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+		<node name="monster_item_cudgel_0" id="3009375593">
+			<position x="-11.1748" y="1.02245" z="-14.1193"/>
+			<rotation qw="0.566406" qx="-0.824126" qy="6.07821e-08" qz="6.07821e-08"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Node_3" meshFile="Node.mesh" castShadows="true" visible="true">
+			<item name="monster_item_cudgel_0" meshFile="monster_item_cudgel.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="items_mat.004"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="740929867"/>
+					<property type="7" name="Id" data="1371565728"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
@@ -2410,6 +2699,67 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="items_mat.004"/>
+				</userData>
+			</item>
+		</node>
+		<node name="monster_item_pike_0" id="1945239890">
+			<position x="26.5921" y="4.2822" z="-14.3425"/>
+			<rotation qw="-0.0984103" qx="0.700225" qy="0.0984102" qz="0.700225"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="monster_item_pike_0" meshFile="monster_item_pike.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="items_mat.004"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2887726787"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="items_mat.004"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_7" id="4215509075">
+			<position x="41.1413" y="8.95363" z="-15.6784"/>
+			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_7" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1033750382"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2418,7 +2768,8 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -2427,14 +2778,15 @@
 				</userData>
 			</item>
 		</node>
-		<node name="Node_4" id="4215509510">
-			<position x="39.084" y="6.74248" z="-16"/>
-			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="Node_4" meshFile="Node.mesh" castShadows="true" visible="true">
+		<node name="SpellBall" id="3373463240">
+			<position x="40.3253" y="9.32863" z="-15.8143"/>
+			<rotation qw="0.642788" qx="0" qy="-0.766045" qz="0"/>
+			<scale x="0.01" y="0.01" z="0.01"/>
+			<item name="SpellBall" meshFile="HollowSphere1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="HollowSphere"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="649336421"/>
+					<property type="7" name="Id" data="2737582806"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
@@ -2442,7 +2794,8 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
-					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -2450,55 +2803,50 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
-					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="HollowSphere"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Show" data="true"/>
-				</userData>
-			</item>
-		</node>
-		<node name="Node_5" id="4215509945">
-			<position x="32.1567" y="5.45804" z="-16"/>
-			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="Node_5" meshFile="Node.mesh" castShadows="true" visible="true">
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="478374637"/>
-					<property type="7" name="Category" data="Default"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="9" name="DefaultDirection" data="0 0 -1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="100"/>
-					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
-					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="TemplateName" data="Atomicity_Streaks"/>
+					<property type="12" name="Repeat" data="true"/>
+					<property type="6" name="PlayTime" data="10000"/>
+					<property type="6" name="PlaySpeed" data="1"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="8" name="Scale" data="1 1"/>
+					<property type="7" name="BlendingMethod" data="From Material"/>
+					<property type="12" name="FadeIn" data="false"/>
+					<property type="6" name="FadeInTime" data="1000"/>
+					<property type="12" name="FadeOut" data="false"/>
+					<property type="6" name="FadeOutTime" data="1000"/>
+					<property type="7" name="ComponentNodeTrackComponent" data="NodeTrackComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Show" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="InterpolationMode" data="Spline"/>
+					<property type="7" name="RotationMode" data="Linear"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="2" name="NodeTrackCount" data="2"/>
+					<property type="2" name="NodeTrackId0" data="649336421"/>
+					<property type="6" name="TimePosition0" data="0.5"/>
+					<property type="2" name="NodeTrackId1" data="3033702417"/>
+					<property type="6" name="TimePosition1" data="1.5"/>
 				</userData>
 			</item>
 		</node>
-		<node name="Node_6" id="4215508640">
-			<position x="23.9149" y="4.97684" z="-16"/>
-			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+		<node name="Node_8" id="4215514730">
+			<position x="26.3124" y="4.05106" z="-14.5998"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Node_6" meshFile="Node.mesh" castShadows="true" visible="true">
+			<item name="Node_8" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="1700938876"/>
+					<property type="7" name="Id" data="3033702417"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
@@ -2506,6 +2854,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2514,7 +2863,8 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

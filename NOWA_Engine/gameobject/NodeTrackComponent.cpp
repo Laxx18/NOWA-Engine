@@ -10,13 +10,15 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    NodeTrackComponent::NodeTrackComponent()
-        : GameObjectComponent(),
+    NodeTrackComponent::NodeTrackComponent() :
+        GameObjectComponent(),
         activated(new Variant(NodeTrackComponent::AttrActivated(), true, this->attributes)),
         animation(nullptr),
         animationTrack(nullptr),
         animationState(nullptr),
-        trackingActive(false)
+        trackingActive(false),
+        endOfPathReached(false),
+        lastTimePosition(0.0f)
     {
         std::vector<Ogre::String> interpolationModes{"Spline", "Linear"};
         this->interpolationMode = new Variant(NodeTrackComponent::AttrInterpolationMode(), interpolationModes, this->attributes);
@@ -34,7 +36,6 @@ namespace NOWA
 
     NodeTrackComponent::~NodeTrackComponent()
     {
-       
     }
 
     bool NodeTrackComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -149,7 +150,7 @@ namespace NOWA
         // Defensive: normally already removed via disconnect()/onRemoveComponent(),
         // but never leave a stale closure referencing a soon-to-be-destroyed `this`
         // registered on the render thread.
-        Ogre::String trackedClosureId = this->gameObjectPtr->getName() + this->getClassName() + "::update";
+        Ogre::String trackedClosureId = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(trackedClosureId);
 
         if (nullptr != this->animation)
@@ -173,20 +174,79 @@ namespace NOWA
 
     bool NodeTrackComponent::connect(void)
     {
+        GameObjectComponent::connect();
+
+        this->setActivated(this->activated->getBool());
+
+        return true;
+    }
+
+    void NodeTrackComponent::buildAndActivateAnimation(void)
+    {
         if (true == this->timePositions.empty())
         {
-            return true;
+            return;
         }
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
+            const Ogre::Real totalAnimationLength = this->timePositions[this->nodeTrackIds.size() - 1]->getReal();
+
             if (nullptr != this->animation)
             {
                 this->animation->destroyAllNodeTracks();
                 this->gameObjectPtr->getSceneManager()->destroyAnimation(this->animation->getName());
+                this->animation = nullptr;
+                this->animationTrack = nullptr;
             }
 
-            this->animation = this->gameObjectPtr->getSceneManager()->createAnimation("Path" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()), this->timePositions[this->nodeTrackIds.size() - 1]->getReal());
+            // FEATURE: if this GameObject also has a CameraComponent, the actual
+            // on-screen camera is NOT reliably driven by this SceneNode - an
+            // ACTIVE camera is moved directly (camera behavior -> Ogre::Camera),
+            // and CameraComponent::update() deliberately never writes node ->
+            // camera in that case (see the big comment in CameraComponent::
+            // createCamera() - avoiding that write is what prevents gizmo
+            // jitter). So animating just the node here would move nothing
+            // visible for an active camera. Resolve the real Ogre::Camera* once
+            // here and push the animated transform onto it directly every frame
+            // in update() below, the same way BaseCamera::moveCamera/rotateCamera
+            // already do via GraphicsModule::updateCameraPosition/-Orientation.
+            this->camera = nullptr;
+            const auto cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
+            if (nullptr != cameraCompPtr)
+            {
+                this->camera = cameraCompPtr->getCamera();
+            }
+
+            // FIX/FEATURE (Option 1): if the sequence's total length collapses to
+            // (effectively) 0 - a single waypoint configured at time 0 - there is
+            // nothing to interpolate. Treat this as a genuine instant snap
+            // instead: set the final transform directly, build no animation/
+            // animationState at all.
+            if (totalAnimationLength <= 0.0001f)
+            {
+                GameObjectPtr lastWaypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->nodeTrackIds[this->nodeTrackIds.size() - 1]->getULong());
+                if (nullptr != lastWaypointGameObjectPtr)
+                {
+                    auto nodeCompPtr = NOWA::makeStrongPtr(lastWaypointGameObjectPtr->getComponent<NodeComponent>());
+                    if (nullptr != nodeCompPtr)
+                    {
+                        if (nullptr != this->camera)
+                        {
+                            this->camera->setPosition(nodeCompPtr->getPosition());
+                            // Orientation stays whatever the camera/object already has -
+                            // never the waypoint marker's own (often arbitrary) rotation.
+                        }
+                        else
+                        {
+                            this->gameObjectPtr->getSceneNode()->setPosition(nodeCompPtr->getPosition());
+                        }
+                    }
+                }
+                return;
+            }
+
+            this->animation = this->gameObjectPtr->getSceneManager()->createAnimation("Path" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->index), totalAnimationLength);
 
             // Create a node track for animation
             this->animationTrack = this->animation->createNodeTrack(this->gameObjectPtr->getSceneNode());
@@ -221,88 +281,128 @@ namespace NOWA
                 this->animation->setRotationInterpolationMode(Ogre::v1::Animation::RIM_SPHERICAL);
             }
 
-            this->animationState = this->gameObjectPtr->getSceneManager()->createAnimationState("Path" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-            this->animationState->setLoop(this->repeat->getBool());
-
-            // FEATURE: if this GameObject also has a CameraComponent, the actual
-            // on-screen camera is NOT reliably driven by this SceneNode - an
-            // ACTIVE camera is moved directly (camera behavior -> Ogre::Camera),
-            // and CameraComponent::update() deliberately never writes node ->
-            // camera in that case (see the big comment in CameraComponent::
-            // createCamera() - avoiding that write is what prevents gizmo
-            // jitter). So animating just the node here would move nothing
-            // visible for an active camera. Resolve the real Ogre::Camera* once
-            // here and push the animated transform onto it directly every frame
-            // in update() below, the same way BaseCamera::moveCamera/rotateCamera
-            // already do via GraphicsModule::updateCameraPosition/-Orientation.
-            this->camera = nullptr;
-            const auto cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
-            if (nullptr != cameraCompPtr)
-            {
-                this->camera = cameraCompPtr->getCamera();
-            }
-
-            // FIX/FEATURE: the object's CURRENT transform at connect/activation
-            // time is always the effective first waypoint - without this, Ogre's
-            // NodeAnimationTrack has no keyframe before timePositions[0] and simply
-            // clamps to that first configured waypoint's transform the instant
-            // addTime() runs, causing a hard snap/jump instead of a smooth
-            // transition from wherever the object actually is. Inserting a t=0
-            // keyframe with the live scene-node transform fixes that: playback now
-            // always starts by smoothly interpolating from "here" to the first
-            // configured waypoint (assuming timePositions[0] > 0 - if it's 0, this
-            // keyframe and the first configured one just coincide, which is harmless).
-            Ogre::v1::TransformKeyFrame* startKeyFrame = this->animationTrack->createNodeKeyFrame(0.0f);
-            startKeyFrame->setTranslate(this->gameObjectPtr->getSceneNode()->getPosition());
-            startKeyFrame->setRotation(this->gameObjectPtr->getSceneNode()->getOrientation());
-            startKeyFrame->setScale(this->gameObjectPtr->getSceneNode()->getScale());
+            // Counts the keyframes that will ACTUALLY be created, not the number of
+            // configured waypoints - those differ. The synthetic start keyframe only
+            // exists when the first waypoint sits after t=0, and waypoints whose game
+            // object cannot be resolved contribute nothing. Two waypoints with the first
+            // one at t=0 therefore produced exactly TWO keyframes, while this guard,
+            // counting waypoints, saw "2" and happily allowed spline mode.
+            //
+            // Ogre's spline needs at least three keyframes to derive meaningful tangents;
+            // with two it extrapolates sideways instead of running straight between them.
+            const bool needsSyntheticStartKeyFrame = (this->timePositions[0]->getReal() > 0.0001f);
+            unsigned int expectedKeyFrameCount = needsSyntheticStartKeyFrame ? 1u : 0u;
 
             for (size_t i = 0; i < this->nodeTrackIds.size(); i++)
             {
-                Ogre::v1::TransformKeyFrame* transformKeyFrame = this->animationTrack->createNodeKeyFrame(this->timePositions[i]->getReal());
-                GameObjectPtr waypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->nodeTrackIds[i]->getULong());
-                if (nullptr != waypointGameObjectPtr)
+                GameObjectPtr countWaypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->nodeTrackIds[i]->getULong());
+                if (nullptr == countWaypointGameObjectPtr)
                 {
-                    auto nodeCompPtr = NOWA::makeStrongPtr(waypointGameObjectPtr->getComponent<NodeComponent>());
-                    if (nullptr != nodeCompPtr)
-                    {
-                        transformKeyFrame->setTranslate(nodeCompPtr->getPosition());
-                        transformKeyFrame->setRotation(nodeCompPtr->getOrientation());
-                        transformKeyFrame->setScale(nodeCompPtr->getOwner()->getScale());
-                    }
+                    continue;
                 }
+                if (nullptr == NOWA::makeStrongPtr(countWaypointGameObjectPtr->getComponent<NodeComponent>()))
+                {
+                    continue;
+                }
+                expectedKeyFrameCount++;
             }
 
-            if (true == this->activated->getBool())
+            if (expectedKeyFrameCount < 3u)
             {
-                this->animationState->setEnabled(true);
+                this->animation->setRotationInterpolationMode(Ogre::v1::Animation::RIM_LINEAR);
+                this->animation->setInterpolationMode(Ogre::v1::Animation::IM_LINEAR);
             }
-        };
-        // Blocking: connect() returns right after this and callers/other
-        // components may immediately rely on this->animationState/this->animation
-        // already existing (e.g. setActivated() called right after connect()).
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "NodeTrackComponent::connect");
 
-        return true;
+            this->animationState = this->gameObjectPtr->getSceneManager()->createAnimationState("Path" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->index));
+            this->animationState->setLoop(this->repeat->getBool());
+
+            const Ogre::Vector3 travellingObjectScale = this->gameObjectPtr->getSceneNode()->getScale();
+            // FIX: keep the travelling object's OWN orientation constant across
+            // every keyframe, instead of rotating to match each waypoint
+            // marker's own orientation (those markers were placed purely for
+            // position reference, never with a deliberate rotation in mind).
+            const Ogre::Quaternion travellingObjectOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+
+            // Only add a synthetic "current position" start keyframe when there
+            // is an actual gap before the first configured waypoint - if the
+            // first waypoint is already at time 0, IT is the t=0 keyframe;
+            // adding another one at the exact same time would create two
+            // competing keyframes at the same instant.
+            if (this->timePositions[0]->getReal() > 0.0001f)
+            {
+                Ogre::v1::TransformKeyFrame* startKeyFrame = this->animationTrack->createNodeKeyFrame(0.0f);
+                startKeyFrame->setTranslate(this->gameObjectPtr->getSceneNode()->getPosition());
+                startKeyFrame->setRotation(travellingObjectOrientation);
+                startKeyFrame->setScale(travellingObjectScale);
+            }
+
+            for (size_t i = 0; i < this->nodeTrackIds.size(); i++)
+            {
+                // Bug: the keyframe used to be created BEFORE checking whether the
+                // waypoint could be resolved at all. An unresolvable one - a freshly added
+                // row still at id 0, or a deleted waypoint - then left a keyframe with the
+                // default translation (0,0,0) in the track, and the object flew off to the
+                // world origin and back.
+                GameObjectPtr waypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->nodeTrackIds[i]->getULong());
+                if (nullptr == waypointGameObjectPtr)
+                {
+                    continue;
+                }
+
+                auto nodeCompPtr = NOWA::makeStrongPtr(waypointGameObjectPtr->getComponent<NodeComponent>());
+                if (nullptr == nodeCompPtr)
+                {
+                    continue;
+                }
+
+                Ogre::v1::TransformKeyFrame* transformKeyFrame = this->animationTrack->createNodeKeyFrame(this->timePositions[i]->getReal());
+                transformKeyFrame->setTranslate(nodeCompPtr->getPosition());
+                transformKeyFrame->setRotation(travellingObjectOrientation);
+                transformKeyFrame->setScale(travellingObjectScale);
+            }
+
+            // A rebuilt animation starts over, so the end of path latch has to as well -
+            // otherwise a restart would swallow the first arrival.
+            this->endOfPathReached = false;
+            this->lastTimePosition = 0.0f;
+
+            this->animationState->setEnabled(true);
+        };
+        // Blocking: the caller (setActivated) may rely on this->animationState/
+        // this->animation already existing right after this returns.
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "NodeTrackComponent::buildAndActivateAnimation");
     }
 
     bool NodeTrackComponent::disconnect(void)
     {
+        GameObjectComponent::disconnect();
         // Never leave a dangling Ogre::Camera* around once we stop driving it -
         // the CameraComponent (and its underlying Ogre::Camera) may be destroyed
         // or recreated independently of this component's own lifecycle.
         this->camera = nullptr;
 
-        Ogre::String trackedClosureId = this->gameObjectPtr->getName() + this->getClassName() + "::update";
+        Ogre::String trackedClosureId = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(trackedClosureId);
+
+        // The end of path latch has to be cleared here too, not only when the animation is
+        // rebuilt - otherwise a stop/start cycle would leave it set and swallow the first
+        // arrival of the next run.
+        this->endOfPathReached = false;
+        this->lastTimePosition = 0.0f;
 
         if (nullptr != this->animationTrack)
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 this->animationTrack->removeAllKeyFrames();
-                this->animationState->setEnabled(false);
-                this->animationState->setTimePosition(0.0f);
+                // The animation state is created together with the track, but guard it
+                // anyway - the two are separate pointers and a partial teardown would
+                // otherwise dereference null here.
+                if (nullptr != this->animationState)
+                {
+                    this->animationState->setEnabled(false);
+                    this->animationState->setTimePosition(0.0f);
+                }
             };
             // Blocking: disconnect() returns right after this, and callers expect
             // the animation to be fully torn down/reset by the time it does.
@@ -332,7 +432,7 @@ namespace NOWA
 
     void NodeTrackComponent::update(Ogre::Real dt, bool notSimulating)
     {
-        Ogre::String trackedClosureId = this->gameObjectPtr->getName() + this->getClassName() + "::update";
+        Ogre::String trackedClosureId = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 
         if (true == notSimulating || nullptr == this->animationState || false == this->activated->getBool())
         {
@@ -366,6 +466,73 @@ namespace NOWA
                 NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, worldPosition);
                 NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, worldOrientation);
             }
+
+            // End of path detection. "Has finished" is a STATE that stays true for every
+            // following frame, so it is latched on the rising edge - otherwise the closure
+            // would fire once per frame for as long as the object rests at the last node.
+            const Ogre::Real timePosition = this->animationState->getTimePosition();
+            const Ogre::Real animationLength = this->animationState->getLength();
+
+            bool atEndNow = false;
+            if (true == this->repeat->getBool())
+            {
+                // Looping: addTime() wraps the time position around, so a wrap marks a
+                // completed lap.
+                atEndNow = (timePosition < this->lastTimePosition);
+            }
+            else
+            {
+                atEndNow = (animationLength > 0.0f && timePosition >= animationLength - 0.0001f);
+            }
+            this->lastTimePosition = timePosition;
+
+            const bool justReachedEnd = atEndNow && (false == this->endOfPathReached);
+            this->endOfPathReached = atEndNow;
+
+            if (false == justReachedEnd)
+            {
+                return;
+            }
+
+            if (false == this->endOfPathClosureFunction.is_valid())
+            {
+                return;
+            }
+
+            // This closure runs on the RENDER thread, and lua must only ever be touched
+            // from the logic thread, so the call is deferred. The closure object itself is
+            // deliberately NOT copied - disconnect() clears it, and the is_valid() check
+            // inside the command is what notices a teardown. The weak pointer covers the
+            // other case: the component being destroyed rather than merely disconnected.
+            boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+            {
+                boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                if (nullptr == strongThis)
+                {
+                    return;
+                }
+
+                if (false == this->endOfPathClosureFunction.is_valid())
+                {
+                    return;
+                }
+
+                try
+                {
+                    luabind::call_function<void>(this->endOfPathClosureFunction, this->gameObjectPtr.get());
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[NodeTrackComponent] Caught error in 'reactOnEndOfPathReached' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
         };
         NOWA::GraphicsModule::getInstance()->updateTrackedClosure(trackedClosureId, closureFunction, false);
     }
@@ -481,24 +648,45 @@ namespace NOWA
     {
         this->activated->setValue(activated);
 
-        // FIX: this used to only store the flag - the actual movement is driven
-        // by this->animationState->setEnabled(true)/addTime() in update(), and
-        // that enable-call previously only ever happened once, inside connect(),
-        // gated behind whatever this->activated was AT CONNECT TIME. Calling
-        // setActivated(true) later (e.g. from a delayed Lua callback, after
-        // connect() already ran with activated == false) changed the stored
-        // flag but never actually enabled the AnimationState - addTime() on a
-        // disabled state is a no-op, so nothing visibly moved despite waypoints
-        // being present and update() running every frame.
-        if (nullptr != this->animationState)
+        // setActivated() calls coming from XML/property deserialization at
+        // scene LOAD time (before connect() ever ran, this->bConnected still
+        // false) would try to touch this->animationState/build the animation
+        // way too early.
+        if (false == this->bConnected)
         {
-            this->animationState->setEnabled(activated);
+            return;
         }
+
+        if (false == activated)
+        {
+            if (nullptr != this->animationState)
+            {
+                this->animationState->setEnabled(false);
+            }
+            return;
+        }
+
+        // FIX: the whole animation (including its "current position" start
+        // keyframe) is now built HERE, fresh, every time this component is
+        // actually switched on - not once back in connect(). That's what
+        // makes the start keyframe reflect wherever the object truly is RIGHT
+        // NOW, instead of a stale snapshot from simulation start - critical
+        // when multiple NodeTrackComponents on the same GameObject get
+        // activated one after another (the second must continue from where
+        // the first left off, not reset back to the object's original spot).
+        this->buildAndActivateAnimation();
     }
 
     bool NodeTrackComponent::isActivated(void) const
     {
         return this->activated->getBool();
+    }
+
+    void NodeTrackComponent::reactOnEndOfPathReached(luabind::object closureFunction)
+    {
+        // Replacing, not appending: calling this repeatedly - e.g. from a script function
+        // that runs every frame - leaves exactly one reaction registered.
+        this->endOfPathClosureFunction = closureFunction;
     }
 
     void NodeTrackComponent::setNodeTrackCount(unsigned int nodeTrackCount)
@@ -516,7 +704,19 @@ namespace NOWA
             for (size_t i = oldSize; i < this->nodeTrackIds.size(); i++)
             {
                 this->nodeTrackIds[i] = new Variant(NodeTrackComponent::AttrNodeTrackId() + Ogre::StringConverter::toString(i), static_cast<unsigned long>(0), this->attributes, true);
-                this->timePositions[i] = new Variant(NodeTrackComponent::AttrTimePosition() + Ogre::StringConverter::toString(i), static_cast<Ogre::Real>(i), this->attributes);
+
+                // Seeded from the PREVIOUS entry plus one second, not from the raw index.
+                // Using the index meant a newly added waypoint always got exactly 'i'
+                // seconds - so after adjusting waypoint 0 to, say, 5 seconds, adding
+                // waypoint 1 handed it 1 second, i.e. a time BEFORE its predecessor, and
+                // that segment ran backwards.
+                Ogre::Real previousTimePosition = 0.0f;
+                if (i > 0 && nullptr != this->timePositions[i - 1])
+                {
+                    previousTimePosition = this->timePositions[i - 1]->getReal();
+                }
+
+                this->timePositions[i] = new Variant(NodeTrackComponent::AttrTimePosition() + Ogre::StringConverter::toString(i), previousTimePosition + 1.0f, this->attributes);
                 this->timePositions[i]->addUserData(GameObject::AttrActionSeparator());
             }
         }
@@ -552,29 +752,26 @@ namespace NOWA
 
     void NodeTrackComponent::setTimePosition(unsigned int index, Ogre::Real timePosition)
     {
+        // FIX: reverted the earlier "never <= 0" clamp - that was wrong for
+        // multi-waypoint sequences, where the FIRST waypoint legitimately sits
+        // at time 0 (reached instantly, then travel continues to the later
+        // ones) as long as the LAST waypoint's time (which determines the
+        // whole animation's length) is > 0. A time position of exactly 0 is
+        // now a meaningful, intentional value - connect() treats an animation
+        // whose total length collapses to 0 (i.e. the LAST waypoint is at
+        // time 0) as an instant snap instead of forcing an artificial minimum
+        // interpolation time.
+        if (timePosition < 0.0f)
+        {
+            timePosition = 0.0f;
+        }
+
         if (index >= this->timePositions.size())
         {
             index = static_cast<unsigned int>(this->timePositions.size()) - 1;
         }
 
-        Ogre::Real oldTimePosition = 0.0f;
-        Ogre::Real newTimePosition = 0.0f;
-
-        if (index > 0)
-        {
-            oldTimePosition = this->timePositions[index - 1]->getReal();
-        }
-
-        if (timePosition >= oldTimePosition)
-        {
-            newTimePosition = timePosition;
-        }
-        else
-        {
-            newTimePosition = oldTimePosition + 1;
-        }
-
-        this->timePositions[index]->setValue(newTimePosition);
+        this->timePositions[index]->setValue(timePosition);
     }
 
     Ogre::Real NodeTrackComponent::getTimePosition(unsigned int index)

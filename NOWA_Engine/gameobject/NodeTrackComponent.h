@@ -5,221 +5,263 @@
 
 namespace NOWA
 {
-	/**
-	 * @class 	NodeTrackComponent
-	 * @brief 	This component can be used to move the owner game object at a specific path created by node components.
-	 *			Info: Only one node track component can be added for the owner game object.
-	 *			Example: A bee flying around or a light flying around an object.
-	 *			Requirements: None
-	 */
-	class EXPORTED NodeTrackComponent : public GameObjectComponent
-	{
-	public:
+    /**
+     * @class 	NodeTrackComponent
+     * @brief 	This component can be used to move the owner game object at a specific path created by node components.
+     *			Info: Only one node track component can be added for the owner game object.
+     *			Example: A bee flying around or a light flying around an object.
+     *			Requirements: None
+     */
+    class EXPORTED NodeTrackComponent : public GameObjectComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::NodeTrackComponent> NodeTrackCompPtr;
 
-		typedef boost::shared_ptr<NOWA::NodeTrackComponent> NodeTrackCompPtr;
-	public:
-	
-		NodeTrackComponent();
+    public:
+        NodeTrackComponent();
 
-		virtual ~NodeTrackComponent();
+        virtual ~NodeTrackComponent();
 
-		/**
-		* @see		GameObjectComponent::init
-		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
-		/**
-		* @see		GameObjectComponent::postInit
-		*/
-		virtual bool postInit(void) override;
-   
-       /**
-        * @see		GameObjectComponent::onRemoveComponent
-        */
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::onRemoveComponent
+         */
         virtual void onRemoveComponent(void) override;
 
-		/**
-		* @see		GameObjectComponent::connect
-		*/
-		virtual bool connect(void) override;
+        /**
+         * @see		GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
 
-		/**
-		* @see		GameObjectComponent::disconnect
-		*/
-		virtual bool disconnect(void) override;
+        /**
+         * @see		GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
 
-		/**
-		* @see		GameObjectComponent::onCloned
-		*/
-		virtual bool onCloned(void) override;
+        /**
+         * @see		GameObjectComponent::onCloned
+         */
+        virtual bool onCloned(void) override;
 
-		/**
-		* @see		GameObjectComponent::getClassName
-		*/
-		virtual Ogre::String getClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
 
-		/**
-		* @see		GameObjectComponent::getParentClassName
-		*/
-		virtual Ogre::String getParentClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
 
-		/**
-		* @see		GameObjectComponent::clone
-		*/
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("NodeTrackComponent");
-		}
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("NodeTrackComponent");
+        }
 
-		static Ogre::String getStaticClassName(void)
-		{
-			return "NodeTrackComponent";
-		}
+        static Ogre::String getStaticClassName(void)
+        {
+            return "NodeTrackComponent";
+        }
 
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+        {
+        }
 
-		/**
-		* @see	GameObjectComponent::getStaticInfoText
-		*/
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: This Component is used for camera tracking in conjunction with several NodeComponents acting as waypoints.";
-		}
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: This Component is used for camera tracking in conjunction with several NodeComponents acting as waypoints.";
+        }
 
-		/**
-		 * @see		GameObjectComponent::update
-		 */
-		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+        /**
+         * @see		GameObjectComponent::update
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
-		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
 
-		/**
-		* @see		GameObjectComponent::writeXML
-		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		/**
-		* @see		GameObjectComponent::setActivated
-		*/
-		virtual void setActivated(bool activated) override;
+        /**
+         * @see		GameObjectComponent::setActivated
+         */
+        virtual void setActivated(bool activated) override;
 
-		virtual bool isActivated(void) const override;
+        virtual bool isActivated(void) const override;
 
-		/**
-		 * @brief Sets the node track count (how many nodes are used for the tracking).
-		 * @param[in] nodeTrackCount The node track count to set
-		 */
-		void setNodeTrackCount(unsigned int nodeTrackCount);
+        /**
+         * @brief Sets the node track count (how many nodes are used for the tracking).
+         * @param[in] nodeTrackCount The node track count to set
+         */
+        void setNodeTrackCount(unsigned int nodeTrackCount);
 
-		/**
-		 * @brief Gets the node track count
-		 * @return nodeTrackCount The node track count
-		 */
-		unsigned int getNodeTrackCount(void) const;
+        /**
+         * @brief Gets the node track count
+         * @return nodeTrackCount The node track count
+         */
+        unsigned int getNodeTrackCount(void) const;
 
-		/**
-		 * @brief Sets the node track id for the given index in the node track list with @nodeTrackCount elements
-		 * @param[in] index The index, the node track id is set in the ordered list.
-		 * @param[in] id 	The id of the game object with the node component
-		 * @note	The order is controlled by the index, from which node to which node this game object will be tracked.
-		 */
-		void setNodeTrackId(unsigned int index, unsigned long id);
+        /**
+         * @brief Sets the node track id for the given index in the node track list with @nodeTrackCount elements
+         * @param[in] index The index, the node track id is set in the ordered list.
+         * @param[in] id 	The id of the game object with the node component
+         * @note	The order is controlled by the index, from which node to which node this game object will be tracked.
+         */
+        void setNodeTrackId(unsigned int index, unsigned long id);
 
-		/**
-		 * @brief Gets node track id from the given node track index from list
-		 * @param[in] index The index, the node track id is set.
-		 * @return nodeTrackCount The node track count
-		 */
-		unsigned long getNodeTrackId(unsigned int index);
+        /**
+         * @brief Gets node track id from the given node track index from list
+         * @param[in] index The index, the node track id is set.
+         * @return nodeTrackCount The node track count
+         */
+        unsigned long getNodeTrackId(unsigned int index);
 
-		/**
-		 * @brief Sets time position in milliseconds after which this game object should be tracked at the node from the given index.
-		 * @param[in] index 		The index, at which node after x-milliseconds the game object should arrive
-		 * @param[in] timePosition 	The time position in milliseconds at which the game object should arrive at the node with the given index
-		 */
-		void setTimePosition(unsigned int index, Ogre::Real timePosition);
+        /**
+         * @brief Sets time position in milliseconds after which this game object should be tracked at the node from the given index.
+         * @param[in] index 		The index, at which node after x-milliseconds the game object should arrive
+         * @param[in] timePosition 	The time position in milliseconds at which the game object should arrive at the node with the given index
+         */
+        void setTimePosition(unsigned int index, Ogre::Real timePosition);
 
-		/**
-		 * @brief Gets time position in milliseconds for the node with the given index.
-		 * @param[in] index 		The index of node to get the time position
-		 * @return timePosition 	The time position in milliseconds to get for the node
-		 */
-		Ogre::Real getTimePosition(unsigned int index);
+        /**
+         * @brief Gets time position in milliseconds for the node with the given index.
+         * @param[in] index 		The index of node to get the time position
+         * @return timePosition 	The time position in milliseconds to get for the node
+         */
+        Ogre::Real getTimePosition(unsigned int index);
 
-		/**
-		 * @brief Sets the curve interpolation mode how the game object will be moved. 
-		 * @param[in] interpolationMode The interpolation mode to set
-		 * @note	Possible values are: "Spline", "Linear"
-		 */
-		void setInterpolationMode(const Ogre::String& interpolationMode);
+        /**
+         * @brief Sets the curve interpolation mode how the game object will be moved.
+         * @param[in] interpolationMode The interpolation mode to set
+         * @note	Possible values are: "Spline", "Linear"
+         */
+        void setInterpolationMode(const Ogre::String& interpolationMode);
 
-		/**
-		 * @brief Gets the curve interpolation mode how the game object is moved. 
-		 * @return interpolationMode The interpolation mode to get
-		 * @note	Possible values are: "Spline", "Linear"
-		 */
-		Ogre::String getInterpolationMode(void) const;
+        /**
+         * @brief Gets the curve interpolation mode how the game object is moved.
+         * @return interpolationMode The interpolation mode to get
+         * @note	Possible values are: "Spline", "Linear"
+         */
+        Ogre::String getInterpolationMode(void) const;
 
-		/**
-		 * @brief Sets the rotation mode how the game object will be rotated during movement. 
-		 * @param[in] rotationMode The rotation mode to set
-		 * @note	Possible values are: "Linear", "Spherical"
-		 */
-		void setRotationMode(const Ogre::String& rotationMode);
+        /**
+         * @brief Sets the rotation mode how the game object will be rotated during movement.
+         * @param[in] rotationMode The rotation mode to set
+         * @note	Possible values are: "Linear", "Spherical"
+         */
+        void setRotationMode(const Ogre::String& rotationMode);
 
-		/**
-		 * @brief Gets the rotation mode how the game object is rotated during movement. 
-		 * @return interpolationMode The interpolation mode to get
-		 * @note	Possible values are: "Spline", "Linear"
-		 */
-		Ogre::String getRotationMode(void) const;
+        /**
+         * @brief Gets the rotation mode how the game object is rotated during movement.
+         * @return interpolationMode The interpolation mode to get
+         * @note	Possible values are: "Spline", "Linear"
+         */
+        Ogre::String getRotationMode(void) const;
 
-		/**
-		 * @brief Gets Ogre v1 animation pointer to control the animation directly.
-		 * @return animation The animation pointer to get
-		 */
-		Ogre::v1::Animation* getAnimation(void) const;
+        /**
+         * @brief Gets Ogre v1 animation pointer to control the animation directly.
+         * @return animation The animation pointer to get
+         */
+        Ogre::v1::Animation* getAnimation(void) const;
 
-		/**
-		 * @brief Gets Ogre v1 animation track pointer to control the animation track directly.
-		 * @return animationTrack The animation track pointer to get
-		 */
-		Ogre::v1::NodeAnimationTrack* getAnimationTrack(void) const;
+        /**
+         * @brief Gets Ogre v1 animation track pointer to control the animation track directly.
+         * @return animationTrack The animation track pointer to get
+         */
+        Ogre::v1::NodeAnimationTrack* getAnimationTrack(void) const;
 
-		void setRepeat(bool repeat);
+        void setRepeat(bool repeat);
 
-		bool getRepeat(void) const;
-	public:
-		static const Ogre::String AttrActivated(void) { return "Activated"; }
-		static const Ogre::String AttrNodeTrackCount(void) { return "Count"; }
-		static const Ogre::String AttrNodeTrackId(void) { return "Node Track Id "; }
-		static const Ogre::String AttrTimePosition(void) { return "Time Position "; }
-		static const Ogre::String AttrInterpolationMode(void) {return "Interpolation Mode"; }
-		static const Ogre::String AttrRotationMode(void) { return "Rotation Mode"; }
-		static const Ogre::String AttrRepeat(void) { return "Repeat"; }
-	private:
-		Variant* activated;
-		Variant* nodeTrackCount;
-		std::vector<Variant*> nodeTrackIds;
-		std::vector<Variant*> timePositions;
-		Variant* interpolationMode;
-		Variant* rotationMode;
-		Variant* repeat;
-		Ogre::v1::Animation* animation;
-		Ogre::v1::NodeAnimationTrack* animationTrack;
-		Ogre::v1::AnimationState* animationState;
+        bool getRepeat(void) const;
+
+        /**
+         * @brief Lua closure function which gets called when the LAST node of the path has
+         *        been reached. With 'Repeat' enabled it fires on every completed lap.
+         * @param[in] closureFunction The closure function to set. Calling this again
+         *                            REPLACES the previous one.
+         */
+        void reactOnEndOfPathReached(luabind::object closureFunction);
+
+    public:
+        static const Ogre::String AttrActivated(void)
+        {
+            return "Activated";
+        }
+        static const Ogre::String AttrNodeTrackCount(void)
+        {
+            return "Count";
+        }
+        static const Ogre::String AttrNodeTrackId(void)
+        {
+            return "Node Track Id ";
+        }
+        static const Ogre::String AttrTimePosition(void)
+        {
+            return "Time Position ";
+        }
+        static const Ogre::String AttrInterpolationMode(void)
+        {
+            return "Interpolation Mode";
+        }
+        static const Ogre::String AttrRotationMode(void)
+        {
+            return "Rotation Mode";
+        }
+        static const Ogre::String AttrRepeat(void)
+        {
+            return "Repeat";
+        }
+
+    private:
+        void buildAndActivateAnimation(void);
+
+    private:
+        Variant* activated;
+        Variant* nodeTrackCount;
+        std::vector<Variant*> nodeTrackIds;
+        std::vector<Variant*> timePositions;
+        Variant* interpolationMode;
+        Variant* rotationMode;
+        Variant* repeat;
+        luabind::object endOfPathClosureFunction;
+        // Edge latch: "animation has finished" is a STATE that stays true for every
+        // following frame, so without this the closure would fire once per frame for as
+        // long as the object rests at the last node.
+        bool endOfPathReached;
+        // Previous time position, used to detect the wrap around in repeat mode.
+        Ogre::Real lastTimePosition;
+        Ogre::v1::Animation* animation;
+        Ogre::v1::NodeAnimationTrack* animationTrack;
+        Ogre::v1::AnimationState* animationState;
         Ogre::Camera* camera;
         bool trackingActive;
-	};
+    };
 
-}; //namespace end
+}; // namespace end
 
 #endif

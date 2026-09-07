@@ -721,11 +721,11 @@ namespace NOWA
 
         GraphicsModule::RenderCommand renderCommand = [this, &particleData, templateName, cloneName]()
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] createParticleEffect START: template='" + templateName + "' clone='" + cloneName + "'");
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] createParticleEffect START: template='" + templateName + "' clone='" + cloneName + "'");
 
             Ogre::ParticleSystemManager2* particleManager = this->sceneManager->getParticleSystemManager2();
             bool hasClone = particleManager && particleManager->hasParticleSystemDef(cloneName, false);
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] hasCloneDef='" + Ogre::StringConverter::toString(hasClone) + "'");
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] hasCloneDef='" + Ogre::StringConverter::toString(hasClone) + "'");
 
             Ogre::ParticleSystemDef* particleSystemDefInstance = nullptr;
 
@@ -848,18 +848,18 @@ namespace NOWA
                 particleData.fadeProgress = 1.0f;
             }
 
-            if (particleData.particleSystem)
-            {
-                // Log the material/datablock being used
-                const Ogre::ParticleSystemDef* def = particleData.particleSystem->getParticleSystemDef();
-                if (def)
-                {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] Material: " + def->getMaterialName());
-                }
-            }
+            //if (particleData.particleSystem)
+            //{
+            //    // Log the material/datablock being used
+            //    const Ogre::ParticleSystemDef* def = particleData.particleSystem->getParticleSystemDef();
+            //    if (def)
+            //    {
+            //        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] Material: " + def->getMaterialName());
+            //    }
+            //}
 
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] createParticleEffect END: particleSystem=" + Ogre::String(particleData.particleSystem ? "VALID" : "NULL"));
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] createParticleEffect END: particleSystem=" + Ogre::String(particleData.particleSystem ? "VALID" : "NULL"));
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxModule::createParticleEffect");
 

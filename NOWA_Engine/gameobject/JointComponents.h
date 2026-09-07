@@ -538,6 +538,7 @@ namespace NOWA
 		Variant* springK;
 		Variant* springD;
 		Variant* springDamperRelaxation;
+        bool wasAtTargetAngle;
 		luabind::object targetAngleReachedClosureFunction;
 	};
 
@@ -1577,6 +1578,7 @@ namespace NOWA
 		short round;
 		bool internalDirectionChange;
 		Ogre::Real oppositeDir;
+        bool wasAtTargetPosition;
 		luabind::object targetPositionReachedClosureFunction;
 	};
 
@@ -2067,6 +2069,7 @@ namespace NOWA
 		Ogre::Vector3 originPosition;
 		Ogre::Quaternion originRotation;
 		Ogre::Vector3 gravity;
+        bool wasAtTargetPosition;
 		luabind::object targetPositionReachedClosureFunction;
 	};
 

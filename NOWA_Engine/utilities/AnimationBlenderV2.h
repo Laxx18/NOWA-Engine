@@ -2,204 +2,359 @@
 #define ANIMATIONBLENDER_V2_H
 
 #include "defines.h"
-#include "IAnimationBlender.h"
+#include "main/Events.h"
 
 namespace Ogre
 {
-	class SkeletonAnimation;
-	class Bone;
+    class SkeletonAnimation;
+    class Bone;
 }
 
 namespace NOWA
 {
-	class GameObject;
+    class GameObject;
 
-	/**
-	* @class AnimationBlenderV2
-	* @brief The animation blender v2 utilities class helps fade between two animations in a smooth way for Ogre::Item objects.
-	*/
-	class EXPORTED AnimationBlenderV2 : public IAnimationBlender
-	{
-	public:
+    /**
+     * @class AnimationBlenderV2
+     * @brief The animation blender v2 utilities class helps fade between two animations in a smooth way for Ogre::Item objects.
+     */
+    class EXPORTED AnimationBlenderV2
+    {
+    public:
+        /**
+         * @class IAnimationBlenderObserver
+         * @brief This interface can be implemented to react when an animation, that is started via blendAndContinue is finished.
+         */
+        class EXPORTED IAnimationBlenderObserver
+        {
+        public:
+            /**
+             * @brief		Called when animation is finished
+             */
+            virtual void onAnimationFinished(void) = 0;
 
-		/**
-		* @brief		Creates the animation blender for the given item.
-		* @param[in]	item						The item to use the animation blender on.
-		* @Note			All animations for this entity will be written to log in order to see which animations the item has.
-		*/
-		AnimationBlenderV2(Ogre::Item* item);
+            /**
+             * @brief		Gets whether the reaction should be done just once.
+             * @return		if true, this observer will be called only once.
+             */
+            virtual bool shouldReactOneTime(void) const = 0;
+        };
 
-		virtual ~AnimationBlenderV2();
+        enum BlendingTransition
+        {
+            BlendSwitch,         // End current animation and start a new one
+            BlendWhileAnimating, // Fade from current animation to a new one
+            BlendThenAnimate     // Fade the current animation to the first frame of the new one, after that execute the new animation
+        };
 
-		virtual void init(AnimID animationId, bool loop = true) override;
-		
-		virtual void init(const Ogre::String& animationName, bool loop = true) override;
+        // all the animations our character has, and a null ID
+        // some of these affect separate body parts and will be blended together
+        enum AnimID
+        {
+            ANIM_IDLE_1,
+            ANIM_IDLE_2,
+            ANIM_IDLE_3,
+            ANIM_IDLE_4,
+            ANIM_IDLE_5,
+            ANIM_WALK_NORTH,
+            ANIM_WALK_SOUTH,
+            ANIM_WALK_WEST,
+            ANIM_WALK_EAST,
+            ANIM_RUN,
+            ANIM_CLIMB,
+            ANIM_SNEAK,
+            ANIM_HANDS_CLOSED,
+            ANIM_HANDS_RELAXED,
+            ANIM_DRAW_WEAPON,
+            ANIM_SLICE_VERTICAL,
+            ANIM_SLICE_HORIZONTAL,
+            ANIM_JUMP_START,
+            ANIM_JUMP_LOOP,
+            ANIM_HIGH_JUMP_END,
+            ANIM_JUMP_END,
+            ANIM_JUMP_WALK,
+            ANIM_FALL,
+            ANIM_EAT_1,
+            ANIM_EAT_2,
+            ANIM_PICKUP_1,
+            ANIM_PICKUP_2,
+            ANIM_ATTACK_1,
+            ANIM_ATTACK_2,
+            ANIM_ATTACK_3,
+            ANIM_ATTACK_4,
+            ANIM_SWIM,
+            ANIM_THROW_1,
+            ANIM_THROW_2,
+            ANIM_DEAD_1,
+            ANIM_DEAD_2,
+            ANIM_DEAD_3,
+            ANIM_SPEAK_1,
+            ANIM_SPEAK_2,
+            ANIM_SLEEP,
+            ANIM_DANCE,
+            ANIM_DUCK,
+            ANIM_CROUCH,
+            ANIM_HALT,
+            ANIM_ROAR,
+            ANIM_SIGH,
+            ANIM_GREETINGS,
+            ANIM_NO_IDEA,
+            ANIM_ACTION_1,
+            ANIM_ACTION_2,
+            ANIM_ACTION_3,
+            ANIM_ACTION_4,
+            ANIM_PULL,
+            ANIM_PUSH,
+            ANIM_KNOCK_DOWN,
+            ANIM_STAND_UP,
+            ANIM_TALK_1,
+            ANIM_TALK_2,
+            ANIM_POINT,
+            ANIM_LAUGH,
+            ANIM_LAND_1,
+            ANIM_LAND_2,
+            ANIM_SHOOT,
+            ANIM_START_CLIMB,
+            ANIM_TAKE_DAMAGE,
+            ANIM_SHRUG,
+            ANIM_SALTO,
+            ANIM_CRY,
+            ANIM_CHEER,
+            ANIM_CAST_SPELL_1,
+            ANIM_CAST_SPELL_2,
+            ANIM_CAST_SPELL_3,
+            ANIM_NONE
+        };
 
-		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true) override;
+        struct BlendSpaceEntry
+        {
+            AnimID animationId;
+            Ogre::Real parameter; // e.g. speed value this clip represents
+        };
 
-		virtual void blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop) override;
-		
-		virtual void blend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop) override;
+        /**
+         * @class BlendSpaceEntryList
+         * @brief Lua-constructible list of blend space entries. Build it once in
+         *        connect(), keep it as a variable, and pass it to driveBlendSpace()
+         *        every frame from execute().
+         */
+        class BlendSpaceEntryList
+        {
+        public:
+            void add(AnimID animationId, Ogre::Real parameter)
+            {
+                BlendSpaceEntry entry;
+                entry.animationId = animationId;
+                entry.parameter = parameter;
+                this->entries.push_back(entry);
+            }
 
-		virtual void blend(AnimID animationId, BlendingTransition transition, bool loop) override;
+            void clear()
+            {
+                this->entries.clear();
+            }
 
-		virtual void blend(const Ogre::String& animationName, BlendingTransition transition, bool loop) override;
+            size_t size() const
+            {
+                return this->entries.size();
+            }
 
-		virtual void blend(AnimID animationId, BlendingTransition transition) override;
+            const std::vector<BlendSpaceEntry>& getEntries() const
+            {
+                return this->entries;
+            }
 
-		virtual void blend(const Ogre::String& animationName, BlendingTransition transition) override;
+        private:
+            std::vector<BlendSpaceEntry> entries;
+        };
+    public:
+        /**
+         * @brief		Creates the animation blender for the given item.
+         * @param[in]	item						The item to use the animation blender on.
+         * @Note			All animations for this entity will be written to log in order to see which animations the item has.
+         */
+        AnimationBlenderV2(Ogre::Item* item);
 
-		virtual void blendExclusive(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop) override;
+        ~AnimationBlenderV2();
 
-		virtual void blendExclusive(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop) override;
+        void init(AnimID animationId, bool loop = true);
 
-		virtual void blendExclusive(AnimID animationId, BlendingTransition transition, bool loop) override;
+        void init(const Ogre::String& animationName, bool loop = true);
 
-		virtual void blendExclusive(const Ogre::String& animationName, BlendingTransition transition, bool loop) override;
+        std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true);
 
-		virtual void blendExclusive(AnimID animationId, BlendingTransition transition) override;
+        void blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop);
 
-		virtual void blendExclusive(const Ogre::String& animationName, BlendingTransition transition) override;
+        void blend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop);
 
-		virtual void blendAndContinue(AnimID animationId, Ogre::Real duration) override;
+        void blend(AnimID animationId, BlendingTransition transition, bool loop);
 
-		virtual void blendAndContinue(const Ogre::String& animationName, Ogre::Real duration) override;
+        void blend(const Ogre::String& animationName, BlendingTransition transition, bool loop);
 
-		virtual void blendAndContinue(AnimID animationId) override;
+        void blend(AnimID animationId, BlendingTransition transition);
 
-		virtual void blendAndContinue(const Ogre::String& animationName) override;
+        void blend(const Ogre::String& animationName, BlendingTransition transition);
 
-		virtual void setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime = 0.2f) override;
+        void blendPhaseSynced(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop);
 
-        virtual void setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime = 0.2f) override;
+        void blendPhaseSynced(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop);
 
-        virtual void clearOverlayAnimation(Ogre::Real blendOutTime = 0.2f) override;
+        void blendExclusive(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop);
 
-        virtual bool isOverlayAnimationActive(void) const override;
+        void blendExclusive(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop);
 
-		virtual void driveBlendSpace(Ogre::Real parameter, const IAnimationBlender::BlendSpaceEntryList& entryList) override;
+        void blendExclusive(AnimID animationId, BlendingTransition transition, bool loop);
 
-		virtual void addTime(Ogre::Real time, const Ogre::String& ownerId) override;
+        void blendExclusive(const Ogre::String& animationName, BlendingTransition transition, bool loop);
 
-		virtual Ogre::Real getProgress(void) override;
+        void blendExclusive(AnimID animationId, BlendingTransition transition);
 
-		virtual bool isComplete(void) const override;
+        void blendExclusive(const Ogre::String& animationName, BlendingTransition transition);
 
-		virtual void registerAnimation(AnimID animationId, const Ogre::String& animationName) override;
+        void blendAndContinue(AnimID animationId, Ogre::Real duration);
 
-		virtual AnimID getAnimationIdFromString(const Ogre::String& animationName) override;
+        void blendAndContinue(const Ogre::String& animationName, Ogre::Real duration);
 
-		virtual void clearAnimations(void) override;
+        void blendAndContinue(AnimID animationId);
 
-		virtual bool hasAnimation(const Ogre::String& animationName) override;
+        void blendAndContinue(const Ogre::String& animationName);
 
-		virtual bool hasAnimation(AnimID animationId) override;
+        void setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime = 0.2f);
 
-		virtual bool isAnimationActive(AnimID animationId) override;
+        void setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime = 0.2f);
 
-		virtual bool isAnyAnimationActive(void) override;
+        void clearOverlayAnimation(Ogre::Real blendOutTime = 0.2f);
 
-		virtual void setTimePosition(Ogre::Real timePosition) override;
+        bool isOverlayAnimationActive(void) const;
 
-		virtual Ogre::Real getTimePosition(void) const override;
+        void driveBlendSpace(Ogre::Real parameter, const AnimationBlenderV2::BlendSpaceEntryList& entryList);
 
-		virtual Ogre::Real getLength(void) const override;
+        void addTime(Ogre::Real time, const Ogre::String& ownerId);
 
-		virtual void setWeight(Ogre::Real weight) override;
+        Ogre::Real getProgress(void);
 
-		virtual Ogre::Real getWeight(void) const override;
+        bool isComplete(void) const;
 
-		virtual void resetBones(void) override;
+        void registerAnimation(AnimID animationId, const Ogre::String& animationName);
 
-		virtual void setDebugLog(bool debugLog) override;
+        AnimID getAnimationIdFromString(const Ogre::String& animationName);
 
-		virtual void setSourceEnabled(bool bEnable) override;
+        void clearAnimations(void);
 
-		virtual void setAnimationSpeed(Ogre::Real speed) override;
+        bool hasAnimation(const Ogre::String& animationName);
 
-		virtual Ogre::Real getAnimationSpeed(void) const;
+        bool hasAnimation(AnimID animationId);
 
-		virtual void addAnimationBlenderObserver(IAnimationBlenderObserver* observer) override;
+        bool isAnimationActive(AnimID animationId);
 
-		virtual void removeAnimationBlenderObserver(IAnimationBlenderObserver* observer) override;
+        bool isAnyAnimationActive(void);
 
-		virtual void notifyObservers(void) override;
+        void setTimePosition(Ogre::Real timePosition);
 
-		virtual void deleteAllObservers(void) override;
+        Ogre::Real getTimePosition(void) const;
 
-		virtual void resetBlendState(void) override;
+        Ogre::Real getLength(void) const;
 
-		virtual void beginFrame(void) override;
+        void setWeight(Ogre::Real weight);
 
-		Ogre::SkeletonAnimation* getAnimationState(AnimID animationId);
+        Ogre::Real getWeight(void) const;
 
-		Ogre::SkeletonAnimation* getAnimationState(const Ogre::String& animationName);
+        void resetBones(void);
 
-		Ogre::SkeletonAnimation* getSource(void);
+        void setDebugLog(bool debugLog);
 
-		Ogre::SkeletonAnimation* getTarget(void);
+        void setSourceEnabled(bool bEnable);
 
-		Ogre::Bone* getBone(const Ogre::String& boneName);
+        void setAnimationSpeed(Ogre::Real speed);
 
-		Ogre::Vector3 getLocalToWorldPosition(Ogre::Bone* bone);
+        Ogre::Real getAnimationSpeed(void) const;
 
-		Ogre::Quaternion getLocalToWorldOrientation(Ogre::Bone* bone);
+        void addAnimationBlenderObserver(IAnimationBlenderObserver* observer);
 
-	public:
-		static void dumpAllAnimations(Ogre::Node* node, Ogre::String padding);
-	protected:
-		virtual void queueAnimationFinishedCallback(std::function<void()> callback) override;
+        void removeAnimationBlenderObserver(IAnimationBlenderObserver* observer);
 
-		virtual void processDeferredCallbacks(void) override;
-	private:
-		void internalInit(const Ogre::String& animationName, bool loop = true);
-		void internalBlend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop = true);
-		Ogre::SkeletonAnimation* internalGetAnimationState(const Ogre::String& animationName);
+        void notifyObservers(void);
+
+        void deleteAllObservers(void);
+
+        void resetBlendState(void);
+
+        void beginFrame(void);
+
+        Ogre::SkeletonAnimation* getAnimationState(AnimID animationId);
+
+        Ogre::SkeletonAnimation* getAnimationState(const Ogre::String& animationName);
+
+        Ogre::SkeletonAnimation* getSource(void);
+
+        Ogre::SkeletonAnimation* getTarget(void);
+
+        Ogre::Bone* getBone(const Ogre::String& boneName);
+
+        Ogre::Vector3 getLocalToWorldPosition(Ogre::Bone* bone);
+
+        Ogre::Quaternion getLocalToWorldOrientation(Ogre::Bone* bone);
+
+    public:
+        static void dumpAllAnimations(Ogre::Node* node, Ogre::String padding);
+
+    protected:
+        void queueAnimationFinishedCallback(std::function<void()> callback);
+
+        void processDeferredCallbacks(void);
+
+    private:
+        void internalInit(const Ogre::String& animationName, bool loop = true);
+        // phaseSync defaults to false: every existing call site keeps the safe behaviour of
+        // starting the incoming animation at its beginning. Only blendPhaseSynced() opts in.
+        void internalBlend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop = true, bool phaseSync = false);
+        Ogre::SkeletonAnimation* internalGetAnimationState(const Ogre::String& animationName);
         bool isTargetAnimationActive(AnimID animationId);
         void internalSetOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime);
 
-		bool tryClaimAddTime(const Ogre::String& ownerId); // returns true if caller won
+        bool tryClaimAddTime(const Ogre::String& ownerId); // returns true if caller won
 
-		void gameObjectIsInRagDollStateDelegate(EventDataPtr eventData);
-	private:
-		Ogre::Item* item;
-		Ogre::SkeletonInstance* skeleton;
-		Ogre::SkeletonAnimation* target;
+        void gameObjectIsInRagDollStateDelegate(EventDataPtr eventData);
 
-		Ogre::SkeletonAnimation* source;
-		Ogre::SkeletonAnimation* previousSource;
+    private:
+        Ogre::Item* item;
+        Ogre::SkeletonInstance* skeleton;
+        Ogre::SkeletonAnimation* target;
 
-		BlendingTransition transition;
-		BlendingTransition previousTransition;
-		
-		Ogre::Real duration;
-		Ogre::Real previousDuration;
-		bool loop;
-		bool previousLoop;
-		
-		Ogre::Real timeleft;
+        Ogre::SkeletonAnimation* source;
+        Ogre::SkeletonAnimation* previousSource;
+
+        BlendingTransition transition;
+        BlendingTransition previousTransition;
+
+        Ogre::Real duration;
+        Ogre::Real previousDuration;
+        bool loop;
+        bool previousLoop;
+
+        Ogre::Real timeleft;
         std::atomic<bool> complete;
         std::atomic<bool> canAnimate;
 
-		bool debugLog;
+        bool debugLog;
 
-		std::map<AnimID, Ogre::String> mappedAnimations;
+        std::map<AnimID, Ogre::String> mappedAnimations;
         std::map<Ogre::String, Ogre::Real> baseFrameRates;
         Ogre::Real currentSpeed;
 
-		std::vector<IAnimationBlenderObserver*> animationBlenderObservers;
-		// Deferred callback queue
-		std::vector<std::function<void()>> deferredCallbacks;
+        std::vector<IAnimationBlenderObserver*> animationBlenderObservers;
+        // Deferred callback queue
+        std::vector<std::function<void()>> deferredCallbacks;
 
-		unsigned long uniqueId;
+        unsigned long uniqueId;
 
-		Ogre::SkeletonAnimation* overlaySource;
+        Ogre::SkeletonAnimation* overlaySource;
         Ogre::Real overlayTimeleft;
         Ogre::Real overlayDuration;
         bool overlayBlendingOut;
 
-		Ogre::String addTimeOwner; // empty = unclaimed this frame
-	};
+        Ogre::String addTimeOwner; // empty = unclaimed this frame
+    };
 
 }; // namespace end
 

@@ -292,105 +292,176 @@ namespace NOWA
 		}
 
 		// Adds all race goal components (including this one)
-		const auto& gameObjectsRG = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(RaceGoalComponent::getStaticClassName());
-		for (const auto& gameObjectPtr : gameObjectsRG)
-		{
-			const auto& raceGoalComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<RaceGoalComponent>());
-			this->allRaceGoals.emplace_back(raceGoalComponent.get());
-		}
+        const auto& gameObjectsRG = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(RaceGoalComponent::getStaticClassName());
+        for (const auto& gameObjectPtr : gameObjectsRG)
+        {
+            const auto& raceGoalComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<RaceGoalComponent>());
+            // Was inserted unchecked, so a null entry ended up in the list.
+            if (nullptr != raceGoalComponent)
+            {
+                this->allRaceGoals.emplace_back(raceGoalComponent.get());
+            }
+        }
 
-		this->currentCheckpoint = this->pPath->getCurrentWaypoint2();
+        this->currentCheckpoint = this->pPath->getCurrentWaypoint2();
 
-		this->vehicleComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveVehicleComponent>()).get();
-		const auto& purePursuitCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PurePursuitComponent>());
-		if (nullptr != purePursuitCompPtr)
-		{
-			this->purePursuitComponent = purePursuitCompPtr.get();;
-		}
+        this->vehicleComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveVehicleComponent>()).get();
+        const auto& purePursuitCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PurePursuitComponent>());
+        if (nullptr != purePursuitCompPtr)
+        {
+            this->purePursuitComponent = purePursuitCompPtr.get();
+        }
 
-		// const auto& kinematicComponent = this->kinematicComponents[this->pPath->getCurrentWaypointIndex()];
+        // const auto& kinematicComponent = this->kinematicComponents[this->pPath->getCurrentWaypointIndex()];
 
-		for (const auto& kinematicComponent : this->kinematicComponents)
-		{
-			static_cast<OgreNewt::KinematicBody*>(kinematicComponent->getBody())->setKinematicContactCallback<RaceGoalComponent>([this, &kinematicComponent](RaceGoalComponent* instancedClassPointer, OgreNewt::Body* body)
-			{
-				// Checks if the checkpoint is the one, which also matches the current checkpoint index, e.g. it shall not possible to ride back and hit the last checkpoint, before hitting the first checkpoint
-				size_t index = static_cast<size_t>(this->pPath->getCurrentWaypointIndex());
-				if (kinematicComponent->getOwner()->getId() != this->checkpoints[index]->getULong())
-				{
-					return;
-				}
+        for (const auto& kinematicComponent : this->kinematicComponents)
+        {
+            // Captured BY VALUE. It used to be '&kinematicComponent', a reference to the loop
+            // variable itself - that reference is rebound on every iteration and dies with the
+            // loop, while the callback is invoked much later. Every registered callback then
+            // read the same dangling reference.
+            PhysicsActiveKinematicComponent* const capturedKinematicComponent = kinematicComponent;
 
-				// Hole id von physicscomponent, ob diese gleich ist was object am index
-				// this->pPath->getCurrentWaypointIndex()
-				PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(body->getUserData());
-				const auto& thisPhysicsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsComponent>());
-				if (nullptr == thisPhysicsComponent)
-				{
-					return;
-				}
+            static_cast<OgreNewt::KinematicBody*>(kinematicComponent->getBody())->setKinematicContactCallback<RaceGoalComponent>([this, capturedKinematicComponent](RaceGoalComponent* instancedClassPointer, OgreNewt::Body* body)
+                {
+                    // Checks if the checkpoint is the one, which also matches the current checkpoint index, e.g. it shall not possible to ride back and hit the last checkpoint, before hitting the first checkpoint
+                    size_t index = static_cast<size_t>(this->pPath->getCurrentWaypointIndex());
 
-				if (otherPhysicsComponent != thisPhysicsComponent.get())
-				{
-					return;
-				}
+                    // The index comes from the path, 'checkpoints' is a different container - they
+                    // can legitimately differ in size, and this was indexed unchecked.
+                    if (index >= this->checkpoints.size() || nullptr == this->checkpoints[index])
+                    {
+                        return;
+                    }
 
-				if (false == this->currentCheckpoint.first)
-				{
-					return;
-				}
+                    if (capturedKinematicComponent->getOwner()->getId() != this->checkpoints[index]->getULong())
+                    {
+                        return;
+                    }
 
-				// Driving wrong direction, to not check further for driving towards checkpoints
-				if (true == this->wrongDirection)
-				{
-					return;
-				}
+                    // Hole id von physicscomponent, ob diese gleich ist was object am index
+                    // this->pPath->getCurrentWaypointIndex()
+                    PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(body->getUserData());
+                    const auto& thisPhysicsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsComponent>());
+                    if (nullptr == thisPhysicsComponent)
+                    {
+                        return;
+                    }
 
-				if (true == this->isMovingTowardsCheckpoint())
-				{
-					if (this->pPath->getCurrentWaypointIndex() + 1 >= this->checkpointsCount->getUInt())
-					{
-						this->currentLap++;
-						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onFeedbackRaceFunctionName->getString().empty())
-						{
-							NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
-								this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
-							};
-							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-						}
-						if (this->currentLap < this->lapsCount->getUInt())
-						{
-							this->lapTimeSec = 0.0f;
-						}
-					}
+                    if (otherPhysicsComponent != thisPhysicsComponent.get())
+                    {
+                        return;
+                    }
 
-					this->pPath->setNextWayPoint();
-					this->currentCheckpoint = this->pPath->getCurrentWaypoint2();
+                    if (false == this->currentCheckpoint.first)
+                    {
+                        return;
+                    }
 
-					if (this->currentLap >= this->lapsCount->getUInt())
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RaceGoalComponent] Finished track!");
-						this->finished = true;
-						this->pPath->clear();
-						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onFeedbackRaceFunctionName->getString().empty())
-						{
-							NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-							{
-								this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
-								this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
-								this->lapTimeSec = 0.0f;
-							};
-							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-						}
-					}
-				}
-			}, this);
-		}
+                    // Driving wrong direction, to not check further for driving towards checkpoints
+                    if (true == this->wrongDirection)
+                    {
+                        return;
+                    }
 
-		return true;
-	}
+                    if (true == this->isMovingTowardsCheckpoint())
+                    {
+                        if (this->pPath->getCurrentWaypointIndex() + 1 >= this->checkpointsCount->getUInt())
+                        {
+                            this->currentLap++;
+
+                            // lapTimeSec is rounded HERE, on the calling thread, instead of inside
+                            // the command. This callback comes from a physics worker while the
+                            // command runs on the logic thread, and lapTimeSec is written by both -
+                            // rounding it inside the command was a write to shared state from the
+                            // wrong side, and the value was then read again a frame later.
+                            this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
+
+                            if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onFeedbackRaceFunctionName->getString().empty())
+                            {
+                                // Everything the command needs is frozen at contact time.
+                                const Ogre::String capturedFunctionName = this->onFeedbackRaceFunctionName->getString();
+                                const unsigned int capturedLap = this->currentLap;
+                                const Ogre::String capturedLapTime = Ogre::StringConverter::toString(this->lapTimeSec);
+                                const bool capturedFinished = this->finished;
+
+                                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, capturedFunctionName, capturedLap, capturedLapTime, capturedFinished]()
+                                {
+                                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                                    if (nullptr == strongThis)
+                                    {
+                                        return;
+                                    }
+
+                                    // Was dereferenced unchecked inside the command, although the
+                                    // null check above happened one or more frames earlier.
+                                    LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+                                    if (nullptr == luaScript)
+                                    {
+                                        return;
+                                    }
+
+                                    luaScript->callTableFunction(capturedFunctionName, capturedLap, capturedLapTime, capturedFinished);
+                                };
+                                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                            }
+                            if (this->currentLap < this->lapsCount->getUInt())
+                            {
+                                this->lapTimeSec = 0.0f;
+                            }
+                        }
+
+                        this->pPath->setNextWayPoint();
+                        this->currentCheckpoint = this->pPath->getCurrentWaypoint2();
+
+                        if (this->currentLap >= this->lapsCount->getUInt())
+                        {
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RaceGoalComponent] Finished track!");
+                            this->finished = true;
+                            this->pPath->clear();
+
+                            this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
+
+                            if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onFeedbackRaceFunctionName->getString().empty())
+                            {
+                                const Ogre::String capturedFunctionName = this->onFeedbackRaceFunctionName->getString();
+                                const unsigned int capturedLap = this->currentLap;
+                                const Ogre::String capturedLapTime = Ogre::StringConverter::toString(this->lapTimeSec);
+                                const bool capturedFinished = this->finished;
+
+                                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, capturedFunctionName, capturedLap, capturedLapTime, capturedFinished]()
+                                {
+                                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                                    if (nullptr == strongThis)
+                                    {
+                                        return;
+                                    }
+
+                                    LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+                                    if (nullptr == luaScript)
+                                    {
+                                        return;
+                                    }
+
+                                    luaScript->callTableFunction(capturedFunctionName, capturedLap, capturedLapTime, capturedFinished);
+                                };
+                                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                            }
+
+                            // Was reset INSIDE the command, i.e. a frame later - anything reading
+                            // lapTimeSec in between saw the old value.
+                            this->lapTimeSec = 0.0f;
+                        }
+                    }
+                }, this);
+        }
+
+        return true;
+    }
 
 	bool RaceGoalComponent::disconnect(void)
 	{

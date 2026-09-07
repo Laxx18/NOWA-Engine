@@ -12,11 +12,14 @@ local emma = nil;
 local oldMan = nil;
 local bed = nil;
 local luizius = nil;
+local agathe = nil;
+local spellBall = nil;
 local animationBlenderLax = nil;
 local animationBlenderEmma = nil;
+local animationBlenderLuizius = nil;
 local pathFollowEmma = nil;
-local physicsLuizius = nil;
-local pathFollowLuizius = nil;
+local agathePhysicsRagComp = nil;
+
 
 MainGameObject = {}
 
@@ -27,23 +30,25 @@ MainGameObject["connect"] = function(gameObject)
     AppStateManager:getCameraManager():setRotateCameraWeight(0);
     
     cameraComponent = AppStateManager:getGameObjectController():getGameObjectFromName("GameCamera"):getCameraComponent();
-    --cameraComponent:setActivated(true);
+    -- Important: Camera switch
+    cameraComponent:setActivated(true);
     
     atmosphereComonent = cameraComponent:getOwner():getAtmosphereComponent();
     
     lax = AppStateManager:getGameObjectController():getGameObjectFromId("169236464");
     emma = AppStateManager:getGameObjectController():getGameObjectFromId("757446456");
+    agathe =  AppStateManager:getGameObjectController():getGameObjectFromId("3425782733");
     oldMan = AppStateManager:getGameObjectController():getGameObjectFromId("524695244");
     luizius = AppStateManager:getGameObjectController():getGameObjectFromId("3895382773");
+    spellBall = AppStateManager:getGameObjectController():getGameObjectFromId("2737582806");
     bed = AppStateManager:getGameObjectController():getGameObjectFromId("3438074172");
     
     animationBlenderLax = lax:getAnimationSequenceComponent():getAnimationBlender();
     animationBlenderEmma = emma:getAnimationComponentV2():getAnimationBlender();
+    animationBlenderLuizius = luizius:getAnimationComponentV2():getAnimationBlender();
     pathFollowEmma = emma:getAiPathFollowComponent();
     pathFollowEmma:setActivated(false);
-    
-    physicsLuizius =  luizius:getPhysicsActiveComponent();
-    pathFollowLuizius = luizius:getJointPathFollowComponent();
+    agathePhysicsRagComp = agathe:getPhysicsRagDollComponentV2();
     
     animationBlenderLax:registerAnimation(AnimationBlender.ANIM_IDLE_1, "Boy 1 Idle");
     animationBlenderLax:registerAnimation(AnimationBlender.ANIM_IDLE_2, "Boy 1 Idle Turn Left");
@@ -89,6 +94,30 @@ MainGameObject["connect"] = function(gameObject)
     animationBlenderEmma:registerAnimation(AnimationBlender.ANIM_SALTO, "Girl 1 Air Flip");
     animationBlenderEmma:registerAnimation(AnimationBlender.ANIM_PICKUP_1, "Girl 1 Idle Pick Up Item");
     
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_IDLE_1, "idle-01");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_IDLE_2, "idle-02");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_IDLE_3, "joke");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_WALK_NORTH, "Boy 1 Walk");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_WALK_SOUTH, "Boy 1 Walk Backwards");
+    
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_WALK_NORTH, "walk-01");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_WALK_SOUTH, "walk-01");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_WALK_WEST, "walk-01");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_WALK_EAST, "walk-01");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_JUMP_START, "jump-01");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_JUMP_WALK, "jump-0p");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_HIGH_JUMP_END, "jump-pose");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_JUMP_END, "jump-pose");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_FALL, "jump-pose");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_RUN, "run-01");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_ATTACK_1, "attack-01");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_ATTACK_2, "attack-02");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_CAST_SPELL_1, "cast-01");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_CAST_SPELL_2, "cast-02");
+    animationBlenderLuizius:registerAnimation(AnimationBlender.ANIM_CAST_SPELL_3, "cast-03");
+    
+    animationBlenderLuizius:init1(AnimationBlender.ANIM_IDLE_1, true);
+    
     animationBlenderLax:init1(AnimationBlender.ANIM_IDLE_1, true);
     
     animationBlenderEmma:init1(AnimationBlender.ANIM_IDLE_1, true);
@@ -120,8 +149,10 @@ MainGameObject["GoToTimePoint"] = function(timePointSec)
         animationBlenderEmma:blend5(AnimationBlender.ANIM_IDLE_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
     end)
     
-    local resultOrientation = MathHelper:faceTarget(lax:getSceneNode(), emma:getSceneNode());
-    lax:getPhysicsActiveComponent():applyOmegaForceRotateTo(resultOrientation, Vector3.UNIT_Y, 1000);
+    --mainGameObject:getLuaScriptComponent():callMethodOnce("RotateLaxToEmma",  function()
+       --   local resultOrientation = MathHelper:faceTarget(lax:getSceneNode(), emma:getSceneNode());
+     --     lax:getPhysicsActiveComponent():applyOmegaForceRotateTo(resultOrientation, Vector3.UNIT_Y, 10);
+    --end);
 end
 
 MainGameObject["DarkTimePoint"] = function(timePointSec)
@@ -158,21 +189,45 @@ MainGameObject["CameraDriveTimePoint"] = function(timePointSec)
     end)
 end
 
-MainGameObject["BreakInTimePoint"] = function(timePointSec)
-    -- Cap the speed: applying force along the tangent every frame with nothing
-    -- opposing it accelerates without bound. Once the body moves further than one
-    -- spline segment per solver step, FindClosestKnot() latches onto the wrong knot
-    -- and the joint yanks it back - a likely source of the instability.
-    local maxSpeed = 8.0;
-
-    local direction = pathFollowLuizius:getCurrentMoveDirection();
-    local velocity = physicsLuizius:getVelocity();
-
-    if velocity:length() < maxSpeed then
-        physicsLuizius:applyForce(direction * 50);
-    end
+MainGameObject["LuiziusTimePoint"] = function(timePointSec)
+     log("--->LuiziusTimePoint: " .. toString(timePointSec));
+    mainGameObject:getLuaScriptComponent():callMethodOnce("ApearLuizius", function()
+        luizius:getNodeTrackComponentFromName("AppearNodeTrack"):setActivated(true);
+    end)
 end
 
-MainGameObject["update"] = function(dt)
+MainGameObject["CastSleepSpellTimePoint"] = function(timePointSec)
+    mainGameObject:getLuaScriptComponent():callMethodOnce("CastSpeelLuizius", function()
+        spellBall:setVisible(true);
+        spellBall:getParticleFxComponent():setActivated(true);
+        animationBlenderLuizius:blend5(AnimationBlender.ANIM_CAST_SPELL_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+    end)
     
+    mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
+        spellBall:getNodeTrackComponent():setActivated(true);
+        
+        spellBall:getNodeTrackComponent():reactOnEndOfPathReached(function(trackedGameObject)
+              agathePhysicsRagComp:setState("Ragdolling");
+              mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
+                  agathe:getParticleFxComponent():setActivated(true);
+              end, 1)
+        end);
+    end, 2)
+end
+
+MainGameObject["BreakDoorTimePoint"] = function(timePointSec)
+     log("--->BreakDoorTimePoint: " .. toString(timePointSec));
+    mainGameObject:getLuaScriptComponent():callMethodOnce("BreakDoorLuizius", function()
+         animationBlenderLuizius:blend5(AnimationBlender.ANIM_CAST_SPELL_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+    end)
+end
+
+MainGameObject["BreakInTimePoint"] = function(timePointSec)
+    log("--->BreakInTimePoint: " .. toString(timePointSec));
+    mainGameObject:getLuaScriptComponent():callMethodOnce("ActivateLuizius", function()
+        luizius:getNodeTrackComponentFromName("AppearNodeTrack"):setActivated(false);
+        luizius:getNodeTrackComponentFromName("BreakInNodeTrack"):setActivated(true);
+        animationBlenderLuizius:blend5(AnimationBlender.ANIM_IDLE_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+    end)
+   
 end

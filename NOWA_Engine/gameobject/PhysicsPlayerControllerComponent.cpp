@@ -40,88 +40,134 @@ namespace NOWA
 	}
 
 	Ogre::Real PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContactFriction(const OgreNewt::PlayerControllerBody* visitor, const Ogre::Vector3& position, const Ogre::Vector3& normal, int contactId, const OgreNewt::Body* other)
-	{
-		if (nullptr == visitor)
-		{
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContactFriction] Cannot call contact friction because the visitor physics component is nullptr for game object: " + this->owner->getName());
-            return 0.0f;
-		}
-
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
-		if (nullptr != visitorPhysicsComponent)
-		{
-			GameObject* gameObject0 = visitorPhysicsComponent->getOwner().get();
-
-			if (nullptr != luaScript && false == this->onContactFrictionFunctionName.empty())
-			{
-				if (nullptr == other)
-				{
-					return 2.0f;
-				}
-
-				GameObject* gameObject1 = nullptr;
-				auto physicsComponent1 = OgreNewt::any_cast<PhysicsComponent*>(other->getUserData());
-				if (nullptr != physicsComponent1)
-				{
-					gameObject1 = physicsComponent1->getOwner().get();
-
-					this->playerFrictionContact->position = position;
-					this->playerFrictionContact->normal = normal;
-
-					NOWA::AppStateManager::LogicCommand logicCommand = [this, gameObject0, gameObject1]()
-					{
-						luaScript->callTableFunction(this->onContactFrictionFunctionName, gameObject0, gameObject1, this->playerFrictionContact);
-					};
-					NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
-
-					return this->playerFrictionContact->resultFriction;
-				}
-			}
-		}
-		return 2.0f;
-	}
-
-	void PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContact(const OgreNewt::PlayerControllerBody* visitor, const Ogre::Vector3& position, const Ogre::Vector3& normal, Ogre::Real penetration, int contactId, const OgreNewt::Body* other)
-	{
+    {
         if (nullptr == visitor)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContact] Cannot call contact because the visitor physics component is nullptr for game object: " + this->owner->getName());
+            // this->owner was dereferenced unchecked in this log line - in the error path of
+            // all places, i.e. exactly when something is already wrong.
+            const Ogre::String ownerName = (nullptr != this->owner) ? this->owner->getName() : Ogre::String("<unknown>");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContactFriction] Cannot call contact friction because the visitor physics component is nullptr for game object: " + ownerName);
+            return 0.0f;
+        }
+
+        if (nullptr == other || nullptr == this->luaScript || true == this->onContactFrictionFunctionName.empty())
+        {
+            return 2.0f;
+        }
+
+        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+        if (nullptr == visitorPhysicsComponent)
+        {
+            return 2.0f;
+        }
+
+        auto physicsComponent1 = OgreNewt::any_cast<PhysicsComponent*>(other->getUserData());
+        if (nullptr == physicsComponent1)
+        {
+            return 2.0f;
+        }
+
+        GameObjectPtr gameObject0 = visitorPhysicsComponent->getOwner();
+        GameObjectPtr gameObject1 = physicsComponent1->getOwner();
+        if (nullptr == gameObject0 || nullptr == gameObject1)
+        {
+            return 2.0f;
+        }
+
+        // A per call PlayerContact, held by shared_ptr so it stays alive for as long as the
+        // command needs it - lua receives a raw pointer, so a stack local would dangle.
+        //
+        // The shared this->playerFrictionContact member is no longer touched at all: it was
+        // written on an ND4 worker thread (the world spawns one per core) and read back on the
+        // logic thread, so concurrent friction contacts overwrote each other's position and
+        // normal. Nothing is shared here anymore, so no locking is required.
+        auto contactData = boost::make_shared<PlayerContact>(*this->playerFrictionContact);
+        contactData->position = position;
+        contactData->normal = normal;
+
+        LuaScript* const capturedLuaScript = this->luaScript;
+        const Ogre::String capturedFunctionName = this->onContactFrictionFunctionName;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, capturedLuaScript, capturedFunctionName, gameObject0, gameObject1, contactData]()
+        {
+            // Re-checked: the command runs one or more frames later and the script may have
+            // been torn down since.
+            if (nullptr == this->luaScript)
+            {
+                return;
+            }
+
+            capturedLuaScript->callTableFunction(capturedFunctionName, gameObject0.get(), gameObject1.get(), contactData.get());
+
+            // Feed the value lua produced back for the NEXT contact to return.
+            this->lastResultFriction.store(contactData->getResultFriction(), std::memory_order_relaxed);
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+
+        // Returns the previous frame's value instead of blocking this physics thread until the
+        // logic thread has run the lua call.
+        return this->lastResultFriction.load(std::memory_order_relaxed);
+    }
+
+    void PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContact(const OgreNewt::PlayerControllerBody* visitor, const Ogre::Vector3& position, const Ogre::Vector3& normal, Ogre::Real penetration, int contactId, const OgreNewt::Body* other)
+    {
+        if (nullptr == visitor)
+        {
+            const Ogre::String ownerName = (nullptr != this->owner) ? this->owner->getName() : Ogre::String("<unknown>");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[PhysicsPlayerControllerComponent::PhysicsPlayerCallback::onContact] Cannot call contact because the visitor physics component is nullptr for game object: " + ownerName);
             return;
         }
 
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
-		if (nullptr != visitorPhysicsComponent)
-		{
-			GameObject* gameObject0 = visitorPhysicsComponent->getOwner().get();
+        if (nullptr == other || nullptr == this->luaScript || true == this->onContactFunctionName.empty())
+        {
+            return;
+        }
 
-			Ogre::Real outFriction = 0.0f;
-			if (nullptr != luaScript && false == this->onContactFunctionName.empty())
-			{
-				if (nullptr == other)
-				{
-					return;
-				}
+        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+        if (nullptr == visitorPhysicsComponent)
+        {
+            return;
+        }
 
-				GameObject* gameObject1 = nullptr;
-				auto physicsComponent1 = OgreNewt::any_cast<PhysicsComponent*>(other->getUserData());
-				if (nullptr != physicsComponent1)
-				{
-					gameObject1 = physicsComponent1->getOwner().get();
+        auto physicsComponent1 = OgreNewt::any_cast<PhysicsComponent*>(other->getUserData());
+        if (nullptr == physicsComponent1)
+        {
+            return;
+        }
 
-					this->playerContact->position = position;
-					this->playerContact->normal = normal;
-					this->playerContact->penetration = penetration;
+        GameObjectPtr gameObject0 = visitorPhysicsComponent->getOwner();
+        GameObjectPtr gameObject1 = physicsComponent1->getOwner();
+        if (nullptr == gameObject0 || nullptr == gameObject1)
+        {
+            return;
+        }
 
-					NOWA::AppStateManager::LogicCommand logicCommand = [this, gameObject0, gameObject1]()
-					{
-						luaScript->callTableFunction(this->onContactFunctionName, gameObject0, gameObject1, this->playerContact);
-					};
-					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-				}
-			}
-		}
-	}
+        // Same reasoning as in onContactFriction(): a per call copy instead of the shared
+        // this->playerContact member. Here it matters even more, because this path uses the
+        // non blocking enqueue() - so with several contacts per frame, every one of them
+        // overwrote position, normal and penetration before the first command had run, and
+        // lua was handed the data of a completely different contact.
+        auto contactData = boost::make_shared<PlayerContact>(*this->playerContact);
+        contactData->position = position;
+        contactData->normal = normal;
+        contactData->penetration = penetration;
+
+        LuaScript* const capturedLuaScript = this->luaScript;
+        const Ogre::String capturedFunctionName = this->onContactFunctionName;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, capturedLuaScript, capturedFunctionName, gameObject0, gameObject1, contactData]()
+        {
+            if (nullptr == this->luaScript)
+            {
+                return;
+            }
+
+            capturedLuaScript->callTableFunction(capturedFunctionName, gameObject0.get(), gameObject1.get(), contactData.get());
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+    }
 
 	void PhysicsPlayerControllerComponent::PhysicsPlayerCallback::setLuaScript(LuaScript* luaScript)
 	{

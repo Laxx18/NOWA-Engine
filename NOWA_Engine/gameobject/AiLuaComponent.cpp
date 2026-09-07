@@ -341,79 +341,115 @@ namespace NOWA
         // Deferred here exactly like LuaScriptComponent::setActivated already
         // does, so regardless of which thread calls this, the actual work
         // always runs on the logic thread.
-        NOWA::AppStateManager::LogicCommand logicCommand = [this, activated]()
+        //
+        // The weak pointer is the other half of that story: the same render thread path
+        // also tears components down, and this command runs one or more frames after being
+        // enqueued. Capturing 'this' raw meant the command's first line already touched
+        // this->gameObjectPtr - freed memory by then.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
         {
-            auto luaScriptComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
-
-            if (true == activated && nullptr != luaScriptComponent)
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
             {
-                // Re-entrancy guard: LuaScriptComponent fires EventDataLuaScriptConnected
-                // every time IT (re)activates, and this component can ALSO be activated
-                // directly in the very same pass (e.g. GameObject::restoreComponentActivationStates
-                // activating every component of a GameObject when a hidden surface object
-                // is shown again). Without this guard, setActivated(true) can run twice
-                // for one logical activation - once directly, once via the delayed
-                // EventDataLuaScriptConnected event - re-entering the Lua start state a
-                // second time while the first invocation's environment/state is still
-                // being set up, which corrupts the shared lua_State (observed as a
-                // crash deep inside luabind::push_new_instance). 'ready' is reset to
-                // false on every deactivation below, so a GENUINE reactivation after a
-                // real hide/show cycle is never blocked - only a true duplicate call
-                // within the same activation is.
-                if (true == this->ready)
-                {
-                    return;
-                }
-
-                this->alreadyDisconnected = false;
-
-                if (false == luaScriptComponent->isActivated())
-                {
-                    // If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
-                    // luaScriptComponent->setActivated(true);
-                    boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
-                        "Cannot start ai lua state + '" + this->startStateName->getString() + "', because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
-                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
-                    return;
-                }
-
-                // http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
-
-                this->gameObjectPtr->getLuaScript()->setInterfaceFunctionsTemplate("\n" + this->startStateName->getString() +
-                                                                                   " = { };\n"
-                                                                                   "aiLuaComponent = nil;\n\n" +
-                                                                                   this->startStateName->getString() +
-                                                                                   "[\"enter\"] = function(gameObject)\n"
-                                                                                   "\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n" +
-                                                                                   this->startStateName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n" + this->startStateName->getString() +
-                                                                                   "[\"exit\"] = function(gameObject)\n\nend");
-
-                bool startStateAvailable = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaStateAvailable(this->gameObjectPtr->getLuaScript()->getName(), this->startStateName->getString());
-                if (false == startStateAvailable && false == this->componentCloned)
-                {
-                    boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
-                        "Cannot start ai lua state, because the start state name: '" + this->startStateName->getString() + "' is not defined for game object: " + this->gameObjectPtr->getName()));
-                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
-                    return;
-                }
-
-                if (false == this->componentCloned && true == this->gameObjectPtr->getLuaScript()->createLuaEnvironmentForStateTable(this->startStateName->getString()))
-                {
-                    const luabind::object& compiledStateScriptReference = this->gameObjectPtr->getLuaScript()->getCompiledStateScriptReference();
-
-                    this->ready = true;
-                    // Call the start state name to start the lua file with that state
-                    this->luaStateMachine->setCurrentState(compiledStateScriptReference);
-                }
+                return;
             }
-            else
+
+            // Re-READ instead of capturing the value. Two activations can sit in the queue at
+            // once - exactly the duplicate described below - and a deactivation may land
+            // between them. With the captured value, that second queued command still ran its
+            // activation branch even though the component was already deactivated again, and
+            // the else branch below had just reset 'ready', so the re-entrancy guard could not
+            // catch it either.
+            const bool currentlyActivated = this->activated->getBool();
+
+            if (false == currentlyActivated)
             {
                 // Mirrors disconnect()'s reset, so 'ready' always reflects "currently
                 // active and fully set up" rather than "was ever activated" - this is
-                // what makes the re-entrancy guard above safe to use across repeated
+                // what makes the re-entrancy guard below safe to use across repeated
                 // hide/show (deactivate/reactivate) cycles instead of only a one-shot
                 // component lifetime.
                 this->ready = false;
+                return;
+            }
+
+            auto luaScriptComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
+            if (nullptr == luaScriptComponent)
+            {
+                return;
+            }
+
+            // Re-entrancy guard: LuaScriptComponent fires EventDataLuaScriptConnected
+            // every time IT (re)activates, and this component can ALSO be activated
+            // directly in the very same pass (e.g. GameObject::restoreComponentActivationStates
+            // activating every component of a GameObject when a hidden surface object
+            // is shown again). Without this guard, setActivated(true) can run twice
+            // for one logical activation - once directly, once via the delayed
+            // EventDataLuaScriptConnected event - re-entering the Lua start state a
+            // second time while the first invocation's environment/state is still
+            // being set up, which corrupts the shared lua_State (observed as a
+            // crash deep inside luabind::push_new_instance). 'ready' is reset to
+            // false on every deactivation above, so a GENUINE reactivation after a
+            // real hide/show cycle is never blocked - only a true duplicate call
+            // within the same activation is.
+            if (true == this->ready)
+            {
+                return;
+            }
+
+            // Fetched once into a local and null checked. It was dereferenced unguarded on six
+            // lines below even though the component owning it is checked right above - and it
+            // can legitimately be null, which is why LuaScriptComponent::setActivated() guards
+            // its own luaScript member. The first unguarded use sat in the ERROR path, so it
+            // would have crashed precisely when something was already wrong.
+            LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+            if (nullptr == luaScript)
+            {
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
+                    "[AiLuaComponent] Cannot start ai lua state '" + this->startStateName->getString() + "', because there is no lua script for game object: " + this->gameObjectPtr->getName());
+                return;
+            }
+
+            this->alreadyDisconnected = false;
+
+            if (false == luaScriptComponent->isActivated())
+            {
+                // If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
+                // luaScriptComponent->setActivated(true);
+                boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(luaScript->getScriptName(), luaScript->getScriptFilePathName(), 0,
+                    "Cannot start ai lua state + '" + this->startStateName->getString() + "', because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
+                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+                return;
+            }
+
+            // http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
+
+            luaScript->setInterfaceFunctionsTemplate("\n" + this->startStateName->getString() +
+                                                     " = { };\n"
+                                                     "aiLuaComponent = nil;\n\n" +
+                                                     this->startStateName->getString() +
+                                                     "[\"enter\"] = function(gameObject)\n"
+                                                     "\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n" +
+                                                     this->startStateName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n" + this->startStateName->getString() + "[\"exit\"] = function(gameObject)\n\nend");
+
+            bool startStateAvailable = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaStateAvailable(luaScript->getName(), this->startStateName->getString());
+            if (false == startStateAvailable && false == this->componentCloned)
+            {
+                boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(luaScript->getScriptName(), luaScript->getScriptFilePathName(), 0,
+                    "Cannot start ai lua state, because the start state name: '" + this->startStateName->getString() + "' is not defined for game object: " + this->gameObjectPtr->getName()));
+                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+                return;
+            }
+
+            if (false == this->componentCloned && true == luaScript->createLuaEnvironmentForStateTable(this->startStateName->getString()))
+            {
+                const luabind::object& compiledStateScriptReference = luaScript->getCompiledStateScriptReference();
+
+                this->ready = true;
+                // Call the start state name to start the lua file with that state
+                this->luaStateMachine->setCurrentState(compiledStateScriptReference);
             }
         };
         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));

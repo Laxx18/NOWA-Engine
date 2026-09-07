@@ -9,7 +9,7 @@ namespace NOWA
 {
 	class GameObject;
 	class PhysicsActiveComponent;
-	class IAnimationBlender;
+	class AnimationBlenderV2;
 	class CrowdComponent;
 
 	typedef boost::shared_ptr<GameObject> GameObjectPtr;

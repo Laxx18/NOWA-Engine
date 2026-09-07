@@ -214,103 +214,62 @@ namespace NOWA
             return;
         }
 
-        OgreAL::Sound::SpectrumParameter* spectrumParameter = sound->getSpectrumParameter();
-        if (nullptr != spectrumParameter)
+        if (nullptr == sound)
         {
-            // Call also function in lua script, if it does exist in the lua script component
-            if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onSpectrumAnalysisFunctionName->getString().empty())
+            return;
+        }
+
+        OgreAL::Sound::SpectrumParameter* spectrumParameter = sound->getSpectrumParameter();
+        if (nullptr == spectrumParameter)
+        {
+            return;
+        }
+
+        // Call also function in lua script, if it does exist in the lua script component
+        if (nullptr == this->gameObjectPtr->getLuaScript())
+        {
+            return;
+        }
+
+        // Resolved NOW rather than inside the command. This callback fires once per analysis
+        // window - dozens of times a second, per sound - so reading the variant at execution
+        // time meant a variant access for every single queued command, all of them potentially
+        // seeing a value that changed in the meantime.
+        const Ogre::String capturedFunctionName = this->onSpectrumAnalysisFunctionName->getString();
+        if (true == capturedFunctionName.empty())
+        {
+            return;
+        }
+
+        // The weak pointer covers this component being destroyed between enqueueing and
+        // execution - the command's first line used to touch this->gameObjectPtr before any
+        // check could run. Given how often this fires, the window is hit sooner or later.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, capturedFunctionName]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
             {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-                {
-                    this->gameObjectPtr->getLuaScript()->callTableFunction(this->onSpectrumAnalysisFunctionName->getString());
-                };
-                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                return;
             }
 
-#if 0
-			/*for (int i = 0; i < this->sound->getBufferSize() - 1; ++i)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Spectrum: " + Ogre::StringConverter::toString(spectrumParameter->VUpoints[i]));
-				
-			}
+            // Re-checked here, not only before enqueueing: commands queued shortly before a
+            // disconnect would otherwise still run afterwards.
+            if (false == this->bConnected)
+            {
+                return;
+            }
 
-			int level = 0;
-			for (int i = 0; i < (this->sound->getBufferSize() - 1) / 2; ++i)
-			{
-				level = -10 * log(spectrumParameter->amp[i] / 94);
-				if (level > 0)
-					level = 0;
+            LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+            if (nullptr == luaScript)
+            {
+                return;
+            }
 
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Level: " + Ogre::StringConverter::toString(level));
-			}*/
-
-			const Ogre::Real xoff = 0.02f;
-			const Ogre::Real yoff = 0.02f;
-
-		
-			if (true == this->lines.empty())
-			{
-				this->lines.resize((512 - 1) / 2);
-				for (size_t i = 0; i < (512 - 1) / 2; i++)
-				{
-					// this->translationLine = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-					this->lines[i] = this->gameObjectPtr->getSceneManager()->createManualObject(Ogre::SCENE_DYNAMIC);
-					// this->sceneManager->createManualObject(Ogre::SCENE_DYNAMIC);
-					this->lines[i]->setQueryFlags(0 << 0);
-					this->lineNode->attachObject(this->lines[i]);
-					this->lines[i]->setCastShadows(false);
-					this->lines[i]->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-				}
-			}
-
-			/*for (size_t i = 0; i < 10; i++)
-			{
-				
-				this->lines[i]->clear();
-				this->lines[i]->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-
-				this->lines[i]->position(Ogre::Vector3(i + xoff, norm(spectrumParameter->VUpoints[i], 65536, 10.0f, 2.5f), 0.0f));
-				this->lines[i]->index(0);
-				this->lines[i]->position(Ogre::Vector3(i + xoff, norm(spectrumParameter->VUpoints[i], -65536, 10.0f, 2.5f), 0.0f));
-				this->lines[i]->index(1);
-				this->lines[i]->end();
-			}*/
-
-
-
-
-			float level = 0;
-			for (size_t i = 0; i < (512 - 1) / 2; i++)
-			{
-				// Ogre::Vector3 previousPosition = Ogre::Vector3(i * 2 * xoff, 0.0f, 0.0f);
-
-				level = spectrumParameter->amp[i];
-
-				/*double regleDe3 = level * 255 / 100;
-				int y = static_cast<int>(regleDe3);
-				if (y > 255) y = 255;
-				if (y < 0) y = 0;*/
-			
-
-				/*level = -10 * log(spectrumParameter->amp[i] / 94);
-				if (level > 0)
-					level = 0;*/
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Spectrum: " + Ogre::StringConverter::toString(level));
-				
-				this->lines[i]->clear();
-				this->lines[i]->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-
-				
-
-				this->lines[i]->position(Ogre::Vector3(i * 2 * xoff, 0.0f, 0.0f));
-				this->lines[i]->index(0);
-				this->lines[i]->position(Ogre::Vector3(i * 2 * xoff, level, 0.0f));
-				this->lines[i]->index(1);
-				this->lines[i]->end();
-			}
-#endif
-        }
+            luaScript->callTableFunction(capturedFunctionName);
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     bool SimpleSoundComponent::connect(void)

@@ -175,146 +175,211 @@ namespace NOWA
 	}
 
 	void PhysicsExplosionComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (true == this->activated->getBool() && false == notSimulating)
-		{
-			if (this->countDownTimer > 0.0f)
-			{
-				LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
-				
-				this->countDownTimer -= dt;
-				this->secondsUpdateTimer += dt;
-				// if one second passed, call callbacks to react
-				if (this->secondsUpdateTimer >= 1.0f)
-				{
-					// if a script file is set
-					if (nullptr != luaScript)
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript]()
-						{
-							luaScript->callTableFunction("onTimerSecondTick", this->gameObjectPtr.get());
-						};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
-					else if (this->explosionCallback)
-					{
-						// else run the programmed callback if it does exist
-						// here with the list from sphere scene query
-						this->explosionCallback->onTimerSecondTick(this->gameObjectPtr.get());
-					}
-					// Reset timer
-					this->secondsUpdateTimer = 0.0f;
-				}
-				// If the timer is bigger as the count down, BUM......!
-				if (this->countDownTimer <= 0.0f)
-				{
-					Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), this->radius->getReal());
-					this->sphereSceneQuery->setSphere(updateSphere);
-					if (this->categoryIds > 0)
-					{
-						this->sphereSceneQuery->setQueryMask(this->categoryIds);
-					}
+    {
+        if (false == this->activated->getBool() || true == notSimulating)
+        {
+            return;
+        }
 
-					// check objects in range
-					Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
-					for (auto it = result.cbegin(); it != result.cend(); ++it)
-					{
-						Ogre::MovableObject* movableObject = *it;
+        if (this->countDownTimer <= 0.0f)
+        {
+            return;
+        }
 
-						const Ogre::Any& any = movableObject->getUserObjectBindings().getUserAny();
-						if (false == any.isEmpty())
-						{
-							NOWA::GameObject* affectedGameObject = Ogre::any_cast<NOWA::GameObject*>(any);
-							// Remember this bomb itsel will also be affected, if it has not been excluded via category
-							if (affectedGameObject && affectedGameObject != this->gameObjectPtr.get())
-							{
-								this->affectedGameObjects.emplace_back(affectedGameObject);
+        LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
 
-								Ogre::Vector3& direction = affectedGameObject->getPosition() - this->gameObjectPtr->getPosition();
-								Ogre::Real distanceToBomb = direction.length();
-								// Increase the height too
-								if (direction.y < 0.0f)
-								{
-									direction.y *= -1.0f;
-								}
+        // The weak pointer guards every deferred command below: an explosion can destroy game
+        // objects, including the bomb itself, while its commands are still queued.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
 
-								if (distanceToBomb < 1.0f)
-								{
-									distanceToBomb = 1.0f;
-								}
-								direction.normalise();
-								direction.y *= 5.0f;
+        this->countDownTimer -= dt;
+        this->secondsUpdateTimer += dt;
+        // if one second passed, call callbacks to react
+        if (this->secondsUpdateTimer >= 1.0f)
+        {
+            // if a script file is set
+            if (nullptr != luaScript)
+            {
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
 
-								// Calculate the detonation strength by using the strengh in relation to the distance to the game object
-								unsigned int detonationStrength = this->strength->getReal() / static_cast<unsigned int>(distanceToBomb);
-								if (0 == detonationStrength)
-								{
-									detonationStrength = 10;
-								}
-								/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "distanceToBomb: " + Ogre::StringConverter::toString(distanceToBomb) + " strength: "
-									+ Ogre::StringConverter::toString(detonationStrength) + " direction: " + Ogre::StringConverter::toString(direction)
-									+ " directionJump: " + Ogre::StringConverter::toString(direction * -1.0f * static_cast<Ogre::Real>(detonationStrength)));*/
-									// here because of parent id introduction, its possible to get the base component and set data, instead of setting for all available derived components from PhysicsComponent
-								auto physicsCompPtr = makeStrongPtr(affectedGameObject->getComponent<PhysicsComponent>());
-								if (physicsCompPtr)
-								{
-									// Blast the affected game object away, but by a delay, depending on the distance to the bomb
-									// E.g. 20 meters away from bomb would delay 1 second
-									NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(distanceToBomb / 20.0f));
-									delayProcess->attachChild(NOWA::ProcessPtr(new BlastProcess(physicsCompPtr->getBody(), direction * static_cast<Ogre::Real>(detonationStrength))));
-									NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-								}
-								//else
-								//{
-								//	// If there is no physics component, use the scene node
-								//	affectedGameObject->getSceneNode()->translate(direction * -1.0f * static_cast<Ogre::Real>(detonationStrength));
-								//}
+                    // Re-resolved instead of captured: the script may have been torn down
+                    // between enqueueing and execution.
+                    LuaScript* currentLuaScript = this->gameObjectPtr->getLuaScript();
+                    if (nullptr == currentLuaScript)
+                    {
+                        return;
+                    }
 
-								// if a script file is set
-								if (nullptr != luaScript)
-								{
-									
-									NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript, affectedGameObject, distanceToBomb, detonationStrength]()
-									{
-										luaScript->callTableFunction("onExplodeAffectedGameObject", this->gameObjectPtr.get(), affectedGameObject, distanceToBomb, detonationStrength);
-									};
-									NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-								}
-								else if (this->explosionCallback)
-								{
-									// else run the programmed callback if it does exist
-									// This callback is called x-times for each affected game object
-									this->explosionCallback->onExplodeAffectedGameObject(this->gameObjectPtr.get(), affectedGameObject, distanceToBomb, detonationStrength);
-								}
-							}
-						}
-					}
+                    currentLuaScript->callTableFunction("onTimerSecondTick", this->gameObjectPtr.get());
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+            else if (this->explosionCallback)
+            {
+                // else run the programmed callback if it does exist
+                // here with the list from sphere scene query
+                this->explosionCallback->onTimerSecondTick(this->gameObjectPtr.get());
+            }
+            // Reset timer
+            this->secondsUpdateTimer = 0.0f;
+        }
 
-					if (nullptr != luaScript)
-					{
-						// call the onExplode callback function with the cloned game object on lua and run the script file
-						NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript]()
-						{
-							luaScript->callTableFunction("onExplode", this->gameObjectPtr.get());
-						};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
-					else if (this->explosionCallback)
-					{
-						// else run the programmed callback if it does exist
-						// This callback is called x-times for each affected game object
-						this->explosionCallback->onExplode(this->gameObjectPtr.get());
-					}
+        // If the timer is bigger as the count down, BUM......!
+        if (this->countDownTimer > 0.0f)
+        {
+            return;
+        }
 
-					// this->activated->setValue(false);
-					// Clear the affected game objects
-					this->affectedGameObjects.clear();
-					// Reset timer
-					this->countDownTimer = 0.0f;
-				}
-			}
-		}
-	}
+        Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), this->radius->getReal());
+        this->sphereSceneQuery->setSphere(updateSphere);
+        if (this->categoryIds > 0)
+        {
+            this->sphereSceneQuery->setQueryMask(this->categoryIds);
+        }
+
+        // check objects in range
+        Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
+        for (auto it = result.cbegin(); it != result.cend(); ++it)
+        {
+            Ogre::MovableObject* movableObject = *it;
+
+            const Ogre::Any& any = movableObject->getUserObjectBindings().getUserAny();
+            if (true == any.isEmpty())
+            {
+                continue;
+            }
+
+            NOWA::GameObject* affectedGameObject = Ogre::any_cast<NOWA::GameObject*>(any);
+            // Remember this bomb itself will also be affected, if it has not been excluded via category
+            if (nullptr == affectedGameObject || affectedGameObject == this->gameObjectPtr.get())
+            {
+                continue;
+            }
+
+            this->affectedGameObjects.emplace_back(affectedGameObject);
+
+            // Bug: this used to be a non const REFERENCE bound to the temporary result of the
+            // subtraction:
+            //     Ogre::Vector3& direction = a->getPosition() - b->getPosition();
+            // Binding a non const lvalue reference to a temporary is not valid C++ at all
+            // (MSVC accepts it as an extension) and does NOT extend its lifetime, so every
+            // write below - the y flip, normalise(), the y scaling - operated on destroyed
+            // stack memory. It has to be a value.
+            Ogre::Vector3 direction = affectedGameObject->getPosition() - this->gameObjectPtr->getPosition();
+            Ogre::Real distanceToBomb = direction.length();
+            // Increase the height too
+            if (direction.y < 0.0f)
+            {
+                direction.y *= -1.0f;
+            }
+
+            if (distanceToBomb < 1.0f)
+            {
+                distanceToBomb = 1.0f;
+            }
+            direction.normalise();
+            direction.y *= 5.0f;
+
+            // Calculate the detonation strength by using the strength in relation to the distance to the game object.
+            // The distance used to be truncated to unsigned int BEFORE dividing, so everything
+            // between 1.0 and 1.99 divided by 1, between 2.0 and 2.99 by 2 and so on - the
+            // falloff was stepped instead of continuous. Divide in floating point, then round.
+            unsigned int detonationStrength = static_cast<unsigned int>(this->strength->getReal() / distanceToBomb);
+            if (0 == detonationStrength)
+            {
+                detonationStrength = 10;
+            }
+
+            // here because of parent id introduction, its possible to get the base component and set data, instead of setting for all available derived components from PhysicsComponent
+            auto physicsCompPtr = makeStrongPtr(affectedGameObject->getComponent<PhysicsComponent>());
+            if (physicsCompPtr)
+            {
+                // Blast the affected game object away, but by a delay, depending on the distance to the bomb
+                // E.g. 20 meters away from bomb would delay 1 second
+                NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(distanceToBomb / 20.0f));
+                delayProcess->attachChild(NOWA::ProcessPtr(new BlastProcess(physicsCompPtr->getBody(), direction * static_cast<Ogre::Real>(detonationStrength))));
+                NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+            }
+
+            // if a script file is set
+            if (nullptr != luaScript)
+            {
+                // The affected object is captured as a SHARED pointer, not a raw one: an
+                // explosion is precisely the situation in which game objects get destroyed,
+                // and the command runs one or more frames after this loop. A raw pointer could
+                // be dangling by then. Holding it keeps it alive until Lua has seen it.
+                GameObjectPtr affectedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(affectedGameObject->getId());
+                if (nullptr == affectedGameObjectPtr)
+                {
+                    continue;
+                }
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, affectedGameObjectPtr, distanceToBomb, detonationStrength]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    LuaScript* currentLuaScript = this->gameObjectPtr->getLuaScript();
+                    if (nullptr == currentLuaScript)
+                    {
+                        return;
+                    }
+
+                    currentLuaScript->callTableFunction("onExplodeAffectedGameObject", this->gameObjectPtr.get(), affectedGameObjectPtr.get(), distanceToBomb, detonationStrength);
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+            else if (this->explosionCallback)
+            {
+                // else run the programmed callback if it does exist
+                // This callback is called x-times for each affected game object
+                this->explosionCallback->onExplodeAffectedGameObject(this->gameObjectPtr.get(), affectedGameObject, distanceToBomb, detonationStrength);
+            }
+        }
+
+        if (nullptr != luaScript)
+        {
+            // call the onExplode callback function with the cloned game object on lua and run the script file
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+            {
+                boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                if (nullptr == strongThis)
+                {
+                    return;
+                }
+
+                LuaScript* currentLuaScript = this->gameObjectPtr->getLuaScript();
+                if (nullptr == currentLuaScript)
+                {
+                    return;
+                }
+
+                currentLuaScript->callTableFunction("onExplode", this->gameObjectPtr.get());
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        }
+        else if (this->explosionCallback)
+        {
+            // else run the programmed callback if it does exist
+            // This callback is called x-times for each affected game object
+            this->explosionCallback->onExplode(this->gameObjectPtr.get());
+        }
+
+        // this->activated->setValue(false);
+        // Clear the affected game objects
+        this->affectedGameObjects.clear();
+        // Reset timer
+        this->countDownTimer = 0.0f;
+    }
 
 	void PhysicsExplosionComponent::actualizeValue(Variant* attribute)
 	{

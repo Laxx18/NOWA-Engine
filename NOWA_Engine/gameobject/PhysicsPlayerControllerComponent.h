@@ -35,6 +35,7 @@ namespace NOWA
 			Ogre::String onContactFunctionName;
 			PlayerContact* playerFrictionContact;
 			PlayerContact* playerContact;
+            std::atomic<Ogre::Real> lastResultFriction;
 		};
 	public:
 		typedef boost::shared_ptr<PhysicsPlayerControllerComponent> PhysicsPlayerControllerCompPtr;

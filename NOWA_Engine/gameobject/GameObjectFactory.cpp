@@ -344,6 +344,7 @@ namespace NOWA
         bool dynamic = true;
         bool useReflection = false;
         bool visible = true;
+        bool hideOnConnect = false;
         bool global = false;
         bool clampY = false;
         unsigned long id = 0L;
@@ -403,6 +404,16 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Visible")
         {
             visible = XMLConverter::getAttribBool(propertyElement, "data", false);
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        // Parsed right after "Visible" because this parser walks the properties
+        // SEQUENTIALLY via next_sibling - the order here has to match the order
+        // GameObject::writeXML() emits them in, or every following property shifts.
+        // Older scenes simply do not carry it, in which case the if never matches and
+        // nothing shifts either.
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "HideOnConnect")
+        {
+            hideOnConnect = XMLConverter::getAttribBool(propertyElement, "data", false);
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DefaultDirection")
@@ -585,6 +596,7 @@ namespace NOWA
                 gameObjectPtr->setDefaultDirection(defaultDirection);
                 gameObjectPtr->setUseReflection(useReflection);
                 gameObjectPtr->setLoadedVisible(visible);
+                gameObjectPtr->setHideOnConnect(hideOnConnect);
                 gameObjectPtr->setGlobal(global);
                 gameObjectPtr->setClampY(clampY);
                 gameObjectPtr->setReferenceId(referenceId);

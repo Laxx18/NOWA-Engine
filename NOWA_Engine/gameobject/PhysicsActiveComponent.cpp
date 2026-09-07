@@ -63,7 +63,9 @@ namespace NOWA
         savedInertia(Ogre::Vector3::ZERO),
         ghostActive(false),
         latchedVelocity(Ogre::Vector3::ZERO),
-        hasLatchedVelocity(false)
+        hasLatchedVelocity(false),
+        latchedOmega(Ogre::Vector3::ZERO),
+        hasLatchedOmega(false)
     {
         this->forceCommand.vectorValue = Ogre::Vector3::ZERO;
         this->forceCommand.pending.store(false);
@@ -1215,7 +1217,7 @@ namespace NOWA
         {
             this->physicsBody->setVelocity(Ogre::Vector3::ZERO);
             this->physicsBody->setOmega(Ogre::Vector3::ZERO);
-            this->clearLatchedVelocity();
+            this->clearLatchedValues();
         }
     }
 
@@ -1295,9 +1297,17 @@ namespace NOWA
         Ogre::Vector3 rotationAxis;
         diffOrientation.ToAngleAxis(angle, rotationAxis);
 
-        if (rotationAxis.isZeroLength())
+        // Bug: the old guard tested rotationAxis.isZeroLength(), which is practically never
+        // true - ToAngleAxis() returns a NORMALISED axis even for a zero angle (typically
+        // 1,0,0), so its length is 1. The "already aligned" case lives in the ANGLE, not in
+        // the axis. Without a real stop condition the latched omega kept a tiny residual value
+        // and was re-applied every substep, so the body never came to rest.
+        const Ogre::Degree ANGLE_TOLERANCE(0.5f);
+
+        if (angle < ANGLE_TOLERANCE || true == rotationAxis.isZeroLength())
         {
-            // Already aligned — kill any residual angular velocity immediately
+            // Kill any residual angular velocity and release the latch, so ordinary physics
+            // can rotate the body again.
             this->applyOmegaForce(Ogre::Vector3::ZERO);
             return;
         }
@@ -1306,10 +1316,10 @@ namespace NOWA
         rotationAxis = current * rotationAxis;
         rotationAxis.normalise();
 
-        // Clamp desired omega — never exceed a safe angular speed.
+        // Clamp desired omega - never exceed a safe angular speed.
         // Without this, a 180-degree error with strength=5 gives ~15 rad/s
         // which overshoots every frame and oscillates forever.
-        const Ogre::Real MAX_OMEGA = 2.0f; // rad/s — tune this
+        const Ogre::Real MAX_OMEGA = 2.0f; // rad/s - tune this
 
         Ogre::Real desiredSpeed = std::min(angle.valueRadians() * strength, MAX_OMEGA);
 
@@ -1319,6 +1329,15 @@ namespace NOWA
         angularVelocity.x *= axes.x;
         angularVelocity.y *= axes.y;
         angularVelocity.z *= axes.z;
+
+        // After filtering, the remaining rotation may be negligible even though the raw angle
+        // was not - e.g. a pure pitch error while only the Y axis is allowed. Treat that as
+        // done as well, otherwise the latch would hold a value that can never reduce the error.
+        if (angularVelocity.squaredLength() < 0.0001f)
+        {
+            this->applyOmegaForce(Ogre::Vector3::ZERO);
+            return;
+        }
 
         this->applyOmegaForce(angularVelocity);
     }
@@ -2983,12 +3002,14 @@ namespace NOWA
         this->drawLineMap.clear();
     }
 
-    void PhysicsActiveComponent::clearLatchedVelocity(void)
+    void PhysicsActiveComponent::clearLatchedValues(void)
     {
         // Releases the latched steering velocity. Must be called whenever the agent shall stop being driven,
         // e.g. from resetForce() and when MovingBehavior switches to NONE / STOP.
         this->hasLatchedVelocity = false;
         this->latchedVelocity = Ogre::Vector3::ZERO;
+        this->hasLatchedOmega = false;
+        this->latchedOmega = Ogre::Vector3::ZERO;
     }
 
     Ogre::Vector3 PhysicsActiveComponent::getUp(void) const
@@ -3192,11 +3213,29 @@ namespace NOWA
             bool expected = false;
             if (this->omegaForceCommand.inProgress.compare_exchange_strong(expected, true))
             {
-                Ogre::Vector3 desiredOmega = this->omegaForceCommand.vectorValue;
-                body->setBodyAngularVelocity(desiredOmega, timeStep);
+                // Latch it, exactly like requiredVelocityForForceCommand does for the linear
+                // case. The command is consumed by the first substep after a logic frame, but
+                // several substeps run per frame and each of them starts with setTorque(ZERO)
+                // at the top of this callback. Without a latch the body simply coasted on
+                // angular damping from substep two onwards, which is why forces worked and
+                // rotation did not.
+                this->latchedOmega = this->omegaForceCommand.vectorValue;
+                this->hasLatchedOmega = true;
 
                 this->omegaForceCommand.pending.store(false);
                 this->omegaForceCommand.inProgress.store(false);
+            }
+        }
+
+        if (true == this->hasLatchedOmega)
+        {
+            body->setBodyAngularVelocity(this->latchedOmega, timeStep);
+
+            // A zero omega means "stop rotating" - hold it for this frame, then release the
+            // latch so ordinary physics (collisions, joints) can rotate the body again.
+            if (this->latchedOmega.squaredLength() < 0.0000001f)
+            {
+                this->hasLatchedOmega = false;
             }
         }
 
@@ -3251,29 +3290,67 @@ namespace NOWA
 
     void PhysicsActiveComponent::contactCallback(OgreNewt::Body* otherBody, OgreNewt::Contact* contact)
     {
+        if (nullptr == otherBody || nullptr == contact)
+        {
+            return;
+        }
+
         PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(otherBody->getUserData());
+
+        // Resolved ONCE here for both paths. A body that cannot be cast to a physics component
+        // has no owning game object - the normal case for e.g. ragdoll bones. The C++ path
+        // below already guarded this; the lua path dereferenced the very same pointer two
+        // lines further down without any check.
+        GameObjectPtr otherGameObjectPtr = (nullptr != otherPhysicsComponent) ? otherPhysicsComponent->getOwner() : nullptr;
 
         // C++ closure path
         if (this->cppContactCallback)
         {
             OgreNewt::ContactSnapshot snapshot = contact->createSnapshot();
-            GameObjectPtr otherGo = (nullptr != otherPhysicsComponent) ? otherPhysicsComponent->getOwner() : nullptr;
             auto cb = this->cppContactCallback;
-            NOWA::AppStateManager::LogicCommand cmd = [cb, otherGo, snapshot]()
+            NOWA::AppStateManager::LogicCommand cmd = [cb, otherGameObjectPtr, snapshot]()
             {
-                cb(otherGo, snapshot);
+                cb(otherGameObjectPtr, snapshot);
             };
             NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+        }
+
+        if (nullptr == otherGameObjectPtr)
+        {
+            return;
         }
 
         if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->contactSolvingClosureFunction.is_valid())
         {
             // Snapshot NOW — contact ptr is dangling by logic thread execution time
             OgreNewt::ContactSnapshot contactSnapshot = contact->createSnapshot();
-            NOWA::AppStateManager::LogicCommand logicCommand = [this, otherPhysicsComponent, contactSnapshot]()
+
+            // The command runs on the logic thread while this callback comes from a physics
+            // worker, and the component may be gone by then - 'this' is used below to read the
+            // closure.
+            boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+            // Never ever give shared pointer to lua! else gameobject is destroyed much to late, causing endles hang!
+            //
+            // The shared pointer is captured by the COMMAND, not handed to lua - it keeps the
+            // other game object alive until the call has happened, and .get() below still
+            // passes a raw pointer as the policy requires. Previously getOwner() was called
+            // inside the command, so the shared pointer died immediately and
+            // otherPhysicsComponent itself could already be destroyed by then.
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, otherGameObjectPtr, contactSnapshot]()
             {
-                // Never ever give shared pointer to lua! else gameobject is destroyed much to late, causing endles hang!
-                luabind::call_function<void>(this->contactSolvingClosureFunction, otherPhysicsComponent->getOwner().get(), contactSnapshot);
+                boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                if (nullptr == strongThis)
+                {
+                    return;
+                }
+
+                if (false == this->contactSolvingClosureFunction.is_valid())
+                {
+                    return;
+                }
+
+                luabind::call_function<void>(this->contactSolvingClosureFunction, otherGameObjectPtr.get(), contactSnapshot);
             };
             NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
         }

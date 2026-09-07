@@ -28,28 +28,43 @@ namespace NOWA
 	}
 
 	void AttributeEffectComponent::AttributeEffectObserver::onEffect(const Ogre::Vector3& functionResult)
-	{
-		if (this->closureFunction.is_valid())
-		{
-			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-				{
-					try
-					{
-						luabind::call_function<void>(this->closureFunction);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
+    {
+        if (false == this->closureFunction.is_valid())
+        {
+            return;
+        }
 
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Caught error in 'reactOnEffect' Error: " + Ogre::String(error.what())
-							+ " details: " + msg.str());
-					}
-				};
-			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		}
-	}
+        // The closure is COPIED into the command instead of capturing 'this'. The command runs
+        // later on the logic thread, and this observer may already be gone by then - a raw
+        // 'this' capture would then dereference freed memory. Same fix as in
+        // PathGoalObserver::onPathGoalReached() and AnimationBlenderObserver::onAnimationFinished().
+        luabind::object callback = this->closureFunction;
+
+        // Copied by VALUE, not captured as the reference it arrives as: the referenced vector
+        // lives on the caller's stack and is gone by the time the command executes.
+        //
+        // It is also passed ON to lua now. It used to be computed, handed to this function and
+        // then silently dropped - call_function<void>(closure) took no arguments at all, so a
+        // script reacting to the effect never learned which value had been calculated.
+        const Ogre::Vector3 effectResult = functionResult;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [callback, effectResult]()
+        {
+            try
+            {
+                luabind::call_function<void>(callback, effectResult);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Caught error in 'reactOnEffect' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+    }
 
 	bool AttributeEffectComponent::AttributeEffectObserver::shouldReactOneTime(void) const
 	{

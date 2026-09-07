@@ -329,6 +329,22 @@ namespace NOWA
                    "  Height' is measured along the surface normal.\n"
                    "- Blades are never saved with the platform data - they are regenerated from the\n"
                    "  path, and only the settings above are stored.\n\n"
+
+                   "TREES:\n"
+                   "- 'Use Trees' places instances of 'Tree Mesh' along the platform, one every\n"
+                   "  'Tree Spacing' meters. Unlike the grass, a tree always stands upright in world\n"
+                   "  space, so it never grows sideways out of a wall or hangs off a loop.\n"
+                   "- 'Tree Z Start' keeps the running lane clear: trees are only placed BEHIND that\n"
+                   "  line, away from the camera. The value is the distance from the middle of the\n"
+                   "  platform towards the back - 0 fills the whole back half, larger values push the\n"
+                   "  trees further back. At Platform Depth / 2 no trees are placed at all.\n"
+                   "- Leaves sway in the wind automatically. Submeshes whose datablock name contains\n"
+                   "  leaf, leaves or twig are clustered into 'Tree Branch Clusters' pseudo-branches,\n"
+                   "  each swaying with its own phase; bark, trunk, branch and wood submeshes stay\n"
+                   "  rigid. This needs a datablock named '<LeavesDatablock>Swaying' in the Wind HLMS\n"
+                   "  and a WindComponent in the scene - without either, the tree renders rigid and a\n"
+                   "  note is written to the log.\n"
+                   "- Like the grass, tree instances are regenerated from the path and never saved.\n\n"
                    "CONVERT TO MESH:\n"
                    "- 'Convert To Mesh' exports the current platform geometry as a static .mesh file\n"
                    "  and replaces this component with a standard mesh item for optimal performance.\n"
@@ -476,6 +492,30 @@ namespace NOWA
 
         Ogre::Real getGrassBladeHeight(void) const;
 
+        void setUseTrees(bool useTrees);
+
+        bool getUseTrees(void) const;
+
+        void setTreeMeshName(const Ogre::String& meshName);
+
+        Ogre::String getTreeMeshName(void) const;
+
+        void setTreeSpacing(Ogre::Real spacing);
+
+        Ogre::Real getTreeSpacing(void) const;
+
+        void setTreeZStart(Ogre::Real zStart);
+
+        Ogre::Real getTreeZStart(void) const;
+
+        void setTreeScale(Ogre::Real scale);
+
+        Ogre::Real getTreeScale(void) const;
+
+        void setTreeBranchClusterCount(int clusterCount);
+
+        int getTreeBranchClusterCount(void) const;
+
         void setCurveSubdivisions(int subdivisions);
 
         int getCurveSubdivisions(void) const;
@@ -579,6 +619,30 @@ namespace NOWA
         static Ogre::String AttrGrassBladeHeight(void)
         {
             return "Grass Blade Height";
+        }
+        static Ogre::String AttrUseTrees(void)
+        {
+            return "Use Trees";
+        }
+        static Ogre::String AttrTreeMeshName(void)
+        {
+            return "Tree Mesh";
+        }
+        static Ogre::String AttrTreeSpacing(void)
+        {
+            return "Tree Spacing";
+        }
+        static Ogre::String AttrTreeZStart(void)
+        {
+            return "Tree Z Start";
+        }
+        static Ogre::String AttrTreeScale(void)
+        {
+            return "Tree Scale";
+        }
+        static Ogre::String AttrTreeBranchClusterCount(void)
+        {
+            return "Tree Branch Clusters";
         }
         static Ogre::String AttrCurveSubdivisions(void)
         {
@@ -804,6 +868,12 @@ namespace NOWA
         Variant* grassDensity;
         Variant* grassBladeWidth;
         Variant* grassBladeHeight;
+        Variant* useTrees;
+        Variant* treeMeshName;
+        Variant* treeSpacing;
+        Variant* treeZStart;
+        Variant* treeScale;
+        Variant* treeBranchClusterCount;
         Variant* curveSubdivisions;
         Variant* surfaceDatablock;
         Variant* groundDatablock;
@@ -852,7 +922,7 @@ namespace NOWA
         // Nothing here is serialized: the blades are a pure function of the path (already
         // stored as control points) plus the attributes above, so they are regenerated
         // rather than saved.
-        struct GrassSurfaceFrame
+        struct PlatformSurfaceFrame
         {
             Ogre::Vector3 position;       // Surface point, mesh-local
             Ogre::Vector3 normal;         // Outward surface normal, mesh-local (blade "up")
@@ -861,7 +931,7 @@ namespace NOWA
             Ogre::Real spanAcross = 0.0f; // Width of surface across the depth axis
         };
 
-        std::vector<GrassSurfaceFrame> grassFrames;
+        std::vector<PlatformSurfaceFrame> surfaceFrames;
         std::vector<Ogre::Item*> grassItems;
         std::vector<Ogre::SceneNode*> grassNodes;
 
@@ -872,13 +942,42 @@ namespace NOWA
         // need the datablock, not the component - and not depending on it keeps this file
         // free of an include it would otherwise need only to write a log line.
 
-        void collectGrassFrames(const std::vector<PlatformControlPoint>& points, const std::vector<Ogre::Vector2>& topPoints, const std::vector<Ogre::Vector2>& downDirs, Ogre::Real depth);
+        void collectSurfaceFrames(const std::vector<PlatformControlPoint>& points, const std::vector<Ogre::Vector2>& topPoints, const std::vector<Ogre::Vector2>& downDirs, Ogre::Real depth);
 
         void createGrassItems(void);
 
         void destroyGrassItems(void);
 
         void regenerateGrass(void);
+
+        // ── Trees ────────────────────────────────────────────────────────────────────────
+        // Trees are placed on the same surface frames the grass uses, but they are NOT
+        // procedurally generated geometry: an authored tree mesh is loaded and rewritten once,
+        // then instanced. The rewrite is what makes the leaves sway - see
+        // prepareSwayingTreeMesh - and it mirrors what ProceduralFoliageVolumeComponent does
+        // with useProceduralTree, deliberately using the same vertex encoding and the same
+        // "<name>Swaying" datablock convention so both feed the identical HlmsWind shader path.
+        //
+        // Unlike the foliage component, instances are NOT merged into cell meshes. A platform
+        // carries tens of trees, not thousands, so one Item per tree is simpler, keeps each
+        // tree individually cullable, and avoids duplicating the entire merge machinery.
+        std::vector<Ogre::Item*> treeItems;
+        std::vector<Ogre::SceneNode*> treeNodes;
+        Ogre::String preparedTreeMeshName;
+
+        bool isLeavesSubMesh(Ogre::HlmsDatablock* datablock) const;
+
+        void clusterLeafVerticesIntoBranches(const std::vector<Ogre::Vector3>& positions, int clusterCount, std::vector<int>& outBranchIds) const;
+
+        Ogre::HlmsDatablock* resolveSwayingLeavesDatablock(Ogre::HlmsDatablock* originalDatablock) const;
+
+        bool prepareSwayingTreeMesh(void);
+
+        void createTreeItems(void);
+
+        void destroyTreeItems(void);
+
+        void regenerateTrees(void);
 
         // Input state
         // NOTE isShiftPressed is a misnomer kept for compatibility: it is the AUTO-CHAIN

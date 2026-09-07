@@ -15,7 +15,10 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    AnimationComponentV2::AnimationBlenderObserver::AnimationBlenderObserver(luabind::object closureFunction, bool oneTime) : AnimationBlenderV2::IAnimationBlenderObserver(), closureFunction(closureFunction), oneTime(oneTime)
+    AnimationComponentV2::AnimationBlenderObserver::AnimationBlenderObserver(luabind::object closureFunction, bool oneTime)
+        : AnimationBlenderV2::IAnimationBlenderObserver(),
+        closureFunction(closureFunction),
+        oneTime(oneTime)
     {
     }
 
@@ -27,11 +30,16 @@ namespace NOWA
     {
         if (this->closureFunction.is_valid())
         {
-            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+            // Copy the closure into the command instead of capturing 'this'. The command runs
+            // later on the logic thread, and the observer may already be gone by then - a raw
+            // 'this' capture then dereferences freed memory.
+            luabind::object callback = this->closureFunction;
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [callback]()
             {
                 try
                 {
-                    luabind::call_function<void>(this->closureFunction);
+                    luabind::call_function<void>(callback);
                 }
                 catch (luabind::error& error)
                 {
@@ -221,7 +229,16 @@ namespace NOWA
 
     void AnimationComponentV2::update(Ogre::Real dt, bool notSimulating)
     {
-        if (true == this->activated->getBool() && false == notSimulating)
+        // Bug: this only checked the persisted 'activated' Variant, not this->bConnected (the
+        // actual connect()/disconnect() lifecycle flag) - setActivated() already checks both
+        // correctly a few lines below ("if (true == this->bConnected && true == activated)").
+        // disconnect() calls resetAnimation() but never touches 'activated' itself, so if
+        // update() keeps getting called after disconnect(), it would keep driving
+        // beginFrame()/addTime() as if still playing. AnimationBlenderV2::addTime() has its
+        // own internal guard that catches most of the visible fallout here (source disabled +
+        // timeleft <= 0 short-circuits), but relying on that instead of being correct here is
+        // fragile - matches setActivated()'s check for consistency.
+        if (true == this->activated->getBool() && true == this->bConnected && false == notSimulating)
         {
             if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
             {

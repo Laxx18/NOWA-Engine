@@ -210,6 +210,24 @@ namespace NOWA
 
         Ogre::Real getSpeed(unsigned int index) const;
 
+        /**
+         * @brief Gets the real length of the animation with the given index, as reported
+         *        by the skeleton. Read only - it is a property of the mesh, not a setting.
+         */
+        Ogre::Real getAnimationLength(unsigned int index) const;
+
+        /**
+         * @brief Sets how long the cross fade into the NEXT animation takes, in seconds.
+         *        The blend starts this much BEFORE the segment ends, so the outgoing
+         *        animation is still running while it fades out.
+         */
+        void setBlendDuration(unsigned int index, Ogre::Real blendDuration);
+
+        /**
+         * @brief Gets the cross fade duration into the next animation, in seconds.
+         */
+        Ogre::Real getBlendDuration(unsigned int index) const;
+
         void setRepeat(bool animationRepeat);
 
         bool getRepeat(void) const;
@@ -255,6 +273,14 @@ namespace NOWA
         {
             return "Duration ";
         }
+        static const Ogre::String AttrAnimationLength(void)
+        {
+            return "Animation Length ";
+        }
+        static const Ogre::String AttrBlendDuration(void)
+        {
+            return "Blend Duration ";
+        }
         static const Ogre::String AttrTimePosition(void)
         {
             return "TimePosition ";
@@ -270,6 +296,13 @@ namespace NOWA
         AnimationBlenderV2::BlendingTransition mapStringToBlendingTransition(const Ogre::String& strBlendingTransition);
         void resetAnimation(void);
 
+        /**
+         * @brief Resets only the sequence bookkeeping (clock, index, latches) WITHOUT
+         *        disabling the animation currently on screen, so it stays usable as a
+         *        source for a cross fade started from outside.
+         */
+        void resetSequenceClock(void);
+
     private:
         Variant* activated;
         Variant* animationRepeat;
@@ -278,6 +311,13 @@ namespace NOWA
         std::vector<Variant*> animationNames;
         std::vector<Variant*> animationBlendTransitions;
         std::vector<Variant*> animationDurations; // See: blend(..., duration)
+        // Read only, filled from the skeleton. Duration is how long the segment is PLAYED
+        // (user configurable); this is how long the animation actually IS. Without it there
+        // was no way to tell whether a configured duration matches the animation at all.
+        std::vector<Variant*> animationLengths;
+        // Per segment cross fade length. Used to be a hardcoded 0.2f at both blend() call
+        // sites, with no way to tune it.
+        std::vector<Variant*> animationBlendDurations;
         std::vector<Variant*> animationTimePositions;
         std::vector<Variant*> animationSpeeds;
         std::vector<Ogre::String> availableAnimations;
@@ -289,6 +329,9 @@ namespace NOWA
         SkeletonVisualizer* skeletonVisualizer;
         Ogre::Real timePosition;
         bool firstTimeRepeat;
+        // Set once a non repeating sequence has played its last segment. Without it,
+        // update() kept indexing every vector with currentAnimationIndex == size().
+        bool sequenceFinished;
         size_t currentAnimationIndex;
     };
 

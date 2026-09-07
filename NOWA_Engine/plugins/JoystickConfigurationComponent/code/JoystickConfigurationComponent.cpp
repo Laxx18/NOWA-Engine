@@ -683,50 +683,97 @@ namespace NOWA
 	}
 
 	void JoystickConfigurationComponent::buttonHit(MyGUI::Widget* sender)
-	{
-		if ("okButton" == sender->getName())
-		{
-			// Reset mappings, but not all, because else camera etc. cannot be moved anymore
-			InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->clearButtonMapping(this->keyConfigTextboxes.size());
+    {
+        if ("okButton" == sender->getName())
+        {
+            // Resolved ONCE. It used to be looked up again for every single mapping - three
+            // times per loop iteration plus once before it - and its result was never checked,
+            // so a missing module for this game object id crashed on the very first call.
+            InputDeviceModule* joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId());
+            if (nullptr == joystickModule)
+            {
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JoystickConfigurationComponent] Cannot apply the button mapping, because there is no joystick input device module for game object: " + this->gameObjectPtr->getName());
+                return;
+            }
 
-			for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
-			{
-				this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
-				this->textboxActive[i] = false;
+            // Reset mappings, but not all, because else camera etc. cannot be moved anymore
+            joystickModule->clearButtonMapping(this->keyConfigTextboxes.size());
 
-				InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getMappedButtonFromString(this->newKeyValue[i]);
-				InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->remapButton(static_cast<InputDeviceModule::Action>(i), button);
-			}
+            for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+            {
+                this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
+                this->textboxActive[i] = false;
 
+                InputDeviceModule::JoyStickButton button = joystickModule->getMappedButtonFromString(this->newKeyValue[i]);
+                joystickModule->remapButton(static_cast<InputDeviceModule::Action>(i), button);
+            }
 
-			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->okClickEventName->getString().empty())
-			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-				{
-					this->gameObjectPtr->getLuaScript()->callTableFunction(this->okClickEventName->getString(), this);
-				};
-				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-			}
-		}
-		else if ("abordButton" == sender->getName())
-		{
-			for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
-			{
-				this->keyConfigTextboxes[i]->setCaptionWithReplacing(this->oldKeyValue[i]);
-				this->newKeyValue[i] = this->oldKeyValue[i];
-				this->textboxActive[i] = false;
-			}
+            if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->okClickEventName->getString().empty())
+            {
+                // Resolved NOW rather than inside the command: the variant is read at click
+                // time, not one or more frames later when its value may already differ.
+                const Ogre::String capturedEventName = this->okClickEventName->getString();
 
-			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->abordClickEventName->getString().empty())
-			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-				{
-					this->gameObjectPtr->getLuaScript()->callTableFunction(this->abordClickEventName->getString(), this);
-				};
-				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-			}
-		}
-	}
+                // This callback comes from MyGUI on the render thread while the command runs on
+                // the logic thread, and the component may be destroyed in between - the
+                // command's first line used to touch this->gameObjectPtr before any check.
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, capturedEventName]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    // Re-checked: the null check above happened one or more frames ago.
+                    LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+                    if (nullptr == luaScript)
+                    {
+                        return;
+                    }
+
+                    luaScript->callTableFunction(capturedEventName, this);
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+        }
+        else if ("abordButton" == sender->getName())
+        {
+            for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+            {
+                this->keyConfigTextboxes[i]->setCaptionWithReplacing(this->oldKeyValue[i]);
+                this->newKeyValue[i] = this->oldKeyValue[i];
+                this->textboxActive[i] = false;
+            }
+
+            if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->abordClickEventName->getString().empty())
+            {
+                const Ogre::String capturedEventName = this->abordClickEventName->getString();
+
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, capturedEventName]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+                    if (nullptr == luaScript)
+                    {
+                        return;
+                    }
+
+                    luaScript->callTableFunction(capturedEventName, this);
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+        }
+    }
 
 	bool JoystickConfigurationComponent::canStaticAddComponent(GameObject* gameObject)
 	{

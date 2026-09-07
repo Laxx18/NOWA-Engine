@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+ï»¿#include "NOWAPrecompiled.h"
 #include "GameObject.h"
 #include "AiLuaComponent.h"
 #include "AiLuaGoalComponent.h"
@@ -162,6 +162,10 @@ namespace NOWA
         this->useReflection->setDescription("Whether this object should reflect the scene. This only can be used if 'setUseReflection' is activated.");
 
         this->visible = new Variant(GameObject::AttrVisible(), visible, this->attributes);
+        this->hideOnConnect = new Variant(GameObject::AttrHideOnConnect(), false, this->attributes);
+        this->hideOnConnect->setDescription("If activated, this game object becomes invisible while the simulation runs "
+                                            "and visible again on stop. The 'Visible' attribute is NOT modified, so the "
+                                            "configured state is restored exactly. Useful for editor only helpers like path waypoints.");
         this->global = new Variant(GameObject::AttrGlobal(), false, this->attributes);
         this->clampY = new Variant(GameObject::AttrClampY(), false, this->attributes);
 
@@ -242,7 +246,7 @@ namespace NOWA
             this->clampObjectQuery = nullptr;
             this->sceneManager = nullptr;
 
-            // No 'this' capture — this is a destructor, 'this' is freed before
+            // No 'this' capture ï¿½ this is a destructor, 'this' is freed before
             // the render thread executes this lambda.
             NOWA::GraphicsModule::DestroyCommand destroyCommand = [sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager]()
             {
@@ -520,7 +524,7 @@ namespace NOWA
                 // Note: Ogre runs in kilometers where as NOWA in meters as newton does
                 unsigned int renderDistance = static_cast<unsigned int>(this->movableObject->getRenderingDistance());
 
-                // Movable Object has infinite render distance (0) — determine the correct value.
+                // Movable Object has infinite render distance (0) ï¿½ determine the correct value.
                 if (0 == renderDistance)
                 {
                     // Prefer the already-stored value if it is valid (non-zero).
@@ -612,13 +616,13 @@ namespace NOWA
             return;
         }
 
-        // Capture for lambda — outOldMovableObject is written inside enqueueAndWait
+        // Capture for lambda ï¿½ outOldMovableObject is written inside enqueueAndWait
         // so it is safe to read after the call returns (blocking).
         Ogre::MovableObject*& outRef = outOldMovableObject;
 
         GraphicsModule::RenderCommand renderCommand = [this, newMovableObject, &outRef]()
         {
-            // Hand the old pointer back to caller — detach but do NOT destroy
+            // Hand the old pointer back to caller ï¿½ detach but do NOT destroy
             outRef = this->movableObject;
             if (outRef && outRef->getParentSceneNode())
             {
@@ -711,7 +715,7 @@ namespace NOWA
             this->movableObject = restoredMovableObject;
             this->sceneNode->attachObject(this->movableObject);
 
-            // Restore all flags — mirror init() exactly
+            // Restore all flags ï¿½ mirror init() exactly
             this->movableObject->getUserObjectBindings().setUserAny(Ogre::Any(this));
             this->movableObject->setQueryFlags(this->categoryId->getUInt());
             this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
@@ -1050,7 +1054,7 @@ namespace NOWA
 
     bool GameObject::connect(void)
     {
-        // Use cached raw pointers — no component scan, no atomic refcount lock.
+        // Use cached raw pointers ï¿½ no component scan, no atomic refcount lock.
         // These are set once in postInit() and cleared in destroy().
         LuaScriptComponent* luaScriptRaw = this->cachedLuaScriptComponent;
         AiLuaComponent* aiLuaRaw = this->cachedAiLuaComponent;
@@ -1081,7 +1085,7 @@ namespace NOWA
                 }
 
                 // Connect all components except LuaScriptComponent, AiLuaComponent and
-                // AiLuaGoalComponent — those are connected exclusively by GameObjectController
+                // AiLuaGoalComponent ï¿½ those are connected exclusively by GameObjectController
                 // via its managedLuaScripts loop, which controls their execution order.
                 //
                 // Attention: this MUST be a real type test, not a comparison against the cached
@@ -1089,7 +1093,7 @@ namespace NOWA
                 // postInit(), and a component added at runtime or an early connect can leave it
                 // unset), then "gameObjectCompPtr.get() != nullptr" evaluates to true and the
                 // component slips through the filter. It then gets connected here AND a second
-                // time in the managedLuaScripts loop — which made every Lua "connect" function
+                // time in the managedLuaScripts loop ï¿½ which made every Lua "connect" function
                 // run twice, duplicating everything registered inside it (reactOnFadeCompleted
                 // closures, event listeners, ...).
                 if (nullptr != boost::dynamic_pointer_cast<LuaScriptComponent>(gameObjectCompPtr))
@@ -1109,6 +1113,13 @@ namespace NOWA
             }
         }
 
+        if (true == this->hideOnConnect->getBool())
+        {
+            // Applied last on purpose, so nothing a component does during its own
+            // connect() can override it again.
+            this->applyRuntimeVisibility(false);
+        }
+
         return true;
     }
 
@@ -1124,6 +1135,14 @@ namespace NOWA
         {
             std::get<COMPONENT>(component)->disconnect();
         }
+
+        if (true == this->hideOnConnect->getBool())
+        {
+            // Restore whatever the 'Visible' attribute actually says. It was never
+            // modified while hidden, so this is exactly the configured state.
+            this->applyRuntimeVisibility(this->visible->getBool());
+        }
+
         return true;
     }
 
@@ -1302,6 +1321,10 @@ namespace NOWA
         {
             this->setInternalAttributeGlobal(attribute->getBool());
         }
+        else if (GameObject::AttrHideOnConnect() == attribute->getName())
+        {
+            this->setHideOnConnect(attribute->getBool());
+        }
         else if (GameObject::AttrVisible() == attribute->getName())
         {
             this->setVisible(attribute->getBool());
@@ -1463,6 +1486,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "Visible"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->visible->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "HideOnConnect"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->hideOnConnect->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -2299,6 +2328,31 @@ namespace NOWA
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+    }
+
+    void GameObject::applyRuntimeVisibility(bool visible)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
+        {
+            if (nullptr != this->sceneNode)
+            {
+                // Deliberately NOT routed through setVisible(): that one writes the
+                // 'Visible' attribute, which would overwrite the user's configured
+                // value and make restoring it on disconnect impossible.
+                this->sceneNode->setVisible(visible, false);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::applyRuntimeVisibility");
+    }
+
+    void GameObject::setHideOnConnect(bool hideOnConnect)
+    {
+        this->hideOnConnect->setValue(hideOnConnect);
+    }
+
+    bool GameObject::getHideOnConnect(void) const
+    {
+        return this->hideOnConnect->getBool();
     }
 
     void GameObject::setLoadedVisible(bool visible)
@@ -3211,7 +3265,7 @@ namespace NOWA
                 return this->attributes[i].second;
             }
         }
-        // Not found in game object — search all components.
+        // Not found in game object ï¿½ search all components.
         for (const auto& component : this->gameObjectComponents)
         {
             Variant* v = std::get<COMPONENT>(component)->getAttribute(attributeName);

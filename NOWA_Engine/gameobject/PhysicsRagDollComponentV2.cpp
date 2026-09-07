@@ -2405,51 +2405,70 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<PhysicsRagDollComponentV2, PhysicsActiveComponent>("PhysicsRagDollComponentV2")
-                .def("inheritVelOmega", &PhysicsRagDollComponentV2::inheritVelOmega)
-                .def("setActivated", &PhysicsRagDollComponentV2::setActivated)
-                .def("setState", &PhysicsRagDollComponentV2::setState)
-                .def("setVelocity", &PhysicsRagDollComponentV2::setVelocity)
-                .def("getVelocity", &PhysicsRagDollComponentV2::getVelocity)
-                .def("getPosition", &PhysicsRagDollComponentV2::getPosition)
-                .def("setOrientation", &PhysicsRagDollComponentV2::setOrientation)
-                .def("getOrientation", &PhysicsRagDollComponentV2::getOrientation)
-                .def("setInitialState", &PhysicsRagDollComponentV2::setInitialState)
-                .def("setAnimationEnabled", &PhysicsRagDollComponentV2::setAnimationEnabled)
-                .def("isAnimationEnabled", &PhysicsRagDollComponentV2::isAnimationEnabled)
-                .def("setBoneConfigFile", &PhysicsRagDollComponentV2::setBoneConfigFile)
-                .def("getBoneConfigFile", &PhysicsRagDollComponentV2::getBoneConfigFile)
-                .def("getRagDataList", &getRagDataListV2)
-                .def("getRagBone", &PhysicsRagDollComponentV2::getRagBone)
-                .def("setBoneRotation", &PhysicsRagDollComponentV2::setBoneRotation)
-                .scope[class_<PhysicsRagDollComponentV2::RagBone>("RagBone")
-                        .def("getName", &PhysicsRagDollComponentV2::RagBone::getName)
-                        .def("getPosition", &PhysicsRagDollComponentV2::RagBone::getPosition)
-                        .def("setOrientation", &PhysicsRagDollComponentV2::RagBone::setOrientation)
-                        .def("getOrientation", &PhysicsRagDollComponentV2::RagBone::getOrientation)
-                        .def("setInitialState", &PhysicsRagDollComponentV2::RagBone::setInitialState)
-                        .def("getOgreBone", &PhysicsRagDollComponentV2::RagBone::getBone)
-                        .def("getParentRagBone", &PhysicsRagDollComponentV2::RagBone::getParentRagBone)
-                        .def("getInitialBonePosition", &PhysicsRagDollComponentV2::RagBone::getInitialBonePosition)
-                        .def("getInitialBoneOrientation", &PhysicsRagDollComponentV2::RagBone::getInitialBoneOrientation)
-                        .def("getPhysicsRagDollComponentV2", &PhysicsRagDollComponentV2::RagBone::getPhysicsRagDollComponent)
-                        .def("getRagPose", &PhysicsRagDollComponentV2::RagBone::getRagPose)
-                        .def("applyPose", &PhysicsRagDollComponentV2::RagBone::applyPose)
-                        .def("applyRequiredForceForVelocity", &PhysicsRagDollComponentV2::RagBone::applyRequiredForceForVelocity)
-                        .def("applyOmegaForce", &PhysicsRagDollComponentV2::RagBone::applyOmegaForce)
-                        .def("applyOmegaForceRotateTo", &PhysicsRagDollComponentV2::RagBone::applyOmegaForceRotateTo)
-                        .def("getSize", &PhysicsRagDollComponentV2::RagBone::getBodySize)
-                        .def("getJointId", &getJointId)
-                        .def("getBody", &PhysicsRagDollComponentV2::RagBone::getBody)
-                        .def("getJointComponent", &getRagJointComponent)
-                        .def("getJointHingeComponent", &getRagJointHingeComponent)
-                        .def("getJointUniversalComponent", &getRagJointUniversalComponent)
-                        .def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
-                        .def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
-                        .def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
-                        .def("getJointKinematicComponent", &getRagJointKinematicComponent)]];
+        module(lua)
+        [
+            class_<PhysicsRagDollComponentV2, PhysicsActiveComponent>("PhysicsRagDollComponentV2")
+            .def("inheritVelOmega", &PhysicsRagDollComponentV2::inheritVelOmega)
+            .def("setActivated", &PhysicsRagDollComponentV2::setActivated)
+            .def("setState", &PhysicsRagDollComponentV2::setState)
+            .def("setVelocity", &PhysicsRagDollComponentV2::setVelocity)
+            .def("getVelocity", &PhysicsRagDollComponentV2::getVelocity)
+            .def("getPosition", &PhysicsRagDollComponentV2::getPosition)
+            .def("setOrientation", &PhysicsRagDollComponentV2::setOrientation)
+            .def("getOrientation", &PhysicsRagDollComponentV2::getOrientation)
+            .def("setInitialState", &PhysicsRagDollComponentV2::setInitialState)
+            .def("setAnimationEnabled", &PhysicsRagDollComponentV2::setAnimationEnabled)
+            .def("isAnimationEnabled", &PhysicsRagDollComponentV2::isAnimationEnabled)
+            .def("setBoneConfigFile", &PhysicsRagDollComponentV2::setBoneConfigFile)
+            .def("getBoneConfigFile", &PhysicsRagDollComponentV2::getBoneConfigFile)
+            .def("getRagDataList", &getRagDataListV2)
+            .def("getRagBone", &PhysicsRagDollComponentV2::getRagBone)
+            .def("setBoneRotation", &PhysicsRagDollComponentV2::setBoneRotation)
+            .scope
+            [
+                class_<PhysicsRagDollComponentV2::RagBone>("RagBone")
+                .def("getName", &PhysicsRagDollComponentV2::RagBone::getName)
+                .def("getPosition", &PhysicsRagDollComponentV2::RagBone::getPosition)
+                .def("setOrientation", &PhysicsRagDollComponentV2::RagBone::setOrientation)
+                .def("getOrientation", &PhysicsRagDollComponentV2::RagBone::getOrientation)
+                .def("setInitialState", &PhysicsRagDollComponentV2::RagBone::setInitialState)
+                .def("getOgreBone", &PhysicsRagDollComponentV2::RagBone::getBone)
+                .def("getParentRagBone", &PhysicsRagDollComponentV2::RagBone::getParentRagBone)
+                .def("getInitialBonePosition", &PhysicsRagDollComponentV2::RagBone::getInitialBonePosition)
+                .def("getInitialBoneOrientation", &PhysicsRagDollComponentV2::RagBone::getInitialBoneOrientation)
+                .def("getPhysicsRagDollComponentV2", &PhysicsRagDollComponentV2::RagBone::getPhysicsRagDollComponent)
+                .def("getRagPose", &PhysicsRagDollComponentV2::RagBone::getRagPose)
+                .def("applyPose", &PhysicsRagDollComponentV2::RagBone::applyPose)
+                .def("applyRequiredForceForVelocity", &PhysicsRagDollComponentV2::RagBone::applyRequiredForceForVelocity)
+                .def("applyOmegaForce", &PhysicsRagDollComponentV2::RagBone::applyOmegaForce)
+                .def("applyOmegaForceRotateTo", &PhysicsRagDollComponentV2::RagBone::applyOmegaForceRotateTo)
+                .def("getSize", &PhysicsRagDollComponentV2::RagBone::getBodySize)
+                .def("getJointId", &getJointId)
+                .def("getBody", &PhysicsRagDollComponentV2::RagBone::getBody)
+                .def("getJointComponent", &getRagJointComponent)
+                .def("getJointHingeComponent", &getRagJointHingeComponent)
+                .def("getJointUniversalComponent", &getRagJointUniversalComponent)
+                .def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
+                .def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
+                .def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
+                .def("getJointKinematicComponent", &getRagJointKinematicComponent)
+            ]
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "class inherits PhysicsActiveComponent", PhysicsRagDollComponentV2::getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "void setState(string state)", "The state to set. Possible values are: 'Inactive': No rag dolling, "
+            "this component behaves like a physics active component with just one collision body. "
+            "'Ragdolling': Changes the state to rag doll mode, using the rag doll configuration file. "
+            "'Animation': The collision bodies transform is set to the animated bones");
+
+
+        /**
+         * @brief		Sets the rag doll state.
+         * @param[in]	state	The state to set. Possible values are:
+         *				'Inactive': No rag dolling, this component behaves like a physics active component with just one collision body.
+         * 				'Ragdolling': Changes the state to rag doll mode, using the rag doll configuration file
+         * 				'Animation': The collision bodies transform is set to the animated bones
+         */
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "void setVelocity(Vector3 velocity)",
             "Sets the global linear velocity on the physics body. Note: This should only be used for initzialisation. Use @applyRequiredForceForVelocity in simualtion instead. Or it may be called if its a physics active kinematic body.");
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "Vector3 getVelocity()", "Gets currently acting velocity on the body.");

@@ -44,7 +44,7 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AnimationBlenderV2::gameObjectIsInRagDollStateDelegate), EventDataGameObjectIsInRagDollingState::getStaticEventType());
     }
 
-   AnimationBlenderV2::~AnimationBlenderV2()
+    AnimationBlenderV2::~AnimationBlenderV2()
     {
         // Remove the per-frame addTime closure BEFORE this object is freed.
         // The closure captures `this` — if it keeps running after destruction,
@@ -171,7 +171,7 @@ namespace NOWA
                 }
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setOverlayAnimation");
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::internalInit");
     }
 
     void AnimationBlenderV2::blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop)
@@ -243,6 +243,33 @@ namespace NOWA
         }
 
         this->internalBlend(animationName, transition, 0.2f, true);
+    }
+
+    void AnimationBlenderV2::blendPhaseSynced(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop)
+    {
+        if (false == this->canAnimate)
+        {
+            return;
+        }
+
+        auto it2 = this->mappedAnimations.find(animationId);
+        if (this->mappedAnimations.end() == it2)
+        {
+            // if the animation cannot be found, just skip
+            return;
+        }
+
+        this->internalBlend(it2->second, transition, duration, loop, true);
+    }
+
+    void AnimationBlenderV2::blendPhaseSynced(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop)
+    {
+        if (true == animationName.empty())
+        {
+            return;
+        }
+
+        this->internalBlend(animationName, transition, duration, loop, true);
     }
 
     void AnimationBlenderV2::blendExclusive(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop)
@@ -370,7 +397,7 @@ namespace NOWA
         this->internalBlend(animationName, transition, 0.2f, true);
     }
 
-    void AnimationBlenderV2::internalBlend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop)
+    void AnimationBlenderV2::internalBlend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop, bool phaseSync)
     {
         // Note: If entity is in ragdolling state, animation would explode the ragdoll and since its no possible to avoid, that a developer calls
         // e.g. in a lua script some animation functions, it must be avoided internally
@@ -391,12 +418,17 @@ namespace NOWA
         }
 
         // TODO Wait?
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, animationName, transition, duration, loop]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, animationName, transition, duration, loop, phaseSync]()
         {
             this->loop = loop;
 
             if (transition == AnimationBlenderV2::BlendSwitch)
             {
+                // Kept in sync so later logic never reads a stale transition type from a
+                // previous blend. timeleft is zeroed below, so nothing reads it right now,
+                // but leaving it stale is a trap for the next change here.
+                this->transition = transition;
+
                 if (this->source != nullptr)
                 {
                     this->source->setEnabled(false);
@@ -428,15 +460,33 @@ namespace NOWA
                     }
                     else if (newTarget == this->source)
                     {
-                        // reversing — source and target swap roles, timeleft mirrors
+                        // reversing - source and target swap roles, timeleft mirrors.
+                        // this->duration is deliberately kept here: mirroring the remaining
+                        // time only makes sense against the duration that blend is running
+                        // on. Only the transition type is adopted.
                         this->source = this->target;
                         this->target = newTarget;
                         this->timeleft = this->duration - this->timeleft;
-                        // no speed change needed — both were already at currentSpeed
+                        this->transition = transition;
+                        // no speed change needed - both were already at currentSpeed
                     }
                     else
                     {
                         // genuinely new target mid-blend
+                        //
+                        // Bug: this branch never assigned the incoming 'duration' to
+                        // this->duration / this->timeleft - that only happened in the fresh
+                        // start branch below. So a blend requested mid-transition silently
+                        // inherited the REMAINING time of the previous one: with 0.05 s left
+                        // over, a requested 0.5 s cross fade finished in 0.05 s, i.e. as a
+                        // hard cut. This matters much more now that callers deliberately
+                        // blend early, while the previous transition is still running.
+                        //
+                        // The progress of the outgoing blend has to be read BEFORE the clock
+                        // is replaced, otherwise the incoming animation would pop in at the
+                        // wrong weight.
+                        const Ogre::Real previousProgress = (this->duration > 0.0f) ? (1.0f - this->timeleft / this->duration) : 1.0f;
+
                         if (this->timeleft < this->duration * 0.5f)
                         {
                             this->target->setEnabled(false);
@@ -450,8 +500,14 @@ namespace NOWA
                         }
                         this->target = newTarget;
                         this->target->setEnabled(true);
-                        this->target->mWeight = 1.0f - this->timeleft / this->duration;
+                        this->target->mWeight = previousProgress;
                         this->target->setTime(0.0f);
+
+                        // Restart the blend clock on the REQUESTED duration, and adopt the
+                        // requested transition type - it too was silently kept from the
+                        // previous blend.
+                        this->transition = transition;
+                        this->timeleft = this->duration = duration;
 
                         // Apply speed to the new target
                         auto itT = this->baseFrameRates.find(animationName);
@@ -477,8 +533,16 @@ namespace NOWA
                         this->target->mFrameRate = itT->second * this->currentSpeed;
                     }
 
-                    // Phase-sync for looping locomotion blends
-                    if (transition == BlendWhileAnimating && this->source->mLoop && loop && this->source->getNumFrames() > 0.0f && this->target->getNumFrames() > 0.0f)
+                    // Phase-sync for looping locomotion blends.
+                    //
+                    // Now gated behind phaseSync (set only by blendPhaseSynced()). It used to
+                    // apply to EVERY BlendWhileAnimating blend between two looping clips, which
+                    // is only correct for genuinely comparable timelines such as walk into run.
+                    // For anything else the shared phase is meaningless: blending an idle that
+                    // happens to sit at 60% into a pick up animation started the pick up 60% in,
+                    // played the remainder, looped, and only then played the gesture properly -
+                    // looking like the character started the action twice.
+                    if (true == phaseSync && transition == BlendWhileAnimating && this->source->mLoop && loop && this->source->getNumFrames() > 0.0f && this->target->getNumFrames() > 0.0f)
                     {
                         Ogre::Real sourcePhase = this->source->getCurrentFrame() / this->source->getNumFrames();
                         this->target->setFrame(sourcePhase * this->target->getNumFrames());
@@ -505,7 +569,8 @@ namespace NOWA
         // If someone else already advanced this blender this frame, skip.
         if (false == this->tryClaimAddTime(ownerId))
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationBlender]: Warning: Add time will not be executed for " + ownerId + ", because another class: " + this->addTimeOwner + " does claim animation blender already.");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[AnimationBlender]: Warning: Add time will not be executed for " + ownerId + ", because another class: " + this->addTimeOwner + " does claim animation blender already.");
             return;
         }
 
@@ -927,7 +992,7 @@ namespace NOWA
         return nullptr != this->overlaySource;
     }
 
-    void AnimationBlenderV2::driveBlendSpace(Ogre::Real parameter, const IAnimationBlender::BlendSpaceEntryList& entryList)
+    void AnimationBlenderV2::driveBlendSpace(Ogre::Real parameter, const AnimationBlenderV2::BlendSpaceEntryList& entryList)
     {
         const auto& entries = entryList.getEntries();
         if (entries.size() < 2 || false == this->canAnimate)

@@ -333,18 +333,65 @@ namespace NOWA
 	}
 
 	void PhysicsActiveKinematicComponent::kinematicContactCallback(OgreNewt::Body* otherBody)
-	{
-		PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(otherBody->getUserData());
+    {
+        if (nullptr == otherBody)
+        {
+            return;
+        }
 
-		if (nullptr != this->gameObjectPtr->getLuaScript())
-		{
-			NOWA::AppStateManager::LogicCommand logicCommand = [this, otherPhysicsComponent]()
-			{
-				this->gameObjectPtr->getLuaScript()->callTableFunction(this->onKinematicContactFunctionName->getString(), otherPhysicsComponent->getOwner());
-			};
-			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		}
-	}
+        // A body that cannot be cast to a physics component has no owning game object - the
+        // normal case for e.g. ragdoll bones, which are plain bodies. GenericContactCallback
+        // guards this very cast for exactly that reason; here it was dereferenced unchecked,
+        // and only inside the deferred command, so the crash would surface a frame later and
+        // far away from its cause.
+        PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(otherBody->getUserData());
+        if (nullptr == otherPhysicsComponent)
+        {
+            return;
+        }
+
+        GameObjectPtr otherGameObjectPtr = otherPhysicsComponent->getOwner();
+        if (nullptr == otherGameObjectPtr)
+        {
+            return;
+        }
+
+        if (nullptr == this->gameObjectPtr->getLuaScript())
+        {
+            return;
+        }
+
+        // Resolved NOW rather than inside the command: this callback runs on a physics worker
+        // thread while the command runs later on the logic thread, so anything read at
+        // execution time may already have changed. The owner is captured as a shared pointer,
+        // which additionally keeps the other game object alive until the call has happened.
+        const Ogre::String capturedFunctionName = this->onKinematicContactFunctionName->getString();
+
+        // The weak pointer covers this component being destroyed between enqueueing and
+        // execution - the command's first line used to touch this->gameObjectPtr before any
+        // check could run.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, otherGameObjectPtr, capturedFunctionName]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            // Re-checked here as well: the null check above happened one or more frames ago
+            // and the script may have been torn down since.
+            LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+            if (nullptr == luaScript)
+            {
+                return;
+            }
+
+            luaScript->callTableFunction(capturedFunctionName, otherGameObjectPtr);
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+    }
 
 	void PhysicsActiveKinematicComponent::setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength)
 	{

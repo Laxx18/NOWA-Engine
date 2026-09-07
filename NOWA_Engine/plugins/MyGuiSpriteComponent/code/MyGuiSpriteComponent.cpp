@@ -733,37 +733,58 @@ namespace NOWA
     void MyGuiSpriteComponent::callMousePressLuaFunction(void)
     {
         // Call also function in lua script, if it does exist in the lua script component
-        if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
+        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->enabled->getBool())
         {
-            // Copy the list — it may be modified during iteration
-            auto closures = this->mouseButtonClickClosureFunctions;
-
-            if (false == closures.empty())
-            {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, closures]()
-                {
-                    for (const auto& closure : closures)
-                    {
-                        if (false == closure.is_valid())
-                        {
-                            continue;
-                        }
-                        try
-                        {
-                            luabind::call_function<void>(closure);
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUISpriteComponent] Caught error in 'reactOnMouseButtonClick post sprite' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                        }
-                    }
-                };
-                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-            }
+            return;
         }
+
+        // Copy the list — it may be modified during iteration
+        auto closures = this->mouseButtonClickClosureFunctions;
+
+        if (true == closures.empty())
+        {
+            return;
+        }
+
+        // The command runs on the logic thread one or more frames later and the component may
+        // be destroyed by then. The closures themselves are already copied, so the weak
+        // pointer exists for the re-checks below - without them a click queued just before a
+        // teardown still fired afterwards.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, closures]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->enabled->getBool() || nullptr == this->gameObjectPtr->getLuaScript())
+            {
+                return;
+            }
+
+            for (const auto& closure : closures)
+            {
+                if (false == closure.is_valid())
+                {
+                    continue;
+                }
+                try
+                {
+                    luabind::call_function<void>(closure);
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUISpriteComponent] Caught error in 'reactOnMouseButtonClick post sprite' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
     void MyGuiSpriteComponent::mouseButtonClick(MyGUI::Widget* sender)

@@ -551,49 +551,95 @@ namespace NOWA
 	}
 
 	void KeyboardConfigurationComponent::buttonHit(MyGUI::Widget* sender)
-	{
-		if ("okButton" == sender->getName())
-		{
-			// Reset mappings, but not all, because else camera etc. cannot be moved anymore
-			InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->clearKeyMapping(this->keyConfigTextboxes.size());
+    {
+        if ("okButton" == sender->getName())
+        {
+            // Resolved ONCE and null checked. It used to be looked up three times per loop
+            // iteration plus once before it, and the result was never checked - a missing
+            // module for this game object id crashed on the very first call.
+            InputDeviceModule* keyboardModule = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId());
+            if (nullptr == keyboardModule)
+            {
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[KeyboardConfigurationComponent] Cannot apply the key mapping, because there is no keyboard input device module for game object: " + this->gameObjectPtr->getName());
+                return;
+            }
 
-			for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
-			{
-				this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
-				this->textboxActive[i] = false;
+            // Reset mappings, but not all, because else camera etc. cannot be moved anymore
+            keyboardModule->clearKeyMapping(this->keyConfigTextboxes.size());
 
-				OIS::KeyCode key = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->getMappedKeyFromString(this->newKeyValue[i]);
-				InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->remapKey(static_cast<InputDeviceModule::Action>(i), key);
-			}
+            for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+            {
+                this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
+                this->textboxActive[i] = false;
 
-			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->okClickEventName->getString().empty())
-			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-				{
-					this->gameObjectPtr->getLuaScript()->callTableFunction(this->okClickEventName->getString(), this);
-				};
-				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-			}
-		}
-		else if ("abordButton" == sender->getName())
-		{
-			for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
-			{
-				this->keyConfigTextboxes[i]->setCaptionWithReplacing(this->oldKeyValue[i]);
-				this->newKeyValue[i] = this->oldKeyValue[i];
-				this->textboxActive[i] = false;
-			}
+                OIS::KeyCode key = keyboardModule->getMappedKeyFromString(this->newKeyValue[i]);
+                keyboardModule->remapKey(static_cast<InputDeviceModule::Action>(i), key);
+            }
 
-			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->abordClickEventName->getString().empty())
-			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-				{
-					this->gameObjectPtr->getLuaScript()->callTableFunction(this->abordClickEventName->getString(), this);
-				};
-				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-			}
-		}
-	}
+            if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->okClickEventName->getString().empty())
+            {
+                // Read at click time, not one or more frames later when the value may differ.
+                const Ogre::String capturedEventName = this->okClickEventName->getString();
+
+                // MyGUI callback on the render thread, command on the logic thread - the
+                // component may be destroyed in between, and the command's first line used to
+                // touch this->gameObjectPtr before any check.
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, capturedEventName]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+                    if (nullptr == luaScript)
+                    {
+                        return;
+                    }
+
+                    luaScript->callTableFunction(capturedEventName, this);
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+        }
+        else if ("abordButton" == sender->getName())
+        {
+            for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+            {
+                this->keyConfigTextboxes[i]->setCaptionWithReplacing(this->oldKeyValue[i]);
+                this->newKeyValue[i] = this->oldKeyValue[i];
+                this->textboxActive[i] = false;
+            }
+
+            if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->abordClickEventName->getString().empty())
+            {
+                const Ogre::String capturedEventName = this->abordClickEventName->getString();
+
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, capturedEventName]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+                    if (nullptr == luaScript)
+                    {
+                        return;
+                    }
+
+                    luaScript->callTableFunction(capturedEventName, this);
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+        }
+    }
 
 	void KeyboardConfigurationComponent::keyPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
 	{

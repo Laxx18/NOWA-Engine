@@ -295,57 +295,62 @@ namespace NOWA
 		static const Ogre::String AttrMouseButtonPickId(void) { return "Mouse Button Pick Id"; }
 		static const Ogre::String AttrJoystickButtonPickId(void) { return "Joystick Button Pick Id"; }
 	protected:
-		protected:
-			/**
-			 * @brief		Actions on mouse moved event.
-			 * @see			OIS::MouseListener::mouseMoved()
-			 * @param[in]	evt		The mouse event
-			 * @return		true			if other key listener successors shall have the chance to react or not.
-			 */
-			virtual bool mouseMoved(const OIS::MouseEvent& evt) override;
+		/**
+			* @brief		Actions on mouse moved event.
+			* @see			OIS::MouseListener::mouseMoved()
+			* @param[in]	evt		The mouse event
+			* @return		true			if other key listener successors shall have the chance to react or not.
+			*/
+		virtual bool mouseMoved(const OIS::MouseEvent& evt) override;
 
-			/**
-			 * @brief		Actions on mouse pressed event.
-			 * @see			OIS::MouseListener::mousePressed()
-			 * @param[in]	evt		The mouse event
-			 * @return		true			if other key listener successors shall have the chance to react or not.
-			 */
-			virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
+		/**
+			* @brief		Actions on mouse pressed event.
+			* @see			OIS::MouseListener::mousePressed()
+			* @param[in]	evt		The mouse event
+			* @return		true			if other key listener successors shall have the chance to react or not.
+			*/
+		virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
 
-			/**
-			 * @brief		Actions on mouse released event.
-			 * @see			OIS::MouseListener::mouseReleased()
-			 * @param[in]	evt		The mouse event
-			 * @return		true			if other key listener successors shall have the chance to react or not.
-			 */
-			virtual bool mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
+		/**
+			* @brief		Actions on mouse released event.
+			* @see			OIS::MouseListener::mouseReleased()
+			* @param[in]	evt		The mouse event
+			* @return		true			if other key listener successors shall have the chance to react or not.
+			*/
+		virtual bool mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
 
-			/**
-			 * @brief		Actions on joyStick axis moved event.
-			 * @see			OIS::JoyStickListener::axisMoved()
-			 * @param[in]	evt		The joyStick event
-			 * @return		true			if other key listener successors shall have the chance to react or not.
-			 */
-			virtual bool axisMoved(const OIS::JoyStickEvent& evt, int axis) override;
+		/**
+			* @brief		Actions on joyStick axis moved event.
+			* @see			OIS::JoyStickListener::axisMoved()
+			* @param[in]	evt		The joyStick event
+			* @return		true			if other key listener successors shall have the chance to react or not.
+			*/
+		virtual bool axisMoved(const OIS::JoyStickEvent& evt, int axis) override;
 
-			/**
-			 * @brief		Actions on joyStick button pressed event.
-			 * @see			OIS::JoyStickListener::buttonPressed()
-			 * @param[in]	evt		The joyStick event
-			 * @return		true			if other key listener successors shall have the chance to react or not.
-			 */
-			virtual bool buttonPressed(const OIS::JoyStickEvent& evt, int button) override;
+		/**
+			* @brief		Actions on joyStick button pressed event.
+			* @see			OIS::JoyStickListener::buttonPressed()
+			* @param[in]	evt		The joyStick event
+			* @return		true			if other key listener successors shall have the chance to react or not.
+			*/
+		virtual bool buttonPressed(const OIS::JoyStickEvent& evt, int button) override;
 
-			/**
-			 * @brief		Actions on joyStick button released event.
-			 * @see			OIS::JoyStickListener::buttonReleased()
-			 * @param[in]	evt		The joyStick event
-			 * @return		true			if other key listener successors shall have the chance to react or not.
-			 */
-			virtual bool buttonReleased(const OIS::JoyStickEvent& evt, int button) override;
-		private:
-			void deleteJointDelegate(EventDataPtr eventData);
-			void deleteBodyDelegate(EventDataPtr eventData);
+		/**
+			* @brief		Actions on joyStick button released event.
+			* @see			OIS::JoyStickListener::buttonReleased()
+			* @param[in]	evt		The joyStick event
+			* @return		true			if other key listener successors shall have the chance to react or not.
+			*/
+		virtual bool buttonReleased(const OIS::JoyStickEvent& evt, int button) override;
+	private:
+		void deleteJointDelegate(EventDataPtr eventData);
+		void deleteBodyDelegate(EventDataPtr eventData);
+
+        /**
+         * @brief Defers a lua closure call to the logic thread, guarded against this
+         *        component being destroyed or disconnected in the meantime.
+         */
+        void enqueueClosureCall(luabind::object& closureFunction, const char* reactionName);
 	private:
 		Ogre::String name;
 		GameObjectPicker* picker;
