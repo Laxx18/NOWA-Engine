@@ -315,6 +315,7 @@ namespace OgreNewt
             static const Ogre::Vector3 spinAxes[3] = {Ogre::Vector3::UNIT_X, Ogre::Vector3::UNIT_Y, Ogre::Vector3::UNIT_Z};
             const Ogre::Quaternion spinQ(Ogre::Radian(tire.spinAngle), spinAxes[m_spinAxis]);
 
+#if 0
             tire.worldPos = chassisPos + chassisOrient * tire.localPos;
 
             if (tire.isFrontTire)
@@ -325,6 +326,30 @@ namespace OgreNewt
             {
                 tire.worldOrient = chassisOrient * spinQ * tire.localOrient;
             }
+#else
+            // Deliberately WITHOUT the chassis transform.
+            //
+            // These used to be full world transforms built from this->getPosition(), i.e.
+            // the raw PHYSICS position of the chassis. The chassis scene node however is
+            // rendered through GraphicsModule, which interpolates between physics states -
+            // so the tires were placed using the raw position while the body was drawn at
+            // the interpolated one. The resulting offset is proportional to speed, which is
+            // why the tires drifted while accelerating and snapped back when coasting.
+            //
+            // Storing the CHASSIS LOCAL transform instead lets Ogre's scene graph do the
+            // coupling: whatever interpolation the chassis node gets applies to the tires
+            // automatically, because they are its children.
+            tire.worldPos = tire.localPos;
+
+            if (tire.isFrontTire)
+            {
+                tire.worldOrient = steerQ * spinQ * tire.localOrient;
+            }
+            else
+            {
+                tire.worldOrient = spinQ * tire.localOrient;
+            }
+#endif
         }
     }
 

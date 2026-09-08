@@ -106,6 +106,8 @@ namespace NOWA
 					// Clear the behavior data
 					cameraBehavior->onClearData();
 
+					// REALLY Important: deactivated this: Else because of queue, if in camerabehavior camera is first remove -> then this is called, and then added, then this event fires later in camerabehavior and removes the behavior again
+					// Which causes catastrophic behavior
 					// boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(mainIt->first));
 					// AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
 

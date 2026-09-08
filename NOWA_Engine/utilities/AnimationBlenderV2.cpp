@@ -171,7 +171,8 @@ namespace NOWA
                 }
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::internalInit");
+        // TODO: Was enqueueAndWait, but enqueue does also work
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::internalInit");
     }
 
     void AnimationBlenderV2::blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop)
