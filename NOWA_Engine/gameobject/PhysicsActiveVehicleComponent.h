@@ -1,264 +1,318 @@
 #ifndef PHYSICS_ACTIVE_VEHICLE_COMPONENT_H
 #define PHYSICS_ACTIVE_VEHICLE_COMPONENT_H
 
+#include "OgreNewt_Vehicle.h"
+#include "OgreNewt_World.h"
 #include "PhysicsActiveComponent.h"
 #include "VehicleDrivingManipulation.h"
-#include "OgreNewt_World.h"
-#include "OgreNewt_Vehicle.h"
+
+#include <atomic>
 
 namespace NOWA
 {
-	class EXPORTED PhysicsActiveVehicleComponent : public PhysicsActiveComponent
-	{
-	public:
-		typedef boost::shared_ptr<PhysicsActiveVehicleComponent> PhysicsActiveVehicleCompPtr;
-	public:
-		class EXPORTED PhysicsVehicleCallback : public OgreNewt::VehicleCallback
-		{
-		public:
-			PhysicsVehicleCallback(GameObject* owner, LuaScript* luaScript, OgreNewt::World* ogreNewt, const Ogre::String& onSteerAngleChangedFunctionName,
-								   const Ogre::String& onMotorForceChangedFunctionName, const Ogre::String& onHandBrakeChangedFunctionName, 
-								   const Ogre::String& onBrakeChangedFunctionName, const Ogre::String& onTireContactFunctionName);
+    class EXPORTED PhysicsActiveVehicleComponent : public PhysicsActiveComponent
+    {
+    public:
+        typedef boost::shared_ptr<PhysicsActiveVehicleComponent> PhysicsActiveVehicleCompPtr;
 
-			virtual ~PhysicsVehicleCallback();
+    public:
+        class EXPORTED PhysicsVehicleCallback : public OgreNewt::VehicleCallback
+        {
+        public:
+            PhysicsVehicleCallback(GameObject* owner, LuaScript* luaScript, OgreNewt::World* ogreNewt, const Ogre::String& onSteerAngleChangedFunctionName, const Ogre::String& onMotorForceChangedFunctionName,
+                const Ogre::String& onHandBrakeChangedFunctionName, const Ogre::String& onBrakeChangedFunctionName, const Ogre::String& onTireContactFunctionName);
 
-			/**
-			 * @brief Controls via device input the steer angle.
-			 */
-			virtual Ogre::Real onSteerAngleChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
+            virtual ~PhysicsVehicleCallback();
 
-			/**
-			 * @brief Controls via device input the motor force.
-			 */
-			virtual Ogre::Real onMotorForceChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
+            /**
+             * @brief Controls via device input the steer angle.
+             */
+            virtual Ogre::Real onSteerAngleChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
 
-			/**
-			 * @brief Controls via device input the hand brake force.
-			 * @note  A good value is 5.5.
-			 */
-			virtual Ogre::Real onHandBrakeChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
+            /**
+             * @brief Controls via device input the motor force.
+             */
+            virtual Ogre::Real onMotorForceChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
 
-			/**
-			 * @brief Controls via device input the brake force.
-			 * @note  A good value is 7.5.
-			 */
-			virtual Ogre::Real onBrakeChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
+            /**
+             * @brief Controls via device input the hand brake force.
+             * @note  A good value is 5.5.
+             */
+            virtual Ogre::Real onHandBrakeChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
 
-			/**
-			 * @brief Is called if the tire hits another game object below.
-			 */
-			virtual void onTireContact(const OgreNewt::RayCastTire* tire, const Ogre::String& tireName, OgreNewt::Body* hitBody, const Ogre::Vector3& contactPosition, const Ogre::Vector3& contactNormal, Ogre::Real penetration) override;
-		private:
-			GameObject* owner;
-			LuaScript* luaScript;
-			OgreNewt::World* ogreNewt;
-			Ogre::String onSteerAngleChangedFunctionName;
-			Ogre::String onMotorForceChangedFunctionName;
-			Ogre::String onHandBrakeChangedFunctionName;
-			Ogre::String onBrakeChangedFunctionName;
-			Ogre::String onTireContactFunctionName;
-			VehicleDrivingManipulation* vehicleDrivingManipulation;
-		};
-	public:
+            /**
+             * @brief Controls via device input the brake force.
+             * @note  A good value is 7.5.
+             */
+            virtual Ogre::Real onBrakeChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
 
-		PhysicsActiveVehicleComponent();
+            /**
+             * @brief Is called if the tire hits another game object below.
+             */
+            virtual void onTireContact(const OgreNewt::RayCastTire* tire, const Ogre::String& tireName, OgreNewt::Body* hitBody, const Ogre::Vector3& contactPosition, const Ogre::Vector3& contactNormal, Ogre::Real penetration) override;
 
-		virtual ~PhysicsActiveVehicleComponent();
+        private:
+            /**
+             * @brief Runs one lua driving callback WITHOUT blocking the physics thread.
+             *
+             * lua_State is shared by every script in the process - a per vehicle lua MODULE
+             * does not change that, because callTableFunction() pushes onto that one shared
+             * stack. Calling it straight from a newton worker, as the old
+             * "Is safe run in newton thread" comment claimed, means two vehicles in split
+             * screen can push onto the same stack simultaneously and corrupt it.
+             *
+             * Physics side only touches atomics, logic side is the sole owner of lua. The
+             * value returned is the one lua produced for the PREVIOUS frame - at 60 Hz a one
+             * frame lag on steering or throttle is invisible, whereas a blocking
+             * enqueueAndWait() would stall a physics worker per tire per substep and can
+             * deadlock against the logic thread.
+             */
+            Ogre::Real callDrivingFunction(const Ogre::String& functionName, std::atomic<Ogre::Real>& cachedResult, Ogre::Real dt, Ogre::Real (VehicleDrivingManipulation::*resultGetter)(void) const);
 
-		/**
-		* @see		GameObjectComponent::init
-		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+            GameObject* owner;
+            LuaScript* luaScript;
+            OgreNewt::World* ogreNewt;
 
-		/**
-		* @see		GameObjectComponent::postInit
-		*/
-		virtual bool postInit(void) override;
+            // Written by the LOGIC thread after each lua call, read by the PHYSICS thread.
+            // Atomic, so no lock is needed on either side.
+            std::atomic<Ogre::Real> cachedSteerAngle;
+            std::atomic<Ogre::Real> cachedMotorForce;
+            std::atomic<Ogre::Real> cachedHandBrake;
+            std::atomic<Ogre::Real> cachedBrake;
+            Ogre::String onSteerAngleChangedFunctionName;
+            Ogre::String onMotorForceChangedFunctionName;
+            Ogre::String onHandBrakeChangedFunctionName;
+            Ogre::String onBrakeChangedFunctionName;
+            Ogre::String onTireContactFunctionName;
+            // The VehicleDrivingManipulation member is gone on purpose. It used to be owned
+            // here and its pointer captured by the deferred logic commands, so a command
+            // still queued when this callback got destroyed - e.g. on a mid game vehicle
+            // swap - dereferenced freed memory. Each command now builds its own local
+            // instance.
+        };
 
-		/**
-		* @see		GameObjectComponent::onRemoveComponent
-		*/
-		virtual void onRemoveComponent(void);
+    public:
+        PhysicsActiveVehicleComponent();
 
-		/**
-		* @see		GameObjectComponent::connect
-		*/
-		virtual bool connect(void) override;
+        virtual ~PhysicsActiveVehicleComponent();
 
-		/**
-		* @see		GameObjectComponent::disconnect
-		*/
-		virtual bool disconnect(void) override;
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
-		/**
-		* @see		GameObjectComponent::update
-		*/
-		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
 
-		/**
-		* @see		GameObjectComponent::getClassName
-		*/
-		virtual Ogre::String getClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::onRemoveComponent
+         */
+        virtual void onRemoveComponent(void);
 
-		/**
-		* @see		GameObjectComponent::getParentClassName
-		*/
-		virtual Ogre::String getParentClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
 
-		/**
-		* @see		GameObjectComponent::getParentParentClassName
-		*/
-		virtual Ogre::String getParentParentClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
 
-		/**
-		* @see		GameObjectComponent::clone
-		*/
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+        /**
+         * @see		GameObjectComponent::update
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
-		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
 
-		/**
-		* @see		GameObjectComponent::isMovable
-		*/
-		virtual bool isMovable(void) const override
-		{
-			return true;
-		}
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
 
-		/**
-		* @see		GameObjectComponent::writeXML
-		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        /**
+         * @see		GameObjectComponent::getParentParentClassName
+         */
+        virtual Ogre::String getParentParentClassName(void) const override;
 
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("PhysicsActiveVehicleComponent");
-		}
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
-		static Ogre::String getStaticClassName(void)
-		{
-			return "PhysicsActiveVehicleComponent";
-		}
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
 
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
+        /**
+         * @see		GameObjectComponent::isMovable
+         */
+        virtual bool isMovable(void) const override
+        {
+            return true;
+        }
 
-		/**
-		* @see	GameObjectComponent::getStaticInfoText
-		*/
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: This component can be used in conjunction with JointVehicleTire component's, builing a vehicle like a car. Note: The mesh's default model axis should be in x-direction. Else the car will not drive properly. "
-				" Use the Mesh Tool to rotate the mesh's origin axis properly.";
-		}
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		virtual void setActivated(bool activated) override;
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("PhysicsActiveVehicleComponent");
+        }
 
-		/**
-		 * @brief Sets the lua function name, to react when the steering angle for the specific tires shall change.
-		 * @param[in]	onEnterFunctionName		The function name to set
-		 */
-		void setOnSteerAngleChangedFunctionName(const Ogre::String& onSteerAngleChangedFunctionName);
+        static Ogre::String getStaticClassName(void)
+        {
+            return "PhysicsActiveVehicleComponent";
+        }
 
-		/**
-		 * @brief Gets the lua function name.
-		 * @return lua function name to get
-		 */
-		Ogre::String getOnSteerAngleChangedFunctionName(void) const;
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+        {
+        }
 
-		/**
-		 * @brief Sets the lua function name, to react when the motor force for the specific tires shall change.
-		 * @param[in]	onEnterFunctionName		The function name to set
-		 */
-		void setOnMotorForceChangedFunctionName(const Ogre::String& onMotorForceChangedFunctionName);
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: This component can be used in conjunction with JointVehicleTire component's, builing a vehicle like a car. Note: The mesh's default model axis should be in x-direction. Else the car will not drive properly. "
+                   " Use the Mesh Tool to rotate the mesh's origin axis properly.";
+        }
 
-		/**
-		 * @brief Gets the lua function name.
-		 * @return lua function name to get
-		 */
-		Ogre::String getOnMotorForceChangedFunctionName(void) const;
+        virtual void setActivated(bool activated) override;
 
-		/**
-		 * @brief Sets the lua function name, to react when the hand brake force shall change.
-		 * @param[in]	onEnterFunctionName		The function name to set
-		 */
-		void setOnHandBrakeChangedFunctionName(const Ogre::String& onHandBrakeChangedFunctionName);
+        /**
+         * @brief Sets the lua function name, to react when the steering angle for the specific tires shall change.
+         * @param[in]	onEnterFunctionName		The function name to set
+         */
+        void setOnSteerAngleChangedFunctionName(const Ogre::String& onSteerAngleChangedFunctionName);
 
-		/**
-		 * @brief Gets the lua function name.
-		 * @return lua function name to get
-		 */
-		Ogre::String getOnHandBrakeChangedFunctionName(void) const;
+        /**
+         * @brief Gets the lua function name.
+         * @return lua function name to get
+         */
+        Ogre::String getOnSteerAngleChangedFunctionName(void) const;
 
-		/**
-		 * @brief Sets the lua function name, to react when the brake force shall change.
-		 * @param[in]	onEnterFunctionName		The function name to set
-		 */
-		void setOnBrakeChangedFunctionName(const Ogre::String& onBrakeChangedFunctionName);
+        /**
+         * @brief Sets the lua function name, to react when the motor force for the specific tires shall change.
+         * @param[in]	onEnterFunctionName		The function name to set
+         */
+        void setOnMotorForceChangedFunctionName(const Ogre::String& onMotorForceChangedFunctionName);
 
-		/**
-		 * @brief Gets the lua function name.
-		 * @return lua function name to get
-		 */
-		Ogre::String getOnBrakeChangedFunctionName(void) const;
+        /**
+         * @brief Gets the lua function name.
+         * @return lua function name to get
+         */
+        Ogre::String getOnMotorForceChangedFunctionName(void) const;
 
+        /**
+         * @brief Sets the lua function name, to react when the hand brake force shall change.
+         * @param[in]	onEnterFunctionName		The function name to set
+         */
+        void setOnHandBrakeChangedFunctionName(const Ogre::String& onHandBrakeChangedFunctionName);
 
-		/**
-		 * @brief Sets the lua function name, to react when the brake force shall change.
-		 * @param[in]	onEnterFunctionName		The function name to set
-		 */
-		void setOnTireContactFunctionName(const Ogre::String& onTireContactFunctionName);
+        /**
+         * @brief Gets the lua function name.
+         * @return lua function name to get
+         */
+        Ogre::String getOnHandBrakeChangedFunctionName(void) const;
 
-		/**
-		 * @brief Gets the lua function name.
-		 * @return lua function name to get
-		 */
-		Ogre::String getOnTireContactFunctionName(void) const;
-		
-		OgreNewt::Vehicle* getVehicle(void) const;
+        /**
+         * @brief Sets the lua function name, to react when the brake force shall change.
+         * @param[in]	onEnterFunctionName		The function name to set
+         */
+        void setOnBrakeChangedFunctionName(const Ogre::String& onBrakeChangedFunctionName);
 
-		Ogre::Vector3 getVehicleForce(void) const;
+        /**
+         * @brief Gets the lua function name.
+         * @return lua function name to get
+         */
+        Ogre::String getOnBrakeChangedFunctionName(void) const;
 
-		void setUseTilting(bool useTilting);
+        /**
+         * @brief Sets the lua function name, to react when the brake force shall change.
+         * @param[in]	onEnterFunctionName		The function name to set
+         */
+        void setOnTireContactFunctionName(const Ogre::String& onTireContactFunctionName);
 
-		bool getUseTilting() const;
+        /**
+         * @brief Gets the lua function name.
+         * @return lua function name to get
+         */
+        Ogre::String getOnTireContactFunctionName(void) const;
 
-		void setCanDrive(bool canDrive);
+        OgreNewt::Vehicle* getVehicle(void) const;
 
-		void applyWheelie(Ogre::Real strength);
+        Ogre::Vector3 getVehicleForce(void) const;
 
-		void applyDrift(bool left, Ogre::Real strength, Ogre::Real steeringStrength);
+        void setUseTilting(bool useTilting);
 
-		bool isAirborne(void) const;
+        bool getUseTilting() const;
 
-		// Apply angular impulse (stable + timestep aware)
-		// strength is in "torque-like" units; start with something like 1500..6000 depending on mass
-		void applyPitch(Ogre::Real strength, Ogre::Real dt);
-	public:
-		static const Ogre::String AttrUseTilting(void) { return "Use Tilting"; }
-		static const Ogre::String AttrOnSteerAngleChangedFunctionName(void) { return "On Steering Angle Function Name"; }
-		static const Ogre::String AttrOnMotorForceChangedFunctionName(void) { return "On Motor Force Function Name"; }
-		static const Ogre::String AttrOnHandBrakeChangedFunctionName(void) { return "On Hand Brake Function Name"; }
-		static const Ogre::String AttrOnBrakeChangedFunctionName(void) { return "On Brake Function Name"; }
-		static const Ogre::String AttrOnTireContactFunctionName(void) { return "On Tire Function Name"; }
-	protected:
-		virtual bool createDynamicBody(void);
-	private:
-		void correctVehicleOrientation(void);
-	private:
-		Variant* useTilting;
-		Variant* onSteerAngleChangedFunctionName;
-		Variant* onMotorForceChangedFunctionName;
-		Variant* onHandBrakeChangedFunctionName;
-		Variant* onBrakeChangedFunctionName;
-		Variant* onTireContactFunctionName;
-	};
+        void setCanDrive(bool canDrive);
 
-}; //namespace end
+        void applyWheelie(Ogre::Real strength);
+
+        void applyDrift(bool left, Ogre::Real strength, Ogre::Real steeringStrength);
+
+        bool isAirborne(void) const;
+
+        // Apply angular impulse (stable + timestep aware)
+        // strength is in "torque-like" units; start with something like 1500..6000 depending on mass
+        void applyPitch(Ogre::Real strength, Ogre::Real dt);
+
+    public:
+        static const Ogre::String AttrUseTilting(void)
+        {
+            return "Use Tilting";
+        }
+        static const Ogre::String AttrOnSteerAngleChangedFunctionName(void)
+        {
+            return "On Steering Angle Function Name";
+        }
+        static const Ogre::String AttrOnMotorForceChangedFunctionName(void)
+        {
+            return "On Motor Force Function Name";
+        }
+        static const Ogre::String AttrOnHandBrakeChangedFunctionName(void)
+        {
+            return "On Hand Brake Function Name";
+        }
+        static const Ogre::String AttrOnBrakeChangedFunctionName(void)
+        {
+            return "On Brake Function Name";
+        }
+        static const Ogre::String AttrOnTireContactFunctionName(void)
+        {
+            return "On Tire Function Name";
+        }
+
+    protected:
+        virtual bool createDynamicBody(void);
+
+    private:
+        void correctVehicleOrientation(void);
+
+    private:
+        Variant* useTilting;
+        Variant* onSteerAngleChangedFunctionName;
+        Variant* onMotorForceChangedFunctionName;
+        Variant* onHandBrakeChangedFunctionName;
+        Variant* onBrakeChangedFunctionName;
+        Variant* onTireContactFunctionName;
+    };
+
+}; // namespace end
 
 #endif

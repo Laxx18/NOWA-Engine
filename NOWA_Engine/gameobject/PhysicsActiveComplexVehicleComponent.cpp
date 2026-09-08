@@ -1,9 +1,9 @@
-#include "NOWAPrecompiled.h"
+ï»¿#include "NOWAPrecompiled.h"
 #include "PhysicsActiveComplexVehicleComponent.h"
 #include "PhysicsComponent.h"
-#include "utilities/XMLConverter.h"
-#include "utilities/MathHelper.h"
 #include "main/AppStateManager.h"
+#include "utilities/MathHelper.h"
+#include "utilities/XMLConverter.h"
 
 namespace NOWA
 {
@@ -14,124 +14,103 @@ namespace NOWA
     // PhysicsComplexVehicleCallback
     ///////////////////////////////////////////////////////////////
 
-    PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::PhysicsComplexVehicleCallback(PhysicsActiveComplexVehicleComponent* owner, LuaScript* luaScript, OgreNewt::World* ogreNewt,
-        const Ogre::String& onSteerAngleChangedFunctionName, const Ogre::String& onMotorForceChangedFunctionName, const Ogre::String& onHandBrakeChangedFunctionName, const Ogre::String& onBrakeChangedFunctionName,
-        const Ogre::String& onTireContactFunctionName)
-        : OgreNewt::ComplexVehicleCallback(),
+    PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::PhysicsComplexVehicleCallback(PhysicsActiveComplexVehicleComponent* owner, LuaScript* luaScript, OgreNewt::World* ogreNewt, const Ogre::String& onSteerAngleChangedFunctionName,
+        const Ogre::String& onMotorForceChangedFunctionName, const Ogre::String& onHandBrakeChangedFunctionName, const Ogre::String& onBrakeChangedFunctionName, const Ogre::String& onTireContactFunctionName) :
+        OgreNewt::ComplexVehicleCallback(),
         owner(owner),
         luaScript(luaScript),
         ogreNewt(ogreNewt),
+        cachedSteerAngle(0.0f),
+        cachedMotorForce(0.0f),
+        cachedHandBrake(0.0f),
+        cachedBrake(0.0f),
         onSteerAngleChangedFunctionName(onSteerAngleChangedFunctionName),
         onMotorForceChangedFunctionName(onMotorForceChangedFunctionName),
         onHandBrakeChangedFunctionName(onHandBrakeChangedFunctionName),
         onBrakeChangedFunctionName(onBrakeChangedFunctionName),
-        onTireContactFunctionName(onTireContactFunctionName),
-        vehicleDrivingManipulation(new ComplexVehicleDrivingManipulation())
+        onTireContactFunctionName(onTireContactFunctionName)
     {
-        
     }
 
     PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::~PhysicsComplexVehicleCallback()
     {
-        delete this->vehicleDrivingManipulation;
-        this->vehicleDrivingManipulation = nullptr;
+        // Nothing to release: the driving manipulation is no longer a member, each deferred
+        // command creates its own local one.
+    }
+
+    Ogre::Real PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::callDrivingFunction(const Ogre::String& functionName, std::atomic<Ogre::Real>& cachedResult, Ogre::Real timestep,
+        Ogre::Real (ComplexVehicleDrivingManipulation::*resultGetter)(void) const)
+    {
+        if (nullptr == this->owner)
+        {
+            return 0.0f;
+        }
+
+        if (nullptr == this->luaScript || false == this->luaScript->isCompiled() || true == functionName.empty())
+        {
+            return 0.0f;
+        }
+
+        // Reading the cached value first is what keeps the physics thread free of lua: it
+        // never blocks and never touches the shared lua_State. The value comes from the
+        // previous frame's call, which at 60 Hz is imperceptible for steering, throttle or
+        // brakes.
+        const Ogre::Real previousResult = cachedResult.load(std::memory_order_relaxed);
+
+        // Only plain values cross the thread boundary, no pointer into this callback. The
+        // manipulation object used to be a member whose pointer was captured here, so a
+        // command still queued when this callback got destroyed reached into freed memory.
+        LuaScript* const capturedLuaScript = this->luaScript;
+        const Ogre::String capturedFunctionName = functionName;
+        const Ogre::Real capturedTimestep = timestep;
+        std::atomic<Ogre::Real>* const capturedCache = &cachedResult;
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [capturedLuaScript, capturedFunctionName, capturedTimestep, capturedCache, resultGetter]()
+        {
+            if (nullptr == capturedLuaScript || false == capturedLuaScript->isCompiled())
+            {
+                return;
+            }
+
+            // Built locally, which also replaces the manual reset the old code did before
+            // every call - the constructor zeroes all four values anyway. Lua receives a
+            // raw pointer as usual and must not hold on to it past the call.
+            ComplexVehicleDrivingManipulation drivingManipulation;
+
+            // Runs on the logic thread, the only place allowed to touch lua_State. Two
+            // vehicles in split screen queue two commands, and they are executed one after
+            // another here instead of racing on the shared stack.
+            capturedLuaScript->callTableFunction(capturedFunctionName, &drivingManipulation, capturedTimestep);
+
+            capturedCache->store((drivingManipulation.*resultGetter)(), std::memory_order_relaxed);
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+
+        return previousResult;
     }
 
     Ogre::Real PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::onSteerAngleChanged(const OgreNewt::ComplexVehicle* visitor, const OgreNewt::ComplexVehicleTire* tire, Ogre::Real timestep)
     {
-        this->vehicleDrivingManipulation->steerAngle = 0.0f;
-
-        if (nullptr == this->owner)
-        {
-            return 0.0f;
-        }
-
-        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
-        if (nullptr != visitorPhysicsComponent)
-        {
-            if (nullptr != this->luaScript && this->luaScript->isCompiled() &&
-                false == this->onSteerAngleChangedFunctionName.empty())
-            {
-                // Is safe run in newton thread
-                this->luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, this->vehicleDrivingManipulation, timestep);
-            }
-        }
-
-        // Use value provided on the component
-        return this->vehicleDrivingManipulation->getSteerAngle();
+        return this->callDrivingFunction(this->onSteerAngleChangedFunctionName, this->cachedSteerAngle, timestep, &ComplexVehicleDrivingManipulation::getSteerAngle);
     }
 
     Ogre::Real PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::onMotorForceChanged(const OgreNewt::ComplexVehicle* visitor, const OgreNewt::ComplexVehicleTire* tire, Ogre::Real timestep)
     {
-        this->vehicleDrivingManipulation->motorForce = 0.0f;
-
-        if (nullptr == this->owner)
-        {
-            return 0.0f;
-        }
-
-        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
-        if (nullptr != visitorPhysicsComponent)
-        {
-            if (nullptr != this->luaScript && this->luaScript->isCompiled() &&
-                false == this->onMotorForceChangedFunctionName.empty())
-            {
-                // Is safe run in newton thread
-                this->luaScript->callTableFunction(this->onMotorForceChangedFunctionName, this->vehicleDrivingManipulation, timestep);
-            }
-        }
-
-        return this->vehicleDrivingManipulation->getMotorForce();
+        return this->callDrivingFunction(this->onMotorForceChangedFunctionName, this->cachedMotorForce, timestep, &ComplexVehicleDrivingManipulation::getMotorForce);
     }
 
     Ogre::Real PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::onHandBrakeChanged(const OgreNewt::ComplexVehicle* visitor, const OgreNewt::ComplexVehicleTire* tire, Ogre::Real timestep)
     {
-        this->vehicleDrivingManipulation->handBrake = 0.0f;
-
-        if (nullptr == this->owner)
-        {
-            return 0.0f;
-        }
-
-        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
-        if (nullptr != visitorPhysicsComponent)
-        {
-            if (nullptr != this->luaScript && this->luaScript->isCompiled() &&
-                false == this->onHandBrakeChangedFunctionName.empty())
-            {
-                // Is safe run in newton thread
-                this->luaScript->callTableFunction(this->onHandBrakeChangedFunctionName, this->vehicleDrivingManipulation, timestep);
-            }
-        }
-
-        return this->vehicleDrivingManipulation->getHandBrake();
+        return this->callDrivingFunction(this->onHandBrakeChangedFunctionName, this->cachedHandBrake, timestep, &ComplexVehicleDrivingManipulation::getHandBrake);
     }
 
     Ogre::Real PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::onBrakeChanged(const OgreNewt::ComplexVehicle* visitor, const OgreNewt::ComplexVehicleTire* tire, Ogre::Real timestep)
     {
-        this->vehicleDrivingManipulation->brake = 0.0f;
-
-        if (nullptr == this->owner)
-        {
-            return 0.0f;
-        }
-
-        PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
-        if (nullptr != visitorPhysicsComponent)
-        {
-            if (nullptr != this->luaScript && this->luaScript->isCompiled() &&
-                false == this->onBrakeChangedFunctionName.empty())
-            {
-                // Is safe run in newton thread
-                this->luaScript->callTableFunction(this->onBrakeChangedFunctionName, this->vehicleDrivingManipulation, timestep);
-            }
-        }
-
-        return this->vehicleDrivingManipulation->getBrake();
+        return this->callDrivingFunction(this->onBrakeChangedFunctionName, this->cachedBrake, timestep, &ComplexVehicleDrivingManipulation::getBrake);
     }
 
-    void PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::onTireContact(const OgreNewt::ComplexVehicleTire* tire, const Ogre::String& tireName, OgreNewt::Body* hitBody,
-        const Ogre::Vector3& contactPosition, const Ogre::Vector3& contactNormal, Ogre::Real penetration)
+    void PhysicsActiveComplexVehicleComponent::PhysicsComplexVehicleCallback::onTireContact(const OgreNewt::ComplexVehicleTire* tire, const Ogre::String& tireName, OgreNewt::Body* hitBody, const Ogre::Vector3& contactPosition,
+        const Ogre::Vector3& contactNormal, Ogre::Real penetration)
     {
         if (nullptr == this->owner || nullptr == hitBody)
         {
@@ -156,11 +135,27 @@ namespace NOWA
         this->vehicleDrivingManipulation->setPenetration(penetration);
         this->vehicleDrivingManipulation->setTireName(tireName);*/
 
-        if (nullptr != this->luaScript && this->luaScript->isCompiled() &&
-            false == this->onTireContactFunctionName.empty())
+        if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onTireContactFunctionName.empty())
         {
-            // Is safe run in newton thread
-            this->luaScript->callTableFunction(this->onTireContactFunctionName, this->vehicleDrivingManipulation);
+            // Deferred like the four driving callbacks: this runs on a newton worker and
+            // lua_State must only be touched from the logic thread. No return value is
+            // needed here, so there is nothing to cache.
+            LuaScript* const capturedLuaScript = this->luaScript;
+            const Ogre::String capturedFunctionName = this->onTireContactFunctionName;
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [capturedLuaScript, capturedFunctionName]()
+            {
+                if (nullptr == capturedLuaScript || false == capturedLuaScript->isCompiled())
+                {
+                    return;
+                }
+
+                // Local instance, same reasoning as in callDrivingFunction().
+                ComplexVehicleDrivingManipulation drivingManipulation;
+
+                capturedLuaScript->callTableFunction(capturedFunctionName, &drivingManipulation);
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
         }
     }
 
@@ -168,8 +163,8 @@ namespace NOWA
     // PhysicsActiveComplexVehicleComponent
     ///////////////////////////////////////////////////////////////
 
-    PhysicsActiveComplexVehicleComponent::PhysicsActiveComplexVehicleComponent(void)
-        : PhysicsActiveComponent(),
+    PhysicsActiveComplexVehicleComponent::PhysicsActiveComplexVehicleComponent(void) :
+        PhysicsActiveComponent(),
         onSteerAngleChangedFunctionName(new Variant(PhysicsActiveComplexVehicleComponent::AttrOnSteerAngleChangedFunctionName(), Ogre::String(""), this->attributes)),
         onMotorForceChangedFunctionName(new Variant(PhysicsActiveComplexVehicleComponent::AttrOnMotorForceChangedFunctionName(), Ogre::String(""), this->attributes)),
         onHandBrakeChangedFunctionName(new Variant(PhysicsActiveComplexVehicleComponent::AttrOnHandBrakeChangedFunctionName(), Ogre::String(""), this->attributes)),
@@ -322,9 +317,7 @@ namespace NOWA
     {
         bool success = PhysicsActiveComponent::connect();
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponent] Connect physics active vehicle component for game object: "
-            + this->gameObjectPtr->getName());
-
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponent] Connect physics active vehicle component for game object: " + this->gameObjectPtr->getName());
 
         // Note: Since vehicle is created on the fly during connect, also its init position must be set there, instead like in physicsactivecomponent in postinit!
         this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
@@ -334,16 +327,15 @@ namespace NOWA
         // Special case: Must be done in connect, because lua script is involved, and order important.
         // Else: E.g. if creating this component, creating body to early, lua script would be 0, because the user would add the lua script component later
         if (false == this->createDynamicBody())
+        {
             return false;
+        }
 
         this->setCanDrive(this->activated->getBool());
 
         if (nullptr != this->physicsBody && true == this->bShowDebugData)
         {
-            ENQUEUE_RENDER_COMMAND_WAIT("PhysicsActiveVehicleComponent::showDebugData",
-                {
-                    this->physicsBody->showDebugCollision(false, this->bShowDebugData);
-                });
+            ENQUEUE_RENDER_COMMAND_WAIT("PhysicsActiveVehicleComponent::showDebugData", { this->physicsBody->showDebugCollision(false, this->bShowDebugData); });
         }
 
         return success;
@@ -419,32 +411,26 @@ namespace NOWA
         OgreNewt::CollisionPtr collisionPtr;
 
         ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::createDynamicCollision", _4(&inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin),
-            {
-                collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
-                                                    collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
-            });
+            { collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()); });
 
-        this->physicsBody = new OgreNewt::ComplexVehicle(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->gameObjectPtr->getDefaultDirection(), collisionPtr, weightedMass,
-            this->collisionPosition->getVector3(), this->massOrigin->getVector3(), new PhysicsComplexVehicleCallback(this, this->gameObjectPtr->getLuaScript(), this->ogreNewt,
-                this->onSteerAngleChangedFunctionName->getString(),
-                this->onMotorForceChangedFunctionName->getString(),
-                this->onHandBrakeChangedFunctionName->getString(),
-                this->onBrakeChangedFunctionName->getString(),
-                this->onTireContactFunctionName->getString()));
+        this->physicsBody =
+            new OgreNewt::ComplexVehicle(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->gameObjectPtr->getDefaultDirection(), collisionPtr, weightedMass, this->collisionPosition->getVector3(), this->massOrigin->getVector3(),
+                new PhysicsComplexVehicleCallback(this, this->gameObjectPtr->getLuaScript(), this->ogreNewt, this->onSteerAngleChangedFunctionName->getString(), this->onMotorForceChangedFunctionName->getString(),
+                    this->onHandBrakeChangedFunctionName->getString(), this->onBrakeChangedFunctionName->getString(), this->onTireContactFunctionName->getString()));
 
         this->physicsBody->setGravity(this->gravity->getVector3());
 
         // set mass origin
-        //this->physicsBody->setCenterOfMass(calculatedMassOrigin);
+        // this->physicsBody->setCenterOfMass(calculatedMassOrigin);
 
-        //if (this->collisionType->getListSelectedValue() == "ConvexHull")
+        // if (this->collisionType->getListSelectedValue() == "ConvexHull")
         //{
         //	this->physicsBody->setConvexIntertialMatrix(inertia, calculatedMassOrigin);
-        //}
+        // }
 
         //// Apply mass and scale to inertia (the bigger the object, the more mass)
-        //inertia *= weightedMass;
-        //this->physicsBody->setMassMatrix(weightedMass, inertia);
+        // inertia *= weightedMass;
+        // this->physicsBody->setMassMatrix(weightedMass, inertia);
 
         if (this->linearDamping->getReal() != 0.0f)
         {
@@ -499,7 +485,7 @@ namespace NOWA
 
     void PhysicsActiveComplexVehicleComponent::correctVehicleOrientation(void)
     {
-        // placeholder – fill with your old re-orientation logic if needed
+        // placeholder ï¿½ fill with your old re-orientation logic if needed
     }
 
     OgreNewt::ComplexVehicle* PhysicsActiveComplexVehicleComponent::getComplexVehicle(void) const
@@ -551,17 +537,12 @@ namespace NOWA
     ///////////////////////////////////////////////////////////////
 
     ComplexVehicleDrivingManipulation::ComplexVehicleDrivingManipulation()
-        : steerAngle(0.0f),
-        motorForce(0.0f),
-        handBrake(0.0f),
-        brake(0.0f)
+        : steerAngle(0.0f), motorForce(0.0f), handBrake(0.0f), brake(0.0f)
     {
-
     }
 
     ComplexVehicleDrivingManipulation::~ComplexVehicleDrivingManipulation()
     {
-
     }
 
     void ComplexVehicleDrivingManipulation::setSteerAngle(Ogre::Real steerAngle)

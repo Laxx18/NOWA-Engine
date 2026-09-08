@@ -5086,12 +5086,30 @@ namespace NOWA
 
     void UniversumComponent::callCannotLandFunction(unsigned long bodyId, unsigned long shipId)
     {
-        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->planetEnteredClosureFunction.is_valid())
+        // Bug: this checked planetEnteredClosureFunction while calling cannotLandFunction
+        // below - copy paste from callPlanetEnteredFunction(). With only the cannot land
+        // closure registered the call never happened, and with only the planet entered one
+        // registered an invalid closure was invoked.
+        if (false == this->cannotLandFunction.is_valid())
         {
             return;
         }
-        NOWA::AppStateManager::LogicCommand logicCommand = [this, bodyId, shipId]()
+
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, bodyId, shipId]()
         {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->cannotLandFunction.is_valid())
+            {
+                return;
+            }
+
             try
             {
                 auto gameObjectController = AppStateManager::getSingletonPtr()->getGameObjectController();
@@ -5127,12 +5145,28 @@ namespace NOWA
 
     void UniversumComponent::callPlanetEnteredFunction(unsigned long planetId, unsigned long enteringGoId)
     {
-        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->planetEnteredClosureFunction.is_valid())
+        // The getLuaScript() gate is gone: the closure belongs to whichever script registered
+        // it, not to this game object - which may well have no script of its own.
+        if (false == this->planetEnteredClosureFunction.is_valid())
         {
             return;
         }
-        NOWA::AppStateManager::LogicCommand logicCommand = [this, planetId, enteringGoId]()
+
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, planetId, enteringGoId]()
         {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->planetEnteredClosureFunction.is_valid())
+            {
+                return;
+            }
+
             try
             {
                 auto gameObjectController = AppStateManager::getSingletonPtr()->getGameObjectController();
@@ -5168,12 +5202,26 @@ namespace NOWA
 
     void UniversumComponent::callPlanetLeftFunction(unsigned long planetId, unsigned long enteringGoId)
     {
-        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->planetLeftClosureFunction.is_valid())
+        if (false == this->planetLeftClosureFunction.is_valid())
         {
             return;
         }
-        NOWA::AppStateManager::LogicCommand logicCommand = [this, planetId, enteringGoId]()
+
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, planetId, enteringGoId]()
         {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->planetLeftClosureFunction.is_valid())
+            {
+                return;
+            }
+
             try
             {
                 auto gameObjectController = AppStateManager::getSingletonPtr()->getGameObjectController();
@@ -5209,12 +5257,26 @@ namespace NOWA
 
     void UniversumComponent::callUniverseGeneratedFunction(void)
     {
-        if (nullptr == this->gameObjectPtr->getLuaScript() || false == this->universeGeneratedClosureFunction.is_valid())
+        if (false == this->universeGeneratedClosureFunction.is_valid())
         {
             return;
         }
-        NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
         {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->universeGeneratedClosureFunction.is_valid())
+            {
+                return;
+            }
+
             try
             {
                 luabind::call_function<void>(this->universeGeneratedClosureFunction);

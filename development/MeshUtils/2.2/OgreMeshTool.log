@@ -1,16 +1,47 @@
-13:26:12: OGRE EXCEPTION(7:InternalErrorException): Cannot find serializer implementation for mesh version [MeshSerializer_v2.1 R2] in MeshSerializer::importMesh at E:\Ogre2.2SDK\OgreMain\src\OgreMeshSerializer.cpp (line 186)
-13:26:12: MeshSerializer writing mesh data to stream ...
-13:26:12: File header written.
-13:26:12: Writing mesh data...
-13:26:12: Writing submesh...
-13:26:12: Submesh exported.
-13:26:12: Exporting LOD level thresholds....
-13:26:12: LOD level thresholds exported.
-13:26:12: Exporting bounds information....
-13:26:12: Bounds information exported.
-13:26:12: Exporting submesh name table...
-13:26:12: Submesh name table exported.
-13:26:12: Exporting hash for caches...
-13:26:12: Exporting hash for caches exported.
-13:26:12: Mesh data exported.
-13:26:12: MeshSerializer export successful.
+11:57:48: Exporting bones..
+11:57:48: Bones exported.
+11:57:48: Exporting animations, count=22
+11:57:48: Exporting animation: Tiger_Carry_Idle
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Carry_Move
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Carry_Move_In_Place
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Damage
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Failure
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Fall
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Idle
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Idle_2
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Jump_Up
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Kick
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Land
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Pick_Up
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Roll
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Roll_In_Place
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Run
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Run_In_Place
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Sleep
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Success
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Talk
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Throw
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Walk
+11:57:48: Animation exported.
+11:57:48: Exporting animation: Tiger_Walk_In_Place
+11:57:48: Animation exported.

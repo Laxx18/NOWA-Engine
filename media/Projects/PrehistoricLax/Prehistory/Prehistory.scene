@@ -4,9 +4,9 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.0115992" g="0.0372741" b="0.0886436"/>
-			<ambientLightLowerHemisphere r="0.0137978" g="0.0164771" b="0.0180611" a="1"/>
-			<hemisphereDir x="0.0107708" y="0.965927" z="-0.258592"/>
+			<ambientLightUpperHemisphere r="0.0115923" g="0.037252" b="0.0885911"/>
+			<ambientLightLowerHemisphere r="0.0137962" g="0.0164742" b="0.0180563" a="1"/>
+			<hemisphereDir x="0.00975438" y="0.965927" z="-0.258633"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -33,7 +33,7 @@
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-20.2177 -4.80309 -22.6618" mostRightFarPosition="118.463 106.125 124.395"/>
+		<bounds mostLeftNearPosition="-20.2177 -4.80309 -22.6618" mostRightFarPosition="131.321 119.603 138.341"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-0.0486387" y="3.8794" z="-7.57336"/>
-			<rotation qw="0.99981" qx="-0.0087252" qy="0.0174517" qz="0.000152299"/>
+			<position x="0.780541" y="1.90013" z="-6.36175"/>
+			<rotation qw="0.995396" qx="-0.0958458" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-2.24762 2.10776 -8.51069"/>
-					<property type="9" name="CameraOrientation" data="-6.97662 10.1769 0.0423287"/>
+					<property type="9" name="CameraPosition" data="0.486087 3.62736 -6.43201"/>
+					<property type="9" name="CameraOrientation" data="-11.1401 -0.371 0.175863"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -108,8 +108,8 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="118.087" y="105.689" z="123.931"/>
-			<rotation qw="0.675165" qx="-0.397444" qy="0.303738" qz="0.542156"/>
+			<position x="130.885" y="119.134" z="137.826"/>
+			<rotation qw="0.776687" qx="-0.45334" qy="0.211335" qz="0.382854"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -232,12 +232,12 @@
 					<property type="7" name="TimePointEndEventName6" data=""/>
 					<property type="2" name="GameObjectId7" data="0"/>
 					<property type="6" name="StartTime7" data="51"/>
-					<property type="6" name="Duration7" data="10"/>
+					<property type="6" name="Duration7" data="5"/>
 					<property type="2" name="RepeatCount7" data="0"/>
 					<property type="7" name="TimePointStartEventName7" data="BreakDoorTimePoint"/>
 					<property type="7" name="TimePointEndEventName7" data=""/>
 					<property type="2" name="GameObjectId8" data="0"/>
-					<property type="6" name="StartTime8" data="61"/>
+					<property type="6" name="StartTime8" data="56"/>
 					<property type="6" name="Duration8" data="8"/>
 					<property type="2" name="RepeatCount8" data="0"/>
 					<property type="7" name="TimePointStartEventName8" data="BreakInTimePoint"/>
@@ -352,7 +352,7 @@
 			</item>
 		</node>
 		<node name="Door_b_0" id="1786082951">
-			<position x="25.2595" y="4.30286" z="-16.0007"/>
+			<position x="25.343" y="4.30286" z="-16.0007"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="0.67" y="0.7" z="1"/>
 			<item name="Door_b_0" meshFile="Door_b.mesh" castShadows="true" visible="true">
@@ -427,6 +427,20 @@
 					<property type="6" name="JointDSpring" data="4"/>
 					<property type="6" name="JointSpringDamperRelaxation" data="0.6"/>
 					<property type="6" name="JointFriction" data="-1"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="explosion.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="1 1"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -1382,7 +1396,7 @@
 			</item>
 		</node>
 		<node name="platform2_rock_platform_1" id="1906209910">
-			<position x="18.8183" y="3.84385" z="-20.4927"/>
+			<position x="18.8183" y="3.54869" z="-20.4927"/>
 			<rotation qw="0.866025" qx="0" qy="-0.5" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="platform2_rock_platform_1" meshFile="platform2_rock_platform.mesh" castShadows="true" visible="true">
@@ -2390,9 +2404,9 @@
 		</node>
 		<node name="Luizius" id="2117706548">
 			<position x="54.564" y="17.4141" z="-16"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Luizius" meshFile="Mage1.mesh" castShadows="true" visible="true">
+			<item name="Luizius" meshFile="Mage1.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="Chibi_Mage1"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2451,12 +2465,49 @@
 					<property type="6" name="TimePosition2" data="3"/>
 					<property type="2" name="NodeTrackId3" data="1700938876"/>
 					<property type="6" name="TimePosition3" data="4"/>
+					<property type="7" name="ComponentNodeTrackComponent" data="NodeTrackComponent"/>
+					<property type="7" name="Name" data="LeaveNodeTrack"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="InterpolationMode" data="Linear"/>
+					<property type="7" name="RotationMode" data="Linear"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="2" name="NodeTrackCount" data="3"/>
+					<property type="2" name="NodeTrackId0" data="1700938876"/>
+					<property type="6" name="TimePosition0" data="2"/>
+					<property type="2" name="NodeTrackId1" data="478374637"/>
+					<property type="6" name="TimePosition1" data="5"/>
+					<property type="2" name="NodeTrackId2" data="3444028264"/>
+					<property type="6" name="TimePosition2" data="8"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Laugh.ogg"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="1 1"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentTagPointComponent" data="TagPointComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="TagPointName" data="Bip01 L Hand"/>
+					<property type="6" name="SourceId" data="0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
 				</userData>
 			</item>
 		</node>
 		<node name="Node_3" id="4215510815">
 			<position x="39.1954" y="8.20138" z="-16"/>
-			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Node_3" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -2491,7 +2542,7 @@
 		</node>
 		<node name="Node_4" id="4215509510">
 			<position x="36.9742" y="6.74248" z="-16"/>
-			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Node_4" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -2525,8 +2576,8 @@
 			</item>
 		</node>
 		<node name="Node_5" id="4215509945">
-			<position x="32.1567" y="4.93502" z="-16"/>
-			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<position x="32.1567" y="5" z="-16"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Node_5" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -2561,7 +2612,7 @@
 		</node>
 		<node name="Node_6" id="4215508640">
 			<position x="23.9149" y="4.45382" z="-16"/>
-			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Node_6" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -2595,7 +2646,7 @@
 			</item>
 		</node>
 		<node name="PrehistoricAgathe_0" id="3886242454">
-			<position x="26.2125" y="3.68415" z="-14.6052"/>
+			<position x="26.825" y="3.68415" z="-14.6052"/>
 			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="PrehistoricAgathe_0" meshFile="PrehistoricAgathe.mesh" castShadows="true" visible="true">
@@ -2680,6 +2731,20 @@
 					<property type="6" name="FadeInTime" data="1000"/>
 					<property type="12" name="FadeOut" data="false"/>
 					<property type="6" name="FadeOutTime" data="1000"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Argh.ogg"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="0 0"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -2714,7 +2779,7 @@
 			</item>
 		</node>
 		<node name="monster_item_pike_0" id="1945239890">
-			<position x="26.5921" y="4.2822" z="-14.3425"/>
+			<position x="27.2717" y="4.2822" z="-14.3425"/>
 			<rotation qw="-0.0984103" qx="0.700225" qy="0.0984102" qz="0.700225"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="monster_item_pike_0" meshFile="monster_item_pike.mesh" castShadows="true" visible="true">
@@ -2745,7 +2810,7 @@
 		</node>
 		<node name="Node_7" id="4215509075">
 			<position x="41.1413" y="8.95363" z="-15.6784"/>
-			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Node_7" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -2779,7 +2844,7 @@
 			</item>
 		</node>
 		<node name="SpellBall" id="3373463240">
-			<position x="40.3253" y="9.32863" z="-15.8143"/>
+			<position x="40.7409" y="9.32863" z="-15.8143"/>
 			<rotation qw="0.642788" qx="0" qy="-0.766045" qz="0"/>
 			<scale x="0.01" y="0.01" z="0.01"/>
 			<item name="SpellBall" meshFile="HollowSphere1.mesh" castShadows="true" visible="true">
@@ -2839,7 +2904,7 @@
 			</item>
 		</node>
 		<node name="Node_8" id="4215514730">
-			<position x="26.3124" y="4.05106" z="-14.5998"/>
+			<position x="26.8286" y="4.05106" z="-14.5998"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Node_8" meshFile="Node.mesh" castShadows="true" visible="true">
@@ -2847,6 +2912,136 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3033702417"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="SpellBall_2" id="4057956805">
+			<position x="40.7409" y="9.32863" z="-15.8143"/>
+			<rotation qw="0.642788" qx="0" qy="-0.766045" qz="0"/>
+			<scale x="0.01" y="0.01" z="0.01"/>
+			<item name="SpellBall_2" meshFile="HollowSphere1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="HollowSphere"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1998158100"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="HollowSphere"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="TemplateName" data="Atomicity_Flares"/>
+					<property type="12" name="Repeat" data="true"/>
+					<property type="6" name="PlayTime" data="10000"/>
+					<property type="6" name="PlaySpeed" data="1"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="8" name="Scale" data="1 1"/>
+					<property type="7" name="BlendingMethod" data="From Material"/>
+					<property type="12" name="FadeIn" data="false"/>
+					<property type="6" name="FadeInTime" data="1000"/>
+					<property type="12" name="FadeOut" data="false"/>
+					<property type="6" name="FadeOutTime" data="1000"/>
+					<property type="7" name="ComponentNodeTrackComponent" data="NodeTrackComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="InterpolationMode" data="Spline"/>
+					<property type="7" name="RotationMode" data="Linear"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="2" name="NodeTrackCount" data="2"/>
+					<property type="2" name="NodeTrackId0" data="740929867"/>
+					<property type="6" name="TimePosition0" data="0.5"/>
+					<property type="2" name="NodeTrackId1" data="3888416672"/>
+					<property type="6" name="TimePosition1" data="1.5"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_9" id="4215515165">
+			<position x="25.3668" y="4.93502" z="-16.0346"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_9" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3888416672"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_10" id="4091535759">
+			<position x="58.5069" y="5" z="-16"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_10" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3444028264"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>

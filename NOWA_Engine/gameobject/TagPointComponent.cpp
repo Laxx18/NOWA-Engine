@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+ï»¿#include "NOWAPrecompiled.h"
 #include "TagPointComponent.h"
 #include "AnimationComponentV2.h"
 #include "JointComponents.h"
@@ -291,6 +291,8 @@ namespace NOWA
 
     bool TagPointComponent::connect(void)
     {
+        GameObjectComponent::connect();
+
         if (false == alreadyConnected)
         {
             Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
@@ -298,7 +300,6 @@ namespace NOWA
             {
                 this->connectV2Item(item);
             }
- 
         }
         return true;
     }
@@ -389,7 +390,7 @@ namespace NOWA
                     // re-parented from its own scene node to the tag point.
                     this->tagPointV2->setScale(baseLocalScale);
 
-                    // Register with the bone — Ogre-Next will update this
+                    // Register with the bone ï¿½ Ogre-Next will update this
                     // TagPoint every frame as part of the skeleton update pass
                     this->attachedBone->addTagPoint(this->tagPointV2);
 
@@ -494,6 +495,8 @@ namespace NOWA
 
     bool TagPointComponent::disconnect(void)
     {
+        GameObjectComponent::disconnect();
+
         this->resetTagPoint();
         return true;
     }
@@ -669,8 +672,7 @@ namespace NOWA
         {
             // Already connected: re-parent the existing TagPoint to the new bone
             // (must happen on render thread since it touches the skeleton graph)
-            ENQUEUE_RENDER_COMMAND_MULTI("TagPointComponent::setTagPointNameV2", _2(item, tagPointName),
-            {
+            ENQUEUE_RENDER_COMMAND_MULTI("TagPointComponent::setTagPointNameV2", _2(item, tagPointName), {
                 if (nullptr != this->attachedBone)
                 {
                     this->attachedBone->removeTagPoint(this->tagPointV2);
@@ -685,7 +687,7 @@ namespace NOWA
         }
         else
         {
-            // Not yet connected — just track the bone; connectV2Item will use it
+            // Not yet connected ï¿½ just track the bone; connectV2Item will use it
             this->attachedBone = newBone;
         }
     }
@@ -697,7 +699,33 @@ namespace NOWA
 
     void TagPointComponent::setSourceId(unsigned long sourceId)
     {
+        const unsigned long currentSourceId = this->sourceId->getULong();
+        if (currentSourceId == sourceId)
+        {
+            return;
+        }
+
+        // A connected tag point has already captured the old source node's
+        // movable objects and physics driver. Queue the teardown first, then
+        // queue a fresh connection against the new source id in the same
+        // render-command order.
+        if (true == this->bConnected)
+        {
+            this->sourceId->setValue(currentSourceId);
+            this->resetTagPoint();
+        }
+
         this->sourceId->setValue(sourceId);
+
+        if (true == this->bConnected)
+        {
+            this->alreadyConnected = false;
+            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+            if (nullptr != item)
+            {
+                this->connectV2Item(item);
+            }
+        }
     }
 
     unsigned long TagPointComponent::getSourceId(void) const

@@ -1306,55 +1306,80 @@ namespace NOWA
                 this->currentCharIndex = static_cast<unsigned int>(totalCharacters);
             }
 
-            // With the typewriter the duration is spent revealing the text, so the
+                // With the typewriter the duration is spent revealing the text, so the
             // finished caption gets an extra reading pause on top. Without it the
             // duration IS the on screen time.
             const Ogre::Real captionOnScreenTime = (true == this->runSpeech->getBool()) ? captionDuration + CAPTION_HOLD_AFTER_REVEAL_SECONDS : captionDuration;
 
             if (this->currentCharIndex >= totalCharacters && this->timeSinceLastRun >= captionOnScreenTime)
             {
-                if (nullptr != this->simpleSoundComponent)
+                // Latch on the rising edge. The condition above stays true for every following
+                // frame - timeSinceLastRun only grows - so without this the whole block ran again
+                // and again, firing 'reactOnSpeechDone' dozens of times a second. Most visible with
+                // Keep Caption on, where there is no early return to stop it.
+                if (false == this->speechDone)
                 {
-                    this->simpleSoundComponent->setActivated(false);
-                }
+                    this->speechDone = true;
 
-                // More captions queued? Move on instead of finishing the whole run.
-                if (this->currentCaptionIndex + 1u < static_cast<unsigned int>(this->captions.size()))
-                {
-                    // Resets the character index and both timers for the new caption.
-                    this->advanceToNextCaption();
-                    hideBubbleForThisFrame();
-                    return;
-                }
-
-                this->speechDone = true;
-
-                if (false == this->keepCaption->getBool())
-                {
-                    this->movableText->setVisibleRequested(false);
-                    this->bubbleNode->setVisible(false);
-                    this->currentCharIndex = 0;
-                    this->movableText->setCaption("");
-                }
-
-                if (this->closureFunction.is_valid())
-                {
-                    NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+                    if (nullptr != this->simpleSoundComponent)
                     {
-                        try
-                        {
-                            luabind::call_function<void>(this->closureFunction);
-                        }
-                        catch (luabind::error& error)
-                        {
-                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                            std::stringstream msg;
-                            msg << errorMsg;
+                        this->simpleSoundComponent->setActivated(false);
+                    }
 
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] Caught error in 'reactOnSpeechDone' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                        }
-                    };
-                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    // More captions queued? Move on instead of finishing the whole run.
+                    if (this->currentCaptionIndex + 1u < static_cast<unsigned int>(this->captions.size()))
+                    {
+                        // Resets the character index and both timers for the new caption.
+                        this->advanceToNextCaption();
+                        // advanceToNextCaption() clears speechDone again, so the next caption can
+                        // finish on its own.
+                        hideBubbleForThisFrame();
+                        return;
+                    }
+
+                    if (false == this->keepCaption->getBool())
+                    {
+                        this->movableText->setVisibleRequested(false);
+                        this->bubbleNode->setVisible(false);
+                        this->currentCharIndex = 0;
+                        this->movableText->setCaption("");
+                    }
+
+                    if (this->closureFunction.is_valid())
+                    {
+                        // The closure object is deliberately NOT copied: disconnect() clears it and
+                        // the is_valid() check inside the command notices that. The weak pointer
+                        // covers the component being destroyed rather than merely disconnected.
+                        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+                        {
+                            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                            if (nullptr == strongThis)
+                            {
+                                return;
+                            }
+
+                            if (false == this->closureFunction.is_valid())
+                            {
+                                return;
+                            }
+
+                            try
+                            {
+                                luabind::call_function<void>(this->closureFunction);
+                            }
+                            catch (luabind::error& error)
+                            {
+                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                                std::stringstream msg;
+                                msg << errorMsg;
+
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] Caught error in 'reactOnSpeechDone' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                            }
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                    }
                 }
 
                 // No return here: with Keep Caption on, the finished caption stays

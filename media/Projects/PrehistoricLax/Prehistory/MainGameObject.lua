@@ -14,6 +14,9 @@ local bed = nil;
 local luizius = nil;
 local agathe = nil;
 local spellBall = nil;
+local spellBall2 = nil;
+local doorPhysics = nil;
+local crystalOrb = nil;
 local animationBlenderLax = nil;
 local animationBlenderEmma = nil;
 local animationBlenderLuizius = nil;
@@ -41,7 +44,10 @@ MainGameObject["connect"] = function(gameObject)
     oldMan = AppStateManager:getGameObjectController():getGameObjectFromId("524695244");
     luizius = AppStateManager:getGameObjectController():getGameObjectFromId("3895382773");
     spellBall = AppStateManager:getGameObjectController():getGameObjectFromId("2737582806");
+    spellBall2 = AppStateManager:getGameObjectController():getGameObjectFromId("1998158100");
+    doorPhysics = AppStateManager:getGameObjectController():getGameObjectFromId("3406634031");
     bed = AppStateManager:getGameObjectController():getGameObjectFromId("3438074172");
+    crystalOrb = AppStateManager:getGameObjectController():getGameObjectFromId("2292878869");
     
     animationBlenderLax = lax:getAnimationSequenceComponent():getAnimationBlender();
     animationBlenderEmma = emma:getAnimationComponentV2():getAnimationBlender();
@@ -193,6 +199,7 @@ MainGameObject["LuiziusTimePoint"] = function(timePointSec)
      log("--->LuiziusTimePoint: " .. toString(timePointSec));
     mainGameObject:getLuaScriptComponent():callMethodOnce("ApearLuizius", function()
         luizius:getNodeTrackComponentFromName("AppearNodeTrack"):setActivated(true);
+        luizius:getSimpleSoundComponent():setActivated(true);
     end)
 end
 
@@ -208,8 +215,25 @@ MainGameObject["CastSleepSpellTimePoint"] = function(timePointSec)
         
         spellBall:getNodeTrackComponent():reactOnEndOfPathReached(function(trackedGameObject)
               agathePhysicsRagComp:setState("Ragdolling");
+              agathe:getSimpleSoundComponent():setActivated(true);
+              
               mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
                   agathe:getParticleFxComponent():setActivated(true);
+                  agathePhysicsRagComp:applyForce(Vector3(0, 1000, -1000));
+                  spellBall:setVisible(false);
+                  spellBall:getParticleFxComponent():setActivated(false);
+                  
+                  spellBall2:setVisible(true);
+                  spellBall2:getParticleFxComponent():setActivated(true);
+                  spellBall2:getNodeTrackComponent():setActivated(true);
+                  
+                  spellBall2:getNodeTrackComponent():reactOnEndOfPathReached(function(trackedGameObject)
+                      spellBall2:setVisible(false);
+                      spellBall2:getParticleFxComponent():setActivated(false);
+                      doorPhysics:getJointHingeComponent():setBreakForce(100000);
+                      doorPhysics:getPhysicsActiveComponent():applyForce(Vector3(1000, 1000, 1000));
+                      doorPhysics:getSimpleSoundComponent():setActivated(true);
+                  end);
               end, 1)
         end);
     end, 2)
@@ -228,6 +252,18 @@ MainGameObject["BreakInTimePoint"] = function(timePointSec)
         luizius:getNodeTrackComponentFromName("AppearNodeTrack"):setActivated(false);
         luizius:getNodeTrackComponentFromName("BreakInNodeTrack"):setActivated(true);
         animationBlenderLuizius:blend5(AnimationBlender.ANIM_IDLE_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+        
+        luizius:getNodeTrackComponentFromName("BreakInNodeTrack"):reactOnEndOfPathReached(function(trackedGameObject)
+              luizius:getSimpleSoundComponent():setActivated(true);
+              luizius:getTagPointComponent():setSourceId("2292878869");
+              --local resultQuat = MathHelper:faceDirectionSlerp(luizius:getOrientation(), Vector3(1, 0, 0), luizius:getDefaultDirection(), 0.016, 1);
+              --luizius:setAttributeOrientation(resultQuat);
+              
+              mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
+                  luizius:getNodeTrackComponentFromName("LeaveNodeTrack"):setActivated(true);
+                  crystalOrb:getParticleFxComponent():setActivated(false);
+              end, 3);
+         end);
     end)
    
 end

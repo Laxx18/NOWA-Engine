@@ -1799,22 +1799,32 @@ namespace NOWA
 
         if (state == "Inactive")
         {
-            if (this->rdState == PhysicsRagDollComponentV2::INACTIVE)
+            // Leaving any ragdoll state must explicitly release manual-bone control.
+            // This is also required when the state is already Inactive because a
+            // previous simulation may have left the bones manually controlled.
+            this->rdState = PhysicsRagDollComponentV2::INACTIVE;
+            this->setAnimationEnabled(true);
+
+            if (this->rdOldState == PhysicsRagDollComponentV2::INACTIVE)
             {
                 return;
             }
-            this->rdState = PhysicsRagDollComponentV2::INACTIVE;
 
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
         else if (state == "Animation")
         {
-            if (this->rdState == PhysicsRagDollComponentV2::ANIMATION)
+            // Animation mode owns every bone again; do not rely on the old state
+            // because manual-bone flags survive a simulation stop.
+            this->rdState = PhysicsRagDollComponentV2::ANIMATION;
+            this->setAnimationEnabled(true);
+
+            if (this->rdOldState == PhysicsRagDollComponentV2::ANIMATION)
             {
                 return;
             }
-            this->rdState = PhysicsRagDollComponentV2::ANIMATION;
+
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
@@ -1830,7 +1840,7 @@ namespace NOWA
                 return;
             }
             this->rdState = PhysicsRagDollComponentV2::RAGDOLLING;
-            this->animationEnabled = false;
+            this->setAnimationEnabled(false);
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
@@ -1841,6 +1851,9 @@ namespace NOWA
                 return;
             }
             this->rdState = PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING;
+            // Partial ragdolling intentionally keeps its ragdoll bones under
+            // physics/manual control; the root bone remains animation-driven.
+            this->setAnimationEnabled(false);
 
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
@@ -2101,7 +2114,7 @@ namespace NOWA
                 {
                     // No driven ancestor: this bone hangs off the animated part of the skeleton, where
                     // the cached derived transform is the correct reference.
-                extractBoneDerivedTransform(parentBone, parentDerivedPos, parentDerivedOri);
+                    extractBoneDerivedTransform(parentBone, parentDerivedPos, parentDerivedOri);
                 }
 
                 Ogre::Quaternion invParentOri = parentDerivedOri.Inverse();
@@ -2268,6 +2281,8 @@ namespace NOWA
     {
         if (nullptr == this->skeletonInstance)
         {
+            this->animationEnabled = true;
+            this->oldAnimationId = -1;
             return;
         }
 
@@ -2323,6 +2338,12 @@ namespace NOWA
         };
 
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponentV2::endRagdolling");
+
+        // Ragdolling disables animation ownership. Restore that bookkeeping after the render
+        // command has released manual bones and reset the skeleton, so a subsequent connect()
+        // can safely initialize the animation blender again.
+        this->animationEnabled = true;
+        this->oldAnimationId = -1;
     }
 
     // ============================================================================
@@ -2405,62 +2426,56 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)
-        [
-            class_<PhysicsRagDollComponentV2, PhysicsActiveComponent>("PhysicsRagDollComponentV2")
-            .def("inheritVelOmega", &PhysicsRagDollComponentV2::inheritVelOmega)
-            .def("setActivated", &PhysicsRagDollComponentV2::setActivated)
-            .def("setState", &PhysicsRagDollComponentV2::setState)
-            .def("setVelocity", &PhysicsRagDollComponentV2::setVelocity)
-            .def("getVelocity", &PhysicsRagDollComponentV2::getVelocity)
-            .def("getPosition", &PhysicsRagDollComponentV2::getPosition)
-            .def("setOrientation", &PhysicsRagDollComponentV2::setOrientation)
-            .def("getOrientation", &PhysicsRagDollComponentV2::getOrientation)
-            .def("setInitialState", &PhysicsRagDollComponentV2::setInitialState)
-            .def("setAnimationEnabled", &PhysicsRagDollComponentV2::setAnimationEnabled)
-            .def("isAnimationEnabled", &PhysicsRagDollComponentV2::isAnimationEnabled)
-            .def("setBoneConfigFile", &PhysicsRagDollComponentV2::setBoneConfigFile)
-            .def("getBoneConfigFile", &PhysicsRagDollComponentV2::getBoneConfigFile)
-            .def("getRagDataList", &getRagDataListV2)
-            .def("getRagBone", &PhysicsRagDollComponentV2::getRagBone)
-            .def("setBoneRotation", &PhysicsRagDollComponentV2::setBoneRotation)
-            .scope
-            [
-                class_<PhysicsRagDollComponentV2::RagBone>("RagBone")
-                .def("getName", &PhysicsRagDollComponentV2::RagBone::getName)
-                .def("getPosition", &PhysicsRagDollComponentV2::RagBone::getPosition)
-                .def("setOrientation", &PhysicsRagDollComponentV2::RagBone::setOrientation)
-                .def("getOrientation", &PhysicsRagDollComponentV2::RagBone::getOrientation)
-                .def("setInitialState", &PhysicsRagDollComponentV2::RagBone::setInitialState)
-                .def("getOgreBone", &PhysicsRagDollComponentV2::RagBone::getBone)
-                .def("getParentRagBone", &PhysicsRagDollComponentV2::RagBone::getParentRagBone)
-                .def("getInitialBonePosition", &PhysicsRagDollComponentV2::RagBone::getInitialBonePosition)
-                .def("getInitialBoneOrientation", &PhysicsRagDollComponentV2::RagBone::getInitialBoneOrientation)
-                .def("getPhysicsRagDollComponentV2", &PhysicsRagDollComponentV2::RagBone::getPhysicsRagDollComponent)
-                .def("getRagPose", &PhysicsRagDollComponentV2::RagBone::getRagPose)
-                .def("applyPose", &PhysicsRagDollComponentV2::RagBone::applyPose)
-                .def("applyRequiredForceForVelocity", &PhysicsRagDollComponentV2::RagBone::applyRequiredForceForVelocity)
-                .def("applyOmegaForce", &PhysicsRagDollComponentV2::RagBone::applyOmegaForce)
-                .def("applyOmegaForceRotateTo", &PhysicsRagDollComponentV2::RagBone::applyOmegaForceRotateTo)
-                .def("getSize", &PhysicsRagDollComponentV2::RagBone::getBodySize)
-                .def("getJointId", &getJointId)
-                .def("getBody", &PhysicsRagDollComponentV2::RagBone::getBody)
-                .def("getJointComponent", &getRagJointComponent)
-                .def("getJointHingeComponent", &getRagJointHingeComponent)
-                .def("getJointUniversalComponent", &getRagJointUniversalComponent)
-                .def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
-                .def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
-                .def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
-                .def("getJointKinematicComponent", &getRagJointKinematicComponent)
-            ]
-        ];
+        module(lua)[class_<PhysicsRagDollComponentV2, PhysicsActiveComponent>("PhysicsRagDollComponentV2")
+                .def("inheritVelOmega", &PhysicsRagDollComponentV2::inheritVelOmega)
+                .def("setActivated", &PhysicsRagDollComponentV2::setActivated)
+                .def("setState", &PhysicsRagDollComponentV2::setState)
+                .def("setVelocity", &PhysicsRagDollComponentV2::setVelocity)
+                .def("getVelocity", &PhysicsRagDollComponentV2::getVelocity)
+                .def("getPosition", &PhysicsRagDollComponentV2::getPosition)
+                .def("setOrientation", &PhysicsRagDollComponentV2::setOrientation)
+                .def("getOrientation", &PhysicsRagDollComponentV2::getOrientation)
+                .def("setInitialState", &PhysicsRagDollComponentV2::setInitialState)
+                .def("setAnimationEnabled", &PhysicsRagDollComponentV2::setAnimationEnabled)
+                .def("isAnimationEnabled", &PhysicsRagDollComponentV2::isAnimationEnabled)
+                .def("setBoneConfigFile", &PhysicsRagDollComponentV2::setBoneConfigFile)
+                .def("getBoneConfigFile", &PhysicsRagDollComponentV2::getBoneConfigFile)
+                .def("getRagDataList", &getRagDataListV2)
+                .def("getRagBone", &PhysicsRagDollComponentV2::getRagBone)
+                .def("setBoneRotation", &PhysicsRagDollComponentV2::setBoneRotation)
+                .scope[class_<PhysicsRagDollComponentV2::RagBone>("RagBone")
+                        .def("getName", &PhysicsRagDollComponentV2::RagBone::getName)
+                        .def("getPosition", &PhysicsRagDollComponentV2::RagBone::getPosition)
+                        .def("setOrientation", &PhysicsRagDollComponentV2::RagBone::setOrientation)
+                        .def("getOrientation", &PhysicsRagDollComponentV2::RagBone::getOrientation)
+                        .def("setInitialState", &PhysicsRagDollComponentV2::RagBone::setInitialState)
+                        .def("getOgreBone", &PhysicsRagDollComponentV2::RagBone::getBone)
+                        .def("getParentRagBone", &PhysicsRagDollComponentV2::RagBone::getParentRagBone)
+                        .def("getInitialBonePosition", &PhysicsRagDollComponentV2::RagBone::getInitialBonePosition)
+                        .def("getInitialBoneOrientation", &PhysicsRagDollComponentV2::RagBone::getInitialBoneOrientation)
+                        .def("getPhysicsRagDollComponentV2", &PhysicsRagDollComponentV2::RagBone::getPhysicsRagDollComponent)
+                        .def("getRagPose", &PhysicsRagDollComponentV2::RagBone::getRagPose)
+                        .def("applyPose", &PhysicsRagDollComponentV2::RagBone::applyPose)
+                        .def("applyRequiredForceForVelocity", &PhysicsRagDollComponentV2::RagBone::applyRequiredForceForVelocity)
+                        .def("applyOmegaForce", &PhysicsRagDollComponentV2::RagBone::applyOmegaForce)
+                        .def("applyOmegaForceRotateTo", &PhysicsRagDollComponentV2::RagBone::applyOmegaForceRotateTo)
+                        .def("getSize", &PhysicsRagDollComponentV2::RagBone::getBodySize)
+                        .def("getJointId", &getJointId)
+                        .def("getBody", &PhysicsRagDollComponentV2::RagBone::getBody)
+                        .def("getJointComponent", &getRagJointComponent)
+                        .def("getJointHingeComponent", &getRagJointHingeComponent)
+                        .def("getJointUniversalComponent", &getRagJointUniversalComponent)
+                        .def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
+                        .def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
+                        .def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
+                        .def("getJointKinematicComponent", &getRagJointKinematicComponent)]];
 
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "class inherits PhysicsActiveComponent", PhysicsRagDollComponentV2::getStaticInfoText());
-        LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "void setState(string state)", "The state to set. Possible values are: 'Inactive': No rag dolling, "
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "void setState(string state)",
+            "The state to set. Possible values are: 'Inactive': No rag dolling, "
             "this component behaves like a physics active component with just one collision body. "
             "'Ragdolling': Changes the state to rag doll mode, using the rag doll configuration file. "
             "'Animation': The collision bodies transform is set to the animated bones");
-
 
         /**
          * @brief		Sets the rag doll state.

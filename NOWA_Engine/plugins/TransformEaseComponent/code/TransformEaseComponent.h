@@ -7,359 +7,444 @@ GPL v3
 #ifndef TRANSFORMEASECOMPONENT_H
 #define TRANSFORMEASECOMPONENT_H
 
+#include "OgrePlugin.h"
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
-#include "OgrePlugin.h"
 
 #include "utilities/Interpolator.h"
 
 namespace NOWA
 {
-	class PhysicsComponent;
-
-	/**
-	  * @brief		This compontent is similiar to the @TransformComponent, but ease functions are used in order to make a smooth movement from a waypoint to another.
-	  */
-	class EXPORTED TransformEaseComponent : public GameObjectComponent, public Ogre::Plugin
-	{
-	public:
-		typedef boost::shared_ptr<TransformEaseComponent> TransformEaseComponentPtr;
-	public:
-
-		TransformEaseComponent();
-
-		virtual ~TransformEaseComponent();
-
-		/**
-		* @see		Ogre::Plugin::install
-		*/
-		virtual void install(const Ogre::NameValuePairList* options) override;
-
-		/**
-		* @see		Ogre::Plugin::initialise
-		* @note		Do nothing here, because its called far to early and nothing is there of NOWA-Engine yet!
-		*/
-		virtual void initialise() override {};
-
-		/**
-		* @see		Ogre::Plugin::shutdown
-		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
-		*/
-		virtual void shutdown() override {};
-
-		/**
-		* @see		Ogre::Plugin::uninstall
-		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
-		*/
-		virtual void uninstall() override {};
-
-		/**
-		* @see		Ogre::Plugin::getName
-		*/
-		virtual const Ogre::String& getName() const override;
-		
-		/**
-		* @see		Ogre::Plugin::getAbiCookie
-		*/
-		virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
-
-		/**
-		* @see		GameObjectComponent::init
-		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
-
-		/**
-		* @see		GameObjectComponent::postInit
-		*/
-		virtual bool postInit(void) override;
-
-		/**
-		* @see		GameObjectComponent::connect
-		*/
-		virtual bool connect(void) override;
-
-		/**
-		* @see		GameObjectComponent::disconnect
-		*/
-		virtual bool disconnect(void) override;
-
-		/**
-		* @see		GameObjectComponent::onCloned
-		*/
-		virtual bool onCloned(void) override;
-
-		/**
-		* @see		GameObjectComponent::onRemoveComponent
-		*/
-		virtual void onRemoveComponent(void);
-		
-		/**
-		 * @see		GameObjectComponent::onOtherComponentRemoved
-		 */
-		virtual void onOtherComponentRemoved(unsigned int index) override;
-
-		/**
-		 * @see		GameObjectComponent::onOtherComponentAdded
-		 */
-		virtual void onOtherComponentAdded(unsigned int index) override;
-
-		/**
-		* @see		GameObjectComponent::getClassName
-		*/
-		virtual Ogre::String getClassName(void) const override;
-
-		/**
-		* @see		GameObjectComponent::getParentClassName
-		*/
-		virtual Ogre::String getParentClassName(void) const override;
-
-		/**
-		* @see		GameObjectComponent::clone
-		*/
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+    class PhysicsComponent;
+
+    /**
+     * @brief		This compontent is similiar to the @TransformComponent, but ease functions are used in order to make a smooth movement from a waypoint to another.
+     */
+    class EXPORTED TransformEaseComponent : public GameObjectComponent, public Ogre::Plugin
+    {
+    public:
+        typedef boost::shared_ptr<TransformEaseComponent> TransformEaseComponentPtr;
+
+    public:
+        TransformEaseComponent();
+
+        virtual ~TransformEaseComponent();
+
+        /**
+         * @see		Ogre::Plugin::install
+         */
+        virtual void install(const Ogre::NameValuePairList* options) override;
+
+        /**
+         * @see		Ogre::Plugin::initialise
+         * @note		Do nothing here, because its called far to early and nothing is there of NOWA-Engine yet!
+         */
+        virtual void initialise() override {};
+
+        /**
+         * @see		Ogre::Plugin::shutdown
+         * @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+         */
+        virtual void shutdown() override {};
+
+        /**
+         * @see		Ogre::Plugin::uninstall
+         * @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+         */
+        virtual void uninstall() override {};
+
+        /**
+         * @see		Ogre::Plugin::getName
+         */
+        virtual const Ogre::String& getName() const override;
+
+        /**
+         * @see		Ogre::Plugin::getAbiCookie
+         */
+        virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
+
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see		GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
+
+        /**
+         * @see		GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
+
+        /**
+         * @see		GameObjectComponent::onCloned
+         */
+        virtual bool onCloned(void) override;
+
+        /**
+         * @see		GameObjectComponent::onRemoveComponent
+         */
+        virtual void onRemoveComponent(void);
+
+        /**
+         * @see		GameObjectComponent::onOtherComponentRemoved
+         */
+        virtual void onOtherComponentRemoved(unsigned int index) override;
+
+        /**
+         * @see		GameObjectComponent::onOtherComponentAdded
+         */
+        virtual void onOtherComponentAdded(unsigned int index) override;
+
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
-		/**
-		* @see		GameObjectComponent::update
-		*/
-		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+        /**
+         * @see		GameObjectComponent::update
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
-		/**
-		* @see		GameObjectComponent::actualizeValue
-		*/
-		virtual void actualizeValue(Variant* attribute) override;
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
 
-		/**
-		* @see		GameObjectComponent::writeXML
-		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		/**
-		* @see		GameObjectComponent::setActivated
-		*/
-		virtual void setActivated(bool activated) override;
+        /**
+         * @see		GameObjectComponent::setActivated
+         */
+        virtual void setActivated(bool activated) override;
 
-		/**
-		* @see		GameObjectComponent::isActivated
-		*/
-		virtual bool isActivated(void) const override;
+        /**
+         * @see		GameObjectComponent::isActivated
+         */
+        virtual bool isActivated(void) const override;
 
-	public:
-		/**
-		* @see		GameObjectComponent::getStaticClassId
-		*/
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("TransformEaseComponent");
-		}
+    public:
+        /**
+         * @see		GameObjectComponent::getStaticClassId
+         */
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("TransformEaseComponent");
+        }
 
-		/**
-		* @see		GameObjectComponent::getStaticClassName
-		*/
-		static Ogre::String getStaticClassName(void)
-		{
-			return "TransformEaseComponent";
-		}
-	
-		/**
-		* @see		GameObjectComponent::canStaticAddComponent
-		*/
-		static bool canStaticAddComponent(GameObject* gameObject);
+        /**
+         * @see		GameObjectComponent::getStaticClassName
+         */
+        static Ogre::String getStaticClassName(void)
+        {
+            return "TransformEaseComponent";
+        }
 
-		/**
-		 * @see	GameObjectComponent::getStaticInfoText
-		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: My usage text.";
-		}
-		
-		/**
-		 * @see	GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
-	public:
-		void setRotationActivated(bool rotationActivated);
+        /**
+         * @see		GameObjectComponent::canStaticAddComponent
+         */
+        static bool canStaticAddComponent(GameObject* gameObject);
 
-		bool isRotationActivated(void) const;
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: My usage text.";
+        }
 
-		void setRotationAxis(const Ogre::Vector3& rotationAxis);
+        /**
+         * @see	GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
-		Ogre::Vector3 getRotationAxis(void) const;
+    public:
+        void setRotationActivated(bool rotationActivated);
 
-		void setRotationMin(Ogre::Real rotationMin);
+        bool isRotationActivated(void) const;
 
-		Ogre::Real getRotationMin(void) const;
+        void setRotationAxis(const Ogre::Vector3& rotationAxis);
 
-		void setRotationMax(Ogre::Real rotationMax);
+        Ogre::Vector3 getRotationAxis(void) const;
 
-		Ogre::Real getRotationMax(void) const;
+        void setRotationMin(Ogre::Real rotationMin);
 
-		void setRotationDuration(Ogre::Real rotationDuration);
+        Ogre::Real getRotationMin(void) const;
 
-		Ogre::Real getRotationDuration(void) const;
+        void setRotationMax(Ogre::Real rotationMax);
 
-		void setRotationRepeat(bool rotationRepeat);
+        Ogre::Real getRotationMax(void) const;
 
-		bool getRotationRepeat(void) const;
+        void setRotationDuration(Ogre::Real rotationDuration);
 
-		void setRotationDirectionChange(bool rotationDirectionChange);
+        Ogre::Real getRotationDuration(void) const;
 
-		bool getRotationDirectionChange(void) const;
+        void setRotationRepeat(bool rotationRepeat);
 
-		void setRotationEaseFunction(const Ogre::String& rotationEaseFunction);
+        bool getRotationRepeat(void) const;
 
-		Ogre::String getRotationEaseFunction(void) const;
+        void setRotationDirectionChange(bool rotationDirectionChange);
 
-		void setTranslationActivated(bool rotationActivated);
+        bool getRotationDirectionChange(void) const;
 
-		bool isTranslationActivated(void) const;
+        void setRotationEaseFunction(const Ogre::String& rotationEaseFunction);
 
-		void setTranslationAxis(const Ogre::Vector3& translationAxis);
+        Ogre::String getRotationEaseFunction(void) const;
 
-		Ogre::Vector3 getTranslationAxis(void) const;
+        void setTranslationActivated(bool rotationActivated);
 
-		void setTranslationMin(Ogre::Real translationMin);
+        bool isTranslationActivated(void) const;
 
-		Ogre::Real getTranslationMin(void) const;
+        void setTranslationAxis(const Ogre::Vector3& translationAxis);
 
-		void setTranslationMax(Ogre::Real translationMax);
+        Ogre::Vector3 getTranslationAxis(void) const;
 
-		Ogre::Real getTranslationMax(void) const;
+        void setTranslationMin(Ogre::Real translationMin);
 
-		void setTranslationDuration(Ogre::Real translationDuration);
+        Ogre::Real getTranslationMin(void) const;
 
-		Ogre::Real getTranslationDuration(void) const;
+        void setTranslationMax(Ogre::Real translationMax);
 
-		void setTranslationRepeat(bool translationRepeat);
+        Ogre::Real getTranslationMax(void) const;
 
-		bool getTranslationRepeat(void) const;
+        void setTranslationDuration(Ogre::Real translationDuration);
 
-		void setTranslationDirectionChange(bool translationDirectionChange);
+        Ogre::Real getTranslationDuration(void) const;
 
-		bool getTranslationDirectionChange(void) const;
+        void setTranslationRepeat(bool translationRepeat);
 
-		void setTranslationEaseFunction(const Ogre::String& translationEaseFunction);
+        bool getTranslationRepeat(void) const;
 
-		Ogre::String getTranslationEaseFunction(void) const;
+        void setTranslationDirectionChange(bool translationDirectionChange);
 
-		void setScaleActivated(bool rotationActivated);
+        bool getTranslationDirectionChange(void) const;
 
-		bool isScaleActivated(void) const;
+        void setTranslationEaseFunction(const Ogre::String& translationEaseFunction);
 
-		void setScaleAxis(const Ogre::Vector3& scaleAxis);
+        Ogre::String getTranslationEaseFunction(void) const;
 
-		Ogre::Vector3 getScaleAxis(void) const;
+        void setScaleActivated(bool rotationActivated);
 
-		void setScaleMin(Ogre::Real scaleMin);
+        bool isScaleActivated(void) const;
 
-		Ogre::Real getScaleMin(void) const;
+        void setScaleAxis(const Ogre::Vector3& scaleAxis);
 
-		void setScaleMax(Ogre::Real scaleMax);
+        Ogre::Vector3 getScaleAxis(void) const;
 
-		Ogre::Real getScaleMax(void) const;
+        void setScaleMin(Ogre::Real scaleMin);
 
-		void setScaleDuration(Ogre::Real scaleDuration);
+        Ogre::Real getScaleMin(void) const;
 
-		Ogre::Real getScaleDuration(void) const;
+        void setScaleMax(Ogre::Real scaleMax);
 
-		void setScaleRepeat(bool scaleRepeat);
+        Ogre::Real getScaleMax(void) const;
 
-		bool getScaleRepeat(void) const;
+        void setScaleDuration(Ogre::Real scaleDuration);
 
-		void setScaleDirectionChange(bool scaleDirectionChange);
+        Ogre::Real getScaleDuration(void) const;
 
-		bool getScaleDirectionChange(void) const;
-
-		void setScaleEaseFunction(const Ogre::String& scaleEaseFunction);
-
-		Ogre::String getScaleEaseFunction(void) const;
-
-		void reactOnFunctionFinished(luabind::object closureFunction);
-	public:
-		static const Ogre::String AttrActivated(void) { return "Activated"; }
-		static const Ogre::String AttrRotationActivated(void) { return "Rotation Activated"; }
-		static const Ogre::String AttrRotationAxis(void) { return "Rotation Axis"; }
-		static const Ogre::String AttrRotationMin(void) { return "Rotation Min"; }
-		static const Ogre::String AttrRotationMax(void) { return "Rotation Max"; }
-		static const Ogre::String AttrRotationDuration(void) { return "Rotation Duration Sec"; }
-		static const Ogre::String AttrRotationRepeat(void) { return "Rotation Repeat"; }
-		static const Ogre::String AttrRotationDirectionChange(void) { return "Rotation Dir. Change"; }
-		static const Ogre::String AttrRotationEaseFunction(void) { return "Rotation Ease Function"; }
-
-		static const Ogre::String AttrTranslationActivated(void) { return "Translation Activated"; }
-		static const Ogre::String AttrTranslationAxis(void) { return "Translation Axis"; }
-		static const Ogre::String AttrTranslationMin(void) { return "Translation Min"; }
-		static const Ogre::String AttrTranslationMax(void) { return "Translation Max"; }
-		static const Ogre::String AttrTranslationDuration(void) { return "Translation Duration Sec"; }
-		static const Ogre::String AttrTranslationRepeat(void) { return "Translation Repeat"; }
-		static const Ogre::String AttrTranslationDirectionChange(void) { return "Translation Dir. Change"; }
-		static const Ogre::String AttrTranslationEaseFunction(void) { return "Translation Ease Function"; }
-
-		static const Ogre::String AttrScaleActivated(void) { return "Scale Activated"; }
-		static const Ogre::String AttrScaleAxis(void) { return "Scale Axis"; }
-		static const Ogre::String AttrScaleMin(void) { return "Scale Min"; }
-		static const Ogre::String AttrScaleMax(void) { return "Scale Max"; }
-		static const Ogre::String AttrScaleDuration(void) { return "Scale Duration Sec"; }
-		static const Ogre::String AttrScaleRepeat(void) { return "Scale Repeat"; }
-		static const Ogre::String AttrScaleDirectionChange(void) { return "Scale Dir. Change"; }
-		static const Ogre::String AttrScaleEaseFunction(void) { return "Scale Ease Function"; }
-	private:
-		Ogre::String name;
-
-		Variant* activated;
-		Variant* rotationActivated;
-		Variant* rotationAxis;
-		Variant* rotationMin;
-		Variant* rotationMax;
-		Variant* rotationDuration;
-		Variant* rotationRepeat;
-		Variant* rotationDirectionChange;
-		Variant* rotationEaseFunction;
-
-		Variant* translationActivated;
-		Variant* translationAxis;
-		Variant* translationMin;
-		Variant* translationMax;
-		Variant* translationDuration;
-		Variant* translationRepeat;
-		Variant* translationDirectionChange;
-		Variant* translationEaseFunction;
-
-		Variant* scaleActivated;
-		Variant* scaleAxis;
-		Variant* scaleMin;
-		Variant* scaleMax;
-		Variant* scaleDuration;
-		Variant* scaleRepeat;
-		Variant* scaleDirectionChange;
-		Variant* scaleEaseFunction;
-
-		Ogre::Real rotationOppositeDir;
-		Ogre::Real rotationProgress;
-		short rotationRound;
-		bool internalRotationDirectionChange;
-		Interpolator::EaseFunctions rotationEaseFunctions;
-		Ogre::Quaternion oldRotationResult;
-
-		Ogre::Real translationOppositeDir;
-		Ogre::Real translationProgress;
-		short translationRound;
-		bool internalTranslationDirectionChange;
-		Interpolator::EaseFunctions translationEaseFunctions;
-		Ogre::Vector3 oldTranslationResult;
-
-		Ogre::Real scaleOppositeDir;
-		Ogre::Real scaleProgress;
-		short scaleRound;
-		bool internalScaleDirectionChange;
-		Interpolator::EaseFunctions scaleEaseFunctions;
-		Ogre::Vector3 oldScaleResult;
-
-		PhysicsComponent* physicsComponent;
-		luabind::object functionFinished;
-	};
+        void setScaleRepeat(bool scaleRepeat);
+
+        bool getScaleRepeat(void) const;
+
+        void setScaleDirectionChange(bool scaleDirectionChange);
+
+        bool getScaleDirectionChange(void) const;
+
+        void setScaleEaseFunction(const Ogre::String& scaleEaseFunction);
+
+        Ogre::String getScaleEaseFunction(void) const;
+
+        void reactOnFunctionFinished(luabind::object closureFunction);
+
+    public:
+        static const Ogre::String AttrActivated(void)
+        {
+            return "Activated";
+        }
+        static const Ogre::String AttrRotationActivated(void)
+        {
+            return "Rotation Activated";
+        }
+        static const Ogre::String AttrRotationAxis(void)
+        {
+            return "Rotation Axis";
+        }
+        static const Ogre::String AttrRotationMin(void)
+        {
+            return "Rotation Min";
+        }
+        static const Ogre::String AttrRotationMax(void)
+        {
+            return "Rotation Max";
+        }
+        static const Ogre::String AttrRotationDuration(void)
+        {
+            return "Rotation Duration Sec";
+        }
+        static const Ogre::String AttrRotationRepeat(void)
+        {
+            return "Rotation Repeat";
+        }
+        static const Ogre::String AttrRotationDirectionChange(void)
+        {
+            return "Rotation Dir. Change";
+        }
+        static const Ogre::String AttrRotationEaseFunction(void)
+        {
+            return "Rotation Ease Function";
+        }
+
+        static const Ogre::String AttrTranslationActivated(void)
+        {
+            return "Translation Activated";
+        }
+        static const Ogre::String AttrTranslationAxis(void)
+        {
+            return "Translation Axis";
+        }
+        static const Ogre::String AttrTranslationMin(void)
+        {
+            return "Translation Min";
+        }
+        static const Ogre::String AttrTranslationMax(void)
+        {
+            return "Translation Max";
+        }
+        static const Ogre::String AttrTranslationDuration(void)
+        {
+            return "Translation Duration Sec";
+        }
+        static const Ogre::String AttrTranslationRepeat(void)
+        {
+            return "Translation Repeat";
+        }
+        static const Ogre::String AttrTranslationDirectionChange(void)
+        {
+            return "Translation Dir. Change";
+        }
+        static const Ogre::String AttrTranslationEaseFunction(void)
+        {
+            return "Translation Ease Function";
+        }
+
+        static const Ogre::String AttrScaleActivated(void)
+        {
+            return "Scale Activated";
+        }
+        static const Ogre::String AttrScaleAxis(void)
+        {
+            return "Scale Axis";
+        }
+        static const Ogre::String AttrScaleMin(void)
+        {
+            return "Scale Min";
+        }
+        static const Ogre::String AttrScaleMax(void)
+        {
+            return "Scale Max";
+        }
+        static const Ogre::String AttrScaleDuration(void)
+        {
+            return "Scale Duration Sec";
+        }
+        static const Ogre::String AttrScaleRepeat(void)
+        {
+            return "Scale Repeat";
+        }
+        static const Ogre::String AttrScaleDirectionChange(void)
+        {
+            return "Scale Dir. Change";
+        }
+        static const Ogre::String AttrScaleEaseFunction(void)
+        {
+            return "Scale Ease Function";
+        }
+
+    private:
+        Ogre::String name;
+
+        Variant* activated;
+        Variant* rotationActivated;
+        Variant* rotationAxis;
+        Variant* rotationMin;
+        Variant* rotationMax;
+        Variant* rotationDuration;
+        Variant* rotationRepeat;
+        Variant* rotationDirectionChange;
+        Variant* rotationEaseFunction;
+
+        Variant* translationActivated;
+        Variant* translationAxis;
+        Variant* translationMin;
+        Variant* translationMax;
+        Variant* translationDuration;
+        Variant* translationRepeat;
+        Variant* translationDirectionChange;
+        Variant* translationEaseFunction;
+
+        Variant* scaleActivated;
+        Variant* scaleAxis;
+        Variant* scaleMin;
+        Variant* scaleMax;
+        Variant* scaleDuration;
+        Variant* scaleRepeat;
+        Variant* scaleDirectionChange;
+        Variant* scaleEaseFunction;
+
+        Ogre::Real rotationOppositeDir;
+        Ogre::Real rotationProgress;
+        short rotationRound;
+        bool internalRotationDirectionChange;
+        Interpolator::EaseFunctions rotationEaseFunctions;
+        Ogre::Quaternion oldRotationResult;
+
+        Ogre::Real translationOppositeDir;
+        Ogre::Real translationProgress;
+        short translationRound;
+        bool internalTranslationDirectionChange;
+        Interpolator::EaseFunctions translationEaseFunctions;
+        Ogre::Vector3 oldTranslationResult;
+
+        Ogre::Real scaleOppositeDir;
+        Ogre::Real scaleProgress;
+        short scaleRound;
+        bool internalScaleDirectionChange;
+        Interpolator::EaseFunctions scaleEaseFunctions;
+        Ogre::Vector3 oldScaleResult;
+
+        // Edge latches. 'round == 2 && progress >= 0' is a STATE, not an event: once repeat
+        // is off the round stays at 2 and the progress stays positive, so the condition is
+        // true in EVERY following frame and the finished callback fired dozens of times a
+        // second instead of once per completed run. Reset in connect().
+        bool rotationFinishedReported;
+        bool translationFinishedReported;
+        bool scaleFinishedReported;
+
+        PhysicsComponent* physicsComponent;
+        luabind::object functionFinished;
+    };
 
 }; // namespace end
 
 #endif
-

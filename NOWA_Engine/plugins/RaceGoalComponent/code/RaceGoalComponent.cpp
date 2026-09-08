@@ -542,51 +542,83 @@ namespace NOWA
 	}
 	
 	void RaceGoalComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (false == notSimulating)
-		{
-			if (true == this->useCountdown->getBool())
-			{
-				this->countdownTimer->update();
+    {
+        if (true == notSimulating)
+        {
+            return;
+        }
 
-				// Only drive if the countdown is over
-				this->vehicleComponent->setCanDrive(!this->countdownTimer->getIsActive());
-			}
+        // connect() only creates the countdown timer if useCountdown was true back then, and
+        // the flag can be toggled at runtime - the null check three lines further down proves
+        // that this can legitimately be null, but here it was dereferenced unguarded.
+        if (true == this->useCountdown->getBool() && nullptr != this->countdownTimer)
+        {
+            this->countdownTimer->update();
 
-			
+            // Only drive if the countdown is over
+            // vehicleComponent comes from makeStrongPtr(...).get() in connect() without any
+            // check, so it is null whenever the game object has no vehicle component.
+            if (nullptr != this->vehicleComponent)
+            {
+                this->vehicleComponent->setCanDrive(!this->countdownTimer->getIsActive());
+            }
+        }
 
-			if (nullptr == this->countdownTimer || false == this->countdownTimer->getIsActive())
-			{
-				this->lapTimeSec += dt;
+        if (nullptr == this->countdownTimer || false == this->countdownTimer->getIsActive())
+        {
+            this->lapTimeSec += dt;
 
-				this->speedInKmh = this->calculateSpeedInKmh();
+            this->speedInKmh = this->calculateSpeedInKmh();
 
-				this->oldDirection = this->wrongDirection;
-				this->wrongDirection = this->isCarDrivingWrongDirection();
+            this->oldDirection = this->wrongDirection;
+            this->wrongDirection = this->isCarDrivingWrongDirection();
 
-				if (this->oldDirection != this->wrongDirection)
-				{
-					if (nullptr != this->gameObjectPtr->getLuaScript())
-					{
-						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-						{
-							this->gameObjectPtr->getLuaScript()->callTableFunction(this->onWrongDirectionFunctionName->getString(), this->wrongDirection);
-						};
-						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-					}
-				}
+            if (this->oldDirection != this->wrongDirection)
+            {
+                LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+                if (nullptr != luaScript && false == this->onWrongDirectionFunctionName->getString().empty())
+                {
+                    // Frozen at the moment the change was detected. Reading this->wrongDirection
+                    // inside the command meant reading it a frame later, by which time update()
+                    // may already have flipped it back - lua was then told the opposite of what
+                    // actually triggered the call.
+                    const Ogre::String capturedFunctionName = this->onWrongDirectionFunctionName->getString();
+                    const bool capturedWrongDirection = this->wrongDirection;
 
-				this->calculateDistanceTraveled(dt);
+                    boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
 
-				this->determineRacePositions();
-			}
+                    NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, capturedFunctionName, capturedWrongDirection]()
+                    {
+                        boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                        if (nullptr == strongThis)
+                        {
+                            return;
+                        }
 
-			if (true == this->useCountdown->getBool())
-			{
-				this->countdownTimer->display();
-			}
-		}
-	}
+                        // callTableFunction dereferences the script itself, so this check has
+                        // to stay - unlike the closure based callbacks.
+                        LuaScript* currentLuaScript = this->gameObjectPtr->getLuaScript();
+                        if (nullptr == currentLuaScript)
+                        {
+                            return;
+                        }
+
+                        currentLuaScript->callTableFunction(capturedFunctionName, capturedWrongDirection);
+                    };
+                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                }
+            }
+
+            this->calculateDistanceTraveled(dt);
+
+            this->determineRacePositions();
+        }
+
+        if (true == this->useCountdown->getBool() && nullptr != this->countdownTimer)
+        {
+            this->countdownTimer->display();
+        }
+    }
 
 	bool RaceGoalComponent::isMovingTowardsCheckpoint(void)
 	{

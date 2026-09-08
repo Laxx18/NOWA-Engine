@@ -251,7 +251,7 @@ namespace OgreNewt
         OGRE_UNUSED(collisionPosition);
     }
 
-    ComplexVehicle::~ComplexVehicle(void)
+        ComplexVehicle::~ComplexVehicle(void)
     {
         if (m_vehicleModel)
         {
@@ -266,6 +266,20 @@ namespace OgreNewt
         m_rearDiff = nullptr;
         m_centerDiff = nullptr;
         m_complexTires.clear();
+
+        // The callback is created with 'new' by the owning component and handed to this
+        // constructor, but it was never deleted anywhere - every vehicle recreation leaked
+        // one callback plus the ComplexVehicleDrivingManipulation it owns.
+        //
+        // Destroyed through the logic queue rather than right here: the callback's driving
+        // functions enqueue logic commands that hold a pointer to its manipulation object,
+        // and those may still be pending. Going through the same queue guarantees the
+        // deletion runs after all of them.
+        if (m_vehicleCallback)
+        {
+            delete m_vehicleCallback;
+            m_vehicleCallback = nullptr;
+        }
     }
 
     bool ComplexVehicle::removeTire(ComplexVehicleTire* tire)

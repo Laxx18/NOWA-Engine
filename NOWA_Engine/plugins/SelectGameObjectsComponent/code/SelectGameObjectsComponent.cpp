@@ -450,50 +450,86 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
     {
-        if (true == this->bConnected)
+        if (false == this->bConnected)
         {
-            if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
-            {
-                return true;
-            }
-
-            this->selectionManager->handleMouseRelease(evt, id);
-
-            // Only fire the selection callback for the configured selection button.
-            // Without this check, releasing MB_Middle (used for pathfinding clicks)
-            // also triggers the callback, reassigning path slots mid-movement.
-            if (id != this->selectionManager->getMouseButtonId())
-            {
-                return true;
-            }
-
-            const auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
-
-            if (this->closureFunction.is_valid())
-            {
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, selectedGameObjects]()
-                {
-                    luabind::object selectedGameObjectTable = luabind::newtable(LuaScriptApi::getInstance()->getLua());
-                    size_t i = 0;
-                    for (const auto& selectedGameObject : selectedGameObjects)
-                    {
-                        selectedGameObjectTable[i++] = selectedGameObject.second.gameObject;
-                    }
-                    try
-                    {
-                        luabind::call_function<void>(this->closureFunction, selectedGameObjectTable);
-                    }
-                    catch (luabind::error& error)
-                    {
-                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                        std::stringstream msg;
-                        msg << errorMsg;
-                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SelectGameObjectsComponent] reactOnGameObjectsSelected error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                    }
-                };
-                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-            }
+            return true;
         }
+
+        if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
+        {
+            return true;
+        }
+
+        this->selectionManager->handleMouseRelease(evt, id);
+
+        // Only fire the selection callback for the configured selection button.
+        // Without this check, releasing MB_Middle (used for pathfinding clicks)
+        // also triggers the callback, reassigning path slots mid-movement.
+        if (id != this->selectionManager->getMouseButtonId())
+        {
+            return true;
+        }
+
+        if (false == this->closureFunction.is_valid())
+        {
+            return true;
+        }
+
+        const auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+
+        // The weak pointer covers this component being destroyed between enqueueing and
+        // execution - the command reads this->closureFunction at that point.
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, selectedGameObjects]()
+        {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
+            if (false == this->closureFunction.is_valid())
+            {
+                return;
+            }
+
+            luabind::object selectedGameObjectTable = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+            size_t i = 0;
+            for (const auto& selectedGameObject : selectedGameObjects)
+            {
+                // The copied map keeps the LIST alive, but not the objects it points at. A
+                // selection can well be followed by a deletion, and this command runs one or
+                // more frames later - a raw pointer to a destroyed game object would then be
+                // handed to lua. Re-resolving through the controller drops those silently.
+                if (nullptr == selectedGameObject.second.gameObject)
+                {
+                    continue;
+                }
+
+                GameObjectPtr stillAlivePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(selectedGameObject.second.gameObject->getId());
+                if (nullptr == stillAlivePtr)
+                {
+                    continue;
+                }
+
+                selectedGameObjectTable[i++] = stillAlivePtr.get();
+            }
+
+            try
+            {
+                luabind::call_function<void>(this->closureFunction, selectedGameObjectTable);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SelectGameObjectsComponent] reactOnGameObjectsSelected error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        };
+        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+
         return true;
     }
 
