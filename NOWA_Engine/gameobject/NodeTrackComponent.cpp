@@ -494,6 +494,37 @@ namespace NOWA
                 return;
             }
 
+            // A finished, non repeating track deactivates ITSELF - that is the actual root
+            // cause of the whole problem. Ogre applies EVERY enabled animation state that
+            // targets this scene node and ADDS their translations together, so a track left
+            // running at its end keeps contributing its last keyframe forever. Measured in
+            // the diagnostics log: a finished track sat at "time: 4 / 4 enabled: true" on
+            // its final waypoint (23.9149, 4.45382, -16) while the next one was running, and
+            // the node reported (47.8298, 8.90764, -32) - exactly the sum of both.
+            //
+            // Going through setActivated(false) rather than just disabling the animation
+            // state keeps the 'activated' attribute in sync: it used to stay true after the
+            // path had finished, so isActivated() lied to lua and the editor.
+            //
+            // Deferred to the logic thread, because this closure runs on the render thread
+            // while setActivated() touches the variant and the tracked closure registry.
+            if (false == this->repeat->getBool())
+            {
+                boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    this->setActivated(false);
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+
             if (false == this->endOfPathClosureFunction.is_valid())
             {
                 return;
@@ -644,6 +675,35 @@ namespace NOWA
         return "GameObjectComponent";
     }
 
+    void NodeTrackComponent::deactivateOtherNodeTracks(void)
+    {
+        if (nullptr == this->gameObjectPtr)
+        {
+            return;
+        }
+
+        for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
+        {
+            // Working here with shared_ptrs is evil, because of bidirectional referecing
+            auto component = std::get<COMPONENT>(this->gameObjectPtr->getComponents()->at(i)).get();
+            if (component == this)
+            {
+                continue;
+            }
+
+            NodeTrackComponent* otherNodeTrackComponent = dynamic_cast<NodeTrackComponent*>(component);
+            if (nullptr == otherNodeTrackComponent)
+            {
+                continue;
+            }
+
+            if (true == otherNodeTrackComponent->isActivated())
+            {
+                otherNodeTrackComponent->setActivated(false);
+            }
+        }
+    }
+
     void NodeTrackComponent::setActivated(bool activated)
     {
         this->activated->setValue(activated);
@@ -665,6 +725,20 @@ namespace NOWA
             }
             return;
         }
+
+        // Switch off every OTHER NodeTrackComponent of this game object first.
+        //
+        // They all animate the one and same scene node, and Ogre applies EVERY enabled
+        // animation state targeting that node, ADDING their translations together. A track
+        // left running - either still mid-path or simply finished but never disabled -
+        // therefore keeps contributing its last keyframe on top of the new one. Measured:
+        // a finished track sitting on (23.9149, 4.45382, -16) plus a starting track on the
+        // same waypoint put the object at (47.8298, 8.90764, -32), exactly the sum, which
+        // looked like it shot off along a wrong axis.
+        //
+        // Doing it here rather than in lua, because a missing
+        // "previousTrack:setActivated(false)" is far too easy to overlook in a script.
+        this->deactivateOtherNodeTracks();
 
         // FIX: the whole animation (including its "current position" start
         // keyframe) is now built HERE, fresh, every time this component is

@@ -129,6 +129,8 @@ MainGameObject["connect"] = function(gameObject)
     animationBlenderEmma:init1(AnimationBlender.ANIM_IDLE_1, true);
     
     lax:getAnimationSequenceComponent():setActivated(false);
+    agathePhysicsRagComp:setState("Inactive");
+    agathe:getAnimationComponentV2():setActivated(true);
 end
 
 MainGameObject["disconnect"] = function()
@@ -219,7 +221,7 @@ MainGameObject["CastSleepSpellTimePoint"] = function(timePointSec)
               
               mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
                   agathe:getParticleFxComponent():setActivated(true);
-                  agathePhysicsRagComp:applyForce(Vector3(0, 1000, -1000));
+                  agathePhysicsRagComp:applyForce(Vector3(0, 1000, 1000));
                   spellBall:setVisible(false);
                   spellBall:getParticleFxComponent():setActivated(false);
                   
@@ -249,7 +251,6 @@ end
 MainGameObject["BreakInTimePoint"] = function(timePointSec)
     log("--->BreakInTimePoint: " .. toString(timePointSec));
     mainGameObject:getLuaScriptComponent():callMethodOnce("ActivateLuizius", function()
-        luizius:getNodeTrackComponentFromName("AppearNodeTrack"):setActivated(false);
         luizius:getNodeTrackComponentFromName("BreakInNodeTrack"):setActivated(true);
         animationBlenderLuizius:blend5(AnimationBlender.ANIM_IDLE_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
         

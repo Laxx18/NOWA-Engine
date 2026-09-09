@@ -240,6 +240,20 @@ namespace NOWA
     private:
         void buildAndActivateAnimation(void);
 
+        /**
+         * @brief Switches off every OTHER NodeTrackComponent of this game object.
+         *
+         * They all animate the one and same scene node, and Ogre applies EVERY enabled
+         * animation state targeting that node, ADDING their translations together. A track
+         * left running - either still mid path or simply finished but never disabled -
+         * therefore keeps contributing its last keyframe on top of the new one, which looks
+         * like the object shooting off along a wrong axis.
+         *
+         * Done here rather than in lua, because a missing
+         * "previousTrack:setActivated(false)" is far too easy to overlook in a script.
+         */
+        void deactivateOtherNodeTracks(void);
+
     private:
         Variant* activated;
         Variant* nodeTrackCount;

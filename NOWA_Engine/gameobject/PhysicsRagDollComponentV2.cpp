@@ -392,6 +392,21 @@ namespace NOWA
         {
             this->endRagdolling();
         }
+        else if (nullptr != this->skeletonInstance)
+        {
+            // endRagdolling() is skipped when a script already switched the state back to
+            // Inactive - but the bones it made manual were never released in that case, so
+            // the next connect() found a skeleton that ignores all animations. Released
+            // unconditionally here, which is harmless when nothing was manual.
+            for (auto it = this->ragDataList.cbegin(); it != this->ragDataList.cend(); ++it)
+            {
+                if (nullptr != it->ragBone && nullptr != it->ragBone->getBone())
+                {
+                    this->skeletonInstance->setManualBone(it->ragBone->getBone(), false);
+                }
+            }
+            this->animationEnabled = true;
+        }
 
         if (true == wasRagdolling)
         {
@@ -407,6 +422,28 @@ namespace NOWA
                 node->setOrientation(this->initialOrientation);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponentV2::disconnect_restoreNode");
+        }
+
+        // Only rdOldState was reset here, rdState kept whatever it was when the simulation
+        // stopped. The next connect() then ran internalApplyState() with RAGDOLLING again
+        // and rebuilt the ragdoll, disabling all animations right after the blender had
+        // enabled them.
+        const Ogre::String configuredState = this->state->getListSelectedValue();
+        if ("Ragdolling" == configuredState)
+        {
+            this->rdState = PhysicsRagDollComponentV2::RAGDOLLING;
+        }
+        else if ("PartialRagdolling" == configuredState)
+        {
+            this->rdState = PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING;
+        }
+        else if ("Animation" == configuredState)
+        {
+            this->rdState = PhysicsRagDollComponentV2::ANIMATION;
+        }
+        else
+        {
+            this->rdState = PhysicsRagDollComponentV2::INACTIVE;
         }
 
         this->rdOldState = PhysicsRagDollComponentV2::INACTIVE;
@@ -795,6 +832,10 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::createInactiveRagdoll()
     {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2][DIAG] createInactiveRagdoll for '" + this->gameObjectPtr->getName() +
+                                                                                "' rdState: " + Ogre::StringConverter::toString(static_cast<int>(this->rdState)) + " rdOldState: " + Ogre::StringConverter::toString(static_cast<int>(this->rdOldState)) +
+                                                                                " ragDataListSize: " + Ogre::StringConverter::toString(this->ragDataList.size()) + " animationEnabled: " + Ogre::StringConverter::toString(this->animationEnabled));
+
         boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
@@ -1053,6 +1094,27 @@ namespace NOWA
     // setAnimationEnabled / isAnimationEnabled
     // ============================================================================
 
+    //void PhysicsRagDollComponentV2::setAnimationEnabled(bool animationEnabled)
+    //{
+    //    this->animationEnabled = animationEnabled;
+
+    //    size_t offset = 0;
+    //    if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
+    //    {
+    //        offset = 1;
+    //    }
+
+    //    for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+    //    {
+    //        // V2: use setManualBone instead of setManuallyControlled
+    //        if (nullptr != this->skeletonInstance)
+    //        {
+    //            this->skeletonInstance->setManualBone(it->ragBone->getBone(), !animationEnabled);
+    //        }
+    //        it->ragBone->applyPose(Ogre::Vector3::ZERO);
+    //    }
+    //}
+
     void PhysicsRagDollComponentV2::setAnimationEnabled(bool animationEnabled)
     {
         this->animationEnabled = animationEnabled;
@@ -1061,6 +1123,14 @@ namespace NOWA
         if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
         {
             offset = 1;
+        }
+
+        // With an empty list and offset 1, 'cbegin() + 1' points past the end and the
+        // 'it != cend()' comparison never matches - the loop then walks off into invalid
+        // memory.
+        if (this->ragDataList.size() <= offset)
+        {
+            return;
         }
 
         for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
@@ -2288,6 +2358,23 @@ namespace NOWA
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
+            // Release the manual bone flags BEFORE the ragbones are destroyed. Once the list is
+            // cleared the bone pointers are gone, and setAnimationEnabled() / endRagdolling()
+            // both iterate exactly this list - so a bone left manual here can never be released
+            // again. The skeleton then ignores every animation for that bone and the character
+            // stays in its bind pose, which is the T-pose seen after stop/start.
+            if (nullptr != this->skeletonInstance)
+            {
+                for (auto it = this->ragDataList.cbegin(); it != this->ragDataList.cend(); ++it)
+                {
+                    if (nullptr != it->ragBone && nullptr != it->ragBone->getBone())
+                    {
+                        this->skeletonInstance->setManualBone(it->ragBone->getBone(), false);
+                    }
+                }
+            }
+
+            // First delete all prior created ragbones
             while (this->ragDataList.size() > 0)
             {
                 RagBone* ragBone = this->ragDataList.back().ragBone;
@@ -2344,6 +2431,10 @@ namespace NOWA
         // can safely initialize the animation blender again.
         this->animationEnabled = true;
         this->oldAnimationId = -1;
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2][DIAG] endRagdolling done for '" + this->gameObjectPtr->getName() +
+                                                                                "' rdState: " + Ogre::StringConverter::toString(static_cast<int>(this->rdState)) + " ragDataListSize: " + Ogre::StringConverter::toString(this->ragDataList.size()) +
+                                                                                " animationEnabled: " + Ogre::StringConverter::toString(this->animationEnabled));
     }
 
     // ============================================================================

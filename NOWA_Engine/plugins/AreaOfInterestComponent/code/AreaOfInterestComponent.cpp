@@ -540,10 +540,30 @@ namespace NOWA
             this->triggerSphereQueryObserver->onEnter(gameObject);
         }
 
-        if (this->gameObjectPtr->getLuaScript() && this->enterClosureFunction.is_valid())
+        // The getLuaScript() gate is gone: the closure belongs to whichever script registered
+        // it, not to this game object - which may well have no script of its own, in which
+        // case the reaction never fired at all.
+        if (this->enterClosureFunction.is_valid())
         {
-            NOWA::AppStateManager::LogicCommand logicCommand = [this, gameObject]()
+            // NO GameObjectController lookup here: this function runs inside the render
+            // thread closure registered by update(), and getGameObjectFromId() reads the
+            // controller's game object map, which the logic thread mutates concurrently.
+            // The raw pointer is passed on as before.
+            boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, gameObject]()
             {
+                boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                if (nullptr == strongThis)
+                {
+                    return;
+                }
+
+                if (false == this->enterClosureFunction.is_valid())
+                {
+                    return;
+                }
+
                 try
                 {
                     luabind::call_function<void>(this->enterClosureFunction, gameObject);
@@ -564,10 +584,27 @@ namespace NOWA
             this->triggerSphereQueryObserver->onLeave(gameObject);
         }
 
-        if (this->gameObjectPtr->getLuaScript() && this->leaveClosureFunction.is_valid())
+        if (this->leaveClosureFunction.is_valid())
         {
-            NOWA::AppStateManager::LogicCommand logicCommand = [this, gameObject]()
+            // NO GameObjectController lookup here: this function runs inside the render
+            // thread closure registered by update(), and getGameObjectFromId() reads the
+            // controller's game object map, which the logic thread mutates concurrently.
+            // The raw pointer is passed on as before.
+            boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, gameObject]()
             {
+                boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                if (nullptr == strongThis)
+                {
+                    return;
+                }
+
+                if (false == this->leaveClosureFunction.is_valid())
+                {
+                    return;
+                }
+
                 try
                 {
                     luabind::call_function<void>(this->leaveClosureFunction, gameObject);
@@ -727,8 +764,22 @@ namespace NOWA
             return;
         }
 
-        NOWA::AppStateManager::LogicCommand logicCommand = [this, activated]()
+        // 'activated' is captured BY VALUE on purpose: this->activated->setValue() only
+        // happens further down inside this very command, so re-reading the variant here
+        // would see the OLD value, not the requested one.
+        //
+        // The weak pointer covers this component being torn down between enqueueing and
+        // execution - notably from the same worker thread path that calls setActivated().
+        boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
+
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, activated]()
         {
+            boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+            if (nullptr == strongThis)
+            {
+                return;
+            }
+
             this->triggerUpdateTimer = 0.0f;
 
             auto luaScriptCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
@@ -739,11 +790,22 @@ namespace NOWA
 
             if (true == activated)
             {
-                if (nullptr != luaScriptComponent && false == luaScriptComponent->isActivated())
+                if (nullptr != this->luaScriptComponent && false == this->luaScriptComponent->isActivated())
                 {
-                    boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
-                        "Cannot activate component, because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
-                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+                    // getLuaScript() was dereferenced twice unguarded here, in the ERROR
+                    // path of all places - i.e. exactly when something is already wrong.
+                    LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
+                    if (nullptr != luaScript)
+                    {
+                        boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(luaScript->getScriptName(), luaScript->getScriptFilePathName(), 0,
+                            "Cannot activate component, because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
+                        AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+                    }
+                    else
+                    {
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
+                            "[AreaOfInterestComponent] Cannot activate component for game object: " + this->gameObjectPtr->getName() + ", because the 'LuaScriptComponent' is not activated and there is no lua script.");
+                    }
                     return;
                 }
             }
@@ -767,18 +829,18 @@ namespace NOWA
                         this->triggerSphereQueryObserver->onLeave(gameObject);
                     }
 
-                    if (nullptr != this->gameObjectPtr->getLuaScript())
+                    // The getLuaScript() gate is gone: the closure belongs to whichever
+                    // script registered it, not to this game object. Called directly here
+                    // because this code already runs inside a logic command.
+                    if (this->leaveClosureFunction.is_valid())
                     {
-                        if (this->leaveClosureFunction.is_valid())
+                        try
                         {
-                            try
-                            {
-                                luabind::call_function<void>(this->leaveClosureFunction, gameObject);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                this->logLuaError("reactOnLeaveFallback", error);
-                            }
+                            luabind::call_function<void>(this->leaveClosureFunction, gameObject);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            this->logLuaError("reactOnLeaveFallback", error);
                         }
                     }
                     it = this->triggeredGameObjects.erase(it);
